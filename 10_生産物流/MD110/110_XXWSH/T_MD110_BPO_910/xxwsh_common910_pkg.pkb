@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.15
+ * Version                : 1.16
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/08/04   1.14  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 変更要求対応#95のバグ対応
  *  2008/08/06   1.14  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 変更要求対応#164対応
  *  2008/08/22   1.15  ORACLE伊藤ひとみ [出荷可否チェック] PT 2-2_15 指摘20
+ *  2008/09/05   1.16  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] PT 6-2_34 指摘#34対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -481,7 +482,7 @@ AS
     cv_code_class_ship       CONSTANT VARCHAR2(10) := '9';  -- 出荷
     cv_code_class_supply     CONSTANT VARCHAR2(10) := '11'; -- 支給
 -- 2008/08/04 Add H.Itou End
--- 2008/08/04 H.Itou Del Start 動的SQL中止のため削除
+-- 2008/08/04 H.Itou Del Start
 --    -- 動的SQL文
 --    -- メインSQL
 --    cv_main_sql1                   CONSTANT VARCHAR2(32000)
@@ -558,6 +559,67 @@ AS
 --         || ' ORDER BY'
 --         || '   xdlv.leaf_loading_capacity  DESC';
 -- 2008/08/04 H.Itou Del End
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応
+    -- =========================
+    -- 積載効率取得SQL
+    -- =========================
+    cv_select                CONSTANT VARCHAR2(32000) :=
+         '  SELECT /*+ use_nl(xdlv.xdl xdlv.xsm xsmv.flv) */           '
+      || '         xdlv.ship_method             ship_method            ' -- 出荷方法
+      || '        ,xsmv.mixed_ship_method_code  mixed_ship_method_code ' -- 混載配送区分
+      ;
+    cv_select_leaf_weight    CONSTANT VARCHAR2(32000) :=
+         '        ,xdlv.leaf_deadweight         deadweight             ';-- リーフ積載重量
+    cv_select_drink_weight   CONSTANT VARCHAR2(32000) :=
+         '        ,xdlv.drink_deadweight        deadweight             ';-- ドリンク積載重量
+    cv_select_leaf_capacity  CONSTANT VARCHAR2(32000) :=
+         '        ,xdlv.leaf_loading_capacity   loading_capacity       ';-- リーフ積載容積
+    cv_select_drink_capacity CONSTANT VARCHAR2(32000) :=
+         '        ,xdlv.drink_loading_capacity  loading_capacity       ';-- ドリンク積載容積
+    cv_select_sql_sort1      CONSTANT VARCHAR2(32000) :=
+         '        ,1                            sql_sort               ';-- 優先① 入出庫場所（個別－個別）
+    cv_select_sql_sort2      CONSTANT VARCHAR2(32000) :=
+         '        ,2                            sql_sort               ';-- 優先② 入出庫場所（ZZZZ－個別）
+    cv_select_sql_sort3      CONSTANT VARCHAR2(32000) :=
+         '        ,3                            sql_sort               ';-- 優先③ 入出庫場所（個別－ZZZZ）
+    cv_select_sql_sort4      CONSTANT VARCHAR2(32000) :=
+         '        ,4                            sql_sort               ';-- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+    cv_from                  CONSTANT VARCHAR2(32000) := 
+         '  FROM   xxcmn_delivery_lt2_v  xdlv                          ' -- 配送L/T情報VIEW2
+      || '        ,xxwsh_ship_method2_v  xsmv                          ';-- 配送区分情報VIEW2
+    cv_where                CONSTANT VARCHAR2(32000) := 
+         '  WHERE  xsmv.ship_method_code                = xdlv.ship_method               ' -- 結合条件
+      || '  AND    xdlv.code_class1                     = :lv_code_class1                ' -- コード区分１
+      || '  AND    xdlv.code_class2                     = :lv_code_class2                ' -- コード区分２
+      || '  AND    xdlv.lt_start_date_active           <= TRUNC(:ld_standard_date)       '
+      || '  AND    xdlv.lt_end_date_active             >= TRUNC(:ld_standard_date)       '
+      || '  AND    xdlv.sm_start_date_active           <= TRUNC(:ld_standard_date)       '
+      || '  AND    xdlv.sm_end_date_active             >= TRUNC(:ld_standard_date)       '
+      || '  AND (( xsmv.start_date_active              <= TRUNC(:ld_standard_date))      '
+      || '    OR ( xsmv.start_date_active              IS NULL ))                        '
+      || '  AND (( xsmv.end_date_active                >= TRUNC(:ld_standard_date))      '
+      || '    OR ( xsmv.end_date_active                IS NULL ))                        '
+      || '  AND    xdlv.ship_method                     = NVL(:lv_ship_method, xdlv.ship_method ) ' -- 出荷方法
+      || '  AND    NVL( xsmv.auto_process_type, ''0'' ) = NVL(:lv_auto_process_type, NVL(xsmv.auto_process_type, ''0'')) '-- 自動配車対象区分
+      || '  AND    xdlv.entering_despatching_code1      = :lv_entering_despatching_code1 ' -- 入出庫場所１
+      || '  AND    xdlv.entering_despatching_code2      = :lv_entering_despatching_code2 ' -- 入出庫場所２
+      ;
+    cv_where_leaf_weight     CONSTANT VARCHAR2(32000) :=
+         '  AND    xdlv.leaf_deadweight                 > 0                              '; -- リーフ積載重量＞0
+    cv_where_drink_weight    CONSTANT VARCHAR2(32000) :=
+         '  AND    xdlv.drink_deadweight                > 0                              '; -- ドリンク積載重量＞0
+    cv_where_leaf_capacity   CONSTANT VARCHAR2(32000) :=
+         '  AND    xdlv.leaf_loading_capacity           > 0                              '; -- リーフ積載容積＞0
+    cv_where_drink_capacity  CONSTANT VARCHAR2(32000) :=
+         '  AND    xdlv.drink_loading_capacity          > 0                              '; -- ドリンク積載容積＞0
+    cv_where_mixed_class     CONSTANT VARCHAR2(32000) :=
+         '  AND    xsmv.mixed_class                     = ''0''                          '; -- 混載区分='0'(混載なし)
+    cv_order_by              CONSTANT VARCHAR2(32000) :=
+         '  ORDER BY ship_method DESC ' -- 出荷方法         降順 
+      || '          ,sql_sort         ' -- 入出庫場所優先順 昇順 
+      ;
+    cv_union_all             CONSTANT VARCHAR2(32000) := ' UNION ALL ';
+-- 2008/09/05 H.Itou Add End
 --
     -- *** ローカル変数 ***
     -- エラー変数
@@ -567,6 +629,12 @@ AS
     lv_column_w                VARCHAR2(32000);
     lv_column_c                VARCHAR2(32000);
     lv_order_by                VARCHAR2(32000);
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応
+    lv_select_deadweight       VARCHAR2(32000);  -- SELECT句 [動的項目]積載重量
+    lv_select_loading_capacity VARCHAR2(32000);  -- SELECT句 [動的項目]積載容積
+    lv_where_remove_zero       VARCHAR2(32000);  -- WHERE句  [動的項目]積載重量OR積載容積＞0
+    lv_where_mixed_class       VARCHAR2(32000);  -- WHERE句  [動的項目]混載区分=0
+-- 2008/09/05 H.Itou Add End
     --
     -- 関連データ格納用
     lv_base_code               VARCHAR2(4);                                       -- 拠点コード
@@ -583,6 +651,9 @@ AS
     lv_prod_class                 xxcmn_item_categories_v.segment1%TYPE;               -- 商品区分
     ld_standard_date              DATE;                                                -- 基準日(適用日基準日)
 -- 2008/08/04 H.Itou Add End
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応
+    lv_all_z_dummy_code2          VARCHAR2(9);     -- 入出庫場所コード2のダミーコード
+-- 2008/09/05 H.Itou Add End
 --
     -- 退避用
     ln_load_efficiency_tmp     NUMBER;                                              -- 積載効率
@@ -593,98 +664,102 @@ AS
     lv_entering_despatching_code2  xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE; -- 2008/07/14 変更要求対応#95
 --
     -- *** ローカル・カーソル ***
--- 2008/08/04 H.Itou Add Start
-    -- 積載効率取得カーソル
-    CURSOR lc_ref IS
-      SELECT subsql.ship_method              ship_method            -- 出荷方法
-            ,subsql.mixed_ship_method_code   mixed_ship_method_code -- 混載配送区分
-            ,subsql.deadweight               deadweight             -- 積載重量
-            ,subsql.loading_capacity         loading_capacity       -- 積載容積
-      FROM  ( SELECT xdlv.ship_method                ship_method            -- 出荷方法
-                    ,xsmv.mixed_ship_method_code     mixed_ship_method_code -- 混載配送区分
-                    ,CASE
-                      -- 商品区分 1:リーフの場合、リーフ重量を積載重量とする。
-                      WHEN (lv_prod_class = cv_prod_class_leaf) THEN
-                        xdlv.leaf_deadweight
-                      -- 商品区分 2:ドリンク の場合、ドリンク重量を積載重量とする。
-                      WHEN (lv_prod_class = cv_prod_class_drink) THEN
-                        xdlv.drink_deadweight
-                     END  deadweight  -- 積載重量
-                    ,CASE
-                      -- 商品区分 1:リーフの場合、リーフ容積を積載容積とする。
-                      WHEN (lv_prod_class = cv_prod_class_leaf) THEN
-                        xdlv.leaf_loading_capacity
-                      -- 商品区分 2:ドリンク の場合、ドリンク容積を積載容積とする。
-                      WHEN (lv_prod_class = cv_prod_class_drink) THEN
-                        xdlv.drink_loading_capacity
-                     END  loading_capacity  -- 積載容積
-                    ,CASE
-                       -- 優先① 入出庫場所（個別－個別）
-                       WHEN ((xdlv.entering_despatching_code1 = lv_entering_despatching_code1)
-                        AND  (xdlv.entering_despatching_code2 = lv_entering_despatching_code2)) THEN
-                          1
-                       -- 優先② 入出庫場所（ZZZZ－個別）
-                       WHEN ((xdlv.entering_despatching_code1 = cv_all_4)
-                         AND (xdlv.entering_despatching_code2 = lv_entering_despatching_code2)) THEN
-                          2
-                       -- 優先③ 入出庫場所（個別－ZZZZ）
-                       WHEN ((xdlv.entering_despatching_code1 = lv_entering_despatching_code1)
-                         AND ((((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4)))
-                           OR (((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9))))) THEN
-                          3
-                       -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
-                       WHEN ((xdlv.entering_despatching_code1 = cv_all_4)
-                         AND (((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4))
-                           OR ((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9)))) THEN
-                          4
-                     END  sql_sort         -- 入出庫場所優先順
-              FROM   xxcmn_delivery_lt2_v  xdlv        -- 配送L/T情報VIEW2
-                    ,xxwsh_ship_method2_v  xsmv        -- 配送区分情報VIEW2
-              WHERE xsmv.ship_method_code      = xdlv.ship_method  -- 結合条件
-                AND xdlv.code_class1 = lv_code_class1  -- コード区分１
-                AND xdlv.code_class2 = lv_code_class2  -- コード区分２
-                AND xdlv.lt_start_date_active      <= TRUNC(ld_standard_date)
-                AND xdlv.lt_end_date_active        >= TRUNC(ld_standard_date)
-                AND xdlv.sm_start_date_active      <= TRUNC(ld_standard_date)
-                AND xdlv.sm_end_date_active        >= TRUNC(ld_standard_date)
-                AND (( xsmv.start_date_active      <= TRUNC(ld_standard_date))
-                  OR ( xsmv.start_date_active IS NULL ))
-                AND (( xsmv.end_date_active        >= TRUNC(ld_standard_date))
-                  OR ( xsmv.end_date_active   IS NULL ))
-                AND xdlv.ship_method           = NVL( lv_ship_method, xdlv.ship_method ) -- 出荷方法
-                AND NVL( xsmv.auto_process_type, '0' ) = NVL(lv_auto_process_type, NVL(xsmv.auto_process_type,'0')) -- 自動配車対象区分
-                -- 優先① 入出庫場所（個別－個別）
-                AND(((xdlv.entering_despatching_code1 = lv_entering_despatching_code1)
-                 AND (xdlv.entering_despatching_code2 = lv_entering_despatching_code2))
-                -- 優先② 入出庫場所（ZZZZ－個別）
-                  OR ((xdlv.entering_despatching_code1 = cv_all_4)
-                   AND (xdlv.entering_despatching_code2 = lv_entering_despatching_code2))
-                -- 優先③ 入出庫場所（個別－ZZZZ）
-                  OR (((xdlv.entering_despatching_code1 = lv_entering_despatching_code1))
-                   AND (((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4))
-                     OR ((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9))))
-                -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
-                  OR (((xdlv.entering_despatching_code1 = cv_all_4))
-                   AND (((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4))
-                     OR ((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9)))))
-                -- 出荷方法に値なし かつ、商品区分 1:リーフ かつ 合計重量に値あり の場合、リーフ重量を条件に追加
-                AND (((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_leaf)  AND (ln_sum_weight IS NOT NULL)  AND (xdlv.leaf_deadweight > 0))
-                -- 出荷方法に値なし かつ、商品区分 1:リーフ かつ 合計重量に値なし の場合、リーフ容積を条件に追加
-                  OR ((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_leaf)  AND (ln_sum_weight IS NULL)      AND (xdlv.leaf_loading_capacity > 0))
-                -- 出荷方法に値なし かつ、商品区分 2:ドリンク かつ 合計重量に値あり の場合、ドリンク重量を条件に追加
-                  OR ((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_drink) AND (ln_sum_weight IS  NOT NULL) AND (xdlv.drink_deadweight > 0))
-                -- 出荷方法に値なし かつ、商品区分 2:ドリンク かつ 合計重量に値なし の場合、ドリンク容積を条件に追加
-                  OR ((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_drink) AND (ln_sum_weight IS NULL)      AND (xdlv.drink_loading_capacity > 0))
-                -- 出荷方法に値ありの場合は、積載重量・積載容積を条件としない。
-                  OR ((lv_ship_method IS NOT NULL)))
-              ) subsql
-      ORDER BY subsql.ship_method DESC  -- 出荷方法         降順
-              ,subsql.sql_sort          -- 入出庫場所優先順 昇順
-    ;
--- 2008/08/04 H.Itou Add End
--- 2008/08/04 H.Itou Del Start 動的SQL中止のため削除
---    TYPE ref_cursor   IS REF CURSOR ;           -- 1. 倉庫(個別コード)－配送先(個別コード)の検索チェック用カーソル
---    lc_ref     ref_cursor ;
+-- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
+---- 2008/08/04 H.Itou Add Start
+--    -- 積載効率取得カーソル
+--    CURSOR lc_ref IS
+--      SELECT subsql.ship_method              ship_method            -- 出荷方法
+--            ,subsql.mixed_ship_method_code   mixed_ship_method_code -- 混載配送区分
+--            ,subsql.deadweight               deadweight             -- 積載重量
+--            ,subsql.loading_capacity         loading_capacity       -- 積載容積
+--      FROM  ( SELECT xdlv.ship_method                ship_method            -- 出荷方法
+--                    ,xsmv.mixed_ship_method_code     mixed_ship_method_code -- 混載配送区分
+--                    ,CASE
+--                      -- 商品区分 1:リーフの場合、リーフ重量を積載重量とする。
+--                      WHEN (lv_prod_class = cv_prod_class_leaf) THEN
+--                        xdlv.leaf_deadweight
+--                      -- 商品区分 2:ドリンク の場合、ドリンク重量を積載重量とする。
+--                      WHEN (lv_prod_class = cv_prod_class_drink) THEN
+--                        xdlv.drink_deadweight
+--                     END  deadweight  -- 積載重量
+--                    ,CASE
+--                      -- 商品区分 1:リーフの場合、リーフ容積を積載容積とする。
+--                      WHEN (lv_prod_class = cv_prod_class_leaf) THEN
+--                        xdlv.leaf_loading_capacity
+--                      -- 商品区分 2:ドリンク の場合、ドリンク容積を積載容積とする。
+--                      WHEN (lv_prod_class = cv_prod_class_drink) THEN
+--                        xdlv.drink_loading_capacity
+--                     END  loading_capacity  -- 積載容積
+--                    ,CASE
+--                       -- 優先① 入出庫場所（個別－個別）
+--                       WHEN ((xdlv.entering_despatching_code1 = lv_entering_despatching_code1)
+--                        AND  (xdlv.entering_despatching_code2 = lv_entering_despatching_code2)) THEN
+--                          1
+--                       -- 優先② 入出庫場所（ZZZZ－個別）
+--                       WHEN ((xdlv.entering_despatching_code1 = cv_all_4)
+--                         AND (xdlv.entering_despatching_code2 = lv_entering_despatching_code2)) THEN
+--                          2
+--                       -- 優先③ 入出庫場所（個別－ZZZZ）
+--                       WHEN ((xdlv.entering_despatching_code1 = lv_entering_despatching_code1)
+--                         AND ((((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4)))
+--                           OR (((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9))))) THEN
+--                          3
+--                       -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+--                       WHEN ((xdlv.entering_despatching_code1 = cv_all_4)
+--                         AND (((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4))
+--                           OR ((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9)))) THEN
+--                          4
+--                     END  sql_sort         -- 入出庫場所優先順
+--              FROM   xxcmn_delivery_lt2_v  xdlv        -- 配送L/T情報VIEW2
+--                    ,xxwsh_ship_method2_v  xsmv        -- 配送区分情報VIEW2
+--              WHERE xsmv.ship_method_code      = xdlv.ship_method  -- 結合条件
+--                AND xdlv.code_class1 = lv_code_class1  -- コード区分１
+--                AND xdlv.code_class2 = lv_code_class2  -- コード区分２
+--                AND xdlv.lt_start_date_active      <= TRUNC(ld_standard_date)
+--                AND xdlv.lt_end_date_active        >= TRUNC(ld_standard_date)
+--                AND xdlv.sm_start_date_active      <= TRUNC(ld_standard_date)
+--                AND xdlv.sm_end_date_active        >= TRUNC(ld_standard_date)
+--                AND (( xsmv.start_date_active      <= TRUNC(ld_standard_date))
+--                  OR ( xsmv.start_date_active IS NULL ))
+--                AND (( xsmv.end_date_active        >= TRUNC(ld_standard_date))
+--                  OR ( xsmv.end_date_active   IS NULL ))
+--                AND xdlv.ship_method           = NVL( lv_ship_method, xdlv.ship_method ) -- 出荷方法
+--                AND NVL( xsmv.auto_process_type, '0' ) = NVL(lv_auto_process_type, NVL(xsmv.auto_process_type,'0')) -- 自動配車対象区分
+--                -- 優先① 入出庫場所（個別－個別）
+--                AND(((xdlv.entering_despatching_code1 = lv_entering_despatching_code1)
+--                 AND (xdlv.entering_despatching_code2 = lv_entering_despatching_code2))
+--                -- 優先② 入出庫場所（ZZZZ－個別）
+--                  OR ((xdlv.entering_despatching_code1 = cv_all_4)
+--                   AND (xdlv.entering_despatching_code2 = lv_entering_despatching_code2))
+--                -- 優先③ 入出庫場所（個別－ZZZZ）
+--                  OR (((xdlv.entering_despatching_code1 = lv_entering_despatching_code1))
+--                   AND (((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4))
+--                     OR ((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9))))
+--                -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+--                  OR (((xdlv.entering_despatching_code1 = cv_all_4))
+--                   AND (((xdlv.code_class2 IN (cv_code_class_whse, cv_code_class_supply)) AND (xdlv.entering_despatching_code2 = cv_all_4))
+--                     OR ((xdlv.code_class2 = cv_code_class_ship) AND (xdlv.entering_despatching_code2 = cv_all_9)))))
+--                -- 出荷方法に値なし かつ、商品区分 1:リーフ かつ 合計重量に値あり の場合、リーフ重量を条件に追加
+--                AND (((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_leaf)  AND (ln_sum_weight IS NOT NULL)  AND (xdlv.leaf_deadweight > 0))
+--                -- 出荷方法に値なし かつ、商品区分 1:リーフ かつ 合計重量に値なし の場合、リーフ容積を条件に追加
+--                  OR ((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_leaf)  AND (ln_sum_weight IS NULL)      AND (xdlv.leaf_loading_capacity > 0))
+--                -- 出荷方法に値なし かつ、商品区分 2:ドリンク かつ 合計重量に値あり の場合、ドリンク重量を条件に追加
+--                  OR ((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_drink) AND (ln_sum_weight IS  NOT NULL) AND (xdlv.drink_deadweight > 0))
+--                -- 出荷方法に値なし かつ、商品区分 2:ドリンク かつ 合計重量に値なし の場合、ドリンク容積を条件に追加
+--                  OR ((lv_ship_method IS NULL) AND (lv_prod_class = cv_prod_class_drink) AND (ln_sum_weight IS NULL)      AND (xdlv.drink_loading_capacity > 0))
+--                -- 出荷方法に値ありの場合は、積載重量・積載容積を条件としない。
+--                  OR ((lv_ship_method IS NOT NULL)))
+--              ) subsql
+--      ORDER BY subsql.ship_method DESC  -- 出荷方法         降順
+--              ,subsql.sql_sort          -- 入出庫場所優先順 昇順
+--    ;
+---- 2008/08/04 H.Itou Add End
+-- 2008/09/05 H.Itou Del End
+-- 2008/08/04 H.Itou Del Start
+-- 2008/09/05 H.Itou Mod Start PT 6-2_34 指摘#34対応 動的SQLに変更のため、再度使用。
+    TYPE ref_cursor   IS REF CURSOR ;           -- 1. 倉庫(個別コード)－配送先(個別コード)の検索チェック用カーソル
+    lc_ref     ref_cursor ;
+-- 2008/09/05 H.Itou Mod End
 --    --
 --    TYPE ref_cursor2  IS REF CURSOR ;           -- 1.でNOTFOUNDで、2.3.4.のいずれかでFOUNDした場合に使用するカーソル
 --    lc_ref2    ref_cursor2 ;
@@ -702,19 +777,24 @@ AS
 -- 2008/08/04 H.Itou Del End
 --
     -- *** ローカル・レコード ***
--- 2008/08/04 H.Itou Add Start
-    lr_ref  lc_ref%ROWTYPE;  -- カーソル用レコード
--- 2008/08/04 H.Itou Add End
+-- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
+---- 2008/08/04 H.Itou Add Start
+--    lr_ref  lc_ref%ROWTYPE;  -- カーソル用レコード
+---- 2008/08/04 H.Itou Add End
+-- 2008/09/05 H.Itou Del End
 --
--- 2008/08/04 H.Itou Del Start 動的SQL中止のため削除
---    TYPE ret_value  IS RECORD
---      (
---        ship_method                xxcmn_delivery_lt2_v.ship_method%TYPE        -- 出荷方法
---       ,deadweight                 NUMBER                                       -- 積載重量
---       ,loading_capacity           NUMBER                                       -- 積載容積
---       ,mixed_ship_method_code     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE -- 混載配送区分
---      );
---    lr_ref        ret_value ;
+-- 2008/08/04 H.Itou Del Start
+-- 2008/09/05 H.Itou Mod Start PT 6-2_34 指摘#34対応 動的SQLに変更のため、再度使用。
+    TYPE ret_value  IS RECORD
+      (
+        ship_method                xxcmn_delivery_lt2_v.ship_method%TYPE        -- 出荷方法
+       ,mixed_ship_method_code     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE -- 混載配送区分
+       ,deadweight                 NUMBER                                       -- 積載重量
+       ,loading_capacity           NUMBER                                       -- 積載容積
+       ,sql_sort                   NUMBER                                       -- ソート順 -- 2008/08/05 H.Itou Add
+      );
+    lr_ref        ret_value ;
+-- 2008/09/05 H.Itou Mod End
 --    lr_ref2       ret_value ;
 --    lr_fnd_chk2   ret_value ;      -- 2008/07/14 変更要求対応#95
 --    lr_fnd_chk3   ret_value ;      -- 2008/07/14 変更要求対応#95
@@ -893,10 +973,167 @@ AS
     lv_ship_method                := iv_ship_method;                 -- 出荷方法
     lv_prod_class                 := iv_prod_class;                  -- 商品区分
     ld_standard_date              := NVL(id_standard_date, SYSDATE); -- 基準日(適用日基準日)
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
+    -- コード区分２が「9：出荷」の場合
+    IF (lv_code_class2 = cv_code_class_ship) THEN
+      lv_all_z_dummy_code2 := cv_all_9; -- 入出庫場所コード2のダミーコードはZZZZZZZZZ
 --
-    -- カーソルオープン
-    OPEN lc_ref;
--- 2008/08/04 H.Itou Add End
+    -- コード区分２が「4：配送先」「11：支給」の場合
+    ELSE
+      lv_all_z_dummy_code2 := cv_all_4; -- 入出庫場所コード2のダミーコードはZZZZ
+    END IF;
+-- 2008/09/05 H.Itou Add End
+--
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
+   -- 動的SQL生成
+   -- SELECT句積載重量・積載容積の決定
+   -- 商品区分が「1：リーフ」の場合
+   IF (lv_prod_class = cv_prod_class_leaf) THEN
+     lv_select_deadweight       := cv_select_leaf_weight;    -- SELECT句 [動的項目]積載重量→リーフ積載重量
+     lv_select_loading_capacity := cv_select_leaf_capacity;  -- SELECT句 [動的項目]積載重量→リーフ積載容積
+--
+   -- 商品区分が「2：ドリンク」の場合
+   ELSIF( lv_prod_class = cv_prod_class_drink) THEN 
+     lv_select_deadweight       := cv_select_drink_weight;    -- SELECT句 [動的項目]積載重量→ドリンク積載重量
+     lv_select_loading_capacity := cv_select_drink_capacity;  -- SELECT句 [動的項目]積載重量→ドリンク積載容積
+   END IF;
+--
+   -- WHERE句 [動的項目]積載重量OR積載容積＞0,WHERE句 [動的項目]混載区分=0の決定
+   -- 出荷方法に指定がある場合
+   IF (lv_ship_method IS NOT NULL) THEN
+     lv_where_remove_zero    := ' '; -- WHERE句 [動的項目]積載重量OR積載容積＞0→指定なし
+     lv_where_mixed_class    := ' '; -- WHERE句 [動的項目]混載区分=0→指定なし
+--
+   -- 出荷方法に指定がない場合
+   ELSE
+     lv_where_mixed_class    := cv_where_mixed_class; -- WHERE句 [動的項目]混載区分=0→指定あり
+--
+     -- 商品区分「1：リーフ」かつ、重量に指定あり
+     IF ((lv_prod_class = cv_prod_class_leaf)
+     AND (ln_sum_weight IS NOT NULL)) THEN
+       lv_where_remove_zero    := cv_where_leaf_weight;  -- WHERE句 [動的項目]積載重量OR積載容積＞0→リーフ積載重量
+--
+     -- 商品区分「1：リーフ」かつ、重量に指定なし
+     ELSIF ((lv_prod_class = cv_prod_class_leaf)
+     AND    (ln_sum_weight IS NULL)) THEN
+       lv_where_remove_zero    := cv_where_leaf_capacity;  -- WHERE句 [動的項目]積載重量OR積載容積＞0→リーフ積載容積
+--
+     -- 商品区分「2：ドリンク」かつ、重量に指定あり
+     ELSIF ((lv_prod_class = cv_prod_class_drink)
+     AND    (ln_sum_weight IS NOT NULL)) THEN
+       lv_where_remove_zero    := cv_where_drink_weight;  -- WHERE句 [動的項目]積載重量OR積載容積＞0→ドリンク積載重量
+--
+     -- 商品区分「2：ドリンク」かつ、重量に指定なし
+     ELSIF ((lv_prod_class = cv_prod_class_drink)
+     AND    (ln_sum_weight IS NULL)) THEN
+       lv_where_remove_zero    := cv_where_drink_capacity;  -- WHERE句 [動的項目]積載重量OR積載容積＞0→ドリンク積載容積
+     END IF;
+   END IF;
+--
+   lv_sql := -- 優先① 入出庫場所（個別－個別）
+             cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+             -- 優先② 入出庫場所（ZZZZ－個別）
+          || cv_union_all
+          || cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+             -- 優先③ 入出庫場所（個別－ZZZZ）
+          || cv_union_all
+          || cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+             -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+          || cv_union_all
+          || cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+          || cv_order_by                 -- ORDER BY句 [不変項目]
+          ;
+-- 2008/09/05 H.Itou Add End
+-- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
+---- 2008/08/04 H.Itou Add Start
+----    -- カーソルオープン
+----    OPEN lc_ref;
+---- 2008/08/04 H.Itou Add End
+-- 2008/09/05 H.Itou Del End
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
+    OPEN  lc_ref FOR lv_sql
+    USING -- 優先① 入出庫場所（個別－個別）
+          lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+          -- 優先② 入出庫場所（ZZZZ－個別）
+         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+          -- 優先③ 入出庫場所（個別－ZZZZ）
+         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+          -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+    ;
+-- 2008/09/05 H.Itou Mod End
 --
     /**********************************
      *  最適出荷方法の算出(C-3)       *
