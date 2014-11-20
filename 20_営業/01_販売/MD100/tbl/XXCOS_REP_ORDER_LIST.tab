@@ -1,0 +1,86 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_ORDER_LIST
+ * Description : 受注一覧リスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Tyou     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST 
+(
+    RECORD_ID                      NUMBER         NOT NULL,          --レコードID
+    ORDER_SOURCE                   VARCHAR2(16),                     --受注ソース
+    ENTERED_BY_CODE                VARCHAR2(5),                      --入力者コード
+    ENTERED_BY_NAME                VARCHAR2(40),                     --入力者名
+    ORDER_NUMBER                   NUMBER(9),                        --受注番号 
+    PARTY_ORDER_NUMBER             VARCHAR2(12),                     --顧客発注番号
+    LINE_NUMBER                    NUMBER(3),                        --明細番号 
+    ORDER_NO                       VARCHAR2(16),                     --オーダーNo.
+    SHIPPED_DATE                   DATE,                             --出荷日 
+    DLV_DATE                       DATE,                             --納品日 
+    ORDER_ITEM_NO                  VARCHAR2(7),                      --受注品番号 
+    ORDER_ITEM_NAME                VARCHAR2(20),                     --受注品名 
+    QUANTITY                       NUMBER(9,2),                      --数量 
+    UOM_CODE                       VARCHAR2(3),                      --単位 
+    DLV_UNIT_PRICE                 NUMBER(8,2),                      --納品単価 
+    ORDER_AMOUNT                   NUMBER(12,0),                     --受注金額 
+    LOCAT_CODE                     VARCHAR2(10),                     --保管場所コード 
+    LOCAT_NAME                     VARCHAR2(10),                     --保管場所名称 
+    SHIPPING_INSTRUCTIONS          VARCHAR2(26),                     --出荷指示 
+    BASE_EMPLOYEE_NUM              VARCHAR2(5),                      --担当営業コード 
+    BASE_EMPLOYEE_NAME             VARCHAR2(12),                     --担当営業名称 
+    DELIVER_FROM_CODE              VARCHAR2(9),                      --出荷先コード 
+    DELIVER_TO_NAME                VARCHAR2(40),                     --出荷先名称 
+    CREATED_BY                     NUMBER(15,0)    NOT NULL,         --作成者
+    CREATION_DATE                  DATE            NOT NULL,         --作成日
+    LAST_UPDATED_BY                NUMBER(15,0)    NOT NULL,         --最終更新者
+    LAST_UPDATE_DATE               DATE            NOT NULL,         --最終更新日
+    LAST_UPDATE_LOGIN              NUMBER(15,0),                     --最終更新ログイン
+    REQUEST_ID                     NUMBER(15,0),                     --要求ID
+    PROGRAM_APPLICATION_ID         NUMBER(15,0),                     --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                     NUMBER(15,0),                     --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE            DATE,                             --プログラム更新日
+    CONSTRAINT XXCOS_REP_ORDER_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.RECORD_ID                     IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_SOURCE                  IS '受注ソース';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ENTERED_BY_CODE               IS '入力者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ENTERED_BY_NAME               IS '入力者名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_NUMBER                  IS '受注番号 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PARTY_ORDER_NUMBER            IS '顧客発注番号 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LINE_NUMBER                   IS '明細番号 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_NO                      IS 'オーダーNo.';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.SHIPPED_DATE                  IS '出荷日 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DLV_DATE                      IS '納品日 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_ITEM_NO                 IS '受注品番号 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_ITEM_NAME               IS '受注品名 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.QUANTITY                      IS '数量 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.UOM_CODE                      IS '単位 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DLV_UNIT_PRICE                IS '納品単価 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.ORDER_AMOUNT                  IS '受注金額 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LOCAT_CODE                    IS '保管場所コード ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LOCAT_NAME                    IS '保管場所名称 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.SHIPPING_INSTRUCTIONS         IS '出荷指示 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.BASE_EMPLOYEE_NUM             IS '担当営業コード ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.BASE_EMPLOYEE_NAME            IS '担当営業名称 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DELIVER_FROM_CODE             IS '出荷先コード ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.DELIVER_TO_NAME               IS '出荷先名称 ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CREATED_BY                    IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.CREATION_DATE                 IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LAST_UPDATED_BY               IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LAST_UPDATE_DATE              IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.LAST_UPDATE_LOGIN             IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.REQUEST_ID                    IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PROGRAM_APPLICATION_ID        IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PROGRAM_ID                    IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_LIST.PROGRAM_UPDATE_DATE           IS 'プログラム更新日';
+ --
+COMMENT ON TABLE  XXCOS.XXCOS_REP_ORDER_LIST                               IS '受注一覧リスト帳票ワークテーブル';

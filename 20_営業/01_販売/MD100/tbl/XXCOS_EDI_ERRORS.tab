@@ -1,0 +1,69 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_EDI_ERRORS
+ * Description : EDIエラー情報テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS M.Yamaki     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_EDI_ERRORS(
+  EDI_ERR_ID                       NUMBER              NOT NULL                           -- EDIエラーID
+ ,EDI_CREATE_CLASS                 VARCHAR2(2)         NOT NULL                           -- EDI作成元区分
+ ,CHAIN_CODE                       VARCHAR2(4)         NOT NULL                           -- EDIチェーン店コード
+ ,DLV_DATE                         DATE                NULL                               -- 店舗納品日
+ ,INVOICE_NUMBER                   VARCHAR2(12)        NULL                               -- 伝票番号
+ ,SHOP_CODE                        VARCHAR2(10)        NULL                               -- 店舗コード
+ ,LINE_NO                          NUMBER              NULL                               -- 行番号
+ ,EDI_ITEM_CODE                    VARCHAR2(20)        NULL                               -- EDI商品コード
+ ,ITEM_CODE                        VARCHAR2(7)         NULL                               -- 品目コード
+ ,QUANTITY                         NUMBER              NULL                               -- 本数
+ ,UNIT_PRICE                       NUMBER              NULL                               -- 原単価
+ ,DELETE_FLAG                      VARCHAR2(1)         NULL                               -- 削除フラグ
+ ,WORK_ID                          NUMBER              NULL                               -- ワークID
+ ,STATUS                           VARCHAR2(1)         NULL                               -- ステータス
+ ,ERR_MESSAGE                      VARCHAR2(40)        NULL                               -- エラーメッセージ
+ ,CREATED_BY                       NUMBER(15)          NOT NULL                           -- 作成者
+ ,CREATION_DATE                    DATE                NOT NULL                           -- 作成日
+ ,LAST_UPDATED_BY                  NUMBER(15)          NOT NULL                           -- 最終更新者
+ ,LAST_UPDATE_DATE                 DATE                NOT NULL                           -- 最終更新日
+ ,LAST_UPDATE_LOGIN                NUMBER(15)          NULL                               -- 最終更新ログイン
+ ,REQUEST_ID                       NUMBER(15)          NULL                               -- 要求ID
+ ,PROGRAM_APPLICATION_ID           NUMBER(15)          NULL                               -- コンカレント・プログラム・アプリケーションID
+ ,PROGRAM_ID                       NUMBER(15)          NULL                               -- コンカレント・プログラムID
+ ,PROGRAM_UPDATE_DATE              DATE                NULL                               -- プログラム更新日
+ ,CONSTRAINT XXCOS_EDI_ERRORS_PK PRIMARY KEY ( EDI_ERR_ID )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.EDI_ERR_ID                                  IS  'EDIエラーID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.EDI_CREATE_CLASS                            IS  'EDI作成元区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.CHAIN_CODE                                  IS  'EDIチェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.DLV_DATE                                    IS  '店舗納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.INVOICE_NUMBER                              IS  '伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.SHOP_CODE                                   IS  '店舗コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.LINE_NO                                     IS  '行番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.EDI_ITEM_CODE                               IS  'EDI商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.ITEM_CODE                                   IS  '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.QUANTITY                                    IS  '本数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.UNIT_PRICE                                  IS  '原単価';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.DELETE_FLAG                                 IS  '削除フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.WORK_ID                                     IS  'ワークID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.STATUS                                      IS  'ステータス';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.ERR_MESSAGE                                 IS  'エラーメッセージ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.CREATED_BY                                  IS  '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.CREATION_DATE                               IS  '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.LAST_UPDATED_BY                             IS  '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.LAST_UPDATE_DATE                            IS  '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.LAST_UPDATE_LOGIN                           IS  '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.REQUEST_ID                                  IS  '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.PROGRAM_APPLICATION_ID                      IS  'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.PROGRAM_ID                                  IS  'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.PROGRAM_UPDATE_DATE                         IS  'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_EDI_ERRORS                                             IS  'EDIエラー情報テーブル';

@@ -1,0 +1,55 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_BUS_COUNT_SUM
+ * Description : 営業成績表 営業件数集計テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Nakabayashi新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE  XXCOS.XXCOS_REP_BUS_COUNT_SUM(
+  RECORD_ID                       NUMBER              NOT NULL                          -- レコードID
+ ,TARGET_DATE                     VARCHAR2(6)         NULL                              -- 対象年月
+ ,REGIST_BUS_DATE                 DATE                NULL                              -- 登録業務日付
+ ,BASE_CODE                       VARCHAR2(4)         NULL                              -- 拠点コード
+ ,EMPLOYEE_NUM                    VARCHAR2(5)         NULL                              -- 営業員コード
+ ,COUNTER_CLASS                   NUMBER(2)           NULL                              -- 件数区分
+ ,BUSINESS_LOW_TYPE               VARCHAR2(2)         NULL                              -- 業態大分類
+ ,COUNTER                         NUMBER(6)           NULL                              -- 営業件数
+ ,CREATED_BY                      NUMBER(15)          NOT NULL                          -- 作成者
+ ,CREATION_DATE                   DATE                NOT NULL                          -- 作成日
+ ,LAST_UPDATED_BY                 NUMBER(15)          NOT NULL                          -- 最終更新者
+ ,LAST_UPDATE_DATE                DATE                NOT NULL                          -- 最終更新日
+ ,LAST_UPDATE_LOGIN               NUMBER(15)          NULL                              -- 最終更新ログイン
+ ,REQUEST_ID                      NUMBER(15)          NULL                              -- 要求ID
+ ,PROGRAM_APPLICATION_ID          NUMBER(15)          NULL                              -- コンカレント・プログラム・アプリケーションID
+ ,PROGRAM_ID                      NUMBER(15)          NULL                              -- コンカレント・プログラムID
+ ,PROGRAM_UPDATE_DATE             DATE                NULL                              -- プログラム更新日
+ ,CONSTRAINT XXCOS_REP_BUS_COUNT_SUM_PK PRIMARY KEY ( RECORD_ID )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.RECORD_ID                               IS  'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.TARGET_DATE                             IS  '対象年月';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.REGIST_BUS_DATE                         IS  '登録業務日付';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.BASE_CODE                               IS  '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.EMPLOYEE_NUM                            IS  '営業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.COUNTER_CLASS                           IS  '件数区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.BUSINESS_LOW_TYPE                       IS  '業態大分類';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.COUNTER                                 IS  '営業件数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.CREATED_BY                              IS  '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.CREATION_DATE                           IS  '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.LAST_UPDATED_BY                         IS  '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.LAST_UPDATE_DATE                        IS  '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.LAST_UPDATE_LOGIN                       IS  '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.REQUEST_ID                              IS  '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.PROGRAM_APPLICATION_ID                  IS  'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.PROGRAM_ID                              IS  'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_COUNT_SUM.PROGRAM_UPDATE_DATE                     IS  'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_BUS_COUNT_SUM                                         IS  '営業成績表 営業件数集計テーブル';

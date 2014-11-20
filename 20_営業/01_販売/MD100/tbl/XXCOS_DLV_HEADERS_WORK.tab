@@ -1,0 +1,92 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_DLV_HEADERS_WORK
+ * Description : 納品ヘッダワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS S.Miyakoshi  新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_DLV_HEADERS_WORK
+(
+  ORDER_NO_HHT                 NUMBER(9)     NOT NULL,           --受注No.(HHT)
+  ORDER_NO_EBS                 NUMBER(9),                        --受注No.(EBS)
+  BASE_CODE                    VARCHAR2(4),                      --拠点コード
+  PERFORMANCE_BY_CODE          VARCHAR2(5),                      --成績者コード
+  DLV_BY_CODE                  VARCHAR2(5),                      --納品者コード
+  HHT_INVOICE_NO               VARCHAR2(12),                     --HHT伝票No.
+  DLV_DATE                     DATE,                             --納品日
+  INSPECT_DATE                 DATE,                             --検収日
+  SALES_CLASSIFICATION         VARCHAR2(4),                      --売上分類区分
+  SALES_INVOICE                VARCHAR2(3),                      --売上伝票区分
+  CARD_SALE_CLASS              VARCHAR2(1),                      --カード売区分
+  VISIT_FLAG                   VARCHAR2(1),                      --訪問フラグ
+  EFFECTIVE_FLAG               VARCHAR2(1),                      --有効フラグ
+  DLV_TIME                     VARCHAR2(4),                      --時間
+  CHANGE_OUT_TIME_100          VARCHAR2(4),                      --つり銭切れ時間100円
+  CHANGE_OUT_TIME_10           VARCHAR2(4),                      --つり銭切れ時間10円
+  CUSTOMER_NUMBER              VARCHAR2(9),                      --顧客コード
+  INPUT_CLASS                  VARCHAR2(1),                      --入力区分
+  CONSUMPTION_TAX_CLASS        VARCHAR2(1),                      --消費税区分
+  TOTAL_AMOUNT                 NUMBER(11),                       --合計金額
+  SALE_DISCOUNT_AMOUNT         NUMBER(11),                       --売上値引額
+  SALES_CONSUMPTION_TAX        NUMBER(11),                       --売上消費税額
+  TAX_INCLUDE                  NUMBER(11),                       --税込金額
+  KEEP_IN_CODE                 VARCHAR2(9),                      --預け先コード
+  DEPARTMENT_SCREEN_CLASS      VARCHAR2(1),                      --百貨店画面種別
+  RECEIVE_DATE                 DATE,                             --受信日時
+  CREATED_BY                   NUMBER(15)    NOT NULL,           --作成者
+  CREATION_DATE                DATE          NOT NULL,           --作成日
+  LAST_UPDATED_BY              NUMBER(15)    NOT NULL,           --最終更新者
+  LAST_UPDATE_DATE             DATE          NOT NULL,           --最終更新日
+  LAST_UPDATE_LOGIN            NUMBER(15),                       --最終更新ログイン
+  REQUEST_ID                   NUMBER(15),                       --要求ID
+  PROGRAM_APPLICATION_ID       NUMBER(15),                       --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                   NUMBER(15),                       --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE          DATE,                             --プログラム更新日
+  CONSTRAINT XXCOS_DLV_HEADERS_WORK_PK PRIMARY KEY ( ORDER_NO_HHT )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.ORDER_NO_HHT              IS '受注No.(HHT)';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.ORDER_NO_EBS              IS '受注No.(EBS)';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.BASE_CODE                 IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.PERFORMANCE_BY_CODE       IS '成績者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.DLV_BY_CODE               IS '納品者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.HHT_INVOICE_NO            IS 'HHT伝票No.';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.DLV_DATE                  IS '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.INSPECT_DATE              IS '検収日';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.SALES_CLASSIFICATION      IS '売上分類区分';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.SALES_INVOICE             IS '売上伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CARD_SALE_CLASS           IS 'カード売区分';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.VISIT_FLAG                IS '訪問フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.EFFECTIVE_FLAG            IS '有効フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.DLV_TIME                  IS '時間';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CHANGE_OUT_TIME_100       IS 'つり銭切れ時間100円';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CHANGE_OUT_TIME_10        IS 'つり銭切れ時間10円';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CUSTOMER_NUMBER           IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.INPUT_CLASS               IS '入力区分';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CONSUMPTION_TAX_CLASS     IS '消費税区分';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.TOTAL_AMOUNT              IS '合計金額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.SALE_DISCOUNT_AMOUNT      IS '売上値引額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.SALES_CONSUMPTION_TAX     IS '売上消費税額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.TAX_INCLUDE               IS '税込金額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.KEEP_IN_CODE              IS '預け先コード';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.DEPARTMENT_SCREEN_CLASS   IS '百貨店画面種別';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.RECEIVE_DATE              IS '受信日時';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CREATED_BY                IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CREATION_DATE             IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.LAST_UPDATED_BY           IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.LAST_UPDATE_DATE          IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.LAST_UPDATE_LOGIN         IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.REQUEST_ID                IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.PROGRAM_ID                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.PROGRAM_UPDATE_DATE       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_DLV_HEADERS_WORK                           IS '納品ヘッダワークテーブル';

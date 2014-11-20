@@ -1,0 +1,60 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_BUS_NEWCUST_SUM
+ * Description : 営業成績表 新規貢献売上集計テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Nakabayashi新規作成
+ *  2009/02/18    1.1   SCS T.Nakabayashiコメント修正/TABLESPACE追加
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_BUS_NEWCUST_SUM
+(
+     RECORD_ID                NUMBER       NOT NULL                            --レコードID
+    ,REGIST_BUS_DATE          DATE                                             --登録業務日付
+    ,SALE_BASE_CODE           VARCHAR2(4)                                      --売上拠点コード
+    ,RESULTS_EMPLOYEE_CODE    VARCHAR2(5)                                      --成績計上者コード
+    ,DLV_DATE                 DATE                                             --納品日
+    ,SALE_AMOUNT              NUMBER                                           --純売上新規貢献売上
+    ,RTN_AMOUNT               NUMBER                                           --返品新規貢献売上
+    ,DISCOUNT_AMOUNT          NUMBER                                           --値引新規貢献売上
+    ,SUP_SAM_COST             NUMBER                                           --協賛見本新規貢献売上
+    ,CREATED_BY               NUMBER       NOT NULL                            --作成者
+    ,CREATION_DATE            DATE         NOT NULL                            --作成日
+    ,LAST_UPDATED_BY          NUMBER       NOT NULL                            --最終更新者
+    ,LAST_UPDATE_DATE         DATE         NOT NULL                            --最終更新日
+    ,LAST_UPDATE_LOGIN        NUMBER                                           --最終更新ログイン
+    ,REQUEST_ID               NUMBER                                           --要求ID
+    ,PROGRAM_APPLICATION_ID   NUMBER                                           --コンカレント・プログラム・アプリケーションID
+    ,PROGRAM_ID               NUMBER                                           --コンカレント･プログラムID
+    ,PROGRAM_UPDATE_DATE      DATE                                             --プログラム更新日
+    ,CONSTRAINT XXCOS_REP_BUS_NEWCUST_SUM_PK PRIMARY KEY (RECORD_ID)
+     USING INDEX TABLESPACE xxidx2
+)
+/
+--
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.RECORD_ID                   IS 'レコードID';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.REGIST_BUS_DATE             IS '登録業務日付';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.SALE_BASE_CODE              IS '売上拠点コード';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.RESULTS_EMPLOYEE_CODE       IS '成績計上者コード';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.DLV_DATE                    IS '納品日';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.SALE_AMOUNT                 IS '純売上新規貢献売上';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.RTN_AMOUNT                  IS '返品新規貢献売上';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.DISCOUNT_AMOUNT             IS '値引新規貢献売上';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.SUP_SAM_COST                IS '協賛見本新規貢献売上';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.CREATED_BY                  IS '作成者';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.CREATION_DATE               IS '作成日';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.LAST_UPDATED_BY             IS '最終更新者';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.LAST_UPDATE_DATE            IS '最終更新日';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.LAST_UPDATE_LOGIN           IS '最終更新ログイン';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.REQUEST_ID                  IS '要求ID';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.PROGRAM_APPLICATION_ID      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.PROGRAM_ID                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM.PROGRAM_UPDATE_DATE         IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_BUS_NEWCUST_SUM                              IS '営業成績表 新規貢献売上集計テーブル';

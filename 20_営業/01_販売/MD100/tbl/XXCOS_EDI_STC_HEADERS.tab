@@ -1,0 +1,90 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_EDI_STC_HEADERS
+ * Description : 入庫予定ヘッダテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kiriu      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_EDI_STC_HEADERS
+(
+  HEADER_ID                       NUMBER        NOT NULL,                  --ヘッダID
+  MOVE_ORDER_HEADER_ID            NUMBER,                                  --移動オーダーヘッダID
+  MOVE_ORDER_NUM                  VARCHAR2(30),                            --移動オーダー番号
+  TO_SUBINVENTORY_CODE            VARCHAR2(10),                            --搬送先保管場所
+  CUSTOMER_CODE                   VARCHAR2(9),                             --顧客コード
+  EDI_CHAIN_CODE                  VARCHAR2(9)   NOT NULL,                  --EDIチェーン店コード
+  SHOP_CODE                       VARCHAR2(10),                            --店コード
+  CENTER_CODE                     VARCHAR2(8),                             --センターコード
+  INVOICE_NUMBER                  VARCHAR2(9),                             --伝票番号
+  OTHER_PARTY_DEPARTMENT_CODE     VARCHAR2(6),                             --相手先部門コード
+  SCHEDULE_SHIPPING_DATE          DATE,                                    --出荷予定日
+  SCHEDULE_ARRIVAL_DATE           DATE,                                    --入庫予定日
+  RCPT_POSSIBLE_DATE              DATE,                                    --受入可能日
+  INSPECT_SCHEDULE_DATE           DATE,                                    --検品予定日
+  INVOICE_CLASS                   VARCHAR2(2),                             --伝票区分
+  CLASSIFICATION_CLASS            VARCHAR2(4),                             --分類区分
+  WHSE_CLASS                      VARCHAR2(2),                             --倉庫区分
+  REGULAR_AR_SALE_CLASS           VARCHAR2(2),                             --定番特売区分
+  OPPORTUNITY_CODE                VARCHAR2(3),                             --便コード
+  FIX_FLAG                        VARCHAR2(1)   NOT NULL,                  --確定フラグ
+  EDI_SEND_DATE                   DATE,                                    --EDI送信日時
+  EDI_SEND_FLAG                   VARCHAR2(1)   NOT NULL,                  --EDI送信済みフラグ
+  PREV_EDI_SEND_DATE              DATE,                                    --前回EDI送信日時
+  PREV_EDI_SEND_REQUEST_ID        NUMBER,                                  --前回EDI送信要求ID
+  ORGANIZATION_ID                 NUMBER,                                  --組織ID
+  CREATED_BY                      NUMBER(15)    NOT NULL,                  --作成者
+  CREATION_DATE                   DATE          NOT NULL,                  --作成日
+  LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                  --最終更新者
+  LAST_UPDATE_DATE                DATE          NOT NULL,                  --最終更新日
+  LAST_UPDATE_LOGIN               NUMBER(15),                              --最終更新ログイン
+  REQUEST_ID                      NUMBER(15),                              --要求ID
+  PROGRAM_APPLICATION_ID          NUMBER(15),                              --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                      NUMBER(15),                              --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE             DATE,                                    --プログラム更新日
+  CONSTRAINT XXCOS_EDI_STC_HEADERS_PK PRIMARY KEY ( HEADER_ID )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.HEADER_ID                    IS 'ヘッダID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.MOVE_ORDER_HEADER_ID         IS '移動オーダーヘッダID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.MOVE_ORDER_NUM               IS '移動オーダー番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.TO_SUBINVENTORY_CODE         IS '搬送先保管場所';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.CUSTOMER_CODE                IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.EDI_CHAIN_CODE               IS 'EDIチェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.SHOP_CODE                    IS '店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.CENTER_CODE                  IS 'センターコード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.INVOICE_NUMBER               IS '伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.OTHER_PARTY_DEPARTMENT_CODE  IS '相手先部門コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.SCHEDULE_SHIPPING_DATE       IS '出荷予定日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.SCHEDULE_ARRIVAL_DATE        IS '入庫予定日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.RCPT_POSSIBLE_DATE           IS '受入可能日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.INSPECT_SCHEDULE_DATE        IS '検品予定日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.INVOICE_CLASS                IS '伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.CLASSIFICATION_CLASS         IS '分類区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.WHSE_CLASS                   IS '倉庫区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.REGULAR_AR_SALE_CLASS        IS '定番特売区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.OPPORTUNITY_CODE             IS '便コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.FIX_FLAG                     IS '確定フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.EDI_SEND_DATE                IS 'EDI送信日時';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.EDI_SEND_FLAG                IS 'EDI送信済みフラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.PREV_EDI_SEND_DATE           IS '前回EDI送信日時';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.PREV_EDI_SEND_REQUEST_ID     IS '前回EDI送信要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.ORGANIZATION_ID              IS '組織ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.CREATED_BY                   IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.CREATION_DATE                IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.LAST_UPDATED_BY              IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.LAST_UPDATE_DATE             IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.LAST_UPDATE_LOGIN            IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.REQUEST_ID                   IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.PROGRAM_APPLICATION_ID       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.PROGRAM_ID                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_STC_HEADERS.PROGRAM_UPDATE_DATE          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_EDI_STC_HEADERS                              IS '入庫予定ヘッダテーブル';

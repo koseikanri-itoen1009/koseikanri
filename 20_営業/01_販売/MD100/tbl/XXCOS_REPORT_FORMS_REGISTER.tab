@@ -1,0 +1,57 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REPORT_FORMS_REGISTER
+ * Description : 様式定義管理台帳マスタ
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kumamoto   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REPORT_FORMS_REGISTER
+(
+   CHAIN_CODE               VARCHAR2(4)    NOT NULL                         -- チェーン店コード
+  ,DATA_TYPE_CODE           VARCHAR2(2)    NOT NULL                         -- 帳票種別コード
+  ,REPORT_CODE              VARCHAR2(4)    NOT NULL                         -- 帳票コード
+  ,REPORT_NAME              VARCHAR2(40)   NOT NULL                         -- 帳票様式
+  ,INFO_CLASS               VARCHAR2(2)                                     -- 情報区分
+  ,INFO_CLASS_NAME          VARCHAR2(40)                                    -- 情報区分名称
+  ,DEFAULT_REPORT_FLAG      VARCHAR2(1)                                     -- デフォルト 帳票フラグ
+  ,PUBLISH_FLAG_SEQ         NUMBER(3)                                       -- 納品書発行フラグ順番
+  ,CREATED_BY               NUMBER(15)     NOT NULL                         -- 作成者
+  ,CREATION_DATE            DATE           NOT NULL                         -- 作成日
+  ,LAST_UPDATED_BY          NUMBER(15)     NOT NULL                         -- 最終更新者
+  ,LAST_UPDATE_DATE         DATE           NOT NULL                         -- 最終更新日
+  ,LAST_UPDATE_LOGIN        NUMBER(15)                                      -- 最終更新ログイン
+  ,REQUEST_ID               NUMBER(15)                                      -- 要求ID
+  ,PROGRAM_APPLICATION_ID   NUMBER(15)                                      -- コンカレント・プログラム・アプリケーションID
+  ,PROGRAM_ID               NUMBER(15)                                      -- コンカレント・プログラムID
+  ,PROGRAM_UPDATE_DATE      DATE                                            -- プログラム更新日
+  ,CONSTRAINT XXCOS_REPORT_FORMS_REGISTER_PK PRIMARY KEY ( CHAIN_CODE, DATA_TYPE_CODE, REPORT_CODE )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.CHAIN_CODE              IS 'チェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.DATA_TYPE_CODE          IS '帳票種別コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.REPORT_CODE             IS '帳票コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.REPORT_NAME             IS '帳票様式';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.INFO_CLASS              IS '情報区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.INFO_CLASS_NAME         IS '情報区分名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.DEFAULT_REPORT_FLAG     IS 'デフォルト 帳票フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.PUBLISH_FLAG_SEQ        IS '納品書発行フラグ順番';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.CREATED_BY              IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.CREATION_DATE           IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.LAST_UPDATED_BY         IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.LAST_UPDATE_DATE        IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.LAST_UPDATE_LOGIN       IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.REQUEST_ID              IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.PROGRAM_APPLICATION_ID  IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.PROGRAM_ID              IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.PROGRAM_UPDATE_DATE     IS 'ﾌﾟﾛｸﾞﾗﾑ更新日';
+                                                    
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REPORT_FORMS_REGISTER                         IS '様式定義管理台帳マスタ';

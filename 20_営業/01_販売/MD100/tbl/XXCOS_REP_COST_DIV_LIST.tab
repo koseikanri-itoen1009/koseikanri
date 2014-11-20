@@ -1,0 +1,74 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_COST_DIV_LIST
+ * Description : 原価割れチェックリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS H.Ri       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
+(
+    RECORD_ID                 NUMBER              NOT NULL,                --レコードID
+    BASE_CODE                 VARCHAR2(4),                                 --拠点コード
+    BASE_NAME                 VARCHAR2(40),                                --拠点名称
+    DLV_DATE_START            DATE,                                        --納品日開始
+    DLV_DATE_END              DATE,                                        --納品日終了
+    EMPLOYEE_BASE_CODE        VARCHAR2(5),                                 --営業担当者コード
+    EMPLOYEE_BASE_NAME        VARCHAR2(14),                                --営業担当者名
+    DELIVER_TO_CODE           VARCHAR2(9),                                 --出荷先コード
+    DELIVER_TO_NAME           VARCHAR2(30),                                --出荷先名
+    DLV_DATE                  DATE,                                        --納品日
+    DLV_INVOICE_NUMBER        VARCHAR2(12),                                --納品伝票番号
+    ITEM_CODE                 VARCHAR2(7),                                 --品目コード
+    ORDER_ITEM_NAME           VARCHAR2(20),                                --受注品名
+    QUANTITY                  NUMBER(9,2),                                 --数量
+    UOM_CODE                  VARCHAR2(3),                                 --単位
+    DLV_UNIT_PRICE            NUMBER(8,2),                                 --納品単価
+    SALE_AMOUNT               NUMBER(15,0),                                --売上金額
+    CREATED_BY                NUMBER(15,0)        NOT NULL,                --作成者
+    CREATION_DATE             DATE                NOT NULL,                --作成日
+    LAST_UPDATED_BY           NUMBER(15,0)        NOT NULL,                --最終更新者
+    LAST_UPDATE_DATE          DATE                NOT NULL,                --最終更新日
+    LAST_UPDATE_LOGIN         NUMBER(15,0),                                --最終更新ログイン
+    REQUEST_ID                NUMBER(15,0),                                --要求ID
+    PROGRAM_APPLICATION_ID    NUMBER(15,0),                                --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                NUMBER(15,0),                                --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE       DATE,                                        --プログラム更新日
+    CONSTRAINT XXCOS_REP_COST_DIV_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.RECORD_ID                  IS'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.BASE_CODE                  IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.BASE_NAME                  IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_DATE_START             IS '納品日開始';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_DATE_END               IS '納品日終了';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.EMPLOYEE_BASE_CODE         IS '営業担当者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.EMPLOYEE_BASE_NAME         IS '営業担当者名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DELIVER_TO_CODE            IS '出荷先コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DELIVER_TO_NAME            IS '出荷先名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_DATE                   IS '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_INVOICE_NUMBER         IS '納品伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.ITEM_CODE                  IS '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.ORDER_ITEM_NAME            IS '受注品名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.QUANTITY                   IS '数量';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.UOM_CODE                   IS '単位';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_UNIT_PRICE             IS '納品単価';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.SALE_AMOUNT                IS '売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.CREATED_BY                 IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.CREATION_DATE              IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.LAST_UPDATED_BY            IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.LAST_UPDATE_DATE           IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.LAST_UPDATE_LOGIN          IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.REQUEST_ID                 IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.PROGRAM_APPLICATION_ID     IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.PROGRAM_ID                 IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.PROGRAM_UPDATE_DATE        IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_COST_DIV_LIST                            IS '原価割れチェックリスト帳票ワークテーブル';

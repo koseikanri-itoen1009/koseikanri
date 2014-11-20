@@ -1,0 +1,120 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_SALES_EXP_HEADERS
+ * Description : 販売実績ヘッダテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Okaguchi 新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_SALES_EXP_HEADERS
+(
+  SALES_EXP_HEADER_ID            NUMBER        NOT NULL  ,                     --  販売実績ヘッダID
+  DLV_INVOICE_NUMBER             VARCHAR2(12)  NOT NULL  ,                     --  納品伝票番号
+  ORDER_INVOICE_NUMBER           VARCHAR2(16)            ,                     --  注文伝票番号
+  ORDER_NUMBER                   NUMBER                  ,                     --  受注番号
+  ORDER_NO_HHT                   NUMBER(10)              ,                     --  受注No（HHT)
+  DIGESTION_LN_NUMBER            NUMBER(2)               ,                     --  受注No（HHT）枝番
+  ORDER_CONNECTION_NUMBER        VARCHAR2(100)           ,                     --  受注関連番号
+  DLV_INVOICE_CLASS              VARCHAR2(1)             ,                     --  納品伝票区分
+  CANCEL_CORRECT_CLASS           VARCHAR2(1)             ,                     --  取消・訂正区分
+  INPUT_CLASS                    VARCHAR2(1)             ,                     --  入力区分
+  CUST_GYOTAI_SHO                VARCHAR2(2)             ,                     --  業態小分類
+  DELIVERY_DATE                  DATE          NOT NULL  ,                     --  納品日
+  ORIG_DELIVERY_DATE             DATE          NOT NULL  ,                     --  オリジナル納品日
+  INSPECT_DATE                   DATE          NOT NULL  ,                     --  検収日
+  ORIG_INSPECT_DATE              DATE          NOT NULL  ,                     --  オリジナル検収日
+  SHIP_TO_CUSTOMER_CODE          VARCHAR2(9)   NOT NULL  ,                     --  顧客【納品先】
+  SALE_AMOUNT_SUM                NUMBER(14,0)  NOT NULL  ,                     --  売上金額合計
+  PURE_AMOUNT_SUM                NUMBER(14,0)  NOT NULL  ,                     --  本体金額合計
+  TAX_AMOUNT_SUM                 NUMBER(13,0)  NOT NULL  ,                     --  消費税金額合計
+  CONSUMPTION_TAX_CLASS          VARCHAR2(1)             ,                     --  消費税区分
+  TAX_CODE                       VARCHAR2(50)  NOT NULL  ,                     --  税金コード
+  TAX_RATE                       NUMBER        NOT NULL  ,                     --  消費税率
+  RESULTS_EMPLOYEE_CODE          VARCHAR2(5)   NOT NULL  ,                     --  成績計上者コード
+  SALES_BASE_CODE                VARCHAR2(4)   NOT NULL  ,                     --  売上拠点コード
+  RECEIV_BASE_CODE               VARCHAR2(4)   NOT NULL  ,                     --  入金拠点コード
+  ORDER_SOURCE_ID                NUMBER                  ,                     --  受注ソースID
+  CARD_SALE_CLASS                VARCHAR2(1)             ,                     --  カード売り区分
+  INVOICE_CLASS                  VARCHAR2(3)             ,                     --  伝票区分
+  INVOICE_CLASSIFICATION_CODE    VARCHAR2(4)             ,                     --  伝票分類コード
+  CHANGE_OUT_TIME_100            VARCHAR2(4)             ,                     --  つり銭切れ時間１００円
+  CHANGE_OUT_TIME_10             VARCHAR2(4)             ,                     --  つり銭切れ時間１０円
+  AR_INTERFACE_FLAG              VARCHAR2(1)   NOT NULL  ,                     --  ARインタフェース済フラグ
+  GL_INTERFACE_FLAG              VARCHAR2(1)   NOT NULL  ,                     --  GLインタフェース済フラグ
+  DWH_INTERFACE_FLAG             VARCHAR2(1)   NOT NULL  ,                     --  情報システムインタフェース済フラグ
+  EDI_INTERFACE_FLAG             VARCHAR2(1)   NOT NULL  ,                     --  EDI送信済みフラグ
+  EDI_SEND_DATE                  DATE                    ,                     --  EDI送信日時
+  HHT_DLV_INPUT_DATE             DATE                    ,                     --  HHT納品入力日時
+  DLV_BY_CODE                    VARCHAR2(5)             ,                     --  納品者コード
+  CREATE_CLASS                   VARCHAR2(2)   NOT NULL  ,                     --  作成元区分
+  BUSINESS_DATE                  DATE          NOT NULL  ,                     --  登録業務日付
+  CREATED_BY                     NUMBER(15)    NOT NULL  ,                     --  作成者
+  CREATION_DATE                  DATE          NOT NULL  ,                     --  作成日
+  LAST_UPDATED_BY                NUMBER(15)    NOT NULL  ,                     --  最終更新者
+  LAST_UPDATE_DATE               DATE          NOT NULL  ,                     --  最終更新日
+  LAST_UPDATE_LOGIN              NUMBER(15)              ,                     --  最終更新ﾛｸﾞｲﾝ
+  REQUEST_ID                     NUMBER(15)              ,                     --  要求ID
+  PROGRAM_APPLICATION_ID         NUMBER(15)              ,                     --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+  PROGRAM_ID                     NUMBER(15)              ,                     --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+  PROGRAM_UPDATE_DATE            DATE                    ,                     --  ﾌﾟﾛｸﾞﾗﾑ更新日                          
+  CONSTRAINT XXCOS_SALES_EXP_HEADERS_PK PRIMARY KEY ( SALES_EXP_HEADER_ID )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.SALES_EXP_HEADER_ID            IS  '販売実績ヘッダID'                     ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.DLV_INVOICE_NUMBER             IS  '納品伝票番号'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORDER_INVOICE_NUMBER           IS  '注文伝票番号'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORDER_NUMBER                   IS  '受注番号'                             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORDER_NO_HHT                   IS  '受注No（HHT)'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.DIGESTION_LN_NUMBER            IS  '受注No（HHT）枝番'                    ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORDER_CONNECTION_NUMBER        IS  '受注関連番号'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.DLV_INVOICE_CLASS              IS  '納品伝票区分'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CANCEL_CORRECT_CLASS           IS  '取消・訂正区分'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.INPUT_CLASS                    IS  '入力区分'                             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CUST_GYOTAI_SHO                IS  '業態小分類'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.DELIVERY_DATE                  IS  '納品日'                               ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORIG_DELIVERY_DATE             IS  'オリジナル納品日'                     ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.INSPECT_DATE                   IS  '検収日'                               ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORIG_INSPECT_DATE              IS  'オリジナル検収日'                     ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.SHIP_TO_CUSTOMER_CODE          IS  '顧客【納品先】'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.SALE_AMOUNT_SUM                IS  '売上金額合計'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.PURE_AMOUNT_SUM                IS  '本体金額合計'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.TAX_AMOUNT_SUM                 IS  '消費税金額合計'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CONSUMPTION_TAX_CLASS          IS  '消費税区分'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.TAX_CODE                       IS  '税金コード'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.TAX_RATE                       IS  '消費税率'                             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.RESULTS_EMPLOYEE_CODE          IS  '成績計上者コード'                     ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.SALES_BASE_CODE                IS  '売上拠点コード'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.RECEIV_BASE_CODE               IS  '入金拠点コード'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ORDER_SOURCE_ID                IS  '受注ソースID'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CARD_SALE_CLASS                IS  'カード売り区分'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.INVOICE_CLASS                  IS  '伝票区分'                             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.INVOICE_CLASSIFICATION_CODE    IS  '伝票分類コード'                       ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CHANGE_OUT_TIME_100            IS  'つり銭切れ時間１００円'               ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CHANGE_OUT_TIME_10             IS  'つり銭切れ時間１０円'                 ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.AR_INTERFACE_FLAG              IS  'ARインタフェース済フラグ'             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.GL_INTERFACE_FLAG              IS  'GLインタフェース済フラグ'             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.DWH_INTERFACE_FLAG             IS  '情報システムインタフェース済フラグ'   ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.EDI_INTERFACE_FLAG             IS  'EDI送信済みフラグ'                    ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.EDI_SEND_DATE                  IS  'EDI送信日時'                          ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.HHT_DLV_INPUT_DATE             IS  'HHT納品入力日時'                      ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.DLV_BY_CODE                    IS  '納品者コード'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CREATE_CLASS                   IS  '作成元区分'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.BUSINESS_DATE                  IS  '登録業務日付'                         ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CREATED_BY                     IS  '作成者'                               ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CREATION_DATE                  IS  '作成日'                               ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.LAST_UPDATED_BY                IS  '最終更新者'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.LAST_UPDATE_DATE               IS  '最終更新日'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.LAST_UPDATE_LOGIN              IS  '最終更新ﾛｸﾞｲﾝ'                        ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.REQUEST_ID                     IS  '要求ID'                               ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.PROGRAM_APPLICATION_ID         IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.PROGRAM_ID                     IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'                     ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.PROGRAM_UPDATE_DATE            IS  'ﾌﾟﾛｸﾞﾗﾑ更新日'                        ;
+--
+COMMENT ON TABLE  XXCOS.XXCOS_SALES_EXP_HEADERS                                IS '販売実績ヘッダテーブル';

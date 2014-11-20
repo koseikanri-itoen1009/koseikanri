@@ -1,0 +1,122 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_BUS_REPORT
+ * Description : 営業報告日報帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Nakabayashi新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_BUS_REPORT
+(
+    RECORD_ID                     NUMBER          NOT NULL,               --レコードID
+    DLV_DATE                      DATE,                                   --納品日
+    BASE_CODE                     VARCHAR2(4),                            --拠点コード
+    BASE_NAME                     VARCHAR2(40),                           --拠点名称
+    GROUP_NO                      VARCHAR2(2),                            --グループ番号
+    GROUP_IN_SEQUENCE             VARCHAR2(2),                            --グループ内順序
+    EMPLOYEE_NUM                  VARCHAR2(5),                            --営業員コード
+    EMPLOYEE_NAME                 VARCHAR2(40),                           --営業員氏名
+    DEALINGS_CLASS                VARCHAR2(1),                            --取引区分
+    DEALINGS_CONTENT              VARCHAR2(8),                            --取引内容
+    VISIT_TIME                    VARCHAR2(5),                            --訪問時間
+    HHT_INVOICE_NO                VARCHAR2(12),                           --HHT伝票No
+    LINE_NO                       NUMBER(2,0),                            --明細NO
+    DLV_INVOICE_CLASS             VARCHAR2(1),                            --納品伝票区分
+    PARTY_NUM                     VARCHAR2(9),                            --顧客コード
+    PARTY_NAME                    VARCHAR2(40),                           --顧客名
+    PERFORMANCE_BY_CODE           VARCHAR2(5),                            --成績者コード
+    PERFORMANCE_BY_NAME           VARCHAR2(40),                           --成績者名
+    AFTERTAX_SALE                 NUMBER(9,0),                            --売上金額
+    PRETAX_PAYMENT                NUMBER(9,0),                            --入金金額
+    SALE_DISCOUNT                 NUMBER(9,0),                            --売上値引
+    ITEM_NAME1                    VARCHAR2(16),                           --商品名称1
+    QUANTITY1                     NUMBER(6,2),                            --数量1
+    ITEM_NAME2                    VARCHAR2(16),                           --商品名称2
+    QUANTITY2                     NUMBER(6,2),                            --数量2
+    ITEM_NAME3                    VARCHAR2(16),                           --商品名称3
+    QUANTITY3                     NUMBER(6,2),                            --数量3
+    ITEM_NAME4                    VARCHAR2(16),                           --商品名称4
+    QUANTITY4                     NUMBER(6,2),                            --数量4
+    ITEM_NAME5                    VARCHAR2(16),                           --商品名称5
+    QUANTITY5                     NUMBER(6,2),                            --数量5
+    ITEM_NAME6                    VARCHAR2(16),                           --商品名称6
+    QUANTITY6                     NUMBER(6,2),                            --数量6
+    DELAY_VISIT_COUNT             NUMBER(3,0),                            --延訪問件数
+    DELAY_VALID_COUNT             NUMBER(3,0),                            --延有効件数
+    DLV_TOTAL_SALE                NUMBER(9,0),                            --納品合計純売上
+    DLV_TOTAL_RTN                 NUMBER(9,0),                            --納品合計返品
+    DLV_TOTAL_DISCOUNT            NUMBER(9,0),                            --納品合計値引
+    PERFORMANCE_TOTAL_SALE        NUMBER(9,0),                            --成績合計純売上
+    PERFORMANCE_TOTAL_RTN         NUMBER(9,0),                            --成績合計返品
+    PERFORMANCE_TOTAL_DISCOUNT    NUMBER(9,0),                            --成績合計値引
+    CREATED_BY                    NUMBER(15,0)    NOT NULL,               --作成者
+    CREATION_DATE                 DATE            NOT NULL,               --作成日
+    LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,               --最終更新者
+    LAST_UPDATE_DATE              DATE            NOT NULL,               --最終更新日
+    LAST_UPDATE_LOGIN             NUMBER(15,0),                           --最終更新ログイン
+    REQUEST_ID                    NUMBER(15,0),                           --要求ID
+    PROGRAM_APPLICATION_ID        NUMBER(15,0),                           --コンカレント・プログラム・アプリケーションI
+    PROGRAM_ID                    NUMBER(15,0),                           --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE           DATE,                                   --プログラム更新日
+    CONSTRAINT XXCOS_REP_BUS_REPORT_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.RECORD_ID                    IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DLV_DATE                     IS '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.BASE_CODE                    IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.BASE_NAME                    IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.GROUP_NO                     IS 'グループ番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.GROUP_IN_SEQUENCE            IS 'グループ内順序';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.EMPLOYEE_NUM                 IS '営業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.EMPLOYEE_NAME                IS '営業員氏名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DEALINGS_CLASS               IS '取引区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DEALINGS_CONTENT             IS '取引内容';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.VISIT_TIME                   IS '訪問時間';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.HHT_INVOICE_NO               IS 'HHT伝票No';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.LINE_NO                      IS '明細NO';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DLV_INVOICE_CLASS            IS '納品伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PARTY_NUM                    IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PARTY_NAME                   IS '顧客名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PERFORMANCE_BY_CODE          IS '成績者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PERFORMANCE_BY_NAME          IS '成績者名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.AFTERTAX_SALE                IS '売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PRETAX_PAYMENT               IS '税込入金';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.SALE_DISCOUNT                IS '売上値引';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.ITEM_NAME1                   IS '商品名称1';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.QUANTITY1                    IS '数量1';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.ITEM_NAME2                   IS '商品名称2';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.QUANTITY2                    IS '数量2';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.ITEM_NAME3                   IS '商品名称3';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.QUANTITY3                    IS '数量3';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.ITEM_NAME4                   IS '商品名称4';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.QUANTITY4                    IS '数量4';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.ITEM_NAME5                   IS '商品名称5';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.QUANTITY5                    IS '数量5';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.ITEM_NAME6                   IS '商品名称6';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.QUANTITY6                    IS '数量6';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DELAY_VISIT_COUNT            IS '延訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DELAY_VALID_COUNT            IS '延有効件数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DLV_TOTAL_SALE               IS '納品合計純売上';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DLV_TOTAL_RTN                IS '納品合計返品';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.DLV_TOTAL_DISCOUNT           IS '納品合計値引';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PERFORMANCE_TOTAL_SALE       IS '成績合計純売上';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PERFORMANCE_TOTAL_RTN        IS '成績合計返品';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PERFORMANCE_TOTAL_DISCOUNT   IS '成績合計値引';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.CREATED_BY                   IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.CREATION_DATE                IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.LAST_UPDATED_BY              IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.LAST_UPDATE_DATE             IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.LAST_UPDATE_LOGIN            IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.REQUEST_ID                   IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PROGRAM_APPLICATION_ID       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PROGRAM_ID                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_REPORT.PROGRAM_UPDATE_DATE          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_BUS_REPORT                              IS '営業報告日報帳票ワークテーブル';

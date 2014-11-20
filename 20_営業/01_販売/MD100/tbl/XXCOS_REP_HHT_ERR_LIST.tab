@@ -1,0 +1,77 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_HHT_ERR_LIST
+ * Description : HHTエラーリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS S.Miyakoshi新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_HHT_ERR_LIST 
+(
+    RECORD_ID                     NUMBER          NOT NULL,          --RECORD_ID
+    BASE_CODE                     VARCHAR2(4),                       --拠点コード
+    BASE_NAME                     VARCHAR2(30),                      --拠点名称
+    ORIGIN_SHIPMENT               VARCHAR2(9),                       --出庫側コード
+    DATA_NAME                     VARCHAR2(20),                      --データ名称
+    ORDER_NO_HHT                  NUMBER(10),                        --受注NO（HHT）
+    INVOICE_INVENT_DATE           DATE,                              --伝票日付/棚卸日
+    ENTRY_NUMBER                  VARCHAR2(12),                      --伝票NO
+    LINE_NO                       VARCHAR2(2),                       --行NO
+    ORDER_NO_EBS                  NUMBER(9),                         --受注NO（EBS）
+    PARTY_NUM                     VARCHAR2(9),                       --顧客/入庫側
+    CUSTOMER_NAME                 VARCHAR2(40),                      --顧客名
+    PAYMENT_DLV_DATE              DATE,                              --入金日/納品日
+    PAYMENT_CLASS_NAME            VARCHAR2(10),                      --入金区分名称
+    PERFORMANCE_BY_CODE           VARCHAR2(5),                       --成績者コード
+    ITEM_CODE                     VARCHAR2(7),                       --品目コード
+    ERROR_MESSAGE                 VARCHAR2(60),                      --エラー内容
+    REPORT_GROUP_ID               NUMBER(15,0),                      --帳票用グループID
+    CREATED_BY                    NUMBER(15,0)    NOT NULL,          --作成者
+    CREATION_DATE                 DATE            NOT NULL,          --作成日
+    LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,          --最終更新者
+    LAST_UPDATE_DATE              DATE            NOT NULL,          --最終更新日
+    LAST_UPDATE_LOGIN             NUMBER(15,0),                      --最終更新ログイン
+    REQUEST_ID                    NUMBER(15,0),                      --要求ID
+    PROGRAM_APPLICATION_ID        NUMBER(15,0),                      --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                    NUMBER(15,0),                      --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE           DATE,                              --プログラム更新日
+    CONSTRAINT XXCOS_REP_HHT_ERR_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.RECORD_ID                   IS 'RECORD_ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.BASE_CODE                   IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.BASE_NAME                   IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ORIGIN_SHIPMENT             IS '出庫側コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.DATA_NAME                   IS 'データ名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ORDER_NO_HHT                IS '受注NO（HHT）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.INVOICE_INVENT_DATE         IS '伝票日付/棚卸日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ENTRY_NUMBER                IS '伝票NO';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.LINE_NO                     IS '行NO';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ORDER_NO_EBS                IS '受注NO（EBS）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PARTY_NUM                   IS '顧客/入庫側';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.CUSTOMER_NAME               IS '顧客名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PAYMENT_DLV_DATE            IS '入金日/納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PAYMENT_CLASS_NAME          IS '入金区分名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PERFORMANCE_BY_CODE         IS '成績者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ITEM_CODE                   IS '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ERROR_MESSAGE               IS 'エラー内容';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.REPORT_GROUP_ID             IS '帳票用グループID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.CREATED_BY                  IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.CREATION_DATE               IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.LAST_UPDATED_BY             IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.LAST_UPDATE_DATE            IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.LAST_UPDATE_LOGIN           IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.REQUEST_ID                  IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PROGRAM_APPLICATION_ID      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PROGRAM_ID                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PROGRAM_UPDATE_DATE         IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_HHT_ERR_LIST                             IS 'HHTエラーリスト帳票ワークテーブル';
+ 

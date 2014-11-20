@@ -1,0 +1,51 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_VD_DELIV_HEADERS
+ * Description : ベンダ納品実績情報ヘッダテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Okaguchi 新規作成
+ *  2009/02/10    1.1   SCS K.Okaguchi FILE_OUTPUT_FLAG　項目削除
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_VD_DELIV_HEADERS
+(
+  CUSTOMER_NUMBER                VARCHAR2(9)   NOT NULL       ,         --  顧客コード
+  DLV_DATE                       DATE          NOT NULL       ,         --  納品日
+  VISIT_TIME                     VARCHAR2(4)                  ,         --  訪問時刻
+  TOTAL_AMOUNT                   NUMBER(6)                    ,         --  合計金額
+  BASE_CODE                      VARCHAR2(4)                  ,         --  拠点コード
+  CREATED_BY                     NUMBER(15)    NOT NULL       ,         --  作成者
+  CREATION_DATE                  DATE          NOT NULL       ,         --  作成日
+  LAST_UPDATED_BY                NUMBER(15)    NOT NULL       ,         --  最終更新者
+  LAST_UPDATE_DATE               DATE          NOT NULL       ,         --  最終更新日
+  LAST_UPDATE_LOGIN              NUMBER(15)                   ,         --  最終更新ﾛｸﾞｲﾝ
+  REQUEST_ID                     NUMBER(15)                   ,         --  要求ID
+  PROGRAM_APPLICATION_ID         NUMBER(15)                   ,         --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+  PROGRAM_ID                     NUMBER(15)                   ,         --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+  PROGRAM_UPDATE_DATE            DATE                         ,         --  ﾌﾟﾛｸﾞﾗﾑ更新日                        
+  CONSTRAINT XXCOS_VD_DELIV_HEADERS_PK PRIMARY KEY ( CUSTOMER_NUMBER, DLV_DATE )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.CUSTOMER_NUMBER           IS  '顧客コード'                        ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.DLV_DATE                  IS  '納品日'                            ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.VISIT_TIME                IS  '訪問時刻'                          ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.TOTAL_AMOUNT              IS  '合計金額'                          ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.BASE_CODE                 IS  '拠点コード'                        ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.CREATED_BY                IS  '作成者'                            ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.CREATION_DATE             IS  '作成日'                            ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.LAST_UPDATED_BY           IS  '最終更新者'                        ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.LAST_UPDATE_DATE          IS  '最終更新日'                        ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.LAST_UPDATE_LOGIN         IS  '最終更新ﾛｸﾞｲﾝ'                     ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.REQUEST_ID                IS  '要求ID'                            ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.PROGRAM_APPLICATION_ID    IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'        ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.PROGRAM_ID                IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'                  ;
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DELIV_HEADERS.PROGRAM_UPDATE_DATE       IS  'ﾌﾟﾛｸﾞﾗﾑ更新日'                     ;
+
+--
+COMMENT ON TABLE  XXCOS.XXCOS_VD_DELIV_HEADERS                           IS 'ベンダ納品実績情報ヘッダテーブル';

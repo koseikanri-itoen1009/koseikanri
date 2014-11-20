@@ -1,0 +1,54 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_PAYMENT_WORK
+ * Description : 入金ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS S.Miyakoshi  新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_PAYMENT_WORK
+(
+  LINE_ID                      NUMBER(10)    NOT NULL,                  --明細ID
+  BASE_CODE                    VARCHAR2(4),                             --拠点コード
+  CUSTOMER_NUMBER              VARCHAR2(9),                             --顧客コード
+  HHT_INVOICE_NO               VARCHAR2(12),                            --HHT伝票No
+  PAYMENT_AMOUNT               NUMBER(11),                              --入金額
+  PAYMENT_DATE                 DATE,                                    --入金日
+  PAYMENT_CLASS                VARCHAR2(1),                             --入金区分
+  CREATED_BY                   NUMBER(15)    NOT NULL,                  --作成者
+  CREATION_DATE                DATE          NOT NULL,                  --作成日
+  LAST_UPDATED_BY              NUMBER(15)    NOT NULL,                  --最終更新者
+  LAST_UPDATE_DATE             DATE          NOT NULL,                  --最終更新日
+  LAST_UPDATE_LOGIN            NUMBER(15),                              --最終更新ログイン
+  REQUEST_ID                   NUMBER(15),                              --要求ID
+  PROGRAM_APPLICATION_ID       NUMBER(15),                              --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                   NUMBER(15),                              --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE          DATE,                                    --プログラム更新日
+  CONSTRAINT XXCOS_PAYMENT_WORK_PK PRIMARY KEY ( LINE_ID )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.LINE_ID                      IS '明細ID';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.BASE_CODE                    IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.CUSTOMER_NUMBER              IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.HHT_INVOICE_NO               IS 'HHT伝票No';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.PAYMENT_AMOUNT               IS '入金額';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.PAYMENT_DATE                 IS '入金日';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.PAYMENT_CLASS                IS '入金区分';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.CREATED_BY                   IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.CREATION_DATE                IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.LAST_UPDATED_BY              IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.LAST_UPDATE_DATE             IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.LAST_UPDATE_LOGIN            IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.REQUEST_ID                   IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.PROGRAM_APPLICATION_ID       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.PROGRAM_ID                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT_WORK.PROGRAM_UPDATE_DATE          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_PAYMENT_WORK                              IS '入金ワークテーブル';

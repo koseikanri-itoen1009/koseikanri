@@ -1,0 +1,174 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_FOR_ADPS_MONTHLY_IF
+ * Description : 人事システム向け販売実績（月次）テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Kitajima   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
+(
+     RECORD_ID                  NUMBER      NOT NULL                      -- レコードID
+    ,EMPLOYEE_CODE              VARCHAR2(6) NOT NULL                      -- 従業員コード
+    ,RESULTS_DATE               VARCHAR2(6) NOT NULL                      -- 年月
+    ,GROUP_CODE                 VARCHAR2(2)                               -- 小グループコード
+    ,BASE_CODE                  VARCHAR2(4) NOT NULL                      -- 拠点ｺｰﾄﾞ
+    ,AREA_CODE                  VARCHAR2(3) NOT NULL                      -- 地区コード
+    ,DIVISION_CODE              VARCHAR2(6) NOT NULL                      -- 本部ｺｰﾄﾞ
+    ,P_SALE_NORMA               NUMBER(12)                                -- 個売上ﾉﾙﾏ
+    ,P_SALE_AMOUNT              NUMBER(12)                                -- 個売上金額
+    ,P_SALE_ACHIEVEMENT_RATE    NUMBER(6,1)                               -- 個売上達成率
+    ,P_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 個新規貢献売上
+    ,P_NEW_NORMA                NUMBER(12)                                -- 個新規ﾉﾙﾏ
+    ,P_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 個新規達成率
+    ,P_NEW_COUNT_SUM            NUMBER(6)                                 -- 個新規件数合計
+    ,P_NEW_COUNT_VD             NUMBER(6)                                 -- 個新規件数ﾍﾞﾝﾀﾞｰ
+    ,P_POSITION_POINT           NUMBER(7,2)                               -- 個資格POINT
+    ,P_NEW_POINT                NUMBER(7,2)                               -- 個新規POINT
+    ,G_SALE_NORMA               NUMBER(12)                                -- 小売上ﾉﾙﾏ
+    ,G_SALE_AMOUNT              NUMBER(12)                                -- 小売上金額
+    ,G_SALE_ACHIEVEMENT_RATE    NUMBER(6,1)                               -- 小売上達成率
+    ,G_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 小新規貢献売上
+    ,G_NEW_NORMA                NUMBER(12)                                -- 小新規ﾉﾙﾏ
+    ,G_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 小新規達成率
+    ,G_NEW_COUNT_SUM            NUMBER(6)                                 -- 小新規件数合計
+    ,G_NEW_COUNT_VD             NUMBER(6)                                 -- 小新規件数ﾍﾞﾝﾀﾞｰ
+    ,G_POSITION_POINT           NUMBER(7,2)                               -- 小資格POINT
+    ,G_NEW_POINT                NUMBER(7,2)                               -- 小新規POINT
+    ,B_SALE_NORMA               NUMBER(12)                                -- 拠売上ﾉﾙﾏ
+    ,B_SALE_AMOUNT              NUMBER(12)                                -- 拠売上金額
+    ,B_SALE_ACHIEVEMENT_RATE    NUMBER(6,1)                               -- 拠売上達成率
+    ,B_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 拠新規貢献売上
+    ,B_NEW_NORMA                NUMBER(12)                                -- 拠新規達成率
+    ,B_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 拠新規ﾉﾙﾏ
+    ,B_NEW_COUNT_SUM            NUMBER(6)                                 -- 拠新規件数合計
+    ,B_NEW_COUNT_VD             NUMBER(6)                                 -- 拠新規件数ﾍﾞﾝﾀﾞｰ
+    ,B_POSITION_POINT           NUMBER(7,2)                               -- 拠資格POINT
+    ,B_NEW_POINT                NUMBER(7,2)                               -- 拠新規POINT
+    ,A_SALE_NORMA               NUMBER(12)                                -- 地売上ﾉﾙﾏ
+    ,A_SALE_AMOUNT              NUMBER(12)                                -- 地売上金額
+    ,A_SALE_ACHIEVEMENT_RATE    NUMBER(6,1)                               -- 地売上達成率
+    ,A_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 地新規貢献売上
+    ,A_NEW_NORMA                NUMBER(12)                                -- 地新規達成率
+    ,A_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 地新規ﾉﾙﾏ
+    ,A_NEW_COUNT_SUM            NUMBER(6)                                 -- 地新規件数合計
+    ,A_NEW_COUNT_VD             NUMBER(6)                                 -- 地新規件数ﾍﾞﾝﾀﾞｰ
+    ,A_POSITION_POINT           NUMBER(7,2)                               -- 地資格POINT
+    ,A_NEW_POINT                NUMBER(7,2)                               -- 地新規POINT
+    ,D_SALE_NORMA               NUMBER(12)                                -- 本売上ﾉﾙﾏ
+    ,D_SALE_AMOUNT              NUMBER(12)                                -- 本売上金額
+    ,D_SALE_ACHIEVEMENT_RATE    NUMBER(6,1)                               -- 本売上達成率
+    ,D_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 本新規貢献売上
+    ,D_NEW_NORMA                NUMBER(12)                                -- 本新規達成率
+    ,D_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 本新規ﾉﾙﾏ
+    ,D_NEW_COUNT_SUM            NUMBER(6)                                 -- 本新規件数合計
+    ,D_NEW_COUNT_VD             NUMBER(6)                                 -- 本新規件数ﾍﾞﾝﾀﾞｰ
+    ,D_POSITION_POINT           NUMBER(7,2)                               -- 本資格POINT
+    ,D_NEW_POINT                NUMBER(7,2)                               -- 本新規POINT
+    ,S_SALE_NORMA               NUMBER(12)                                -- 全売上ﾉﾙﾏ
+    ,S_SALE_AMOUNT              NUMBER(12)                                -- 全売上金額
+    ,S_SALE_ACHIEVEMENT_RATE    NUMBER(6,1)                               -- 全売上達成率
+    ,S_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 全新規貢献売上
+    ,S_NEW_NORMA                NUMBER(12)                                -- 全新規達成率
+    ,S_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 全新規ﾉﾙﾏ
+    ,S_NEW_COUNT_SUM            NUMBER(6)                                 -- 全新規件数合計
+    ,S_NEW_COUNT_VD             NUMBER(6)                                 -- 全新規件数ﾍﾞﾝﾀﾞｰ
+    ,S_POSITION_POINT           NUMBER(7,2)                               -- 全資格POINT
+    ,S_NEW_POINT                NUMBER(7,2)                               -- 全新規POINT
+    ,CREATED_BY                 NUMBER(15)  NOT NULL                      -- 作成者
+    ,CREATION_DATE              DATE        NOT NULL                      -- 作成日
+    ,LAST_UPDATED_BY            NUMBER(15)  NOT NULL                      -- 最終更新者
+    ,LAST_UPDATE_DATE           DATE        NOT NULL                      -- 最終更新日
+    ,LAST_UPDATE_LOGIN          NUMBER(15)                                -- 最終更新ﾛｸﾞｲﾝ
+    ,REQUEST_ID                 NUMBER(15)                                -- 要求ID
+    ,PROGRAM_APPLICATION_ID     NUMBER(15)                                -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+    ,PROGRAM_ID                 NUMBER(15)                                -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+    ,PROGRAM_UPDATE_DATE        DATE                                      -- ﾌﾟﾛｸﾞﾗﾑ更新日
+    ,CONSTRAINT XXCOS_FOR_ADPS_MONTHLY_IF_PK PRIMARY KEY ( RECORD_ID )
+     USING INDEX TABLESPACE xxidx2
+)
+/
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.RECORD_ID               IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.EMPLOYEE_CODE           IS '従業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.RESULTS_DATE            IS '年月';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.GROUP_CODE              IS '小グループコード';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.BASE_CODE               IS '拠点ｺｰﾄﾞ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.AREA_CODE               IS '地区コード';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.DIVISION_CODE           IS '本部ｺｰﾄﾞ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_SALE_NORMA            IS '個売上ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_SALE_AMOUNT           IS '個売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_SALE_ACHIEVEMENT_RATE IS '個売上達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_NEW_CONTRIBUTION_SALE IS '個新規貢献売上';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_NEW_NORMA             IS '個新規ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_NEW_ACHIEVEMENT_RATE  IS '個新規達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_NEW_COUNT_SUM         IS '個新規件数合計';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_NEW_COUNT_VD          IS '個新規件数ﾍﾞﾝﾀﾞｰ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_POSITION_POINT        IS '個資格POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.P_NEW_POINT             IS '個新規POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_SALE_NORMA            IS '小売上ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_SALE_AMOUNT           IS '小売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_SALE_ACHIEVEMENT_RATE IS '小売上達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_NEW_CONTRIBUTION_SALE IS '小新規貢献売上';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_NEW_NORMA             IS '小新規ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_NEW_ACHIEVEMENT_RATE  IS '小新規達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_NEW_COUNT_SUM         IS '小新規件数合計';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_NEW_COUNT_VD          IS '小新規件数ﾍﾞﾝﾀﾞｰ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_POSITION_POINT        IS '小資格POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.G_NEW_POINT             IS '小新規POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_SALE_NORMA            IS '拠売上ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_SALE_AMOUNT           IS '拠売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_SALE_ACHIEVEMENT_RATE IS '拠売上達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_NEW_CONTRIBUTION_SALE IS '拠新規貢献売上';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_NEW_NORMA             IS '拠新規達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_NEW_ACHIEVEMENT_RATE  IS '拠新規ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_NEW_COUNT_SUM         IS '拠新規件数合計';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_NEW_COUNT_VD          IS '拠新規件数ﾍﾞﾝﾀﾞｰ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_POSITION_POINT        IS '拠資格POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.B_NEW_POINT             IS '拠新規POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_SALE_NORMA            IS '地売上ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_SALE_AMOUNT           IS '地売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_SALE_ACHIEVEMENT_RATE IS '地売上達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_NEW_CONTRIBUTION_SALE IS '地新規貢献売上';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_NEW_NORMA             IS '地新規達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_NEW_ACHIEVEMENT_RATE  IS '地新規ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_NEW_COUNT_SUM         IS '地新規件数合計';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_NEW_COUNT_VD          IS '地新規件数ﾍﾞﾝﾀﾞｰ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_POSITION_POINT        IS '地資格POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.A_NEW_POINT             IS '地新規POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_SALE_NORMA            IS '本売上ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_SALE_AMOUNT           IS '本売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_SALE_ACHIEVEMENT_RATE IS '本売上達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_NEW_CONTRIBUTION_SALE IS '本新規貢献売上';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_NEW_NORMA             IS '本新規達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_NEW_ACHIEVEMENT_RATE  IS '本新規ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_NEW_COUNT_SUM         IS '本新規件数合計';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_NEW_COUNT_VD          IS '本新規件数ﾍﾞﾝﾀﾞｰ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_POSITION_POINT        IS '本資格POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.D_NEW_POINT             IS '本新規POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_SALE_NORMA            IS '全売上ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_SALE_AMOUNT           IS '全売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_SALE_ACHIEVEMENT_RATE IS '全売上達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_NEW_CONTRIBUTION_SALE IS '全新規貢献売上';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_NEW_NORMA             IS '全新規達成率';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_NEW_ACHIEVEMENT_RATE  IS '全新規ﾉﾙﾏ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_NEW_COUNT_SUM         IS '全新規件数合計';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_NEW_COUNT_VD          IS '全新規件数ﾍﾞﾝﾀﾞｰ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_POSITION_POINT        IS '全資格POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.S_NEW_POINT             IS '全新規POINT';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.CREATED_BY              IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.CREATION_DATE           IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.LAST_UPDATED_BY         IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.LAST_UPDATE_DATE        IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.LAST_UPDATE_LOGIN       IS '最終更新ﾛｸﾞｲﾝ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.REQUEST_ID              IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.PROGRAM_APPLICATION_ID  IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.PROGRAM_ID              IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF.PROGRAM_UPDATE_DATE     IS 'ﾌﾟﾛｸﾞﾗﾑ更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF                         IS  '人事システム向け販売実績（月次）テーブル';

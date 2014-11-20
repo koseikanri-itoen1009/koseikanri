@@ -1,0 +1,94 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_DELI_REQ
+ * Description : 出荷依頼書帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kakishita新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
+(
+    RECORD_ID                      NUMBER         NOT NULL,          --レコードID
+    DESPATCHING_CODE               VARCHAR2(10),                     --保管場所コード
+    DELIVER_FROM_LOCAT_NAME        VARCHAR2(40),                     --出荷元保管場所名
+    COMPANY_NAME                   VARCHAR2(30),                     --会社名
+    BASE_CODE                      VARCHAR2(4),                      --納品拠点コード
+    BASE_NAME                      VARCHAR2(60),                     --納品拠点名
+    BASE_POST_NO                   VARCHAR2(8),                      --納品拠点郵便番号
+    BASE_ADDRESS                   VARCHAR2(60),                     --納品拠点住所
+    BASE_TELEPHONE_NO              VARCHAR2(15),                     --納品拠点電話番号
+    BASE_FAX_NO                    VARCHAR2(15),                     --納品拠点FAX番号
+    ENTRY_NUMBER                   VARCHAR2(12),                     --伝票番号
+    DELIVERY_REQUESTED_DATE        DATE,                             --出荷依頼日
+    SHIPPED_DATE                   DATE,                             --出荷日
+    ARRIVAL_DATE                   DATE,                             --着日
+    REQUESTED_TIME                 VARCHAR2(20),                     --指定時間
+    DELIVERY_CODE                  VARCHAR2(9),                      --配送先コード
+    DELIVER_TO_NAME                VARCHAR2(60),                     --配送先名
+    DELIVERY_ADDRESS               VARCHAR2(60),                     --配送先住所
+    TELEPHONE_NO                   VARCHAR2(15),                     --電話番号
+    DESCRIPTION                    VARCHAR2(80),                     --摘要
+    ORDER_LINE_NUMBER              NUMBER(3,0),                      --受注明細番号
+    ITEM_CODE                      NUMBER(7,0),                      --商品コード
+    ITEM_NAME                      VARCHAR2(40),                     --品名
+    CONTENT                        NUMBER(4,0),                      --入数
+    SHIPMENT_QUANTITY              NUMBER(7,0),                      --出荷数量
+    SHIPMENT_UOM                   VARCHAR2(3),                      --出荷単位
+    REMARKS_COLUMN                 VARCHAR2(20),                     --備考
+    CREATED_BY                     NUMBER(15,0)   NOT NULL,          --作成者
+    CREATION_DATE                  DATE           NOT NULL,          --作成日
+    LAST_UPDATED_BY                NUMBER(15,0)   NOT NULL,          --最終更新者
+    LAST_UPDATE_DATE               DATE           NOT NULL,          --最終更新日
+    LAST_UPDATE_LOGIN              NUMBER(15,0),                     --最終更新ログイン
+    REQUEST_ID                     NUMBER(15,0),                     --要求ID
+    PROGRAM_APPLICATION_ID         NUMBER(15,0),                     --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                     NUMBER(15,0),                     --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE            DATE,                              --プログラム更新日
+    CONSTRAINT XXCOS_REP_DELI_REQ_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+-- 
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.RECORD_ID                      IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DESPATCHING_CODE               IS'保管場所コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DELIVER_FROM_LOCAT_NAME        IS '出荷元保管場所名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.COMPANY_NAME                   IS '会社名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.BASE_CODE                      IS '納品拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.BASE_NAME                      IS '納品拠点名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.BASE_POST_NO                   IS '納品拠点郵便番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.BASE_ADDRESS                   IS '納品拠点住所';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.BASE_TELEPHONE_NO              IS '納品拠点電話番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.BASE_FAX_NO                    IS '納品拠点FAX番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.ENTRY_NUMBER                   IS '伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DELIVERY_REQUESTED_DATE        IS '出荷依頼日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.SHIPPED_DATE                   IS '出荷日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.ARRIVAL_DATE                   IS '着日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.REQUESTED_TIME                 IS '指定時間';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DELIVERY_CODE                  IS '配送先コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DELIVER_TO_NAME                IS '配送先名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DELIVERY_ADDRESS               IS '配送先住所';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.TELEPHONE_NO                   IS '電話番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DESCRIPTION                    IS '摘要';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.ORDER_LINE_NUMBER              IS '受注明細番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.ITEM_CODE                      IS '商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.ITEM_NAME                      IS '品名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.CONTENT                        IS '入数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.SHIPMENT_QUANTITY              IS '出荷数量';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.SHIPMENT_UOM                   IS '出荷単位';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.REMARKS_COLUMN                 IS '備考';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.CREATED_BY                     IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.CREATION_DATE                  IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.LAST_UPDATED_BY                IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.LAST_UPDATE_DATE               IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.LAST_UPDATE_LOGIN              IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.REQUEST_ID                     IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.PROGRAM_APPLICATION_ID         IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.PROGRAM_ID                     IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.PROGRAM_UPDATE_DATE            IS 'プログラム更新日'; 
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_DELI_REQ                                IS '出荷依頼書帳票ワークテーブル';

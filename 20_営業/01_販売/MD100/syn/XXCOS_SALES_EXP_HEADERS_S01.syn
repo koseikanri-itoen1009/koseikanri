@@ -1,0 +1,14 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name       : XXCOS_SALES_EXP_HEADERS_S01
+ * Description     : 販売実績ヘッダID(販売実績ヘッダテーブル)（シノニム）
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   K.Okaguchi       新規作成
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM APPS.XXCOS_SALES_EXP_HEADERS_S01 FOR XXCOS.XXCOS_SALES_EXP_HEADERS_S01;

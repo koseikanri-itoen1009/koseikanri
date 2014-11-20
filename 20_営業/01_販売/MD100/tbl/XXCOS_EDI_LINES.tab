@@ -1,0 +1,229 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_EDI_LINES
+ * Description : EDI明細情報テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Okaguchi   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE  XXCOS.XXCOS_EDI_LINES(
+  EDI_LINE_INFO_ID                NUMBER              NOT NULL                            -- EDI明細情報ID
+ ,EDI_HEADER_INFO_ID              NUMBER              NOT NULL                            -- EDIヘッダ情報ID
+ ,LINE_NO                         NUMBER(3)           NOT NULL                            -- 行Ｎｏ
+ ,STOCKOUT_CLASS                  VARCHAR2(2)         NULL                                -- 欠品区分
+ ,STOCKOUT_REASON                 VARCHAR2(20)        NULL                                -- 欠品理由
+ ,PRODUCT_CODE_ITOUEN             VARCHAR2(7)         NULL                                -- 商品コード（伊藤園）
+ ,PRODUCT_CODE1                   VARCHAR2(16)        NULL                                -- 商品コード１
+ ,PRODUCT_CODE2                   VARCHAR2(16)        NOT NULL                            -- 商品コード２
+ ,JAN_CODE                        VARCHAR2(13)        NULL                                -- ＪＡＮコード
+ ,ITF_CODE                        VARCHAR2(16)        NULL                                -- ＩＴＦコード
+ ,EXTENSION_ITF_CODE              VARCHAR2(16)        NULL                                -- 内箱ＩＴＦコード
+ ,CASE_PRODUCT_CODE               VARCHAR2(16)        NULL                                -- ケース商品コード
+ ,BALL_PRODUCT_CODE               VARCHAR2(16)        NULL                                -- ボール商品コード
+ ,PRODUCT_CODE_ITEM_TYPE          VARCHAR2(2)         NULL                                -- 商品コード品種
+ ,PROD_CLASS                      VARCHAR2(2)         NULL                                -- 商品区分
+ ,PRODUCT_NAME                    VARCHAR2(60)        NULL                                -- 商品名（漢字）
+ ,PRODUCT_NAME1_ALT               VARCHAR2(15)        NULL                                -- 商品名１（カナ）
+ ,PRODUCT_NAME2_ALT               VARCHAR2(15)        NULL                                -- 商品名２（カナ）
+ ,ITEM_STANDARD1                  VARCHAR2(15)        NULL                                -- 規格１
+ ,ITEM_STANDARD2                  VARCHAR2(15)        NULL                                -- 規格２
+ ,QTY_IN_CASE                     NUMBER(8)           NULL                                -- 入数
+ ,NUM_OF_CASES                    NUMBER(8)           NULL                                -- ケース入数
+ ,NUM_OF_BALL                     NUMBER(8)           NULL                                -- ボール入数
+ ,ITEM_COLOR                      VARCHAR2(8)         NULL                                -- 色
+ ,ITEM_SIZE                       VARCHAR2(8)         NULL                                -- サイズ
+ ,EXPIRATION_DATE                 DATE                NULL                                -- 賞味期限日
+ ,PRODUCT_DATE                    DATE                NULL                                -- 製造日
+ ,ORDER_UOM_QTY                   NUMBER(8)           NULL                                -- 発注単位数
+ ,SHIPPING_UOM_QTY                NUMBER(8)           NULL                                -- 出荷単位数
+ ,PACKING_UOM_QTY                 NUMBER(8)           NULL                                -- 梱包単位数
+ ,DEAL_CODE                       VARCHAR2(6)         NULL                                -- 引合
+ ,DEAL_CLASS                      VARCHAR2(2)         NULL                                -- 引合区分
+ ,COLLATION_CODE                  VARCHAR2(6)         NULL                                -- 照合
+ ,UOM_CODE                        VARCHAR2(5)         NULL                                -- 単位
+ ,UNIT_PRICE_CLASS                VARCHAR2(2)         NULL                                -- 単価区分
+ ,PARENT_PACKING_NUMBER           VARCHAR2(20)        NULL                                -- 親梱包番号
+ ,PACKING_NUMBER                  VARCHAR2(4)         NULL                                -- 梱包番号
+ ,PRODUCT_GROUP_CODE              VARCHAR2(4)         NULL                                -- 商品群コード
+ ,CASE_DISMANTLE_FLAG             VARCHAR2(1)         NULL                                -- ケース解体不可フラグ
+ ,CASE_CLASS                      VARCHAR2(2)         NULL                                -- ケース区分
+ ,INDV_ORDER_QTY                  NUMBER(8,1)         NULL                                -- 発注数量（バラ）
+ ,CASE_ORDER_QTY                  NUMBER(8,1)         NULL                                -- 発注数量（ケース）
+ ,BALL_ORDER_QTY                  NUMBER(8,1)         NULL                                -- 発注数量（ボール）
+ ,SUM_ORDER_QTY                   NUMBER(8,1)         NULL                                -- 発注数量（合計、バラ）
+ ,INDV_SHIPPING_QTY               NUMBER(8,1)         NULL                                -- 出荷数量（バラ）
+ ,CASE_SHIPPING_QTY               NUMBER(8,1)         NULL                                -- 出荷数量（ケース）
+ ,BALL_SHIPPING_QTY               NUMBER(8,1)         NULL                                -- 出荷数量（ボール）
+ ,PALLET_SHIPPING_QTY             NUMBER(8,1)         NULL                                -- 出荷数量（パレット）
+ ,SUM_SHIPPING_QTY                NUMBER(8,1)         NULL                                -- 出荷数量（合計、バラ）
+ ,INDV_STOCKOUT_QTY               NUMBER(8,1)         NULL                                -- 欠品数量（バラ）
+ ,CASE_STOCKOUT_QTY               NUMBER(8,1)         NULL                                -- 欠品数量（ケース）
+ ,BALL_STOCKOUT_QTY               NUMBER(8,1)         NULL                                -- 欠品数量（ボール）
+ ,SUM_STOCKOUT_QTY                NUMBER(8,1)         NULL                                -- 欠品数量（合計、バラ）
+ ,CASE_QTY                        NUMBER(8,1)         NULL                                -- ケース個口数
+ ,FOLD_CONTAINER_INDV_QTY         NUMBER(8,1)         NULL                                -- オリコン（バラ）個口数
+ ,ORDER_UNIT_PRICE                NUMBER(12,2)        NULL                                -- 原単価（発注）
+ ,SHIPPING_UNIT_PRICE             NUMBER(12,2)        NULL                                -- 原単価（出荷）
+ ,ORDER_COST_AMT                  NUMBER(12,2)        NULL                                -- 原価金額（発注）
+ ,SHIPPING_COST_AMT               NUMBER(12,2)        NULL                                -- 原価金額（出荷）
+ ,STOCKOUT_COST_AMT               NUMBER(12,2)        NULL                                -- 原価金額（欠品）
+ ,SELLING_PRICE                   NUMBER(10)          NULL                                -- 売単価
+ ,ORDER_PRICE_AMT                 NUMBER(10)          NULL                                -- 売価金額（発注）
+ ,SHIPPING_PRICE_AMT              NUMBER(10)          NULL                                -- 売価金額（出荷）
+ ,STOCKOUT_PRICE_AMT              NUMBER(10)          NULL                                -- 売価金額（欠品）
+ ,A_COLUMN_DEPARTMENT             VARCHAR2(13)        NULL                                -- Ａ欄（百貨店）
+ ,D_COLUMN_DEPARTMENT             VARCHAR2(4)         NULL                                -- Ｄ欄（百貨店）
+ ,STANDARD_INFO_DEPTH             VARCHAR2(5)         NULL                                -- 規格情報・奥行き
+ ,STANDARD_INFO_HEIGHT            VARCHAR2(5)         NULL                                -- 規格情報・高さ
+ ,STANDARD_INFO_WIDTH             VARCHAR2(5)         NULL                                -- 規格情報・幅
+ ,STANDARD_INFO_WEIGHT            VARCHAR2(5)         NULL                                -- 規格情報・重量
+ ,GENERAL_SUCCEEDED_ITEM1         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目１
+ ,GENERAL_SUCCEEDED_ITEM2         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目２
+ ,GENERAL_SUCCEEDED_ITEM3         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目３
+ ,GENERAL_SUCCEEDED_ITEM4         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目４
+ ,GENERAL_SUCCEEDED_ITEM5         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目５
+ ,GENERAL_SUCCEEDED_ITEM6         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目６
+ ,GENERAL_SUCCEEDED_ITEM7         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目７
+ ,GENERAL_SUCCEEDED_ITEM8         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目８
+ ,GENERAL_SUCCEEDED_ITEM9         VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目９
+ ,GENERAL_SUCCEEDED_ITEM10        VARCHAR2(10)        NULL                                -- 汎用引継ぎ項目１０
+ ,GENERAL_ADD_ITEM1               VARCHAR2(10)        NULL                                -- 汎用付加項目１
+ ,GENERAL_ADD_ITEM2               VARCHAR2(10)        NULL                                -- 汎用付加項目２
+ ,GENERAL_ADD_ITEM3               VARCHAR2(10)        NULL                                -- 汎用付加項目３
+ ,GENERAL_ADD_ITEM4               VARCHAR2(10)        NULL                                -- 汎用付加項目４
+ ,GENERAL_ADD_ITEM5               VARCHAR2(10)        NULL                                -- 汎用付加項目５
+ ,GENERAL_ADD_ITEM6               VARCHAR2(10)        NULL                                -- 汎用付加項目６
+ ,GENERAL_ADD_ITEM7               VARCHAR2(10)        NULL                                -- 汎用付加項目７
+ ,GENERAL_ADD_ITEM8               VARCHAR2(10)        NULL                                -- 汎用付加項目８
+ ,GENERAL_ADD_ITEM9               VARCHAR2(10)        NULL                                -- 汎用付加項目９
+ ,GENERAL_ADD_ITEM10              VARCHAR2(10)        NULL                                -- 汎用付加項目１０
+ ,CHAIN_PECULIAR_AREA_LINE        VARCHAR2(300)       NULL                                -- チェーン店固有エリア（明細）
+ ,ITEM_CODE                       VARCHAR2(7)         NULL                                -- 品目コード
+ ,LINE_UOM                        VARCHAR2(3)         NULL                                -- 明細単位
+ ,HHT_DELIVERY_SCHEDULE_FLAG      VARCHAR2(1)         NULL                                -- HHT納品予定連携済フラグ
+ ,ORDER_CONNECTION_LINE_NUMBER    VARCHAR2(50)        NULL                                -- 受注関連明細番号
+ ,CREATED_BY                      NUMBER(15)          NOT NULL                            --作成者
+ ,CREATION_DATE                   DATE                NOT NULL                            --作成日
+ ,LAST_UPDATED_BY                 NUMBER(15)          NOT NULL                            --最終更新者
+ ,LAST_UPDATE_DATE                DATE                NOT NULL                            --最終更新日
+ ,LAST_UPDATE_LOGIN               NUMBER(15)          NULL                                --最終更新ログイン
+ ,REQUEST_ID                      NUMBER(15)          NULL                                --要求ID
+ ,PROGRAM_APPLICATION_ID          NUMBER(15)          NULL                                --コンカレント・プログラム・アプリケーションID
+ ,PROGRAM_ID                      NUMBER(15)          NULL                                --コンカレント・プログラムID
+ ,PROGRAM_UPDATE_DATE             DATE                NULL                                --プログラム更新日
+ ,CONSTRAINT XXCOS_EDI_LINES_PK PRIMARY KEY ( EDI_LINE_INFO_ID )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.EDI_LINE_INFO_ID                             IS  'EDI明細情報ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.EDI_HEADER_INFO_ID                           IS  'EDIヘッダ情報ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.LINE_NO                                      IS  '行Ｎｏ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STOCKOUT_CLASS                               IS  '欠品区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STOCKOUT_REASON                              IS  '欠品理由';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_CODE_ITOUEN                          IS  '商品コード（伊藤園）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_CODE1                                IS  '商品コード１';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_CODE2                                IS  '商品コード２';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.JAN_CODE                                     IS  'ＪＡＮコード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ITF_CODE                                     IS  'ＩＴＦコード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.EXTENSION_ITF_CODE                           IS  '内箱ＩＴＦコード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_PRODUCT_CODE                            IS  'ケース商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.BALL_PRODUCT_CODE                            IS  'ボール商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_CODE_ITEM_TYPE                       IS  '商品コード品種';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PROD_CLASS                                   IS  '商品区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_NAME                                 IS  '商品名（漢字）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_NAME1_ALT                            IS  '商品名１（カナ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_NAME2_ALT                            IS  '商品名２（カナ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ITEM_STANDARD1                               IS  '規格１';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ITEM_STANDARD2                               IS  '規格２';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.QTY_IN_CASE                                  IS  '入数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.NUM_OF_CASES                                 IS  'ケース入数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.NUM_OF_BALL                                  IS  'ボール入数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ITEM_COLOR                                   IS  '色';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ITEM_SIZE                                    IS  'サイズ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.EXPIRATION_DATE                              IS  '賞味期限日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_DATE                                 IS  '製造日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ORDER_UOM_QTY                                IS  '発注単位数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SHIPPING_UOM_QTY                             IS  '出荷単位数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PACKING_UOM_QTY                              IS  '梱包単位数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.DEAL_CODE                                    IS  '引合';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.DEAL_CLASS                                   IS  '引合区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.COLLATION_CODE                               IS  '照合';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.UOM_CODE                                     IS  '単位';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.UNIT_PRICE_CLASS                             IS  '単価区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PARENT_PACKING_NUMBER                        IS  '親梱包番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PACKING_NUMBER                               IS  '梱包番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PRODUCT_GROUP_CODE                           IS  '商品群コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_DISMANTLE_FLAG                          IS  'ケース解体不可フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_CLASS                                   IS  'ケース区分';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.INDV_ORDER_QTY                               IS  '発注数量（バラ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_ORDER_QTY                               IS  '発注数量（ケース）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.BALL_ORDER_QTY                               IS  '発注数量（ボール）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SUM_ORDER_QTY                                IS  '発注数量（合計、バラ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.INDV_SHIPPING_QTY                            IS  '出荷数量（バラ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_SHIPPING_QTY                            IS  '出荷数量（ケース）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.BALL_SHIPPING_QTY                            IS  '出荷数量（ボール）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PALLET_SHIPPING_QTY                          IS  '出荷数量（パレット）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SUM_SHIPPING_QTY                             IS  '出荷数量（合計、バラ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.INDV_STOCKOUT_QTY                            IS  '欠品数量（バラ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_STOCKOUT_QTY                            IS  '欠品数量（ケース）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.BALL_STOCKOUT_QTY                            IS  '欠品数量（ボール）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SUM_STOCKOUT_QTY                             IS  '欠品数量（合計、バラ）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CASE_QTY                                     IS  'ケース個口数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.FOLD_CONTAINER_INDV_QTY                      IS  'オリコン（バラ）個口数';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ORDER_UNIT_PRICE                             IS  '原単価（発注）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SHIPPING_UNIT_PRICE                          IS  '原単価（出荷）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ORDER_COST_AMT                               IS  '原価金額（発注）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SHIPPING_COST_AMT                            IS  '原価金額（出荷）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STOCKOUT_COST_AMT                            IS  '原価金額（欠品）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SELLING_PRICE                                IS  '売単価';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ORDER_PRICE_AMT                              IS  '売価金額（発注）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.SHIPPING_PRICE_AMT                           IS  '売価金額（出荷）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STOCKOUT_PRICE_AMT                           IS  '売価金額（欠品）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.A_COLUMN_DEPARTMENT                          IS  'Ａ欄（百貨店）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.D_COLUMN_DEPARTMENT                          IS  'Ｄ欄（百貨店）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STANDARD_INFO_DEPTH                          IS  '規格情報・奥行き';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STANDARD_INFO_HEIGHT                         IS  '規格情報・高さ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STANDARD_INFO_WIDTH                          IS  '規格情報・幅';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.STANDARD_INFO_WEIGHT                         IS  '規格情報・重量';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM1                      IS  '汎用引継ぎ項目１';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM2                      IS  '汎用引継ぎ項目２';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM3                      IS  '汎用引継ぎ項目３';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM4                      IS  '汎用引継ぎ項目４';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM5                      IS  '汎用引継ぎ項目５';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM6                      IS  '汎用引継ぎ項目６';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM7                      IS  '汎用引継ぎ項目７';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM8                      IS  '汎用引継ぎ項目８';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM9                      IS  '汎用引継ぎ項目９';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_SUCCEEDED_ITEM10                     IS  '汎用引継ぎ項目１０';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM1                            IS  '汎用付加項目１';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM2                            IS  '汎用付加項目２';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM3                            IS  '汎用付加項目３';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM4                            IS  '汎用付加項目４';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM5                            IS  '汎用付加項目５';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM6                            IS  '汎用付加項目６';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM7                            IS  '汎用付加項目７';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM8                            IS  '汎用付加項目８';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM9                            IS  '汎用付加項目９';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.GENERAL_ADD_ITEM10                           IS  '汎用付加項目１０';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CHAIN_PECULIAR_AREA_LINE                     IS  'チェーン店固有エリア（明細）';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ITEM_CODE                                    IS  '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.LINE_UOM                                     IS  '明細単位';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.HHT_DELIVERY_SCHEDULE_FLAG                   IS  'HHT納品予定連携済フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.ORDER_CONNECTION_LINE_NUMBER                 IS  '受注関連明細番号';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CREATED_BY                                   IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.CREATION_DATE                                IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.LAST_UPDATED_BY                              IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.LAST_UPDATE_DATE                             IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.LAST_UPDATE_LOGIN                            IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.REQUEST_ID                                   IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PROGRAM_APPLICATION_ID                       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PROGRAM_ID                                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_LINES.PROGRAM_UPDATE_DATE                          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_EDI_LINES                                              IS  'EDI明細情報テーブル';

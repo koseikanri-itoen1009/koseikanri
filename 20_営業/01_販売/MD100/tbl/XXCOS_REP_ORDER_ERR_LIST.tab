@@ -1,0 +1,81 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_ORDER_ERR_LIST
+ * Description : 受注エラーリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kumamoto 新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_ORDER_ERR_LIST
+(
+    RECORD_ID                     NUMBER          NOT NULL                     --レコードID
+   ,BASE_CODE                     VARCHAR2(4)                                  --拠点コード
+   ,BASE_NAME                     VARCHAR2(20)                                 --拠点名称
+   ,EDI_CREATE_CLASS              VARCHAR2(1)                                  --EDI作成元区分
+   ,EDI_CREATE_CLASS_NAME         VARCHAR2(14)                                 --EDI作成元区分名称
+   ,CHAIN_CODE                    VARCHAR2(4)                                  --チェーン店コード
+   ,CHAIN_NAME                    VARCHAR2(40)                                 --チェーン店名称
+   ,DLV_DATE                      VARCHAR2(10)                                 --店舗納品日
+   ,INVOICE_NUMBER                VARCHAR2(12)                                 --伝票番号
+   ,SHOP_CODE                     VARCHAR2(8)                                  --店舗コード
+   ,CUSTOMER_NUMBER               VARCHAR2(9)                                  --顧客コード
+   ,SHOP_NAME                     VARCHAR2(20)                                 --店舗名称
+   ,LINE_NO                       NUMBER(2)                                    --行No
+   ,ITEM_CODE                     VARCHAR2(7)                                  --品目コード
+   ,EDI_ITEM_CODE                 VARCHAR2(20)                                 --EDI商品コード
+   ,ITEM_NAME                     VARCHAR2(20)                                 --品目名称
+   ,QUANTITY                      NUMBER                                       --本数
+   ,UNIT_PRICE                    NUMBER                                       --原単価
+   ,UNIT_PRICE_AMOUNT             NUMBER                                       --原価金額
+   ,ERR_MESSAGE                   VARCHAR2(40)                                 --エラー内容
+   ,CREATED_BY                    NUMBER          NOT NULL                     --作成者
+   ,CREATION_DATE                 DATE            NOT NULL                     --作成日
+   ,LAST_UPDATED_BY               NUMBER          NOT NULL                     --最終更新者
+   ,LAST_UPDATE_DATE              DATE            NOT NULL                     --最終更新日
+   ,LAST_UPDATE_LOGIN             NUMBER                                       --最終更新ﾛｸﾞｲﾝ
+   ,REQUEST_ID                    NUMBER                                       --要求ID
+   ,PROGRAM_APPLICATION_ID        NUMBER                                       --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+   ,PROGRAM_ID                    NUMBER                                       --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+   ,PROGRAM_UPDATE_DATE           DATE                                         --ﾌﾟﾛｸﾞﾗﾑ更新日
+   ,CONSTRAINT XXCOS_REP_ORDER_ERR_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.RECORD_ID                     IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.BASE_CODE                     IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.BASE_NAME                     IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.EDI_CREATE_CLASS              IS 'EDI作成元区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.EDI_CREATE_CLASS_NAME         IS 'EDI作成元区分名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.CHAIN_CODE                    IS 'チェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.CHAIN_NAME                    IS 'チェーン店名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.DLV_DATE                      IS '店舗納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.INVOICE_NUMBER                IS '伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.SHOP_CODE                     IS '店舗コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.CUSTOMER_NUMBER               IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.SHOP_NAME                     IS '店舗名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.LINE_NO                       IS '行No';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.ITEM_CODE                     IS '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.EDI_ITEM_CODE                 IS 'EDI商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.ITEM_NAME                     IS '品目名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.QUANTITY                      IS '本数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.UNIT_PRICE                    IS '原単価';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.UNIT_PRICE_AMOUNT             IS '原価金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.ERR_MESSAGE                   IS 'エラー内容';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.CREATED_BY                    IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.CREATION_DATE                 IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.LAST_UPDATED_BY               IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.LAST_UPDATE_DATE              IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.LAST_UPDATE_LOGIN             IS '最終更新ﾛｸﾞｲﾝ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.REQUEST_ID                    IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.PROGRAM_APPLICATION_ID        IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.PROGRAM_ID                    IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.PROGRAM_UPDATE_DATE           IS 'ﾌﾟﾛｸﾞﾗﾑ更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_ORDER_ERR_LIST                               IS '受注エラーリスト帳票ワークテーブル';

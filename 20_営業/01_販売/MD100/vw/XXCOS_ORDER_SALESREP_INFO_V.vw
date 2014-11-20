@@ -1,0 +1,93 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name       : xxcos_order_salesrep_info_v
+ * Description     : 営業担当ビュー(クイック受注用)
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/1/26     1.0   T.Tyou           新規作成
+ *
+ ************************************************************************/
+CREATE OR REPLACE VIEW xxcos_order_salesrep_info_v (
+  name,
+  salesrep_id,                            --
+  salesrep_number,                        --
+  account_number,
+  start_date_active,
+  end_date_active,
+  effective_start_date,
+  effective_end_date,
+  employee_number,
+  hatsurei_date,
+  new_base_code,
+  old_base_code,
+  sale_base_code,
+  past_sale_base_code,
+  delivery_base_code
+)
+AS 
+SELECT
+      jrs.name              name,
+      jrs.salesrep_id       salesrep_id,
+      jrs.salesrep_number   salesrep_number,
+      cust.account_number   account_number,
+      jrs.start_date_active start_date_active,
+      jrs.end_date_active   end_date_active,
+      paaf.effective_start_date  effective_start_date,
+      paaf.effective_end_date    effective_end_date,
+      jrre.source_number    employee_number,
+      TO_DATE( paaf.ass_attribute2, 'RRRRMMDD' )          hatsurei_date,                --発令日
+      paaf.ass_attribute5                                 new_base_code,                --拠点コード（新）
+      paaf.ass_attribute6                                 old_base_code,                --拠点コード（旧）
+      cust.sale_base_code,
+      cust.past_sale_base_code,
+      cust.delivery_base_code
+FROM  jtf_rs_salesreps          jrs
+      ,jtf_rs_resource_extns    jrre
+      ,per_all_assignments_f    paaf
+      ,per_all_people_f         papf
+      ,per_person_types         pept
+      ,(
+      SELECT xca.sale_base_code,
+        xca.past_sale_base_code,
+        xca.delivery_base_code,
+        hca.account_number
+      FROM   hz_cust_accounts     hca,                  
+        xxcmm_cust_accounts  xca
+      WHERE  hca.cust_account_id   = xca.customer_id
+      ) cust
+WHERE
+      jrre.category             =   'EMPLOYEE'
+AND   jrs.resource_id           =   jrre.resource_id
+AND   papf.person_id            =   jrre.source_id
+AND   pept.business_group_id    =   fnd_global.per_business_group_id
+AND   pept.system_person_type   =   'EMP'
+AND   pept.active_flag          =   'Y'
+AND   papf.person_type_id       =   pept.person_type_id
+AND   paaf.person_id            =   papf.person_id
+AND   nvl(jrs.org_id,   nvl(to_number(decode(substrb(userenv('CLIENT_INFO'),   1,   1),   ' ',
+        NULL,   substrb(userenv('CLIENT_INFO'),   1,   10))),   -99)) =
+         nvl(to_number(decode(substrb(userenv('CLIENT_INFO'),   1,   1),   ' ',  
+          NULL,   substrb(userenv('CLIENT_INFO'),   1,   10))),   -99)
+;
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.name                  IS  '従業員名称';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.salesrep_id           IS  'セールスID';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.salesrep_number       IS  'セールス番号';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.account_number        IS  '顧客コード';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.start_date_active     IS  '有効開始日';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.end_date_active       IS  '有効終了日';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.effective_start_date  IS  '有効開始日';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.effective_end_date    IS  '有効終了日';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '従業員コード';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '発令日';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '拠点コード（新）';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '拠点コード（旧）';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '売上拠点';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '前月売上拠点';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '納品拠点';
+--
+COMMENT ON  TABLE   xxcos_order_salesrep_info_v                       IS  '営業担当ビュー(クイック受注用)';

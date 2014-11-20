@@ -1,0 +1,90 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_PICK_DELI_SALE
+ * Description : ピックリスト_出荷先_製品_販売先別帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kakishita新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_PICK_DELI_SALE
+(
+    RECORD_ID                      NUMBER         NOT NULL,          --レコードID
+    BASE_CODE                      VARCHAR2(4),                      --拠点コード
+    BASE_NAME                      VARCHAR2(40),                     --拠点名称
+    WHSE_CODE                      VARCHAR2(10),                     --倉庫コード
+    WHSE_NAME                      VARCHAR2(40),                     --倉庫名称
+    CHAIN_CODE                     VARCHAR2(4),                      --チェーン店コード
+    CHAIN_NAME                     VARCHAR2(40),                     --チェーン店名
+    CENTER_CODE                    VARCHAR2(10),                     --センターコード
+    CENTER_NAME                    VARCHAR2(40),                     --センター名
+    AREA_CODE                      VARCHAR2(8),                      --地区コード
+    AREA_NAME                      VARCHAR2(40),                     --地区名称
+    SHIPPED_DATE                   DATE,                             --出荷日
+    ARRIVAL_DATE                   DATE,                             --着日
+    REGULAR_SALE_CLASS_HEAD        VARCHAR2(4),                      --定番特売区分（ヘッダ）
+    ITEM_CODE                      VARCHAR2(16),                     --商品コード
+    ITEM_NAME                      VARCHAR2(40),                     --商品名称
+    DELIVERY_ORDER_EDI             VARCHAR2(7),                      --配送順(EDI)
+    SHOP_CODE                      VARCHAR2(7),                      --店舗コード
+    SHOP_NAME                      VARCHAR2(40),                     --店舗名称
+    CONTENT                        NUMBER(8,0),                      --入数
+    CASE_NUM                       NUMBER(10,0),                     --ケース
+    INDIVI                         NUMBER(7,0),                      --バラ
+    QUANTITY                       NUMBER(10,0),                     --数量
+    ENTRY_NUMBER                   VARCHAR2(12),                     --伝票NO
+    REGULAR_SALE_CLASS_LINE        VARCHAR2(4),                      --定番特売区分（明細）
+    CREATED_BY                     NUMBER(15,0)   NOT NULL,          --作成者
+    CREATION_DATE                  DATE           NOT NULL,          --作成日
+    LAST_UPDATED_BY                NUMBER(15,0)   NOT NULL,          --最終更新者
+    LAST_UPDATE_DATE               DATE           NOT NULL,          --最終更新日
+    LAST_UPDATE_LOGIN              NUMBER(15,0),                     --最終更新ログイン
+    REQUEST_ID                     NUMBER(15,0),                     --要求ID
+    PROGRAM_APPLICATION_ID         NUMBER(15,0),                     --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                     NUMBER(15,0),                     --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE            DATE,                             --プログラム更新日
+    CONSTRAINT XXCOS_REP_PICK_DELI_SALE_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.RECORD_ID                 IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.BASE_CODE                 IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.BASE_NAME                 IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.WHSE_CODE                 IS '倉庫コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.WHSE_NAME                 IS '倉庫名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CHAIN_CODE                IS 'チェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CHAIN_NAME                IS 'チェーン店名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CENTER_CODE               IS 'センターコード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CENTER_NAME               IS 'センター名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.AREA_CODE                 IS '地区コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.AREA_NAME                 IS '地区名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.SHIPPED_DATE              IS '出荷日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.ARRIVAL_DATE              IS '着日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.REGULAR_SALE_CLASS_HEAD   IS '定番特売区分（ヘッダ）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.ITEM_CODE                 IS '商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.ITEM_NAME                 IS '商品名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.DELIVERY_ORDER_EDI        IS '配送順(EDI)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.SHOP_CODE                 IS '店舗コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.SHOP_NAME                 IS '店舗名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CONTENT                   IS '入数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CASE_NUM                  IS 'ケース';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.INDIVI                    IS 'バラ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.QUANTITY                  IS '数量';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.ENTRY_NUMBER              IS '伝票NO';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.REGULAR_SALE_CLASS_LINE   IS '定番特売区分（明細）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CREATED_BY                IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.CREATION_DATE             IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.LAST_UPDATED_BY           IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.LAST_UPDATE_DATE          IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.LAST_UPDATE_LOGIN         IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.REQUEST_ID                IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.PROGRAM_ID                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_DELI_SALE.PROGRAM_UPDATE_DATE       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_PICK_DELI_SALE                           IS 'ピックリスト_出荷先_製品_販売先別帳票ワークテーブル';

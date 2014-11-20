@@ -1,0 +1,72 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_SHOP_DIGESTION_LNS
+ * Description : 店舗別用消化計算明細テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Kitajima 新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_SHOP_DIGESTION_LNS
+(
+  SHOP_DIGESTION_LN_ID            NUMBER        NOT NULL,                       --店舗別用消化計算明細ID
+  SHOP_DIGESTION_HDR_ID           NUMBER,                                       --店舗別用消化計算ヘッダID
+  DIGESTION_DUE_DATE              DATE,                                         --消化計算締年月日
+  CUSTOMER_NUMBER                 VARCHAR2(9),                                  --顧客コード
+  DIGESTION_LN_NUMBER             NUMBER,                                       --枝番
+  ITEM_CODE                       VARCHAR2(7),                                  --品目コード
+  INVENT_SEQ                      NUMBER,                                       --棚卸SEQ
+  ITEM_PRICE                      NUMBER(10,2),                                 --定価
+  INVENTORY_ITEM_ID               NUMBER,                                       --品目ID
+  BUSINESS_COST                   NUMBER(10,2),                                 --営業原価
+  STANDARD_COST                   NUMBER(10,2),                                 --標準原価
+  ITEM_SALES_AMOUNT               NUMBER(10),                                   --店舗品目別販売金額
+  UOM_CODE                        VARCHAR2(3),                                  --単位コード
+  SALES_QUANTITY                  NUMBER(10,2),                                 --販売数
+  DELIVERY_BASE_CODE              VARCHAR2(4),                                  --納品拠点コード
+  SHIP_FROM_SUBINVENTORY_CODE     VARCHAR2(10),                                 --出荷元保管場所
+  CREATED_BY                      NUMBER(15)    NOT NULL,                       --作成者
+  CREATION_DATE                   DATE          NOT NULL,                       --作成日
+  LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                       --最終更新者
+  LAST_UPDATE_DATE                DATE          NOT NULL,                       --最終更新日
+  LAST_UPDATE_LOGIN               NUMBER(15),                                   --最終更新ログイン
+  REQUEST_ID                      NUMBER(15),                                   --要求ID
+  PROGRAM_APPLICATION_ID          NUMBER(15),                                   --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                      NUMBER(15),                                   --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE             DATE,                                         --プログラム更新日
+  CONSTRAINT XXCOS_SHOP_DIGESTION_LNS_PK PRIMARY KEY ( SHOP_DIGESTION_LN_ID  )
+  USING INDEX TABLESPACE xxidx2
+) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.SHOP_DIGESTION_LN_ID           IS '店舗別用消化計算明細ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.SHOP_DIGESTION_HDR_ID          IS '店舗別用消化計算ヘッダID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.DIGESTION_DUE_DATE             IS '消化計算締年月日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.CUSTOMER_NUMBER                IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.DIGESTION_LN_NUMBER            IS '枝番';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.ITEM_CODE                      IS '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.INVENT_SEQ                     IS '棚卸SEQ';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.PRICE                          IS '定価';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.INVENTORY_ITEM_ID              IS '品目ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.BUSINESS_COST                  IS '営業原価';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.STANDARD_COST                  IS '標準原価';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.ITEM_SALES_AMOUNT              IS '店舗品目別販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.UOM_CODE                       IS '単位コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.SALES_QUANTITY                 IS '販売数';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.DELIVERY_BASE_CODE             IS '納品拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.SHIP_FROM_SUBINVENTORY_CODE    IS '出荷元保管場所';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.CREATED_BY                     IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.CREATION_DATE                  IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.LAST_UPDATED_BY                IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.LAST_UPDATE_DATE               IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.LAST_UPDATE_LOGIN              IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.REQUEST_ID                     IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.PROGRAM_APPLICATION_ID         IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.PROGRAM_ID                     IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_LNS.PROGRAM_UPDATE_DATE            IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_SHOP_DIGESTION_LNS                                IS '店舗別用消化計算明細テーブル';

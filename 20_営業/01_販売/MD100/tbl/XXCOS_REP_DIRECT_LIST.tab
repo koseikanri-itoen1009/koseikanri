@@ -1,0 +1,82 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_DIRECT_LIST
+ * Description : 直送受注例外データリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Miyata   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_DIRECT_LIST 
+(         
+    RECORD_ID                      NUMBER            NOT NULL,             --レコードID
+    BASE_CODE                      VARCHAR2(4),                            --拠点コード
+    BASE_NAME                      VARCHAR2(40),                           --拠点名称
+    ORDER_NUMBER                   NUMBER(9),                              --受注番号
+    ORDER_LINE_NO                  NUMBER(2,0),                            --受注明細No.
+    LINE_NO                        NUMBER(2,0),                            --明細No.
+    DELIVER_REQUESTED_NO           VARCHAR2(12),                           --出荷依頼No
+    DELIVER_FROM_WHSE_NUMBER       VARCHAR2(10),                           --出荷元倉庫番号
+    DELIVER_FROM_WHSE_NAME         VARCHAR2(20),                           --出荷元倉庫名
+    CUSTOMER_NUMBER                VARCHAR2(9),                            --顧客番号
+    CUSTOMER_NAME                  VARCHAR2(20),                           --顧客名
+    ITEM_CODE                      VARCHAR2(7),                            --品目コード
+    ITEM_NAME                      VARCHAR2(20),                           --品名
+    SCHEDULE_DLV_DATE              DATE,                                   --納品予定日
+    SCHEDULE_INSPECT_DATE          DATE,                                   --検収予定日
+    ARRIVAL_DATE                   DATE,                                   --着日
+    ORDER_QUANTITY                 NUMBER(11,2),                           --受注数
+    DELIVER_ACTUAL_QUANTITY        NUMBER(11,2),                           --出荷実績数
+    UOM_CODE                       VARCHAR2(3),                            --単位
+    OUTPUT_QUANTITY                NUMBER(11,2),                           --差異数
+    DATA_CLASS                     VARCHAR2(1),                            --データ区分
+    CREATED_BY                     NUMBER(15,0)      NOT NULL,             --作成者
+    CREATION_DATE                  DATE NOT NULL,                          --作成日
+    LAST_UPDATED_BY                NUMBER(15,0)      NOT NULL,             --最終更新者
+    LAST_UPDATE_DATE               DATE NOT NULL,                          --最終更新日
+    LAST_UPDATE_LOGIN              NUMBER(15,0),                           --最終更新ログイン
+    REQUEST_ID                     NUMBER(15,0),                           --要求ID
+    PROGRAM_APPLICATION_ID         NUMBER(15,0),                           --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                     NUMBER(15,0),                           --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE            DATE,                                   --プログラム更新日
+    CONSTRAINT XXCOS_REP_DIRECT_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.RECORD_ID                    IS'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.BASE_CODE                    IS'拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.BASE_NAME                    IS'拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.ORDER_NUMBER                 IS'受注番号.';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.ORDER_LINE_NO                IS'受注明細No.';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.LINE_NO                      IS'明細No.';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.DELIVER_REQUESTED_NO         IS'出荷依頼No';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.DELIVER_FROM_WHSE_NUMBER     IS'出荷元倉庫番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.DELIVER_FROM_WHSE_NAME       IS'出荷元倉庫名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.CUSTOMER_NUMBER              IS'顧客番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.CUSTOMER_NAME                IS'顧客名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.ITEM_CODE                    IS'品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.ITEM_NAME                    IS'品名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.SCHEDULE_DLV_DATE            IS'納品予定日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.SCHEDULE_INSPECT_DATE        IS'検収予定日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.ARRIVAL_DATE                 IS'着日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.ORDER_QUANTITY               IS'受注数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.DELIVER_ACTUAL_QUANTITY      IS'出荷実績数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.UOM_CODE                     IS'単位';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.OUTPUT_QUANTITY              IS'差異数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.DATA_CLASS                   IS'データ区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.CREATED_BY                   IS'作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.CREATION_DATE                IS'作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.LAST_UPDATED_BY              IS'最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.LAST_UPDATE_DATE             IS'最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.LAST_UPDATE_LOGIN            IS'最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.REQUEST_ID                   IS'要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.PROGRAM_APPLICATION_ID       IS'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.PROGRAM_ID                   IS'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIRECT_LIST.PROGRAM_UPDATE_DATE          IS'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_DIRECT_LIST                              IS '直送受注例外データリスト帳票ワークテーブル';

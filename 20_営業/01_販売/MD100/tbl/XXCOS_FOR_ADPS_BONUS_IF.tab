@@ -1,0 +1,91 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_FOR_ADPS_BONUS_IF
+ * Description : 人事システム向け販売実績（賞与）テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Kitajima   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_FOR_ADPS_BONUS_IF
+(
+     RECORD_ID                 NUMBER      NOT NULL                       -- レコードID
+    ,EMPLOYEE_CODE             VARCHAR2(6) NOT NULL                       -- 従業員コード
+    ,RESULTS_DATE              VARCHAR2(6) NOT NULL                       -- 年月
+    ,GROUP_CODE                VARCHAR2(2)                                -- 小グループコード
+    ,BASE_CODE                 VARCHAR2(4) NOT NULL                       -- 拠点ｺｰﾄﾞ
+    ,AREA_CODE                 VARCHAR2(3) NOT NULL                       -- 地区コード
+    ,DIVISION_CODE             VARCHAR2(6) NOT NULL                       -- 本部ｺｰﾄﾞ
+    ,P_SALE_GROSS              NUMBER(12)                                 -- 個売上粗利
+    ,P_CURRENT_PROFIT          NUMBER(12)                                 -- 個経常利益
+    ,P_VISIT_COUNT             NUMBER(6)                                  -- 個訪問件数
+    ,G_SALE_GROSS              NUMBER(12)                                 -- 小売上粗利
+    ,G_CURRENT_PROFIT          NUMBER(12)                                 -- 小経常利益
+    ,G_VISIT_COUNT             NUMBER(6)                                  -- 小個訪問件数
+    ,B_SALE_GROSS              NUMBER(12)                                 -- 拠売上粗利
+    ,B_CURRENT_PROFIT          NUMBER(12)                                 -- 拠経常利益
+    ,B_VISIT_COUNT             NUMBER(6)                                  -- 拠訪問件数
+    ,A_SALE_GROSS              NUMBER(12)                                 -- 地売上粗利
+    ,A_CURRENT_PROFIT          NUMBER(12)                                 -- 地経常利益
+    ,A_VISIT_COUNT             NUMBER(6)                                  -- 地訪問件数
+    ,D_SALE_GROSS              NUMBER(12)                                 -- 本売上粗利
+    ,D_CURRENT_PROFIT          NUMBER(12)                                 -- 本経常利益
+    ,D_VISIT_COUNT             NUMBER(6)                                  -- 本訪問件数
+    ,S_SALE_GROSS              NUMBER(12)                                 -- 全売上粗利
+    ,S_CURRENT_PROFIT          NUMBER(12)                                 -- 全経常利益
+    ,S_VISIT_COUNT             NUMBER(6)                                  -- 全訪問件数
+    ,CREATED_BY                NUMBER(15)  NOT NULL                       -- 作成者
+    ,CREATION_DATE             DATE        NOT NULL                       -- 作成日
+    ,LAST_UPDATED_BY           NUMBER(15)  NOT NULL                       -- 最終更新者
+    ,LAST_UPDATE_DATE          DATE        NOT NULL                       -- 最終更新日
+    ,LAST_UPDATE_LOGIN         NUMBER(15)                                 -- 最終更新ログイン
+    ,REQUEST_ID                NUMBER(15)                                 -- 要求ID
+    ,PROGRAM_APPLICATION_ID    NUMBER(15)                                 -- コンカレント・プログラム・アプリケーションID
+    ,PROGRAM_ID                NUMBER(15)                                 -- コンカレント・プログラムID
+    ,PROGRAM_UPDATE_DATE       DATE                                       -- プログラム更新日
+    ,CONSTRAINT XXCOS_FOR_ADPS_BONUS_IF_PK PRIMARY KEY ( RECORD_ID )
+     USING INDEX TABLESPACE xxidx2
+)
+/
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.RECORD_ID                 IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.EMPLOYEE_CODE             IS '従業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.RESULTS_DATE              IS '年月';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.GROUP_CODE                IS '小グループコード';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.BASE_CODE                 IS '拠点ｺｰﾄﾞ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.AREA_CODE                 IS '地区コード';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.DIVISION_CODE             IS '本部ｺｰﾄﾞ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.P_SALE_GROSS              IS '個売上粗利';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.P_CURRENT_PROFIT          IS '個経常利益';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.P_VISIT_COUNT             IS '個訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.G_SALE_GROSS              IS '小売上粗利';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.G_CURRENT_PROFIT          IS '小経常利益';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.G_VISIT_COUNT             IS '小個訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.B_SALE_GROSS              IS '拠売上粗利';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.B_CURRENT_PROFIT          IS '拠経常利益';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.B_VISIT_COUNT             IS '拠訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.A_SALE_GROSS              IS '地売上粗利';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.A_CURRENT_PROFIT          IS '地経常利益';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.A_VISIT_COUNT             IS '地訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.D_SALE_GROSS              IS '本売上粗利';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.D_CURRENT_PROFIT          IS '本経常利益';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.D_VISIT_COUNT             IS '本訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.S_SALE_GROSS              IS '全売上粗利';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.S_CURRENT_PROFIT          IS '全経常利益';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.S_VISIT_COUNT             IS '全訪問件数';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.CREATED_BY                IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.CREATION_DATE             IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.LAST_UPDATED_BY           IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.LAST_UPDATE_DATE          IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.LAST_UPDATE_LOGIN         IS '最終更新ﾛｸﾞｲﾝ';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.REQUEST_ID                IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.PROGRAM_APPLICATION_ID    IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.PROGRAM_ID                IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCOS.XXCOS_FOR_ADPS_BONUS_IF.PROGRAM_UPDATE_DATE       IS 'ﾌﾟﾛｸﾞﾗﾑ更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_FOR_ADPS_BONUS_IF                           IS  '人事システム向け販売実績（賞与）テーブル';
+

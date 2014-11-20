@@ -1,0 +1,110 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_DLV_CHK_LIST
+ * Description : 納品書チェックリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS S.Miyakoshi新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
+(
+    RECORD_ID                     NUMBER          NOT NULL,                    --レコードID
+    TARGET_DATE                   DATE,                                        --対象日付
+    BASE_CODE                     VARCHAR2(4),                                 --拠点コード
+    BASE_NAME                     VARCHAR2(40),                                --拠点名称
+    EMPLOYEE_NUM                  VARCHAR2(5),                                 --営業員コード
+    EMPLOYEE_NAME                 VARCHAR2(40),                                --営業員氏名
+    GROUP_CODE                    VARCHAR2(2),                                 --グループ番号
+    GROUP_IN_SEQUENCE             VARCHAR2(2),                                 --グループ内順序
+    ENTRY_NUMBER                  VARCHAR2(12),                                --伝票番号
+    DLV_DATE                      DATE,                                        --納品日
+    PARTY_NUM                     VARCHAR2(9),                                 --顧客コード
+    CUSTOMER_NAME                 VARCHAR2(40),                                --顧客名
+    INPUT_CLASS                   VARCHAR2(30),                                --入力区分
+    PERFORMANCE_BY_CODE           VARCHAR2(5),                                 --成績者コード
+    PERFORMANCE_BY_NAME           VARCHAR2(40),                                --成績者名
+    CARD_SALE_CLASS               VARCHAR2(6),                                 --カード売り区分
+    SUDSTANCE_TOTAL_AMOUNT        NUMBER(12,0),                                --本体合計金額
+    SALE_DISCOUNT_AMOUNT          NUMBER(12,0),                                --売上値引額
+    CONSUMPTION_TAX_TOTAL_AMOUNT  NUMBER(9,0),                                 --消費税金額合計
+    CONSUMPTION_TAX_CLASS_MST     VARCHAR2(16),                                --消費税区分（マスタ）
+    INVOICE_CLASSIFICATION_CODE   VARCHAR2(4),                                 --伝票分類コード
+    INVOICE_CLASS                 VARCHAR2(4),                                 --伝票区分
+    SALE_CLASS                    VARCHAR2(14),                                --売上区分
+    ITEM_CODE                     VARCHAR2(7),                                 --品目コード
+    ITEM_NAME                     VARCHAR2(40),                                --商品名
+    QUANTITY                      NUMBER(9,2),                                 --数量
+    WHOLESALE_UNIT_PLOCE          NUMBER(9,2),                                 --卸単価
+    CONFIRMATION                  VARCHAR2(2),                                 --確認
+    CONSUM_TAX_CALSS_ENTERED      VARCHAR2(12),                                --消費税区分（入力）
+    PLOCE                         NUMBER(9,2),                                 --売価
+    CARD_AMOUNT                   NUMBER(9,2),                                 --カード金額
+    COLUMN_NO                     VARCHAR2(2),                                 --コラム
+    H_AND_C                       VARCHAR2(4),                                 --HC
+    PAYMENT_CLASS                 VARCHAR2(12),                                --入金区分
+    PAYMENT_AMOUNT                NUMBER(15,0),                                --入金額
+    CREATED_BY                    NUMBER(15,0)    NOT NULL,                    --作成者
+    CREATION_DATE                 DATE            NOT NULL,                    --作成日
+    LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,                    --最終更新者
+    LAST_UPDATE_DATE              DATE            NOT NULL,                    --最終更新日
+    LAST_UPDATE_LOGIN             NUMBER(15,0),                                --最終更新ログイン
+    REQUEST_ID                    NUMBER(15,0),                                --要求ID
+    PROGRAM_APPLICATION_ID        NUMBER(15,0),                                --コンカレント・プログラム・アプリケーションI
+    PROGRAM_ID                    NUMBER(15,0),                                --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE           DATE,                                        --プログラム更新日
+    CONSTRAINT XXCOS_REP_DLV_CHK_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.RECORD_ID                       IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.TARGET_DATE                     IS '対象日付';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.BASE_CODE                       IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.BASE_NAME                       IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.EMPLOYEE_NUM                    IS '営業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.EMPLOYEE_NAME                   IS '営業員氏名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.GROUP_CODE                      IS 'グループ番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.GROUP_IN_SEQUENCE               IS 'グループ内順序';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.ENTRY_NUMBER                    IS '伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.DLV_DATE                        IS '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PARTY_NUM                       IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CUSTOMER_NAME                   IS '顧客名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.INPUT_CLASS                     IS '入力区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PERFORMANCE_BY_CODE             IS '成績者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PERFORMANCE_BY_NAME             IS '成績者名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CARD_SALE_CLASS                 IS 'カード売り区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.SUDSTANCE_TOTAL_AMOUNT          IS '本体合計金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.SALE_DISCOUNT_AMOUNT            IS '売上値引額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CONSUMPTION_TAX_TOTAL_AMOUNT    IS '消費税金額合計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CONSUMPTION_TAX_CLASS_MST       IS '消費税区分（マスタ)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.INVOICE_CLASSIFICATION_CODE     IS '伝票分類コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.INVOICE_CLASS                   IS '伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.SALE_CLASS                      IS '売上区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.ITEM_CODE                       IS '品目コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.ITEM_NAME                       IS '商品名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.QUANTITY                        IS '数量';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.WHOLESALE_UNIT_PLOCE            IS '卸単価';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CONFIRMATION                    IS '確認';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CONSUM_TAX_CALSS_ENTERED        IS '消費税区分（入力)';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PLOCE                           IS '売価';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CARD_AMOUNT                     IS 'カード金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.COLUMN_NO                       IS 'コラム';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.H_AND_C                         IS 'HC';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PAYMENT_CLASS                   IS '入金区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PAYMENT_AMOUNT                  IS '入金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATED_BY                      IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATION_DATE                   IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATED_BY                 IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATE_DATE                IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATE_LOGIN               IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.REQUEST_ID                      IS '要求ＩＤ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PROGRAM_APPLICATION_ID          IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PROGRAM_ID                      IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.PROGRAM_UPDATE_DATE             IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_DLV_CHK_LIST                                 IS '納品書チェックリスト帳票ワークテーブル';

@@ -1,0 +1,70 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_DIG_DV_LIST
+ * Description : 消化VD別掛率チェックリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kin      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_DIG_DV_LIST
+(
+    RECORD_ID                     NUMBER          NOT NULL,          --レコードID
+    DIGESTION_DATE                DATE,                              --年月日
+    BASE_CODE                     VARCHAR2 (4),                      --拠点コード
+    BASE_NAME                     VARCHAR2 (30),                     --拠点名称
+    EMPLOYEE_NUM                  VARCHAR2 (5),                      --営業員コード
+    EMPLOYEE_NAME                 VARCHAR2 (30),                     --営業員氏名
+    PARTY_NUM                     VARCHAR2 (9),                      --顧客コード
+    CUSTOMER_NAME                 VARCHAR2 (30),                     --顧客名
+    DLV_INVOICE_AMOUNT            NUMBER (10,0),                     --納品伝票金額
+    DIGEST_SALE_AMOUNT            NUMBER (10,0),                     --設定掛率金額
+    BALANCE                       NUMBER (11,0),                     --差額
+    SETTING_ACCOUNT_RATE          VARCHAR2 (8),                      --設定掛率
+    ACCOUNT_RATE                  VARCHAR2 (8),                      --今回掛率
+    CONFIRMATION_MESSAGE          VARCHAR2 (40),                     --確認メッセージ
+    UNCALCULATE_CLASS             VARCHAR2 (1),                      --未計算区分
+    CREATED_BY                    NUMBER(15,0)    NOT NULL,          --作成者
+    CREATION_DATE                 DATE            NOT NULL,          --作成日
+    LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,          --最終更新者
+    LAST_UPDATE_DATE              DATE            NOT NULL,          --最終更新日
+    LAST_UPDATE_LOGIN             NUMBER(15,0),                      --最終更新ログイン
+    REQUEST_ID                    NUMBER(15,0),                      --要求ID
+    PROGRAM_APPLICATION_ID        NUMBER(15,0),                      --コンカレント・プログラム・アプリケーションI
+    PROGRAM_ID                    NUMBER(15,0),                      --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE           DATE,                              --プログラム更新日
+    CONSTRAINT XXCOS_REP_DIG_DV_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.RECORD_ID                   IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.DIGESTION_DATE              IS '年月日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.BASE_CODE                   IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.BASE_NAME                   IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.EMPLOYEE_NUM                IS '営業員コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.EMPLOYEE_NAME               IS '営業員氏名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PARTY_NUM                   IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.CUSTOMER_NAME               IS '顧客名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.DLV_INVOICE_AMOUNT          IS '納品伝票金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.DIGEST_SALE_AMOUNT          IS '設定掛率金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.BALANCE                     IS '差額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.SETTING_ACCOUNT_RATE        IS '設定掛率';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.ACCOUNT_RATE                IS '今回掛率';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.CONFIRMATION_MESSAGE        IS '確認メッセージ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.UNCALCULATE_CLASS           IS '未計算区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.CREATED_BY                  IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.CREATION_DATE               IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.LAST_UPDATED_BY             IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.LAST_UPDATE_DATE            IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.LAST_UPDATE_LOGIN           IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.REQUEST_ID                  IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PROGRAM_APPLICATION_ID      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PROGRAM_ID                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PROGRAM_UPDATE_DATE         IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_DIG_DV_LIST                             IS '消化VD別掛率チェックリスト帳票ワークテーブル';

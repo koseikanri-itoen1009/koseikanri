@@ -1,0 +1,64 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_DIG_LIST
+ * Description : 消化計算チェックリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS K.Kin      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_DIG_LIST
+(
+    RECORD_ID                     NUMBER          NOT NULL,               --レコードID
+    DIGESTION_DATE                DATE,                                   --年月日
+    BASE_CODE                     VARCHAR2(4),                            --拠点コード
+    BASE_NAME                     VARCHAR2(40),                           --拠点名称
+    PARTY_NUM                     VARCHAR2(9),                            --顧客コード
+    CUSTOMER_NAME                 VARCHAR2(40),                           --顧客名
+    SHOP_SALE_AMOUNT              NUMBER(10),                             --店舗別売上金額
+    DIGEST_SALE_AMOUNT            NUMBER(10),                             --消化売上金額
+    SETTING_ACCOUNT_RATE          VARCHAR2(8),                            --設定掛率
+    ACCOUNT_RATE                  VARCHAR2(8),                            --今回掛率
+    CONFIRMATION_MESSAGE          VARCHAR2(40),                           --確認メッセージ
+    UNCALCULATE_CLASS             VARCHAR2(1),                            --未計算区分
+    CREATED_BY                    NUMBER(15)      NOT NULL,               --作成者
+    CREATION_DATE                 DATE            NOT NULL,               --作成日
+    LAST_UPDATED_BY               NUMBER(15)      NOT NULL,               --最終更新者
+    LAST_UPDATE_DATE              DATE            NOT NULL,               --最終更新日
+    LAST_UPDATE_LOGIN             NUMBER(15),                             --最終更新ログイン
+    REQUEST_ID                    NUMBER(15),                             --要求ID
+    PROGRAM_APPLICATION_ID        NUMBER(15),                             --コンカレント・プログラム・アプリケーションＩＤ
+    PROGRAM_ID                    NUMBER(15),                             --コンカレント・プログラムＩＤ
+    PROGRAM_UPDATE_DATE           DATE,                                   --プログラム更新日
+    CONSTRAINT XXCOS_REP_DIG_LIST_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.RECORD_ID                      IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.DIGESTION_DATE                 IS '年月日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.BASE_CODE                      IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.BASE_NAME                      IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.PARTY_NUM                      IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.CUSTOMER_NAME                  IS '顧客名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.SHOP_SALE_AMOUNT               IS '店舗別売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.DIGEST_SALE_AMOUNT             IS '消化売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.SETTING_ACCOUNT_RATE           IS '設定掛率';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.ACCOUNT_RATE                   IS '今回掛率';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.CONFIRMATION_MESSAGE           IS '確認メッセージ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.UNCALCULATE_CLASS              IS '未計算区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.CREATED_BY                     IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.CREATION_DATE                  IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.LAST_UPDATED_BY                IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.LAST_UPDATE_DATE               IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.LAST_UPDATE_LOGIN              IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.REQUEST_ID                     IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.PROGRAM_APPLICATION_ID         IS 'コンカレント・プログラム・アプリケーションＩＤ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.PROGRAM_ID                     IS 'コンカレント・プログラムＩＤ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_LIST.PROGRAM_UPDATE_DATE            IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_DIG_LIST                                IS '消化計算チェックリスト帳票ワークテーブル';

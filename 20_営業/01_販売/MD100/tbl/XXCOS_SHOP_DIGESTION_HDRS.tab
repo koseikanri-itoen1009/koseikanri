@@ -1,0 +1,74 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_SHOP_DIGESTION_HDRS
+ * Description : 店舗別用消化計算ヘッダテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/30    1.0   SCS T.Kitajima 新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_SHOP_DIGESTION_HDRS
+(
+  SHOP_DIGESTION_HDR_ID           NUMBER       NOT NULL,                        --店舗別用消化計算ヘッダID
+  DIGESTION_DUE_DATE              DATE,                                         --消化計算締年月日
+  CUSTOMER_NUMBER                 VARCHAR2(9),                                  --顧客コード
+  SALES_BASE_CODE                 VARCHAR2(4),                                  --売上拠点コード
+  CUST_ACCOUNT_ID                 NUMBER,                                       --顧客ID
+  DIGESTION_EXE_DATE              DATE,                                         --消化計算実行日
+  AR_SALES_AMOUNT                 NUMBER(10),                                   --店舗別売上金額
+  CHECK_SALES_AMOUNT              NUMBER(10),                                   --チェック用売上金額
+  DIGESTION_CALC_RATE             NUMBER(7,2),                                  --消化計算掛率
+  MASTER_RATE                     NUMBER(7,2),                                  --マスタ掛率
+  BALANCE_AMOUNT                  NUMBER(10),                                   --差額
+  CUST_GYOTAI_SHO                 VARCHAR2(2),                                  --業態小分類
+  PERFORMANCE_BY_CODE             VARCHAR2(5),                                  --成績者コード
+  SALES_RESULT_CREATION_DATE      DATE,                                         --販売実績登録日
+  SALES_RESULT_CREATION_FLAG      VARCHAR2(1),                                  --販売実績作成済フラグ
+  PRE_DIGESTION_DUE_DATE          DATE,                                         --前回消化計算締年月日
+  UNCALCULATE_CLASS               VARCHAR2(1),                                  --未計算区分
+  CREATED_BY                      NUMBER(15)    NOT NULL,                       --作成者
+  CREATION_DATE                   DATE          NOT NULL,                       --作成日
+  LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                       --最終更新者
+  LAST_UPDATE_DATE                DATE          NOT NULL,                       --最終更新日
+  LAST_UPDATE_LOGIN               NUMBER(15),                                   --最終更新ログイン
+  REQUEST_ID                      NUMBER(15),                                   --要求ID
+  PROGRAM_APPLICATION_ID          NUMBER(15),                                   --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                      NUMBER(15),                                   --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE             DATE,                                         --プログラム更新日
+  CONSTRAINT XXCOS_SHOP_DIGESTION_HDRS_PK PRIMARY KEY ( SHOP_DIGESTION_HDR_ID )
+  USING INDEX TABLESPACE xxidx2
+) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.SHOP_DIGESTION_HDR_ID         IS '店舗別用消化計算ヘッダID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.DIGESTION_DUE_DATE            IS '消化計算締年月日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.CUSTOMER_NUMBER               IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.SALES_BASE_CODE               IS '売上拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.CUST_ACCOUNT_ID               IS '顧客ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.DIGESTION_EXE_DATE            IS '消化計算実行日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.AR_SALES_AMOUNT               IS '店舗別売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.CHECK_SALES_AMOUNT            IS 'チェック用売上金額';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.DIGESTION_CALC_RATE           IS '消化計算掛率';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.MASTER_RATE                   IS 'マスタ掛率';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.BALANCE_AMOUNT                IS '差額';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.CUST_GYOTAI_SHO               IS '業態小分類';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.PERFORMANCE_BY_CODE           IS '成績者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.SALES_RESULT_CREATION_DATE    IS '販売実績登録日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.SALES_RESULT_CREATION_FLAG    IS '販売実績作成済フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.PRE_DIGESTION_DUE_DATE        IS '前回消化計算締年月日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.UNCALCULATE_CLASS             IS '未計算区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.CREATED_BY                    IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.CREATION_DATE                 IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.LAST_UPDATED_BY               IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.LAST_UPDATE_DATE              IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.LAST_UPDATE_LOGIN             IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.REQUEST_ID                    IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.PROGRAM_APPLICATION_ID        IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.PROGRAM_ID                    IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_SHOP_DIGESTION_HDRS.PROGRAM_UPDATE_DATE           IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_SHOP_DIGESTION_HDRS                               IS '店舗別用消化計算ヘッダテーブル';
