@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A09C(body)
  * Description      : 年間商品計画（営業原価）チェックリスト出力
  * MD.050           : 年間商品計画（営業原価）チェックリスト出力 MD050_CSM_002_A09
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-02-20    1.2   M.Ohtsuki       ［障害CT_053］マイナス商品の不具合の対応
  *  2009-05-12    1.3   M.Ohtsuki       ［障害T1_0858］拠点コード抽出条件の不備の対応
  *  2009-07-15    1.4   M.Ohtsuki       ［0000678］対象データ0件時のステータス不具合の対応
+ *  2010-02-25    1.5   T.Nakano        ［E_本稼動_01681］H基準算出処理変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1922,7 +1923,10 @@ AS
         lr_plan_rec.margin                 := ln_sales_discount;          -- 粗利益額
         lr_plan_rec.margin_rate            := 0;                          -- 粗利益率
         lr_plan_rec.credit_rate            := 0;                          -- 掛率
-        lr_plan_rec.base_margin            := NULL;                       -- 標準原価粗利益額
+--//+UPD START 2010/02/25 E_本稼動_01681 T.Nakano
+--        lr_plan_rec.base_margin            := NULL;                       -- 標準原価粗利益額
+        lr_plan_rec.base_margin            := ln_sales_discount;          -- 標準原価粗利益額
+--//+UPD END 2010/02/25 E_本稼動_01681 T.Nakano
 
         insert_data(
                   lr_plan_rec          -- 対象レコード
@@ -1949,7 +1953,10 @@ AS
         lr_plan_rec.margin                 := ln_receipt_discount;        -- 粗利益額
         lr_plan_rec.margin_rate            := 0;                          -- 粗利益率
         lr_plan_rec.credit_rate            := 0;                          -- 掛率
-        lr_plan_rec.base_margin            := NULL;                       -- 標準原価粗利益額
+--//+UPD START 2010/02/25 E_本稼動_01681 T.Nakano
+--        lr_plan_rec.base_margin            := NULL;                       -- 標準原価粗利益額
+        lr_plan_rec.base_margin            := ln_receipt_discount;        -- 標準原価粗利益額
+--//+UPD END 2010/02/25 E_本稼動_01681 T.Nakano
 
         insert_data(
                   lr_plan_rec          -- 対象レコード
