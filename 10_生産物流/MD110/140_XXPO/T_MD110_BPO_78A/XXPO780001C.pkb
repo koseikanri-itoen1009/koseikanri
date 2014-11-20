@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    計算書                                (T_MD070_BPO_78A)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/07/29    1.4   Satoshi Yunba    禁則文字対応
  *  2008/12/05    1.5  Tsuyoki Yoshimoto 本番障害#446
  *  2008/12/25    1.6  Takao Ohashi      本番障害#848,850
+ *  2009/03/04    1.7  Akiyoshi Shiina   本番障害#1266対応
  *
  *****************************************************************************************/
 --
@@ -671,7 +672,10 @@ AS
       AND   xoha.arrival_date         BETWEEN xla.start_date_active     -- 着荷日で有効なデータ
                                       AND     xla.end_date_active       -- 
       AND   hla.location_id           = xla.location_id
-      AND   xoha.performance_management_dept
+-- 2009/03/04 v1.7 UPDATE START
+--      AND   xoha.performance_management_dept
+      AND xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID)
+-- 2009/03/04 v1.7 UPDATE END
                                       = hla.location_code
       ---------------------------------------------------------------------------------------------
       -- 仕入先アドオンの絞込み条件
