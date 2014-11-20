@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,8 @@
  *  2009/01/30    1.0  マスタTM      初回作成
  *  2009/04/17    1.1  Y.Kuboshima   カード会社区分、カード会社の追加
  *  2009/07/09    1.2  K.Ito         【0000493】ストレージ句の見直し対応
+ *  2009/10/01    1.3  Y.Kuboshima   【0001350】請求書印刷単位、請求書用コード、統括請求書用コードの追加
+ *                                 
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
 (
@@ -95,6 +97,11 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
     past_customer_status        VARCHAR2(2),
     card_company_div            VARCHAR2(1),
     card_company                VARCHAR2(9),
+-- 2009/10/01 Ver1.3 add start by Y.Kuboshima
+    invoice_printing_unit       VARCHAR2(1),
+    invoice_code                VARCHAR2(9),
+    enclose_invoice_code        VARCHAR2(9),
+-- 2009/10/01 Ver1.3 add end by Y.Kuboshima
     created_by                  NUMBER(15,0)    NOT NULL,
     creation_date               DATE            NOT NULL,
     last_updated_by             NUMBER(15,0)    NOT NULL,
@@ -271,6 +278,14 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.card_company_div            IS 'カー
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.card_company                IS 'カード会社コード'
 /
+-- 2009/09/11 Ver1.3 add start by Y.Kuboshima
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.invoice_printing_unit       IS '請求書印刷単位'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.invoice_code                IS '請求書用コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.enclose_invoice_code        IS '統括請求書用コード'
+/
+-- 2009/09/11 Ver1.3 add end by Y.Kuboshima
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'

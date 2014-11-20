@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmm_003common_pkg(body)
  * Description            :
  * MD.110                 : MD110_CMM_顧客_共通関数
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/06/19    1.5  Yutaka.Kuboshima 障害T1_1500の対応
  *  2009/07/14    1.6  Yutaka.Kuboshima 統合テスト障害0000674の対応
  *  2009/07/15    1.7  Yutaka.Kuboshima 統合テスト障害0000648の対応
+ *  2009/09/15    1.8  Yutaka.Kuboshima 統合テスト障害0001350の対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -90,6 +91,10 @@ AS
     cv_planning       CONSTANT VARCHAR2(2) := '17';
     cv_edi            CONSTANT VARCHAR2(2) := '18';
     cv_hyakka         CONSTANT VARCHAR2(2) := '19';
+-- 2009/09/15 Ver1.8 add start by Yutaka.Kuboshima
+    cv_seikyu         CONSTANT VARCHAR2(2) := '20';
+    cv_tokatu         CONSTANT VARCHAR2(2) := '21';
+-- 2009/09/15 Ver1.8 add end by Yutaka.Kuboshima
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -144,7 +149,11 @@ AS
       ELSIF (iv_cust_status = cv_out_cust) AND (iv_cust_will_status = cv_stop_approved) THEN
         RETURN cv_success;
       END IF;
-    ELSIF ((iv_cust_class = cv_root) OR (iv_cust_class = cv_wholesale) OR (iv_cust_class = cv_planning) OR (iv_cust_class = cv_edi) OR (iv_cust_class = cv_hyakka)) THEN
+-- 2009/09/15 Ver1.8 modify start by Yutaka.Kuboshima
+--    ELSIF ((iv_cust_class = cv_root) OR (iv_cust_class = cv_wholesale) OR (iv_cust_class = cv_planning) OR (iv_cust_class = cv_edi) OR (iv_cust_class = cv_hyakka)) THEN
+    -- 顧客区分'20','21'を追加
+    ELSIF ((iv_cust_class = cv_root) OR (iv_cust_class = cv_wholesale) OR (iv_cust_class = cv_planning) OR (iv_cust_class = cv_edi) OR (iv_cust_class = cv_hyakka) OR (iv_cust_class = cv_seikyu) OR (iv_cust_class = cv_tokatu)) THEN
+-- 2009/09/15 Ver1.8 modify end by Yutaka.Kuboshima
       IF (iv_cust_status = cv_out_cust) AND (iv_cust_will_status = cv_stop_approved) THEN
         RETURN cv_success;
       END IF;
@@ -373,7 +382,10 @@ AS
     cv_token_ship_to        CONSTANT VARCHAR2(50) := '[出荷先]';             -- トークン値(出荷先)
     cv_token_other_to       CONSTANT VARCHAR2(50) := '[その他]';             -- トークン値(その他)
     cv_token_bill_to_use_id CONSTANT VARCHAR2(50) := '[請求先事業所]';       -- トークン値(請求先事業所)
-    cv_token_invoice_div    CONSTANT VARCHAR2(50) := '[請求書発行区分]';     -- トークン値(請求書発行区分)
+-- 2009/09/15 Ver1.8 delete start by Yutaka.Kuboshima
+-- 請求書発行区分は必須項目対象から外す
+--    cv_token_invoice_div    CONSTANT VARCHAR2(50) := '[請求書発行区分]';     -- トークン値(請求書発行区分)
+-- 2009/09/15 Ver1.8 delete end by Yutaka.Kuboshima
     cv_token_payment_id     CONSTANT VARCHAR2(50) := '[支払条件]';           -- トークン値(支払条件)
     cv_token_tax_rule       CONSTANT VARCHAR2(50) := '[税金端数処理]';       -- トークン値(税金端数処理)
 -- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
@@ -391,6 +403,10 @@ AS
     cv_cust_keikaku_kbn     CONSTANT VARCHAR2(2)  := '17';                   -- 計画立案用
     cv_cust_edichain_kbn    CONSTANT VARCHAR2(2)  := '18';                   -- EDIチェーン
     cv_cust_hyakkaten_kbn   CONSTANT VARCHAR2(2)  := '19';                   -- 百貨店伝区
+-- 2009/09/15 Ver1.8 add start by Yutaka.Kuboshima
+    cv_cust_seikyu_kbn      CONSTANT VARCHAR2(2)  := '20';                   -- 請求書用
+    cv_cust_toukatu_kbn     CONSTANT VARCHAR2(2)  := '21';                   -- 統括請求書用
+-- 2009/09/15 Ver1.8 add end by Yutaka.Kuboshima
     -- 顧客ステータス
     cv_cust_mckouho_sts     CONSTANT VARCHAR2(2)  := '10';                   -- MC候補
     cv_cust_mc_sts          CONSTANT VARCHAR2(2)  := '20';                   -- MC
@@ -454,7 +470,10 @@ AS
             ,cust.address_lines_phonetic address_lines_phonetic  -- 電話番号
             ,cust.site_use_code          site_use_code           -- 使用目的
             ,cust.bill_to_site_use_id    bill_to_site_use_id     -- 請求先事業所
-            ,cust.invoice_issue_div      invoice_issue_div       -- 請求書発行区分
+-- 2009/09/15 Ver1.8 delete start by Yutaka.Kuboshima
+-- 請求書発行区分は必須項目対象から外す
+--            ,cust.invoice_issue_div      invoice_issue_div       -- 請求書発行区分
+-- 2009/09/15 Ver1.8 delete end by Yutaka.Kuboshima
             ,cust.payment_term_id        payment_term_id         -- 支払条件
             ,cust.tax_rounding_rule      tax_rounding_rule       -- 税金端数処理
 -- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
@@ -471,7 +490,10 @@ AS
                     ,hl2.address_lines_phonetic address_lines_phonetic
                     ,hcsuv.site_use_code        site_use_code
                     ,hcsuv.bill_to_site_use_id  bill_to_site_use_id
-                    ,hcsuv.invoice_issue_div    invoice_issue_div
+-- 2009/09/15 Ver1.8 delete start by Yutaka.Kuboshima
+-- 請求書発行区分は必須項目対象から外す
+--                    ,hcsuv.invoice_issue_div    invoice_issue_div
+-- 2009/09/15 Ver1.8 delete end by Yutaka.Kuboshima
                     ,hcsuv.payment_term_id      payment_term_id
                     ,hcsuv.tax_rounding_rule    tax_rounding_rule
 -- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
@@ -484,7 +506,10 @@ AS
                     ,(SELECT hca3.cust_account_id       cust_account_id
                             ,hcsu3.site_use_code        site_use_code
                             ,hcsu3.bill_to_site_use_id  bill_to_site_use_id
-                            ,hcsu3.attribute1           invoice_issue_div
+-- 2009/09/15 Ver1.8 delete start by Yutaka.Kuboshima
+-- 請求書発行区分は必須項目対象から外す
+--                           ,hcsu3.attribute1           invoice_issue_div
+-- 2009/09/15 Ver1.8 delete end by Yutaka.Kuboshima
                             ,hcsu3.payment_term_id      payment_term_id
                             ,hcsu3.tax_rounding_rule    tax_rounding_rule
                       FROM   hz_cust_accounts   hca3
@@ -505,7 +530,11 @@ AS
                             AND hcsu3.site_use_code IN (cv_site_use_bill_to, cv_site_use_ship_to))
                           OR  ( hca3.customer_class_code = cv_cust_urikake_kbn
                             AND hcsu3.site_use_code = cv_site_use_bill_to)
-                          OR  ( hca3.customer_class_code IN (cv_cust_houjin_kbn, cv_cust_junkai_kbn, cv_cust_hanbai_kbn, cv_cust_keikaku_kbn, cv_cust_edichain_kbn, cv_cust_hyakkaten_kbn)
+-- 2009/09/15 Ver1.8 modify start by Yutaka.Kuboshima
+--                          OR  ( hca3.customer_class_code IN (cv_cust_houjin_kbn, cv_cust_junkai_kbn, cv_cust_hanbai_kbn, cv_cust_keikaku_kbn, cv_cust_edichain_kbn, cv_cust_hyakkaten_kbn)
+                          -- 顧客区分'20','21'を追加
+                          OR  ( hca3.customer_class_code IN (cv_cust_houjin_kbn, cv_cust_junkai_kbn, cv_cust_hanbai_kbn, cv_cust_keikaku_kbn, cv_cust_edichain_kbn, cv_cust_hyakkaten_kbn, cv_cust_seikyu_kbn, cv_cust_toukatu_kbn)
+-- 2009/09/15 Ver1.8 modify start by Yutaka.Kuboshima
                             AND hcsu3.site_use_code = cv_site_use_other_to)
                             )
                         AND  hl3.location_id         = (SELECT MIN(hps31.location_id)
@@ -613,6 +642,15 @@ AS
       OR (  cust_required_check_rec.customer_class_code = cv_cust_hyakkaten_kbn
         AND iv_cust_status IS NULL
         AND iv_cust_will_status =cv_cust_taishougai_sts)
+-- 2009/09/15 Ver1.8 add start by Yutaka.Kuboshima
+      -- 顧客区分'20','21'のチェック起動条件を追加
+      OR (  cust_required_check_rec.customer_class_code = cv_cust_seikyu_kbn
+        AND iv_cust_status IS NULL
+        AND iv_cust_will_status =cv_cust_taishougai_sts)
+      OR (  cust_required_check_rec.customer_class_code = cv_cust_toukatu_kbn
+        AND iv_cust_status IS NULL
+        AND iv_cust_will_status =cv_cust_taishougai_sts)
+-- 2009/09/15 Ver1.8 add end by Yutaka.Kuboshima
        )
     THEN
       -- 顧客番号NULLチェック
@@ -709,13 +747,16 @@ AS
           END IF;
         -- 使用目的(請求先)の場合
         ELSIF (cust_required_check_rec.site_use_code = cv_site_use_bill_to) THEN
-          -- 請求書発行区分NULLチェック
-          IF (cust_required_check_rec.invoice_issue_div IS NULL) THEN
--- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
---            lv_item_token := lv_item_token || cv_token_invoice_div;
-            lv_item_token_bill := lv_item_token_bill || cv_token_invoice_div;
--- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
-          END IF;
+-- 2009/09/15 Ver1.8 delete start by Yutaka.Kuboshima
+-- 請求書発行区分は必須項目対象から外す
+--          -- 請求書発行区分NULLチェック
+--          IF (cust_required_check_rec.invoice_issue_div IS NULL) THEN
+---- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+----            lv_item_token := lv_item_token || cv_token_invoice_div;
+--            lv_item_token_bill := lv_item_token_bill || cv_token_invoice_div;
+---- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
+--          END IF;
+-- 2009/09/15 Ver1.8 delete end by Yutaka.Kuboshima
           -- 支払条件NULLチェック
           IF (cust_required_check_rec.payment_term_id IS NULL) THEN
 -- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
@@ -759,13 +800,16 @@ AS
         IF (cust_required_check_rec.site_use_code IS NULL) THEN
           lv_site_use_token := lv_site_use_token || cv_token_bill_to;
         ELSE
-          -- 請求書発行区分NULLチェック
-          IF (cust_required_check_rec.invoice_issue_div IS NULL) THEN
--- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
---            lv_item_token := lv_item_token || cv_token_invoice_div;
-            lv_item_token_bill := lv_item_token_bill || cv_token_invoice_div;
--- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
-          END IF;
+-- 2009/09/15 Ver1.8 delete start by Yutaka.Kuboshima
+-- 請求書発行区分は必須項目対象から外す
+--          -- 請求書発行区分NULLチェック
+--          IF (cust_required_check_rec.invoice_issue_div IS NULL) THEN
+---- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+----            lv_item_token := lv_item_token || cv_token_invoice_div;
+--            lv_item_token_bill := lv_item_token_bill || cv_token_invoice_div;
+---- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
+--          END IF;
+-- 2009/09/15 Ver1.8 delete end by Yutaka.Kuboshima
           -- 支払条件NULLチェック
           IF (cust_required_check_rec.payment_term_id IS NULL) THEN
 -- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
@@ -781,8 +825,11 @@ AS
 -- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
         END IF;
-      -- 顧客区分が'13'(法人顧客),'15'(巡回),'16'(販売先),'17'(計画立案用),'18'(EDIチェーン),'19'(百貨店伝区)の場合
-      ELSIF (cust_required_check_rec.customer_class_code IN (cv_cust_houjin_kbn, cv_cust_junkai_kbn, cv_cust_hanbai_kbn, cv_cust_keikaku_kbn, cv_cust_edichain_kbn, cv_cust_hyakkaten_kbn)) THEN
+-- 2009/09/15 Ver1.8 modify start by Yutaka.Kuboshima
+--      ELSIF (cust_required_check_rec.customer_class_code IN (cv_cust_houjin_kbn, cv_cust_junkai_kbn, cv_cust_hanbai_kbn, cv_cust_keikaku_kbn, cv_cust_edichain_kbn, cv_cust_hyakkaten_kbn)) THEN
+      -- 顧客区分が'13'(法人顧客),'15'(巡回),'16'(販売先),'17'(計画立案用),'18'(EDIチェーン),'19'(百貨店伝区),'20'(請求書用),'21'(統括請求書用)の場合
+      ELSIF (cust_required_check_rec.customer_class_code IN (cv_cust_houjin_kbn, cv_cust_junkai_kbn, cv_cust_hanbai_kbn, cv_cust_keikaku_kbn, cv_cust_edichain_kbn, cv_cust_hyakkaten_kbn, cv_cust_seikyu_kbn, cv_cust_toukatu_kbn)) THEN
+-- 2009/09/15 Ver1.8 modify end by Yutaka.Kuboshima
         -- 使用目的存在チェック
         IF (cust_required_check_rec.site_use_code IS NULL) THEN
           lv_site_use_token := lv_site_use_token || cv_token_other_to;

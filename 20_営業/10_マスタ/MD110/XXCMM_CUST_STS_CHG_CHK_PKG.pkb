@@ -23,8 +23,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009-01-08    1.0   Takuya.Kaihara   新規作成
- *  2009-02-19    1.1   Takuya.Kaihara   物件マスタ.削除フラグの修正
+ *  2009/01/08    1.0   Takuya.Kaihara   新規作成
+ *  2009/02/19    1.1   Takuya.Kaihara   物件マスタ.削除フラグの修正
+ *  2009/09/11    1.2   Yutaka.Kuboshima 障害0001350 業態(小分類)の必須チェックの削除
  *
  *****************************************************************************************/
 --
@@ -126,7 +127,10 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
     --顧客ID・業態分類(小分類)NULLチェック
-    IF ( in_cust_id IS NULL OR iv_gtai_syo IS NULL ) THEN
+-- 2009/09/11 Ver1.2 modify start by Y.Kuboshima
+--    IF ( in_cust_id IS NULL OR iv_gtai_syo IS NULL ) THEN
+    IF ( in_cust_id IS NULL ) THEN
+-- 2009/09/11 Ver1.2 modify end by Y.Kuboshima
       lv_errmsg := xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
                                             cv_msg_xxcmm_10314,
                                             cv_cnst_tkn_cid,
