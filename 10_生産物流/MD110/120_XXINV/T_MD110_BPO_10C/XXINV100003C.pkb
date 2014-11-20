@@ -7,7 +7,7 @@ AS
  * Description      : 販売計画時系列表
  * MD.050/070       : 販売計画・引取計画 (T_MD050_BPO_100)
  *                    販売計画時系列表   (T_MD070_BPO_10C)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/05/28   1.4   Kazuo Kumamoto   規約違反(varchar使用)対応
  *  2008/07/02   1.5   Satoshi Yunba    禁則文字対応
  *  2009/04/16   1.6   吉元 強樹        本番障害対応(No.1410)
+ *  2009/05/29   1.7   吉元 強樹        本番障害対応(No.1509)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START  #######################
@@ -3216,7 +3217,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'may_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_may_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_may_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_may_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ５月 金額データ
@@ -3290,7 +3294,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'jun_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_jun_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_jun_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_jun_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ６月 金額データ
@@ -3364,7 +3371,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'jul_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_jul_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_jul_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_jul_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ７月 金額データ
@@ -3438,7 +3448,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'aug_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_aug_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_aug_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_aug_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ８月 金額データ
@@ -3512,7 +3525,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'sep_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_sep_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_sep_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_sep_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ９月 金額データ
@@ -3586,7 +3602,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'oct_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_oct_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_oct_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_oct_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- １０月 金額データ
@@ -3660,7 +3679,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'nov_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_nov_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_nov_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_nov_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- １１月 金額データ
@@ -3734,7 +3756,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'dec_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_dec_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_dec_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_dec_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- １２月 金額データ
@@ -3809,7 +3834,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'jan_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_jan_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_jan_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_jan_quant_T;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- １月 金額データ
@@ -3883,7 +3911,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'feb_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_feb_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_feb_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_feb_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ２月 金額データ
@@ -3956,7 +3987,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'mar_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_mar_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_mar_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_mar_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod end 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ３月 金額データ
@@ -4029,7 +4063,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := iv_label_name || 'apr_quant';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := in_apr_quant;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod Start 本番#1509
+--    gt_xml_data_table(gl_xml_idx).tag_value := in_apr_quant;
+    gt_xml_data_table(gl_xml_idx).tag_value := in_apr_quant_t;
+-- 2009/05/29 v1.7 T.Yoshimoto Mod End 本番#1509
 -- 2009/04/16 v1.6 T.Yoshimoto Add End 本番#1410
 --
     -- ４月 金額データ
