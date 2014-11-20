@@ -43,6 +43,7 @@ AS
  *  2009/01/21    1.10  Hisanobu Sakuma    本番障害#1065
  *  2009/01/27    1.11  Hisanobu Sakuma    本番障害#1066
  *  2009/03/06    1.12  Yuki Kazama        本番障害#785
+ *  2009/03/06    1.13  D.Sugahara         本番障害#1482 パフォーマンス対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1379,12 +1380,34 @@ AS
       OR (gt_param.block2     IS NOT NULL)
       OR (gt_param.block3     IS NOT NULL)) THEN
 --
-      lv_where_block_or_deliver_from := 
-         ' AND ((xilv.segment1           = :shipped_cd) '
-      || '  OR  (xilv.distribution_block = :block1) '
-      || '  OR  (xilv.distribution_block = :block2) '
-      || '  OR  (xilv.distribution_block = :block3)) '
-      ;
+--2009.05.18 D.Sugahara v1.13 Mod start --
+--      lv_where_block_or_deliver_from := 
+--         ' AND ((xilv.segment1           = :shipped_cd) '
+--      || '  OR  (xilv.distribution_block = :block1) '
+--      || '  OR  (xilv.distribution_block = :block2) '
+--      || '  OR  (xilv.distribution_block = :block3)) '
+--      ;
+       --①出庫元倉庫だけに指定がある場合、
+      IF  ((gt_param.shipped_cd IS NOT NULL) 
+        AND (gt_param.block1     IS NULL)
+        AND (gt_param.block2     IS NULL)
+        AND (gt_param.block3     IS NULL)) THEN
+        lv_where_block_or_deliver_from := 
+           ' AND xilv.segment1 = :shipped_cd '
+        || ' AND :block1 IS NULL '
+        || ' AND :block2 IS NULL '
+        || ' AND :block3 IS NULL '
+        ;
+      ELSE
+        --②①以外の場合
+        lv_where_block_or_deliver_from := 
+           ' AND ((xilv.segment1           = :shipped_cd) '
+        || '  OR  (xilv.distribution_block = :block1) '
+        || '  OR  (xilv.distribution_block = :block2) '
+        || '  OR  (xilv.distribution_block = :block3)) '
+        ;
+      END IF;
+--2009.05.18 D.Sugahara v1.13 Mod End --
 --
     -- 出庫元・物流ブロック1・2・3すべて指定なしの場合
     ELSE
