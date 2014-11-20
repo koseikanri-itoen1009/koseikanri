@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : XXCMN770007C(spec)
+ * Package Name     : xxcmn770007c(spec)
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.6
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,10 @@ AS
  *  2008/06/24    1.5   T.Ikehara        数量、金額が0の場合に出力されるように修正
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/08/29    1.7   A.Shiina         T_TE080_BPO_770 指摘20対応
+ *  2008/10/08    1.8   A.Shiina         T_S_524対応
+ *  2008/10/08    1.9   A.Shiina         T_S_455対応
+ *  2008/10/09    1.10  A.Shiina         T_S_422対応
  *
  *****************************************************************************************/
 --
@@ -50,7 +54,9 @@ AS
      ,iv_proc_to         IN    VARCHAR2  -- 処理年月TO
      ,iv_prod_div        IN    VARCHAR2  -- 商品区分
      ,iv_item_div        IN    VARCHAR2  -- 品目区分
-     ,iv_rcv_pay_div     IN    VARCHAR2  -- 受払区分
+-- 2008/10/08 v1.9 DELETE START
+--     ,iv_rcv_pay_div     IN    VARCHAR2  -- 受払区分
+-- 2008/10/08 v1.9 DELETE END
      ,iv_crowd_type      IN    VARCHAR2  -- 集計種別
      ,iv_crowd_code      IN    VARCHAR2  -- 群コード
      ,iv_acnt_crowd_code IN    VARCHAR2  -- 経理群コード

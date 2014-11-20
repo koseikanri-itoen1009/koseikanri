@@ -22,6 +22,17 @@ CREATE TABLE xxcmn.xxcmn_rcv_pay_mst
  ,hit_in_div                    VARCHAR2(1)
  ,reason_code                   VARCHAR2(4)
  ,lot_status                    VARCHAR2(4)
+ ,dealings_div_name             VARCHAR2(80)
+ ,break_col_01                  VARCHAR2(150)
+ ,break_col_02                  VARCHAR2(150)
+ ,break_col_03                  VARCHAR2(150)
+ ,break_col_04                  VARCHAR2(150)
+ ,break_col_05                  VARCHAR2(150)
+ ,break_col_06                  VARCHAR2(150)
+ ,break_col_07                  VARCHAR2(150)
+ ,break_col_08                  VARCHAR2(150)
+ ,break_col_09                  VARCHAR2(150)
+ ,break_col_10                  VARCHAR2(150)
  ,created_by                    NUMBER(15)
  ,creation_date                 DATE
  ,last_updated_by               NUMBER(15)
@@ -55,6 +66,17 @@ COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.line_type                     IS 'ライ
 COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.hit_in_div                    IS '打込区分' ;
 COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.reason_code                   IS '事由コード' ;
 COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.lot_status                    IS 'ステータス' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.dealings_div_name             IS '取引区分（名称）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_01                  IS '受払残高表１（原料・資材・半製品）_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_02                  IS '受払残高表１（製品）_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_03                  IS '受払残高表２_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_04                  IS '受払その他実績リスト_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_05                  IS '仕入実績表_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_06                  IS '出荷実績表_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_07                  IS '生産原価差異表_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_08                  IS '返品原料原価差異表_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_09                  IS '他勘定振替原価差異表_出力フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.break_col_10                  IS '標準原価内訳表_出力フラグ' ;
 COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.created_by                    IS '作成者' ;
 COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.creation_date                 IS '作成日' ;
 COMMENT ON COLUMN xxcmn.xxcmn_rcv_pay_mst.last_updated_by               IS '最終更新者' ;

@@ -7,7 +7,7 @@ AS
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.6
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -34,6 +34,10 @@ AS
  *  2008/06/24    1.5   T.Ikehara        数量、金額が0の場合に出力されるように修正
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/08/29    1.7   A.Shiina         T_TE080_BPO_770 指摘20対応
+ *  2008/10/08    1.8   A.Shiina         T_S_524対応
+ *  2008/10/08    1.9   A.Shiina         T_S_455対応
+ *  2008/10/09    1.10  A.Shiina         T_S_422対応
  *
  *****************************************************************************************/
 --
@@ -59,6 +63,21 @@ AS
   -- ===============================
   gv_pkg_name             CONSTANT VARCHAR2(20) := 'xxcmn770007' ;   -- パッケージ名
 --
+-- 2008/10/09 v1.10 ADD START
+  gv_raw_mat_cost_name    CONSTANT VARCHAR2(100) := '原料';
+  gv_agein_cost_name      CONSTANT VARCHAR2(100) := '再製費';
+  gv_material_cost_name   CONSTANT VARCHAR2(100) := '資材費';
+  gv_pack_cost_name       CONSTANT VARCHAR2(100) := '包装費';
+  gv_out_order_cost_name  CONSTANT VARCHAR2(100) := '外注加工費';
+  gv_safekeep_cost_name   CONSTANT VARCHAR2(100) := '保管費';
+  gv_other_cost_name      CONSTANT VARCHAR2(100) := 'その他経費';
+  gv_spare1_name          CONSTANT VARCHAR2(100) := '予備１';
+  gv_spare2_name          CONSTANT VARCHAR2(100) := '予備２';
+  gv_spare3_name          CONSTANT VARCHAR2(100) := '予備３';
+  gv_lookup_code          CONSTANT VARCHAR2(1)   := '2';
+  gv_product              CONSTANT VARCHAR2(1)   := '5';
+--
+-- 2008/10/09 v1.10 ADD END
   ------------------------------
   -- クイックコード関連
   ------------------------------
@@ -67,6 +86,11 @@ AS
   gc_new_acnt_div         CONSTANT VARCHAR2(21)  := 'XXCMN_NEW_ACCOUNT_DIV';
   gc_output_flag          CONSTANT VARCHAR2(30)  := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
 --
+-- 2008/10/09 v1.10 ADD START
+  gv_expense_item_type    CONSTANT VARCHAR2(100) := 'XXPO_EXPENSE_ITEM_TYPE';  -- 費目区分
+  gv_cmpntcls_type        CONSTANT VARCHAR2(100) := 'XXCMN_D19';               -- 原価内訳区分
+--
+-- 2008/10/09 v1.10 ADD END
   ------------------------------
   -- 全角文字
   ------------------------------
@@ -137,7 +161,9 @@ AS
      ,proc_to_date         DATE          -- 処理年月TO(日付) - 1(翌月の1日)
      ,prod_div             VARCHAR2(10)  -- 商品区分
      ,item_div             VARCHAR2(10)  -- 品目区分
-     ,rcv_pay_div          VARCHAR2(10)  -- 受払区分
+-- 2008/10/08 v1.9 DELETE START
+--     ,rcv_pay_div          VARCHAR2(10)  -- 受払区分
+-- 2008/10/08 v1.9 DELETE END
      ,crowd_type           VARCHAR2(10)  -- 集計種別
      ,crowd_code           VARCHAR2(10)  -- 群コード
      ,acnt_crowd_code      VARCHAR2(10)  -- 経理群コード
@@ -164,8 +190,10 @@ AS
       ,prod_div_name     xxcmn_categories_v.description%TYPE   -- 商品区分名称
       ,item_div          xxcmn_lot_each_item_v.item_div%TYPE   -- 品目区分
       ,item_div_name     xxcmn_categories_v.description%TYPE   -- 品目区分名称
-      ,rcv_pay_div       xxcmn_rcv_pay_mst_prod_v.new_div_account%TYPE -- 新経理受払区分
-      ,rcv_pay           xxcmn_lookup_values2_v.meaning%TYPE   -- 新経理受払区分名称
+-- 2008/10/08 v1.9 DELETE START
+--      ,rcv_pay_div       xxcmn_rcv_pay_mst_prod_v.new_div_account%TYPE -- 新経理受払区分
+--      ,rcv_pay           xxcmn_lookup_values2_v.meaning%TYPE   -- 新経理受払区分名称
+-- 2008/10/08 v1.9 DELETE END
       ,gun_code          xxcmn_lot_each_item_v.crowd_code%TYPE -- 群コード
       ,item_id           ic_tran_pnd.item_id%TYPE              -- 品目ID
       ,item_code         xxcmn_lot_each_item_v.item_code%TYPE  -- 品目コード
@@ -190,7 +218,9 @@ AS
   TYPE rec_keybreak  IS RECORD(
        prod_div       VARCHAR2(200)  --商品区分
      , item_div       VARCHAR2(200)  --品目区分
-     , rcv_pay_div    VARCHAR2(200)  --受払区分
+-- 2008/10/08 v1.9 DELETE START
+--     , rcv_pay_div    VARCHAR2(200)  --受払区分
+-- 2008/10/08 v1.9 DELETE END
      , crowd_high     VARCHAR2(200)  --大群
      , crowd_mid      VARCHAR2(200)  --中群
      , crowd_low      VARCHAR2(200)  --小群
@@ -440,6 +470,13 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル・定数 ***
+--add tyoshida
+    cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+    cn_crowd_code_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE'));
+    cn_acnt_crowd_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE'));
+--add tyoshida
+
 --
     -- *** ローカル・変数 ***
     lv_date_from       VARCHAR2(10) ;
@@ -459,7 +496,822 @@ AS
     -- *** ローカル・カーソル ***
     TYPE   ref_cursor IS REF CURSOR ;
     lc_ref ref_cursor ;
+-- 2008/10/08 v1.8 DELETE START
+/*
+--tyoshida add
+--    処理年月200809
+--    商品区分リーフ
+--    品目区分製品
+--    受払区分なし
+--    集計種別群別
+--    群コードなし
+--    経理群コードなし
+    CURSOR get_data_cur01 IS
+--@@@<<全体>>@@@
+    SELECT 
+         syukei.prod_div          prod_div           -- 商品区分
+       , xcat_prod.description    prod_div_name      -- 商品区分名称
+       , syukei.item_div          item_div           -- 品目区分
+       , xcat_item.description    item_div_name      -- 品目区分名称
+       , syukei.rcv_pay_div       rcv_pay_div        -- 新経理受払区分
+       , xlv_rcv_pay.meaning      rcv_pay            -- 新経理受払区分名称
+       , syukei.gun_code          gun_code           -- 群コード
+       , syukei.item_id           item_id            -- 品目
+       , syukei.item_code         item_code          -- 品目
+       , syukei.item_name         item_name          -- 品目名称
+       , syukei.trans_qty         trans_qty          -- 取引数量
+       , syukei.kan_qty           kan_qty            -- 取引数量(完成品)
+       , syukei.tou_qty           tou_qty            -- 取引数量(投入品)
+       , syukei.huku_qty          huku_qty           -- 取引数量(副産物)
+       , syukei.actual_unit_price actual_unit_price  -- 実際単価
+       , syukei.kan_jitu          kan_jitu           --  実際単価×取引数量 完成品
+       , syukei.tou_jitu          tou_jitu           --  実際単価×取引数量 投入品
+       , syukei.cmpnt_cost        cmpnt_cost         -- 標準原価(原料費)
+       , syukei.cmpnt_huku        cmpnt_huku         --  標準原価(原料費)×取引数量 副産物
+       , syukei.cmpnt_kin         cmpnt_kin          --  標準原価(原料費)×取引数量
+       , syukei.tou_kin           tou_kin            -- 投入金額
+       , syukei.uti_kin           uti_kin            -- 打込金額
+    FROM 
+         xxcmn_categories_v xcat_item 
+       , xxcmn_categories_v xcat_prod 
+       , xxcmn_lookup_values2_v xlv_rcv_pay 
+       , ( 
+      --@@@<<集計>>@@@
+--@@@@@
+            SELECT
+               xrpm1.new_div_account             rcv_pay_div 
+             , xlei.item_div                     item_div 
+             , xlei.prod_div                     prod_div 
+             , xlei.crowd_code                   gun_code
+             , itp.item_id                       item_id 
+             , xlei.item_code                    item_code 
+             , xlei.item_short_name              item_name 
+             , SUM(NVL(itp.trans_qty , 0))       trans_qty 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_kan    , itp.trans_qty), 0)) kan_qty 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_tou    , itp.trans_qty), 0)) tou_qty 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_huku   , itp.trans_qty), 0)) huku_qty 
+             , SUM(NVL(DECODE(xlei.item_attribute15,  gc_cost_st   
+                 , xcup.stnd_unit_price ,  gc_cost_ac   
+                 ,DECODE(xlei.lot_ctl ,  gc_lot_ine   , xlei.actual_unit_price , 
+                  gc_lot_view   , xcup.stnd_unit_price)), 0))        actual_unit_price 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_kan   
+                          , itp.trans_qty * DECODE(xlei.item_attribute15,   gc_cost_st  
+                          , xcup.stnd_unit_price ,  gc_cost_ac   
+                 ,DECODE(xlei.lot_ctl ,  gc_lot_ine   , xlei.actual_unit_price , 
+                  gc_lot_view   , xcup.stnd_unit_price))), 0))   kan_jitu 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_tou   
+                          , itp.trans_qty * DECODE(xlei.item_attribute15,  gc_cost_st   
+                        , xcup.stnd_unit_price ,  gc_cost_ac   
+                 ,DECODE(xlei.lot_ctl ,  gc_lot_ine   , xlei.actual_unit_price , 
+                  gc_lot_view   , xcup.stnd_unit_price))), 0))   tou_jitu 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_huku  
+                          , itp.trans_qty * DECODE(xlei.item_attribute15,  gc_cost_st   
+                        , xcup.stnd_unit_price ,  gc_cost_ac   
+                 ,DECODE(xlei.lot_ctl ,  gc_lot_ine   , xlei.actual_unit_price , 
+                  gc_lot_view   , xcup.stnd_unit_price))), 0))   huku_jitu 
+             , SUM(NVL(xcup.stnd_unit_price_gen , 0))                          cmpnt_cost 
+             , SUM(NVL(xcup.stnd_unit_price_gen * itp.trans_qty, 0))           cmpnt_kin 
+             , SUM(NVL(DECODE(xrpm1.line_type,  gc_huku  
+                              , itp.trans_qty * xcup.stnd_unit_price_gen), 0)) cmpnt_huku 
+             , SUM(NVL(CASE  -- 投入品で資材以外
+                       WHEN xrpm1.line_type =   gc_tou  
+                       AND  xlei.item_div <>   gc_sizai  
+                     THEN itp.trans_qty * DECODE(xlei.item_attribute15,  gc_cost_st   
+                   , xcup.stnd_unit_price ,  gc_cost_ac   
+                 ,DECODE(xlei.lot_ctl ,  gc_lot_ine   , xlei.actual_unit_price , 
+                  gc_lot_view   , xcup.stnd_unit_price)) 
+                       END  , 0))                                              tou_kin 
+             , SUM(NVL(DECODE(xrpm1.hit_in_div,   gc_y   --打込品
+                       ,  itp.trans_qty  * DECODE(xlei.item_attribute15,  gc_cost_st   
+                     , xcup.stnd_unit_price ,  gc_cost_ac   
+                 ,DECODE(xlei.lot_ctl ,  gc_lot_ine   , xlei.actual_unit_price , 
+                  gc_lot_view   , xcup.stnd_unit_price)), 0), 0)) uti_kin 
+        --lv_syukei_from 
+          FROM  
+               ic_tran_pnd              itp     --在庫トラン
+             , xxcmn_lot_each_item_v    xlei    --ロット別品目情報View
+             , gme_material_details     gmd1    -- 
+             , gme_batch_header         gbh1    -- 
+             , gmd_routings_b           grb1    -- 
+             , xxcmn_rcv_pay_mst        xrpm1   -- 受払マスタ
+             , xxcmn_lookup_values_v    xlvv1     -- 
+             , xxcmn_stnd_unit_price_v  xcup  --標準原価情報View
+             , xxcmn_lookup_values2_v   xlvv2  --クイックコード情報VIEW2
+           WHERE itp.completed_ind     = 1 
+          AND itp.trans_date        >= FND_DATE.STRING_TO_DATE( gr_param.proc_from_date_ch  , gc_char_d_format  )
+          AND itp.trans_date        <  FND_DATE.STRING_TO_DATE( gr_param.proc_to_date_ch    , gc_char_d_format  )
+          AND xlei.item_id          = itp.item_id 
+          AND xlei.lot_id           = itp.lot_id 
+          AND xlei.prod_div         = gr_param.prod_div  --@@商品区分
+          AND xlei.item_div         = gr_param.item_div  --@@品目区分
+          AND itp.trans_date        BETWEEN xlei.start_date_active AND xlei.end_date_active 
+          AND itp.item_id           = xcup.item_id(+) 
+          AND itp.trans_date        BETWEEN xcup.start_date_active(+) AND xcup.end_date_active(+) 
+          AND itp.doc_id            = gmd1.batch_id
+          AND itp.doc_line          = gmd1.line_no
+          AND gbh1.batch_id         = gmd1.batch_id
+          AND grb1.routing_id       = gbh1.routing_id
+          AND xrpm1.routing_class   = grb1.routing_class
+          AND xrpm1.doc_type        = 'PROD'
+          AND itp.doc_type          = xrpm1.doc_type
+          AND itp.line_type         = xrpm1.line_type
+          AND gmd1.line_type        = xrpm1.line_type
+          AND xlvv2.meaning         = xrpm1.dealings_div
+          AND xlvv2.lookup_type     = gc_output_flag
+          AND (xlvv2.start_date_active IS NULL OR xlvv2.start_date_active  <= itp.trans_date) 
+          AND (xlvv2.end_date_active   IS NULL OR xlvv2.end_date_active    >= itp.trans_date) 
+          AND xlvv2.language        = gc_lang
+          AND xlvv2.source_lang     = gc_lang
+          AND xlvv2.attribute7         IS NOT NULL
+          AND xrpm1.dealings_div    = xlvv1.lookup_code
+          AND xlvv1.lookup_type     = 'XXCMN_DEALINGS_DIV'
+          AND  ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm1.hit_in_div IS NULL ) )
+               OR ( xrpm1.hit_in_div        = gmd1.attribute5 ) )
+          AND  ((xrpm1.routing_class    <> '70')  --PTN A
+               OR (xrpm1.routing_class     = '70' --PTN B
+                     AND (EXISTS (SELECT 1
+                                  FROM   gme_material_details gmd2
+                                        ,gmi_item_categories  gic
+                                        ,mtl_categories_b     mcb
+                                  WHERE  gmd2.batch_id   = gmd1.batch_id
+                                  AND    gmd2.line_no    = gmd1.line_no
+                                  AND    gmd2.line_type  = -1
+                                  AND    gic.item_id     = gmd2.item_id
+                                  AND    gic.category_set_id = cn_item_class_id
+                                  AND    gic.category_id = mcb.category_id
+                                  AND    mcb.segment1    = xrpm1.item_div_origin))
+                     AND (EXISTS (SELECT 1
+                                  FROM   gme_material_details gmd3
+                                        ,gmi_item_categories  gic
+                                        ,mtl_categories_b     mcb
+                                  WHERE  gmd3.batch_id   = gmd1.batch_id
+                                  AND    gmd3.line_no    = gmd1.line_no
+                                  AND    gmd3.line_type  = 1
+                                  AND    gic.item_id     = gmd3.item_id
+                                  AND    gic.category_set_id = cn_item_class_id
+                                  AND    gic.category_id = mcb.category_id
+                                  AND    mcb.segment1    = xrpm1.item_div_ahead))
+            ))
+        GROUP BY 
+              xrpm1.new_div_account 
+             ,xlei.item_div 
+             ,xlei.prod_div 
+             ,itp.item_id 
+             ,xlei.item_code 
+             ,xlei.item_short_name 
+             ,xlei.crowd_code
+--@@@@@
+          ) syukei 
+    WHERE 
+           xcat_prod.category_set_name(+) =  gc_cat_prod_div  
+       AND xcat_prod.segment1(+)          =  syukei.prod_div 
+       AND xcat_item.category_set_name(+) =  gc_cat_item_div  
+       AND xcat_item.segment1(+)          =  syukei.item_div 
+       AND xlv_rcv_pay.lookup_type        =  gc_new_acnt_div  
+       AND xlv_rcv_pay.lookup_code        = syukei.rcv_pay_div 
+     ORDER BY 
+        syukei.rcv_pay_div 
+       ,syukei.gun_code 
+       ,syukei.item_code 
+  ;
+--tyoshida add
+*/
+-- 2008/10/08 v1.8 DELETE END
+--yutsuzuk add
+    CURSOR get_data_cur02 IS
+      SELECT /*+ leading ( itp gic1 mcb1 gic2 mcb2 gmd1 gbh1 grb1 xrpm) use_nl( itp gic1 mcb1 gic2 mcb2 gmd1 gbh1 grb1 xrpm) */
+             mcb1.segment1                     prod_div 
+           , mct1.description                  prod_div_name
+           , mcb2.segment1                     item_div 
+           , mct2.description                  item_div_name
+-- 2008/10/08 v1.9 DELETE START
+--           , xrpm.new_div_account              rcv_pay_div 
+-- 2008/10/08 v1.9 DELETE END
+-- 2008/10/08 v1.8 UPDATE START
+--           , xlv_rcv_pay.meaning               rcv_pay
+-- 2008/10/08 v1.9 DELETE START
+--           , xrpm.dealings_div_name            rcv_pay
+-- 2008/10/08 v1.9 DELETE END
+-- 2008/10/08 v1.8 UPDATE END
+           , mcb3.segment1                     gun_code
+           , itp.item_id                       item_id 
+           , iimb.item_no                      item_code 
+           , ximb.item_short_name              item_name 
+-- 2008/08/29 v1.7 UPDATE START
+/*
+           , SUM(NVL(itp.trans_qty , 0))       trans_qty 
+           , SUM(NVL(DECODE(xrpm.line_type,  gc_kan    , itp.trans_qty), 0)) kan_qty 
+           , SUM(NVL(DECODE(xrpm.line_type,  gc_tou    , itp.trans_qty), 0)) tou_qty 
+           , SUM(NVL(DECODE(xrpm.line_type,  gc_huku   , itp.trans_qty), 0)) huku_qty 
+*/
+           , SUM(NVL(itp.trans_qty , 0) * TO_NUMBER(xrpm.rcv_pay_div))       trans_qty 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0))                                            kan_qty 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_tou, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0)) tou_qty 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_huku, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0)) huku_qty 
+-- 2008/08/29 v1.7 UPDATE END
+           , SUM(NVL(DECODE(iimb.attribute15
+                           ,gc_cost_st,xcup.stnd_unit_price
+                           ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                             ,gc_lot_ine,xlc.unit_ploce
+                                             ,gc_lot_view,xcup.stnd_unit_price)),0)) actual_unit_price 
+           , SUM(NVL(DECODE(xrpm.line_type
+-- 2008/08/29 v1.7 UPDATE START
+--                           ,gc_kan,itp.trans_qty * DECODE(iimb.attribute15
+                           ,gc_kan, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                                                 * DECODE(iimb.attribute15
+-- 2008/08/29 v1.7 UPDATE END
+                                                         ,gc_cost_st,xcup.stnd_unit_price
+                                                         ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                                           ,gc_lot_ine,xlc.unit_ploce
+                                                                           ,gc_lot_view,xcup.stnd_unit_price))),0)
+                )   kan_jitu 
+           , SUM(NVL(DECODE(xrpm.line_type
+-- 2008/08/29 v1.7 UPDATE START
+--                           ,gc_tou,itp.trans_qty * DECODE(iimb.attribute15
+                           ,gc_tou, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                                                 * DECODE(iimb.attribute15
+-- 2008/08/29 v1.7 UPDATE END
+                                                         ,gc_cost_st,xcup.stnd_unit_price
+                                                         ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                                           ,gc_lot_ine,xlc.unit_ploce
+                                                                           ,gc_lot_view,xcup.stnd_unit_price))),0)
+                )   tou_jitu 
+           , SUM(NVL(xcup.stnd_unit_price_gen , 0))                          cmpnt_cost 
+           , SUM(NVL(DECODE(xrpm.line_type
+-- 2008/08/29 v1.7 UPDATE START
+--                           ,gc_huku,itp.trans_qty * xcup.stnd_unit_price_gen), 0)) cmpnt_huku 
+                           ,gc_huku, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                             * xcup.stnd_unit_price_gen), 0)) cmpnt_huku 
+--           , SUM(NVL(xcup.stnd_unit_price_gen * itp.trans_qty, 0))           cmpnt_kin 
+           , SUM(NVL(xcup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)), 0)
+             ) cmpnt_kin 
+-- 2008/08/29 v1.7 UPDATE END
+           , SUM(NVL(CASE  -- 投入品で資材以外
+                     WHEN xrpm.line_type =   gc_tou  
+                     AND  mcb2.segment1 <>   gc_sizai  
+-- 2008/08/29 v1.7 UPDATE START
+--                     THEN itp.trans_qty * DECODE(iimb.attribute15
+                     THEN (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                                        * DECODE(iimb.attribute15
+-- 2008/08/29 v1.7 UPDATE END
+                                                ,gc_cost_st,xcup.stnd_unit_price
+                                                ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                                  ,gc_lot_ine,xlc.unit_ploce
+                                                                  ,gc_lot_view,xcup.stnd_unit_price))
+                     END  , 0))                                              tou_kin 
+           , SUM(NVL(DECODE(xrpm.hit_in_div
+-- 2008/08/29 v1.7 UPDATE START
+--                           ,gc_y,itp.trans_qty * DECODE(iimb.attribute15
+                           ,gc_y, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                                               * DECODE(iimb.attribute15
+-- 2008/08/29 v1.7 UPDATE END
+                                                       ,gc_cost_st,xcup.stnd_unit_price
+                                                       ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                                         ,gc_lot_ine,xlc.unit_ploce
+                                                                         ,gc_lot_view,xcup.stnd_unit_price)),0),0)
+                ) uti_kin 
+      FROM
+            ic_tran_pnd              itp      --在庫トラン
+           ,gmi_item_categories      gic1
+           ,mtl_categories_b         mcb1
+           ,mtl_categories_tl        mct1
+           ,gmi_item_categories      gic2
+           ,mtl_categories_b         mcb2
+           ,mtl_categories_tl        mct2
+           ,gmi_item_categories      gic3
+           ,mtl_categories_b         mcb3
+           ,ic_item_mst_b            iimb
+           ,xxcmn_item_mst_b         ximb
+           ,xxcmn_lot_cost           xlc
+           ,xxcmn_stnd_unit_price_v  xcup     --標準原価情報View
+           ,gme_material_details     gmd1     -- 
+           ,gme_batch_header         gbh1     -- 
+           ,gmd_routings_b           grb1     -- 
+-- 2008/10/08 v1.8 UPDATE START
+--           ,xxcmn_rcv_pay_mst_prod_mv xrpm
+           ,xxcmn_rcv_pay_mst xrpm
+--           ,xxcmn_lookup_values_v    xlv_rcv_pay 
+-- 2008/10/08 v1.8 UPDATE END
+      WHERE  itp.doc_type          = 'PROD'
+      AND    itp.completed_ind     = 1
+      AND    itp.trans_date        >= FND_DATE.STRING_TO_DATE( gr_param.proc_from_date_ch  , gc_char_d_format  )
+      AND    itp.trans_date        <  FND_DATE.STRING_TO_DATE( gr_param.proc_to_date_ch    , gc_char_d_format  )
+      AND    gic1.item_id          = itp.item_id
+      AND    gic1.category_set_id  = cn_prod_class_id
+      AND    mcb1.category_id      = gic1.category_id
+      AND    mcb1.segment1         = gr_param.prod_div  --@@商品区分
+      AND    mct1.category_id      = mcb1.category_id
+      AND    mct1.language         = 'JA'
+      AND    gic2.item_id          = itp.item_id
+      AND    gic2.category_set_id  = cn_item_class_id
+      AND    mcb2.category_id      = gic2.category_id
+      AND    mcb2.segment1         = gr_param.item_div  --@@品目区分
+      AND    mct2.category_id      = mcb2.category_id
+      AND    mct2.language         = 'JA'
+      AND    gic3.item_id          = itp.item_id
+      AND    gic3.category_set_id  = cn_crowd_code_id
+      AND    mcb3.category_id      = gic3.category_id
+      AND    iimb.item_id          = itp.item_id
+      AND    ximb.item_id          = iimb.item_id
+      AND    itp.trans_date        BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)        = itp.item_id
+      AND    xlc.lot_id(+)         = itp.lot_id
+      AND    xcup.item_id(+)       = itp.item_id
+      AND    itp.trans_date        BETWEEN xcup.start_date_active(+) AND xcup.end_date_active(+) 
+      AND    itp.doc_id            = gmd1.batch_id
+      AND    itp.doc_line          = gmd1.line_no
+      AND    gbh1.batch_id         = gmd1.batch_id
+      AND    grb1.routing_id       = gbh1.routing_id
+      AND    xrpm.routing_class    = grb1.routing_class
+      AND    itp.doc_type           = xrpm.doc_type
+      AND    itp.line_type          = xrpm.line_type
+      AND    gmd1.line_type         = xrpm.line_type
+      AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
+             OR ( xrpm.hit_in_div        = gmd1.attribute5 ) )
+      AND    xrpm.break_col_07       IS NOT NULL
+      AND    ((xrpm.routing_class    <> '70')  --PTN A
+             OR (xrpm.routing_class     = '70' --PTN B
+                 AND (EXISTS (SELECT 1
+                              FROM   gme_material_details gmd2
+                                    ,gmi_item_categories  gic
+                                    ,mtl_categories_b     mcb
+                              WHERE  gmd2.batch_id   = gmd1.batch_id
+                              AND    gmd2.line_no    = gmd1.line_no
+                              AND    gmd2.line_type  = -1
+                              AND    gic.item_id     = gmd2.item_id
+                              AND    gic.category_set_id = cn_item_class_id
+                              AND    gic.category_id = mcb.category_id
+                              AND    mcb.segment1    = xrpm.item_div_origin))
+                 AND (EXISTS (SELECT 1
+                              FROM   gme_material_details gmd3
+                                    ,gmi_item_categories  gic
+                                    ,mtl_categories_b     mcb
+                              WHERE  gmd3.batch_id   = gmd1.batch_id
+                              AND    gmd3.line_no    = gmd1.line_no
+                              AND    gmd3.line_type  = 1
+                              AND    gic.item_id     = gmd3.item_id
+                              AND    gic.category_set_id = cn_item_class_id
+                              AND    gic.category_id = mcb.category_id
+                              AND    mcb.segment1    = xrpm.item_div_ahead))
+              ))
+-- 2008/10/08 v1.8 DELETE START
+--      AND    xlv_rcv_pay.lookup_type =  gc_new_acnt_div  
+--      AND    xlv_rcv_pay.lookup_code =  xrpm.new_div_account
+-- 2008/10/08 v1.8 DELETE END
+      GROUP BY 
+               mcb1.segment1
+             , mct1.description
+             , mcb2.segment1
+             , mct2.description
+-- 2008/10/08 v1.9 DELETE START
+--             , xrpm.new_div_account
+-- 2008/10/08 v1.9 DELETE END
+-- 2008/10/08 v1.8 UPDATE START
+--             , xlv_rcv_pay.meaning
+-- 2008/10/08 v1.9 DELETE START
+--             , xrpm.dealings_div_name
+-- 2008/10/08 v1.9 DELETE END
+-- 2008/10/08 v1.8 UPDATE END
+             , mcb3.segment1
+             , itp.item_id
+             , iimb.item_no
+             , ximb.item_short_name
+      ORDER BY 
+-- 2008/10/08 v1.9 UPDATE START
+--               xrpm.new_div_account
+--              ,mcb3.segment1
+               mcb3.segment1
+-- 2008/10/08 v1.9 UPDATE END
+              ,iimb.item_no
+      ;
+--yutsuzuk add
 --
+-- 2008/10/09 v1.10 ADD START
+    CURSOR get_data_cur03 IS
+      SELECT /*+ leading ( itp gic1 mcb1 gic2 mcb2 gmd1 gbh1 grb1 xrpm) use_nl( itp gic1 mcb1 gic2 mcb2 gmd1 gbh1 grb1 xrpm) */
+             mcb1.segment1                     prod_div 
+           , mct1.description                  prod_div_name
+           , mcb2.segment1                     item_div 
+           , mct2.description                  item_div_name
+           , mcb3.segment1                     gun_code
+           , itp.item_id                       item_id 
+           , iimb.item_no                      item_code 
+           , ximb.item_short_name              item_name 
+           , SUM(NVL(itp.trans_qty , 0) * TO_NUMBER(xrpm.rcv_pay_div))       trans_qty 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_kan, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0))                                            kan_qty 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_tou, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0)) tou_qty 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_huku, itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)
+                           ), 0)) huku_qty 
+           , SUM(NVL(DECODE(iimb.attribute15
+                           ,gc_cost_st
+                           ,(SELECT NVL(SUM(xpl.unit_price),0)
+                             FROM   xxpo_price_headers    xph
+                                   ,xxpo_price_lines      xpl
+                                   ,xxcmn_lookup_values_v xlvv1
+                                   ,xxcmn_lookup_values_v xlvv2
+                             WHERE  xph.price_header_id   = xpl.price_header_id
+                             AND    xpl.expense_item_type = xlvv1.attribute1
+                             AND    xlvv1.attribute2      = xlvv2.lookup_code
+                             AND    xph.price_type        = gv_lookup_code
+                             AND    xph.item_code         = iimb.item_no
+                             AND    xlvv1.lookup_type     = gv_expense_item_type
+                             AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                             AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                              ,gv_agein_cost_name
+                                                              ,gv_material_cost_name
+                                                              ,gv_pack_cost_name
+                                                              ,gv_out_order_cost_name
+                                                              ,gv_safekeep_cost_name
+                                                              ,gv_other_cost_name
+                                                              ,gv_spare1_name
+                                                              ,gv_spare2_name
+                                                              ,gv_spare3_name))
+                           ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                             ,gc_lot_ine,xlc.unit_ploce
+                                             ,gc_lot_view
+                                         ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                           FROM   xxpo_price_headers    xph
+                                                 ,xxpo_price_lines      xpl
+                                                 ,xxcmn_lookup_values_v xlvv1
+                                                 ,xxcmn_lookup_values_v xlvv2
+                                           WHERE  xph.price_header_id   = xpl.price_header_id
+                                           AND    xpl.expense_item_type = xlvv1.attribute1
+                                           AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                           AND    xph.price_type        = gv_lookup_code
+                                           AND    xph.item_code         = iimb.item_no
+                                           AND    xlvv1.lookup_type     = gv_expense_item_type
+                                           AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                           AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                            ,gv_agein_cost_name
+                                                                            ,gv_material_cost_name
+                                                                            ,gv_pack_cost_name
+                                                                            ,gv_out_order_cost_name
+                                                                            ,gv_safekeep_cost_name
+                                                                            ,gv_other_cost_name
+                                                                            ,gv_spare1_name
+                                                                            ,gv_spare2_name
+                                                                            ,gv_spare3_name))
+                                             )),0)) actual_unit_price 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_kan, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                             * DECODE(iimb.attribute15
+                                     ,gc_cost_st
+                                     ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                       FROM   xxpo_price_headers    xph
+                                             ,xxpo_price_lines      xpl
+                                             ,xxcmn_lookup_values_v xlvv1
+                                             ,xxcmn_lookup_values_v xlvv2
+                                       WHERE  xph.price_header_id   = xpl.price_header_id
+                                       AND    xpl.expense_item_type = xlvv1.attribute1
+                                       AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                       AND    xph.price_type        = gv_lookup_code
+                                       AND    xph.item_code         = iimb.item_no
+                                       AND    xlvv1.lookup_type     = gv_expense_item_type
+                                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                       AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                        ,gv_agein_cost_name
+                                                                        ,gv_material_cost_name
+                                                                        ,gv_pack_cost_name
+                                                                        ,gv_out_order_cost_name
+                                                                        ,gv_safekeep_cost_name
+                                                                        ,gv_other_cost_name
+                                                                        ,gv_spare1_name
+                                                                        ,gv_spare2_name
+                                                                        ,gv_spare3_name))
+                                     ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                       ,gc_lot_ine,xlc.unit_ploce
+                                                       ,gc_lot_view
+                                          ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                            FROM   xxpo_price_headers    xph
+                                                  ,xxpo_price_lines      xpl
+                                                  ,xxcmn_lookup_values_v xlvv1
+                                                  ,xxcmn_lookup_values_v xlvv2
+                                            WHERE  xph.price_header_id   = xpl.price_header_id
+                                            AND    xpl.expense_item_type = xlvv1.attribute1
+                                            AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                            AND    xph.price_type        = gv_lookup_code
+                                            AND    xph.item_code         = iimb.item_no
+                                            AND    xlvv1.lookup_type     = gv_expense_item_type
+                                            AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                            AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                             ,gv_agein_cost_name
+                                                                             ,gv_material_cost_name
+                                                                             ,gv_pack_cost_name
+                                                                             ,gv_out_order_cost_name
+                                                                             ,gv_safekeep_cost_name
+                                                                             ,gv_other_cost_name
+                                                                             ,gv_spare1_name
+                                                                             ,gv_spare2_name
+                                                                             ,gv_spare3_name))
+                                                       ))),0))   kan_jitu 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_tou, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                             * DECODE(iimb.attribute15
+                                     ,gc_cost_st
+                                     ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                       FROM   xxpo_price_headers    xph
+                                             ,xxpo_price_lines      xpl
+                                             ,xxcmn_lookup_values_v xlvv1
+                                             ,xxcmn_lookup_values_v xlvv2
+                                       WHERE  xph.price_header_id   = xpl.price_header_id
+                                       AND    xpl.expense_item_type = xlvv1.attribute1
+                                       AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                       AND    xph.price_type        = gv_lookup_code
+                                       AND    xph.item_code         = iimb.item_no
+                                       AND    xlvv1.lookup_type     = gv_expense_item_type
+                                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                       AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                        ,gv_agein_cost_name
+                                                                        ,gv_material_cost_name
+                                                                        ,gv_pack_cost_name
+                                                                        ,gv_out_order_cost_name
+                                                                        ,gv_safekeep_cost_name
+                                                                        ,gv_other_cost_name
+                                                                        ,gv_spare1_name
+                                                                        ,gv_spare2_name
+                                                                        ,gv_spare3_name))
+                                     ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                       ,gc_lot_ine,xlc.unit_ploce
+                                                       ,gc_lot_view
+                                          ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                            FROM   xxpo_price_headers    xph
+                                                  ,xxpo_price_lines      xpl
+                                                  ,xxcmn_lookup_values_v xlvv1
+                                                  ,xxcmn_lookup_values_v xlvv2
+                                            WHERE  xph.price_header_id   = xpl.price_header_id
+                                            AND    xpl.expense_item_type = xlvv1.attribute1
+                                            AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                            AND    xph.price_type        = gv_lookup_code
+                                            AND    xph.item_code         = iimb.item_no
+                                            AND    xlvv1.lookup_type     = gv_expense_item_type
+                                            AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                            AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                            ,gv_agein_cost_name
+                                                                            ,gv_material_cost_name
+                                                                            ,gv_pack_cost_name
+                                                                            ,gv_out_order_cost_name
+                                                                            ,gv_safekeep_cost_name
+                                                                            ,gv_other_cost_name
+                                                                              ,gv_spare1_name
+                                                                              ,gv_spare2_name
+                                                                              ,gv_spare3_name))
+                                                       ))),0))   tou_jitu 
+           , SUM(NVL((SELECT NVL(SUM(xpl.unit_price),0)
+                      FROM   xxpo_price_headers    xph
+                            ,xxpo_price_lines      xpl
+                            ,xxcmn_lookup_values_v xlvv1
+                            ,xxcmn_lookup_values_v xlvv2
+                      WHERE  xph.price_header_id   = xpl.price_header_id
+                      AND    xpl.expense_item_type = xlvv1.attribute1
+                      AND    xlvv1.attribute2      = xlvv2.lookup_code
+                      AND    xph.price_type        = gv_lookup_code
+                      AND    xph.item_code         = iimb.item_no
+                      AND    xlvv1.lookup_type     = gv_expense_item_type
+                      AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                      AND    xlvv2.meaning         = gv_raw_mat_cost_name)
+             , 0))                          cmpnt_cost 
+           , SUM(NVL(DECODE(xrpm.line_type
+                           ,gc_huku, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                             * (SELECT NVL(SUM(xpl.unit_price),0)
+                                FROM   xxpo_price_headers    xph
+                                      ,xxpo_price_lines      xpl
+                                      ,xxcmn_lookup_values_v xlvv1
+                                      ,xxcmn_lookup_values_v xlvv2
+                                WHERE  xph.price_header_id   = xpl.price_header_id
+                                AND    xpl.expense_item_type = xlvv1.attribute1
+                                AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                AND    xph.price_type        = gv_lookup_code
+                                AND    xph.item_code         = iimb.item_no
+                                AND    xlvv1.lookup_type     = gv_expense_item_type
+                                AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                AND    xlvv2.meaning         = gv_raw_mat_cost_name)
+                           ), 0)) cmpnt_huku 
+           , SUM(NVL((SELECT NVL(SUM(xpl.unit_price),0)
+                      FROM   xxpo_price_headers    xph
+                            ,xxpo_price_lines      xpl
+                            ,xxcmn_lookup_values_v xlvv1
+                            ,xxcmn_lookup_values_v xlvv2
+                      WHERE  xph.price_header_id   = xpl.price_header_id
+                      AND    xpl.expense_item_type = xlvv1.attribute1
+                      AND    xlvv1.attribute2      = xlvv2.lookup_code
+                      AND    xph.price_type        = gv_lookup_code
+                      AND    xph.item_code         = iimb.item_no
+                      AND    xlvv1.lookup_type     = gv_expense_item_type
+                      AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                      AND    xlvv2.meaning         = gv_raw_mat_cost_name)
+             * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)), 0)) cmpnt_kin 
+           , SUM(NVL(CASE  -- 投入品で資材以外
+                     WHEN xrpm.line_type =   gc_tou  
+                     AND  mcb2.segment1 <>   gc_sizai  
+                     THEN (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                       * DECODE(iimb.attribute15
+                               ,gc_cost_st
+                               ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                 FROM   xxpo_price_headers    xph
+                                       ,xxpo_price_lines      xpl
+                                       ,xxcmn_lookup_values_v xlvv1
+                                       ,xxcmn_lookup_values_v xlvv2
+                                 WHERE  xph.price_header_id   = xpl.price_header_id
+                                 AND    xpl.expense_item_type = xlvv1.attribute1
+                                 AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                 AND    xph.price_type        = gv_lookup_code
+                                 AND    xph.item_code         = iimb.item_no
+                                 AND    xlvv1.lookup_type     = gv_expense_item_type
+                                 AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                 AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                  ,gv_agein_cost_name
+                                                                  ,gv_material_cost_name
+                                                                  ,gv_pack_cost_name
+                                                                  ,gv_out_order_cost_name
+                                                                  ,gv_safekeep_cost_name
+                                                                  ,gv_other_cost_name
+                                                                  ,gv_spare1_name
+                                                                  ,gv_spare2_name
+                                                                  ,gv_spare3_name))
+                               ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                 ,gc_lot_ine,xlc.unit_ploce
+                                                 ,gc_lot_view
+                                         ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                           FROM   xxpo_price_headers    xph
+                                                 ,xxpo_price_lines      xpl
+                                                 ,xxcmn_lookup_values_v xlvv1
+                                                 ,xxcmn_lookup_values_v xlvv2
+                                           WHERE  xph.price_header_id   = xpl.price_header_id
+                                           AND    xpl.expense_item_type = xlvv1.attribute1
+                                           AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                           AND    xph.price_type        = gv_lookup_code
+                                           AND    xph.item_code         = iimb.item_no
+                                           AND    xlvv1.lookup_type     = gv_expense_item_type
+                                           AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                           AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                            ,gv_agein_cost_name
+                                                                            ,gv_material_cost_name
+                                                                            ,gv_pack_cost_name
+                                                                            ,gv_out_order_cost_name
+                                                                            ,gv_safekeep_cost_name
+                                                                            ,gv_other_cost_name
+                                                                            ,gv_spare1_name
+                                                                            ,gv_spare2_name
+                                                                            ,gv_spare3_name))
+                                                 ))
+                     END  , 0))                                              tou_kin 
+           , SUM(NVL(DECODE(xrpm.hit_in_div
+                           ,gc_y, (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
+                             * DECODE(iimb.attribute15
+                                     ,gc_cost_st
+                                     ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                       FROM   xxpo_price_headers    xph
+                                             ,xxpo_price_lines      xpl
+                                             ,xxcmn_lookup_values_v xlvv1
+                                             ,xxcmn_lookup_values_v xlvv2
+                                       WHERE  xph.price_header_id   = xpl.price_header_id
+                                       AND    xpl.expense_item_type = xlvv1.attribute1
+                                       AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                       AND    xph.price_type        = gv_lookup_code
+                                       AND    xph.item_code         = iimb.item_no
+                                       AND    xlvv1.lookup_type     = gv_expense_item_type
+                                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                       AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                        ,gv_agein_cost_name
+                                                                        ,gv_material_cost_name
+                                                                        ,gv_pack_cost_name
+                                                                        ,gv_out_order_cost_name
+                                                                        ,gv_safekeep_cost_name
+                                                                        ,gv_other_cost_name
+                                                                        ,gv_spare1_name
+                                                                        ,gv_spare2_name
+                                                                        ,gv_spare3_name))
+                                     ,gc_cost_ac,DECODE(iimb.lot_ctl
+                                                       ,gc_lot_ine,xlc.unit_ploce
+                                                       ,gc_lot_view
+                                         ,(SELECT NVL(SUM(xpl.unit_price),0)
+                                           FROM   xxpo_price_headers    xph
+                                                 ,xxpo_price_lines      xpl
+                                                 ,xxcmn_lookup_values_v xlvv1
+                                                 ,xxcmn_lookup_values_v xlvv2
+                                           WHERE  xph.price_header_id   = xpl.price_header_id
+                                           AND    xpl.expense_item_type = xlvv1.attribute1
+                                           AND    xlvv1.attribute2      = xlvv2.lookup_code
+                                           AND    xph.price_type        = gv_lookup_code
+                                           AND    xph.item_code         = iimb.item_no
+                                           AND    xlvv1.lookup_type     = gv_expense_item_type
+                                           AND    xlvv2.lookup_type     = gv_cmpntcls_type
+                                           AND    xlvv2.meaning         IN ( gv_raw_mat_cost_name
+                                                                            ,gv_agein_cost_name
+                                                                            ,gv_material_cost_name
+                                                                            ,gv_pack_cost_name
+                                                                            ,gv_out_order_cost_name
+                                                                            ,gv_safekeep_cost_name
+                                                                            ,gv_other_cost_name
+                                                                            ,gv_spare1_name
+                                                                            ,gv_spare2_name
+                                                                            ,gv_spare3_name))
+                                                       )),0),0)
+                ) uti_kin 
+      FROM
+            ic_tran_pnd              itp      --在庫トラン
+           ,gmi_item_categories      gic1
+           ,mtl_categories_b         mcb1
+           ,mtl_categories_tl        mct1
+           ,gmi_item_categories      gic2
+           ,mtl_categories_b         mcb2
+           ,mtl_categories_tl        mct2
+           ,gmi_item_categories      gic3
+           ,mtl_categories_b         mcb3
+           ,ic_item_mst_b            iimb
+           ,xxcmn_item_mst_b         ximb
+           ,xxcmn_lot_cost           xlc
+           ,gme_material_details     gmd1     -- 
+           ,gme_batch_header         gbh1     -- 
+           ,gmd_routings_b           grb1     -- 
+           ,xxcmn_rcv_pay_mst xrpm
+      WHERE  itp.doc_type          = 'PROD'
+      AND    itp.completed_ind     = 1
+      AND    itp.trans_date        >= FND_DATE.STRING_TO_DATE( gr_param.proc_from_date_ch
+                                                             , gc_char_d_format  )
+      AND    itp.trans_date        <  FND_DATE.STRING_TO_DATE( gr_param.proc_to_date_ch
+                                                             , gc_char_d_format  )
+      AND    gic1.item_id          = itp.item_id
+      AND    gic1.category_set_id  = cn_prod_class_id
+      AND    mcb1.category_id      = gic1.category_id
+      AND    mcb1.segment1         = gr_param.prod_div  --@@商品区分
+      AND    mct1.category_id      = mcb1.category_id
+      AND    mct1.language         = 'JA'
+      AND    gic2.item_id          = itp.item_id
+      AND    gic2.category_set_id  = cn_item_class_id
+      AND    mcb2.category_id      = gic2.category_id
+      AND    mcb2.segment1         = gr_param.item_div  --@@品目区分
+      AND    mct2.category_id      = mcb2.category_id
+      AND    mct2.language         = 'JA'
+      AND    gic3.item_id          = itp.item_id
+      AND    gic3.category_set_id  = cn_crowd_code_id
+      AND    mcb3.category_id      = gic3.category_id
+      AND    iimb.item_id          = itp.item_id
+      AND    ximb.item_id          = iimb.item_id
+      AND    itp.trans_date        BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)        = itp.item_id
+      AND    xlc.lot_id(+)         = itp.lot_id
+      AND    itp.doc_id            = gmd1.batch_id
+      AND    itp.doc_line          = gmd1.line_no
+      AND    gbh1.batch_id         = gmd1.batch_id
+      AND    grb1.routing_id       = gbh1.routing_id
+      AND    xrpm.routing_class    = grb1.routing_class
+      AND    itp.doc_type           = xrpm.doc_type
+      AND    itp.line_type          = xrpm.line_type
+      AND    gmd1.line_type         = xrpm.line_type
+      AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
+             OR ( xrpm.hit_in_div        = gmd1.attribute5 ) )
+      AND    xrpm.break_col_07       IS NOT NULL
+      AND    ((xrpm.routing_class    <> '70')  --PTN A
+             OR (xrpm.routing_class     = '70' --PTN B
+                 AND (EXISTS (SELECT 1
+                              FROM   gme_material_details gmd2
+                                    ,gmi_item_categories  gic
+                                    ,mtl_categories_b     mcb
+                              WHERE  gmd2.batch_id   = gmd1.batch_id
+                              AND    gmd2.line_no    = gmd1.line_no
+                              AND    gmd2.line_type  = -1
+                              AND    gic.item_id     = gmd2.item_id
+                              AND    gic.category_set_id = cn_item_class_id
+                              AND    gic.category_id = mcb.category_id
+                              AND    mcb.segment1    = xrpm.item_div_origin))
+                 AND (EXISTS (SELECT 1
+                              FROM   gme_material_details gmd3
+                                    ,gmi_item_categories  gic
+                                    ,mtl_categories_b     mcb
+                              WHERE  gmd3.batch_id   = gmd1.batch_id
+                              AND    gmd3.line_no    = gmd1.line_no
+                              AND    gmd3.line_type  = 1
+                              AND    gic.item_id     = gmd3.item_id
+                              AND    gic.category_set_id = cn_item_class_id
+                              AND    gic.category_id = mcb.category_id
+                              AND    mcb.segment1    = xrpm.item_div_ahead))
+              ))
+      GROUP BY 
+               mcb1.segment1
+             , mct1.description
+             , mcb2.segment1
+             , mct2.description
+             , mcb3.segment1
+             , itp.item_id
+             , iimb.item_no
+             , ximb.item_short_name
+      ORDER BY 
+               mcb3.segment1
+              ,iimb.item_no
+      ;
+-- 2008/10/09 v1.10 ADD END
 --
   BEGIN
 --
@@ -469,6 +1321,8 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--tyoshida del
+/*
     -- ====================================================
     -- ＳＱＬ生成
     -- ====================================================
@@ -652,16 +1506,40 @@ AS
       ;
     lv_sql := lv_select || lv_from || lv_where || lv_group_by || lv_order_by;
 --
+*/
+--tyoshida del
+
     -- ====================================================
     -- データ抽出
     -- ====================================================
 --
+--tyoshida upd
+/*
     -- オープン
     OPEN lc_ref FOR lv_sql ;
     -- バルクフェッチ
     FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
     -- カーソルクローズ
     CLOSE lc_ref ;
+*/
+--    OPEN  get_data_cur01;
+--    FETCH get_data_cur01 BULK COLLECT INTO ot_data_rec;
+--    CLOSE get_data_cur01;
+--tyoshida upd
+-- 2008/10/09 v1.10 ADD START
+   IF (gr_param.item_div = gv_product) THEN
+-- 2008/10/09 v1.10 ADD END
+    OPEN  get_data_cur02;
+    FETCH get_data_cur02 BULK COLLECT INTO ot_data_rec;
+    CLOSE get_data_cur02;
+--yutsuzuk upd
+-- 2008/10/09 v1.10 ADD START
+   ELSE
+    OPEN  get_data_cur03;
+    FETCH get_data_cur03 BULK COLLECT INTO ot_data_rec;
+    CLOSE get_data_cur03;
+   END IF;
+-- 2008/10/09 v1.10 ADD END
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -729,7 +1607,9 @@ AS
     lc_depth_crowd_low      CONSTANT NUMBER :=  5;  -- 小群
     lc_depth_crowd_mid      CONSTANT NUMBER :=  7;  -- 中群
     lc_depth_crowd_high     CONSTANT NUMBER :=  9;  -- 大群
-    lc_depth_rcv_pay_div    CONSTANT NUMBER := 11;  -- 受払区分
+-- 2008/10/08 v1.9 DELETE START
+--    lc_depth_rcv_pay_div    CONSTANT NUMBER := 11;  -- 受払区分
+-- 2008/10/08 v1.9 DELETE END
     lc_depth_item_div       CONSTANT NUMBER := 13;  -- 品目区分
     lc_depth_prod_div       CONSTANT NUMBER := 15;  -- 商品区分
 --
@@ -905,12 +1785,16 @@ AS
     prc_set_xml('T', 'g_item_div');
     prc_set_xml('D', 'item_div_code', gt_main_data(1).item_div);
     prc_set_xml('D', 'item_div_name', gt_main_data(1).item_div_name, 20);
+-- 2008/10/08 v1.9 DELETE START
+/*
     --受払区分
     prc_set_xml('T', 'lg_rcv_pay_div');
     IF (gr_param.rcv_pay_div IS NOT NULL) THEN
       prc_set_xml('D', 'p_rcv_pay_div_code', gt_main_data(1).rcv_pay_div);
       prc_set_xml('D', 'p_rcv_pay_div_name', gt_main_data(1).rcv_pay, 20);
     END IF;
+*/
+-- 2008/10/08 v1.9 DELETE END
 --
     -- =====================================================
     -- 項目データ抽出・出力処理
@@ -928,6 +1812,8 @@ AS
       ln_group_depth     := 0;
       lr_now_key.prod_div    := gt_main_data(ln_loop_index).prod_div;
       lr_now_key.item_div    := lr_now_key.prod_div || gt_main_data(ln_loop_index).item_div;
+-- 2008/10/08 v1.9 UPDATE START
+/*
       lr_now_key.rcv_pay_div := lr_now_key.item_div || gt_main_data(ln_loop_index).rcv_pay_div;
       lr_now_key.crowd_high  := lr_now_key.rcv_pay_div
                                || SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 1);
@@ -937,6 +1823,12 @@ AS
                                || SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 3);
       lr_now_key.crowd_dtl   :=   lr_now_key.rcv_pay_div
                                || SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 4);
+*/
+      lr_now_key.crowd_high  := SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 1);
+      lr_now_key.crowd_mid   := SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 2);
+      lr_now_key.crowd_low   := SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 3);
+      lr_now_key.crowd_dtl   := SUBSTR(gt_main_data(ln_loop_index).gun_code , 1, 4);
+-- 2008/10/08 v1.9 UPDATE END
 --
       -- =====================================================
       -- 終了タグ作成
@@ -971,12 +1863,21 @@ AS
                 prc_set_xml('T', '/g_crowd_high');
                 ln_group_depth := lc_depth_crowd_high;
 --
+-- 2008/10/08 v1.9 UPDATE START
+/*
                 -- 受払区分
                 IF ( NVL(lr_now_key.rcv_pay_div, lc_break ) <> lr_pre_key.rcv_pay_div ) THEN
                   prc_set_xml('T', '/lg_crowd_high');
                   prc_set_xml('T', '/g_rcv_pay_div');
                   ln_group_depth := lc_depth_rcv_pay_div;
                 END IF;
+*/
+                -- 品目区分
+                IF ( NVL(lr_now_key.item_div, lc_break ) <> lr_pre_key.item_div ) THEN
+                  prc_set_xml('T', '/lg_crowd_high');
+                  ln_group_depth := lc_depth_item_div;
+                END IF;
+-- 2008/10/08 v1.9 UPDATE END
               END IF;
             END IF;
           END IF;
@@ -986,12 +1887,20 @@ AS
       -- =====================================================
       -- 開始タグ作成(大きい順
       -- =====================================================
+-- 2008/10/08 v1.9 UPDATE START
+/*
       IF (ln_group_depth >= lc_depth_rcv_pay_div) THEN
         -- 受払区分
         prc_set_xml('T', 'g_rcv_pay_div');
         prc_set_xml('D', 'rcv_pay_div_code', gt_main_data(ln_loop_index).rcv_pay_div);
         prc_set_xml('T', 'lg_crowd_high');
       END IF;
+*/
+      IF (ln_group_depth >= lc_depth_item_div) THEN
+        -- 受払区分
+        prc_set_xml('T', 'lg_crowd_high');
+      END IF;
+-- 2008/10/08 v1.9 UPDATE END
 --
       IF (ln_group_depth >= lc_depth_crowd_high) THEN
         -- 大群
@@ -1126,8 +2035,12 @@ AS
     prc_set_xml('N', 'sum_difference_price', ln_sum_sai_tan);
     prc_set_xml('N', 'sum_difference_amount', ln_sum_sai_kin);
 --
+-- 2008/10/08 v1.9 DELETE START
+/*
     prc_set_xml('T', '/g_rcv_pay_div');
     prc_set_xml('T', '/lg_rcv_pay_div');
+*/
+-- 2008/10/08 v1.9 DELETE END
     prc_set_xml('T', '/g_item_div');
     prc_set_xml('T', '/lg_item_div');
     prc_set_xml('T', '/g_prod_div');
@@ -1173,7 +2086,9 @@ AS
      ,iv_proc_to         IN    VARCHAR2  -- 処理年月TO
      ,iv_prod_div        IN    VARCHAR2  -- 商品区分
      ,iv_item_div        IN    VARCHAR2  -- 品目区分
-     ,iv_rcv_pay_div     IN    VARCHAR2  -- 受払区分
+-- 2008/10/08 v1.9 DELETE START
+--     ,iv_rcv_pay_div     IN    VARCHAR2  -- 受払区分
+-- 2008/10/08 v1.9 DELETE END
      ,iv_crowd_type      IN    VARCHAR2  -- 集計種別
      ,iv_crowd_code      IN    VARCHAR2  -- 群コード
      ,iv_acnt_crowd_code IN    VARCHAR2  -- 経理群コード
@@ -1219,7 +2134,9 @@ AS
     gr_param.proc_to         := iv_proc_to        ;-- 処理年月TO
     gr_param.prod_div        := iv_prod_div       ;-- 商品区分
     gr_param.item_div        := iv_item_div       ;-- 品目区分
-    gr_param.rcv_pay_div     := iv_rcv_pay_div    ;-- 受払区分
+-- 2008/10/08 v1.9 DELETE START
+--    gr_param.rcv_pay_div     := iv_rcv_pay_div    ;-- 受払区分
+-- 2008/10/08 v1.9 DELETE END
     gr_param.crowd_type      := iv_crowd_type     ;-- 集計種別
     gr_param.crowd_code      := iv_crowd_code     ;-- 群コード
     gr_param.acnt_crowd_code := iv_acnt_crowd_code;-- 経理群コード
@@ -1265,11 +2182,19 @@ AS
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<g_prod_div>' ) ;
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<lg_item_div>' ) ;
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<g_item_div>' ) ;
+-- 2008/10/08 v1.9 DELETE START
+/*
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<lg_rcv_pay_div>' ) ;
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<g_rcv_pay_div>' ) ;
+*/
+-- 2008/10/08 v1.9 DELETE END
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<msg>' || lv_errmsg || '</msg>' ) ;
+-- 2008/10/08 v1.9 DELETE START
+/*
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</g_rcv_pay_div>' ) ;
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</lg_rcv_pay_div>' ) ;
+*/
+-- 2008/10/08 v1.9 DELETE END
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</g_item_div>' ) ;
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</lg_item_div>' ) ;
       FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '</g_prod_div>' ) ;
@@ -1342,7 +2267,9 @@ AS
      ,iv_proc_to         IN    VARCHAR2  -- 処理年月TO
      ,iv_prod_div        IN    VARCHAR2  -- 商品区分
      ,iv_item_div        IN    VARCHAR2  -- 品目区分
-     ,iv_rcv_pay_div     IN    VARCHAR2  -- 受払区分
+-- 2008/10/08 v1.9 DELETE START
+--     ,iv_rcv_pay_div     IN    VARCHAR2  -- 受払区分
+-- 2008/10/08 v1.9 DELETE END
      ,iv_crowd_type      IN    VARCHAR2  -- 集計種別
      ,iv_crowd_code      IN    VARCHAR2  -- 群コード
      ,iv_acnt_crowd_code IN    VARCHAR2  -- 経理群コード
@@ -1375,7 +2302,9 @@ AS
        ,iv_proc_to         => iv_proc_to
        ,iv_prod_div        => iv_prod_div
        ,iv_item_div        => iv_item_div
-       ,iv_rcv_pay_div     => iv_rcv_pay_div
+-- 2008/10/08 v1.9 DELETE START
+--       ,iv_rcv_pay_div     => iv_rcv_pay_div
+-- 2008/10/08 v1.9 DELETE END
        ,iv_crowd_type      => iv_crowd_type
        ,iv_crowd_code      => iv_crowd_code
        ,iv_acnt_crowd_code => iv_acnt_crowd_code

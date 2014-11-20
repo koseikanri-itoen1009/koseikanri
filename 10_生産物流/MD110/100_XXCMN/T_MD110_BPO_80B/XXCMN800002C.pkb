@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2008/09/16    1.11  Oracle 山根一浩  T_S_421対応
  *  2008/09/29    1.12  Oracle 山根一浩  T_S_546,T_S_547対応
  *  2008/10/02    1.13  Oracle 椎名 昭圭 統合障害＃293対応
+ *  2008/10/10    1.14  Oracle 椎名 昭圭 T_S_442対応にあわせ原価内訳取得方法統一
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -182,6 +183,11 @@ AS
 --2008/09/16
   gn_kbn_def           CONSTANT NUMBER        := 0;                      -- デフォルト値
   gn_kbn_oth           CONSTANT NUMBER        := 1;                      -- 入力値
+--2008/10/10 MOD↓
+  -- クイックコードタイプ
+  gv_expense_item_type        CONSTANT VARCHAR2(100) := 'XXPO_EXPENSE_ITEM_TYPE';  -- 費目区分
+  gv_cmpntcls_type            CONSTANT VARCHAR2(100) := 'XXCMN_D19';               -- 原価内訳区分
+--2008/10/10 MOD↑
 --
   --メッセージ番号
   gv_msg_80b_001       CONSTANT VARCHAR2(15) := 'APP-XXCMN-00001';  --ユーザー名
@@ -3347,20 +3353,27 @@ AS
 --
     BEGIN
 --
-      SELECT SUM(xpl.unit_price)
+--- 2008/10/10 MOD↓
+          -- コンポーネント区分ごとの単価合計値取得。取得できない場合は0。
+      SELECT NVL(SUM(xpl.unit_price),0)   unit_price       -- 単価合計
       INTO   ln_price
-      FROM   xxpo_price_headers xph,
-             xxpo_price_lines xpl,
-             fnd_lookup_values flv
-      WHERE  xph.price_header_id   = xpl.price_header_id
-      AND    xph.price_type        = flv.lookup_code
+      FROM   xxpo_price_headers    xph              -- 仕入/標準原価ヘッダ
+            ,xxpo_price_lines      xpl              -- 仕入/標準原価明細
+            ,xxcmn_lookup_values_v xlvv1            -- クイックコード情報VIEW  費目区分情報
+            ,xxcmn_lookup_values_v xlvv2            -- クイックコード情報VIEW  原価内訳区分情報
+      WHERE  -- *** 結合条件 仕入/標準原価明細・費目区分情報 *** --
+             xpl.expense_item_type = xlvv1.attribute1
+             -- *** 結合条件 費目区分情報・原価内訳区分情報 *** --
+      AND    xlvv1.attribute2 = xlvv2.lookup_code
+             -- *** 抽出条件 *** --
+      AND    xph.price_header_id   = xpl.price_header_id
+      AND    xph.price_type        = gv_lookup_code
       AND    xph.item_code         = ir_masters_rec.item_code
-      AND    xpl.expense_item_type = iv_expense_type
-      AND    flv.lookup_type       = gv_lookup_type
-      AND    flv.meaning           = gv_meaning
-      AND    flv.language          = gv_language
-      AND    flv.lookup_code       = gv_lookup_code;
---
+      AND    xlvv1.lookup_type     = gv_expense_item_type   -- 費目区分
+      AND    xlvv2.lookup_type     = gv_cmpntcls_type       -- 原価内訳区分
+      AND    xlvv2.meaning         = iv_expense_type        -- コンポーネント区分名
+    ;
+--- 2008/10/10 MOD↑
       on_price := ln_price;
 --
     EXCEPTION
@@ -4573,19 +4586,31 @@ AS
     FOR i IN 1..10 LOOP
 -- 2008/09/08 Mod ↓
 --      lv_type := TO_CHAR(i);
-      lv_type := TO_CHAR(ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id);
+-- 2008/10/10 Mod ↓
+--      lv_type := TO_CHAR(ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id);
+-- 2008/10/10 Mod ↑
 -- 2008/09/08 Mod ↑
 --
       -- 入力あり
       IF (ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id IS NOT NULL) THEN
 --
+-- 2008/10/10 Mod ↓
+--        -- 単価の取得
+--        get_price(ir_masters_rec,
+--                  lv_type,
+--                  ln_price,
+--                  lv_errbuf,
+--                  lv_retcode,
+--                  lv_errmsg);
+--
         -- 単価の取得
         get_price(ir_masters_rec,
-                  lv_type,
+                  ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_desc,
                   ln_price,
                   lv_errbuf,
                   lv_retcode,
                   lv_errmsg);
+-- 2008/10/10 Mod ↑
 --
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
@@ -4609,7 +4634,7 @@ AS
                                             || ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_desc);
            FND_FILE.PUT_LINE( FND_FILE.LOG, '単価：'
                                             || ln_price);
-           FND_FILE.PUT_LINE( FND_FILE.LOG, '金額'
+           FND_FILE.PUT_LINE( FND_FILE.LOG, '金額：'
                                             || ir_masters_rec.cmpntcls_mast(i).cost_price);
 --------------------------------------------------------------------------------
 -- LOG END
