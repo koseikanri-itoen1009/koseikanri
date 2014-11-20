@@ -1,0 +1,20 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Index Name      : XXCOP_SALES_EXP_MV9_N01
+ * Description     : 計画_販売実績マテリアライズドビュー9索引1
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2013-09-10    1.0   SCSK.Nakamura    新規作成
+ *
+ ************************************************************************/
+CREATE INDEX xxcop.xxcop_sales_exp_mv9_n01
+ ON apps.xxcop_sales_exp_mv9
+  ( delivery_base_code                -- 納品拠点コード
+  , item_code                         -- 品目コード
+  ) TABLESPACE xxidx2
+/
