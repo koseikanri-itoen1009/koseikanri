@@ -86,6 +86,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/01    1.0  Oracle 野村       初回作成
  *  2008/05/27    1.1  Oracle 野村       結合障害 混載処理
+ *  2008/06/25    1.2  Oracle 野村       TE080指摘事項 反映
  *
  *****************************************************************************************/
 --
@@ -1258,7 +1259,15 @@ AS
             WHEN gv_shipping THEN gv_code_ship    --   出荷支給区分 3：配送先
             WHEN gv_shikyu   THEN gv_code_shikyu  --                2：取引先
             END
+-- ##### 20080625 Ver.1.2 支給配送先対応 START #####
+/***
           , xoha.result_deliver_to                -- 出荷先_実績
+***/
+          , CASE xotv.shipping_shikyu_class       -- 配送コード区分
+            WHEN gv_shipping THEN xoha.result_deliver_to  -- 出荷先_実績
+            WHEN gv_shikyu   THEN xoha.vendor_site_code   -- 取引先サイト
+            END
+-- ##### 20080625 Ver.1.2 支給配送先対応 END   #####
           , xdec.payments_judgment_classe         -- 支払判断区分(運賃)
           , xoha.shipped_date                     -- 出荷日
           , xoha.arrival_date                     -- 着荷日
@@ -1308,7 +1317,13 @@ AS
             AND (xoha.arrival_date >=  gd_target_date))         -- 着荷日
           )
     AND (
+-- ##### 20080625 Ver.1.2 支給配送先対応 START #####
+/***
           (xotv.shipping_shikyu_class  = gv_shipping)         -- 出荷依頼
+***/
+          ((xotv.shipping_shikyu_class  = gv_shipping)         -- 出荷依頼
+          AND  (xoha.result_deliver_to  IS NOT NULL))          -- 出荷先_実績
+-- ##### 20080625 Ver.1.2 支給配送先対応 END   #####
         OR
           ((xotv.shipping_shikyu_class  = gv_shikyu)            -- 支給依頼
           AND (xotv.auto_create_po_class = '0'))                -- 自動作成発注区分「NO」
@@ -1611,7 +1626,12 @@ AS
 --
       SELECT  xola.order_header_id                  -- 受注ヘッダアドオンID
             , xola.shipping_item_code               -- 出荷品目
+-- ##### 20080625 Ver.1.2 出荷実績数量NULL対応 START #####
+/***
             , xola.shipped_quantity                 -- 出荷実績数量
+***/
+            , NVL(xola.shipped_quantity, 0)          -- 出荷実績数量
+-- ##### 20080625 Ver.1.2 出荷実績数量NULL対応 END   #####
       BULK COLLECT INTO lt_order_line_inf_tab
       FROM  xxwsh_order_lines_all          xola     -- 受注明細アドオン
       WHERE xola.order_header_id = 
@@ -2582,7 +2602,12 @@ AS
 --
       SELECT  xmril.mov_hdr_id                  -- 移動ヘッダID
             , xmril.item_id                     -- 品目ID
+-- ##### 20080625 Ver.1.2 出荷実績数量NULL対応 START #####
+/***
             , xmril.shipped_quantity            -- 出荷実績数量
+***/
+            , NVL(xmril.shipped_quantity, 0)    -- 出荷実績数量
+-- ##### 20080625 Ver.1.2 出荷実績数量NULL対応 END   #####
       BULK COLLECT INTO lt_move_line_inf_tab
       FROM  xxinv_mov_req_instr_lines   xmril       -- 受注明細アドオン
       WHERE xmril.mov_hdr_id = gt_move_inf_tab(ln_index).mov_hdr_id -- 移動ヘッダID
