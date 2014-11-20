@@ -8,7 +8,7 @@ AS
  *                    対象予算年度の商品計画データを抽出し、情報系システムに
  *                    連携するためのI/Fファイルを作成します。
  * MD.050           : MD050_CSM_002_A14_年間商品計画情報系システムIF
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-21    1.0   T.Shimoji       新規作成
+ *  2009-07-27    1.1   K.Kubo          ［SCS障害管理番号0000784］対象0件時のハンドリング変更
  *
  *****************************************************************************************/
 --
@@ -92,7 +93,9 @@ AS
   cv_xxcsm_msg_001        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00001';                             -- ファイル存在チェックエラーメッセージ
   cv_xxcsm_msg_002        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00002';                             -- ファイルオープンエラーメッセージ
   cv_xxcsm_msg_003        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00003';                             -- ファイルクローズエラーメッセージ
-  cv_xxcsm_msg_019        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00019';                             -- 情報系システム連携対象無しエラーメッセージ
+--//+DEL START  2009-07-27 0000784 K.Kubo
+--  cv_xxcsm_msg_019        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00019';                             -- 情報系システム連携対象無しエラーメッセージ
+--//+DEL END    2009-07-27 0000784 K.Kubo
   cv_xxcsm_msg_021        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00021';                             -- 年度取得エラーメッセージ
   cv_xxcsm_msg_031        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00031';                             -- 定期実行用プロファイル取得エラーメッセージ
   cv_xxcsm_msg_084        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00084';                             -- インターフェースファイル名
@@ -804,16 +807,18 @@ AS
     END LOOP get_data_loop;
     -- カーソルクローズ
     CLOSE get_item_plan_cur;
-    -- 処理対象件数が0件の場合
-    IF (gn_target_cnt = 0) THEN
-      -- エラーメッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_name                                                 --アプリケーション短縮名
-                    ,iv_name         => cv_xxcsm_msg_019                                            --メッセージコード
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE no_data_expt;
-    END IF;
+--//+DEL START  2009-07-27 0000784 K.Kubo
+--    -- 処理対象件数が0件の場合
+--    IF (gn_target_cnt = 0) THEN
+--      -- エラーメッセージ取得
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_app_name                                                 --アプリケーション短縮名
+--                    ,iv_name         => cv_xxcsm_msg_019                                            --メッセージコード
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE no_data_expt;
+--    END IF;
+--//+DEL END    2009-07-27 0000784 K.Kubo
     -- ========================================
     -- A-5.ファイルクローズ処理
     -- ========================================
@@ -828,30 +833,32 @@ AS
     END IF;
 --
   EXCEPTION
-    -- *** 処理対象データ0件例外ハンドラ ***
-    WHEN no_data_expt THEN
-      -- エラー件数カウント
-      gn_error_cnt := gn_error_cnt + 1;
-      --
-      lb_fopn_retcd := UTL_FILE.IS_OPEN (
-                         file =>gf_file_hand
-                       );
-      -- ファイルがクローズされていない場合
-      IF (lb_fopn_retcd = cb_true) THEN
-        -- ファイルクローズ
-        UTL_FILE.FCLOSE(
-          file =>gf_file_hand
-        );
-      END IF;
-      -- カーソルがクローズされていない場合
-      IF (get_item_plan_cur%ISOPEN) THEN
-        -- カーソルクローズ
-        CLOSE get_item_plan_cur;
-      END IF;
-      --
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;
+--//+DEL START  2009-07-27 0000784 K.Kubo
+--    -- *** 処理対象データ0件例外ハンドラ ***
+--    WHEN no_data_expt THEN
+--      -- エラー件数カウント
+--      gn_error_cnt := gn_error_cnt + 1;
+--      --
+--      lb_fopn_retcd := UTL_FILE.IS_OPEN (
+--                         file =>gf_file_hand
+--                       );
+--      -- ファイルがクローズされていない場合
+--      IF (lb_fopn_retcd = cb_true) THEN
+--        -- ファイルクローズ
+--        UTL_FILE.FCLOSE(
+--          file =>gf_file_hand
+--        );
+--      END IF;
+--      -- カーソルがクローズされていない場合
+--      IF (get_item_plan_cur%ISOPEN) THEN
+--        -- カーソルクローズ
+--        CLOSE get_item_plan_cur;
+--      END IF;
+--      --
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+--      ov_retcode := cv_status_error;
+--//+DEL END    2009-07-27 0000784 K.Kubo
 --
 --#################################  固定例外処理部 START   ####################################
 --
