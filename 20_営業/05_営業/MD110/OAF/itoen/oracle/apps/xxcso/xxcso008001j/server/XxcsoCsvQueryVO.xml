@@ -60,30 +60,35 @@ FROM    xxcso_resources_v2 xrv2
                  ,jtv.scheduled_end_date      AS scheduled_end_date
                  ,jtv.actual_end_date         AS actual_end_date
                  ,jtv.source_object_type_code AS source_object_type_code
+                 ,jtv.owner_id                AS owner_id
                  ,jtv.task_type_id            AS task_type_id
-                 ,xcav.party_name             AS party_name
-                 ,xcav.account_number         AS account_number
-                 ,xrv2.resource_id            AS resource_id
-          FROM    jtf_tasks_vl          jtv
-                 ,xxcso_cust_accounts_v xcav
-                 ,xxcso_resources_v2    xrv2
-          WHERE   jtv.owner_type_code         = 'RS_EMPLOYEE'
-            AND   jtv.source_object_type_code IN ('PARTY','TASK')
+                 ,NULL                        AS party_id
+                 ,NULL                        AS party_name
+                 ,NULL                        AS account_number
+          FROM    jtf_tasks_vl           jtv
+                 ,xxcso_resources_v2     xrv2
+          WHERE   jtv.source_object_type_code = 'TASK'
+            AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
-            AND   EXISTS
-                  (
-                    SELECT  1
-                    FROM    jtf_task_all_assignments jtaa
-                    WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
-                      AND   jtaa.task_id            = jtv.task_id
-                      AND   jtaa.resource_id        = xrv2.resource_id
+            AND   (
+                    (jtv.owner_id = xrv2.resource_id)
+                    OR
+                    (
+                      EXISTS
+                      (
+                        SELECT  1
+                        FROM    jtf_task_all_assignments jtaa
+                        WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
+                          AND   jtaa.task_id            = jtv.task_id
+                          AND   jtaa.resource_id        = xrv2.resource_id
+                      )
+                    )
                   )
-            AND   xcav.party_id(+) = jtv.source_object_id
           UNION
           SELECT  jtv.task_id                 AS task_id
                  ,jtv.task_name               AS task_name
@@ -92,34 +97,80 @@ FROM    xxcso_resources_v2 xrv2
                  ,jtv.scheduled_end_date      AS scheduled_end_date
                  ,jtv.actual_end_date         AS actual_end_date
                  ,jtv.source_object_type_code AS source_object_type_code
+                 ,jtv.owner_id                AS owner_id
                  ,jtv.task_type_id            AS task_type_id
+                 ,xcav.party_id               AS party_id
                  ,xcav.party_name             AS party_name
                  ,xcav.account_number         AS account_number
-                 ,xrv2.resource_id            AS resource_id
-          FROM    jtf_tasks_vl          jtv
-                 ,xxcso_cust_accounts_v xcav
-                 ,xxcso_resources_v2    xrv2
-                 ,as_leads_all          ala
-          WHERE   jtv.owner_type_code         = 'RS_EMPLOYEE'
-            AND   jtv.source_object_type_code = 'OPPORTUNITY'
+          FROM    jtf_tasks_vl           jtv
+                 ,xxcso_cust_accounts_v  xcav
+                 ,xxcso_resources_v2     xrv2
+          WHERE   jtv.source_object_type_code = 'PARTY'
+            AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
-            AND   EXISTS
-                  (
-                    SELECT  1
-                    FROM    jtf_task_all_assignments jtaa
-                    WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
-                      AND   jtaa.task_id            = jtv.task_id
-                      AND   jtaa.resource_id        = xrv2.resource_id
+            AND   (
+                    (jtv.owner_id = xrv2.resource_id)
+                    OR
+                    (
+                      EXISTS
+                      (
+                        SELECT  1
+                        FROM    jtf_task_all_assignments jtaa
+                        WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
+                          AND   jtaa.task_id            = jtv.task_id
+                          AND   jtaa.resource_id        = xrv2.resource_id
+                      )
+                    )
+                  )
+            AND   xcav.party_id = jtv.source_object_id
+          UNION
+          SELECT  jtv.task_id                 AS task_id
+                 ,jtv.task_name               AS task_name
+                 ,jtv.description             AS description
+                 ,jtv.task_status_id          AS task_status_id
+                 ,jtv.scheduled_end_date      AS scheduled_end_date
+                 ,jtv.actual_end_date         AS actual_end_date
+                 ,jtv.source_object_type_code AS source_object_type_code
+                 ,jtv.owner_id                AS owner_id
+                 ,jtv.task_type_id            AS task_type_id
+                 ,xcav.party_id               AS party_id
+                 ,xcav.party_name             AS party_name
+                 ,xcav.account_number         AS account_number
+          FROM    jtf_tasks_vl           jtv
+                 ,as_leads_all           ala
+                 ,xxcso_cust_accounts_v  xcav
+                 ,xxcso_resources_v2     xrv2
+          WHERE   jtv.source_object_type_code = 'OPPORTUNITY'
+            AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
+            AND   jtv.deleted_flag            = 'N'
+            AND   (
+                    (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
+                    OR
+                    (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
+                  )
+            AND   (
+                    (jtv.owner_id = xrv2.resource_id)
+                    OR
+                    (
+                      EXISTS
+                      (
+                        SELECT  1
+                        FROM    jtf_task_all_assignments jtaa
+                        WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
+                          AND   jtaa.task_id            = jtv.task_id
+                          AND   jtaa.resource_id        = xrv2.resource_id
+                      )
+                    )
                   )
             AND   ala.lead_id                 = jtv.source_object_id
-            AND   xcav.party_id(+)            = ala.customer_id
+            AND   xcav.party_id               = ala.customer_id
         ) task
-        ,(
+       ,(
           SELECT  first_day.monday + two_week.day_index AS disp_date
           FROM    (
                     SELECT  0 day_index
@@ -183,7 +234,7 @@ WHERE   xrv2.sales_dashboad_use_flag = 'Y'
           AND (xrv2.work_base_code_new = tree_aff.child_base_code)
           )
         )
-  AND   xrv2.resource_id = task.resource_id
+  AND   xrv2.resource_id = task.owner_id
   AND   TRUNC(NVL(task.actual_end_date, task.scheduled_end_date)) = task_calendar.disp_date
    ]]></SQLQuery>
    <DesignTime>

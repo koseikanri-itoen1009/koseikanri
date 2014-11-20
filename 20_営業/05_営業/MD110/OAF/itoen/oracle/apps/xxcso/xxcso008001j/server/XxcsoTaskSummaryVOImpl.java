@@ -52,6 +52,8 @@ public class XxcsoTaskSummaryVOImpl extends OAViewObjectImpl
 // 2009-04-08 [STè·äQT1_0422] Add Start
     setWhereClauseParam(idx++, resourceId);
     setWhereClauseParam(idx++, resourceId);
+    setWhereClauseParam(idx++, resourceId);
+    setWhereClauseParam(idx++, resourceId);
 // 2009-04-08 [STè·äQT1_0422] Add End
     setWhereClauseParam(idx++, appDate);
     setWhereClauseParam(idx++, appDate);
