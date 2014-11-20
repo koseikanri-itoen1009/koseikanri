@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/07/22    1.4   N.Abe            [障害0000785]リーフ資材品を商品、製品抽出時の除外条件に追加
  *  2009/08/05    1.5   H.Sasaki         [障害0000926]品目カテゴリの印字制御のための修正
  *  2009/09/08    1.6   H.Sasaki         [障害0001266]OPM品目アドオンの版管理対応
+ *  2009/10/22    1.7   H.Sasaki         [障害E_T4_00057]資材品目の取得方法変更
  *
  *****************************************************************************************/
 --
@@ -621,23 +622,33 @@ AS
              ,mtl_system_items_b            msib                           -- 品目マスタ
              ,ic_item_mst_b                 iimb                           -- OPM品目マスタ
              ,xxcmn_item_mst_b              ximb                           -- OPM品目アドオンマスタ
-             ,( SELECT msib.segment1          item_no                   -- 品目コード
-                      ,decode(mcb.segment1,cv_2,cv_3 )   item_category  -- 品目カテゴリコード
-               FROM   mtl_system_items_b     msib                  -- 品目マスタ
-                     ,mtl_category_sets_b    mcsb                  -- 品目カテゴリセット
-                     ,mtl_category_sets_tl   mcst                  -- 品目カテゴリセット日本語
-                     ,mtl_categories_b       mcb                   -- 品目カテゴリマスタ
-                     ,mtl_item_categories    mic                   -- 品目カテゴリ割当
-               WHERE  msib.inventory_item_id =  mic.inventory_item_id
-                 AND  mcb.category_id        =  mic.category_id
-                 AND  mcsb.category_set_id   =  mic.category_set_id
-                 AND  mcb.structure_id       =  mcsb.structure_id
-                 AND  mcst.category_set_id   =  mcsb.category_set_id
-                 AND  mcst.language          =  USERENV( 'LANG' )
-                 AND  mcst.category_set_name =  cv_category_hinmoku
-                 AND  mcb.segment1           =  cv_2
-                 AND  mic.organization_id   =  gn_organization_id
-                 AND  msib.organization_id   =   mic.organization_id
+             ,( 
+-- == 2009/10/22 V1.7 Modified START ===============================================================
+--               SELECT msib.segment1          item_no                    -- 品目コード
+--                      ,decode(mcb.segment1,cv_2,cv_3 )   item_category  -- 品目カテゴリコード
+--               FROM   mtl_system_items_b     msib                  -- 品目マスタ
+--                     ,mtl_category_sets_b    mcsb                  -- 品目カテゴリセット
+--                     ,mtl_category_sets_tl   mcst                  -- 品目カテゴリセット日本語
+--                     ,mtl_categories_b       mcb                   -- 品目カテゴリマスタ
+--                     ,mtl_item_categories    mic                   -- 品目カテゴリ割当
+--               WHERE  msib.inventory_item_id =  mic.inventory_item_id
+--                 AND  mcb.category_id        =  mic.category_id
+--                 AND  mcsb.category_set_id   =  mic.category_set_id
+--                 AND  mcb.structure_id       =  mcsb.structure_id
+--                 AND  mcst.category_set_id   =  mcsb.category_set_id
+--                 AND  mcst.language          =  USERENV( 'LANG' )
+--                 AND  mcst.category_set_name =  cv_category_hinmoku
+--                 AND  mcb.segment1           =  cv_2
+--                 AND  mic.organization_id    =  gn_organization_id
+--                 AND  msib.organization_id   =   mic.organization_id
+               SELECT msib.segment1                       item_no         -- 品目コード
+                     ,cv_3                                item_category   -- 品目カテゴリコード
+               FROM   mtl_system_items_b      msib                        -- 品目マスタ
+               WHERE  msib.organization_id    =   gn_organization_id
+               AND    (   msib.segment1 LIKE '5%'
+                       OR msib.segment1 LIKE '6%'
+                      )
+-- == 2009/10/22 V1.7 Modified END   ===============================================================
              UNION
                SELECT msib.segment1          item_no               -- 品目コード
                      ,mcb.segment1           item_category         -- 品目カテゴリコード
@@ -683,11 +694,11 @@ AS
         AND  mmt.subinventory_code               =  msi.secondary_inventory_name
         AND  msi.attribute7                      =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
         AND  hca.account_number                  =  msi.attribute7
-        AND  hca.customer_class_code             = cv_1
+        AND  hca.customer_class_code             =  cv_1
         AND  msib.inventory_item_id              =  mmt.inventory_item_id
         AND  msib.organization_id                =  gn_organization_id
         AND  cat.item_no                         =  msib.segment1
-        AND  cat.item_category              =  NVL ( gr_param.item_ctg,cat.item_category )
+        AND  cat.item_category                   =  NVL ( gr_param.item_ctg,cat.item_category )
         AND  msib.segment1                       =  iimb.item_no
         AND  iimb.item_id                        =  ximb.item_id
 -- == 2009/09/08 V1.6 Added START ===============================================================
