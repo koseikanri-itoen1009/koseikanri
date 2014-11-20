@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/12/10    1.5   T.Miyata           本番#637 パフォーマンス対応
  *  2008/12/10    1.6   Hitomi Itou        本番障害#650
  *  2009/01/07    1.7   Akiyoshi Shiina    本番障害#873
+ *  2009/01/14    1.8   Hisanobu Sakuma    本番障害#661
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1284,6 +1285,19 @@ AS
     cur_data                       ref_cursor ;    -- カーソル
 --
 -- 2008/09/26 H.Itou Add End T_S_533(PT対応)
+-- 2009/01/14 v1.8 ADD START
+--
+    -- 帳票データ用変数
+    lt_report_data       list_report_data ;                                 -- 出力データ（ワーク）
+    lv_block_cd          xilv.distribution_block%TYPE DEFAULT NULL ;        -- 前回レコード格納用（ブロックコード）
+    lv_tmp_shipped_cd    type_report_data.shipped_cd%TYPE DEFAULT NULL ;    -- 前回レコード格納用（出庫元コード）
+    lv_tmp_item_cd       type_report_data.item_cd%TYPE DEFAULT NULL ;       -- 前回レコード格納用（品目コード）
+    ln_report_data_fr    NUMBER DEFAULT 0;                                  -- 元帳票データの格納用番号（自）
+    ln_report_data_to    NUMBER DEFAULT 0;                                  -- 元帳票データの格納用番号（至）
+    ln_ins_qty           NUMBER DEFAULT 0;                                  -- 不足数の集計値
+    ln_report_data_cnt   NUMBER DEFAULT 0;                                  -- 出力データ（ワーク）用配列カウンタ
+--
+-- 2009/01/14 v1.8 ADD END
 --
   BEGIN
 --
@@ -2282,6 +2296,67 @@ AS
     -- ======================================
     CLOSE cur_data ;
 -- 2008/09/26 H.Itou Add End T_S_533(PT対応)
+--
+-- 2009/01/14 v1.8 ADD START
+--
+    -- ====================================================
+    -- 帳票データ作成
+    -- ====================================================
+--
+    <<select_data_loop>>
+    FOR i IN 1..gt_report_data.COUNT LOOP
+--
+      -- 初期値設定
+      IF (i = 1) THEN
+        lv_block_cd       := gt_report_data(i).block_cd ;    -- 前回レコード格納用（ブロックコード）
+        lv_tmp_shipped_cd := gt_report_data(i).shipped_cd;   -- 前回レコード格納用（出庫元コード）
+        lv_tmp_item_cd    := gt_report_data(i).item_cd;      -- 前回レコード格納用（品目コード）
+        ln_report_data_fr := i;                              -- 元帳票データの格納用番号（自）
+      END IF;
+--      
+      -- ブロックコード、出庫元コード、品目コードの組合せが一致する場合
+      IF   (lv_block_cd       = gt_report_data(i).block_cd)
+      AND  (lv_tmp_shipped_cd = gt_report_data(i).shipped_cd)
+      AND  (lv_tmp_item_cd    = gt_report_data(i).item_cd)    THEN
+        -- 不足数の集計
+        ln_ins_qty         := ln_ins_qty + NVL(gt_report_data(i).ins_qty,0);
+        -- 元帳票データの格納用番号（至）の設定
+        ln_report_data_to  := i;
+      -- ブロックコード、出庫元コード、品目コードの組合せが一致しない場合
+      ELSE
+        -- ブロックコード、出庫元コード、品目コード単位の不足数の集計が0以外
+        IF (ln_ins_qty <> 0) THEN
+          -- 出力データ（ワーク）に値を設定する（ループ内）
+          <<report_data_in_loop>>
+          FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
+            ln_report_data_cnt := ln_report_data_cnt + 1;
+            lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
+          END LOOP report_data_in_loop;
+        END IF;
+        -- 値設定
+        lv_block_cd       := gt_report_data(i).block_cd ;      -- 前回レコード格納用（ブロックコード）
+        lv_tmp_shipped_cd := gt_report_data(i).shipped_cd;     -- 前回レコード格納用（出庫元コード）
+        lv_tmp_item_cd    := gt_report_data(i).item_cd;        -- 前回レコード格納用（品目コード）
+        ln_ins_qty        := NVL(gt_report_data(i).ins_qty,0); 
+        ln_report_data_fr := i;                                -- 元帳票データの格納用番号（自）
+        ln_report_data_to := i;                                -- 元帳票データの格納用番号（至）
+      END IF;
+    END LOOP select_data_loop;
+--
+    -- 出庫元コードと品目コードの単位の不足数の集計が0以外
+    IF (ln_ins_qty <> 0) THEN
+      -- 出力データ（ワーク）に値を設定する（ループ外）
+      <<report_data_out_loop>>
+      FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
+          ln_report_data_cnt := ln_report_data_cnt + 1;
+          lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
+      END LOOP report_data_out_loop;
+    END IF;
+--
+    gt_report_data.DELETE;
+    gt_report_data := lt_report_data;
+-- 2009/01/14 v1.8 ADD END
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
