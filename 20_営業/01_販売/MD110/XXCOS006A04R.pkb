@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *                                       【ST障害No.T1-0049対応】
  *                                       備考データ取得カラム名の修正
  *                                       descriptionへのセット内容を修正
+ *  2009/06/22    1.4   K.Kiriu          【ST障害No.T1-1437対応】
+ *                                       データパージ不具合対応
  *
  *****************************************************************************************/
 --
@@ -1318,6 +1320,12 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2009/06/22 Ver1.4 Add Start */
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+/* 2009/06/22 Ver1.4 Add End   */
+
 --
 --###########################  固定部 END   ####################################
   BEGIN
@@ -1404,11 +1412,17 @@ AS
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
     );
 --
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+/* 2009/06/22 Ver1.4 Mod Start */
+--    IF ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      RAISE global_process_expt;
+--    END IF;
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+/* 2009/06/22 Ver1.4 Mod End   */
 --
     -- ===============================
     -- A-3  帳票ワークテーブル削除
@@ -1425,6 +1439,16 @@ AS
     END IF;
 --
     COMMIT;
+--
+/* 2009/06/22 Ver1.4 Add Start */
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+/* 2009/06/22 Ver1.4 Add End   */
 --
     --明細０件時の警告終了制御
     IF ( g_rpt_data_tab.COUNT = 0 ) THEN
