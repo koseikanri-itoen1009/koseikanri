@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫差異明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44L)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -29,7 +29,7 @@ AS
  *  2008/05/28    1.2   Yusuke Tabata    結合不具合対応(出荷実績計上済のコード誤り)
  *  2008/07/01    1.3   Oracle 椎名      内部変更要求142
  *  2009/12/14    1.4   SCS    吉元 強樹 E_本稼動_00430対応
- *
+ *  2009/12/15    1.5   SCS    吉元 強樹 E_本稼動_00430対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -364,18 +364,32 @@ AS
     || ',xic.item_class_code          AS item_div_type'           -- 品目区分
     || ',xic.item_class_name          AS item_div_value'          -- 品目区分名称
     -- 実績有：実績日／無：予定日
-    || ',TO_CHAR(NVL(xoha.shipped_date'
-    || '            ,xoha.schedule_ship_date) '
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430対応
+--    || ',TO_CHAR(NVL(xoha.shipped_date'
+--    || '            ,xoha.schedule_ship_date) '
+    || ',TO_CHAR(NVL(xmldiv.shipped_date'
+    || '            ,xmldiv.schedule_ship_date) '
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430対応
     || '         ,''' || gc_date_mask_s || ''' ) AS shipped_date' -- 出庫日
-    || ',TO_CHAR(NVL(xoha.arrival_date'	
-    || '            ,xoha.schedule_arrival_date) '
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430対応
+--    || ',TO_CHAR(NVL(xoha.arrival_date'	
+--    || '            ,xoha.schedule_arrival_date) '
+    || ',TO_CHAR(NVL(xmldiv.arrival_date'	
+    || '            ,xmldiv.schedule_arrival_date) '
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430対応
     || '         ,''' || gc_date_mask_s || ''' ) AS arrival_date' -- 入庫日
     || ',xvs.vendor_site_code         AS dlv_vend_code'           -- 配送先コード
     || ',xvs.vendor_site_short_name   AS dlv_vend_name'           -- 配送先名称
-    || ',xoha.request_no              AS request_no'              -- 依頼Ｎｏ
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430対応
+--    || ',xoha.request_no              AS request_no'              -- 依頼Ｎｏ
+    || ',xmldiv.request_no              AS request_no'              -- 依頼Ｎｏ
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430対応
     || ',xim.item_no                  AS item_code'               -- 品目コード
     || ',xim.item_short_name          AS item_name'               -- 品目名称
-    || ',xola.futai_code              AS futai_code'              -- 付帯
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430対応
+--    || ',xola.futai_code              AS futai_code'              -- 付帯
+    || ',xmldiv.futai_code              AS futai_code'              -- 付帯
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430対応
     -- ロット情報出力:ロット管理品判定
     || ',CASE xim.lot_ctl'
     || '   WHEN 0 THEN NULL'
@@ -395,7 +409,10 @@ AS
     || ' END                          AS orgn_sign'               -- 固有記号
     || ',NVL(xmldiv.inst_quant,0)     AS inst_quant'              -- 支持数
     -- ステータス：出荷実績計上済以外はNULL
-    || ',CASE xoha.req_status'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430対応
+--    || ',CASE xoha.req_status'
+    || ',CASE xmldiv.req_status'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430対応
     || '   WHEN ''' || gc_req_status_s_cmpc || ''' THEN '
     || '     xmldiv.sipped_quant'
     || '   ELSE NULL'
@@ -409,10 +426,15 @@ AS
     -- ＦＲＯＭ句生成
     -- ====================================================
     lv_from := ' FROM'
-    || ' oe_transaction_types_all   otta'   -- 受注タイプ
-    || ',xxwsh_order_headers_all    xoha'   -- 受注ヘッダアドオン
-    || ',xxwsh_order_lines_all      xola'   -- 受注明細アドオン
-    || ',xxcmn_item_locations2_v    xil'    -- OPM保管場所情報VIEW
+-- 2009/12/15 v1.5 T.Yoshimoto Del Start E_本稼動_00430対応
+--    || ' oe_transaction_types_all   otta'   -- 受注タイプ
+--    || ',xxwsh_order_headers_all    xoha'   -- 受注ヘッダアドオン
+--    || ',xxwsh_order_lines_all      xola'   -- 受注明細アドオン
+-- 2009/12/15 v1.5 T.Yoshimoto Del End E_本稼動_00430対応
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430対応
+--    || ',xxcmn_item_locations2_v    xil'    -- OPM保管場所情報VIEW
+    || ' xxcmn_item_locations2_v    xil'    -- OPM保管場所情報VIEW
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430対応
     || ',xxcmn_vendor_sites2_v      xvs'    -- 仕入先サイトView
     || ',xxcmn_item_mst2_v          xim'    -- OPM品目情報View
     || ',xxcmn_item_categories4_v   xic'    -- OPM品目カテゴリ割当View
@@ -464,6 +486,24 @@ AS
     || '          ''' || gc_diff_reason_no  || ''''
     || '      END '
     || '  END AS diff_reason_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Add Start E_本稼動_00430
+    || '  ,xmld1.request_no'
+    || '  ,xmld1.req_status'
+    || '  ,xmld1.instruction_dept'
+    || '  ,xmld1.vendor_code'
+    || '  ,xmld1.vendor_site_code'
+    || '  ,xmld1.vendor_site_id'
+    || '  ,xmld1.deliver_from'
+    || '  ,xmld1.deliver_from_id'
+    || '  ,xmld1.shipped_date'
+    || '  ,xmld1.arrival_date'
+    || '  ,xmld1.schedule_ship_date'
+    || '  ,xmld1.schedule_arrival_date'
+    || '  ,xmld1.order_line_id'
+    || '  ,xmld1.shipping_inventory_item_id'
+    || '  ,xmld1.shipping_item_code'
+    || '  ,xmld1.futai_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Add End E_本稼動_00430
     || '  FROM'
     || '  ('
     || '    SELECT'
@@ -471,6 +511,23 @@ AS
     || '    ,xmlds.mov_line_id'
     || '    ,xmlds.item_id'
     || '    ,xmlds.lot_id'
+-- 2009/12/15 v1.5 T.Yoshimoto Add Start E_本稼動_00430
+    || '    ,xohas.request_no'
+    || '    ,xohas.instruction_dept'
+    || '    ,xohas.vendor_code'
+    || '    ,xohas.vendor_site_code'
+    || '    ,xohas.vendor_site_id'
+    || '    ,xohas.deliver_from'
+    || '    ,xohas.deliver_from_id'
+    || '    ,xohas.shipped_date'
+    || '    ,xohas.arrival_date'
+    || '    ,xohas.schedule_ship_date'
+    || '    ,xohas.schedule_arrival_date'
+    || '    ,xolas.order_line_id'
+    || '    ,xolas.shipping_inventory_item_id'
+    || '    ,xolas.shipping_item_code'
+    || '    ,xolas.futai_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Add End E_本稼動_00430
     || '    FROM'
     || '     xxinv_mov_lot_details   xmlds'
     || '    ,xxwsh_order_headers_all xohas'   -- 受注ヘッダアドオン
@@ -483,24 +540,27 @@ AS
     || '    AND xohas.order_header_id  = xolas.order_header_id'
     || '    AND xolas.order_line_id    = xmlds.mov_line_id' 
 -- 2009/12/11 v1.4 T.Yoshimoto Add Start E_本稼動_00430
-    || '    AND NVL(xohas.shipped_date,xohas.schedule_ship_date) >=  ' || lv_date_from
+-- 2009/12/11 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || '    AND NVL(xohas.shipped_date,xohas.schedule_ship_date) >=  ' || lv_date_from
+    || '    AND xohas.shipped_date    IS NOT NULL' 
+    || '    AND xohas.shipped_date    >=  ' || lv_date_from
+-- 2009/12/11 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
     ;
 --
     -- 出庫日TO
     IF (gr_param.date_to IS NOT NULL) THEN
-lv_from := lv_from
-      || '    AND NVL(xohas.shipped_date,xohas.schedule_ship_date)'
-      || '       <= FND_DATE.STRING_TO_DATE(NVL(''' || TO_CHAR(gr_param.date_to 
-                                                                  ,gc_date_mask) || ''''
-      || '                                  ,''' || gc_max_date_char || ''')'
-      || '          ,''' || gc_date_mask     || ''')'
-      ;
+      lv_from := lv_from
+        || ' AND xohas.shipped_date <= FND_DATE.STRING_TO_DATE(NVL(''' 
+        ||     TO_CHAR(gr_param.date_to ,gc_date_mask) || ''''
+        || '                            ,''' || gc_max_date_char || ''')'
+        || '                            ,''' || gc_date_mask     || ''')'
+        ;
     END IF ;
 --
 lv_from := lv_from
     || '    AND xohas.latest_external_flag     = ''' || gc_yn_div_y         || ''''
     || '    AND xohas.notif_status             = ''' || gc_notif_status_ok  || ''''
-    || '    AND xohas.req_status              <> ''' || gc_req_status_p_ccl || ''''
+    || '    AND xohas.req_status              IN (''07'',''08'')'
     || '    AND NVL( xolas.delete_flag, ''' || gc_yn_div_n || ''')'
     ||                                '    = ''' || gc_yn_div_n || ''''
 --
@@ -510,11 +570,173 @@ lv_from := lv_from
     || '    AND ottas.attribute11              = ''' || gc_sp_category_s || ''''
     || '    AND xohas.order_type_id            = ottas.transaction_type_id'  -- 受注タイプ結合
 -- 2009/12/11 v1.4 T.Yoshimoto Add End E_本稼動_00430
+-- 2009/12/15 v1.5 T.Yoshimoto Add Start E_本稼動_00430
+    ;
+    -- 出庫倉庫
+    IF (gr_param.deliver_from_code IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xohas.deliver_from = ''' || gr_param.deliver_from_code || '''';
+    END IF ;
+--
+    -- 配送先
+    IF (gr_param.dlv_vend_code IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xohas.vendor_site_code = ''' || gr_param.dlv_vend_code || '''' ;
+    END IF ;
+--
+    -- 依頼No
+    IF (gr_param.request_no IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xohas.request_no = ''' || gr_param.request_no || '''' ;
+    END IF ;
+--
+    -- 担当部署
+    IF (gr_param.dept_code IS NOT NULL) THEN
+      lv_where := lv_where 
+        || ' AND xohas.instruction_dept = ''' || gr_param.dept_code || '''';
+    END IF ;
+--
+    -- 品目
+    IF (gr_param.item_code IS NOT NULL) THEN
+      lv_from := lv_from 
+      || ' AND xolas.shipping_item_code = ''' || gr_param.item_code || '''';
+    END IF ;
+--
+    lv_from := lv_from 
+-- 2009/12/15 v1.5 T.Yoshimoto Add End E_本稼動_00430
+--
     || '    GROUP BY'
     || '     xohas.req_status'
     || '    ,xmlds.mov_line_id'
     || '    ,xmlds.item_id'
     || '    ,xmlds.lot_id'
+-- 2009/12/15 v1.5 T.Yoshimoto Add Start E_本稼動_00430
+    || '    ,xohas.request_no'
+    || '    ,xohas.instruction_dept'
+    || '    ,xohas.vendor_code'
+    || '    ,xohas.vendor_site_code'
+    || '    ,xohas.vendor_site_id'
+    || '    ,xohas.deliver_from'
+    || '    ,xohas.deliver_from_id'
+    || '    ,xohas.shipped_date'
+    || '    ,xohas.arrival_date'
+    || '    ,xohas.schedule_ship_date'
+    || '    ,xohas.schedule_arrival_date'
+    || '    ,xolas.order_line_id'
+    || '    ,xolas.shipping_inventory_item_id'
+    || '    ,xolas.shipping_item_code'
+    || '    ,xolas.futai_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Add End E_本稼動_00430
+-- 2009/12/15 v1.5 T.Yoshimoto Add Start E_本稼動_00430
+    || '  UNION ALL '
+    || '    SELECT'
+    || '     xohas.req_status'
+    || '    ,xmlds.mov_line_id'
+    || '    ,xmlds.item_id'
+    || '    ,xmlds.lot_id'
+    || '    ,xohas.request_no'
+    || '    ,xohas.instruction_dept'
+    || '    ,xohas.vendor_code'
+    || '    ,xohas.vendor_site_code'
+    || '    ,xohas.vendor_site_id'
+    || '    ,xohas.deliver_from'
+    || '    ,xohas.deliver_from_id'
+    || '    ,xohas.shipped_date'
+    || '    ,xohas.arrival_date'
+    || '    ,xohas.schedule_ship_date'
+    || '    ,xohas.schedule_arrival_date'
+    || '    ,xolas.order_line_id'
+    || '    ,xolas.shipping_inventory_item_id'
+    || '    ,xolas.shipping_item_code'
+    || '    ,xolas.futai_code'
+    || '    FROM'
+    || '     xxinv_mov_lot_details   xmlds'
+    || '    ,xxwsh_order_headers_all xohas'   -- 受注ヘッダアドオン
+    || '    ,xxwsh_order_lines_all   xolas'   -- 受注明細アドオン
+    || '    ,oe_transaction_types_all ottas'  -- 受注タイプ
+    || '    WHERE'
+    || '    xmlds.document_type_code   = '''  || gc_doc_type_prov || ''''
+    || '    AND xohas.order_header_id  = xolas.order_header_id'
+    || '    AND xolas.order_line_id    = xmlds.mov_line_id' 
+    || '    AND xohas.shipped_date    IS NULL' 
+    || '    AND xohas.schedule_ship_date    >=  ' || lv_date_from
+    ;
+--
+    -- 出庫日TO
+    IF (gr_param.date_to IS NOT NULL) THEN
+      lv_from := lv_from
+        || ' AND xohas.schedule_ship_date <= FND_DATE.STRING_TO_DATE(NVL(''' 
+        ||     TO_CHAR(gr_param.date_to ,gc_date_mask) || ''''
+        || '       ,''' || gc_max_date_char || ''')'
+        || '       ,''' || gc_date_mask     || ''')'
+        ;
+    END IF ;
+--
+    lv_from := lv_from
+    || '    AND xohas.latest_external_flag     = ''' || gc_yn_div_y         || ''''
+    || '    AND xohas.notif_status             = ''' || gc_notif_status_ok  || ''''
+    || '    AND xohas.req_status               = ''07'''
+    || '    AND NVL( xolas.delete_flag, ''' || gc_yn_div_n || ''')'
+    ||                                '    = ''' || gc_yn_div_n || ''''
+--
+    || '    AND ottas.org_id                   = '   || gn_prof_org_id
+    || '    AND ottas.attribute1               = ''' || gc_sp_class_prov || ''''
+    || '    AND ottas.order_category_code     <> ''' || gc_order_cat_r   || ''''
+    || '    AND ottas.attribute11              = ''' || gc_sp_category_s || ''''
+    || '    AND xohas.order_type_id            = ottas.transaction_type_id'  -- 受注タイプ結合
+    ;
+    -- 出庫倉庫
+    IF (gr_param.deliver_from_code IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xohas.deliver_from = ''' || gr_param.deliver_from_code || '''';
+    END IF ;
+--
+    -- 配送先
+    IF (gr_param.dlv_vend_code IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xohas.vendor_site_code = ''' || gr_param.dlv_vend_code || '''' ;
+    END IF ;
+--
+    -- 依頼No
+    IF (gr_param.request_no IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xohas.request_no = ''' || gr_param.request_no || '''' ;
+    END IF ;
+--
+    -- 担当部署
+    IF (gr_param.dept_code IS NOT NULL) THEN
+      lv_where := lv_where 
+        || ' AND xohas.instruction_dept = ''' || gr_param.dept_code || '''';
+    END IF ;
+--
+    -- 品目
+    IF (gr_param.item_code IS NOT NULL) THEN
+      lv_from := lv_from 
+        || ' AND xolas.shipping_item_code = ''' || gr_param.item_code || '''';
+    END IF ;
+--
+    lv_from := lv_from 
+    || '    GROUP BY'
+    || '     xohas.req_status'
+    || '    ,xmlds.mov_line_id'
+    || '    ,xmlds.item_id'
+    || '    ,xmlds.lot_id'
+    || '    ,xohas.request_no'
+    || '    ,xohas.instruction_dept'
+    || '    ,xohas.vendor_code'
+    || '    ,xohas.vendor_site_code'
+    || '    ,xohas.vendor_site_id'
+    || '    ,xohas.deliver_from'
+    || '    ,xohas.deliver_from_id'
+    || '    ,xohas.shipped_date'
+    || '    ,xohas.arrival_date'
+    || '    ,xohas.schedule_ship_date'
+    || '    ,xohas.schedule_arrival_date'
+    || '    ,xolas.order_line_id'
+    || '    ,xolas.shipping_inventory_item_id'
+    || '    ,xolas.shipping_item_code'
+    || '    ,xolas.futai_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Add End E_本稼動_00430
     || '  )                     xmld1,' -- 移動ロット詳細( メイン )結合用
     || '  xxinv_mov_lot_details xmld2,' -- 移動ロット詳細(指示数量)外部結合
     || '  xxinv_mov_lot_details xmld3,' -- 移動ロット詳細(出庫数量)外部結合
@@ -544,42 +766,60 @@ lv_from := lv_from
     -- ====================================================
     lv_where := ' WHERE'
     || ' xim.item_id                         = xic.item_id'             -- OPM品目カテゴリ割当結合
-    || ' AND xola.shipping_inventory_item_id = xim.inventory_item_id'   -- OPM品目情報VIEW結合
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || ' AND xola.shipping_inventory_item_id = xim.inventory_item_id'   -- OPM品目情報VIEW結合
+    || ' AND xmldiv.shipping_inventory_item_id = xim.inventory_item_id'   -- OPM品目情報VIEW結合
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430
     || ' AND ' || lv_date_from || ' BETWEEN xim.start_date_active'
     || '                            AND     NVL( xim.end_date_active'
     || '                                    ,FND_DATE.STRING_TO_DATE(''' || gc_max_date_char || ''''
     || '                                                            ,''' || gc_date_mask     || '''))'
-    || ' AND NVL( xola.delete_flag, ''' || gc_yn_div_n || ''')'
-    ||                                '    = ''' || gc_yn_div_n || ''''
-    || ' AND xoha.order_header_id          = xola.order_header_id'      -- 受注明細アドオン結合
-    || ' AND otta.org_id                   = '   || gn_prof_org_id
-    || ' AND otta.attribute1               = ''' || gc_sp_class_prov || ''''
-    || ' AND otta.order_category_code     <> ''' || gc_order_cat_r   || ''''
-    || ' AND otta.attribute11              = ''' || gc_sp_category_s || ''''
-    || ' AND xoha.order_type_id            = otta.transaction_type_id'  -- 受注タイプ結合
-    || ' AND xoha.vendor_site_id           = xvs.vendor_site_id'        -- 仕入先マスタ結合
+-- 2009/12/15 v1.5 T.Yoshimoto Del Start E_本稼動_00430
+--    || ' AND NVL( xola.delete_flag, ''' || gc_yn_div_n || ''')'
+--    ||                                '    = ''' || gc_yn_div_n || ''''
+--    || ' AND xoha.order_header_id          = xola.order_header_id'      -- 受注明細アドオン結合
+--    || ' AND otta.org_id                   = '   || gn_prof_org_id
+--    || ' AND otta.attribute1               = ''' || gc_sp_class_prov || ''''
+--    || ' AND otta.order_category_code     <> ''' || gc_order_cat_r   || ''''
+--    || ' AND otta.attribute11              = ''' || gc_sp_category_s || ''''
+--    || ' AND xoha.order_type_id            = otta.transaction_type_id'  -- 受注タイプ結合
+-- 2009/12/15 v1.5 T.Yoshimoto Del End E_本稼動_00430
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || ' AND xoha.vendor_site_id           = xvs.vendor_site_id'        -- 仕入先マスタ結合
+    || ' AND xmldiv.vendor_site_id           = xvs.vendor_site_id'        -- 仕入先マスタ結合
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430
     || ' AND ' || lv_date_from || ' BETWEEN xvs.start_date_active'
     || '                            AND     NVL( xvs.end_date_active'
     || '                                    ,FND_DATE.STRING_TO_DATE(''' || gc_max_date_char || ''''
     || '                                                            ,''' || gc_date_mask     || '''))'
-    || ' AND xoha.deliver_from_id          = xil.inventory_location_id' -- OPM保管場所情報VIEW結合
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || ' AND xoha.deliver_from_id          = xil.inventory_location_id' -- OPM保管場所情報VIEW結合
+    || ' AND xmldiv.deliver_from_id          = xil.inventory_location_id' -- OPM保管場所情報VIEW結合
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430
     || ' AND ' || lv_date_from || ' BETWEEN xil.date_from'
     || '                            AND     NVL( xil.date_to'
     || '                                    ,FND_DATE.STRING_TO_DATE(''' || gc_max_date_char || ''''
     || '                                                            ,''' || gc_date_mask     || '''))'
-    || ' AND xoha.latest_external_flag     = ''' || gc_yn_div_y         || ''''
-    || ' AND xoha.notif_status             = ''' || gc_notif_status_ok  || ''''
-    || ' AND xoha.req_status              <> ''' || gc_req_status_p_ccl || ''''
-    || ' AND NVL(xoha.shipped_date,xoha.schedule_ship_date) >=  ' || lv_date_from
-    || ' AND xola.order_line_id            = xmldiv.mov_line_id'  -- 移動ロット詳細アドオン結合
+-- 2009/12/15 v1.5 T.Yoshimoto Del Start E_本稼動_00430
+--    || ' AND xoha.latest_external_flag     = ''' || gc_yn_div_y         || ''''
+--    || ' AND xoha.notif_status             = ''' || gc_notif_status_ok  || ''''
+--    || ' AND xoha.req_status              <> ''' || gc_req_status_p_ccl || ''''
+--    || ' AND NVL(xoha.shipped_date,xoha.schedule_ship_date) >=  ' || lv_date_from
+--    || ' AND xola.order_line_id            = xmldiv.mov_line_id'  -- 移動ロット詳細アドオン結合
+-- 2009/12/15 v1.5 T.Yoshimoto Del End E_本稼動_00430
     || ' AND xmldiv.item_id                = ilm.item_id'
     || ' AND xmldiv.lot_id                 = ilm.lot_id'          -- OPMロットマスタ結合
     -- 有償支給セキュリティVIEW結合
     || ' AND xssv.user_id                  = ''' || gn_user_id || ''''
     || ' AND xssv.security_class           ='''  || gr_param.security_div || ''''
-    || ' AND xoha.vendor_code              = NVL(xssv.vendor_code,xoha.vendor_code)'
-    || ' AND xoha.vendor_site_code         = NVL(xssv.vendor_site_code,xoha.vendor_site_code)'
-    || ' AND xoha.deliver_from             = NVL(xssv.segment1,xoha.deliver_from)'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || ' AND xoha.vendor_code              = NVL(xssv.vendor_code,xoha.vendor_code)'
+--    || ' AND xoha.vendor_site_code         = NVL(xssv.vendor_site_code,xoha.vendor_site_code)'
+--    || ' AND xoha.deliver_from             = NVL(xssv.segment1,xoha.deliver_from)'
+    || ' AND xmldiv.vendor_code              = NVL(xssv.vendor_code,xmldiv.vendor_code)'
+    || ' AND xmldiv.vendor_site_code         = NVL(xssv.vendor_site_code,xmldiv.vendor_site_code)'
+    || ' AND xmldiv.deliver_from             = NVL(xssv.segment1,xmldiv.deliver_from)'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430
     || ' AND flv.lookup_type(+)            = ''' || gc_lookup_type_diff_reason || '''' 
     || ' AND flv.language(+)               = ''' || gc_language || '''' 
     || ' AND xmldiv.diff_reason_code       = flv.lookup_code(+)' -- クイックコード(差異事由)外部結合
@@ -607,12 +847,16 @@ lv_from := lv_from
         END IF;
       END IF ;
 --
+-- 2009/12/15 v1.5 T.Yoshimoto Del Start E_本稼動_00430
+/*
       -- 出庫倉庫
       IF (gr_param.deliver_from_code IS NOT NULL) THEN
         lv_where := lv_where 
         || ' AND xoha.deliver_from = ''' || gr_param.deliver_from_code || '''' 
         ;
       END IF ;
+*/
+-- 2009/12/15 v1.5 T.Yoshimoto Del End E_本稼動_00430
 --
       -- 商品区分
       IF (gr_param.prod_div IS NOT NULL) THEN
@@ -628,6 +872,8 @@ lv_from := lv_from
         ;
       END IF ;
 --
+-- 2009/12/15 v1.5 T.Yoshimoto Del Start E_本稼動_00430
+/*
       -- 配送先
       IF (gr_param.dlv_vend_code IS NOT NULL) THEN
         lv_where := lv_where 
@@ -665,20 +911,32 @@ lv_from := lv_from
         || '          ,''' || gc_date_mask     || ''')'
         ;
       END IF ;
+*/
+-- 2009/12/15 v1.5 T.Yoshimoto Del End E_本稼動_00430
 --
     -- ====================================================
     -- ＯＲＤＥＲ  ＢＹ句生成
     -- ====================================================
     lv_order_by := ' ORDER BY'
-    || ' xoha.deliver_from'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || ' xoha.deliver_from'
+    || ' xmldiv.deliver_from'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430
     || ',xic.prod_class_code'
     || ',xic.item_class_code'
     -- 実績有：実績日／無：予定日
-    || ',NVL(xoha.shipped_date,xoha.schedule_ship_date)'
-    || ',xoha.vendor_site_code'
-    || ',xoha.request_no'
-    || ',TO_NUMBER(xola.shipping_item_code)'
-    || ',xola.futai_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod Start E_本稼動_00430
+--    || ',NVL(xoha.shipped_date,xoha.schedule_ship_date)'
+--    || ',xoha.vendor_site_code'
+--    || ',xoha.request_no'
+--    || ',TO_NUMBER(xola.shipping_item_code)'
+--    || ',xola.futai_code'
+    || ',NVL(xmldiv.shipped_date,xmldiv.schedule_ship_date)'
+    || ',xmldiv.vendor_site_code'
+    || ',xmldiv.request_no'
+    || ',TO_NUMBER(xmldiv.shipping_item_code)'
+    || ',xmldiv.futai_code'
+-- 2009/12/15 v1.5 T.Yoshimoto Mod End E_本稼動_00430
     -- 品目区分が製品の場合は「製造年月日+固有記号」それ以外「ロットNo」
     || ',DECODE(xic.item_class_code,''' || gc_item_div_prod || ''''
     || '       ,CONCAT(ilm.attribute1,ilm.attribute2),ilm.lot_no)'
