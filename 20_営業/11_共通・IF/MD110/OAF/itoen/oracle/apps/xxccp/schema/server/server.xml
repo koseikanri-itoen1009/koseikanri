@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxccp.schema.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxccpMrpFileUlInterfaceEO"
+      FullName="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO"
+      ObjectType="Entity" >
+   </Containee>
+</JboPackage>

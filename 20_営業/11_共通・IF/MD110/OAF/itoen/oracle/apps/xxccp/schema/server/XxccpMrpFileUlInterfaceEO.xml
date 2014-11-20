@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxccpMrpFileUlInterfaceEO"
+   DBObjectType="table"
+   DBObjectName="XXCCP_MRP_FILE_UL_INTERFACE"
+   AliasName="XxccpMrpFileUlInterfaceEO"
+   BindingStyle="Oracle"
+   UseGlueCode="false"
+   CodeGenFlag="71"
+   RowClass="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="FileId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="FILE_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="FileName"
+      Precision="256"
+      Type="java.lang.String"
+      ColumnName="FILE_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="256" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="FileContentType"
+      Precision="256"
+      Type="java.lang.String"
+      ColumnName="FILE_CONTENT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="256" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="FileData"
+      IsQueriable="false"
+      Type="oracle.jbo.domain.BlobDomain"
+      ColumnName="FILE_DATA"
+      ColumnType="BLOB"
+      SQLType="BLOB"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+   </Attribute>
+   <Attribute
+      Name="FileFormat"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnName="FILE_FORMAT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="REQUEST_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_APPLICATION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="PROGRAM_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXccp_MRP_FILE_UL_INTERFACE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Key
+      Name="SysC00249126" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00249126" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00161131" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00161131" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00161128" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.FileData" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00161128" />
+         <Attr Name="_checkCondition" Value="&#34;FILE_DATA&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00248930" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.LastUpdateDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00248930" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00249124" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.CreatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00249124" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00161132" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.LastUpdateDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00161132" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00161129" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.CreatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00161129" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00248927" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.CreatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00248927" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="XxccpMfuiPk" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.FileId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCCP_MFUI_PK" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00248929" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00248929" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00249123" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.FileId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00249123" />
+         <Attr Name="_checkCondition" Value="&#34;FILE_ID&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00249127" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.LastUpdateDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00249127" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00248928" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.CreationDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00248928" />
+         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00249125" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.CreationDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00249125" />
+         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00161130" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.CreationDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00161130" />
+         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00248925" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.FileId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00248925" />
+         <Attr Name="_checkCondition" Value="&#34;FILE_ID&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00161127" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO.FileId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00161127" />
+         <Attr Name="_checkCondition" Value="&#34;FILE_ID&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+</Entity>

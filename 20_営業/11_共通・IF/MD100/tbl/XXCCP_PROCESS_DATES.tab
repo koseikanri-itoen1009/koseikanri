@@ -1,0 +1,29 @@
+CREATE TABLE xxccp.xxccp_process_dates
+(
+  process_date_id             NUMBER        NOT NULL,
+  process_date                DATE          NOT NULL,
+  created_by                  NUMBER(15)    NOT NULL,
+  creation_date               DATE          NOT NULL,
+  last_updated_by             NUMBER(15)    NOT NULL,
+  last_update_date            DATE          NOT NULL,
+  last_update_login           NUMBER(15),
+  request_id                  NUMBER(15),
+  program_application_id      NUMBER(15),
+  program_id                  NUMBER(15),
+  program_update_date         DATE,
+  CONSTRAINT xxccp_process_dates PRIMARY KEY ( process_date_id )
+  ) ;
+--
+COMMENT ON COLUMN xxccp.xxccp_process_dates.process_date_id               IS '業務日付アドオンID';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.process_date                  IS '業務日付';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.created_by                    IS '作成者';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.creation_date                 IS '作成日';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.last_updated_by               IS '最終更新者';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.last_update_date              IS '最終更新日';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.last_update_login             IS '最終更新ログイン';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.request_id                    IS '要求ID';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.program_application_id        IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.program_id                    IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxccp.xxccp_process_dates.program_update_date           IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxccp.xxccp_process_dates IS '業務日付テーブル';

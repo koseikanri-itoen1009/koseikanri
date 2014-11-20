@@ -1,0 +1,61 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * View Name       : XXCOP_WK_FORECAST_TOTALING
+ * Description     : 引取計画集計ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2008-11-19    1.0   SCS.Kikuchi     新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_WK_FORECAST_TOTALING(
+  SCHEDULE_TYPE                  VARCHAR2(1)                -- 計画区分
+, WHSE_CODE                      VARCHAR2(4)                -- 出荷倉庫
+, PROD_CLASS                     VARCHAR2(10)               -- 商品区分
+, ITEM_CODE                      VARCHAR2(7)                -- 品目コード
+, COUNT_PERIOD_FROM              DATE                       -- 集計期間From
+, COUNT_PERIOD_TO                DATE                       -- 集計期間To
+, TOTAL_AMOUNT                   NUMBER                     -- 引取数量合計
+, PLANED_ITEM_FLG                VARCHAR2(1)                -- 計画商品フラグ
+, NO_SHIPMENT_RESULTS            VARCHAR2(1)                -- 出荷実績なし
+, SOURCING_RULES_WARN_TYPE       VARCHAR2(1)                -- 物流構成表データ警告区分
+, BASE_CODE                      VARCHAR2(4)                -- 拠点
+, FORECAST_DATE                  DATE                       -- フォーキャスト日付
+, CREATED_BY                     NUMBER(15)                 -- 作成者
+, CREATION_DATE                  DATE                       -- 作成日
+, LAST_UPDATED_BY                NUMBER(15)                 -- 最終更新者
+, LAST_UPDATE_DATE               DATE                       -- 最終更新日
+, LAST_UPDATE_LOGIN              NUMBER(15)                 -- 最終更新ログイン
+, REQUEST_ID                     NUMBER(15)                 -- 要求ID
+, PROGRAM_APPLICATION_ID         NUMBER(15)                 -- プログラムアプリケーションID
+, PROGRAM_ID                     NUMBER(15)                 -- プログラムID
+, PROGRAM_UPDATE_DATE            DATE                       -- プログラム更新日
+);
+--
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.SCHEDULE_TYPE            IS '計画区分';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.WHSE_CODE                IS '出荷倉庫';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.PROD_CLASS               IS '商品区分';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.ITEM_CODE                IS '品目コード';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.COUNT_PERIOD_FROM        IS '集計期間From';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.COUNT_PERIOD_TO          IS '集計期間To';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.TOTAL_AMOUNT             IS '引取数量合計';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.PLANED_ITEM_FLG          IS '計画商品フラグ';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.NO_SHIPMENT_RESULTS      IS '出荷実績なし';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.SOURCING_RULES_WARN_TYPE IS '物流構成表データ警告区分';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.BASE_CODE                IS '拠点';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.FORECAST_DATE            IS 'フォーキャスト日付';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.CREATED_BY               IS '作成者';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.CREATION_DATE            IS '作成日';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.LAST_UPDATED_BY          IS '最終更新者';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.LAST_UPDATE_DATE         IS '最終更新日';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.LAST_UPDATE_LOGIN        IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.REQUEST_ID               IS '要求ID';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.PROGRAM_APPLICATION_ID   IS 'プログラムアプリケーションID';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.PROGRAM_ID               IS 'プログラムID';
+COMMENT ON COLUMN XXCOP.XXCOP_WK_FORECAST_TOTALING.PROGRAM_UPDATE_DATE      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOP.XXCOP_WK_FORECAST_TOTALING IS '引取計画集計ワークテーブル';

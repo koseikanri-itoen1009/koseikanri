@@ -1,0 +1,34 @@
+CREATE TABLE xxccp.xxccp_mrp_file_ul_interface
+( FILE_ID                NUMBER         NOT NULL, 
+  FILE_NAME              VARCHAR2(256), 
+  FILE_CONTENT_TYPE      VARCHAR2(256), 
+  FILE_DATA              BLOB           NOT NULL, 
+  FILE_FORMAT            VARCHAR2(10), 
+  CREATED_BY             NUMBER(15,0)   NOT NULL, 
+  CREATION_DATE          DATE           NOT NULL, 
+  LAST_UPDATED_BY        NUMBER(15,0)   NOT NULL, 
+  LAST_UPDATE_DATE       DATE           NOT NULL, 
+  LAST_UPDATE_LOGIN      NUMBER(15,0), 
+  REQUEST_ID             NUMBER(15,0), 
+  PROGRAM_APPLICATION_ID NUMBER(15,0), 
+  PROGRAM_ID             NUMBER(15,0), 
+  PROGRAM_UPDATE_DATE    DATE,
+  CONSTRAINT xxccp_mrp_file_ul_interface_pk PRIMARY KEY ( file_id )
+);
+--
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.file_id                IS 'ファイルID';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.file_name              IS 'ファイル名';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.file_content_type      IS 'ファイル区分';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.file_data              IS 'ファイルデータ';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.file_format            IS 'ファイルフォーマット';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.created_by             IS '作成者';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.creation_date          IS '作成日';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.request_id             IS '要求ID';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.program_application_id IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxccp.xxccp_mrp_file_ul_interface.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxccp.xxccp_mrp_file_ul_interface IS 'ファイルアップロードIFテーブル';

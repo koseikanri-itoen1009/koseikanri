@@ -1,0 +1,66 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_MRP_SCHEDULE_INTERFACE
+ * Description     : 基準計画IF表
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-1-26     1.0   SCS.Uchida       新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE
+(
+  transaction_id                 NUMBER        NOT NULL,
+  file_id                        NUMBER        NOT NULL,
+  file_name                      VARCHAR2(256) NOT NULL,
+  row_no                         NUMBER        NOT NULL,
+  schedule_designator            VARCHAR2(10)  NOT NULL,
+  schedule_description           VARCHAR2(50)  NOT NULL,
+  organization_code              VARCHAR2(3)   NOT NULL,
+  schedule_type                  NUMBER(1)     NOT NULL,
+  item_code                      VARCHAR2(7)   NOT NULL,
+  schedule_date                  DATE          NOT NULL,
+  schedule_quantity              NUMBER        NOT NULL,
+  deliver_from                   VARCHAR2(3)           ,
+  shipment_date                  DATE                  ,
+  schedule_prod_flg              NUMBER(1)             ,
+  created_by                     NUMBER(15)    NOT NULL,
+  creation_date                  DATE          NOT NULL,
+  last_updated_by                NUMBER(15)    NOT NULL,
+  last_update_date               DATE          NOT NULL,
+  last_update_login              NUMBER(15)            ,
+  request_id                     NUMBER(15)            ,
+  program_application_id         NUMBER(15)            ,
+  program_id                     NUMBER(15)            ,
+  program_update_date            DATE
+);
+--
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.TRANSACTION_ID                    IS '取引ID';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.FILE_ID                           IS 'ファイルID';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.FILE_NAME                         IS 'ファイル名';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.ROW_NO                            IS '行No';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_DESIGNATOR               IS 'MDS/MPS名';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_DESCRIPTION              IS 'MDS/MPS摘要';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.ORGANIZATION_CODE                 IS '組織コード';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_TYPE                     IS '基準計画分類';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.ITEM_CODE                         IS '品目コード';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_DATE                     IS '計画日付';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_QUANTITY                 IS '計画数量';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.DELIVER_FROM                      IS '出荷元倉庫コード';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SHIPMENT_DATE                     IS '出荷日';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_PROD_FLG                 IS '計画商品フラグ';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.CREATED_BY                        IS '作成者';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.CREATION_DATE                     IS '作成日';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.LAST_UPDATED_BY                   IS '最終更新者';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.LAST_UPDATE_DATE                  IS '最終更新日';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.LAST_UPDATE_LOGIN                 IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.REQUEST_ID                        IS '要求ID';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.PROGRAM_APPLICATION_ID            IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.PROGRAM_ID                        IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.PROGRAM_UPDATE_DATE               IS 'プログラム更新日';
+--
+COMMENT ON TABLE XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE IS '基準計画IF表';

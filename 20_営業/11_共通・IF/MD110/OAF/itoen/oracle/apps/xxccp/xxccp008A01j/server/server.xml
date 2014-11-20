@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxccp.xxccp008A01j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxccpMrpFileUlInterfaceVO"
+      FullName="itoen.oracle.apps.xxccp.xxccp008A01j.server.XxccpMrpFileUlInterfaceVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxccpLookUpValueVO"
+      FullName="itoen.oracle.apps.xxccp.xxccp008A01j.server.XxccpLookUpValueVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxccpFileUploadAM"
+      FullName="itoen.oracle.apps.xxccp.xxccp008A01j.server.XxccpFileUploadAM"
+      ObjectType="AppModule" >
+   </Containee>
+</JboPackage>

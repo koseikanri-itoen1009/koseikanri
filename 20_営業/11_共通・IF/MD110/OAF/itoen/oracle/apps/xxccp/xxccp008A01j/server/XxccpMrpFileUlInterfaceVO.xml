@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxccpMrpFileUlInterfaceVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxccpMrpFileUlInterfaceEO.FILE_ID, 
+       XxccpMrpFileUlInterfaceEO.FILE_NAME, 
+       XxccpMrpFileUlInterfaceEO.FILE_CONTENT_TYPE, 
+       XxccpMrpFileUlInterfaceEO.FILE_DATA, 
+       XxccpMrpFileUlInterfaceEO.FILE_FORMAT, 
+       XxccpMrpFileUlInterfaceEO.CREATED_BY, 
+       XxccpMrpFileUlInterfaceEO.CREATION_DATE, 
+       XxccpMrpFileUlInterfaceEO.LAST_UPDATED_BY, 
+       XxccpMrpFileUlInterfaceEO.LAST_UPDATE_DATE, 
+       XxccpMrpFileUlInterfaceEO.LAST_UPDATE_LOGIN, 
+       XxccpMrpFileUlInterfaceEO.REQUEST_ID, 
+       XxccpMrpFileUlInterfaceEO.PROGRAM_APPLICATION_ID, 
+       XxccpMrpFileUlInterfaceEO.PROGRAM_ID, 
+       XxccpMrpFileUlInterfaceEO.PROGRAM_UPDATE_DATE
+FROM XXCCP_MRP_FILE_UL_INTERFACE XxccpMrpFileUlInterfaceEO
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxccpMrpFileUlInterfaceEO"
+      Entity="itoen.oracle.apps.xxccp.schema.server.XxccpMrpFileUlInterfaceEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="FileId"
+      IsNotNull="true"
+      EntityAttrName="FileId"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="FILE_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileName"
+      EntityAttrName="FileName"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="FILE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileContentType"
+      EntityAttrName="FileContentType"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="FILE_CONTENT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileData"
+      IsQueriable="false"
+      IsNotNull="true"
+      EntityAttrName="FileData"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="FILE_DATA" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileFormat"
+      EntityAttrName="FileFormat"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="FILE_FORMAT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      EntityAttrName="RequestId"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxccpMrpFileUlInterfaceEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+</ViewObject>

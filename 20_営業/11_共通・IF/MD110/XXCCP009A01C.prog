@@ -1,0 +1,1399 @@
+#!/bin/ksh
+##################################################################################
+## Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved. ##
+##                                                                              ##
+## Program Name     : XXCCP009A01C                                              ##
+## Description      : 画面起動ジョブネット対応                                  ##
+## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
+## Version          : 1.2                                                       ##
+##                                                                              ##
+## Parameter List                                                               ##
+## -------- ----------------------------------------------------------          ##
+##  No.     Description                                                         ##
+## -------- ----------------------------------------------------------          ##
+## $1       Oracle username/password                                            ##
+## $2       User_id                                                             ##
+## $3       Oracle Applications username                                        ##
+## $4       Concurrent request id                                               ##
+## 以下、本コンカレントのパラメータ                                             ##
+## $5       起動対象アプリケーション短縮名                                      ##
+## $6       起動対象コンカレント短縮名                                          ##
+## $7       連携区分                                                            ##
+## $8       IF連携先システム名                                                  ##
+## $9       データ種コード                                                      ##
+## $10      バックアップ世代数                                                  ##
+## $11      SVFサーバNo                                                         ##
+## $12      EBS側業務系列コード                                                 ##
+## $13      対向システム側業務系列コード                                        ##
+## $14      ユーザ名                                                            ##
+## $15      職責アプリケーション短縮名                                          ##
+## $16      職責名                                                              ##
+## $17-$46  引数1-30(起動対象コンカレントのパラメータ)                          ##
+##                                                                              ##
+## Change Record                                                                ##
+## ------------- ----- ---------------- ----------------------------------------##
+##  Date          Ver.  Editor           Description                            ##
+## ------------- ----- ---------------- ----------------------------------------##
+##  2008/12/24    1.0   Koji.Oomata      新規作成                               ##
+##  2009/02/04    1.1   Koji.Oomata      [障害COS_014]                          ##
+##                                         起動対象コンカレントが警告時は、     ##
+##                                         後続処理(JPQJOBSUBなど)を行う。      ##
+##  2009/02/25    1.2   Koji.Oomata      [障害COS_138]                          ##
+##                                         退避ファイルの削除処理を追加。       ##
+##                                         →  プロファイル値取得SQL修正箇所は  ##
+##                                             修正コメントなし。               ##
+##                                         A02_対向システムジョブ状況更新処理   ##
+##                                         起動シェル名を変更。                 ##
+##                                         CONCSUB要求待ち時間変更              ##
+##                                           (デフォルト60秒→15秒)             ##
+##                                       [障害COS_139]                          ##
+##                                         ajsentryコマンドのオプション値に     ##
+##                                         -cを追加  →  単体未実施箇所の為、   ##
+##                                                       修正コメントなし。     ##
+##                                                                              ##
+##################################################################################
+
+
+################################################################################
+##                                 変数定義                                   ##
+################################################################################
+C_appl_name="XXCCP"                  #共通：アプリケーション短縮目
+C_program_id="XXCCP009A01C"          #プログラムID
+C_request_id=${4}                    #本コンカレントの要求ID
+C_collon="  :  "
+C_paracount=${#}
+
+C_cmdname="/var/tmp"                           #テンポラリファイル出力先
+C_fname="${C_program_id}_${C_request_id}"      #テンポラリファイル名 [SQL結果格納]
+C_std_out="${C_cmdname}/${C_fname}.env"        #テンポラリファイル名(パス付き)
+C_fname2="${C_program_id}_${C_request_id}_2"   #テンポラリファイル名2 [COCSUB結果ログ]
+C_std_out2="${C_cmdname}/${C_fname2}.stdout"   #テンポラリファイル名2(パス付き)
+
+C_field_name='$SRS$.'
+C_prof_request_id="XXCCP1_REQUEST_ID"                   #プロファイル|XXCCP:出力用_要求ID
+C_prof_concurrent_name="XXCCP1_CONCURRENT_NAME"         #プロファイル|XXCCP:出力用_コンカレント名
+C_prof_user_name="XXCCP1_USER_NAME"                     #プロファイル|XXCCP:出力用_ユーザー名
+C_prof_resp_name="XXCCP1_RESP_NAME"                     #プロファイル|XXCCP:出力用_職責名
+C_prof_actual_start_date="XXCCP1_ACTUAL_START_DATE"     #プロファイル|XXCCP:出力用_起動時間
+C_prof_nas_main_dir="XXCCP1_NAS_MAIN_DIR"               #プロファイル|XXCCP:NASメインディレクトリ
+C_prof_san_main_dir="XXCCP1_SAN_MAIN_DIR"               #プロファイル|XXCCP:SANメインディレクトリ
+C_prof_edi_que="XXCCP1_EDI_QUE"                         #プロファイル|XXCCP:EDIキュー名
+C_prof_edi_host="XXCCP1_EDI_HOST"                       #プロファイル|XXCCP:EDI実行先ホスト名
+C_prof_report_que1="XXCCP1_REPORT_QUE1"                 #プロファイル|XXCCP:帳票キュー名1
+C_prof_report_que2="XXCCP1_REPORT_QUE2"                 #プロファイル|XXCCP:帳票キュー名2
+C_prof_report_que3="XXCCP1_REPORT_QUE3"                 #プロファイル|XXCCP:帳票キュー名3
+C_prof_report_host1="XXCCP1_REPORT_HOST1"               #プロファイル|XXCCP:帳票実行先ホスト名1
+C_prof_report_host2="XXCCP1_REPORT_HOST2"               #プロファイル|XXCCP:帳票実行先ホスト名2
+C_prof_report_host3="XXCCP1_REPORT_HOST3"               #プロファイル|XXCCP:帳票実行先ホスト名3
+C_prof_status_max="XXCCP1_STATUS_MAX"                   #プロファイル|XXCCP:監視最大時間
+C_prof_status_interval="XXCCP1_STATUS_INTERVAL"         #プロファイル|XXCCP:監視間隔時間
+C_prof_if_file_1place="XXCCP1_IF_FILE_1PLACE"           #プロファイル|XXCCP:環境値
+C_prof_if_file_6place="XXCCP1_IF_FILE_6PLACE"           #プロファイル|XXCCP:区分値
+C_prof_edi_job_gr_comm="XXCCP1_EDI_JOB_GR_COMM"         #プロファイル|XXCCP:EDIジョブグループ名(共通)
+C_prof_edi_job_gr_21="XXCCP1_EDI_JOB_GR_21"             #プロファイル|XXCCP:EDIジョブグループ名(21)
+C_prof_edi_job_gr_22="XXCCP1_EDI_JOB_GR_22"             #プロファイル|XXCCP:EDIジョブグループ名(22)
+C_prof_report_job_gr_comm="XXCCP1_REPORT_JOB_GR_COMM"   #プロファイル|XXCCP:帳票ジョブグループ名(共通)
+C_prof_report_job_gr_last="XXCCP1_REPORT_JOB_GR_LAST"   #プロファイル|XXCCP:帳票ジョブグループ名(末尾)
+C_prof_jobnet_last="XXCCP1_JOBNET_LAST"                 #プロファイル|XXCCP:ジョブネット名(末尾)
+C_prof_request_char="XXCCP1_REQUEST_CHAR"               #プロファイル|XXCCP:要求ID取得用
+C_prof_edi_serv="XXCCP1_EDI_SERV"                       #プロファイル|XXCCP:EDIスケジューラサービス名
+C_prof_report_serv="XXCCP1_REPORT_SERV"                 #プロファイル|XXCCP:帳票スケジューラサービス名
+C_prof_sts_updt_path="XXCCP1_STS_UPDT_PATH"             #プロファイル|XXCCP:ステータス更新シェル格納場所
+# 2009/02/25 Ver.1.2 Koji.Oomata add START
+C_prof_edi_esc_bk_num="XXCCP1_EDI_ESC_BK_NUM"           #プロファイル|XXCCP:画面起動ジョブネット用EDI退避世代数
+C_prof_report_esc_bk_num="XXCCP1_REPORT_ESC_BK_NUM"     #プロファイル|XXCCP:画面起動ジョブネット用帳票退避世代数
+# 2009/02/25 Ver.1.2 Koji.Oomata add END
+
+C_ofil=$APPLCSF/$APPLOUT/o$4.out   #レポート出力ファイル名(パス付き)
+
+C_date=`date +"%Y/%m/%d %H:%M:%S"`  #起動時間
+C_date2=`date +"%Y%m%d%H%M%S"`      #起動時間(詰め)
+C_date3=`date +"%Y/%m/%d"`          #起動日付
+
+L_target_cnt=0
+L_success_cnt=0
+L_error_cnt=0
+
+################################################################################
+##                                 関数定義                                   ##
+################################################################################
+#ステータスエラー時のファイル削除処理(A-12)
+file_delete()
+{
+  if [ -f ${1} ]
+  then
+    rm ${1}
+    echo "Error if_file Delete"
+    echo ""                      #空行
+  fi
+}
+
+#変動必須メッセージ・終了ステータス値取得(A-13)
+shell_end()
+{
+  sqlplus -s apps/apps <<EOF >>${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'L_00006_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00006','REQ_ID','${L_exec_req_id}')||'"'
+        ,'L_00007_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00007','REQ_ID','${L_succes_req_id}')||'"'
+        ,'L_00009_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00009','REQ_ID','${L_error_req_id}')||'"'
+        ,'L_00020_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00020','FILE_NAME','${L_file_nam_all}')||'"'
+        ,'L_90000_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90000','COUNT','${L_target_cnt}')||'"'
+        ,'L_90001_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90001','COUNT','${L_success_cnt}')||'"'
+        ,'L_90002_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90002','COUNT','${L_error_cnt}')||'"'
+        ,'L_90004_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-90004')||'"'
+        ,'L_10008_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10008')||'"'
+        ,'L_10008_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10008')||'"'
+        ,'C_exit_norm="'||xxccp_common_pkg.set_status_normal||'"'
+        ,'C_exit_error="'||xxccp_common_pkg.set_status_error||'"'
+  FROM DUAL
+  ;
+  EXIT
+EOF
+  . $C_std_out
+  #必須項目レポート出力
+  echo "${L_00006_msg}" >>`echo ${C_ofil}`     #起動対象要求IDメッセージ
+  echo "${L_00007_msg}" >>`echo ${C_ofil}`     #正常終了要求IDメッセージ
+  echo "${L_00009_msg}" >>`echo ${C_ofil}`     #エラー終了要求IDメッセージ
+  echo "${L_00020_msg}" >>`echo ${C_ofil}`     #IFファイル名メッセージ
+  echo ""  >>`echo ${C_ofil}`                  #空行
+  #エラーメッセージ出力
+  if [ -n "$1" ]
+  then
+    #レポート出力
+    echo "${@}" >>`echo ${C_ofil}`             #エラーメッセージ
+    echo ""  >>`echo ${C_ofil}`                #空行
+    #ログ出力
+    echo "${@}"                                #エラーメッセージ
+    echo ""                                    #空行
+  fi
+  echo "${L_90000_msg}" >>`echo ${C_ofil}`     #対象件数メッセージ
+  echo "${L_90001_msg}" >>`echo ${C_ofil}`     #成功件数メッセージ
+  echo "${L_90002_msg}" >>`echo ${C_ofil}`     #エラー件数メッセージ
+  echo ""  >>`echo ${C_ofil}`                  #空行
+  #テンポラリファイルが存在したら削除する
+  if [ -f ${C_std_out} ]
+  then
+    rm ${C_std_out}
+    echo "Temporay file1 Delete"
+  fi
+  if [ -f ${C_std_out2} ]
+  then
+    rm ${C_std_out2}
+    echo "Temporay file2 Delete"
+    echo ""                      #空行
+  fi
+  #終了メッセージ
+  if [ -z "$1" ]
+  then
+    echo "${L_90004_msg}" >>`echo ${C_ofil}`   #正常終了メッセージ
+    exit ${C_exit_norm}
+  else
+    echo "${L_10008_msg}" >>`echo ${C_ofil}`   #エラー終了メッセージ
+    exit ${C_exit_error}
+  fi
+}
+
+################################################################################
+##                                   Main                                     ##
+################################################################################
+#固定メッセージ・プロファイル値・コンカレントパラメータ数取得(A-1)
+sqlplus -s apps/apps <<EOF >${C_std_out}
+SET HEADING OFF
+SET LINES 240
+SELECT --固定出力メッセージ
+       'C_00002_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00002','AP_SHORT_NAME','${5}')||'"'
+      ,'C_00003_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00003','CONC_SHORT_NAME','${6}')||'"'
+      ,'C_00010_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00010','COOPE_DIV','${7}')||'"'
+      ,'C_00011_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00011','SYSTEM_NAME','${8}')||'"'
+      ,'C_00012_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00012','DATA_TYPE','${9}')||'"'
+      ,'C_00013_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00013','GEN_NUM','${10}')||'"'
+      ,'C_00014_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00014','SVF_NUM','${11}')||'"'
+      ,'C_00015_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00015','EBS_BUSI_CODE','${12}')||'"'
+      ,'C_00016_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00016','IF_BUSI_CODE','${13}')||'"'
+      ,'C_00017_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00017','USER_NAME','${14}')||'"'
+      ,'C_00018_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00018','RESP_APPL_NAME','${15}')||'"'
+      ,'C_00019_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00019','RESP_NAME','${16}')||'"'
+      ,'C_10016_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10016')||'"'
+      ,'C_10020_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10020')||'"'
+      ,'C_10021_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10021')||'"'
+      ,'C_10041_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10041')||'"'
+      ,'C_10042_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10042')||'"'
+      ,'C_10043_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10043')||'"'
+      ,'C_10044_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10044')||'"'
+      ,'C_10045_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10045')||'"'
+      ,'C_10046_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10046')||'"'
+      ,'C_10047_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10047')||'"'
+      ,'C_10048_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10048')||'"'
+      ,'C_10049_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10049')||'"'
+      ,'C_00005_1_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','1','PARAM_VALUE','${17}')||'"'
+      ,'C_00005_2_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','2','PARAM_VALUE','${18}')||'"'
+      ,'C_00005_3_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','3','PARAM_VALUE','${19}')||'"'
+      ,'C_00005_4_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','4','PARAM_VALUE','${20}')||'"'
+      ,'C_00005_5_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','5','PARAM_VALUE','${21}')||'"'
+      ,'C_00005_6_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','6','PARAM_VALUE','${22}')||'"'
+      ,'C_00005_7_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','7','PARAM_VALUE','${23}')||'"'
+      ,'C_00005_8_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','8','PARAM_VALUE','${24}')||'"'
+      ,'C_00005_9_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','9','PARAM_VALUE','${25}')||'"'
+      ,'C_00005_10_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','10','PARAM_VALUE','${26}')||'"'
+      ,'C_00005_11_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','11','PARAM_VALUE','${27}')||'"'
+      ,'C_00005_12_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','12','PARAM_VALUE','${28}')||'"'
+      ,'C_00005_13_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','13','PARAM_VALUE','${29}')||'"'
+      ,'C_00005_14_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','14','PARAM_VALUE','${30}')||'"'
+      ,'C_00005_15_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','15','PARAM_VALUE','${31}')||'"'
+      ,'C_00005_16_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','16','PARAM_VALUE','${32}')||'"'
+      ,'C_00005_17_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','17','PARAM_VALUE','${33}')||'"'
+      ,'C_00005_18_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','18','PARAM_VALUE','${34}')||'"'
+      ,'C_00005_19_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','19','PARAM_VALUE','${35}')||'"'
+      ,'C_00005_20_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','20','PARAM_VALUE','${36}')||'"'
+      ,'C_00005_21_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','21','PARAM_VALUE','${37}')||'"'
+      ,'C_00005_22_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','22','PARAM_VALUE','${38}')||'"'
+      ,'C_00005_23_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','23','PARAM_VALUE','${39}')||'"'
+      ,'C_00005_24_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','24','PARAM_VALUE','${40}')||'"'
+      ,'C_00005_25_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','25','PARAM_VALUE','${41}')||'"'
+      ,'C_00005_26_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','26','PARAM_VALUE','${42}')||'"'
+      ,'C_00005_27_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','27','PARAM_VALUE','${43}')||'"'
+      ,'C_00005_28_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','28','PARAM_VALUE','${44}')||'"'
+      ,'C_00005_29_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','29','PARAM_VALUE','${45}')||'"'
+      ,'C_00005_30_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-00005','NUMBER','30','PARAM_VALUE','${46}')||'"'
+      --プロファイル
+      ,'C_ouput_request_id="'||FND_PROFILE.VALUE('${C_prof_request_id}')||'"'
+      ,'C_concurrent_name="'||FND_PROFILE.VALUE('${C_prof_concurrent_name}')||'"'
+      ,'C_user_name="'||FND_PROFILE.VALUE('${C_prof_user_name}')||'"'
+      ,'C_resp_name="'||FND_PROFILE.VALUE('${C_prof_resp_name}')||'"'
+      ,'C_actual_start_date="'||FND_PROFILE.VALUE('${C_prof_actual_start_date}')||'"'
+      ,'C_nas_main_dir="'||FND_PROFILE.VALUE('${C_prof_nas_main_dir}')||'"'
+      ,'C_san_main_dir="'||FND_PROFILE.VALUE('${C_prof_san_main_dir}')||'"'
+      ,'C_edi_que="'||FND_PROFILE.VALUE('${C_prof_edi_que}')||'"'
+      ,'C_edi_host="'||FND_PROFILE.VALUE('${C_prof_edi_host}')||'"'
+      ,'C_report_que1="'||FND_PROFILE.VALUE('${C_prof_report_que1}')||'"'
+      ,'C_report_que2="'||FND_PROFILE.VALUE('${C_prof_report_que2}')||'"'
+      ,'C_report_que3="'||FND_PROFILE.VALUE('${C_prof_report_que3}')||'"'
+      ,'C_report_host1="'||FND_PROFILE.VALUE('${C_prof_report_host1}')||'"'
+      ,'C_report_host2="'||FND_PROFILE.VALUE('${C_prof_report_host2}')||'"'
+      ,'C_report_host3="'||FND_PROFILE.VALUE('${C_prof_report_host3}')||'"'
+      ,'C_status_max="'||FND_PROFILE.VALUE('${C_prof_status_max}')||'"'
+      ,'C_status_interval="'||FND_PROFILE.VALUE('${C_prof_status_interval}')||'"'
+      ,'C_if_file_1place="'||FND_PROFILE.VALUE('${C_prof_if_file_1place}')||'"'
+      ,'C_if_file_6place="'||FND_PROFILE.VALUE('${C_prof_if_file_6place}')||'"'
+      ,'C_edi_job_gr_comm="'||FND_PROFILE.VALUE('${C_prof_edi_job_gr_comm}')||'"'
+      ,'C_edi_job_gr_21="'||FND_PROFILE.VALUE('${C_prof_edi_job_gr_21}')||'"'
+      ,'C_edi_job_gr_22="'||FND_PROFILE.VALUE('${C_prof_edi_job_gr_22}')||'"'
+      ,'C_rep_job_gr_comm="'||FND_PROFILE.VALUE('${C_prof_report_job_gr_comm}')||'"'
+      ,'C_rep_job_gr_last="'||FND_PROFILE.VALUE('${C_prof_report_job_gr_last}')||'"'
+      ,'C_jobnet_last="'||FND_PROFILE.VALUE('${C_prof_jobnet_last}')||'"'
+      ,'C_request_char="'||FND_PROFILE.VALUE('${C_prof_request_char}')||'"'
+      ,'C_edi_serv="'||FND_PROFILE.VALUE('${C_prof_edi_serv}')||'"'
+      ,'C_report_serv="'||FND_PROFILE.VALUE('${C_prof_report_serv}')||'"'
+      ,'C_sts_updt_path="'||FND_PROFILE.VALUE('${C_prof_sts_updt_path}')||'"'
+      ,'C_edi_esc_bk_num="'||FND_PROFILE.VALUE('${C_prof_edi_esc_bk_num}')||'"'
+      ,'C_report_esc_bk_num="'||FND_PROFILE.VALUE('${C_prof_report_esc_bk_num}')||'"'
+      --WHOカラム値
+      ,'C_requested_by="'||fcr.requested_by||'"'                                    --要求者(USER_ID)
+      ,'C_last_update_login="'||fcr.conc_login_id||'"'                              --最終更新ログイン(LOGIN_ID)
+      ,'C_program_application_id="'||fcr.program_application_id||'"'                --コンカレント・アプリケーションID
+      ,'C_concurrent_program_id="'||fcr.concurrent_program_id||'"'                  --コンカレント・プログラムID
+FROM  dual
+     ,fnd_concurrent_requests fcr
+WHERE fcr.request_id = '${C_request_id}'
+;
+SELECT 'C_application_id="'||NVL(fdfc.application_id,-1)||'"'
+      ,'C_flexfield_name="'||NVL(fdfc.descriptive_flexfield_name,-1)||'"'
+      ,'C_para_count="'||count(*)||'"'
+FROM   fnd_concurrent_programs_vl  fcpv
+      ,fnd_descr_flex_col_usage_vl fdfc
+      ,fnd_application_vl          fav
+where  fav.application_short_name = '$5'
+and    fav.application_id = fcpv.application_id
+and    fcpv.concurrent_program_name = '$6'
+and    fcpv.application_id          = fdfc.application_id(+)
+and    fdfc.descriptive_flexfield_name(+) = '${C_field_name}' || fcpv.concurrent_program_name
+and    fdfc.enabled_flag(+) = 'Y'
+group by fdfc.application_id,
+         fdfc.descriptive_flexfield_name
+;
+EXIT
+EOF
+
+#SQL結果読み込み処理
+. $C_std_out
+
+#読み込んだ固定出力メッセージをレポート出力(A-13)
+echo "${C_ouput_request_id}${C_collon}${4}" >>`echo ${C_ofil}`               #要求ID
+echo "${C_concurrent_name}${C_collon}${C_program_id}" >>`echo ${C_ofil}`     #コンカレント名
+echo "${C_user_name}${C_collon}${14}" >>`echo ${C_ofil}`                     #ユーザー名
+echo "${C_resp_name}${C_collon}${16}" >>`echo ${C_ofil}`                     #職責名
+echo "${C_actual_start_date}${C_collon}${C_date}"  >>`echo ${C_ofil}`        #起動時間
+
+echo ""  >>`echo ${C_ofil}`                      #空行
+
+#パラメータ情報出力
+#レポート出力
+echo "${C_00002_msg}" >>`echo ${C_ofil}`         #起動対象アプリケーション短縮名
+echo "${C_00003_msg}" >>`echo ${C_ofil}`         #起動対象コンカレント短縮名
+echo "${C_00010_msg}" >>`echo ${C_ofil}`         #連携区分
+echo "${C_00011_msg}" >>`echo ${C_ofil}`         #IF連携先システム名
+echo "${C_00012_msg}" >>`echo ${C_ofil}`         #データ種コード
+echo "${C_00013_msg}" >>`echo ${C_ofil}`         #バックアップ世代数
+echo "${C_00014_msg}" >>`echo ${C_ofil}`         #SVFサーバNo
+echo "${C_00015_msg}" >>`echo ${C_ofil}`         #EBS側業務系列コード
+echo "${C_00016_msg}" >>`echo ${C_ofil}`         #対向システム側業務系列コード
+echo "${C_00017_msg}" >>`echo ${C_ofil}`         #ユーザ名
+echo "${C_00018_msg}" >>`echo ${C_ofil}`         #職責アプリケーション短縮名
+echo "${C_00019_msg}" >>`echo ${C_ofil}`         #職責名
+echo "${C_00005_1_msg}" >>`echo ${C_ofil}`       #引数1
+echo "${C_00005_2_msg}" >>`echo ${C_ofil}`       #引数2
+echo "${C_00005_3_msg}" >>`echo ${C_ofil}`       #引数3
+echo "${C_00005_4_msg}" >>`echo ${C_ofil}`       #引数4
+echo "${C_00005_5_msg}" >>`echo ${C_ofil}`       #引数5
+echo "${C_00005_6_msg}" >>`echo ${C_ofil}`       #引数6
+echo "${C_00005_7_msg}" >>`echo ${C_ofil}`       #引数7
+echo "${C_00005_8_msg}" >>`echo ${C_ofil}`       #引数8
+echo "${C_00005_9_msg}" >>`echo ${C_ofil}`       #引数9
+echo "${C_00005_10_msg}" >>`echo ${C_ofil}`      #引数10
+echo "${C_00005_11_msg}" >>`echo ${C_ofil}`      #引数11
+echo "${C_00005_12_msg}" >>`echo ${C_ofil}`      #引数12
+echo "${C_00005_13_msg}" >>`echo ${C_ofil}`      #引数13
+echo "${C_00005_14_msg}" >>`echo ${C_ofil}`      #引数14
+echo "${C_00005_15_msg}" >>`echo ${C_ofil}`      #引数15
+echo "${C_00005_16_msg}" >>`echo ${C_ofil}`      #引数16
+echo "${C_00005_17_msg}" >>`echo ${C_ofil}`      #引数17
+echo "${C_00005_18_msg}" >>`echo ${C_ofil}`      #引数18
+echo "${C_00005_19_msg}" >>`echo ${C_ofil}`      #引数19
+echo "${C_00005_20_msg}" >>`echo ${C_ofil}`      #引数20
+echo "${C_00005_21_msg}" >>`echo ${C_ofil}`      #引数21
+echo "${C_00005_22_msg}" >>`echo ${C_ofil}`      #引数22
+echo "${C_00005_23_msg}" >>`echo ${C_ofil}`      #引数23
+echo "${C_00005_24_msg}" >>`echo ${C_ofil}`      #引数24
+echo "${C_00005_25_msg}" >>`echo ${C_ofil}`      #引数25
+echo "${C_00005_26_msg}" >>`echo ${C_ofil}`      #引数26
+echo "${C_00005_27_msg}" >>`echo ${C_ofil}`      #引数27
+echo "${C_00005_28_msg}" >>`echo ${C_ofil}`      #引数28
+echo "${C_00005_29_msg}" >>`echo ${C_ofil}`      #引数29
+echo "${C_00005_30_msg}" >>`echo ${C_ofil}`      #引数30
+
+echo ""  >>`echo ${C_ofil}`                      #空行
+
+#ログ出力
+echo "Concurrent Parameter LogOutput Start"
+echo "${C_00002_msg}"          #起動対象アプリケーション短縮名
+echo "${C_00003_msg}"          #起動対象コンカレント短縮名
+echo "${C_00010_msg}"          #連携区分
+echo "${C_00011_msg}"          #IF連携先システム名
+echo "${C_00012_msg}"          #データ種コード
+echo "${C_00013_msg}"          #バックアップ世代数
+echo "${C_00014_msg}"          #SVFサーバNo
+echo "${C_00015_msg}"          #EBS側業務系列コード
+echo "${C_00016_msg}"          #対向システム側業務系列コード
+echo "${C_00017_msg}"          #ユーザ名
+echo "${C_00018_msg}"          #職責アプリケーション短縮名
+echo "${C_00019_msg}"          #職責名
+echo "${C_00005_1_msg}"        #引数1
+echo "${C_00005_2_msg}"        #引数2
+echo "${C_00005_3_msg}"        #引数3
+echo "${C_00005_4_msg}"        #引数4
+echo "${C_00005_5_msg}"        #引数5
+echo "${C_00005_6_msg}"        #引数6
+echo "${C_00005_7_msg}"        #引数7
+echo "${C_00005_8_msg}"        #引数8
+echo "${C_00005_9_msg}"        #引数9
+echo "${C_00005_10_msg}"       #引数10
+echo "${C_00005_11_msg}"       #引数11
+echo "${C_00005_12_msg}"       #引数12
+echo "${C_00005_13_msg}"       #引数13
+echo "${C_00005_14_msg}"       #引数14
+echo "${C_00005_15_msg}"       #引数15
+echo "${C_00005_16_msg}"       #引数16
+echo "${C_00005_17_msg}"       #引数17
+echo "${C_00005_18_msg}"       #引数18
+echo "${C_00005_19_msg}"       #引数19
+echo "${C_00005_20_msg}"       #引数20
+echo "${C_00005_21_msg}"       #引数21
+echo "${C_00005_22_msg}"       #引数22
+echo "${C_00005_23_msg}"       #引数23
+echo "${C_00005_24_msg}"       #引数24
+echo "${C_00005_25_msg}"       #引数25
+echo "${C_00005_26_msg}"       #引数26
+echo "${C_00005_27_msg}"       #引数27
+echo "${C_00005_28_msg}"       #引数28
+echo "${C_00005_29_msg}"       #引数29
+echo "${C_00005_30_msg}"       #引数30
+echo "Concurrent Parameter LogOutput End"
+
+echo ""                        #空行
+
+#起動対象コンカレントのパラメータ数判定
+if [ "${C_application_id}" = -1 ] && [ "${C_flexfield_name}" = -1 ]
+then
+  L_para_count=0
+else
+  L_para_count=${C_para_count}
+fi
+
+#必須チェック(A-1)
+#入力パラメータ
+#起動対象アプリケーション短縮名
+if [ -z "${5}" ]
+then
+  shell_end "${C_10020_msg}"
+fi
+#起動対象コンカレント短縮名
+if [ -z "${6}" ]
+then
+  shell_end "${C_10021_msg}"
+fi
+#連携区分
+if [ -z "${7}" ]
+then
+  shell_end "${C_10041_msg}"
+fi
+#IF連携先システム名
+case ${8} in
+EDI)
+  #処理なし
+  ;;
+REPORT)
+  #処理なし
+  ;;
+*)
+  sqlplus -s apps/apps <<EOF >${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'C_10039_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10039')||'"'
+  FROM DUAL
+  ;
+  EXIT
+EOF
+  . $C_std_out
+  #エラーメッセージ出力
+  shell_end "${C_10039_msg}"
+  ;;
+esac
+#データ種コード
+if [ -z "${9}" ]
+then
+  shell_end "${C_10042_msg}"
+fi
+#バックアップ世代数
+if [ -z "${10}" ]
+then
+  shell_end "${C_10043_msg}"
+fi
+#SVFサーバNo
+if [ "${8}" = 'REPORT' ]
+then
+  if [ -z "${11}" ]
+  then
+    shell_end "${C_10044_msg}"
+  fi
+fi
+#EBS側業務系列コード
+if [ -z "${12}" ]
+then
+  shell_end "${C_10045_msg}"
+fi
+#対向システム側業務系列コード
+if [ -z "${13}" ]
+then
+  shell_end "${C_10046_msg}"
+fi
+#ユーザ名
+if [ -z "${14}" ]
+then
+  shell_end "${C_10047_msg}"
+fi
+#職責アプリケーション短縮名
+if [ -z "${15}" ]
+then
+  shell_end "${C_10048_msg}"
+fi
+#職責名
+if [ -z "${16}" ]
+then
+  shell_end "${C_10049_msg}"
+fi
+
+#プロファイル
+#XXCCP:出力用_要求ID
+if [ -z "${C_ouput_request_id}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_request_id} )"
+fi
+#XXCCP:出力用_コンカレント名
+if [ -z "${C_concurrent_name}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_concurrent_name} )"
+fi
+#XXCCP:出力用_ユーザー名
+if [ -z "${C_user_name}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_user_name} )"
+fi
+#XXCCP:出力用_職責名
+if [ -z "${C_resp_name}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_resp_name} )"
+fi
+#XXCCP:出力用_起動時間
+if [ -z "${C_actual_start_date}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_actual_start_date} )"
+fi
+#XXCCP:NASメインディレクトリ
+if [ -z "${C_nas_main_dir}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_nas_main_dir} )"
+fi
+#XXCCP:SANメインディレクトリ
+if [ -z "${C_san_main_dir}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_san_main_dir} )"
+fi
+#XXCCP:EDIキュー名
+if [ -z "${C_edi_que}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_que} )"
+fi
+#XXCCP:EDI実行先ホスト名
+if [ -z "${C_edi_host}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_host} )"
+fi
+#XXCCP:帳票キュー名1
+if [ -z "${C_report_que1}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_que1} )"
+fi
+#XXCCP:帳票キュー名2
+if [ -z "${C_report_que2}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_que2} )"
+fi
+#XXCCP:帳票キュー名3
+if [ -z "${C_report_que3}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_que3} )"
+fi
+#XXCCP:帳票実行先ホスト名1
+if [ -z "${C_report_host1}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_host1} )"
+fi
+#XXCCP:帳票実行先ホスト名2
+if [ -z "${C_report_host2}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_host2} )"
+fi
+#XXCCP:帳票実行先ホスト名3
+if [ -z "${C_report_host3}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_host3} )"
+fi
+#XXCCP:帳票実行先ホスト名3
+if [ -z "${C_report_host3}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_host3} )"
+fi
+#XXCCP:監視最大時間
+if [ -z "${C_status_max}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_status_max} )"
+fi
+#XXCCP:監視間隔時間
+if [ -z "${C_status_interval}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_status_interval} )"
+fi
+#XXCCP:環境値
+if [ -z "${C_if_file_1place}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_if_file_1place} )"
+fi
+#XXCCP:区分値
+if [ -z "${C_if_file_6place}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_if_file_6place} )"
+fi
+#XXCCP:EDIジョブグループ名(共通)
+if [ -z "${C_edi_job_gr_comm}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_job_gr_comm} )"
+fi
+#XXCCP:EDIジョブグループ名(21)
+if [ -z "${C_edi_job_gr_21}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_job_gr_21} )"
+fi
+#XXCCP:EDIジョブグループ名(22)
+if [ -z "${C_edi_job_gr_22}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_job_gr_22} )"
+fi
+#XXCCP:帳票ジョブグループ名(共通)
+if [ -z "${C_rep_job_gr_comm}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_job_gr_comm} )"
+fi
+#XXCCP:帳票ジョブグループ名(末尾)
+if [ -z "${C_rep_job_gr_last}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_job_gr_last} )"
+fi
+#XXCCP:ジョブネット名(末尾)
+if [ -z "${C_jobnet_last}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_jobnet_last} )"
+fi
+#XXCCP:要求ID取得用
+if [ -z "${C_request_char}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_request_char} )"
+fi
+#XXCCP:EDIスケジューラサービス名
+if [ -z "${C_edi_serv}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_serv} )"
+fi
+#XXCCP:帳票スケジューラサービス名
+if [ -z "${C_report_serv}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_serv} )"
+fi
+#XXCCP:ステータス更新シェル格納場所
+if [ -z "${C_sts_updt_path}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_sts_updt_path} )"
+fi
+# 2009/02/25 Ver.1.2 Koji.Oomata add START
+#XXCCP:画面起動ジョブネット用EDI退避世代数
+if [ -z "${C_edi_esc_bk_num}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_edi_esc_bk_num} )"
+fi
+#XXCCP:画面起動ジョブネット用帳票退避世代数
+if [ -z "${C_report_esc_bk_num}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_report_esc_bk_num} )"
+fi
+# 2009/02/25 Ver.1.2 Koji.Oomata add END
+
+#ディレクトリ情報取得(A-2)
+#業務系列コードを小文字変換
+L_ebs_code=`echo ${12} | tr "[:upper:]" "[:lower:]"`
+L_part_code=`echo ${13} | tr "[:upper:]" "[:lower:]"`
+#IFファイル移動元ディレクトリ
+L_if_mov_from="${C_nas_main_dir}/outbound/${L_ebs_code}_iffile/${L_part_code}"
+#IFファイル移動先ディレクトリ
+L_if_mov_to="${C_san_main_dir}/outbound/${L_ebs_code}_iffile/${L_part_code}"
+#IFファイルバックアップ先ディレクトリ
+L_if_bkup_to="${C_nas_main_dir}/outbound/${L_ebs_code}_iffile/${L_part_code}/backup"
+#IFファイル退避先ディレクトリ
+L_if_esc_to="${C_nas_main_dir}/outbound/${L_ebs_code}_iffile/${L_part_code}/escape"
+# 2009/02/25 Ver.1.2 Koji.Oomata add START
+#退避世代数
+if [ "${8}" = 'EDI' ]
+then
+  L_esc_bk_num=${C_edi_esc_bk_num}
+elif [ "${8}" = 'REPORT' ]
+then
+  L_esc_bk_num=${C_report_esc_bk_num}
+fi
+# 2009/02/25 Ver.1.2 Koji.Oomata add END
+
+#入力項目：連携区分の数だけループ処理開始
+loop_cnt=1
+while test ${7} -ge ${loop_cnt}
+do
+  #ファイル名算出処理(A-3)
+  #連携先がEDIシステムの場合
+  if [ "${8}" = 'EDI' ]
+  then
+    #ファイル名(拡張子なし)
+    L_file_nam_pre="${C_if_file_1place}${12}${13}${C_if_file_6place}${19}-${9}${20}"
+    #ファイル名
+    L_file_nam="${L_file_nam_pre}.txt"
+  #連携先が帳票システムの場合
+  else
+    #帳票コード(引数3)を半角スペース区切りで、分割
+    L_report_code=`echo ${19} | cut -d " " -f ${loop_cnt}`
+    #ファイル名(拡張子なし)
+    L_file_nam_pre="${C_if_file_1place}${12}${13}${C_if_file_6place}${18}-${9}-${L_report_code}"
+    #ファイル名
+    L_file_nam="${L_file_nam_pre}.csv"
+  fi
+  #移動元ファイル名(ディレクトリ付き)
+  L_file_dir="${L_if_mov_from}/${L_file_nam}"
+  #移動先ファイル名(ディレクトリ付き)
+  L_file_dir_to="${L_if_mov_to}/${L_file_nam}"
+
+  #出力用変数にファイル名を格納
+  if [ -z "${L_file_nam_all}" ]
+  then
+    #ファイル名(拡張子なし)
+    L_file_nam_pre_all="${L_file_nam_pre}"
+    #ファイル名
+    L_file_nam_all="${L_file_nam}"
+    #ファイル名(ディレクトリ付き)
+    L_file_dir_all="${L_file_dir}"
+  else
+    #ファイル名(拡張子なし)
+    L_file_nam_pre_all="${L_file_nam_pre_all} ${L_file_nam_pre}"
+    #ファイル名
+    L_file_nam_all="${L_file_nam_all} ${L_file_nam}"
+    #ファイル名(ディレクトリ付き)
+    L_file_dir_all="${L_file_dir_all} ${L_file_dir}"
+  fi
+
+  #ファイル存在チェック(A-4)
+  if [ -f ${L_file_dir_to} ]
+  then
+    sqlplus -s apps/apps <<EOF >${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10010_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||'"'
+    FROM DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10010_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10010_msg}"
+    fi
+  fi
+
+  #ループカウント +1
+  loop_cnt=`expr $loop_cnt + 1`
+done
+
+#エラーメッセージ出力
+if [ -n "${L_status_err}" ]
+then
+  shell_end ${L_status_err}
+fi
+
+#起動対象コンカレント発行処理(A-5)
+L_resp_appl=${15}
+L_resp_name=${16}
+L_user_name=${14}
+L_conc_appl=${5}
+L_conc_name=${6}
+
+#concsubパラメータ編集
+L_conc_args="APPS/APPS"
+L_conc_args="${L_conc_args} \"${L_resp_appl}\""
+L_conc_args="${L_conc_args} \"${L_resp_name}\""
+L_conc_args="${L_conc_args} \"${L_user_name}\""
+# 2009/02/25 Ver.1.2 Koji.Oomata mod START
+#L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
+L_conc_args="${L_conc_args} WAIT=15 CONCURRENT"
+# 2009/02/25 Ver.1.2 Koji.Oomata mod START
+L_conc_args="${L_conc_args} \"${L_conc_appl}\""
+L_conc_args="${L_conc_args} \"${L_conc_name}\""
+
+#起動対象コンカレントのパレメータ編集
+if [ ${L_para_count} = 1 ]
+then
+  L_param_args="\"${L_file_nam_all}\""
+elif [ ${L_para_count} = 2 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\""
+elif [ ${L_para_count} = 3 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\""
+elif [ ${L_para_count} = 4 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\""
+elif [ ${L_para_count} = 5 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\""
+elif [ ${L_para_count} = 6 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\""
+elif [ ${L_para_count} = 7 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\""
+elif [ ${L_para_count} = 8 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\""
+elif [ ${L_para_count} = 9 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\""
+elif [ ${L_para_count} = 10 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+elif [ ${L_para_count} = 11 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\""
+elif [ ${L_para_count} = 12 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\""
+elif [ ${L_para_count} = 13 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\""
+elif [ ${L_para_count} = 14 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\""
+elif [ ${L_para_count} = 15 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\""
+elif [ ${L_para_count} = 16 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\""
+elif [ ${L_para_count} = 17 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\""
+elif [ ${L_para_count} = 18 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\""
+elif [ ${L_para_count} = 19 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+elif [ ${L_para_count} = 20 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\""
+elif [ ${L_para_count} = 21 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\""
+elif [ ${L_para_count} = 22 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\""
+elif [ ${L_para_count} = 23 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\""
+elif [ ${L_para_count} = 24 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\""
+elif [ ${L_para_count} = 25 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\" \"${41}\""
+elif [ ${L_para_count} = 26 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\" \"${41}\" \"${42}\""
+elif [ ${L_para_count} = 27 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\" \"${41}\" \"${42}\" \"${43}\""
+elif [ ${L_para_count} = 28 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\" \"${41}\" \"${42}\" \"${43}\" \"${44}\""
+elif [ ${L_para_count} = 29 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\" \"${41}\" \"${42}\" \"${43}\" \"${44}\""
+  L_param_args="${L_param_args} \"${45}\""
+elif [ ${L_para_count} = 30 ]
+then
+  L_param_args="\"${L_file_nam_all}\" \"${18}\" \"${19}\" \"${20}\" \"${21}\" \"${22}\" \"${23}\" \"${24}\" \"${25}\" \"${26}\""
+  L_param_args="${L_param_args} \"${27}\" \"${28}\" \"${29}\" \"${30}\" \"${31}\" \"${32}\" \"${33}\" \"${34}\" \"${35}\""
+  L_param_args="${L_param_args} \"${36}\" \"${37}\" \"${38}\" \"${39}\" \"${40}\" \"${41}\" \"${42}\" \"${43}\" \"${44}\""
+  L_param_args="${L_param_args} \"${45}\" \"${46}\""
+fi
+
+#コンカレント起動
+${FND_TOP}/bin/CONCSUB ${L_conc_args} ${L_param_args} >${C_std_out2}
+#concsub成功判定
+L_return_code=${?}
+if [ ${L_return_code} -ne 0 ]
+then
+  sqlplus -s apps/apps <<EOF >${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'C_10022_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10022')||'"'
+  FROM DUAL
+  ;
+  EXIT
+EOF
+  . $C_std_out
+  L_conc_log=`cat $C_std_out2`
+  #エラーメッセージ出力
+  shell_end "${C_10022_msg}\n(${L_conc_log})"
+fi
+
+#要求IDの取得
+L_req_str=`sed -e "s/.*${C_request_char} //" < ${C_std_out2}`
+L_reqid=`printf $L_req_str | cut -d " " -f 1`
+#レポート出力項目：起動対象要求ID
+L_exec_req_id="${L_reqid}"
+
+#起動対象コンカレントの終了ステータスを取得
+sqlplus -s apps/apps <<EOF >${C_std_out}
+SET HEADING OFF
+SET LINES 240
+SELECT 'L_phase_code="'||fr.phase_code||'"'
+      ,'L_status_code="'||fr.status_code||'"'
+FROM fnd_concurrent_requests fr
+WHERE fr.request_id = '${L_reqid}';
+EXIT
+EOF
+
+#SQL結果読み込み処理
+. $C_std_out
+
+case ${L_status_code} in
+C)
+  #正常
+  #処理なし
+  ;;
+# 2009/02/04 Ver.1.1 Koji.Oomata mod START
+#*)
+#  #正常以外
+G)
+  #警告
+  #処理なし
+  ;;
+*)
+  #正常・警告以外
+# 2009/02/04 Ver.1.1 Koji.Oomata mod END
+  #ファイル退避処理(A-6)
+  loop_cnt=1
+  while test ${7} -ge ${loop_cnt}
+  do
+    #移動元ファイル(ディレクトリ付き)
+    L_esp_file_dir=`printf "$L_file_dir_all" | cut -d " " -f $loop_cnt`
+    #移動元ファイル(拡張子なし)
+    L_esp_file_nam_pre=`printf "$L_file_nam_pre_all" | cut -d " " -f $loop_cnt`
+    #退避先ファイル名語尾
+    L_new_file_end="${C_date2}_${L_reqid}"
+    #退避先ファイル名
+    if [ "${8}" = 'EDI' ]
+    then
+      L_new_file_name="${L_esp_file_nam_pre}_${L_new_file_end}.txt"
+    else
+      L_new_file_name="${L_esp_file_nam_pre}_${L_new_file_end}.csv"
+    fi
+    #退避先ファイル名(ディレクトリ付き)
+    L_new_file_dir="${L_if_esc_to}/${L_new_file_name}"
+    #ファイルが存在したら、ファイルを移動し、名称変更する(語尾に日付+要求+処理番号を付与)
+    if [ -f ${L_esp_file_dir} ]
+    then
+      mv ${L_esp_file_dir} ${L_new_file_dir}
+# 2009/02/25 Ver.1.2 Koji.Oomata add START
+      #退避フォルダに移動
+      cd "${L_if_esc_to}"
+      L_cnt=0
+      #移動元ファイル(拡張子なし)でソートし、退避世代数より古いファイルを削除
+      for L_filelist in `ls -tl "${L_esp_file_nam_pre}"* | awk '$9 !~ /aaa/ && $1 ~ /-/ {print $9}'`
+      do
+        L_cnt=`expr $L_cnt + 1`
+        if [ ${L_cnt} -gt ${L_esc_bk_num} ]
+        then
+          rm "${L_if_esc_to}/${L_filelist}"
+          echo "Delete Esp_Backup_file : ${L_if_esc_to}/${L_filelist}"
+        fi
+      done
+# 2009/02/25 Ver.1.2 Koji.Oomata add END
+    fi
+    #ループカウント +1
+    loop_cnt=`expr $loop_cnt + 1`
+  done
+  #エラーメッセージの取得
+  sqlplus -s apps/apps <<EOF >${C_std_out}
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'C_10040_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10040')||'"'
+  FROM DUAL
+  ;
+  EXIT
+EOF
+  . $C_std_out
+  #エラーメッセージ出力
+  shell_end "${C_10040_msg}"
+  ;;
+esac
+
+loop_cnt=1
+while test ${7} -ge ${loop_cnt}
+do
+  #ファイル移動処理(A-7)
+  #移動元ファイル(ディレクトリ付き)
+  L_cm_file_dir=`printf "$L_file_dir_all" | cut -d " " -f $loop_cnt`
+  cp -p ${L_cm_file_dir} ${L_if_mov_to}
+  #バックアップ処理(A-8)
+  #バックアップ元ファイル(拡張子なし)
+  L_bkup_file_nam_pre=`printf "$L_file_nam_pre_all" | cut -d " " -f $loop_cnt`
+  #バックアップファイル名語尾
+  L_new_file_end="${C_date2}"
+  #バックアップファイル名
+  if [ "${8}" = 'EDI' ]
+  then
+    L_new_file_name="${L_bkup_file_nam_pre}_${L_new_file_end}.txt"
+  else
+    L_new_file_name="${L_bkup_file_nam_pre}_${L_new_file_end}.csv"
+  fi
+  #バックアップファイル名(ディレクトリ付き)
+  L_new_file_dir="${L_if_bkup_to}/${L_new_file_name}"
+  #ファイル移動処理
+  mv ${L_cm_file_dir} ${L_new_file_dir}
+
+  #バックアップディレクトリに移動
+  cd "${L_if_bkup_to}"
+
+  L_cnt=0
+  #ファイル名(バックアップ元ファイル名)でソートし、世代数より古いファイルを削除
+  for L_dirlist in `ls -tl "${L_bkup_file_nam_pre}"* | awk '$9 !~ /aaa/ && $1 ~ /-/ {print $9}'`
+  do
+    L_cnt=`expr $L_cnt + 1`
+    if [ ${L_cnt} -gt ${10} ]
+    then
+      rm "${L_if_bkup_to}/${L_dirlist}"
+      echo "Delete Backup_file : ${L_if_bkup_to}/${L_dirlist}"
+    fi
+  done
+
+  #ステータス初期データ作成処理(A-9)
+  #完全ジョブネット名算出
+  if [ "${8}" = 'EDI' ]
+  then
+    #ジョブグループ名算出
+    #データ種コードで処理分岐
+    if [ "$9" = '21' ]
+    then
+      L_job_group="${C_edi_job_gr_comm}${C_edi_job_gr_21}"
+    elif [ "$9" = '22' ]
+    then
+      L_job_group="${C_edi_job_gr_comm}${C_edi_job_gr_22}"
+    fi
+    #EDIジョブネット名定義
+    L_jobnet_nam="${13}_${19}-${9}${20}_${C_jobnet_last}"
+  elif [ "${8}" = 'REPORT' ]
+  then
+    #帳票コード(引数3)を半角スペース区切りで、分割
+    L_report_code=`echo ${19} | cut -d " " -f ${loop_cnt}`
+    #ジョブグループ名算出
+    L_job_group="${C_rep_job_gr_comm}${C_rep_job_gr_last}"
+    #帳票ジョブネット名定義
+    L_jobnet_nam="${13}_${18}${9}${L_report_code}_${C_jobnet_last}"
+  fi
+
+  #ジョブネット完全名
+  L_jobnet_parf="${L_job_group}/${L_jobnet_nam}"
+  #格納用変数に格納
+  if [ -z "${L_jobnet_parf_all}" ]
+  then
+    L_jobnet_parf_all="${L_jobnet_parf}"
+  else
+    L_jobnet_parf_all="${L_jobnet_parf_all} ${L_jobnet_parf}"
+  fi
+
+  #処理順付要求ID
+  L_request_id_val="${L_exec_req_id}_${loop_cnt}"
+  #移動元ファイル名
+  L_file=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
+
+  #初期データ作成
+  #INSERT処理
+  sqlplus -s apps/apps <<EOF >${C_std_out2}
+  SET HEADING OFF
+  SET LINES 240
+  INSERT INTO xxccp_if_job_status(
+     pk_request_id_val
+    ,exec_request_id
+    ,status_code
+    ,if_system_name
+    ,if_file_name
+    ,jobnet_name
+    ,first_request_id
+    ,created_by
+    ,creation_date
+    ,last_updated_by
+    ,last_update_date
+    ,last_update_login
+    ,request_id
+    ,program_application_id
+    ,program_id
+    ,program_update_date
+  ) VALUES (
+     '${L_request_id_val}'
+    ,TO_NUMBER('${L_exec_req_id}')
+    ,'0'
+    ,'${8}'
+    ,'${L_file}'
+    ,'${L_jobnet_parf}'
+    ,TO_NUMBER('${C_request_id}')
+    ,TO_NUMBER('${C_requested_by}')
+    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+    ,TO_NUMBER('${C_requested_by}')
+    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+    ,TO_NUMBER('${C_last_update_login}')
+    ,TO_NUMBER('${C_request_id}')
+    ,TO_NUMBER('${C_program_application_id}')
+    ,TO_NUMBER('${C_concurrent_program_id}')
+    ,TO_DATE('${C_date2}','YYYYMMDDHH24MISS')
+  );
+  EXIT
+EOF
+
+  #対象件数に+1カウント
+  L_target_cnt=`expr $L_target_cnt + 1`
+  #Jpqjobsubコマンド実行(A-10)
+  #キュー名/ホスト名判定
+  if [ "${8}" = 'EDI' ]
+  then
+    L_service_name="${C_edi_serv}"
+    L_que="${C_edi_que}"
+    L_host="${C_edi_host}"
+  elif [ "${8}" = 'REPORT' ]
+  then
+    L_service_name="${C_report_serv}"
+    if [ "${11}" = '1' ]
+    then
+      L_que="${C_report_que1}"
+      L_host="${C_report_host1}"
+    elif [ "${11}" = '2' ]
+    then
+      L_que="${C_report_que2}"
+      L_host="${C_report_host2}"
+    elif [ "${11}" = '3' ]
+    then
+      L_que="${C_report_que3}"
+      L_host="${C_report_host3}"
+    fi
+  fi
+
+  #対向システムジョブ状況更新処理(XXCCP009A02)起動シェルのフルパス
+  L_sts_updt="${C_sts_updt_path}/AZXXCCP009A02C.ksh"
+  #jpqjobsubコマンド発行
+  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} ${L_jobnet_parf}"
+  #jpqjobsubコマンド成功判定
+  L_ret_code=${?}
+  if [ ${L_ret_code} -ne 0 ]
+  then
+    sqlplus -s apps/apps <<EOF >${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10050_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10050','REQUEST_ID_VAL','${L_request_id_val}')||'"'
+    FROM DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10050_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10050_msg}"
+    fi
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_request_id_val}"
+    fi
+  fi
+
+  #ループカウント +1
+  loop_cnt=`expr $loop_cnt + 1`
+done
+
+#エラーメッセージ出力
+if [ -n "${L_status_err}" ]
+then
+  shell_end ${L_status_err}
+fi
+
+loop_cnt=1
+while test ${7} -ge ${loop_cnt}
+do
+  #ステータス監視処理(A-11)
+  #処理順付要求ID
+  L_pk_request_id_val="${L_exec_req_id}_${loop_cnt}"
+  #処理中時間
+  L_time=1
+  #タイムアウト時間
+  L_time_out=2
+  L_cnt=1
+
+  #監視開始時間
+  L_start_time=`date +"%Y%m%d%H%M%S"`
+  echo "Status Watch Start  Time : ${L_start_time}"
+  while test ${L_time_out} -gt ${L_time}
+  do
+
+    sqlplus -s apps/apps <<EOF >${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'L_time_out_tmp="'||TO_CHAR(sysdate + '${C_status_max}' / 86400,'YYYYMMDDHH24MISS')||'"'
+          ,'L_status_code="'||xijs.status_code||'"'
+          ,'L_jobnet_name="'||xijs.jobnet_name||'"'
+          ,'L_if_file_name="'||xijs.if_file_name||'"'
+    FROM  DUAL
+         ,xxccp_if_job_status xijs
+    WHERE xijs.pk_request_id_val = '${L_pk_request_id_val}'
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    #タイムアウト時間取得
+    if [ "${L_cnt}" = '1' ]
+    then
+      L_time_out="${L_time_out_tmp}"
+      echo "Time of TimeOut  :  ${L_time_out}"
+    fi
+
+    #ステータス判定
+    #｢正常」に更新
+    if [ "${L_status_code}" = '1' ]
+    then
+      #成功件数を+1カウント
+      L_success_cnt=`expr $L_success_cnt + 1`
+      #正常終了要求IDに処理順付要求IDを追加
+      if [ -z "${L_succes_req_id}" ]
+      then
+        L_succes_req_id="${L_pk_request_id_val}"
+      else
+        L_succes_req_id="${L_succes_req_id} ${L_pk_request_id_val}"
+      fi
+      break 1
+    elif [ "${L_status_code}" = '8' ]
+    then
+      #エラー件数を+1カウント
+      L_error_cnt=`expr $L_error_cnt + 1`
+      #エラー終了要求IDに処理順付要求IDを追加
+      if [ -z "${L_error_req_id}" ]
+      then
+        L_error_req_id="${L_pk_request_id_val}"
+      else
+        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+      fi
+      #エラーメッセージ取得
+      sqlplus -s apps/apps <<EOF >>${C_std_out}
+      SET HEADING OFF
+      SET LINES 240
+      SELECT 'C_10018_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10018','JOBNET_NAME','${L_jobnet_name}')||'"'
+      FROM  DUAL
+      ;
+      EXIT
+EOF
+      . $C_std_out
+      if [ -z "${L_status_err}" ]
+      then
+        L_status_err="${C_10018_msg}"
+      else
+        L_status_err="${L_status_err}\n${C_10018_msg}"
+      fi
+      #ファイル削除処理(A-12)
+      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+      file_delete ${L_del_file}
+      break 1
+    elif [ "${L_status_code}" = '9' ]
+    then
+      #エラー件数を+1カウント
+      L_error_cnt=`expr $L_error_cnt + 1`
+      #エラー終了要求IDに処理順付要求IDを追加
+      if [ -z "${L_error_req_id}" ]
+      then
+        L_error_req_id="${L_pk_request_id_val}"
+      else
+        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+      fi
+      #エラーメッセージ取得
+      sqlplus -s apps/apps <<EOF >>${C_std_out}
+      SET HEADING OFF
+      SET LINES 240
+      SELECT 'C_10019_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10019','JOBNET_NAME','${L_jobnet_name}')||'"'
+      FROM  DUAL
+      ;
+      EXIT
+EOF
+      . $C_std_out
+      if [ -z "${L_status_err}" ]
+      then
+        L_status_err="${C_10019_msg}"
+      else
+        L_status_err="${L_status_err}\n${C_10019_msg}"
+      fi
+      #ファイル削除処理(A-12)
+      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+      file_delete ${L_del_file}
+      break 1
+    #ステータス値が1,8,9いずれでもない場合
+    else
+      #待機処理
+      sleep ${C_status_interval}
+      #処理中時間取得
+      L_time=`date +"%Y%m%d%H%M%S"`
+      echo "Sleep_Time ${loop_cnt}-${L_cnt} :  ${C_status_interval}"
+      echo "  Sleep_End Time  :  ${L_time}"
+    fi
+    #ループカウント +1
+    L_cnt=`expr $L_cnt + 1`
+  done
+  #タイムアウトした場合
+  if [ "${L_status_code}" = '0' ]
+  then
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_pk_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+    fi
+    #エラーメッセージ取得
+    sqlplus -s apps/apps <<EOF >>${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10009_msg="'||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10009','LIMIT','${C_status_max}','JOBNET_NAME','${L_jobnet_name}')||'"'
+    FROM  DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10009_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10009_msg}"
+    fi
+    #ファイル削除処理(A-12)
+    L_del_file="${L_if_mov_to}/${L_if_file_name}"
+    file_delete ${L_del_file}
+  fi
+  #ループカウント +1
+  loop_cnt=`expr $loop_cnt + 1`
+done
+
+echo "Status Watch End"
+
+#終了判定処理(A-13)
+if [ ${L_error_cnt} -ge 1 ]
+then
+  shell_end ${L_status_err}
+else
+  shell_end
+fi
+exit ${C_exit_norm}

@@ -1,0 +1,417 @@
+#!/bin/ksh
+################################################################################
+# $Header: $XXCCP_TOP/$APPLBIN/AZZZGETSVFFILE.prog  $
+# システム名     :
+# ファイル名     :AZZZGETSVFFILE.prog(暫定)
+# 処理概要       :ファイル転送(取得)と転送元ファイルの削除
+# バージョン     :$Revision: 1.0 $
+# 作成日         :2009/01/22 16:00:00 $
+# 作成者         :SCS Common-I/F T.Matsumoto
+# 最終更新日時   :$Modtime: YYYY/MM/DD 24h:mi:ss$
+# 最終更新者     :SCS Team Name
+#
+# $History: AZZZGETSVFFILE.prog $
+# 
+# *****************  Version 1.0  *****************
+# User: Admin        Date: 09/01/22   Time: 16:00
+# Created in $XXCCP_TOP/$APPLBIN
+# ==============================================================================
+#    変更履歴
+# ==============================================================================
+# YYYY/MM/DD    Name(Team) 
+# 内容
+#
+#################################################################### $NoKeywords:$
+# Execute parameter(For EBS CONCURRENT)
+#
+#    --  $0    SHELL DEFAULT        --
+#    $0 :Prog Name  
+#    --  $1-$4 EBS CONCURRENT DEFAULT   --
+#    $1 :DBuser/DBpass
+#    $2 :UserID
+#    $3 :UserName
+#    $4 :RequestID
+#    --  $5-$12 PROG INHERENCE PARAMETER  --
+#    $5 :Connect HOST
+#    $6 :Connect User
+#    $7 :Connect Password 
+#    $8 :Access Dir Path
+#    $9 :Local Put File Path
+#    $10:File Name
+#    $11:Local Temp Dir Path
+#    $12:Loacl Temp File Name
+#
+#===============================================================================
+#===============================================================================
+# 1.1 初期処理
+#===============================================================================
+procStep="STEP.0000"
+procName="XXCCP004A02C"
+execFile=`basename $0`
+
+#================================================
+# 戻り値定義
+#================================================
+exitNormal=0                                    # 正常時終了コード
+exitFatal=1                                     # 異常時終了コード
+WarningCD=2                                       # 警告コード
+
+exitStatus=${exitNormal}
+#================================================
+# パラメータ設定
+#================================================
+requestID=${4}
+connHostName=${5}
+connUserName=${6}
+connUserPass=${7}
+AccessFileDir=${8}
+putFilePath=${9}
+ftpFileName=${10}
+ftpLogFileDir=${11}
+ftpLogFileName=${12}
+
+#================================================
+# パラメータ編集
+#================================================
+getFilePath=${AccessFileDir}/${ftpFileName}
+LocalFileDir=`dirname ${9}`
+ftpGetLogPath=${ftpLogFileDir}/${ftpLogFileName}"."${requestID}".${$}.Get.log"
+ftpDelLogPath=${ftpLogFileDir}/${ftpLogFileName}"."${requestID}".${$}.Del.log"
+
+#================================================
+#メッセージ定義
+#================================================
+# 情報メッセージ   [0000番台]
+message0001="APP-XXCCP1-30002 INFO : Start ${procName} Process ."
+message0002="APP-XXCCP1-30003 INFO : Start FTP transfer process ."
+message0003="APP-XXCCP1-30004 INFO : End FTP transfer process ."
+message0004="APP-XXCCP1-30005 INFO : Start FTP delete process ."
+message0005="APP-XXCCP1-30006 INFO : End FTP delete process ."
+# エラーメッセージ [1000番台]
+message1001="APP-XXCCP1-10052 ERROR: ForwardingDestinationDirectory is Not Exists ."
+message1002="APP-XXCCP1-10053 ERROR: LogTempDirectory is Not Exists ."
+message1003="APP-XXCCP1-10054 ERROR: FTP Command error ."
+message1004="APP-XXCCP1-10055 ERROR: FTP Conect error ."
+message1005="APP-XXCCP1-10056 ERROR: Shell Command error ."
+# 終了メッセージ   [9000番台]
+message9000="APP-XXCCP1-30007 INFO : Normal End ${procName} Process ."
+message9001="APP-XXCCP1-30008 INFO : Error End  ${procName} Process ."
+
+#================================================
+#その他
+#================================================
+# 正常なパラメータ数
+prmCount=12
+
+################################################################################
+#===============================================================================
+# サブ関数の定義
+#===============================================================================
+
+#\\ ﾒｯｾｰｼﾞ出力処理
+#================================================
+# Message OutPut
+# Usage : MSG_OUT MessageCode
+#================================================
+MSG_OUT()
+{
+    eval msgId='$message'$1
+    echo '['`date +"%Y/%m/%d %H:%M:%S"`']:['"${execFile}"']:['${$}']:['"${procStep}"']:'"$msgId"
+}
+#\\ FTPでのﾌｧｲﾙ取得処理
+#================================================
+# FTP(File GET) Common
+# Usage : FTP_GET
+# Retrun: exec FTP return
+#================================================
+FILE_GET()
+{
+# バイナリモードでのファイルの取得bin(binary)
+ftp -niv << EOF > ${ftpGetLogPath} 
+open ${connHostName}
+user ${connUserName} ${connUserPass}
+bin
+get ${getFilePath} ${putFilePath}
+bye
+EOF
+
+retFTP=${?}
+# FTPコマンドの返り値を取得
+return ${retFTP}
+
+}
+#\\ FTPでのﾌｧｲﾙ削除処理
+#================================================
+# FTP(File DELETE) Common
+# Usage : FTP_DEL
+# Retrun: exec FTP return
+#================================================
+FTP_DEL()
+{
+#FTPでのファイル削除処理
+ftp -niv << EOF >  ${ftpDelLogPath}
+open ${connHostName}
+user ${connUserName} ${connUserPass}
+delete ${getFilePath}
+bye
+EOF
+
+retFTP=${?}
+# FTPコマンドの返り値を取得
+return ${retFTP}
+
+}
+#\\ 終了処理
+#================================================
+# ExitProc Common
+# Usage : EXIT_PROC ExitStatus MessageCode 
+#================================================
+EXIT_PROC()
+{
+    # 正常処理以外はエラーメッセージも出力する
+    if [ ${1} -ne ${exitNormal} ]
+    then
+      # エラーメッセージ出力
+      eval msgId='$message'${2}
+      echo '['`date +"%Y/%m/%d %H:%M:%S"`']:['"${execFile}"']:['${$}']:['"${procStep}"']:'"$msgId"
+    fi
+
+    # 終了ステータスの設定を行う
+    if [ ${1} -eq ${exitFatal} ]
+    then
+      # 異常の場合⇒ステータスを異常終了に設定する
+      exitStatus=${exitFatal}
+    else
+      # それ以外の場合⇒ステータスを正常終了を設定する
+      exitStatus=${exitNormal}
+    fi
+
+    # 終了メッセージを出力する
+    MSG_OUT "900$exitStatus"
+    echo '========================================================================================================================'
+
+    # 一時ログファイル内の内容を展開する
+    # 1.File Get 時
+    if [ -s ${ftpGetLogPath} ]
+    then 
+      echo ''
+      echo '---------------------------------------      FTP-LOG START    GET File         -----------------------------------------' 
+      cat ${ftpGetLogPath} 2> /dev/null
+      echo '---------------------------------------      FTP-LOG ND       GET File         -----------------------------------------' 
+    fi
+    
+    # 2.File Delete 時
+    if [ -s ${ftpDelLogPath} ]
+    then 
+      echo ''
+      echo '---------------------------------------      FTP-LOG START    DEL File         -----------------------------------------' 
+      cat ${ftpDelLogPath} 2> /dev/null
+      echo '---------------------------------------      FTP-LOG ND       DEL File         -----------------------------------------' 
+    fi
+    #
+    echo ''
+    
+    # 一時ファイルを削除する
+    rm -f ${ftpGetLogPath}  > /dev/null 2>&1
+    rm -f ${ftpDelLogPath}  > /dev/null 2>&1
+
+    # 処理を終了する
+    return 0
+}
+#\\ FTP 結果チェック
+#================================================
+# Check FTP_LOG
+# Usage : CHK_FTP RetCode ftpLogPath 
+# Retrun: 0.Normal ,1.Command Error ,2.Connection Error ,9.FTP Command Error
+#================================================
+CHK_FTP()
+{
+    # FTPコマンドの結果判断
+    if [ ${1} -ne ${exitNormal} ]
+    then
+      # FTPコマンド自体がエラーの場合は[9]を戻す
+      return 9
+    fi
+    
+    # FTPログの確認
+    # ErrorCodeの検出
+    # [先頭が4or5の数値三桁][ブランク][byteの表記では無い]の場合に合致する行数をErrMsgCountに格納
+    # 以上のコードが検出された場合は、FTPのコマンドが失敗したとみなしエラーとする
+    egrep -ci '^[45][0-9][0-9] [^(byte)]' ${2}  2>/dev/null | read ErrMsgCount
+    if [ $? -lt 2 -a $ErrMsgCount -eq 0 ]
+    then
+      # ftpLogにエラーコードが検出できない場合
+      # [Connection closed]か[Not Connected]か[Terminated]の文字列が検出された行数をErrMsgCountに格納
+      # 以上の文字列が検出された場合は、Connectionに異常が発生した場合になるので、エラーとする
+      egrep -ci '^(connection closed|not connected|terminated)' ${2}  2>/dev/null | read ErrMsgCount
+      if [ $? -lt 2 -a $ErrMsgCount -eq 0 ]
+      then
+        # 処理が正常に終了している場合は[0]を戻す
+        return 0
+      else
+        # 接続エラーがある場合は[2]を戻す
+        return 2
+      fi
+
+    else
+      #ErrorCodeが検出された場合は[1]を戻す
+      return 1
+    fi
+
+}
+
+#===============================================================================
+# 1.2 開始ログ出力
+#===============================================================================
+procStep="STEP.001"
+echo '========================================================================================================================'
+MSG_OUT 0001
+#表示しない方が良いログはコメントアウトしてます
+#Parameterの出力メッセージIDは[prmXX]で作成
+#messageprmSD"SHELL DEFAULT PARAMETER"
+#MSG_OUT prmSD
+#messageprmEX="In Parameter00[Exec Prog]    =>${0}"
+#MSG_OUT prmEX
+#messageprmED="EBS CONCURRENT DEFAULT PARAMETER"
+#MSG_OUT prmED
+#messageprm01="In Parameter01[DBuser/DBpass]=>${1}"
+#MSG_OUT prm01
+#messageprm02="In Parameter02[User ID]      =>${2}"
+#MSG_OUT prm02
+messageprm03="In Parameter03[User Name]    =>${3}"
+MSG_OUT prm03
+messageprm04="In Parameter04[Request ID]   =>${4}"
+MSG_OUT prm04
+#messageprmPI="PROG INHERENCE PARAMETER"
+#MSG_OUT prmPI
+messageprm05="In Parameter05[Connect HOST] =>${5}"
+MSG_OUT prm05
+#messageprm06="In Parameter06[Connect USER] =>${6}"
+#MSG_OUT prm06
+#messageprm07="In Parameter07[Connect PASS] =>${7}"
+#MSG_OUT prm07
+#messageprm08="In Parameter08[Get Dir Path] =>${8}"
+#MSG_OUT prm08
+#messageprm09="In Parameter09[Out Dir Path] =>${9}"
+#MSG_OUT prm09
+messageprm10="In Parameter10[File Name]    =>${10}"
+MSG_OUT prm10
+#messageprm11="In Parameter11[Log Dir Path] =>${11}"
+#MSG_OUT prm11
+#messageprm12="In Parameter12[Log File Name]=>${12}"
+#MSG_OUT prm12
+
+#===============================================================================
+# 1.3 パラメータチェック(妥当性)
+#===============================================================================
+procStep="STEP.002"
+
+# ファイル移動先ディレクトリの存在確認
+ls ${LocalFileDir} > /dev/null 2>&1
+Ret=${?}
+case ${Ret} in
+  # コマンドがエラーになった場合
+  1)  EXIT_PROC ${exitFatal} 1005
+      exit ${exitStatus}
+      ;;
+  # 移動先ディレクトリが無かった場合
+  2)  EXIT_PROC ${exitFatal} 1001
+      exit ${exitStatus}
+      ;;
+esac  
+
+procStep="STEP.003"
+# 一時ログファイル用ディレクトリの存在確認
+ls ${ftpLogFileDir} > /dev/null 2>&1
+Ret=${?}
+case ${Ret} in
+  # コマンドがエラーになった場合
+  1)  EXIT_PROC ${exitFatal} 1005
+      exit ${exitStatus}
+      ;;
+  # 一時ログファイル用ディレクトリが無かった場合
+  2)  EXIT_PROC ${exitFatal} 1002
+      exit ${exitStatus}
+      ;;
+esac  
+
+#===============================================================================
+# 2.1 FTPによるファイルの取得を実行
+#===============================================================================
+# FTPでのファイル取得実行
+procStep="STEP.004"
+MSG_OUT 0002
+FILE_GET
+Ret=${?}
+
+#===============================================================================
+# 2.2 実行結果ログのチェック
+#===============================================================================
+# 実行判断
+CHK_FTP ${Ret} ${ftpGetLogPath}
+Ret=${?}
+case ${Ret} in
+  # 正常終了時
+  # メッセージを出力して後続処理を実行する
+  0)  MSG_OUT 0003
+      ;;
+  # 異常終了時(FTP Command Error)
+  # メッセージを出力して異常終了する
+  1)  EXIT_PROC ${exitFatal} 1003
+      exit ${exitStatus}
+      ;;
+  # 異常終了時(FTP Connect Error)
+  # メッセージを出力して異常終了する
+  2)  EXIT_PROC ${exitFatal} 1004
+      exit ${exitStatus}
+      ;;
+  # 異常終了時(Shell Command[ftp] Error)
+  # メッセージを出力して異常終了する
+  9)  EXIT_PROC ${exitFatal} 1005
+      exit ${exitStatus}
+      ;;
+esac
+
+#===============================================================================
+# 3.1 FTPによるファイルの削除を実行
+#===============================================================================
+# FTPでのファイル取得実行
+procStep="STEP.005"
+MSG_OUT 0004
+FTP_DEL
+Ret=${?}
+
+#===============================================================================
+# 3.2 実行結果ログのチェック
+#===============================================================================
+# 実行判断
+CHK_FTP ${Ret} ${ftpDelLogPath}
+Ret=${?}
+case ${Ret} in
+  # 正常終了時
+  0)  MSG_OUT 0005
+  # メッセージを出力して後続処理を実行する
+      EXIT_PROC ${exitNormal}
+      ;;
+  # 異常終了時(FTP Command Error)
+  # メッセージを出力して後続処理を実行する
+  # ⇒削除処理でのエラーは正常終了とするため
+  1)  EXIT_PROC ${WarningCD} 1003
+      ;;
+  # 異常終了時(FTP Connect Error)
+  # メッセージを出力して後続処理を実行する
+  # ⇒削除処理でのエラーは正常終了とするため
+  2)  EXIT_PROC ${WarningCD} 1004
+      ;;
+  # 異常終了時(Shell Command[ftp] Error)
+  # メッセージを出力して後続処理を実行する
+  # ⇒削除処理でのエラーは正常終了とするため
+  9)  EXIT_PROC ${WarningCD} 1005
+      ;;
+esac
+
+# 処理を終了する
+exit ${exitStatus}
+
+
+

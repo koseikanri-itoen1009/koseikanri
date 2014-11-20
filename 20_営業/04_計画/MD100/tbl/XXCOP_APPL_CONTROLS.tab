@@ -1,0 +1,47 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_APPL_CONTROLS
+ * Description     : 計画用コントロールテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-1-26     1.0   SCS.Uchida       新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_APPL_CONTROLS
+(
+  APPL_CONTROL_ID         NUMBER(10,0), 
+  FUNCTION_ID             VARCHAR2(150), 
+  FUNCTION_NAME           VARCHAR2(150), 
+  LAST_PROCESS_DATE       DATE, 
+  CREATED_BY              NUMBER(15,0)        NOT NULL ENABLE, 
+  CREATION_DATE           DATE                NOT NULL ENABLE, 
+  LAST_UPDATED_BY         NUMBER(15,0)        NOT NULL ENABLE, 
+  LAST_UPDATE_DATE        DATE                NOT NULL ENABLE, 
+  LAST_UPDATE_LOGIN       NUMBER(15,0), 
+  REQUEST_ID              NUMBER(15,0), 
+  PROGRAM_APPLICATION_ID  NUMBER(15,0), 
+  PROGRAM_ID              NUMBER(15,0), 
+  PROGRAM_UPDATE_DATE     DATE
+  );
+-- 
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.APPL_CONTROL_ID        IS 'プログラムコントロールID';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.FUNCTION_ID            IS '機能ID';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.FUNCTION_NAME          IS '機能名';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.LAST_PROCESS_DATE      IS '前回処理日付';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.CREATED_BY             IS '作成者';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.CREATION_DATE          IS '作成日';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.LAST_UPDATED_BY        IS '最終更新者';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.LAST_UPDATE_DATE       IS '最終更新日';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.LAST_UPDATE_LOGIN      IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.REQUEST_ID             IS '要求ID';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.PROGRAM_ID             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOP.XXCOP_APPL_CONTROLS.PROGRAM_UPDATE_DATE    IS 'プログラム更新日';
+--
+COMMENT ON TABLE XXCOP.XXCOP_APPL_CONTROLS  IS '計画用コントロールテーブル';
+ 

@@ -1,0 +1,55 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCCP_IF_JOB_STATUS
+ * Description : 対向システムジョブ状況テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/14    1.0   SCS K.Oomata     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCCP.XXCCP_IF_JOB_STATUS
+(
+   PK_REQUEST_ID_VAL            VARCHAR2(20)    NOT NULL            --処理順付要求ID
+  ,EXEC_REQUEST_ID              NUMBER(15)      NOT NULL            --起動対象要求ID
+  ,STATUS_CODE                  VARCHAR2(1)     NOT NULL            --ステータス
+  ,IF_SYSTEM_NAME               VARCHAR2(10)    NOT NULL            --対向システム名
+  ,IF_FILE_NAME                 VARCHAR2(30)    NOT NULL            --ファイル名
+  ,JOBNET_NAME                  VARCHAR2(100)   NOT NULL            --ジョブネット完全名
+  ,FIRST_REQUEST_ID             NUMBER(15)      NOT NULL            --初期データ作成要求ID
+  ,CREATED_BY                   NUMBER(15)      NOT NULL            --作成者
+  ,CREATION_DATE                DATE            NOT NULL            --作成日
+  ,LAST_UPDATED_BY              NUMBER(15)      NOT NULL            --最終更新者
+  ,LAST_UPDATE_DATE             DATE            NOT NULL            --最終更新日
+  ,LAST_UPDATE_LOGIN            NUMBER(15)      NOT NULL            --最終更新ログイン
+  ,REQUEST_ID                   NUMBER(15)      NOT NULL            --要求ID
+  ,PROGRAM_APPLICATION_ID       NUMBER(15)      NOT NULL            --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+  ,PROGRAM_ID                   NUMBER(15)      NOT NULL            --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+  ,PROGRAM_UPDATE_DATE          DATE            NOT NULL            --ﾌﾟﾛｸﾞﾗﾑ更新日
+  ,CONSTRAINT XXCCP_IF_JOB_STATUS_PK PRIMARY KEY ( PK_REQUEST_ID_VAL )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.PK_REQUEST_ID_VAL      IS '処理順付要求ID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.EXEC_REQUEST_ID        IS '起動対象要求ID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.STATUS_CODE            IS 'ステータス';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.IF_SYSTEM_NAME         IS '対向システム名';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.IF_FILE_NAME           IS 'ファイル名';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.JOBNET_NAME            IS 'ジョブネット完全名';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.FIRST_REQUEST_ID       IS '初期データ作成要求ID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.CREATED_BY             IS '作成者';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.CREATION_DATE          IS '作成日';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.LAST_UPDATED_BY        IS '最終更新者';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.LAST_UPDATE_DATE       IS '最終更新日';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.LAST_UPDATE_LOGIN      IS '最終更新ログイン';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.REQUEST_ID             IS '要求ID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.PROGRAM_APPLICATION_ID IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.PROGRAM_ID             IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCCP.XXCCP_IF_JOB_STATUS.PROGRAM_UPDATE_DATE    IS 'ﾌﾟﾛｸﾞﾗﾑ更新日';
+
+--
+COMMENT ON TABLE  XXCCP.XXCCP_IF_JOB_STATUS IS '対向システムジョブ状況テーブル';
