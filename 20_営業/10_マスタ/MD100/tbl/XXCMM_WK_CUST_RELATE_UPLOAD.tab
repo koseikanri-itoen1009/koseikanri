@@ -1,0 +1,71 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : xxcmm.xxcmm_WK_CUST_RELATE_UPLOAD
+ * Description : 顧客関連一括更新用ワーク(テーブル)
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/12/03    1.0   M.Takasaki       [E_本稼動_09963]新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcmm.XXCMM_WK_CUST_RELATE_UPLOAD (
+     file_id                        NUMBER        NOT NULL
+    ,line_no                        NUMBER
+    ,customer_class_code            VARCHAR2(2)
+    ,customer_code                  VARCHAR2(9)
+    ,rel_customer_class_code        VARCHAR2(2)
+    ,rel_customer_code              VARCHAR2(9)
+    ,relate_class                   VARCHAR2(1)
+    ,status                         VARCHAR2(1)
+    ,relate_apply_date              DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcmm.xxcmm_wk_cust_relate_upload IS '顧客関連一括更新用ワーク'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.file_id                            IS 'ファイルID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.line_no                            IS '行番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.customer_class_code                IS '顧客区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.customer_code                      IS '顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.rel_customer_class_code            IS '関連先顧客区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.rel_customer_code                  IS '関連先顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.relate_class                       IS '顧客関連分類'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.status                             IS '登録ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.relate_apply_date                  IS '関連適用日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.created_by                         IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.creation_date                      IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.last_updated_by                    IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.last_update_date                   IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.last_update_login                  IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.request_id                         IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.program_application_id             IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.program_id                         IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_relate_upload.program_update_date                IS 'プログラム更新日'
