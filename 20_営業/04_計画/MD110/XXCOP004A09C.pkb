@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A09C(body)
  * Description      : アップロードファイルからの登録（引取計画）
  * MD.050           : MD050_COP_004_A09_アップロードファイルからの登録（引取計画）
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2013/10/30    1.0   S.Niki           新規作成
+ *  2014/04/03    1.1   N.Nakamura       E_本稼動_11687対応
  *
  *****************************************************************************************/
 --
@@ -83,6 +84,9 @@ AS
   -- ===============================
   global_lock_expt          EXCEPTION;  -- ロック例外
   global_chk_item_expt      EXCEPTION;  -- 妥当性チェック例外
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+  global_no_insert_expt     EXCEPTION;  -- 登録対象外例外
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
 --
   PRAGMA EXCEPTION_INIT(global_lock_expt, -54);
 --
@@ -1054,7 +1058,10 @@ AS
             ) ic  -- インラインビュー_品目区分
       WHERE  iimb.item_id            = ximb.item_id
       AND    iimb.item_id            = pc.item_id
-      AND    iimb.item_id            = ic.item_id
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--      AND    iimb.item_id            = ic.item_id
+      AND    iimb.item_id            = ic.item_id(+)
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
       AND    iimb.item_id            = ip.item_id
       AND    iimb.item_no            = xsib.item_code
       AND    iimb.item_no            = msib.segment1
@@ -1063,7 +1070,11 @@ AS
       AND    gd_process_date         BETWEEN ximb.start_date_active
                                      AND     ximb.end_date_active
       AND    ip.item_prod_class      = cv_item_prod_class_prod                    -- 製品
-      AND    ic.item_class           = cv_item_class_prod                         -- 製品
+-- ********** Ver.1.1 K.Nakamura MOD Start ************ --
+--      AND    ic.item_class           = cv_item_class_prod                         -- 製品
+      AND    (  ( ic.item_class      = cv_item_class_prod )                       -- 製品
+             OR ( ic.item_class      IS NULL ) )
+-- ********** Ver.1.1 K.Nakamura MOD End ************ --
       AND    iimb.attribute18        = cv_shipment_on                             -- 出荷可
       AND    ximb.obsolete_class     = cv_obsolete_class_off                      -- 対象外
              -- 親品目かつ、品目ステータス「30：本登録」「40：廃」かつ、売上対象
@@ -1677,6 +1688,12 @@ AS
       WHEN NO_DATA_FOUND THEN
         -- 取得できない場合は、新規レコードとして変数にNULLを設定
         lt_transaction_id := NULL;
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+        -- 新規レコードかつ計画数量が0の場合、登録しない
+        IF ( forecast_if_rec.case_count = 0 ) THEN
+          RAISE global_no_insert_expt;
+        END IF;
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
       -- ロック取得例外ハンドラ
       WHEN global_lock_expt THEN
         -- トークン値を設定
@@ -1762,6 +1779,12 @@ AS
     gn_normal_cnt := gn_normal_cnt + 1;
 --
   EXCEPTION
+-- ********** Ver.1.1 K.Nakamura ADD Start ************ --
+    -- *** 登録対象外例外ハンドラ ***
+    WHEN global_no_insert_expt THEN
+      -- 成功件数への出力やメッセージ出力も行なわない
+      ov_retcode := cv_status_normal;
+-- ********** Ver.1.1 K.Nakamura ADD End ************ --
 --
 --#################################  固定例外処理部 START   ####################################
 --
