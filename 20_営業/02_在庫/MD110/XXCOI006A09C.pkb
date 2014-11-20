@@ -6,12 +6,14 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
  *  Name                         Description
  * ---------------------------- ----------------------------------------------------------
+ *  finalize                     終了処理                             (A-9)
+ *  set_reception_sum            累計受払データ出力                   (A-7)(A-8)
  *  upd_last_transaction_id      最終取引ID更新                       (A-6)
  *  set_last_daily_data          当日未取引データ受払出力             (A-5)
  *                               前日受払データ抽出                   (A-4)
@@ -26,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/05    1.0   Sai.u            新規作成
+ *  2009/04/06    1.1   H.Sasaki         [T1_0197]月次在庫受払表（累計）の作成
  *
  *****************************************************************************************/
 --
@@ -108,6 +111,9 @@ AS
   cv_msg_xxcoi1_10363   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10363';
   cv_msg_xxcoi1_10285   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10285';
   cv_msg_xxcoi1_10293   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10293';
+-- == 2009/04/06 V1.1 Added START ===============================================================
+  cv_msg_xxcoi1_10378   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10378';
+-- == 2009/04/06 V1.1 Added END   ===============================================================
   cv_token_00005_1      CONSTANT VARCHAR2(30) :=  'PRO_TOK';
   cv_token_00006_1      CONSTANT VARCHAR2(30) :=  'ORG_CODE_TOK';
   -- 受払集計キー（取引タイプ）
@@ -168,7 +174,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : finalize
-   * Description      : 終了処理(A-7)
+   * Description      : 終了処理(A-9)
    ***********************************************************************************/
   PROCEDURE finalize(
     ov_errbuf         OUT VARCHAR2,                     -- エラー・メッセージ                  --# 固定 #
@@ -251,6 +257,349 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END finalize;
+--
+-- == 2009/04/06 V1.1 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : set_reception_sum
+   * Description      : 累計受払データ出力(A-7)(A-8)
+   ***********************************************************************************/
+  PROCEDURE set_reception_sum(
+    ov_errbuf         OUT VARCHAR2,                     -- エラー・メッセージ                  --# 固定 #
+    ov_retcode        OUT VARCHAR2,                     -- リターン・コード                    --# 固定 #
+    ov_errmsg         OUT VARCHAR2)                     -- ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_reception_sum'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_dummy      NUMBER;       -- ダミー変数
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    -- 累計情報取得カーソル
+    CURSOR  sum_data_cur
+    IS
+      SELECT  xird.base_code                  base_code                             -- 拠点コード
+             ,xird.organization_id            organization_id                       -- 組織ID
+             ,xird.subinventory_type          subinventory_type                     -- 保管場所区分
+             ,xird.subinventory_code          subinventory_code                     -- 保管場所
+             ,SUBSTRB(TO_CHAR(xird.practice_date, cv_date), 1, 6)
+                                              practice_date                         -- 年月
+             ,xird.inventory_item_id          inventory_item_id                     -- 品目ID
+             ,xird.operation_cost             operation_cost                        -- 営業原価
+             ,xird.standard_cost              standard_cost                         -- 標準原価
+             ,xird.sales_shipped              sales_shipped                         -- 売上出庫
+             ,xird.sales_shipped_b            sales_shipped_b                       -- 売上出庫振戻
+             ,xird.return_goods               return_goods                          -- 返品
+             ,xird.return_goods_b             return_goods_b                        -- 返品振戻
+             ,xird.warehouse_ship             warehouse_ship                        -- 倉庫へ返庫
+             ,xird.truck_ship                 truck_ship                            -- 営業車へ出庫
+             ,xird.others_ship                others_ship                           -- 入出庫＿その他出庫
+             ,xird.warehouse_stock            warehouse_stock                       -- 倉庫より入庫
+             ,xird.truck_stock                truck_stock                           -- 営業車より入庫
+             ,xird.others_stock               others_stock                          -- 入出庫＿その他入庫
+             ,xird.change_stock               change_stock                          -- 倉替入庫
+             ,xird.change_ship                change_ship                           -- 倉替出庫
+             ,xird.goods_transfer_old         goods_transfer_old                    -- 商品振替（旧商品）
+             ,xird.goods_transfer_new         goods_transfer_new                    -- 商品振替（新商品）
+             ,xird.sample_quantity            sample_quantity                       -- 見本出庫
+             ,xird.sample_quantity_b          sample_quantity_b                     -- 見本出庫振戻
+             ,xird.customer_sample_ship       customer_sample_ship                  -- 顧客見本出庫
+             ,xird.customer_sample_ship_b     customer_sample_ship_b                -- 顧客見本出庫振戻
+             ,xird.customer_support_ss        customer_support_ss                   -- 顧客協賛見本出庫
+             ,xird.customer_support_ss_b      customer_support_ss_b                 -- 顧客協賛見本出庫振戻
+             ,xird.vd_supplement_stock        vd_supplement_stock                   -- 消化VD補充入庫
+             ,xird.vd_supplement_ship         vd_supplement_ship                    -- 消化VD補充出庫
+             ,xird.inventory_change_in        inventory_change_in                   -- 基準在庫変更入庫
+             ,xird.inventory_change_out       inventory_change_out                  -- 基準在庫変更出庫
+             ,xird.factory_return             factory_return                        -- 工場返品
+             ,xird.factory_return_b           factory_return_b                      -- 工場返品振戻
+             ,xird.factory_change             factory_change                        -- 工場倉替
+             ,xird.factory_change_b           factory_change_b                      -- 工場倉替振戻
+             ,xird.removed_goods              removed_goods                         -- 廃却
+             ,xird.removed_goods_b            removed_goods_b                       -- 廃却振戻
+             ,xird.factory_stock              factory_stock                         -- 工場入庫
+             ,xird.factory_stock_b            factory_stock_b                       -- 工場入庫振戻
+             ,xird.ccm_sample_ship            ccm_sample_ship                       -- 顧客広告宣伝費A自社商品
+             ,xird.ccm_sample_ship_b          ccm_sample_ship_b                     -- 顧客広告宣伝費A自社商品振戻
+             ,xird.wear_decrease              wear_decrease                         -- 棚卸減耗増
+             ,xird.wear_increase              wear_increase                         -- 棚卸減耗減
+             ,xird.selfbase_ship              selfbase_ship                         -- 保管場所移動＿自拠点出庫
+             ,xird.selfbase_stock             selfbase_stock                        -- 保管場所移動＿自拠点入庫
+             ,xird.book_inventory_quantity    book_inventory_quantity               -- 帳簿在庫数
+      FROM    xxcoi_inv_reception_daily   xird                                      -- 月次在庫受払表（日時）
+      WHERE   xird.request_id     =   cn_request_id;
+    --
+    -- 累計情報取得レコード型
+    sum_data_rec  sum_data_cur%ROWTYPE;
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        ループ処理の記述         ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+    <<set_sum_data_loop>>
+    FOR sum_data_rec IN sum_data_cur LOOP
+      BEGIN
+        -- ===================================
+        --  1.累計テーブルロック取得
+        -- ===================================
+        SELECT  1
+        INTO    ln_dummy
+        FROM    xxcoi_inv_reception_sum   xirs
+        WHERE   xirs.base_code            =   sum_data_rec.base_code
+        AND     xirs.subinventory_code    =   sum_data_rec.subinventory_code
+        AND     xirs.inventory_item_id    =   sum_data_rec.inventory_item_id
+        AND     xirs.practice_date        =   sum_data_rec.practice_date
+        AND     ROWNUM                    =   1
+        FOR UPDATE NOWAIT;
+        --
+        -- ===================================
+        --  2.累計テーブル更新
+        -- ===================================
+        -- ロックが取得された場合、入出庫数を更新する
+        UPDATE  xxcoi_inv_reception_sum
+        SET     sales_shipped             = sales_shipped           + sum_data_rec.sales_shipped            -- 01.売上出庫
+               ,sales_shipped_b           = sales_shipped_b         + sum_data_rec.sales_shipped_b          -- 02.売上出庫振戻
+               ,return_goods              = return_goods            + sum_data_rec.return_goods             -- 03.返品
+               ,return_goods_b            = return_goods_b          + sum_data_rec.return_goods_b           -- 04.返品振戻
+               ,warehouse_ship            = warehouse_ship          + sum_data_rec.warehouse_ship           -- 05.倉庫へ返庫
+               ,truck_ship                = truck_ship              + sum_data_rec.truck_ship               -- 06.営業車へ出庫
+               ,others_ship               = others_ship             + sum_data_rec.others_ship              -- 07.入出庫＿その他出庫
+               ,warehouse_stock           = warehouse_stock         + sum_data_rec.warehouse_stock          -- 08.倉庫より入庫
+               ,truck_stock               = truck_stock             + sum_data_rec.truck_stock              -- 09.営業車より入庫
+               ,others_stock              = others_stock            + sum_data_rec.others_stock             -- 10.入出庫＿その他入庫
+               ,change_stock              = change_stock            + sum_data_rec.change_stock             -- 11.倉替入庫
+               ,change_ship               = change_ship             + sum_data_rec.change_ship              -- 12.倉替出庫
+               ,goods_transfer_old        = goods_transfer_old      + sum_data_rec.goods_transfer_old       -- 13.商品振替（旧商品）
+               ,goods_transfer_new        = goods_transfer_new      + sum_data_rec.goods_transfer_new       -- 14.商品振替（新商品）
+               ,sample_quantity           = sample_quantity         + sum_data_rec.sample_quantity          -- 15.見本出庫
+               ,sample_quantity_b         = sample_quantity_b       + sum_data_rec.sample_quantity_b        -- 16.見本出庫振戻
+               ,customer_sample_ship      = customer_sample_ship    + sum_data_rec.customer_sample_ship     -- 17.顧客見本出庫
+               ,customer_sample_ship_b    = customer_sample_ship_b  + sum_data_rec.customer_sample_ship_b   -- 18.顧客見本出庫振戻
+               ,customer_support_ss       = customer_support_ss     + sum_data_rec.customer_support_ss      -- 19.顧客協賛見本出庫
+               ,customer_support_ss_b     = customer_support_ss_b   + sum_data_rec.customer_support_ss_b    -- 20.顧客協賛見本出庫振戻
+               ,ccm_sample_ship           = ccm_sample_ship         + sum_data_rec.ccm_sample_ship          -- 21.顧客広告宣伝費A自社商品
+               ,ccm_sample_ship_b         = ccm_sample_ship_b       + sum_data_rec.ccm_sample_ship_b        -- 22.顧客広告宣伝費A自社商品振戻
+               ,vd_supplement_stock       = vd_supplement_stock     + sum_data_rec.vd_supplement_stock      -- 23.消化VD補充入庫
+               ,vd_supplement_ship        = vd_supplement_ship      + sum_data_rec.vd_supplement_ship       -- 24.消化VD補充出庫
+               ,inventory_change_in       = inventory_change_in     + sum_data_rec.inventory_change_in      -- 25.基準在庫変更入庫
+               ,inventory_change_out      = inventory_change_out    + sum_data_rec.inventory_change_out     -- 26.基準在庫変更出庫
+               ,factory_return            = factory_return          + sum_data_rec.factory_return           -- 27.工場返品
+               ,factory_return_b          = factory_return_b        + sum_data_rec.factory_return_b         -- 28.工場返品振戻
+               ,factory_change            = factory_change          + sum_data_rec.factory_change           -- 29.工場倉替
+               ,factory_change_b          = factory_change_b        + sum_data_rec.factory_change_b         -- 30.工場倉替振戻
+               ,removed_goods             = removed_goods           + sum_data_rec.removed_goods            -- 31.廃却
+               ,removed_goods_b           = removed_goods_b         + sum_data_rec.removed_goods_b          -- 32.廃却振戻
+               ,factory_stock             = factory_stock           + sum_data_rec.factory_stock            -- 33.工場入庫
+               ,factory_stock_b           = factory_stock_b         + sum_data_rec.factory_stock_b          -- 34.工場入庫振戻
+               ,wear_decrease             = wear_decrease           + sum_data_rec.wear_decrease            -- 35.棚卸減耗増
+               ,wear_increase             = wear_increase           + sum_data_rec.wear_increase            -- 36.棚卸減耗減
+               ,selfbase_ship             = selfbase_ship           + sum_data_rec.selfbase_ship            -- 37.保管場所移動＿自拠点出庫
+               ,selfbase_stock            = selfbase_stock          + sum_data_rec.selfbase_stock           -- 38.保管場所移動＿自拠点入庫
+               ,book_inventory_quantity   = sum_data_rec.book_inventory_quantity                            -- 39.帳簿在庫数
+               ,last_updated_by           = cn_last_updated_by                                              -- 40.最終更新者
+               ,last_update_date          = SYSDATE                                                         -- 41.最終更新日
+               ,last_update_login         = cn_last_update_login                                            -- 42.最終更新ログイン
+               ,request_id                = cn_request_id                                                   -- 43.要求ID
+               ,program_application_id    = cn_program_application_id                                       -- 44.コンカレント・プログラム・アプリケーションID
+               ,program_id                = cn_program_id                                                   -- 45.コンカレント・プログラムID
+               ,program_update_date       = SYSDATE                                                         -- 46.プログラム更新日
+        WHERE   base_code                 = sum_data_rec.base_code
+        AND     subinventory_code         = sum_data_rec.subinventory_code
+        AND     inventory_item_id         = sum_data_rec.inventory_item_id
+        AND     practice_date             = sum_data_rec.practice_date;
+        --
+      EXCEPTION
+        WHEN  lock_error_expt THEN
+          -- ロックが取得されなかった場合
+          -- 月次在庫受払（累計）ロックエラーメッセージ
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_short_name
+                          ,iv_name         => cv_msg_xxcoi1_10378
+                         );
+          lv_errbuf   := lv_errmsg;
+          RAISE global_process_expt;
+          --
+        WHEN NO_DATA_FOUND THEN
+          -- ===================================
+          --  3.累計テーブル作成
+          -- ===================================
+          -- 対象データが存在しない場合、累計情報を新規作成する
+          INSERT INTO xxcoi_inv_reception_sum(
+            base_code                                   -- 01.拠点コード
+           ,organization_id                             -- 02.組織ID
+           ,subinventory_code                           -- 03.保管場所
+           ,subinventory_type                           -- 04.保管場所区分
+           ,practice_date                               -- 05.年月
+           ,inventory_item_id                           -- 06.品目ID
+           ,operation_cost                              -- 07.営業原価
+           ,standard_cost                               -- 08.標準原価
+           ,sales_shipped                               -- 09.売上出庫
+           ,sales_shipped_b                             -- 10.売上出庫振戻
+           ,return_goods                                -- 11.返品
+           ,return_goods_b                              -- 12.返品振戻
+           ,warehouse_ship                              -- 13.倉庫へ返庫
+           ,truck_ship                                  -- 14.営業車へ出庫
+           ,others_ship                                 -- 15.入出庫＿その他出庫
+           ,warehouse_stock                             -- 16.倉庫より入庫
+           ,truck_stock                                 -- 17.営業車より入庫
+           ,others_stock                                -- 18.入出庫＿その他入庫
+           ,change_stock                                -- 19.倉替入庫
+           ,change_ship                                 -- 20.倉替出庫
+           ,goods_transfer_old                          -- 21.商品振替（旧商品）
+           ,goods_transfer_new                          -- 22.商品振替（新商品）
+           ,sample_quantity                             -- 23.見本出庫
+           ,sample_quantity_b                           -- 24.見本出庫振戻
+           ,customer_sample_ship                        -- 25.顧客見本出庫
+           ,customer_sample_ship_b                      -- 26.顧客見本出庫振戻
+           ,customer_support_ss                         -- 27.顧客協賛見本出庫
+           ,customer_support_ss_b                       -- 28.顧客協賛見本出庫振戻
+           ,ccm_sample_ship                             -- 29.顧客広告宣伝費A自社商品
+           ,ccm_sample_ship_b                           -- 30.顧客広告宣伝費A自社商品振戻
+           ,vd_supplement_stock                         -- 31.消化VD補充入庫
+           ,vd_supplement_ship                          -- 32.消化VD補充出庫
+           ,inventory_change_in                         -- 33.基準在庫変更入庫
+           ,inventory_change_out                        -- 34.基準在庫変更出庫
+           ,factory_return                              -- 35.工場返品
+           ,factory_return_b                            -- 36.工場返品振戻
+           ,factory_change                              -- 37.工場倉替
+           ,factory_change_b                            -- 38.工場倉替振戻
+           ,removed_goods                               -- 39.廃却
+           ,removed_goods_b                             -- 40.廃却振戻
+           ,factory_stock                               -- 41.工場入庫
+           ,factory_stock_b                             -- 42.工場入庫振戻
+           ,wear_decrease                               -- 43.棚卸減耗増
+           ,wear_increase                               -- 44.棚卸減耗減
+           ,selfbase_ship                               -- 45.保管場所移動＿自拠点出庫
+           ,selfbase_stock                              -- 46.保管場所移動＿自拠点入庫
+           ,book_inventory_quantity                     -- 47.帳簿在庫数
+           ,created_by                                  -- 48.作成者
+           ,creation_date                               -- 49.作成日
+           ,last_updated_by                             -- 50.最終更新者
+           ,last_update_date                            -- 51.最終更新日
+           ,last_update_login                           -- 52.最終更新ログイン
+           ,request_id                                  -- 53.要求ID
+           ,program_application_id                      -- 54.コンカレント・プログラム・アプリケーションID
+           ,program_id                                  -- 55.コンカレント・プログラムID
+           ,program_update_date                         -- 56.プログラム更新日
+          )VALUES(
+            sum_data_rec.base_code                      -- 01
+           ,sum_data_rec.organization_id                -- 02
+           ,sum_data_rec.subinventory_code              -- 03
+           ,sum_data_rec.subinventory_type              -- 04
+           ,sum_data_rec.practice_date                  -- 05
+           ,sum_data_rec.inventory_item_id              -- 06
+           ,sum_data_rec.operation_cost                 -- 07
+           ,sum_data_rec.standard_cost                  -- 08
+           ,sum_data_rec.sales_shipped                  -- 09
+           ,sum_data_rec.sales_shipped_b                -- 10
+           ,sum_data_rec.return_goods                   -- 11
+           ,sum_data_rec.return_goods_b                 -- 12
+           ,sum_data_rec.warehouse_ship                 -- 13
+           ,sum_data_rec.truck_ship                     -- 14
+           ,sum_data_rec.others_ship                    -- 15
+           ,sum_data_rec.warehouse_stock                -- 16
+           ,sum_data_rec.truck_stock                    -- 17
+           ,sum_data_rec.others_stock                   -- 18
+           ,sum_data_rec.change_stock                   -- 19
+           ,sum_data_rec.change_ship                    -- 20
+           ,sum_data_rec.goods_transfer_old             -- 21
+           ,sum_data_rec.goods_transfer_new             -- 22
+           ,sum_data_rec.sample_quantity                -- 23
+           ,sum_data_rec.sample_quantity_b              -- 24
+           ,sum_data_rec.customer_sample_ship           -- 25
+           ,sum_data_rec.customer_sample_ship_b         -- 26
+           ,sum_data_rec.customer_support_ss            -- 27
+           ,sum_data_rec.customer_support_ss_b          -- 28
+           ,sum_data_rec.ccm_sample_ship                -- 29
+           ,sum_data_rec.ccm_sample_ship_b              -- 30
+           ,sum_data_rec.vd_supplement_stock            -- 31
+           ,sum_data_rec.vd_supplement_ship             -- 32
+           ,sum_data_rec.inventory_change_in            -- 33
+           ,sum_data_rec.inventory_change_out           -- 34
+           ,sum_data_rec.factory_return                 -- 35
+           ,sum_data_rec.factory_return_b               -- 36
+           ,sum_data_rec.factory_change                 -- 37
+           ,sum_data_rec.factory_change_b               -- 38
+           ,sum_data_rec.removed_goods                  -- 39
+           ,sum_data_rec.removed_goods_b                -- 40
+           ,sum_data_rec.factory_stock                  -- 41
+           ,sum_data_rec.factory_stock_b                -- 42
+           ,sum_data_rec.wear_decrease                  -- 43
+           ,sum_data_rec.wear_increase                  -- 44
+           ,sum_data_rec.selfbase_ship                  -- 45
+           ,sum_data_rec.selfbase_stock                 -- 46
+           ,sum_data_rec.book_inventory_quantity        -- 47
+           ,cn_created_by                               -- 48
+           ,SYSDATE                                     -- 49
+           ,cn_last_updated_by                          -- 50
+           ,SYSDATE                                     -- 51
+           ,cn_last_update_login                        -- 52
+           ,cn_request_id                               -- 53
+           ,cn_program_application_id                   -- 54
+           ,cn_program_id                               -- 55
+           ,SYSDATE                                     -- 56
+          );
+          --
+      END;
+      --
+    END LOOP set_sum_data_loop;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_reception_sum;
+-- == 2009/04/06 V1.1 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : upd_last_transaction_id
@@ -2006,8 +2355,23 @@ AS
       RAISE global_process_expt;
     END IF;
     --
+-- == 2009/04/06 V1.1 Added START ===============================================================
     -- ==============================================
-    --  A-7.終了処理
+    --  A-7, A-8.累計受払データ出力
+    -- ==============================================
+    set_reception_sum(
+      ov_errbuf     =>  lv_errbuf       --   エラー・メッセージ           --# 固定 #
+     ,ov_retcode    =>  lv_retcode      --   リターン・コード             --# 固定 #
+     ,ov_errmsg     =>  lv_errmsg       --   ユーザー・エラー・メッセージ --# 固定 #
+    );
+    -- 終了パラメータ判定
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- == 2009/04/06 V1.1 Added END   ===============================================================
+    --
+    -- ==============================================
+    --  A-9.終了処理
     -- ==============================================
     finalize(
       ov_errbuf     =>  lv_errbuf       --   エラー・メッセージ           --# 固定 #

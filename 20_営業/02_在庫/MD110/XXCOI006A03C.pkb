@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/02/19    1.4   H.Sasaki         [障害COI_020]棚卸管理新規作成時の条件を追加
  *  2009/03/17    1.5   H.Sasaki         [T1_0076]月首棚卸高算出の実行条件変更
  *  2009/03/30    1.6   H.Sasaki         [T1_0195]棚卸情報登録時の拠点コード変換条件変更
+ *  2009/04/27    1.7   H.Sasaki         [T1_0553]年月日の設定値変更
  *
  *****************************************************************************************/
 --
@@ -278,6 +279,10 @@ AS
      ,SUM(xird.selfbase_ship)             selfbase_ship             -- 保管場所移動＿自拠点出庫
      ,SUM(xird.selfbase_stock)            selfbase_stock            -- 保管場所移動＿自拠点入庫
      ,MAX(xic.inventory_seq)              inventory_seq             -- 棚卸SEQ
+-- == 2009/04/27 V1.7 Added START ===============================================================
+     ,MAX(xird.practice_date)             practice_date
+     ,MAX(xic.inventory_date)             inventory_date
+-- == 2009/04/27 V1.7 Added END   ===============================================================
     FROM    xxcoi_inv_reception_daily   xird                        -- 月次在庫受払表（日次）
            ,(SELECT   sub_msi.attribute7            base_code
                      ,sub_xic.subinventory_code     subinventory_code
@@ -359,6 +364,10 @@ AS
      ,SUM(xird.selfbase_ship)             selfbase_ship             -- 保管場所移動＿自拠点出庫
      ,SUM(xird.selfbase_stock)            selfbase_stock            -- 保管場所移動＿自拠点入庫
      ,MAX(xic.inventory_seq)              inventory_seq             -- 棚卸SEQ
+-- == 2009/04/27 V1.7 Added START ===============================================================
+     ,MAX(xird.practice_date)             practice_date
+     ,MAX(xic.inventory_date)             inventory_date
+-- == 2009/04/27 V1.7 Added END   ===============================================================
     FROM    xxcoi_inv_reception_daily   xird                        -- 月次在庫受払表（日次）
            ,(SELECT   sub_msi.attribute7                base_code
                      ,sub_xic.subinventory_code         subinventory_code
@@ -2248,6 +2257,9 @@ AS
     -- *** ローカル変数 ***
     lt_inventory_seq        xxcoi_inv_control.inventory_seq%TYPE;     -- 棚卸SEQ
     ln_inv_wear             NUMBER;                                   -- 棚卸減耗
+-- == 2009/04/27 V1.7 Added START ===============================================================
+    ld_practice_date        DATE;                                     -- 年月日
+-- == 2009/04/27 V1.7 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2277,6 +2289,14 @@ AS
     IF (ir_invrcp_daily.inventory_seq IS NOT NULL) THEN
       -- 棚卸SEQが取得された場合
       lt_inventory_seq  :=  ir_invrcp_daily.inventory_seq;
+-- == 2009/04/27 V1.7 Added START ===============================================================
+      IF (gv_param_exec_flag = cv_exec_1) THEN
+        -- コンカレント起動時
+        ld_practice_date  :=  ir_invrcp_daily.inventory_date;
+      ELSE
+        ld_practice_date  :=  gd_f_process_date;
+      END IF;
+-- == 2009/04/27 V1.7 Added END   ===============================================================
       --
     ELSIF ((gt_save_1_base_code IS NULL)
            OR
@@ -2289,9 +2309,25 @@ AS
       SELECT  xxcoi_inv_control_s01.NEXTVAL
       INTO    lt_inventory_seq
       FROM    dual;
+-- == 2009/04/27 V1.7 Added START ===============================================================
+      IF (gv_param_exec_flag = cv_exec_1) THEN
+        -- コンカレント起動時
+        ld_practice_date  :=  ir_invrcp_daily.practice_date;
+      ELSE
+        ld_practice_date  :=  gd_f_process_date;
+      END IF;
+-- == 2009/04/27 V1.7 Added END   ===============================================================
     ELSE
       -- 上記以外の場合
       lt_inventory_seq  :=  gt_save_1_inv_seq;
+-- == 2009/04/27 V1.7 Added START ===============================================================
+      IF (gv_param_exec_flag = cv_exec_1) THEN
+        -- コンカレント起動時
+        ld_practice_date  :=  ir_invrcp_daily.practice_date;
+      ELSE
+        ld_practice_date  :=  gd_f_process_date;
+      END IF;
+-- == 2009/04/27 V1.7 Added END   ===============================================================
     END IF;
     --
     -- ===================================
@@ -2408,7 +2444,10 @@ AS
      ,ir_invrcp_daily.subinventory_code         -- 04
      ,ir_invrcp_daily.subinventory_type         -- 05
      ,gv_f_inv_acct_period                      -- 06
-     ,gd_f_process_date                         -- 07
+-- == 2009/04/27 V1.7 Modified START ===============================================================
+--    ,gd_f_process_date                          -- 07
+     ,ld_practice_date                          -- 07
+-- == 2009/04/27 V1.7 Modified END   ===============================================================
      ,gv_param_inventory_kbn                    -- 08
      ,ir_invrcp_daily.inventory_item_id         -- 09
      ,ir_invrcp_daily.operation_cost            -- 10
