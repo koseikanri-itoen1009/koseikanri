@@ -79,5 +79,3 @@ COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_id                     
 /
 COMMENT ON COLUMN xxcsm.xxcsm_new_cust_point_hst.program_update_date                   IS 'プログラム更新日'
 /
-CREATE INDEX xxcsm.xxcsm_new_cust_point_hst_n01 ON xxcsm.xxcsm_new_cust_point_hst (EMPLOYEE_NUMBER ASC, YEAR_MONTH ASC, ACCOUNT_NUMBER ASC, DATA_KBN ASC) NOPARALLEL
-/
