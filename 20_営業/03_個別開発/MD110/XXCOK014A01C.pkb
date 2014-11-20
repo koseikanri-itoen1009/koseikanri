@@ -77,7 +77,7 @@ AS
  *                                       [E_本稼動_01896] 計算対象顧客の判別を、販売実績の存在有無に差し戻し
  *  2011/04/01    3.13  M.Watanabe       [E_本稼動_06757] 販売実績にて変動電気代のみの場合でも電気料の計算対象とする
  *  2012/02/23    3.14  S.Niki           [E_本稼動_09144] 売上金額（税込）に変動電気代を加算しないよう修正
- *  2012/07/10    3.15  S.Niki           [E_本稼動_08751] パフォーマンス改善対応
+ *  2012/09/14    3.15  S.Niki           [E_本稼動_08751] パフォーマンス改善対応
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -186,7 +186,7 @@ AS
   cv_profile_name_09               CONSTANT VARCHAR2(50)    := 'XXCOK1_DEFAULT_TERM_NAME';          -- 支払条件_デフォルト
   cv_profile_name_10               CONSTANT VARCHAR2(50)    := 'XXCOK1_ORG_CODE_SALES';             -- 在庫組織コード_営業組織
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
-  cv_profile_name_11               CONSTANT VARCHAR2(50)    := 'XXCOK1_BULK_LIMIT';                 -- バルクリミット値
+  cv_profile_name_11               CONSTANT VARCHAR2(50)    := 'XXCOK1_XSEL_DATA_LOCK';             -- 販売実績明細データロック
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_DISTRICT_PARA_MST';       -- 販手販協計算実行区分
@@ -272,6 +272,7 @@ AS
   cv_bm_proc_flag_2                CONSTANT VARCHAR2(1)     := '2';  -- 計算対象顧客一時表作成
   cv_bm_proc_flag_3                CONSTANT VARCHAR2(1)     := '3';  -- 販手販協計算処理
   cv_bm_proc_flag_4                CONSTANT VARCHAR2(1)     := '4';  -- 販売実績更新処理
+  cv_bm_proc_flag_5                CONSTANT VARCHAR2(1)     := '5';  -- 計算対象顧客一時表削除
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   --==================================================
   -- グローバル変数
@@ -307,10 +308,10 @@ AS
   gv_instantly_term_name           VARCHAR2(8)   DEFAULT NULL;   -- 支払条件_即時払い
   gv_default_term_name             VARCHAR2(8)   DEFAULT NULL;   -- 支払条件_デフォルト
   gv_organization_code             VARCHAR2(10)  DEFAULT NULL;   -- 在庫組織コード_営業組織
--- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
-  gn_bulk_limit                    NUMBER        DEFAULT NULL;   -- XXCOK:バルクリミット値
--- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   gt_calendar_code                 mtl_parameters.calendar_code%TYPE DEFAULT NULL; -- 在庫組織コード_営業組織-カレンダコード
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  gv_xsel_data_lock                VARCHAR2(1)   DEFAULT NULL;   -- 販手販協_販売実績明細ロック
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   --==================================================
   -- 共通例外
   --==================================================
@@ -563,9 +564,7 @@ AS
 --       , ar_vat_tax_b              bill_avtb
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
     WHERE proc_flvv.lookup_type        = cv_lookup_type_01
--- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki DEL START
---      AND proc_flvv.attribute1         = gv_param_proc_type
--- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki DEL END
+      AND proc_flvv.attribute1         = gv_param_proc_type
       AND proc_flvv.enabled_flag       = cv_enable
       AND gd_process_date        BETWEEN NVL( proc_flvv.start_date_active, gd_process_date )
                                      AND NVL( proc_flvv.end_date_active  , gd_process_date )
@@ -2861,10 +2860,6 @@ GROUP BY CASE
   , amount_fix_date                DATE
   );
   TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
--- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
-  TYPE g_xsel_update_ttype         IS TABLE OF xxcos_sales_exp_lines.sales_exp_line_id%TYPE INDEX BY BINARY_INTEGER;
-  gt_xsel_update_tbl               g_xsel_update_ttype;   -- 販売実績明細更新用
--- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_operating_day_f
@@ -3256,11 +3251,18 @@ GROUP BY CASE
 --      WHERE xsel.sales_exp_line_id = xsel_update_lock_rec.sales_exp_line_id
 --      ;
 --    END LOOP xsel_update_lock_loop;
-    --==================================================
-    -- 販売実績ロック取得
-    --==================================================
-    OPEN  xsel_update_lock_cur;
-    CLOSE xsel_update_lock_cur;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    --プロファイル「XXCOK1:販手販協_販売実績明細ロック」が'N'以外のときロックを取得
+    IF ( gv_xsel_data_lock <> cv_disable ) THEN
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+      --==================================================
+      -- 販売実績ロック取得
+      --==================================================
+      OPEN  xsel_update_lock_cur;
+      CLOSE xsel_update_lock_cur;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    END IF;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- 販売実績連携結果データ更新
     --==================================================
@@ -6473,10 +6475,10 @@ END insert_xt0c;
     END IF;
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     --==================================================
-    -- プロファイル取得(バルクリミット値)
+    -- プロファイル取得(販手販協_販売実績明細ロック)
     --==================================================
-    gn_bulk_limit := FND_PROFILE.VALUE( cv_profile_name_11 );
-    IF( gn_bulk_limit IS NULL ) THEN
+    gv_xsel_data_lock := FND_PROFILE.VALUE( cv_profile_name_11 );
+    IF( gv_xsel_data_lock IS NULL ) THEN
       lv_outmsg  := xxccp_common_pkg.get_msg(
                       iv_application          => cv_appl_short_name_cok
                     , iv_name                 => cv_msg_cok_00003
@@ -6633,14 +6635,19 @@ END insert_xt0c;
       END IF;
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     END IF;
+--
+    --==================================================
+    -- 起動フラグ：5の場合は、計算対象顧客一時表削除(A-19)を実行
+    --==================================================
+    IF ( gv_param_proc_flag = cv_bm_proc_flag_5 ) THEN
+      --トランケートを実施
+      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcok.xxcok_wk_014a01c_custdata';
+    END IF;
+--
     --==================================================
     -- 起動フラグ：2の場合は、計算対象顧客一時表作成を実行
     --==================================================
     IF ( gv_param_proc_flag = cv_bm_proc_flag_2 ) THEN
-      --==================================================
-      -- 計算顧客情報一時表の削除
-      --==================================================
-      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcok.xxcok_wk_014a01c_custdata';
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       --==================================================
       -- 顧客情報ループ(A-4)
