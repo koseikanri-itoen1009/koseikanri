@@ -1202,9 +1202,13 @@ AS
   AND    pla_in_po_e.cancel_flag          <> 'Y'
   AND    rsl_in_po_e.po_header_id          = pha_in_po_e.po_header_id
   AND    rsl_in_po_e.po_line_id            = pla_in_po_e.po_line_id
-  AND    xrart_in_po_e.txns_id             = rsl_in_po_e.attribute1
+-- 2008/12/08 T.Ohashi start
+--  AND    xrart_in_po_e.txns_id             = rsl_in_po_e.attribute1
+-- 2008/12/08 T.Ohashi end
   AND    rt_in_po_e.shipment_line_id       = rsl_in_po_e.shipment_line_id
-  AND    rt_in_po_e.destination_type_code  = rsl_in_po_e.destination_type_code
+-- 2008/12/07 N.Yoshida start
+--  AND    rt_in_po_e.destination_type_code  = rsl_in_po_e.destination_type_code
+-- 2008/12/07 N.Yoshida end
   AND    xrpm.transaction_type             = rt_in_po_e.transaction_type
   AND    pha_in_po_e.vendor_id             = xv_in_po_e.vendor_id   -- édì¸êÊèÓïÒVIEW
   AND    pv_in_po_e.vendor_id              = xv_in_po_e.vendor_id
