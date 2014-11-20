@@ -33,6 +33,7 @@ AS
  *  2009-03-03    1.1   Kazuyo.Hosoi     SVF‹N“®API–„‚ßž‚Ý
  *  2009-03-11    1.1   Kazuyo.Hosoi     yáŠQ‘Î‰ž047zŒÚ‹q‹æ•ªAƒXƒe[ƒ^ƒX’ŠoðŒ•ÏX
  *  2009-03-19    1.1   Mio.Maruyama     yáŠQ‘Î‰ž070zSVF‹N“®ŠÖ”ƒR[ƒ‹ˆÊ’uC³(submain)
+ *  2009-04-22    1.2   Daisuke.Abe      yT1_0680zƒ‹[ƒgNO‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -513,20 +514,26 @@ AS
     IF ( iv_account_sts  = cv_sort_type1 ) THEN
       lv_route_no := io_rp_nov_dt_rec.route_no;
       lv_mc_flag  := cv_zero;
-      -- ===========================
-      -- –K–â‰ñ”Žæ“¾
-      -- ===========================
-      xxcso_route_common_pkg.calc_visit_times(
-         it_route_number  => lv_route_no
-        ,on_times         => ln_visit_times
-        ,ov_errbuf        => lv_errbuf
-        ,ov_retcode       => lv_retcode
-        ,ov_errmsg        => lv_errmsg
-      );
-      --
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_api_others_expt;
+      /* 20090422_abe_T1_0680 START*/
+      IF ( lv_route_no IS NOT NULL ) THEN
+      /* 20090422_abe_T1_0680 END*/
+        -- ===========================
+        -- –K–â‰ñ”Žæ“¾
+        -- ===========================
+        xxcso_route_common_pkg.calc_visit_times(
+           it_route_number  => lv_route_no
+          ,on_times         => ln_visit_times
+          ,ov_errbuf        => lv_errbuf
+          ,ov_retcode       => lv_retcode
+          ,ov_errmsg        => lv_errmsg
+        );
+        --
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_api_others_expt;
+        END IF;
+      /* 20090422_abe_T1_0680 START*/
       END IF;
+      /* 20090422_abe_T1_0680 END*/
     ELSE
       lv_route_no    := cv_tkn_mc;
       lv_mc_flag     := cv_one;
