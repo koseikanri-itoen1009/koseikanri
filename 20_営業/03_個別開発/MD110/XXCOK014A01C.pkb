@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.3
+ * Version          : 3.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2009/10/02    3.1   K.Yamaguchi      [仕様変更I_E_566] 納品VD・消化VDを処理対象に追加
  *  2009/10/19    3.2   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *  2009/10/27    3.3   K.Yamaguchi      [障害E_T4_00094] 即時払いの場合にAR連携を行うように修正
+ *  2009/11/09    3.4   K.Yamaguchi      [仕様変更I_E_633] 入金値引の対象となる非在庫品目を取得できるように変更
  *
  *****************************************************************************************/
   --==================================================
@@ -161,6 +162,9 @@ AS
   cv_lookup_type_07                CONSTANT VARCHAR2(30)    := 'XXCOK1_CALC_SALES_CLASS';           -- 販手計算対象売上区分
   -- 有効フラグ
   cv_enable                        CONSTANT VARCHAR2(1)     := 'Y';
+-- 2009/11/09 Ver.3.4 [仕様変更I_E_633] SCS K.Yamaguchi ADD START
+  cv_disable                       CONSTANT VARCHAR2(1)     := 'N';
+-- 2009/11/09 Ver.3.4 [仕様変更I_E_633] SCS K.Yamaguchi ADD END
   -- 共通関数メッセージ出力区分
   cv_which_log                     CONSTANT VARCHAR2(10)    := 'LOG';
   -- 書式フォーマット
@@ -1765,6 +1769,9 @@ AS
                          AND flv.enabled_flag        = cv_enable
                          AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
                                                    AND NVL( flv.end_date_active  , gd_process_date )
+-- 2009/11/09 Ver.3.4 [仕様変更I_E_633] SCS K.Yamaguchi ADD START
+                         AND flv.attribute2          = cv_disable
+-- 2009/11/09 Ver.3.4 [仕様変更I_E_633] SCS K.Yamaguchi ADD END
                          AND ROWNUM = 1
           )
     GROUP BY xseh.sales_base_code
