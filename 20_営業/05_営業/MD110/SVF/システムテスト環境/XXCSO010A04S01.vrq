@@ -5,7 +5,7 @@ MBSPACE="Å@"
 ENCODING=MS932
 
 [FILEOPTION]
-REPORTFILE=D:\SVF\tebs06\FORM\XXCOP004A05S.xml
+REPORTFILE=D:\SVF\tebs06\FORM\XXCSO010A04S01.xml
 SORT=1
 MODE=5
 
@@ -21,7 +21,7 @@ HEIGHT=298
 [DATABASE]
 KIND=ODBC
 JDBC=OracleType4TEBS06
-LIBRARYPATH1=C:\sqlDeveloper\jdbc\lib\ojdbc14.jar
+LIBRARYPATH1=D:\oracle\product\10.2.0\client_1\jdbc\lib\ojdbc14.jar
 CLASSNAME=oracle.jdbc.driver.OracleDriver
 DATABASEURL=jdbc:oracle:thin:@{0}:{1}:{2}
 PARAM1="DBQ=tebsdb21"
