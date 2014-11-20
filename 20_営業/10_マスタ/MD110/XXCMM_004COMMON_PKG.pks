@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmm_004common_pkg(spec)
  * Description            : 品目関連API
  * MD.070                 : MD070_IPO_XXCMM_共通関数
- * Version                : 1.0
+ * Version                : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/11/07    1.0   H.Yoshikawa      新規作成
  *  2009/04/10    1.2   H.Yoshikawa      障害T1_0215 対応(chk_single_byte を削除)
  *  2009/06/11    1.3   N.Nishimura      障害T1_1366 対応(品目カテゴリセット名を追加)
+ *  2009/09/07    1.4   Y.Kuboshima      障害0001258 対応(品目カテゴリセット名を追加)
  *
  *****************************************************************************************/
 --
@@ -79,6 +80,14 @@ AS
   cv_categ_set_mark_pg         CONSTANT VARCHAR2(20) := 'マーケ用群コード';         -- マーケ用群コード
   cv_categ_set_gun_code        CONSTANT VARCHAR2(20) := '群コード';                 -- 群コード
 --Ver1.3  2009/06/11 End
+-- 2009/09/07 Ver1.4 add start by Y.Kuboshima
+  cv_categ_set_item_div        CONSTANT VARCHAR2(20)  := '品目区分';                -- 品目区分
+  cv_categ_set_inout_div       CONSTANT VARCHAR2(20)  := '内外区分';                -- 内外区分
+  cv_categ_set_product_div     CONSTANT VARCHAR2(20)  := '商品区分';                -- 商品区分
+  cv_categ_set_quality_div     CONSTANT VARCHAR2(20)  := '品質区分';                -- 品質区分
+  cv_categ_set_fact_pg         CONSTANT VARCHAR2(20)  := '工場群コード';            -- 工場群コード
+  cv_categ_set_acnt_pg         CONSTANT VARCHAR2(20)  := '経理部用群コード';        -- 経理部用群コード
+-- 2009/09/07 Ver1.4 add end by Y.Kuboshima
   --
   -- 日付書式
   cv_date_fmt_ymd              CONSTANT VARCHAR2(10) := 'YYYYMMDD';                 -- YYYYMMDD
