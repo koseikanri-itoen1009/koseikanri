@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/06/05   1.5   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/06/12   1.6   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/07/15   1.7   Oracle 北寒寺 正夫 ST#449対応
+ *  2008/06/23   1.8   Oracle 北寒寺 正夫 変更要求#93対応
  *
  *****************************************************************************************/
 --
@@ -999,7 +1000,7 @@ AS
       -- ロット D6)需要数  実績未計上の相手先倉庫発注入庫予定
       xxcmn_common2_pkg.get_dem_lot_order_qty(
         lv_whse_code,
-        ln_item_code,
+        lv_item_code,
         ln_lot_id,
         ld_eff_date,
         ln_dem_lot_order_qty,
@@ -1100,6 +1101,14 @@ AS
       WHERE   mil.attribute5      = lv_rep_whse -- 代表倉庫
         AND   mil.segment1       <> mil.attribute5;
 --
+    -- 代表倉庫(子)(倉庫・品目単位)の合計取得用カーソル
+    CURSOR lc_item_child_cur
+    IS
+      SELECT  xfil.item_location_id
+      FROM    xxwsh_frq_item_locations xfil
+      WHERE   xfil.frq_item_location_code = lv_rep_whse -- 代表倉庫コード
+      AND     xfil.item_id = in_item_id;                -- OPM品目ID
+--
     -- ===============================
     -- ユーザー定義例外
     -- ===============================
@@ -1160,6 +1169,22 @@ AS
         ln_all_enc_qty      := ln_all_enc_qty     + ln_ref_all_enc_qty;
         ln_in_time_enc_qty  := ln_in_time_enc_qty + ln_ref_in_time_enc_qty;
       END LOOP get_child_loop;
+      -- 代表倉庫子(倉庫・品目単位)の合計を取得
+      -- データの取得
+      <<get_item_child_loop>>
+      FOR r_item_location_id IN lc_item_child_cur LOOP
+        ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(r_item_location_id.item_location_id,
+                                                           in_item_id,
+                                                           in_lot_id),0);
+        ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(
+                                                           r_item_location_id.item_location_id,
+                                                           in_item_id,
+                                                           in_lot_id,
+                                                           in_active_date),0);
+        -- 足し込み
+        ln_all_enc_qty      := ln_all_enc_qty     + ln_ref_all_enc_qty;
+        ln_in_time_enc_qty  := ln_in_time_enc_qty + ln_ref_in_time_enc_qty;
+      END LOOP get_child_loop;
 --
     -- 代表倉庫（子）の場合
     ELSE
@@ -1170,22 +1195,48 @@ AS
         FROM    mtl_item_locations  mil    -- 保管場所
         WHERE   mil.attribute5           = lv_rep_whse -- 代表倉庫
         AND     mil.segment1             = mil.attribute5;
+--
+        ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                           in_item_id,
+                                                           in_lot_id),0);
+        ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                               in_item_id,
+                                                               in_lot_id,
+                                                               in_active_date),0);
+--
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-          RAISE process_exp;
+          -- 代表倉庫取得に失敗した場合は倉庫-品目単位の代表管理のため
+          -- 倉庫品目マスタを参照
+          BEGIN
+            SELECT  xfil.frq_item_location_id
+            INTO    ln_inventory_location_id
+            FROM    xxwsh_frq_item_locations xfil
+            WHERE   xfil.item_location_code = lv_whse_code         -- 元倉庫
+            AND     xfil.item_id = in_item_id;                     -- OPM品目ID
+--
+            ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                               in_item_id,
+                                                               in_lot_id),0);
+            ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                                   in_item_id,
+                                                                   in_lot_id,
+                                                                   in_active_date),0);
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              ln_ref_all_enc_qty     := 0;
+              ln_ref_in_time_enc_qty := 0;
+          END;
       END;
 --
-      ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
-                                                         in_item_id,
-                                                         in_lot_id),0);
-      ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
-                                                             in_item_id,
-                                                             in_lot_id,
-                                                             in_active_date),0);
---
       -- 親単体の引当可能数がマイナスの場合のみ足し込む
+      IF (ln_ref_all_enc_qty < 0) THEN
         ln_all_enc_qty      := ln_all_enc_qty     + ln_ref_all_enc_qty;
+      END IF;
+      IF (ln_ref_in_time_enc_qty < 0) THEN
         ln_in_time_enc_qty  := ln_in_time_enc_qty + ln_ref_in_time_enc_qty;
+      END IF;
     END IF;
 --
     -- 少ない方が引当可能数
