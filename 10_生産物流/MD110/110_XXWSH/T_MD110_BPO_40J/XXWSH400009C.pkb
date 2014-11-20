@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/10/20    1.10  Yuko  Kawano     課題＃32,48,62、統合指摘＃294、T_S_627対応
  *  2008/11/14    1.11  大橋  孝郎       指摘567,599,605対応
  *  2008/12/11    1.12  山本  恭久       本番障害#641対応
+ *  2010/10/21    1.13  仁木  重人       E_本稼動_04840対応
  *
  *****************************************************************************************/
 --
@@ -100,12 +101,27 @@ AS
                                         -- プロファイル取得エラーメッセージ
   gv_err_nodata                CONSTANT VARCHAR2(20) := 'APP-XXCMN-10122';
                                         -- 出荷依頼確認情報対象データなしエラーメッセージ
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add start by Shigeto.Niki
+  gv_err_pram                  CONSTANT VARCHAR2(20) := 'APP-XXWSH-11404';
+                                        -- パラメータ未入力エラーメッセージ
+  gv_err_date                  CONSTANT VARCHAR2(20) := 'APP-XXWSH-11405';
+                                        -- 日付未入力エラーメッセージ
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add end by Shigeto.NikiS
   -- トークン
   gv_tkn_prof_name             CONSTANT VARCHAR2(10) := 'NG_PROFILE';
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add start by Shigeto.Niki
+  gv_tkn_pram_name             CONSTANT VARCHAR2(10) := 'NG_PRAM';
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add start by Shigeto.Niki
   -- トークン内メッセージ
   gv_tkn_msg_wei_u             CONSTANT VARCHAR2(20) := 'XXWSH:出荷重量単位';
   gv_tkn_msg_cap_u             CONSTANT VARCHAR2(20) := 'XXWSH:出荷容積単位';
   gv_tkn_msg_prod_class_code   CONSTANT VARCHAR2(20) := 'XXCMN:商品区分';
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add start by Shigeto.Niki
+  gv_tkn_msg_ship_date_from    CONSTANT VARCHAR2(20) := '出庫日From';
+  gv_tkn_msg_ship_date_to      CONSTANT VARCHAR2(20) := '出庫日To';
+  gv_tkn_msg_arrival_date_from CONSTANT VARCHAR2(20) := '着日From';
+  gv_tkn_msg_arrival_date_to   CONSTANT VARCHAR2(20) := '着日To';
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add end by Shigeto.Niki
   -- タグタイプ
   gc_tag_type_data             CONSTANT VARCHAR2(1)  := 'D' ;
                                         -- 出力タグタイプ（D：データ）
@@ -1327,6 +1343,71 @@ AS
     lr_param_rec.iv_req_status            := iv_req_status;             -- 11.出荷依頼ステータス
     lr_param_rec.iv_confirm_request_class := iv_confirm_request_class;  -- 12.物流担当確認依頼区分
     lr_param_rec.iv_prod_class            := iv_prod_class;             -- 13.商品区分  2008/07/01 ST不具合対応#331
+--
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add start by Shigeto.Niki
+    -- =====================================================
+    --  パラメータ入力チェック
+    -- =====================================================
+    -- 出庫日、着日、依頼Noのいずれも未入力の場合はエラー
+    IF ( iv_ship_date_from IS NULL ) AND ( iv_ship_date_to IS NULL )
+      AND ( iv_arrival_date_from IS NULL ) AND ( iv_arrival_date_to IS NULL )
+        AND ( iv_request_no IS NULL ) THEN
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_wsh  -- 'XXWSH'
+                                                         ,gv_err_pram         -- パラメータ未入力エラー
+                                                        )
+                                                        ,1
+                                                        ,5000);
+          RAISE global_process_expt;
+    END IF;
+    --
+    -- 出庫日Fromが未入力かつ、出庫日Toが入力済の場合はエラー
+    IF ( iv_ship_date_from IS NULL ) AND ( iv_ship_date_to IS NOT NULL ) THEN
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_wsh            -- 'XXWSH'
+                                                     ,gv_err_date                   -- 日付未入力エラー
+                                                     ,gv_tkn_pram_name              -- トークン
+                                                     ,gv_tkn_msg_ship_date_from     -- メッセージ
+                                                    )
+                                                    ,1
+                                                    ,5000);
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 出庫日Fromが入力済かつ、出庫日Toが未入力の場合はエラー
+    IF ( iv_ship_date_from IS NOT NULL ) AND ( iv_ship_date_to IS NULL ) THEN
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_wsh            -- 'XXWSH'
+                                                     ,gv_err_date                   -- 日付未入力エラー
+                                                     ,gv_tkn_pram_name              -- トークン
+                                                     ,gv_tkn_msg_ship_date_to       -- メッセージ
+                                                    )
+                                                    ,1
+                                                    ,5000);
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 着日Fromが未入力かつ、着日Toが入力済の場合はエラー
+    IF ( iv_arrival_date_from IS NULL ) AND ( iv_arrival_date_to IS NOT NULL ) THEN
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_wsh            -- 'XXWSH'
+                                                     ,gv_err_date                   -- 日付未入力エラー
+                                                     ,gv_tkn_pram_name              -- トークン
+                                                     ,gv_tkn_msg_arrival_date_from  -- メッセージ
+                                                    )
+                                                    ,1
+                                                    ,5000);
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 着日Fromが入力済かつ、着日Toが未入力の場合はエラー
+    IF ( iv_arrival_date_from IS NOT NULL ) AND ( iv_arrival_date_to IS NULL ) THEN
+      lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application_wsh            -- 'XXWSH'
+                                                     ,gv_err_date                   -- 日付未入力エラー
+                                                     ,gv_tkn_pram_name              -- トークン
+                                                     ,gv_tkn_msg_arrival_date_to    -- メッセージ
+                                                    )
+                                                    ,1
+                                                    ,5000);
+      RAISE global_process_expt;
+    END IF;
+-- 2010/10/21 Ver1.13 E_本稼動_04840 add end by Shigeto.Niki
 --
     -- =====================================================
     --  関連データ取得
