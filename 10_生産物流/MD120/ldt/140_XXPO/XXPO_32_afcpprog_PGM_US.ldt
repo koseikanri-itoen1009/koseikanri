@@ -4688,9 +4688,9 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO310002C"
       DESCRIPTION = "納入日（TO）"
     END DFF_SEGMENT
     
-    BEGIN DFF_SEGMENT "iv_whse_code" "ATTRIBUTE1"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/16 17:36:56"
+    BEGIN DFF_SEGMENT "iv_inv_code_01" "ATTRIBUTE1"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:56"
       COLUMN_SEQ_NUM = "30"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
@@ -4700,15 +4700,168 @@ BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO310002C"
       DISPLAY_SIZE = "4"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "納入先コード"
-      FORM_ABOVE_PROMPT = "納入先コード"
-      DESCRIPTION = "納入先コード"
+      FORM_LEFT_PROMPT = "納入先コード1"
+      FORM_ABOVE_PROMPT = "納入先コード1"
+      DESCRIPTION = "納入先コード1"
     END DFF_SEGMENT
     
-    BEGIN DFF_SEGMENT "iv_customer_code" "ATTRIBUTE2"
-      OWNER = "XX_SETUP_USER01"
-      LAST_UPDATE_DATE = "2008/04/16 17:36:56"
+    BEGIN DFF_SEGMENT "iv_inv_code_02" "ATTRIBUTE2"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:56"
       COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード2"
+      FORM_ABOVE_PROMPT = "納入先コード2"
+      DESCRIPTION = "納入先コード2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_03" "ATTRIBUTE5"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード3"
+      FORM_ABOVE_PROMPT = "納入先コード3"
+      DESCRIPTION = "納入先コード3"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_04" "ATTRIBUTE6"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード4"
+      FORM_ABOVE_PROMPT = "納入先コード4"
+      DESCRIPTION = "納入先コード4"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_05" "ATTRIBUTE7"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード5"
+      FORM_ABOVE_PROMPT = "納入先コード5"
+      DESCRIPTION = "納入先コード5"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_06" "ATTRIBUTE8"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード6"
+      FORM_ABOVE_PROMPT = "納入先コード6"
+      DESCRIPTION = "納入先コード6"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_07" "ATTRIBUTE9"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード7"
+      FORM_ABOVE_PROMPT = "納入先コード7"
+      DESCRIPTION = "納入先コード7"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_08" "ATTRIBUTE10"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード8"
+      FORM_ABOVE_PROMPT = "納入先コード8"
+      DESCRIPTION = "納入先コード8"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_09" "ATTRIBUTE11"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード9"
+      FORM_ABOVE_PROMPT = "納入先コード9"
+      DESCRIPTION = "納入先コード9"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_inv_code_10" "ATTRIBUTE12"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOCATION_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "納入先コード10"
+      FORM_ABOVE_PROMPT = "納入先コード10"
+      DESCRIPTION = "納入先コード10"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_id" "ATTRIBUTE13"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/23 09:32:57"
+      COLUMN_SEQ_NUM = "130"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
@@ -4755,9 +4908,27 @@ BEGIN PROGRAM "XXPO310002C" "XXPO"
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_deliver_to_date 納入日（TO）\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_whse_code 納入先コード\n\
+  * @param iv_inv_code_01 納入先コード1\n\
   * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_customer_code 取引先コード\n\
+  * @param iv_inv_code_02 納入先コード2\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_03 納入先コード3\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_04 納入先コード4\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_05 納入先コード5\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_06 納入先コード6\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_07 納入先コード7\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_08 納入先コード8\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_09 納入先コード9\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_inv_code_10 納入先コード10\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOCATION_CODE} {@rep:displayed Y}\n\
+  * @param iv_vendor_id 取引先コード\n\
   * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
   */"
 
