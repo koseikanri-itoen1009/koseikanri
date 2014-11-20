@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/10/02    1.16  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
  *  2009/10/14    1.17  M.Sano           [0001376] 納品書用データ作成済フラグの更新を明細単位へ変更
  *  2009/12/09    1.18  K.Nakamura       [本稼動_00171] 伝票計の計算を伝票単位へ変更
+ *  2010/01/05    1.19  N.Maeda          [E_本稼動_00862] ＪＡＮコード取得設定内容修正
  *
  *****************************************************************************************/
 --
@@ -2674,9 +2675,15 @@ AS
              END                                                                product_code2                 --商品コード２
             ,CASE
                WHEN i_prf_rec.case_uom_code               = oola.order_quantity_uom THEN
-                 opm.jan_code
-               ELSE
+-- ************* 2010/01/05 1.19 N.Maeda MOD START *********** --
+--                 opm.jan_code
                  disc.case_jan_code
+-- ************* 2010/01/05 1.19 N.Maeda MOD  END  *********** --
+               ELSE
+-- ************* 2010/01/05 1.19 N.Maeda MOD START *********** --
+--                 disc.case_jan_code
+                 opm.jan_code
+-- ************* 2010/01/05 1.19 N.Maeda MOD  END  *********** --
              END                                                                jan_code                      --ＪＡＮコード
             ,opm.itf_code                                                       itf_code                      --ＩＴＦコード
             ,NULL                                                               extension_itf_code            --内箱ＩＴＦコード
