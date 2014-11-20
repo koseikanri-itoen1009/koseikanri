@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_par_n02 ON xxcmn.xxcmn_parties( last_update_date ) TABLESPACE xxidx;

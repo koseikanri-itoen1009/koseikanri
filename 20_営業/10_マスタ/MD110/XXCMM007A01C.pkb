@@ -7,7 +7,7 @@ AS
  * Description      : 顧客の標準画面よりメンテナンスされた名称・住所情報を、
  *                  : パーティアドオンマスタへ反映し、内容の同期を行います。
  * MD.050           : 生産顧客情報同期 MD050_CMM_005_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/26    1.1   Masayuki.Sano    結合テスト動作不正対応
  *  2010/02/15    1.2   Yutaka.Kuboshima 障害E_本稼動_01419 差分テーブルにパーティサイトアドオンを追加
  *                                                          パーティアドオンの初期値を変更
+ *  2010/02/18    1.3   Yutaka.Kuboshima 障害E_本稼動_01419 PT対応
  *
  *****************************************************************************************/
 --
@@ -557,56 +558,60 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカルカーソル***
-    CURSOR parties_data_lock_cur(
-       id_proc_date_from DATE
-      ,id_proc_date_to   DATE
-      ,it_sal_org_id     hr_all_organization_units.organization_id%TYPE
-      ,it_mfg_org_id     hr_all_organization_units.organization_id%TYPE)
-    IS
-      SELECT xcp.party_id        AS party_id  -- (列)パーティID
-      FROM   hz_cust_accounts       hca       -- (table)顧客マスタテーブル
-            ,hz_parties             hpt       -- (table)パーティテーブル
-            ,hz_party_sites         hps       -- (table)パーティサイトテーブル
-            ,hz_cust_acct_sites_all hsa       -- (table)顧客所在地テーブル
-            ,hz_locations           hlo       -- (table)顧客事業所テーブル
-            ,xxcmn_parties          xcp       -- (table)パーティアドオンテーブル
-      WHERE  hca.party_id        = hpt.party_id
-      AND    hca.party_id        = hps.party_id
-      AND    hca.cust_account_id = hsa.cust_account_id
-      AND    hps.party_site_id   = hsa.party_site_id
-      AND    hps.location_id     = hlo.location_id
-      AND    hca.party_id        = xcp.party_id
-      AND    hps.status          = 'A'                  -- (条件)パーティサイトテーブルが有効
-      AND    hca.customer_class_code IN ('1','10')      -- (条件)拠点または顧客
-      AND    hsa.org_id          = it_sal_org_id        -- (条件)組織が営業組織である
-      AND    EXISTS( /* 生産OUを保有するもの */
-               SELECT 'X'
-               FROM   hz_cust_acct_sites_all   hsa1 -- (table)顧客所在地テーブル
-               WHERE  hsa1.cust_account_id = hca.cust_account_id
-               AND    hsa1.status          = 'A'
-               AND    hsa1.org_id          = it_mfg_org_id
-             )
-      AND    (   hca.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-              OR hsa.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-              OR hlo.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-              OR EXISTS( 
-                   SELECT xcp1.party_id
-                   FROM   xxcmn_parties xcp1        -- (table)パーティアドオンテーブル
-                   WHERE  xcp1.party_id = hca.party_id
-                   AND    xcp1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-                 )
--- 2010/02/15 Ver1.2 E_本稼動_01419 add start by Yutaka.Kuboshima
-              -- パーティサイトアドオンを差分テーブルに追加
-              OR EXISTS(
-                   SELECT xps1.party_site_id
-                   FROM   xxcmn_party_sites xps1
-                   WHERE  xps1.party_id = hca.party_id
-                   AND    xps1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-                 )
--- 2010/02/15 Ver1.2 E_本稼動_01419 add end by Yutaka.Kuboshima
-             )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
-      FOR UPDATE OF xcp.party_id  NOWAIT
-      ;
+-- 2010/02/18 Ver1.3 E_本稼動_01419 delete start by Yutaka.Kuboshima
+-- ロックカーソルと取得カーソルを一本にする
+--    CURSOR parties_data_lock_cur(
+--       id_proc_date_from DATE
+--      ,id_proc_date_to   DATE
+--      ,it_sal_org_id     hr_all_organization_units.organization_id%TYPE
+--      ,it_mfg_org_id     hr_all_organization_units.organization_id%TYPE)
+--    IS
+--      SELECT xcp.party_id        AS party_id  -- (列)パーティID
+--      FROM   hz_cust_accounts       hca       -- (table)顧客マスタテーブル
+--            ,hz_parties             hpt       -- (table)パーティテーブル
+--            ,hz_party_sites         hps       -- (table)パーティサイトテーブル
+--            ,hz_cust_acct_sites_all hsa       -- (table)顧客所在地テーブル
+--            ,hz_locations           hlo       -- (table)顧客事業所テーブル
+--            ,xxcmn_parties          xcp       -- (table)パーティアドオンテーブル
+--      WHERE  hca.party_id        = hpt.party_id
+--      AND    hca.party_id        = hps.party_id
+--      AND    hca.cust_account_id = hsa.cust_account_id
+--      AND    hps.party_site_id   = hsa.party_site_id
+--      AND    hps.location_id     = hlo.location_id
+--      AND    hca.party_id        = xcp.party_id
+--      AND    hps.status          = 'A'                  -- (条件)パーティサイトテーブルが有効
+--      AND    hca.customer_class_code IN ('1','10')      -- (条件)拠点または顧客
+--      AND    hsa.org_id          = it_sal_org_id        -- (条件)組織が営業組織である
+--      AND    EXISTS( /* 生産OUを保有するもの */
+--               SELECT 'X'
+--               FROM   hz_cust_acct_sites_all   hsa1 -- (table)顧客所在地テーブル
+--               WHERE  hsa1.cust_account_id = hca.cust_account_id
+--               AND    hsa1.status          = 'A'
+--               AND    hsa1.org_id          = it_mfg_org_id
+--             )
+--      AND    (   hca.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--              OR hsa.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--              OR hlo.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--              OR EXISTS( 
+--                   SELECT xcp1.party_id
+--                   FROM   xxcmn_parties xcp1        -- (table)パーティアドオンテーブル
+--                   WHERE  xcp1.party_id = hca.party_id
+--                   AND    xcp1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--                 )
+---- 2010/02/15 Ver1.2 E_本稼動_01419 add start by Yutaka.Kuboshima
+--              -- パーティサイトアドオンを差分テーブルに追加
+--              OR EXISTS(
+--                   SELECT xps1.party_site_id
+--                   FROM   xxcmn_party_sites xps1
+--                   WHERE  xps1.party_id = hca.party_id
+--                   AND    xps1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--                 )
+---- 2010/02/15 Ver1.2 E_本稼動_01419 add end by Yutaka.Kuboshima
+--             )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
+--      FOR UPDATE OF xcp.party_id  NOWAIT
+--      ;
+-- 2010/02/18 Ver1.3 E_本稼動_01419 delete end by Yutaka.Kuboshima
+--
     -- パーティアドオン取得カーソル
     CURSOR parties_data_cur(
        id_proc_date_from DATE
@@ -614,7 +619,12 @@ AS
       ,it_sal_org_id     hr_all_organization_units.organization_id%TYPE
       ,it_mfg_org_id     hr_all_organization_units.organization_id%TYPE)
     IS
-      SELECT hca.party_id                   AS party_id                   -- (列)パーティID
+-- 2010/02/18 Ver1.3 E_本稼動_01419 modify start by Yutaka.Kuboshima
+--      SELECT hca.party_id                   AS party_id                   -- (列)パーティID
+      -- ヒント句の追加
+      SELECT /*+ FIRST_ROWS LEADING(def hca) INDEX(hca HZ_CUST_ACCOUNTS_U1) */
+-- 2010/02/18 Ver1.3 E_本稼動_01419 modify end by Yutaka.Kuboshima
+             hca.party_id                   AS party_id                   -- (列)パーティID
             ,hca.account_number             AS account_number             -- (列)顧客コード
             ,hpt.party_name                 AS party_name                 -- (列)顧客名称
             ,hca.account_name               AS party_short_name           -- (列)顧客略称
@@ -640,6 +650,41 @@ AS
             ,hz_party_sites         hps             -- (table)パーティサイトテーブル
             ,hz_cust_acct_sites_all hsa             -- (table)顧客所在地テーブル
             ,hz_locations           hlo             -- (table)顧客事業所テーブル
+-- 2010/02/18 Ver1.3 E_本稼動_01419 add start by Yutaka.Kuboshima
+            ,xxcmn_parties          xcp             -- (table)パーティアドオンテーブル
+            ,(SELECT hca1.cust_account_id   cust_account_id
+              FROM   hz_cust_accounts hca1
+              WHERE  hca1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+              UNION
+              SELECT hcas2.cust_account_id   cust_account_id
+              FROM   hz_cust_acct_sites_all hcas2
+              WHERE  hcas2.org_id = 2190
+                AND  hcas2.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+              UNION
+              SELECT /*+ USE_NL(hl3 hps3 hp3 hca3) */
+                     hca3.cust_account_id   cust_account_id
+              FROM   hz_cust_accounts hca3
+                    ,hz_parties       hp3
+                    ,hz_party_sites   hps3
+                    ,hz_locations     hl3
+              WHERE  hca3.party_id    = hp3.party_id
+                AND  hp3.party_id     = hps3.party_id
+                AND  hps3.location_id = hl3.location_id
+                AND  hl3.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+              UNION
+              SELECT hca4.cust_account_id   cust_account_id
+              FROM   hz_cust_accounts hca4
+                    ,xxcmn_parties    xp4
+              WHERE  hca4.party_id = xp4.party_id
+                AND  xp4.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+              UNION
+              SELECT hca5.cust_account_id   cust_account_id
+              FROM   hz_cust_accounts  hca5
+                    ,xxcmn_party_sites xps5
+              WHERE  hca5.party_id = xps5.party_id
+                AND  xps5.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+             ) def                                 -- 差分対象レコード
+-- 2010/02/18 Ver1.3 E_本稼動_01419 add end by Yutaka.Kuboshima
       WHERE  hca.party_id        = hpt.party_id
       AND    hca.party_id        = hps.party_id
       AND    hca.cust_account_id = hsa.cust_account_id
@@ -655,25 +700,30 @@ AS
                AND    hsa1.status          = 'A'
                AND    hsa1.org_id          = it_mfg_org_id
              )
-      AND    (   hca.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-              OR hsa.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-              OR hlo.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-              OR EXISTS( 
-                   SELECT xcp1.party_id
-                   FROM   xxcmn_parties xcp1        -- (table)パーティアドオンテーブル
-                   WHERE  xcp1.party_id = hca.party_id
-                   AND    xcp1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-                 )
--- 2010/02/15 Ver1.2 E_本稼動_01419 add start by Yutaka.Kuboshima
-              -- パーティサイトアドオンを差分テーブルに追加
-              OR EXISTS(
-                   SELECT xps1.party_site_id
-                   FROM   xxcmn_party_sites xps1
-                   WHERE  xps1.party_id = hca.party_id
-                   AND    xps1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
-                 )
--- 2010/02/15 Ver1.2 E_本稼動_01419 add end by Yutaka.Kuboshima
-             )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
+-- 2010/02/18 Ver1.3 E_本稼動_01419 modify start by Yutaka.Kuboshima
+--      AND    (   hca.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--              OR hsa.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--              OR hlo.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--              OR EXISTS( 
+--                   SELECT xcp1.party_id
+--                   FROM   xxcmn_parties xcp1        -- (table)パーティアドオンテーブル
+--                   WHERE  xcp1.party_id = hca.party_id
+--                   AND    xcp1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--                 )
+---- 2010/02/15 Ver1.2 E_本稼動_01419 add start by Yutaka.Kuboshima
+--              -- パーティサイトアドオンを差分テーブルに追加
+--              OR EXISTS(
+--                   SELECT xps1.party_site_id
+--                   FROM   xxcmn_party_sites xps1
+--                   WHERE  xps1.party_id = hca.party_id
+--                   AND    xps1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+--                 )
+---- 2010/02/15 Ver1.2 E_本稼動_01419 add end by Yutaka.Kuboshima
+--             )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
+      AND    hps.party_id        = xcp.party_id(+)
+      AND    hca.cust_account_id = def.cust_account_id
+      FOR UPDATE OF xcp.party_id  NOWAIT
+-- 2010/02/18 Ver1.3 E_本稼動_01419 modify end by Yutaka.Kuboshima
       ;
 --
   BEGIN
@@ -684,13 +734,61 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2010/02/18 Ver1.3 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--    --==============================================================
+--    -- １．処理対象となるパーティアドオンのレコードロックを行います。
+--    --==============================================================
+--    BEGIN
+--      OPEN  parties_data_lock_cur(gd_proc_date_from, gd_proc_date_to, gv_sal_org_id, gv_mfg_org_id);
+--      CLOSE parties_data_lock_cur;
+----
+--    --==============================================================
+--    -- ２．ロックに失敗した場合、ロックエラー
+--    --==============================================================
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name_xxcmm    -- マスタ
+--                       ,iv_name         => cv_msg_00008         -- エラー  :ロックエラー
+--                       ,iv_token_name1  => cv_tok_ng_table      -- トークン:NG_TABLE
+--                       ,iv_token_value1 => cv_tvl_upd_tbl_name  -- 値      :パーティアドオン
+--                     );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_api_expt;
+--    END;
+--
+-- 2010/02/18 Ver1.3 E_本稼動_01419 delete end by Yutaka.Kuboshima
+--
     --==============================================================
-    -- １．処理対象となるパーティアドオンのレコードロックを行います。
+    -- ３．処理対象となるパーティアドオンの抽出し、
+    --     結果を配列に格納します。
+    --==============================================================
+-- 2010/02/18 Ver1.3 E_本稼動_01419 modify start by Yutaka.Kuboshima
+--    -- パーティアドオン取得カーソルのオープン
+--    OPEN parties_data_cur(gd_proc_date_from, gd_proc_date_to, gv_sal_org_id, gv_mfg_org_id);
+--    -- 処理対象となるパーティアドオンの取得
+--    <<output_data_loop>>
+--    LOOP
+--      FETCH parties_data_cur BULK COLLECT INTO gt_parties_tab;
+--      EXIT WHEN parties_data_cur%NOTFOUND;
+--    END LOOP output_data_loop;
+--    -- パーティアドオン取得カーソルのクローズ
+--    CLOSE parties_data_cur;
+    --==============================================================
+    -- １．処理対象となるパーティアドオンのレコードロックと、
+    --     処理対象レコードの抽出結果を配列に格納します。
     --==============================================================
     BEGIN
-      OPEN  parties_data_lock_cur(gd_proc_date_from, gd_proc_date_to, gv_sal_org_id, gv_mfg_org_id);
-      CLOSE parties_data_lock_cur;
---
+      -- パーティアドオン取得カーソルのオープン
+      OPEN parties_data_cur(gd_proc_date_from, gd_proc_date_to, gv_sal_org_id, gv_mfg_org_id);
+      -- 処理対象となるパーティアドオンの取得
+      <<output_data_loop>>
+      LOOP
+        FETCH parties_data_cur BULK COLLECT INTO gt_parties_tab;
+        EXIT WHEN parties_data_cur%NOTFOUND;
+      END LOOP output_data_loop;
+      -- パーティアドオン取得カーソルのクローズ
+      CLOSE parties_data_cur;
     --==============================================================
     -- ２．ロックに失敗した場合、ロックエラー
     --==============================================================
@@ -705,21 +803,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
---
-    --==============================================================
-    -- ３．処理対象となるパーティアドオンの抽出し、
-    --     結果を配列に格納します。
-    --==============================================================
-    -- パーティアドオン取得カーソルのオープン
-    OPEN parties_data_cur(gd_proc_date_from, gd_proc_date_to, gv_sal_org_id, gv_mfg_org_id);
-    -- 処理対象となるパーティアドオンの取得
-    <<output_data_loop>>
-    LOOP
-      FETCH parties_data_cur BULK COLLECT INTO gt_parties_tab;
-      EXIT WHEN parties_data_cur%NOTFOUND;
-    END LOOP output_data_loop;
-    -- パーティアドオン取得カーソルのクローズ
-    CLOSE parties_data_cur;
+-- 2010/02/18 Ver1.3 E_本稼動_01419 modify end by Yutaka.Kuboshima
     -- 件数を取得
     gn_target_cnt := gt_parties_tab.COUNT;
 --
