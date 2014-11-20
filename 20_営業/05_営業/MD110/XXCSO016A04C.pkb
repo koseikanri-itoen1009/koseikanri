@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009-11-24    1.10  Daisuke.Abe      障害対応(E_本稼動_00026)
  *  2009-12-02    1.11  T.Maruyama       障害対応(E_本稼動_00081)
  *  2009-12-11    1.12  K.Hosoi          障害対応(E_本稼動_00413)
+ *  2010-04-08    1.13  Daisuke.Abe      障害対応(E_本稼動_02021)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -947,6 +948,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_prcss_nm   CONSTANT VARCHAR2(100) := '顧客マスタ・顧客アドオンマスタ';
+    /* 2010.04.08 D.Abe E_本稼動_02021対応 START */
+    cv_basecode_nm CONSTANT VARCHAR2(100) := '顧客マスタ・顧客アドオンマスタ(拠点コード)';
+    /* 2010.04.08 D.Abe E_本稼動_02021対応 END */
     -- *** ローカル変数 ***
     --編集後実績終了日
     ld_actual_end_date  DATE;
@@ -979,14 +983,18 @@ AS
 --
       -- 顧客コード、拠点コードを取得
       SELECT hca.account_number   account_number  -- 顧客コード
-             ,(CASE
-                WHEN ld_actual_end_date
-                      >= ld_process_date  THEN  xca.sale_base_code      -- 売上拠点コード
-                ELSE xca.past_sale_base_code                            -- 前月売上拠点コード
-                END
-              ) base_code   -- 拠点コード
+             /* 2010.04.08 D.Abe E_本稼動_02021対応 START */
+             --,(CASE
+             --   WHEN ld_actual_end_date
+             --         >= ld_process_date  THEN  xca.sale_base_code      -- 売上拠点コード
+             --   ELSE xca.past_sale_base_code                            -- 前月売上拠点コード
+             --   END
+             -- ) base_code   -- 拠点コード
+             /* 2010.04.08 D.Abe E_本稼動_02021対応 END */
       INTO  lt_account_number
-           ,lv_base_code
+           /* 2010.04.08 D.Abe E_本稼動_02021対応 START */
+           --,lv_base_code
+           /* 2010.04.08 D.Abe E_本稼動_02021対応 END */
       FROM  hz_cust_accounts      hca -- 顧客マスタ
            ,xxcmm_cust_accounts   xca -- 顧客アドオンマスタ
            /* 2009.12.02 T.Maruyama E_本稼動_00081対応 START */
@@ -1032,6 +1040,51 @@ AS
         lv_errbuf  := lv_errmsg;
         RAISE global_api_expt;
     END;
+    --
+    /* 2010.04.08 D.Abe E_本稼動_02021対応 START */
+    BEGIN
+--
+      -- 拠点コードを取得
+      SELECT CASE
+               WHEN TO_DATE(paf.ass_attribute2, 'YYYYMMDD')  -- 発令日
+                      > TRUNC(io_get_data_rec.actual_end_date)
+                 THEN paf.ass_attribute6 -- 勤務地拠点コード（旧）
+                 ELSE paf.ass_attribute5 -- 勤務地拠点コード（新）
+             END  base_code
+      INTO   lv_base_code
+      FROM   per_people_f ppf
+            ,per_assignments_f paf
+      WHERE  ppf.employee_number = io_get_data_rec.employee_number
+      AND    ppf.person_id       = paf.person_id
+      AND    io_get_data_rec.actual_end_date
+               BETWEEN TRUNC(ppf.effective_start_date)
+                   AND TRUNC(ppf.effective_end_date)
+      AND    io_get_data_rec.actual_end_date
+               BETWEEN TRUNC(paf.effective_start_date)
+                   AND TRUNC(paf.effective_end_date)
+      ;
+      
+    EXCEPTION
+      -- OTHERS例外ハンドラ 
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name                            --アプリケーション短縮名
+                      ,iv_name         => cv_tkn_number_13                       --メッセージコード
+                      ,iv_token_name1  => cv_tkn_prcss_nm                        --トークンコード1
+                      ,iv_token_value1 => cv_basecode_nm                         --トークン値1
+                      ,iv_token_name2  => cv_tkn_vst_dt                          --トークンコード2
+                      ,iv_token_value2 => TO_CHAR(
+                                            io_get_data_rec.actual_end_date,'yyyymmdd'
+                                          )                                      --トークン値2
+                      ,iv_token_name3  => cv_tkn_tsk_id                          --トークンコード3
+                      ,iv_token_value3 => TO_CHAR(io_get_data_rec.task_id)       --トークン値3
+                      ,iv_token_name4  => cv_tkn_errmsg                          --トークンコード4
+                      ,iv_token_value4 => SQLERRM                                --トークン値4
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE warn_data_expt;
+    END;
+    /* 2010.04.08 D.Abe E_本稼動_02021対応 END */
     -- 取得した値をOUTパラメータに設定
     io_get_data_rec.account_number := lt_account_number;         -- 顧客コード
     io_get_data_rec.sale_base_code := lv_base_code;              -- 拠点コード
