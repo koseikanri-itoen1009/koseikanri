@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.10
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,9 @@
 * 2010-01-12 1.8  SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 * 2010-01-20 1.9  SCS阿部大輔  [E_本稼動_01212]口座番号対応
 * 2010-02-09 1.10 SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2010-03-01 1.11 SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2010-03-01 1.11 SCS阿部大輔  [E_本稼動_01868]物件対応
+* 2010-03-23 1.12 SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -195,9 +198,17 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00593    = "APP-XXCSO1-00593";
   public static final String APP_XXCSO1_00594    = "APP-XXCSO1-00594";
   public static final String APP_XXCSO1_00595    = "APP-XXCSO1-00595";
-  public static final String APP_XXCSO1_00596    = "APP-XXCSO1-00596";
 // 2010-02-09 [E_本稼動_01538] Mod End
-
+// 2010-03-01 [E_本稼動_01678] Add Start
+  public static final String APP_XXCSO1_00596    = "APP-XXCSO1-00596";
+  public static final String APP_XXCSO1_00601    = "APP-XXCSO1-00601";
+// 2010-03-01 [E_本稼動_01678] Add End
+// 2010-03-01 [E_本稼動_01868] Add Start
+  public static final String APP_XXCSO1_00602    = "APP-XXCSO1-00602";
+// 2010-03-01 [E_本稼動_01868] Add End
+// 2010-03-23 [E_本稼動_01942] Add Start
+  public static final String APP_XXCSO1_00603    = "APP-XXCSO1-00603";
+// 2010-03-23 [E_本稼動_01942] Add End
   /*****************************************************************************
    * トークン名
    *****************************************************************************

@@ -20,6 +20,25 @@
                         <oa:messageComponentLayout id="SelectMclRN">
                            <ui:contents>
                               <oa:messageStyledText id="CurrentDate" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/CurrentDate" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="CurrentDate" styleClass="OraDataText"/>
+                              <oa:messageLayout id="BaseCodeLayout" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/BaseCodeLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="BaseCodeRlRN" hAlign="start">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="BaseCode1" dataType="VARCHAR2" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="BaseCode1" maximumLength="4" queryable="true" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso019009j/lov/webui/XxcsoRscRtnBaseLovRN" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/BaseCode" columns="6" required="no">
+                                             <lovMappings>
+                                                <lovMap id="BaseCodeMap1" lovItem="BaseCode" resultTo="BaseCode1" criteriaFrom="BaseCode1"/>
+                                                <lovMap id="BaseNameMap1" lovItem="BaseName" resultTo="BaseName"/>
+                                                <lovMap id="BaseCodeFlaglovMap1" lovItem="BaseCodeFlag" resultTo="BaseCodeFlag"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:spacer id="BaseCodeSpacer" width="20"/>
+                                          <oa:messageStyledText id="BaseNameView" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="BaseName" styleClass="OraDataText"/>
+                                          <oa:formValue id="BaseName" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="BaseName"/>
+                                          <oa:formValue id="BaseCodeFlag" dataType="VARCHAR2" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="BaseCodeFlag"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
                               <oa:messageLayout id="ResourceLayout" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/ResourceLayout">
                                  <ui:contents>
                                     <oa:rowLayout id="ResourceRlRN" hAlign="start">
@@ -28,6 +47,8 @@
                                              <lovMappings>
                                                 <lovMap id="EmplolyeeNumberMap" lovItem="EmployeeNumber" resultTo="EmployeeNumber" criteriaFrom="EmployeeNumber"/>
                                                 <lovMap id="FullNameMap" lovItem="FullName" resultTo="FullName"/>
+                                                <lovMap id="BaseCodeMap" lovItem="EmployeeBaseCode" criteriaFrom="BaseCode1" requiredForLOV="false" programmaticQuery="false"/>
+                                                <lovMap id="BaseCodeFlagMap" lovItem="BaseCodeFlag" criteriaFrom="BaseCodeFlag"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:spacer id="ResourceSpacer" width="20"/>
@@ -83,9 +104,12 @@
                                                       <lovMap id="PartyNameMap" lovItem="PartyName" resultTo="formPartyName"/>
                                                       <lovMap id="TrgtResourceMap" lovItem="EmployeeNumber" resultTo="formTrgtResource" useForValidation="no"/>
                                                       <lovMap id="TrgtRouteNoMap" lovItem="RouteNumber" resultTo="formTrgtRouteNo" useForValidation="no"/>
-                                                      <lovMap id="RtnBaseCodeMap" lovItem="RtnBaseCode" criteriaFrom="BaseCode"/>
+                                                      <lovMap id="RtnBaseCodeMap" lovItem="RtnBaseCode" criteriaFrom="BaseCode1"/>
                                                       <lovMap id="CustAccountIdMap" resultTo="CustAccountId" lovItem="CustAccountId"/>
                                                       <lovMap id="IsRsvMap" lovItem="IsRsv" resultTo="formIsRsv"/>
+                                                      <lovMap id="SaleBaseCodeMap" lovItem="SaleBaseCode" resultTo="formSaleBaseCode" useForValidation="no"/>
+                                                      <lovMap id="RsvSaleBaseCodeMap" lovItem="RsvSaleBaseCode" resultTo="formRsvSaleBaseCode" useForValidation="no"/>
+                                                      <lovMap id="RsvSaleBaseActDateMap" lovItem="RsvSaleBaseActDate" resultTo="formRsvSaleBaseActDate" useForValidation="no"/>
                                                    </lovMappings>
                                                 </oa:messageLovInput>
                                              </ui:contents>
@@ -136,6 +160,9 @@
                                           <oa:formValue id="formIsRsv" viewAttr="IsRsvFlg"/>
                                           <oa:formValue id="formTrgtResource" viewAttr="TrgtResource"/>
                                           <oa:formValue id="formTrgtRouteNo" viewAttr="TrgtRouteNo"/>
+                                          <oa:formValue id="formSaleBaseCode" viewAttr="SaleBaseCode"/>
+                                          <oa:formValue id="formRsvSaleBaseCode" viewAttr="RsvSaleBaseCode"/>
+                                          <oa:formValue id="formRsvSaleBaseActDate" viewAttr="RsvSaleBaseActDate" dataType="DATE"/>
                                        </ui:contents>
                                        <ui:tableActions>
                                           <oa:flowLayout id="ResultActionFlRN">

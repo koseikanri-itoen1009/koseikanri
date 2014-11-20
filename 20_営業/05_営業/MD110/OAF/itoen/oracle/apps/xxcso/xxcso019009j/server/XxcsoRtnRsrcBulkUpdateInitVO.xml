@@ -25,6 +25,21 @@ SELECT  TRUNC(xxcso_util_common_pkg.get_online_sysdate)  current_date
        ,NULL  reflect_method
        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate, 'MM') first_date
        ,ADD_MONTHS(TRUNC(xxcso_util_common_pkg.get_online_sysdate, 'MM'), 1) next_date
+       ,NULL  base_code1
+       ,NULL  base_name
+       ,'N'  base_code_flag
+       ,(SELECT xxcso_util_common_pkg.get_rs_base_code(xrv.resource_id, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+         FROM   xxcso_resources_v2 xrv
+         WHERE  xrv.user_id = fnd_global.user_id
+        ) login_base_code
+       ,(SELECT xcav.party_name login_base_name
+         FROM   xxcso_cust_accounts_v xcav
+         WHERE  xcav.customer_class_code = '1'
+         AND    xcav.account_number = (SELECT xxcso_util_common_pkg.get_rs_base_code(xrv.resource_id, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                       FROM   xxcso_resources_v2 xrv
+                                       WHERE  xrv.user_id = fnd_global.user_id
+                                      )
+        ) login_base_name
 FROM    xxcso_employees_v2  xev
 WHERE   xev.user_id = fnd_global.user_id
    ]]></SQLQuery>
@@ -124,5 +139,55 @@ WHERE   xev.user_id = fnd_global.user_id
       AliasName="NEXT_DATE"
       Expression="NEXT_DATE"
       SQLType="DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode1"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BaseCode1"
+      Expression="BaseCode1"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BaseName"
+      Expression="BaseName"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCodeFlag"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BaseCodeFlag"
+      Expression="BaseCodeFlag"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LoginBaseCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LoginBaseCode"
+      Expression="LoginBaseCode"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LoginBaseName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LoginBaseName"
+      Expression="LoginBaseName"
+      SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>

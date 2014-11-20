@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoRtnRsrcBulkUpdateCO
 * 概要説明   : ルートNo/担当営業員一括更新画面コントローラクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-16 1.0  SCS富尾和基  新規作成
+* 2010-03-23 1.1  SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.webui;
@@ -78,6 +79,10 @@ public class XxcsoRtnRsrcBulkUpdateCO extends OAControllerImpl
 
     // ポップリストの初期化
     am.invokeMethod("initPopList");
+
+// 2010-03-23 [E_本稼動_01942] Add Start
+    am.invokeMethod("afterProcess");
+// 2010-03-23 [E_本稼動_01942] Add End
 
     // レイアウト調整
     setVAlignMiddle(webBean);
@@ -175,6 +180,9 @@ public class XxcsoRtnRsrcBulkUpdateCO extends OAControllerImpl
       );
     }
 
+// 2010-03-23 [E_本稼動_01942] Add Start
+    am.invokeMethod("afterProcess");
+// 2010-03-23 [E_本稼動_01942] Add End
     XxcsoUtils.debug(pageContext, "[END]");
 
   }

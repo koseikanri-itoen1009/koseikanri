@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoRtnRsrcBulkUpdateAMImpl
 * 概要説明   : ルートNo/担当営業員一括更新画面アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2009-04-02 1.3  SCS阿部大輔  [T1_0125]担当営業員の行追加対応
 * 2009-05-07 1.4  SCS柳平直人  [T1_0603]登録前検証処理方法修正
 * 2009-08-19 1.5  SCS阿部大輔  [0001123]追加ボタン初期設定対応
+* 2010-03-23 1.6  SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -107,12 +108,21 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       initRow.setReflectMethod(initRow.getReflectMethod());
       initRow.setAddCustomerButtonRender(Boolean.TRUE);
 
+// 2010-03-23 [E_本稼動_01942] Add Start
+      initRow.setBaseCode1(sumRow.getBaseCode());
+      initRow.setBaseName(sumRow.getBaseName());
+// 2010-03-23 [E_本稼動_01942] Add End
+
       //適用ボタン押下後再検索処理
       reSearch();
 
     }
     else
     {
+// 2010-03-23 [E_本稼動_01942] Add Start
+      initRow.setBaseCode1(initRow.getLoginBaseCode());
+      initRow.setBaseName(initRow.getLoginBaseName());
+// 2010-03-23 [E_本稼動_01942] Add End
       initRow.setAddCustomerButtonRender(Boolean.FALSE);
     }
     
@@ -166,7 +176,6 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     {
       throw XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00335);
     }
-    
     //////////////////////////////////////
     // 各行を取得
     //////////////////////////////////////
@@ -185,12 +194,19 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       initRow.getEmployeeNumber()
      ,initRow.getFullName()
      ,initRow.getRouteNo()
+// 2010-03-23 [E_本稼動_01942] Add Start
+     ,initRow.getBaseCode1()
+     ,initRow.getBaseName()
+// 2010-03-23 [E_本稼動_01942] Add End
     );
     
     registVo.initQuery(
       initRow.getEmployeeNumber()
      ,initRow.getRouteNo()
-     ,initRow.getBaseCode()
+// 2010-03-23 [E_本稼動_01942] Add Start
+     //,initRow.getBaseCode()
+     ,initRow.getBaseCode1()
+// 2010-03-23 [E_本稼動_01942] Add End
     );
 
     // 各行のプロパティ設定
@@ -362,18 +378,36 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
           "XxcsoRtnRsrcFullVO1"
         );
     }
+
+// 2010-03-23 [E_本稼動_01942] Add Start
+    XxcsoRtnRsrcBulkUpdateSumVOImpl sumVo
+      = getXxcsoRtnRsrcBulkUpdateSumVO1();
+    if ( sumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateSumVO1"
+        );
+    }
+// 2010-03-23 [E_本稼動_01942] Add End
     
     //////////////////////////////////////
     // 各行を取得
     //////////////////////////////////////
     XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
       = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+// 2010-03-23 [E_本稼動_01942] Add Start
+      XxcsoRtnRsrcBulkUpdateSumVORowImpl sumRow
+        = (XxcsoRtnRsrcBulkUpdateSumVORowImpl)sumVo.first();
+// 2010-03-23 [E_本稼動_01942] Add End
     
     //////////////////////////////////////
     // 登録前検証処理
     //////////////////////////////////////
-    chkBeforeSubmit( txn, initRow,  registVo);
-
+// 2010-03-23 [E_本稼動_01942] Add Start
+    //chkBeforeSubmit( txn, initRow,  registVo);
+    chkBeforeSubmit( txn, initRow,  sumRow,  registVo);
+// 2010-03-23 [E_本稼動_01942] Add End
     //////////////////////////////////////
     // 適用開始日判定
     //////////////////////////////////////
@@ -564,6 +598,15 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     List errorList = new ArrayList();
     XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
 
+    //画面項目「拠点ＣＤ」必須チェック
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,initRow.getBaseCode1()
+         ,XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_BASECODE
+         ,0
+        );
+
     //画面項目「営業員コード」必須チェック
     errorList
       = util.requiredCheck(
@@ -676,13 +719,17 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
   /*****************************************************************************
    * 登録前検証処理
    * @param txn         OADBTransactionインスタンス
-   * @param initRow      対象指定リージョン情報
+   * @param initRow     対象指定リージョン情報
+   * @param sumRow      対象指定リージョンビュー情報
    * @param registVo    一括更新リージョン情報
    *****************************************************************************
    */
   private void chkBeforeSubmit(
     OADBTransaction                     txn
    ,XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+// 2010-03-23 [E_本稼動_01942] Add Start
+   ,XxcsoRtnRsrcBulkUpdateSumVORowImpl  sumRow
+// 2010-03-23 [E_本稼動_01942] Add End
    ,XxcsoRtnRsrcFullVOImpl              registVo
   )
   { 
@@ -696,7 +743,10 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
 
     int index = 0;
-    String  baseCode      = initRow.getBaseCode();
+// 2010-03-23 [E_本稼動_01942] Add Start
+    //String  baseCode      = initRow.getBaseCode();
+    String  baseCode      = sumRow.getBaseCode();
+// 2010-03-23 [E_本稼動_01942] Add End
     List    coAccountList = new ArrayList();
     boolean isRsvAccount  = false;
     boolean isSameErr     = false;
@@ -760,30 +810,38 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
                               + registRow.getAccountNumberReadOnly()          );
       XxcsoUtils.debug(txn, "ISRSVFLG            ："
                               + registRow.getIsRsvFlg()                       );
-
+// 2010-03-23 [E_本稼動_01942] Add Start
+      XxcsoUtils.debug(txn, "SALEBASECODE        ："
+                              + registRow.getSaleBaseCode()                   );
+      XxcsoUtils.debug(txn, "RSVSALEBASECODE     ："
+                              + registRow.getRsvSaleBaseCode()                );
+      XxcsoUtils.debug(txn, "RSVSALEBASEACTDATE  ："
+                              + registRow.getRsvSaleBaseActDate()             );
+// 2010-03-23 [E_本稼動_01942] Add End
 // 2009-05-07 [T1_0708] Add Start
       byte rowState = registRow.getXxcsoRtnRsrcVEO().getEntityState();
       if ( rowState == OAPlsqlEntityImpl.STATUS_MODIFIED )
       {
 // 2009-05-07 [T1_0708] Add End
-
-      //画面項目「新担当」同一拠点内存在チェック
-      if ( registRow.getNextResource() != null
-        && ! registRow.getNextResource().equals("")
-        && registRow.getAccountNumber() != null
-        && ! registRow.getAccountNumber().equals("") )
-      {
-        if ( ! chkExistEmployee( txn, registRow.getNextResource(), baseCode ) )
-        {
-          OAException error
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00422,
-                XxcsoConstants.TOKEN_INDEX,
-                String.valueOf(index)
-              );
-          errorList.add(error);
-        }
-      }
+// 2010-03-23 [E_本稼動_01942] Add Start
+//      //画面項目「新担当」同一拠点内存在チェック
+//      if ( registRow.getNextResource() != null
+//        && ! registRow.getNextResource().equals("")
+//        && registRow.getAccountNumber() != null
+//        && ! registRow.getAccountNumber().equals("") )
+//      {
+//        if ( ! chkExistEmployee( txn, registRow.getNextResource(), baseCode ) )
+//        {
+//          OAException error
+//            = XxcsoMessage.createErrorMessage(
+//                XxcsoConstants.APP_XXCSO1_00422,
+//                XxcsoConstants.TOKEN_INDEX,
+//                String.valueOf(index)
+//              );
+//          errorList.add(error);
+//        }
+//      }
+// 2010-03-23 [E_本稼動_01942] Add End
 
       //画面項目「新ルートNo」妥当性チェック
       if ( registRow.getNextRouteNo() != null
@@ -833,25 +891,127 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
         }
         isSameErr = false;
       }
-
-      //予約売上拠点が自拠点の場合
-      if ( ! isRsvAccount
-        && registRow.getAccountNumber() != null
-        && ! registRow.getAccountNumber().equals("")
-        && registRow.getIsRsvFlg() != null
-        && registRow.getIsRsvFlg().equals(
-             XxcsoRtnRsrcBulkUpdateConstants.BOOL_ISRSV)
-        && ( ( registRow.getNextResource() != null
-            && ! registRow.getNextResource().equals("") )
-            || registRow.getNextRouteNo() != null
-            && ! registRow.getNextRouteNo().equals("")) )
-      {
-        isRsvAccount = true;
-      }
+// 2010-03-23 [E_本稼動_01942] Add Start
+//      //予約売上拠点が自拠点の場合
+//      if ( ! isRsvAccount
+//        && registRow.getAccountNumber() != null
+//        && ! registRow.getAccountNumber().equals("")
+//        && registRow.getIsRsvFlg() != null
+//        && registRow.getIsRsvFlg().equals(
+//             XxcsoRtnRsrcBulkUpdateConstants.BOOL_ISRSV)
+//        && ( ( registRow.getNextResource() != null
+//            && ! registRow.getNextResource().equals("") )
+//            || registRow.getNextRouteNo() != null
+//            && ! registRow.getNextRouteNo().equals("")) )
+//      {
+//        isRsvAccount = true;
+//      }
+// 2010-03-23 [E_本稼動_01942] Add End
 // 2009-05-07 [T1_0708] Add Start
       }
 // 2009-05-07 [T1_0708] Add End
 
+// 2010-03-23 [E_本稼動_01942] Add Start
+      if ( rowState == OAPlsqlEntityImpl.STATUS_MODIFIED ||
+           rowState == OAPlsqlEntityImpl.STATUS_NEW )
+      {
+        //売上拠点チェック
+        if (initRow.getReflectMethod() != null && ! "".equals(initRow.getReflectMethod())
+           )
+        {
+          //「反映方法」即時反映の場合
+          if (initRow.getReflectMethod().equals(XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT))
+          {
+            // 売上拠点チェック
+            if ( registRow.getAccountNumber() != null
+              && ! registRow.getAccountNumber().equals("")
+              && ( ( registRow.getNextResource() != null
+                  && ! registRow.getNextResource().equals("") )
+                  || registRow.getNextRouteNo() != null
+                  && ! registRow.getNextRouteNo().equals("")) )
+            {
+              if (!(chkExistBaseCode(txn, baseCode ,registRow.getSaleBaseCode())
+                   )
+                 )
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00603,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+            //画面項目「新担当」同一拠点内存在チェック
+            if ( registRow.getNextResource() != null
+              && ! registRow.getNextResource().equals("")
+              && registRow.getAccountNumber() != null
+              && ! registRow.getAccountNumber().equals("") )
+            {
+              if ( ! chkExistEmployee( txn, registRow.getNextResource(), initRow.getCurrentDate(), baseCode ) )
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00422,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+          }
+          //「反映方法」予約反映の場合
+          else
+          {
+            // 売上拠点、予約売上拠点チェックの場合
+            if ( registRow.getAccountNumber() != null
+              && ! registRow.getAccountNumber().equals("")
+              && ( ( registRow.getNextResource() != null
+                  && ! registRow.getNextResource().equals("") )
+                  || registRow.getNextRouteNo() != null
+                  && ! registRow.getNextRouteNo().equals("")) )
+            {
+              if (!(chkExistRcvBaseCode (txn, 
+                                         baseCode ,
+                                         initRow.getNextDate(),
+                                         registRow.getSaleBaseCode(),
+                                         registRow.getRsvSaleBaseCode(),
+                                         registRow.getRsvSaleBaseActDate()
+                                        )
+                   )
+                 )
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00603,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+            //画面項目「新担当」同一拠点内存在チェック
+            if ( registRow.getNextResource() != null
+              && ! registRow.getNextResource().equals("")
+              && registRow.getAccountNumber() != null
+              && ! registRow.getAccountNumber().equals("") )
+            {
+              if ( ! chkExistEmployee( txn, registRow.getNextResource() , initRow.getNextDate() , baseCode ) )
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00422,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+          }
+        }
+      }
+// 2010-03-23 [E_本稼動_01942] Add End
       /* 20090402_abe_T1_0125 START*/
       //追加ボタンで未入力の場合は行を削除
       if ( ((( registRow.getNextResource() == null)
@@ -887,18 +1047,20 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       errorList.add(error);
     }
     
-    //画面項目「反映方法」即時反映時予約売上拠点存在チェック
-    if ( isRsvAccount
-      && initRow.getReflectMethod() != null
-      && initRow.getReflectMethod().equals(
-           XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00475
-          );
-      errorList.add(error);
-    }
+// 2010-03-23 [E_本稼動_01942] Add Start
+//    //画面項目「反映方法」即時反映時予約売上拠点存在チェック
+//    if ( isRsvAccount
+//      && initRow.getReflectMethod() != null
+//      && initRow.getReflectMethod().equals(
+//           XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00475
+//          );
+//      errorList.add(error);
+//    }
+// 2010-03-23 [E_本稼動_01942] Add End
     
     if ( errorList.size() > 0 )
     {
@@ -912,6 +1074,7 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
    * 担当営業員拠点内存在チェック
    * @param txn         OADBTransactionインスタンス
    * @param employeeNo  従業員番号
+   * @param baseCodeDate 対象拠点日付
    * @param baseCode    拠点コード
    * @return boolean    TRUE:存在する FALSE:存在しない
    *****************************************************************************
@@ -919,6 +1082,9 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
   private boolean chkExistEmployee(
     OADBTransaction txn
    ,String employeeNo
+// 2010-03-23 [E_本稼動_01942] Add Start
+   ,Date   baseCodeDate
+// 2010-03-23 [E_本稼動_01942] Add End
    ,String baseCode
   )
   {
@@ -936,6 +1102,9 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
 
     empVo.initQuery(
       employeeNo
+// 2010-03-23 [E_本稼動_01942] Add Start
+     ,baseCodeDate
+// 2010-03-23 [E_本稼動_01942] Add End
      ,baseCode
     );
 
@@ -1027,6 +1196,105 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     return false;
   }
 
+
+// 2010-03-23 [E_本稼動_01942] Add Start
+  /*****************************************************************************
+   * 売上拠点チェック
+   * @param txn           OADBTransactionインスタンス
+   * @param baseCode      拠点コード
+   * @param salebaseCode  売上拠点コード
+   * @return boolean      TRUE:正常 FALSE:異常
+   *****************************************************************************
+   */
+  private boolean chkExistBaseCode(
+    OADBTransaction txn
+   ,String baseCode
+   ,String salebaseCode
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    if (salebaseCode == null )
+    {
+      return true;
+    }
+
+    if (baseCode.equals(salebaseCode) )
+    {
+      return true;
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return false;
+  }
+  /*****************************************************************************
+   * 予約売上拠点チェック
+   * @param txn              OADBTransactionインスタンス
+   * @param baseCode         拠点コード
+   * @param nextDate         翌月１日
+   * @param salebaseCode     売上拠点コード
+   * @param rcvsalebaseCode  予約売上拠点コード
+   * @param rcvsaleActDate   予約売上拠点開始日
+   * @return boolean         TRUE:正常 FALSE:異常
+   *****************************************************************************
+   */
+  private boolean chkExistRcvBaseCode(
+    OADBTransaction txn
+   ,String baseCode
+   ,Date   nextDate
+   ,String salebaseCode
+   ,String rcvsalebaseCode
+   ,Date   rcvsaleActDate
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 売上拠点コードがない場合
+    if ((salebaseCode == null || "".equals(salebaseCode)) &&
+        (rcvsalebaseCode == null || "".equals(rcvsalebaseCode)) 
+       )
+    {
+      return true;
+    }
+
+    // 売上拠点コードの場合
+    if (salebaseCode != null && ! "".equals(salebaseCode))
+    {
+      if (baseCode.equals(salebaseCode) )
+      {
+        if (rcvsaleActDate == null || "".equals(rcvsaleActDate))
+        {
+          return true;
+        }
+        if ( 0 > nextDate.dateValue().compareTo(rcvsaleActDate.dateValue()) )
+        {
+          return true;
+        }
+      }
+    }
+    // 予約売上拠点コードの場合
+    if (rcvsalebaseCode != null && ! "".equals(rcvsalebaseCode))
+    {
+      if (baseCode.equals(rcvsalebaseCode) )
+      {
+        if (rcvsaleActDate != null && ! "".equals(rcvsaleActDate))
+        {
+          if (0 <= nextDate.dateValue().compareTo(rcvsaleActDate.dateValue()) )
+          {
+            return true;
+          }
+        }
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return false;
+  }
+  
+// 2010-03-23 [E_本稼動_01942] Add End
+
   /*****************************************************************************
    * 適用ボタン押下後再検索処理
    *****************************************************************************
@@ -1080,12 +1348,19 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       initRow.getEmployeeNumber()
      ,initRow.getFullName()
      ,initRow.getRouteNo()
+// 2010-03-23 [E_本稼動_01942] Add Start
+     ,initRow.getBaseCode1()
+     ,initRow.getBaseName()
+// 2010-03-23 [E_本稼動_01942] Add End
     );
     
     registVo.initQuery(
       initRow.getEmployeeNumber()
      ,initRow.getRouteNo()
-    ,initRow.getBaseCode()
+// 2010-03-23 [E_本稼動_01942] Add Start
+     //,initRow.getBaseCode()
+     ,initRow.getBaseCode1()
+// 2010-03-23 [E_本稼動_01942] Add End
     );
     
     XxcsoRtnRsrcFullVORowImpl registRow
@@ -1140,6 +1415,51 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     return maxSize;
   }
 
+// 2010-03-23 [E_本稼動_01942] Add Start
+
+  /*****************************************************************************
+   * 各イベント処理の最後に行われる処理です。
+   *****************************************************************************
+   */
+  public void afterProcess()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+
+    //////////////////////////////////////
+    // 各行を取得
+    //////////////////////////////////////
+    XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+      = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+
+
+    if ( initRow != null )
+    {
+      if ( initRow.getBaseCode1() != null )
+      {
+        initRow.setBaseCodeFlag("Y");
+      }
+      else
+      {
+        initRow.setBaseCodeFlag("N");
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+// 2010-03-23 [E_本稼動_01942] Add End
 
   /**
    * 

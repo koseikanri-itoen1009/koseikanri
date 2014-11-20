@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoRtnRsrcBulkUpdateConstants
 * 概要説明   : ルートNo/担当営業員一括更新画面共通固定値クラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-16 1.0  SCS富尾和基  新規作成
 * 2009-03-05 1.1  SCS柳平直人  [CT1-034]重複営業員エラー対応
+* 2010-03-23 1.2  SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.util;
@@ -24,11 +25,17 @@ public class XxcsoRtnRsrcBulkUpdateConstants
 
   public static final String[] CENTERING_OBJECTS =
   {
+// 2010-03-23 [E_本稼動_01942] Add Start
+    "BaseCodeLayout",
+// 2010-03-23 [E_本稼動_01942] Add End
     "ResourceLayout"
   };
   
   public static final String TOKEN_VALUE_PROCESS = "ルートNo／営業員一括更新";
 
+// 2010-03-23 [E_本稼動_01942] Add Start
+  public static final String TOKEN_VALUE_BASECODE       = "拠点ＣＤ";
+// 2010-03-23 [E_本稼動_01942] Add End
   public static final String TOKEN_VALUE_EMPLOYEENUMBER = "営業員コード";
   public static final String TOKEN_VALUE_ROUTENO        = "ルートNo";
   public static final String TOKEN_VALUE_REFLECTMETHOD  = "反映方法";

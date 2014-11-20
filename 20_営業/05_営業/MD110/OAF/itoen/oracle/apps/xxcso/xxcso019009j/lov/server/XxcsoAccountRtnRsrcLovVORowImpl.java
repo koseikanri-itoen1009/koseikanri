@@ -13,6 +13,7 @@ package itoen.oracle.apps.xxcso.xxcso019009j.lov.server;
 import oracle.apps.fnd.framework.server.OAViewRowImpl;
 import oracle.jbo.server.AttributeDefImpl;
 import oracle.jbo.domain.Number;
+import oracle.jbo.domain.Date;
 
 /*******************************************************************************
  * 顧客コードのLOVのビュー行クラスです。
@@ -31,6 +32,9 @@ public class XxcsoAccountRtnRsrcLovVORowImpl extends OAViewRowImpl
   protected static final int ROUTENUMBER = 4;
   protected static final int CUSTACCOUNTID = 5;
   protected static final int ISRSV = 6;
+  protected static final int SALEBASECODE = 7;
+  protected static final int RSVSALEBASECODE = 8;
+  protected static final int RSVSALEBASEACTDATE = 9;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -132,6 +136,12 @@ public class XxcsoAccountRtnRsrcLovVORowImpl extends OAViewRowImpl
         return getCustAccountId();
       case ISRSV:
         return getIsRsv();
+      case SALEBASECODE:
+        return getSaleBaseCode();
+      case RSVSALEBASECODE:
+        return getRsvSaleBaseCode();
+      case RSVSALEBASEACTDATE:
+        return getRsvSaleBaseActDate();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -162,6 +172,15 @@ public class XxcsoAccountRtnRsrcLovVORowImpl extends OAViewRowImpl
         return;
       case ISRSV:
         setIsRsv((String)value);
+        return;
+      case SALEBASECODE:
+        setSaleBaseCode((String)value);
+        return;
+      case RSVSALEBASECODE:
+        setRsvSaleBaseCode((String)value);
+        return;
+      case RSVSALEBASEACTDATE:
+        setRsvSaleBaseActDate((Date)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -221,6 +240,60 @@ public class XxcsoAccountRtnRsrcLovVORowImpl extends OAViewRowImpl
   public void setIsRsv(String value)
   {
     setAttributeInternal(ISRSV, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute SaleBaseCode
+   */
+  public String getSaleBaseCode()
+  {
+    return (String)getAttributeInternal(SALEBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute SaleBaseCode
+   */
+  public void setSaleBaseCode(String value)
+  {
+    setAttributeInternal(SALEBASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute RsvSaleBaseCode
+   */
+  public String getRsvSaleBaseCode()
+  {
+    return (String)getAttributeInternal(RSVSALEBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute RsvSaleBaseCode
+   */
+  public void setRsvSaleBaseCode(String value)
+  {
+    setAttributeInternal(RSVSALEBASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute RsvSaleBaseActDate
+   */
+  public Date getRsvSaleBaseActDate()
+  {
+    return (Date)getAttributeInternal(RSVSALEBASEACTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute RsvSaleBaseActDate
+   */
+  public void setRsvSaleBaseActDate(Date value)
+  {
+    setAttributeInternal(RSVSALEBASEACTDATE, value);
   }
 
 

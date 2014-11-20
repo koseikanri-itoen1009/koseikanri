@@ -6,6 +6,9 @@
    <attributeSet docName="CurrentDate" prompt="現在日"/>
    <attributeSet docName="ResourceLayout" prompt="担当営業員"/>
    <attributeSet docName="EmployeeNumber" shortDesc="従業員番号"/>
+   <attributeSet docName="BaseCodeLayout" prompt="拠点CD"/>
+   <attributeSet docName="BaseCode" shortDesc="拠点コード"/>
+   <attributeSet docName="BaseName" prompt="拠点名"/>
    <attributeSet docName="RouteNo" prompt="ルートNo"/>
    <attributeSet docName="SearchButton" prompt="進む"/>
    <attributeSet docName="ClearButton" prompt="消去"/>
@@ -26,5 +29,6 @@
    <attributeSet docName="PartyName" prompt="顧客名"/>
    <attributeSet docName="ResultTblRN" shortDesc="顧客選択"/>
    <attributeSet docName="RscRtnRsrcLovTlRN" shortDesc="担当営業員選択"/>
+   <attributeSet docName="RscRtnBaseCodeLovTlRN" shortDesc="拠点CD選択"/>
    <attributeSet docName="ReflectMethod" prompt="反映方法"/>
 </package>

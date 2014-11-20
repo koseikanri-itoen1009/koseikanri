@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoRtnRsrcFullVOImpl
 * 概要説明   : 一括更新リージョンビュークラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-16 1.0  SCS富尾和基  新規作成
 * 2009-06-24 1.1  SCS柳平直人  [障害0000032]検索性能改善対応
+* 2010-03-23 1.2  SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -47,6 +48,9 @@ public class XxcsoRtnRsrcFullVOImpl extends OAViewObjectImpl
 
     int index = 0;
 
+// 2010-03-23 [E_本稼動_01942] Add Start
+    setWhereClauseParam(index++, baseCode);
+// 2010-03-23 [E_本稼動_01942] Add End
     setWhereClauseParam(index++, resourceNo);
     setWhereClauseParam(index++, routeNo);
     setWhereClauseParam(index++, routeNo);

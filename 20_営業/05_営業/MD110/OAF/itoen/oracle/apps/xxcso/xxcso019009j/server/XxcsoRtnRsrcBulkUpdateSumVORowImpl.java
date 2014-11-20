@@ -26,6 +26,8 @@ public class XxcsoRtnRsrcBulkUpdateSumVORowImpl extends OAViewRowImpl
   protected static final int EMPLOYEENUMBER = 0;
   protected static final int FULLNAME = 1;
   protected static final int ROUTENO = 2;
+  protected static final int BASECODE = 3;
+  protected static final int BASENAME = 4;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -101,6 +103,10 @@ public class XxcsoRtnRsrcBulkUpdateSumVORowImpl extends OAViewRowImpl
         return getFullName();
       case ROUTENO:
         return getRouteNo();
+      case BASECODE:
+        return getBaseCode();
+      case BASENAME:
+        return getBaseName();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -120,9 +126,51 @@ public class XxcsoRtnRsrcBulkUpdateSumVORowImpl extends OAViewRowImpl
       case ROUTENO:
         setRouteNo((String)value);
         return;
+      case BASECODE:
+        setBaseCode((String)value);
+        return;
+      case BASENAME:
+        setBaseName((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseCode
+   */
+  public String getBaseCode()
+  {
+    return (String)getAttributeInternal(BASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseCode
+   */
+  public void setBaseCode(String value)
+  {
+    setAttributeInternal(BASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseName
+   */
+  public String getBaseName()
+  {
+    return (String)getAttributeInternal(BASENAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseName
+   */
+  public void setBaseName(String value)
+  {
+    setAttributeInternal(BASENAME, value);
   }
 }

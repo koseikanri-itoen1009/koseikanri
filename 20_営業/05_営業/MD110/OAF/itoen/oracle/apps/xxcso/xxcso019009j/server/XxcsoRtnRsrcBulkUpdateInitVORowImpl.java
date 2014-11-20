@@ -33,6 +33,11 @@ public class XxcsoRtnRsrcBulkUpdateInitVORowImpl extends OAViewRowImpl
   protected static final int ADDCUSTOMERBUTTONRENDER = 6;
   protected static final int FIRSTDATE = 7;
   protected static final int NEXTDATE = 8;
+  protected static final int BASECODE1 = 9;
+  protected static final int BASENAME = 10;
+  protected static final int BASECODEFLAG = 11;
+  protected static final int LOGINBASECODE = 12;
+  protected static final int LOGINBASENAME = 13;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -100,6 +105,16 @@ public class XxcsoRtnRsrcBulkUpdateInitVORowImpl extends OAViewRowImpl
         return getFirstDate();
       case NEXTDATE:
         return getNextDate();
+      case BASECODE1:
+        return getBaseCode1();
+      case BASENAME:
+        return getBaseName();
+      case BASECODEFLAG:
+        return getBaseCodeFlag();
+      case LOGINBASECODE:
+        return getLoginBaseCode();
+      case LOGINBASENAME:
+        return getLoginBaseName();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -136,6 +151,21 @@ public class XxcsoRtnRsrcBulkUpdateInitVORowImpl extends OAViewRowImpl
         return;
       case NEXTDATE:
         setNextDate((Date)value);
+        return;
+      case BASECODE1:
+        setBaseCode1((String)value);
+        return;
+      case BASENAME:
+        setBaseName((String)value);
+        return;
+      case BASECODEFLAG:
+        setBaseCodeFlag((String)value);
+        return;
+      case LOGINBASECODE:
+        setLoginBaseCode((String)value);
+        return;
+      case LOGINBASENAME:
+        setLoginBaseName((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -272,6 +302,102 @@ public class XxcsoRtnRsrcBulkUpdateInitVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(FIRSTDATE, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseCode1
+   */
+  public String getBaseCode1()
+  {
+    return (String)getAttributeInternal(BASECODE1);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseCode1
+   */
+  public void setBaseCode1(String value)
+  {
+    setAttributeInternal(BASECODE1, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseName
+   */
+  public String getBaseName()
+  {
+    return (String)getAttributeInternal(BASENAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseName
+   */
+  public void setBaseName(String value)
+  {
+    setAttributeInternal(BASENAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseCodeFlag
+   */
+  public String getBaseCodeFlag()
+  {
+    return (String)getAttributeInternal(BASECODEFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseCodeFlag
+   */
+  public void setBaseCodeFlag(String value)
+  {
+    setAttributeInternal(BASECODEFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute LoginBaseCode
+   */
+  public String getLoginBaseCode()
+  {
+    return (String)getAttributeInternal(LOGINBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute LoginBaseCode
+   */
+  public void setLoginBaseCode(String value)
+  {
+    setAttributeInternal(LOGINBASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute LoginBaseName
+   */
+  public String getLoginBaseName()
+  {
+    return (String)getAttributeInternal(LOGINBASENAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute LoginBaseName
+   */
+  public void setLoginBaseName(String value)
+  {
+    setAttributeInternal(LOGINBASENAME, value);
+  }
+
+
+
+
+
+
 
 
 

@@ -13,19 +13,7 @@
 SELECT xrv2.full_name
 FROM XXCSO_RESOURCES_V2 xrv2
 WHERE xrv2.employee_number = :1 
-AND 
-  (
-    (
-      TO_DATE(xrv2.issue_date, 'YYYYMMDD') > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-      AND
-      xrv2.work_base_code_old = :2 
-    )
-  OR
-    (
-      TO_DATE(xrv2.issue_date, 'YYYYMMDD') <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-      AND xrv2.work_base_code_new = :3 
-    )
-  )
+AND   xxcso_util_common_pkg.get_rs_base_code(xrv2.resource_id,TRUNC(:2)) = :3
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />

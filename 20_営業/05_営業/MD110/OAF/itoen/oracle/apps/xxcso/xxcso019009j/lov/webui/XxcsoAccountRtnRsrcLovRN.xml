@@ -12,6 +12,9 @@
             <oa:formValue id="RouteNumber" dataType="VARCHAR2" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="RouteNumber"/>
             <oa:formValue id="CustAccountId" dataType="NUMBER" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="CustAccountId"/>
             <oa:formValue id="IsRsv" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="IsRsv"/>
+            <oa:formValue id="SaleBaseCode" dataType="VARCHAR2" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="SaleBaseCode"/>
+            <oa:formValue id="RsvSaleBaseActDate" dataType="DATE" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="RsvSaleBaseActDate"/>
+            <oa:formValue id="RsvSaleBaseCode" dataType="VARCHAR2" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="RsvSaleBaseCode"/>
          </ui:contents>
       </oa:table>
    </ui:contents>

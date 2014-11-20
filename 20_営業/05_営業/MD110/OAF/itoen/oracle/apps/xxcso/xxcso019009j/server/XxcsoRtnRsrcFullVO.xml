@@ -38,31 +38,39 @@ SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER,
        XxcsoRtnRsrcVEO.NEXT_RESOURCE_CNT 
       ,xcav.party_name
       ,'1' sort_code
+       ,xcav.sale_base_code sale_base_code
+       ,xcav.rsv_sale_base_code rsv_sale_base_code
+       ,TRUNC(xcav.rsv_sale_base_act_date) rsv_sale_base_act_date
 FROM   xxcso_cust_accounts_v   xcav
       ,XXCSO_RTN_RSRC_V        XxcsoRtnRsrcVEO
 WHERE  XxcsoRtnRsrcVEO.account_number = xcav.account_number
+AND    (
+         xcav.sale_base_code = :1
+         OR
+         xcav.sale_base_code IS NULL
+       )
 AND    NVL(xcav.customer_class_code, '00') || '-' || NVL(xcav.customer_status, '  ') IN
          ('00-10', '00-20', '10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '16-99', '17-99')
 AND    EXISTS(
          SELECT  /*+ PUSH_SUBQ */ 1
          FROM    xxcso_resource_custs_v2  xrcv
-         WHERE   xrcv.employee_number    = :1
+         WHERE   xrcv.employee_number    = :2
          AND     xcav.account_number     = xrcv.account_number
        )
 AND    (
         (
-         (:2 IS NOT NULL)
+         (:3 IS NOT NULL)
          AND
          (EXISTS(
             SELECT  /*+ leading(xcrv.hca xcrv.hp xcrv.hop) first_rows */  1
             FROM    xxcso_cust_routes_v2  xcrv
-            WHERE   xcrv.route_number    = :3
+            WHERE   xcrv.route_number    = :4
             AND     xcav.account_number  = xcrv.account_number
           )
          )
         )
         OR
-        (:4 IS NULL)
+        (:5 IS NULL)
        )
 UNION ALL
 SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER, 
@@ -92,30 +100,33 @@ SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER,
        XxcsoRtnRsrcVEO.NEXT_RESOURCE_CNT 
       ,xcav.party_name
       ,'1' sort_code
+       ,xcav.sale_base_code sale_base_code
+       ,xcav.rsv_sale_base_code rsv_sale_base_code
+       ,TRUNC(xcav.rsv_sale_base_act_date) rsv_sale_base_act_date
 FROM   xxcso_cust_accounts_v   xcav
       ,XXCSO_RTN_RSRC_V        XxcsoRtnRsrcVEO
 WHERE  XxcsoRtnRsrcVEO.account_number = xcav.account_number
 AND    NVL(xcav.customer_class_code, '00') || '-' || NVL(xcav.customer_status, '  ') IN
          ('00-10', '00-20', '10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '16-99', '17-99')
-AND    xcav.rsv_sale_base_code      = :5
+AND    xcav.rsv_sale_base_code      = :6
 AND    xcav.rsv_sale_base_act_date >= TRUNC(xxcso_util_common_pkg.get_online_sysdate + 1)
 AND    xcav.rsv_sale_base_act_date <= TRUNC(LAST_DAY(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 1)))
 AND    EXISTS(
          SELECT  /*+ PUSH_SUBQ */ 1
          FROM    xxcso_resource_custs_v  xrcv
-         WHERE   xrcv.employee_number     = :6
+         WHERE   xrcv.employee_number     = :7
          AND     xrcv.start_date_active   > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
          AND     xrcv.end_date_active     IS NULL
          AND     xcav.account_number      = xrcv.account_number
        )
 AND    (
         (
-         (:7 IS NOT NULL)
+         (:8 IS NOT NULL)
          AND
          (EXISTS(
             SELECT  /*+ leading(xcrv.hca xcrv.hp xcrv.hop) first_rows */ 1
             FROM    xxcso_cust_routes_v   xcrv
-            WHERE   xcrv.route_number            = :8
+            WHERE   xcrv.route_number            = :9
             AND     xcrv.start_date_active       > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
             AND     xcrv.end_date_active         IS NULL
             AND     xcav.account_number          = xcrv.account_number
@@ -123,8 +134,9 @@ AND    (
          )
         )
         OR
-        (:9 IS NULL)
+        (:10 IS NULL)
        )
+
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
@@ -340,10 +352,40 @@ AND    (
    <ViewAttribute
       Name="SortCode"
       IsPersistent="false"
+      Precision="1"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="SORT_CODE"
       Expression="SORT_CODE"
       SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SaleBaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SaleBaseCode"
+      Expression="SaleBaseCode"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsvSaleBaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RsvSaleBaseCode"
+      Expression="RsvSaleBaseCode"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsvSaleBaseActDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="RsvSaleBaseActDate"
+      Expression="RsvSaleBaseActDate"
+      SQLType="DATE" >
    </ViewAttribute>
 </ViewObject>

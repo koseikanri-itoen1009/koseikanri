@@ -25,6 +25,8 @@ public class XxcsoRscRtnRsrcLovVORowImpl extends OAViewRowImpl
 
   protected static final int EMPLOYEENUMBER = 0;
   protected static final int FULLNAME = 1;
+  protected static final int EMPLOYEEBASECODE = 2;
+  protected static final int BASECODEFLAG = 3;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -78,6 +80,10 @@ public class XxcsoRscRtnRsrcLovVORowImpl extends OAViewRowImpl
         return getEmployeeNumber();
       case FULLNAME:
         return getFullName();
+      case EMPLOYEEBASECODE:
+        return getEmployeeBaseCode();
+      case BASECODEFLAG:
+        return getBaseCodeFlag();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -94,9 +100,54 @@ public class XxcsoRscRtnRsrcLovVORowImpl extends OAViewRowImpl
       case FULLNAME:
         setFullName((String)value);
         return;
+      case EMPLOYEEBASECODE:
+        setEmployeeBaseCode((String)value);
+        return;
+      case BASECODEFLAG:
+        setBaseCodeFlag((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute EmployeeBaseCode
+   */
+  public String getEmployeeBaseCode()
+  {
+    return (String)getAttributeInternal(EMPLOYEEBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute EmployeeBaseCode
+   */
+  public void setEmployeeBaseCode(String value)
+  {
+    setAttributeInternal(EMPLOYEEBASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BaseCodeFlag
+   */
+  public String getBaseCodeFlag()
+  {
+    return (String)getAttributeInternal(BASECODEFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BaseCodeFlag
+   */
+  public void setBaseCodeFlag(String value)
+  {
+    setAttributeInternal(BASECODEFLAG, value);
+  }
+
+
+
 }

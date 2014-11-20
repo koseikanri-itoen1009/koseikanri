@@ -13,6 +13,8 @@
 SELECT  :1  employee_number
        ,:2  full_name
        ,:3  route_no
+       ,:4  base_code
+       ,:5  base_name
 FROM    DUAL
    ]]></SQLQuery>
    <DesignTime>
@@ -48,6 +50,26 @@ FROM    DUAL
       ColumnType="VARCHAR2"
       AliasName="ROUTE_NO"
       Expression="ROUTE_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
       SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>

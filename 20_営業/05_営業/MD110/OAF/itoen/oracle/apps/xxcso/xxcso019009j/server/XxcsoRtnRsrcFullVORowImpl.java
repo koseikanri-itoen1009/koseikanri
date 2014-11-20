@@ -55,6 +55,9 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
   protected static final int ISRSVFLG = 27;
   protected static final int PARTYNAME = 28;
   protected static final int SORTCODE = 29;
+  protected static final int SALEBASECODE = 30;
+  protected static final int RSVSALEBASECODE = 31;
+  protected static final int RSVSALEBASEACTDATE = 32;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -533,6 +536,12 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
         return getPartyName();
       case SORTCODE:
         return getSortCode();
+      case SALEBASECODE:
+        return getSaleBaseCode();
+      case RSVSALEBASECODE:
+        return getRsvSaleBaseCode();
+      case RSVSALEBASEACTDATE:
+        return getRsvSaleBaseActDate();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -632,6 +641,15 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
         return;
       case SORTCODE:
         setSortCode((Number)value);
+        return;
+      case SALEBASECODE:
+        setSaleBaseCode((String)value);
+        return;
+      case RSVSALEBASECODE:
+        setRsvSaleBaseCode((String)value);
+        return;
+      case RSVSALEBASEACTDATE:
+        setRsvSaleBaseActDate((Date)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -783,6 +801,60 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
   public void setSortCode(Number value)
   {
     setAttributeInternal(SORTCODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute SaleBaseCode
+   */
+  public String getSaleBaseCode()
+  {
+    return (String)getAttributeInternal(SALEBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute SaleBaseCode
+   */
+  public void setSaleBaseCode(String value)
+  {
+    setAttributeInternal(SALEBASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute RsvSaleBaseCode
+   */
+  public String getRsvSaleBaseCode()
+  {
+    return (String)getAttributeInternal(RSVSALEBASECODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute RsvSaleBaseCode
+   */
+  public void setRsvSaleBaseCode(String value)
+  {
+    setAttributeInternal(RSVSALEBASECODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute RsvSaleBaseActDate
+   */
+  public Date getRsvSaleBaseActDate()
+  {
+    return (Date)getAttributeInternal(RSVSALEBASEACTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute RsvSaleBaseActDate
+   */
+  public void setRsvSaleBaseActDate(Date value)
+  {
+    setAttributeInternal(RSVSALEBASEACTDATE, value);
   }
 
 

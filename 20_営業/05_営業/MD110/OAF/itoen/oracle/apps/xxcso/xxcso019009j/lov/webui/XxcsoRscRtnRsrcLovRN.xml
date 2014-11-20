@@ -6,6 +6,8 @@
          <ui:contents>
             <oa:messageStyledText id="EmployeeNumber" dataType="VARCHAR2" prompt="営業員コード" viewName="XxcsoRscRtnRsrcLovVO1" viewAttr="EmployeeNumber" maximumLength="30" queryable="true"/>
             <oa:messageStyledText id="FullName" dataType="VARCHAR2" prompt="営業員氏名" viewName="XxcsoRscRtnRsrcLovVO1" viewAttr="FullName" maximumLength="301"/>
+            <oa:formValue id="EmployeeBaseCode" dataType="VARCHAR2" prompt="拠点コード" viewName="XxcsoRscRtnRsrcLovVO1" viewAttr="EmployeeBaseCode"/>
+            <oa:formValue id="BaseCodeFlag" dataType="VARCHAR2" prompt="拠点コードフラグ" viewName="XxcsoRscRtnRsrcLovVO1" viewAttr="BaseCodeFlag"/>
          </ui:contents>
       </oa:table>
    </ui:contents>

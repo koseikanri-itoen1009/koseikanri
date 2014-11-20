@@ -18,6 +18,9 @@ SELECT  xcav.account_number
        ,rtn.route_number
        ,xcav.cust_account_id
        ,'Y' is_rsv
+       ,xcav.sale_base_code sale_base_code
+       ,xcav.rsv_sale_base_code rsv_sale_base_code
+       ,TRUNC(xcav.rsv_sale_base_act_date) rsv_sale_base_act_date
 FROM    xxcso_cust_accounts_v   xcav
        ,xxcso_cust_resources_v2 rsrc
        ,xxcso_cust_routes_v2    rtn
@@ -36,6 +39,9 @@ SELECT  xcav.account_number
        ,rtn.route_number
        ,xcav.cust_account_id
        ,'N' is_rsv
+       ,xcav.sale_base_code sale_base_code
+       ,xcav.rsv_sale_base_code rsv_sale_base_code
+       ,TRUNC(xcav.rsv_sale_base_act_date) rsv_sale_base_act_date
 FROM    xxcso_cust_accounts_v   xcav
        ,xxcso_cust_resources_v2 rsrc
        ,xxcso_cust_routes_v2    rtn
@@ -139,6 +145,44 @@ AND     rtn.account_number(+)        = xcav.account_number
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SaleBaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALE_BASE_CODE"
+      Expression="SALE_BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsvSaleBaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RSV_SALE_BASE_CODE"
+      Expression="RSV_SALE_BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsvSaleBaseActDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="RSV_SALE_BASE_ACT_DATE"
+      Expression="RSV_SALE_BASE_ACT_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>
