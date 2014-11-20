@@ -1571,73 +1571,75 @@ AS
   AND    itc_in_ad_e_x9.doc_line                = iaj_in_ad_e_x9.doc_line
   AND    ijm_in_ad_e_x9.attribute1              = xnpt_in_ad_e_x9.entry_number
   UNION ALL
-  -- 在庫調整 入庫実績(移動実績訂正)
-  SELECT iwm_in_ad_e_xx.attribute1                     AS ownership_code
-        ,mil_in_ad_e_xx.inventory_location_id          AS inventory_location_id
-        ,itc_in_ad_e_xx.item_id                        AS item_id
-        ,NULL                                          AS lot_no
-        ,NULL                                          AS manufacture_date
-        ,NULL                                          AS uniqe_sign
-        ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,itc_in_ad_e_xx.trans_date                     AS arrival_date
-        ,itc_in_ad_e_xx.trans_date                     AS leaving_date
-        ,'2'                                           AS status   -- 実績
-        ,xrpm.new_div_invent                           AS reason_code
-        ,xrpm.meaning                                  AS reason_code_name
-        ,xmrih_in_ad_e_xx.mov_num                      AS voucher_no
-        ,mil2_in_ad_e_xx.description                   AS ukebaraisaki_name
-        ,NULL                                          AS deliver_to_name
-        ,0                                             AS stock_quantity
--- 2008/10/31 Y.Yamamoto v1.1 update start
---        ,ABS(itc_in_ad_e_xx.trans_qty)                 AS leaving_quantity
-        ,itc_in_ad_e_xx.trans_qty                      AS leaving_quantity
--- 2008/10/31 Y.Yamamoto v1.1 update end
-  FROM   xxinv_mov_req_instr_headers  xmrih_in_ad_e_xx               -- 移動依頼/指示ヘッダ(アドオン)
-        ,xxinv_mov_req_instr_lines    xmril_in_ad_e_xx               -- 移動依頼/指示明細(アドオン)
-        ,xxinv_mov_lot_details        xmldt_in_ad_e_xx               -- 移動ロット詳細(アドオン)
-        ,ic_adjs_jnl                  iaj_in_ad_e_xx                 -- OPM在庫調整ジャーナル
-        ,ic_jrnl_mst                  ijm_in_ad_e_xx                 -- OPMジャーナルマスタ
-        ,ic_tran_cmp                  itc_in_ad_e_xx                 -- OPM完了在庫トランザクション
-        ,ic_whse_mst                  iwm_in_ad_e_xx                 -- OPM倉庫マスタ
-        ,mtl_item_locations           mil_in_ad_e_xx                 -- OPM保管場所マスタ
-        ,mtl_item_locations           mil2_in_ad_e_xx                -- OPM保管場所マスタ
-        ,(SELECT xrpm_in_ad_e_xx.new_div_invent
-                ,flv_in_ad_e_xx.meaning
-                ,xrpm_in_ad_e_xx.doc_type
-                ,xrpm_in_ad_e_xx.reason_code
-                ,xrpm_in_ad_e_xx.rcv_pay_div
-          FROM   fnd_lookup_values flv_in_ad_e_xx                    -- クイックコード
-                ,xxcmn_rcv_pay_mst xrpm_in_ad_e_xx                   -- 受払区分アドオンマスタ
-          WHERE  flv_in_ad_e_xx.lookup_type             = 'XXCMN_NEW_DIVISION'
-          AND    flv_in_ad_e_xx.language                = 'JA'
-          AND    flv_in_ad_e_xx.lookup_code             = xrpm_in_ad_e_xx.new_div_invent
-          AND    xrpm_in_ad_e_xx.doc_type               = 'ADJI'
-          AND    xrpm_in_ad_e_xx.use_div_invent         = 'Y'
-          AND    xrpm_in_ad_e_xx.reason_code            = 'X123'               -- 移動実績訂正
-          AND    xrpm_in_ad_e_xx.rcv_pay_div            = '-1'                 -- 払出
-         ) xrpm
-  WHERE  xmrih_in_ad_e_xx.mov_hdr_id            = xmril_in_ad_e_xx.mov_hdr_id
-  AND    xmril_in_ad_e_xx.mov_line_id           = xmldt_in_ad_e_xx.mov_line_id
-  AND    itc_in_ad_e_xx.doc_type                = xrpm.doc_type
-  AND    itc_in_ad_e_xx.reason_code             = xrpm.reason_code
--- 2008/10/23 Y.Yamamoto v1.1 delete start
---  AND    SIGN( itc_in_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
--- 2008/10/23 Y.Yamamoto v1.1 delete end
-  AND    itc_in_ad_e_xx.item_id                 = xmril_in_ad_e_xx.item_id
-  AND    itc_in_ad_e_xx.lot_id                  = xmldt_in_ad_e_xx.lot_id
-  AND    itc_in_ad_e_xx.location                = xmrih_in_ad_e_xx.ship_to_locat_code
-  AND    itc_in_ad_e_xx.doc_type                = iaj_in_ad_e_xx.trans_type
-  AND    itc_in_ad_e_xx.doc_id                  = iaj_in_ad_e_xx.doc_id
-  AND    itc_in_ad_e_xx.doc_line                = iaj_in_ad_e_xx.doc_line
-  AND    iaj_in_ad_e_xx.journal_id              = ijm_in_ad_e_xx.journal_id
-  AND    xmril_in_ad_e_xx.mov_line_id           = TO_NUMBER( ijm_in_ad_e_xx.attribute1 )
-  AND    xmrih_in_ad_e_xx.ship_to_locat_id      = mil_in_ad_e_xx.inventory_location_id
-  AND    mil_in_ad_e_xx.organization_id         = iwm_in_ad_e_xx.mtl_organization_id
-  AND    xmrih_in_ad_e_xx.shipped_locat_id      = mil2_in_ad_e_xx.inventory_location_id
-  AND    xmldt_in_ad_e_xx.lot_id                = 0
-  AND    xmldt_in_ad_e_xx.record_type_code      = '30'
-  AND    xmldt_in_ad_e_xx.document_type_code    = '20'
-  UNION ALL
+-- 2008/12/3 Y.Kawano delete start
+--  -- 在庫調整 入庫実績(移動実績訂正)
+--  SELECT iwm_in_ad_e_xx.attribute1                     AS ownership_code
+--        ,mil_in_ad_e_xx.inventory_location_id          AS inventory_location_id
+--        ,itc_in_ad_e_xx.item_id                        AS item_id
+--        ,NULL                                          AS lot_no
+--        ,NULL                                          AS manufacture_date
+--        ,NULL                                          AS uniqe_sign
+--        ,NULL                                          AS expiration_date -- <---- ここまで共通
+--        ,itc_in_ad_e_xx.trans_date                     AS arrival_date
+--        ,itc_in_ad_e_xx.trans_date                     AS leaving_date
+--        ,'2'                                           AS status   -- 実績
+--        ,xrpm.new_div_invent                           AS reason_code
+--        ,xrpm.meaning                                  AS reason_code_name
+--        ,xmrih_in_ad_e_xx.mov_num                      AS voucher_no
+--        ,mil2_in_ad_e_xx.description                   AS ukebaraisaki_name
+--        ,NULL                                          AS deliver_to_name
+--        ,0                                             AS stock_quantity
+---- 2008/10/31 Y.Yamamoto v1.1 update start
+----        ,ABS(itc_in_ad_e_xx.trans_qty)                 AS leaving_quantity
+--        ,itc_in_ad_e_xx.trans_qty                      AS leaving_quantity
+---- 2008/10/31 Y.Yamamoto v1.1 update end
+--  FROM   xxinv_mov_req_instr_headers  xmrih_in_ad_e_xx               -- 移動依頼/指示ヘッダ(アドオン)
+--        ,xxinv_mov_req_instr_lines    xmril_in_ad_e_xx               -- 移動依頼/指示明細(アドオン)
+--        ,xxinv_mov_lot_details        xmldt_in_ad_e_xx               -- 移動ロット詳細(アドオン)
+--        ,ic_adjs_jnl                  iaj_in_ad_e_xx                 -- OPM在庫調整ジャーナル
+--        ,ic_jrnl_mst                  ijm_in_ad_e_xx                 -- OPMジャーナルマスタ
+--        ,ic_tran_cmp                  itc_in_ad_e_xx                 -- OPM完了在庫トランザクション
+--        ,ic_whse_mst                  iwm_in_ad_e_xx                 -- OPM倉庫マスタ
+--        ,mtl_item_locations           mil_in_ad_e_xx                 -- OPM保管場所マスタ
+--        ,mtl_item_locations           mil2_in_ad_e_xx                -- OPM保管場所マスタ
+--        ,(SELECT xrpm_in_ad_e_xx.new_div_invent
+--                ,flv_in_ad_e_xx.meaning
+--                ,xrpm_in_ad_e_xx.doc_type
+--                ,xrpm_in_ad_e_xx.reason_code
+--                ,xrpm_in_ad_e_xx.rcv_pay_div
+--          FROM   fnd_lookup_values flv_in_ad_e_xx                    -- クイックコード
+--                ,xxcmn_rcv_pay_mst xrpm_in_ad_e_xx                   -- 受払区分アドオンマスタ
+--          WHERE  flv_in_ad_e_xx.lookup_type             = 'XXCMN_NEW_DIVISION'
+--          AND    flv_in_ad_e_xx.language                = 'JA'
+--          AND    flv_in_ad_e_xx.lookup_code             = xrpm_in_ad_e_xx.new_div_invent
+--          AND    xrpm_in_ad_e_xx.doc_type               = 'ADJI'
+--          AND    xrpm_in_ad_e_xx.use_div_invent         = 'Y'
+--          AND    xrpm_in_ad_e_xx.reason_code            = 'X123'               -- 移動実績訂正
+--          AND    xrpm_in_ad_e_xx.rcv_pay_div            = '-1'                 -- 払出
+--         ) xrpm
+--  WHERE  xmrih_in_ad_e_xx.mov_hdr_id            = xmril_in_ad_e_xx.mov_hdr_id
+--  AND    xmril_in_ad_e_xx.mov_line_id           = xmldt_in_ad_e_xx.mov_line_id
+--  AND    itc_in_ad_e_xx.doc_type                = xrpm.doc_type
+--  AND    itc_in_ad_e_xx.reason_code             = xrpm.reason_code
+---- 2008/10/23 Y.Yamamoto v1.1 delete start
+----  AND    SIGN( itc_in_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+---- 2008/10/23 Y.Yamamoto v1.1 delete end
+--  AND    itc_in_ad_e_xx.item_id                 = xmril_in_ad_e_xx.item_id
+--  AND    itc_in_ad_e_xx.lot_id                  = xmldt_in_ad_e_xx.lot_id
+--  AND    itc_in_ad_e_xx.location                = xmrih_in_ad_e_xx.ship_to_locat_code
+--  AND    itc_in_ad_e_xx.doc_type                = iaj_in_ad_e_xx.trans_type
+--  AND    itc_in_ad_e_xx.doc_id                  = iaj_in_ad_e_xx.doc_id
+--  AND    itc_in_ad_e_xx.doc_line                = iaj_in_ad_e_xx.doc_line
+--  AND    iaj_in_ad_e_xx.journal_id              = ijm_in_ad_e_xx.journal_id
+--  AND    xmril_in_ad_e_xx.mov_line_id           = TO_NUMBER( ijm_in_ad_e_xx.attribute1 )
+--  AND    xmrih_in_ad_e_xx.ship_to_locat_id      = mil_in_ad_e_xx.inventory_location_id
+--  AND    mil_in_ad_e_xx.organization_id         = iwm_in_ad_e_xx.mtl_organization_id
+--  AND    xmrih_in_ad_e_xx.shipped_locat_id      = mil2_in_ad_e_xx.inventory_location_id
+--  AND    xmldt_in_ad_e_xx.lot_id                = 0
+--  AND    xmldt_in_ad_e_xx.record_type_code      = '30'
+--  AND    xmldt_in_ad_e_xx.document_type_code    = '20'
+--  UNION ALL
+-- 2008/12/3 Y.Kawano delete end
   -- 在庫調整 入庫実績(上記以外)
   SELECT iwm_in_ad_e_xx.attribute1                     AS ownership_code
         ,mil_in_ad_e_xx.inventory_location_id          AS inventory_location_id
@@ -2788,70 +2790,72 @@ AS
   AND    xv_out_ad_e_x2.start_date_active       <= TRUNC( SYSDATE )
   AND    xv_out_ad_e_x2.end_date_active         >= TRUNC( SYSDATE )
   UNION ALL
-  -- 在庫調整 出庫実績(移動実績訂正)
-  SELECT iwm_out_ad_e_12.attribute1                    AS ownership_code
-        ,mil_out_ad_e_12.inventory_location_id         AS inventory_location_id
-        ,xmldt_out_ad_e_12.item_id                     AS item_id
-        ,NULL                                          AS lot_no
-        ,NULL                                          AS manufacture_date
-        ,NULL                                          AS uniqe_sign
-        ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,itc_out_ad_e_12.trans_date                    AS arrival_date
-        ,itc_out_ad_e_12.trans_date                    AS leaving_date
-        ,'2'                                           AS status   -- 実績
-        ,xrpm.new_div_invent                           AS reason_code
-        ,xrpm.meaning                                  AS reason_code_name
-        ,xmrih_out_ad_e_12.mov_num                     AS voucher_no
-        ,mil2_out_ad_e_12.description                  AS ukebaraisaki_name
-        ,NULL                                          AS deliver_to_name
-        ,itc_out_ad_e_12.trans_qty                     AS stock_quantity
-        ,0                                             AS leaving_quantity
-  FROM   xxinv_mov_req_instr_headers  xmrih_out_ad_e_12                -- 移動依頼/指示ヘッダ(アドオン)
-        ,xxinv_mov_req_instr_lines    xmril_out_ad_e_12                -- 移動依頼/指示明細(アドオン)
-        ,xxinv_mov_lot_details        xmldt_out_ad_e_12                -- 移動ロット詳細(アドオン)
-        ,ic_adjs_jnl                  iaj_out_ad_e_12                  -- OPM在庫調整ジャーナル
-        ,ic_jrnl_mst                  ijm_out_ad_e_12                  -- OPMジャーナルマスタ
-        ,ic_tran_cmp                  itc_out_ad_e_12                  -- OPM完了在庫トランザクション
-        ,ic_whse_mst                  iwm_out_ad_e_12                  -- OPM倉庫マスタ
-        ,mtl_item_locations           mil_out_ad_e_12                  -- OPM保管場所マスタ
-        ,mtl_item_locations           mil2_out_ad_e_12                 -- OPM保管場所マスタ
-        ,(SELECT xrpm_out_ad_e_12.new_div_invent
-                ,flv_out_ad_e_12.meaning
-                ,xrpm_out_ad_e_12.doc_type
-                ,xrpm_out_ad_e_12.reason_code
-                ,xrpm_out_ad_e_12.rcv_pay_div
-          FROM   fnd_lookup_values flv_out_ad_e_12                      -- クイックコード
-                ,xxcmn_rcv_pay_mst xrpm_out_ad_e_12                    -- 受払区分アドオンマスタ
-          WHERE  flv_out_ad_e_12.lookup_type            = 'XXCMN_NEW_DIVISION'
-          AND    flv_out_ad_e_12.language               = 'JA'
-          AND    flv_out_ad_e_12.lookup_code            = xrpm_out_ad_e_12.new_div_invent
-          AND    xrpm_out_ad_e_12.doc_type              = 'ADJI'
-          AND    xrpm_out_ad_e_12.use_div_invent        = 'Y'
-          AND    xrpm_out_ad_e_12.reason_code           = 'X123'               -- 移動実績訂正
-          AND    xrpm_out_ad_e_12.rcv_pay_div           = '1'                  -- 受入
-         ) xrpm
-  WHERE  itc_out_ad_e_12.doc_type               = xrpm.doc_type
-  AND    itc_out_ad_e_12.reason_code            = xrpm.reason_code
--- 2008/10/23 Y.Yamamoto v1.1 delete start
---  AND    SIGN( itc_out_ad_e_12.trans_qty )      = xrpm.rcv_pay_div
--- 2008/10/23 Y.Yamamoto v1.1 delete end
-  AND    itc_out_ad_e_12.item_id                = xmldt_out_ad_e_12.item_id
-  AND    itc_out_ad_e_12.lot_id                 = xmldt_out_ad_e_12.lot_id
-  AND    itc_out_ad_e_12.location               = xmrih_out_ad_e_12.shipped_locat_code
-  AND    itc_out_ad_e_12.doc_type               = iaj_out_ad_e_12.trans_type
-  AND    itc_out_ad_e_12.doc_id                 = iaj_out_ad_e_12.doc_id
-  AND    itc_out_ad_e_12.doc_line               = iaj_out_ad_e_12.doc_line
-  AND    iaj_out_ad_e_12.journal_id             = ijm_out_ad_e_12.journal_id
-  AND    xmril_out_ad_e_12.mov_line_id          = TO_NUMBER( ijm_out_ad_e_12.attribute1 )
-  AND    xmldt_out_ad_e_12.lot_id               = 0
-  AND    xmldt_out_ad_e_12.record_type_code     = '20'
-  AND    xmldt_out_ad_e_12.document_type_code   = '20'
-  AND    xmril_out_ad_e_12.mov_line_id          = xmldt_out_ad_e_12.mov_line_id
-  AND    xmrih_out_ad_e_12.mov_hdr_id           = xmril_out_ad_e_12.mov_hdr_id
-  AND    xmrih_out_ad_e_12.shipped_locat_id     = mil_out_ad_e_12.inventory_location_id
-  AND    iwm_out_ad_e_12.mtl_organization_id    = mil_out_ad_e_12.organization_id
-  AND    xmrih_out_ad_e_12.ship_to_locat_id     = mil2_out_ad_e_12.inventory_location_id
-  UNION ALL
+-- 2008/12/3 Y.Kawano delete start
+--  -- 在庫調整 出庫実績(移動実績訂正)
+--  SELECT iwm_out_ad_e_12.attribute1                    AS ownership_code
+--        ,mil_out_ad_e_12.inventory_location_id         AS inventory_location_id
+--        ,xmldt_out_ad_e_12.item_id                     AS item_id
+--        ,NULL                                          AS lot_no
+--        ,NULL                                          AS manufacture_date
+--        ,NULL                                          AS uniqe_sign
+--        ,NULL                                          AS expiration_date -- <---- ここまで共通
+--        ,itc_out_ad_e_12.trans_date                    AS arrival_date
+--        ,itc_out_ad_e_12.trans_date                    AS leaving_date
+--        ,'2'                                           AS status   -- 実績
+--        ,xrpm.new_div_invent                           AS reason_code
+--        ,xrpm.meaning                                  AS reason_code_name
+--        ,xmrih_out_ad_e_12.mov_num                     AS voucher_no
+--        ,mil2_out_ad_e_12.description                  AS ukebaraisaki_name
+--        ,NULL                                          AS deliver_to_name
+--        ,itc_out_ad_e_12.trans_qty                     AS stock_quantity
+--        ,0                                             AS leaving_quantity
+--  FROM   xxinv_mov_req_instr_headers  xmrih_out_ad_e_12                -- 移動依頼/指示ヘッダ(アドオン)
+--        ,xxinv_mov_req_instr_lines    xmril_out_ad_e_12                -- 移動依頼/指示明細(アドオン)
+--        ,xxinv_mov_lot_details        xmldt_out_ad_e_12                -- 移動ロット詳細(アドオン)
+--        ,ic_adjs_jnl                  iaj_out_ad_e_12                  -- OPM在庫調整ジャーナル
+--        ,ic_jrnl_mst                  ijm_out_ad_e_12                  -- OPMジャーナルマスタ
+--        ,ic_tran_cmp                  itc_out_ad_e_12                  -- OPM完了在庫トランザクション
+--        ,ic_whse_mst                  iwm_out_ad_e_12                  -- OPM倉庫マスタ
+--        ,mtl_item_locations           mil_out_ad_e_12                  -- OPM保管場所マスタ
+--        ,mtl_item_locations           mil2_out_ad_e_12                 -- OPM保管場所マスタ
+--        ,(SELECT xrpm_out_ad_e_12.new_div_invent
+--                ,flv_out_ad_e_12.meaning
+--                ,xrpm_out_ad_e_12.doc_type
+--                ,xrpm_out_ad_e_12.reason_code
+--                ,xrpm_out_ad_e_12.rcv_pay_div
+--          FROM   fnd_lookup_values flv_out_ad_e_12                      -- クイックコード
+--                ,xxcmn_rcv_pay_mst xrpm_out_ad_e_12                    -- 受払区分アドオンマスタ
+--          WHERE  flv_out_ad_e_12.lookup_type            = 'XXCMN_NEW_DIVISION'
+--          AND    flv_out_ad_e_12.language               = 'JA'
+--          AND    flv_out_ad_e_12.lookup_code            = xrpm_out_ad_e_12.new_div_invent
+--          AND    xrpm_out_ad_e_12.doc_type              = 'ADJI'
+--          AND    xrpm_out_ad_e_12.use_div_invent        = 'Y'
+--          AND    xrpm_out_ad_e_12.reason_code           = 'X123'               -- 移動実績訂正
+--          AND    xrpm_out_ad_e_12.rcv_pay_div           = '1'                  -- 受入
+--         ) xrpm
+--  WHERE  itc_out_ad_e_12.doc_type               = xrpm.doc_type
+--  AND    itc_out_ad_e_12.reason_code            = xrpm.reason_code
+---- 2008/10/23 Y.Yamamoto v1.1 delete start
+----  AND    SIGN( itc_out_ad_e_12.trans_qty )      = xrpm.rcv_pay_div
+---- 2008/10/23 Y.Yamamoto v1.1 delete end
+--  AND    itc_out_ad_e_12.item_id                = xmldt_out_ad_e_12.item_id
+--  AND    itc_out_ad_e_12.lot_id                 = xmldt_out_ad_e_12.lot_id
+--  AND    itc_out_ad_e_12.location               = xmrih_out_ad_e_12.shipped_locat_code
+--  AND    itc_out_ad_e_12.doc_type               = iaj_out_ad_e_12.trans_type
+--  AND    itc_out_ad_e_12.doc_id                 = iaj_out_ad_e_12.doc_id
+--  AND    itc_out_ad_e_12.doc_line               = iaj_out_ad_e_12.doc_line
+--  AND    iaj_out_ad_e_12.journal_id             = ijm_out_ad_e_12.journal_id
+--  AND    xmril_out_ad_e_12.mov_line_id          = TO_NUMBER( ijm_out_ad_e_12.attribute1 )
+--  AND    xmldt_out_ad_e_12.lot_id               = 0
+--  AND    xmldt_out_ad_e_12.record_type_code     = '20'
+--  AND    xmldt_out_ad_e_12.document_type_code   = '20'
+--  AND    xmril_out_ad_e_12.mov_line_id          = xmldt_out_ad_e_12.mov_line_id
+--  AND    xmrih_out_ad_e_12.mov_hdr_id           = xmril_out_ad_e_12.mov_hdr_id
+--  AND    xmrih_out_ad_e_12.shipped_locat_id     = mil_out_ad_e_12.inventory_location_id
+--  AND    iwm_out_ad_e_12.mtl_organization_id    = mil_out_ad_e_12.organization_id
+--  AND    xmrih_out_ad_e_12.ship_to_locat_id     = mil2_out_ad_e_12.inventory_location_id
+--  UNION ALL
+-- 2008/12/3 Y.Kawano delete end
   -- 在庫調整 出庫実績(上記以外)
   SELECT iwm_out_ad_e_xx.attribute1                    AS ownership_code
         ,mil_out_ad_e_xx.inventory_location_id         AS inventory_location_id

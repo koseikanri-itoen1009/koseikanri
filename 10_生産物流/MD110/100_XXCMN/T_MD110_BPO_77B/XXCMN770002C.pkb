@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/11/17    1.16  A.Shiina         積送データの修正
  *  2008/11/19    1.17  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/25    1.18  A.Shiina         本番指摘52対応
+ *  2008/12/03    1.19  A.Shiina         本番指摘361対応
  *
  *****************************************************************************************/
 --
@@ -16458,6 +16459,10 @@ AS
            OR (    (gt_main_data(in_pos).cost_kbn = gc_cost_ac)
                AND (gt_main_data(in_pos).lot_ctl  = gn_lot_ctl_n) ) )
       THEN
+-- 2008/12/03 v1.20 ADD START
+       -- 月末在庫を求める場合
+       IF (iv_year_month = gv_exec_year_month_bef) THEN
+-- 2008/12/03 v1.20 ADD END
         -- 月末在庫より数量を取得
         BEGIN
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
@@ -16485,13 +16490,51 @@ AS
             on_inv_qty :=  0;
             on_inv_amt :=  0;
         END;
+-- 2008/12/03 v1.20 ADD START
+--
+       -- 棚卸在庫を求める場合
+       ELSE
+        -- 棚卸結果より数量を取得
+        BEGIN
+          SELECT NVL(SUM(NVL((stcr.case_amt * stcr.content * stcr.loose_amt), 0)),0) AS stock
+                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)          AS cargo_stock
+                ,0                                     AS price
+                ,0                                     AS cargo_price
+          INTO   on_inv_qty
+                ,on_cargo_qty
+                ,on_inv_amt
+                ,on_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck stc
+                ,xxinv_stc_inventory_result     stcr
+          WHERE  stc.item_id      = gt_main_data(ln_idx).item_id
+          AND    stc.invent_ym    = iv_year_month
+          AND    stc.item_id      = stcr.item_id
+          AND    stc.lot_id       = stcr.lot_id
+          AND    stc.whse_code    = stcr.invent_whse_code
+          AND ( (ir_param.print_kind <> gc_print_kind_locat)
+             OR ( (ir_param.print_kind = gc_print_kind_locat)
+              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            on_inv_qty :=  0;
+            on_inv_amt :=  0;
+        END;
+--
+       END IF;
+-- 2008/12/03 v1.20 ADD END
+-- 2008/12/03 v1.20 UPDATE END
 --
         -- ※原価区分＝標準原価のため、金額を算出しない
 --
       --原価区分＝標準原価以外の場合
       ELSE
+-- 2008/12/03 v1.20 ADD START
+       -- 月末在庫を求める場合
+       IF (iv_year_month = gv_exec_year_month_bef) THEN
+-- 2008/12/03 v1.20 ADD END
         -- 月末在庫より数量・金額を取得
         BEGIN
+-- 2008/12/03 v1.20 UPDATE START
 -- 2008/10/31 v1.14 MOD START
 --          SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
 --                ,NVL(SUM(NVL(stc.monthly_stock, 0) * NVL(xleiv.actual_unit_price, 0)),0)
@@ -16542,6 +16585,42 @@ AS
             on_inv_qty :=  0;
             on_inv_amt :=  0;
         END;
+-- 2008/12/03 v1.20 ADD START
+--
+       -- 棚卸在庫を求める場合
+       ELSE
+        -- 棚卸結果より数量を取得
+        BEGIN
+          SELECT NVL(SUM(NVL((stcr.case_amt * stcr.content * stcr.loose_amt), 0)),0) AS stock
+                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   AS cargo_stock
+                ,NVL(SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
+                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0) AS cargo_price
+          INTO   on_inv_qty
+                ,on_cargo_qty
+                ,on_inv_amt
+                ,on_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck   stc
+                ,xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stc.item_id      = gt_main_data(ln_idx).item_id
+          AND    stc.invent_ym    = iv_year_month
+          AND    stc.item_id      = xlc.item_id(+)
+          AND    stc.lot_id       = xlc.lot_id (+)
+          AND    stc.item_id      = stcr.item_id
+          AND    stc.lot_id       = stcr.lot_id
+          AND    stc.whse_code    = stcr.invent_whse_code
+          AND ( (ir_param.print_kind <> gc_print_kind_locat)
+             OR ( (ir_param.print_kind = gc_print_kind_locat)
+              AND (stc.whse_code = gt_main_data(ln_idx).locat_code)));
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            on_inv_qty :=  0;
+            on_inv_amt :=  0;
+        END;
+--
+       END IF;
+--
+-- 2008/12/03 v1.20 ADD END
       END IF;
 --
     END prc_get_fst_end_inv_qty_amt;

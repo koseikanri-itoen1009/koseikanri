@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *  2008/11/14    1.11  N.Yoshida        移行データ検証不具合対応
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#215対応
+ *  2008/12/02    1.14  N.Yoshida        本番#345対応(振替入庫、緑営１、緑営２追加対応)
+ *                                       本番#385対応
  *
  *****************************************************************************************/
 --
@@ -511,6 +513,12 @@ AS
     lv_select105_2    VARCHAR2(32000) ;
     lv_select106_1    VARCHAR2(32000) ;
     lv_select106_2    VARCHAR2(32000) ;
+    lv_select107_1    VARCHAR2(32000) ;
+    lv_select107_2    VARCHAR2(32000) ;
+    lv_select109_1    VARCHAR2(32000) ;
+    lv_select109_2    VARCHAR2(32000) ;
+    lv_select111_1    VARCHAR2(32000) ;
+    lv_select111_2    VARCHAR2(32000) ;
     lv_select201_1    VARCHAR2(32000) ;
     lv_select201_2    VARCHAR2(32000) ;
     lv_select202_03_1 VARCHAR2(32000) ;
@@ -546,6 +554,9 @@ AS
     get_data_cur103    ref_cursor;
     get_data_cur105    ref_cursor;
     get_data_cur106    ref_cursor;
+    get_data_cur107    ref_cursor;
+    get_data_cur109    ref_cursor;
+    get_data_cur111    ref_cursor;
     get_data_cur201    ref_cursor;
     get_data_cur202_03 ref_cursor;
     get_data_cur3xx    ref_cursor;
@@ -986,6 +997,7 @@ AS
     || '  AND    gic2.category_id          = mcb2.category_id'
     || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
 --    || '  AND    mcb2.segment1             = ''5'''
+    || '  AND    xrpm.item_div_ahead       = ''5'''
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
@@ -1170,6 +1182,7 @@ AS
     || '  AND    gic2.category_id          = mcb2.category_id'
     || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
 --    || '  AND    mcb2.segment1             = ''5'''
+    || '  AND    xrpm.item_div_ahead       = ''5'''
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
@@ -1882,12 +1895,518 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
+-- 2008/12/02 v1.14 yoshida mod start
+    --===============================================================
+    -- 検索条件.受払区分       ⇒ 107
+    -- 対象取引区分(OMSO/PORC) ⇒ 104:振替有償_受入
+    --===============================================================
+    lv_select107_1 := 
+       '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,rcv_shipment_lines        rsl'
+    || '        ,oe_order_headers_all      ooha'
+    || '        ,oe_transaction_types_all  otta'
+    || '        ,xxwsh_order_headers_all   xoha'
+    || '        ,xxwsh_order_lines_all     xola'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,gmi_item_categories       gic4'
+    || '        ,mtl_categories_b          mcb4'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
+    || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
+    || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    itp.doc_id                = rsl.shipment_header_id'
+    || '  AND    itp.doc_line              = rsl.line_num'
+    || '  AND    otta.transaction_type_id  = ooha.order_type_id'
+    || '  AND    ((otta.attribute4           <> ''2'')'
+    || '         OR  (otta.attribute4       IS NULL))'
+    || '  AND    rsl.oe_order_header_id    = xoha.header_id'
+    || '  AND    rsl.oe_order_line_id      = xola.line_id'
+    || '  AND    xoha.header_id            = ooha.header_id'
+    || '  AND    xola.order_header_id      = xoha.order_header_id'
+    || '  AND    iimb.item_no              = xola.request_item_code'
+    || '  AND    iimb.attribute15          = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id              = iimb.item_id'
+    || '  AND    ximb.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id              = iimb.item_id'
+    || '  AND    gic1.category_set_id      = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id          = mcb1.category_id'
+    || '  AND    mcb1.segment1             = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id              = iimb.item_id'
+    || '  AND    gic2.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id          = mcb2.category_id'
+    || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id              = iimb.item_id'
+    || '  AND    gic3.category_id          = mcb3.category_id'
+    || '  AND    xsup.item_id              = iimb.item_id'
+    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic4.item_id              = itp.item_id'
+    || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic4.category_id          = mcb4.category_id'
+    || '  AND    mcb4.segment1             IN (''1'',''2'',''4'')'
+    || '  AND    xrpm.doc_type             = itp.doc_type'
+    || '  AND    xrpm.doc_type             = ''PORC'''
+    || '  AND    xrpm.source_document_code = ''RMA'''
+    || '  AND    xoha.req_status           = ''08'''
+    || '  AND    otta.attribute1           = ''2'''
+    || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.dealings_div         = ''104'''
+    || '  AND    xrpm.shipment_provision_div = ''2'''
+    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+    || '  AND    xrpm.break_col_10         IS NOT NULL'
+    || '  AND    xrpm.shipment_provision_div = otta.attribute1'
+    || '  AND    xrpm.item_div_ahead       = ''5'''
+    ;
+--
+    lv_select107_2 := 
+       '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,wsh_delivery_details      wdd'
+    || '        ,oe_order_headers_all      ooha'
+    || '        ,oe_transaction_types_all  otta'
+    || '        ,xxwsh_order_headers_all   xoha'
+    || '        ,xxwsh_order_lines_all     xola'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,gmi_item_categories       gic4'
+    || '        ,mtl_categories_b          mcb4'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
+    || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
+    || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
+    || '  AND    otta.transaction_type_id  = ooha.order_type_id'
+    || '  AND    ((otta.attribute4           <> ''2'')'
+    || '         OR  (otta.attribute4       IS NULL))'
+    || '  AND    ooha.header_id            = wdd.source_header_id'
+    || '  AND    xoha.header_id            = ooha.header_id'
+    || '  AND    xoha.header_id            = wdd.source_header_id'
+    || '  AND    xola.order_header_id      = xoha.order_header_id'
+    || '  AND    xola.line_id              = wdd.source_line_id'
+    || '  AND    iimb.item_no              = xola.request_item_code'
+    || '  AND    iimb.attribute15          = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id              = iimb.item_id'
+    || '  AND    ximb.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id              = iimb.item_id'
+    || '  AND    gic1.category_set_id      = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id          = mcb1.category_id'
+    || '  AND    mcb1.segment1             = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id              = iimb.item_id'
+    || '  AND    gic2.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id          = mcb2.category_id'
+    || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id              = iimb.item_id'
+    || '  AND    gic3.category_id          = mcb3.category_id'
+    || '  AND    xsup.item_id              = iimb.item_id'
+    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic4.item_id              = itp.item_id'
+    || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic4.category_id          = mcb4.category_id'
+    || '  AND    mcb4.segment1             IN (''1'',''2'',''4'')'
+    || '  AND    xrpm.doc_type             = itp.doc_type'
+    || '  AND    xrpm.doc_type             = ''OMSO'''
+    || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.dealings_div         = ''104'''
+    || '  AND    xoha.req_status           = ''08'''
+    || '  AND    otta.attribute1           = ''2'''
+    || '  AND    xrpm.shipment_provision_div = ''2'''
+    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+    || '  AND    xrpm.break_col_10         IS NOT NULL'
+    || '  AND    xrpm.shipment_provision_div = otta.attribute1'
+    || '  AND    xrpm.item_div_ahead       = ''5'''
+    ;
+--
+-- 2008/12/02 v1.14 yoshida mod end
+--
     --===============================================================
     -- 検索条件.受払区分       ⇒ 108(対象外)
     -- 対象取引区分(OMSO/PORC) ⇒ 106:振替有償_払出
     --===============================================================
 --      CURSOR get_data_cur108 IS
 --
+-- 2008/12/02 v1.14 yoshida mod start
+    --===============================================================
+    -- 検索条件.受払区分       ⇒ 109
+    -- 対象取引区分(OMSO/PORC) ⇒ 110:振替出荷_受入_原
+    --===============================================================
+    lv_select109_1 := 
+       '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,rcv_shipment_lines        rsl'
+    || '        ,oe_order_headers_all      ooha'
+    || '        ,oe_transaction_types_all  otta'
+    || '        ,xxwsh_order_headers_all   xoha'
+    || '        ,xxwsh_order_lines_all     xola'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,gmi_item_categories       gic4'
+    || '        ,mtl_categories_b          mcb4'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
+    || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
+    || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    itp.doc_id                = rsl.shipment_header_id'
+    || '  AND    itp.doc_line              = rsl.line_num'
+    || '  AND    otta.transaction_type_id  = ooha.order_type_id'
+    || '  AND    ((otta.attribute4           <> ''2'')'
+    || '         OR  (otta.attribute4       IS NULL))'
+    || '  AND    rsl.oe_order_header_id    = xoha.header_id'
+    || '  AND    rsl.oe_order_line_id      = xola.line_id'
+    || '  AND    xoha.header_id            = ooha.header_id'
+    || '  AND    xola.order_header_id      = xoha.order_header_id'
+    || '  AND    iimb.item_no              = xola.request_item_code'
+    || '  AND    iimb.attribute15          = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id              = iimb.item_id'
+    || '  AND    ximb.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id              = iimb.item_id'
+    || '  AND    gic1.category_set_id      = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id          = mcb1.category_id'
+    || '  AND    mcb1.segment1             = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id              = iimb.item_id'
+    || '  AND    gic2.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id          = mcb2.category_id'
+    || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id              = iimb.item_id'
+    || '  AND    gic3.category_id          = mcb3.category_id'
+    || '  AND    xsup.item_id              = iimb.item_id'
+    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic4.item_id              = itp.item_id'
+    || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic4.category_id          = mcb4.category_id'
+    || '  AND    xrpm.item_div_origin      = mcb4.segment1'
+    || '  AND    xrpm.doc_type             = itp.doc_type'
+    || '  AND    xrpm.doc_type             = ''PORC'''
+    || '  AND    xrpm.source_document_code = ''RMA'''
+    || '  AND    xoha.req_status           = ''04'''
+    || '  AND    otta.attribute1           = ''1'''
+    || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.dealings_div         = ''109'''
+    || '  AND    xrpm.shipment_provision_div = ''1'''
+    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+    || '  AND    xrpm.break_col_10         IS NOT NULL'
+    || '  AND    xrpm.shipment_provision_div = otta.attribute1'
+    || '  AND    xrpm.item_div_ahead       = ''5'''
+    ;
+--
+    lv_select109_2 := 
+       '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,wsh_delivery_details      wdd'
+    || '        ,oe_order_headers_all      ooha'
+    || '        ,oe_transaction_types_all  otta'
+    || '        ,xxwsh_order_headers_all   xoha'
+    || '        ,xxwsh_order_lines_all     xola'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,gmi_item_categories       gic4'
+    || '        ,mtl_categories_b          mcb4'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
+    || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
+    || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
+    || '  AND    otta.transaction_type_id  = ooha.order_type_id'
+    || '  AND    ((otta.attribute4           <> ''2'')'
+    || '         OR  (otta.attribute4       IS NULL))'
+    || '  AND    ooha.header_id            = wdd.source_header_id'
+    || '  AND    xoha.header_id            = ooha.header_id'
+    || '  AND    xoha.header_id            = wdd.source_header_id'
+    || '  AND    xola.order_header_id      = xoha.order_header_id'
+    || '  AND    xola.line_id              = wdd.source_line_id'
+    || '  AND    iimb.item_no              = xola.request_item_code'
+    || '  AND    iimb.attribute15          = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id              = iimb.item_id'
+    || '  AND    ximb.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id              = iimb.item_id'
+    || '  AND    gic1.category_set_id      = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id          = mcb1.category_id'
+    || '  AND    mcb1.segment1             = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id              = iimb.item_id'
+    || '  AND    gic2.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id          = mcb2.category_id'
+    || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id              = iimb.item_id'
+    || '  AND    gic3.category_id          = mcb3.category_id'
+    || '  AND    xsup.item_id              = iimb.item_id'
+    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic4.item_id              = itp.item_id'
+    || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic4.category_id          = mcb4.category_id'
+    || '  AND    xrpm.item_div_origin      = mcb4.segment1'
+    || '  AND    xrpm.doc_type             = itp.doc_type'
+    || '  AND    xrpm.doc_type             = ''OMSO'''
+    || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.dealings_div         = ''109'''
+    || '  AND    xoha.req_status           = ''04'''
+    || '  AND    otta.attribute1           = ''1'''
+    || '  AND    xrpm.shipment_provision_div = ''1'''
+    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+    || '  AND    xrpm.break_col_10         IS NOT NULL'
+    || '  AND    xrpm.shipment_provision_div = otta.attribute1'
+    || '  AND    xrpm.item_div_ahead       = ''5'''
+    ;
+--
+    --===============================================================
+    -- 検索条件.受払区分       ⇒ 111
+    -- 対象取引区分(OMSO/PORC) ⇒ 111:振替出荷_受入_半
+    --===============================================================
+    lv_select111_1 := 
+       '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,rcv_shipment_lines        rsl'
+    || '        ,oe_order_headers_all      ooha'
+    || '        ,oe_transaction_types_all  otta'
+    || '        ,xxwsh_order_headers_all   xoha'
+    || '        ,xxwsh_order_lines_all     xola'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,gmi_item_categories       gic4'
+    || '        ,mtl_categories_b          mcb4'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
+    || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
+    || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    itp.doc_id                = rsl.shipment_header_id'
+    || '  AND    itp.doc_line              = rsl.line_num'
+    || '  AND    otta.transaction_type_id  = ooha.order_type_id'
+    || '  AND    ((otta.attribute4           <> ''2'')'
+    || '         OR  (otta.attribute4       IS NULL))'
+    || '  AND    rsl.oe_order_header_id    = xoha.header_id'
+    || '  AND    rsl.oe_order_line_id      = xola.line_id'
+    || '  AND    xoha.header_id            = ooha.header_id'
+    || '  AND    xola.order_header_id      = xoha.order_header_id'
+    || '  AND    iimb.item_no              = xola.request_item_code'
+    || '  AND    iimb.attribute15          = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id              = iimb.item_id'
+    || '  AND    ximb.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id              = iimb.item_id'
+    || '  AND    gic1.category_set_id      = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id          = mcb1.category_id'
+    || '  AND    mcb1.segment1             = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id              = iimb.item_id'
+    || '  AND    gic2.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id          = mcb2.category_id'
+    || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id              = iimb.item_id'
+    || '  AND    gic3.category_id          = mcb3.category_id'
+    || '  AND    xsup.item_id              = iimb.item_id'
+    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic4.item_id              = itp.item_id'
+    || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic4.category_id          = mcb4.category_id'
+    || '  AND    xrpm.item_div_origin      = mcb4.segment1'
+    || '  AND    xrpm.doc_type             = itp.doc_type'
+    || '  AND    xrpm.doc_type             = ''PORC'''
+    || '  AND    xrpm.source_document_code = ''RMA'''
+    || '  AND    xoha.req_status           = ''04'''
+    || '  AND    otta.attribute1           = ''1'''
+    || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.dealings_div         = ''111'''
+    || '  AND    xrpm.shipment_provision_div = ''1'''
+    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+    || '  AND    xrpm.break_col_10         IS NOT NULL'
+    || '  AND    xrpm.shipment_provision_div = otta.attribute1'
+    || '  AND    xrpm.item_div_ahead       = ''5'''
+    ;
+--
+    lv_select111_2 := 
+       '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
+    || '         iimb.item_no             item_code'            -- 品目コード
+    || '        ,ximb.item_short_name     item_name'            -- 品目名称
+    || '        ,xsup.stnd_unit_price     unit_price'           -- 原価：標準原価
+    || '        ,xsup.stnd_unit_price_gen raw_material_cost'    -- 原価：原料費
+    || '        ,xsup.stnd_unit_price_sai agein_cost'           -- 原価：再製費
+    || '        ,xsup.stnd_unit_price_shi material_cost'        -- 原価：資材費
+    || '        ,xsup.stnd_unit_price_hou pack_cost'            -- 原価：包装費
+    || '        ,xsup.stnd_unit_price_kei other_expense_cost'   -- 原価：その他経費
+    || '        ,mcb3.segment1                  crowd_code'     --群コード
+    || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
+    || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
+    || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
+    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+    || '  FROM   ic_tran_pnd               itp'
+    || '        ,wsh_delivery_details      wdd'
+    || '        ,oe_order_headers_all      ooha'
+    || '        ,oe_transaction_types_all  otta'
+    || '        ,xxwsh_order_headers_all   xoha'
+    || '        ,xxwsh_order_lines_all     xola'
+    || '        ,ic_item_mst_b             iimb'
+    || '        ,xxcmn_item_mst_b          ximb'
+    || '        ,gmi_item_categories       gic1'
+    || '        ,mtl_categories_b          mcb1'
+    || '        ,gmi_item_categories       gic2'
+    || '        ,mtl_categories_b          mcb2'
+    || '        ,gmi_item_categories       gic3'
+    || '        ,mtl_categories_b          mcb3'
+    || '        ,gmi_item_categories       gic4'
+    || '        ,mtl_categories_b          mcb4'
+    || '        ,xxcmn_stnd_unit_price_v   xsup'
+    || '        ,xxcmn_rcv_pay_mst         xrpm'
+    || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
+    || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
+    || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
+    || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+    || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
+    || '  AND    otta.transaction_type_id  = ooha.order_type_id'
+    || '  AND    ((otta.attribute4           <> ''2'')'
+    || '         OR  (otta.attribute4       IS NULL))'
+    || '  AND    ooha.header_id            = wdd.source_header_id'
+    || '  AND    xoha.header_id            = ooha.header_id'
+    || '  AND    xoha.header_id            = wdd.source_header_id'
+    || '  AND    xola.order_header_id      = xoha.order_header_id'
+    || '  AND    xola.line_id              = wdd.source_line_id'
+    || '  AND    iimb.item_no              = xola.request_item_code'
+    || '  AND    iimb.attribute15          = ''' || cv_cost_manage_code || ''''
+    || '  AND    ximb.item_id              = iimb.item_id'
+    || '  AND    ximb.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    ximb.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic1.item_id              = iimb.item_id'
+    || '  AND    gic1.category_set_id      = ''' || cn_prod_class_id || ''''
+    || '  AND    gic1.category_id          = mcb1.category_id'
+    || '  AND    mcb1.segment1             = ''' || ir_param.goods_class || ''''
+    || '  AND    gic2.item_id              = iimb.item_id'
+    || '  AND    gic2.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic2.category_id          = mcb2.category_id'
+    || '  AND    mcb2.segment1             = ''' || ir_param.item_class || ''''
+    || '  AND    gic3.item_id              = iimb.item_id'
+    || '  AND    gic3.category_id          = mcb3.category_id'
+    || '  AND    xsup.item_id              = iimb.item_id'
+    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    gic4.item_id              = itp.item_id'
+    || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
+    || '  AND    gic4.category_id          = mcb4.category_id'
+    || '  AND    xrpm.item_div_origin      = mcb4.segment1'
+    || '  AND    xrpm.doc_type             = itp.doc_type'
+    || '  AND    xrpm.doc_type             = ''OMSO'''
+    || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
+    || '  AND    xrpm.dealings_div         = ''111'''
+    || '  AND    xoha.req_status           = ''04'''
+    || '  AND    otta.attribute1           = ''1'''
+    || '  AND    xrpm.shipment_provision_div = ''1'''
+    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+    || '  AND    xrpm.break_col_10         IS NOT NULL'
+    || '  AND    xrpm.shipment_provision_div = otta.attribute1'
+    || '  AND    xrpm.item_div_ahead       = ''5'''
+    ;
+--
+-- 2008/12/02 v1.14 yoshida mod end
     --===============================================================
     -- 検索条件.受払区分          ⇒ 201
     -- 対象取引区分(ADJI/PORC_PO) ⇒ 202:仕入
@@ -3676,6 +4195,22 @@ AS
           -- カーソルクローズ
           CLOSE get_data_cur106;
         --===============================================================
+        -- 検索条件.受払区分       ⇒ 107
+        -- 対象取引区分(OMSO/PORC) ⇒ 104:振替有償_受入
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div = '107') THEN
+          -- オープン
+          OPEN  get_data_cur107 FOR lv_select107_1
+                                 || lv_where_category_crowd
+                                 || ' UNION ALL '
+                                 || lv_select107_2
+                                 || lv_where_category_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur107 BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur107;
+        --===============================================================
         -- 検索条件.受払区分       ⇒ 108(対象外)
         -- 対象取引区分(OMSO/PORC) ⇒ 106:振替有償_払出
         --===============================================================
@@ -3687,6 +4222,40 @@ AS
 --          FETCH get_data_cur108 BULK COLLECT INTO ot_data_rec;
 --          -- カーソルクローズ
 --          CLOSE get_data_cur108;
+        --===============================================================
+        -- 検索条件.受払区分       ⇒ 109
+        -- 対象取引区分(OMSO/PORC) ⇒ 110:振替出荷_受入_原
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div = '109') THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'受払区分：109') ;
+          -- オープン
+          OPEN  get_data_cur109 FOR lv_select109_1
+                                 || lv_where_category_crowd
+                                 || ' UNION ALL '
+                                 || lv_select109_2
+                                 || lv_where_category_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur109 BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur109;
+        --===============================================================
+        -- 検索条件.受払区分       ⇒ 111
+        -- 対象取引区分(OMSO/PORC) ⇒ 111:振替有償_受入
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div = '111') THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'受払区分：111') ;
+          -- オープン
+          OPEN  get_data_cur111 FOR lv_select111_1
+                                 || lv_where_category_crowd
+                                 || ' UNION ALL '
+                                 || lv_select111_2
+                                 || lv_where_category_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur111 BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur111;
         --===============================================================
         -- 検索条件.受払区分          ⇒ 201
         -- 対象取引区分(ADJI/PORC_PO) ⇒ 202:仕入
@@ -3966,6 +4535,24 @@ AS
           -- カーソルクローズ
           CLOSE get_data_cur106;
         --===============================================================
+        -- 検索条件.受払区分       ⇒ 107
+        -- 対象取引区分(OMSO/PORC) ⇒ 104:振替有償_受入
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div = '107') THEN
+          -- オープン
+          OPEN  get_data_cur107 FOR lv_select107_1
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || ' UNION ALL '
+                                 || lv_select107_2
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur107 BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur107;
+        --===============================================================
         -- 検索条件.受払区分       ⇒ 108(対象外)
         -- 対象取引区分(OMSO/PORC) ⇒ 106:振替有償_払出
         --===============================================================
@@ -3977,6 +4564,42 @@ AS
 --          FETCH get_data_cur108 BULK COLLECT INTO ot_data_rec;
 --          -- カーソルクローズ
 --          CLOSE get_data_cur108;
+        --===============================================================
+        -- 検索条件.受払区分       ⇒ 109
+        -- 対象取引区分(OMSO/PORC) ⇒ 110:振替出荷_受入_原
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div = '109') THEN
+          -- オープン
+          OPEN  get_data_cur109 FOR lv_select109_1
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || ' UNION ALL '
+                                 || lv_select109_2
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur109 BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur109;
+        --===============================================================
+        -- 検索条件.受払区分       ⇒ 111
+        -- 対象取引区分(OMSO/PORC) ⇒ 111:振替有償_受入
+        --===============================================================
+        ELSIF (ir_param.rcv_pay_div = '111') THEN
+          -- オープン
+          OPEN  get_data_cur111 FOR lv_select111_1
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || ' UNION ALL '
+                                 || lv_select111_2
+                                 || lv_where_category_crowd
+                                 || lv_where_in_crowd
+                                 || lv_order_by;
+          -- バルクフェッチ
+          FETCH get_data_cur111 BULK COLLECT INTO ot_data_rec;
+          -- カーソルクローズ
+          CLOSE get_data_cur111;
         --===============================================================
         -- 検索条件.受払区分          ⇒ 201
         -- 対象取引区分(ADJI/PORC_PO) ⇒ 202:仕入
@@ -5245,7 +5868,8 @@ AS
         -- その他経費
         prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost,
                       gn_qty_dec));*/
-        -- 標準原価
+-- 2008/12/03 v1.14 yoshida update start
+        /*-- 標準原価
         prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price * ln_quantity, gn_qty_dec));
         -- 原価費
         prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost * ln_quantity,gn_qty_dec));
@@ -5257,7 +5881,20 @@ AS
         prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost * ln_quantity, gn_qty_dec));
         -- その他経費
         prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity,
-                      gn_qty_dec));
+                      gn_qty_dec));*/
+        -- 標準原価
+        prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price * ln_quantity));
+        -- 原価費
+        prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost * ln_quantity));
+        -- 再製費
+        prc_set_xml('Z','agein_cost', round(gt_main_data(i).agein_cost * ln_quantity));
+        -- 資材費
+        prc_set_xml('Z','material_cost', round(gt_main_data(i).material_cost * ln_quantity));
+        -- 包装費
+        prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost * ln_quantity));
+        -- その他経費
+        prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity));
+-- 2008/12/03 v1.14 yoshida update end
 -- 2008/11/29 v1.13 yoshida update end
         -- 品目コードＧ終了タグ
         prc_set_xml('T','/g_item');

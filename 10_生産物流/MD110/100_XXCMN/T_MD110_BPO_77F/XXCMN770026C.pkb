@@ -777,7 +777,7 @@ AS
     || ' )' 
     || ' END) AS price' -- óLèûã‡äz
 */
-    || ' xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) AS price' -- óLèûã‡äz
+    || ' ,xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) AS price' -- óLèûã‡äz
 -- 2008/12/02 v1.14 UPDATE END
     || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
     ;

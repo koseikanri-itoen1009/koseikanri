@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/11/17    1.17  A.Shiina         月首･月末在庫不具合修正
  *  2008/11/19    1.18  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/25    1.19  A.Shiina         本番指摘52対応
+ *  2008/12/03    1.20  A.Shiina         本番指摘361対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -12529,6 +12530,11 @@ NULL;
       -- ===============================================================
       -- 倉庫別の場合は倉庫毎の棚卸を取得する。
       IF  (gt_body_data(in_pos).whse_code IS NOT NULL) THEN
+-- 2008/12/03 v1.20 ADD START
+       -- 月首在庫を求める場合
+       IF  (ib_stock  =  TRUE)  THEN
+        -- 月末在庫より数量を取得
+-- 2008/12/03 v1.20 ADD END
         BEGIN
 -- 2008/11/17 v 1.16 UPDATE START
 /*
@@ -12579,8 +12585,48 @@ NULL;
             on_inv_qty_tbl :=  0;
             on_inv_amt_tbl :=  0;
         END;
+-- 2008/12/03 v1.20 ADD START
+--
+       -- 棚卸在庫を求める場合
+       ELSE
+        -- 棚卸結果より数量を取得
+        BEGIN
+          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+                 ,SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+          INTO   on_inv_qty_tbl
+                ,ln_cargo_qty
+                ,on_inv_amt_tbl
+                ,ln_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck   stc
+                ,xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stc.whse_code    = gt_body_data(in_pos).whse_code
+          AND    stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+          AND    stc.item_id      = xlc.item_id
+          AND    stc.lot_id       = xlc.lot_id
+          AND    stc.item_id      = stcr.item_id
+          AND    stc.lot_id       = stcr.lot_id
+          AND    stc.whse_code    = stcr.invent_whse_code
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            on_inv_qty_tbl :=  0;
+            on_inv_amt_tbl :=  0;
+        END;
+--
+       END IF;
+--
+-- 2008/12/03 v1.20 UPDATE END
       -- 品目別の場合は品目の合計棚卸を取得する。
       ELSE
+-- 2008/12/03 v1.20 ADD START
+       -- 月首在庫を求める場合
+       IF  (ib_stock  =  TRUE)  THEN
+        -- 月末在庫より数量を取得
+-- 2008/12/03 v1.20 ADD END
         BEGIN
 -- 2008/11/17 v1.16 UPDATE START
 /*
@@ -12620,7 +12666,6 @@ NULL;
           AND    stc.item_id    = xlc.item_id
           AND    stc.lot_id     = xlc.lot_id;
 -- 2008/11/17 v1.16 UPDATE END
--- 2008/10/20 v1.10 UPDATE END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
@@ -12630,6 +12675,42 @@ NULL;
             ln_cargo_amt   :=  0;
 -- 2008/11/17 v1.16 ADD END
         END;
+-- 2008/12/03 v1.20 ADD START
+--
+       -- 棚卸在庫を求める場合
+       ELSE
+        -- 棚卸結果より数量を取得
+        BEGIN
+          SELECT  SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+                 ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+                 ,SUM(ROUND((stcr.case_amt * stcr.content * stcr.loose_amt) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
+          INTO   on_inv_qty_tbl
+                ,ln_cargo_qty
+                ,on_inv_amt_tbl
+                ,ln_cargo_amt
+          FROM   xxinv_stc_inventory_month_stck   stc
+                ,xxinv_stc_inventory_result       stcr
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+          AND    stc.item_id      = xlc.item_id
+          AND    stc.lot_id       = xlc.lot_id
+          AND    stc.item_id      = stcr.item_id
+          AND    stc.lot_id       = stcr.lot_id
+          AND    stc.whse_code    = stcr.invent_whse_code
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            on_inv_qty_tbl :=  0;
+            on_inv_amt_tbl :=  0;
+            ln_cargo_qty   :=  0;
+            ln_cargo_amt   :=  0;
+        END;
+--
+       END IF;
+--
+-- 2008/12/03 v1.20 UPDATE END
       END IF;
 --
 -- 2008/11/17 v1.16 ADD START
@@ -12693,6 +12774,11 @@ NULL;
       -- =======================================================
       -- 倉庫別の場合は倉庫毎の在庫を取得する。
       IF  (gt_body_data(in_pos).whse_code IS NOT NULL) THEN
+-- 2008/12/03 v1.20 ADD START
+       -- 月首在庫を求める場合
+       IF  (ib_stock  =  TRUE)  THEN
+        -- 月末在庫より数量を取得
+-- 2008/12/03 v1.20 ADD END
         BEGIN
 -- 2008/11/17 v1.16 UPDATE START
 --          SELECT SUM(stc.monthly_stock) AS stock
@@ -12710,7 +12796,39 @@ NULL;
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
         END;
+-- 2008/12/03 v1.20 ADD START
+--
+       -- 棚卸在庫を求める場合
+       ELSE
+        -- 棚卸結果より数量を取得
+        BEGIN
+          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+                ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+          INTO   on_inv_qty_tbl
+                ,ln_cargo_qty
+          FROM   xxinv_stc_inventory_month_stck stc
+                ,xxinv_stc_inventory_result     stcr
+          WHERE  stc.whse_code    = gt_body_data(in_pos).whse_code
+          AND    stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+          AND    stc.item_id      = stcr.item_id
+          AND    stc.lot_id       = stcr.lot_id
+          AND    stc.whse_code    = stcr.invent_whse_code
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            on_inv_qty_tbl :=  0;
+        END;
+--
+       END IF;
+--
+-- 2008/12/03 v1.20 UPDATE END
       ELSE
+-- 2008/12/03 v1.20 ADD START
+       -- 月首在庫を求める場合
+       IF  (ib_stock  =  TRUE)  THEN
+        -- 月末在庫より数量を取得
+-- 2008/12/03 v1.20 ADD END
         BEGIN
 -- 2008/11/17 v1.16 UPDATE START
 --          SELECT SUM(stc.monthly_stock) AS stock
@@ -12730,6 +12848,33 @@ NULL;
             ln_cargo_qty   :=  0;
 -- 2008/11/17 v1.16 ADD END
         END;
+-- 2008/12/03 v1.20 ADD START
+--
+       -- 棚卸在庫を求める場合
+       ELSE
+        -- 棚卸結果より数量を取得
+        BEGIN
+          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
+                ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
+          INTO   on_inv_qty_tbl
+                ,ln_cargo_qty
+          FROM   xxinv_stc_inventory_month_stck stc
+                ,xxinv_stc_inventory_result     stcr
+          WHERE  stc.item_id      = gt_body_data(in_pos).item_id
+          AND    stc.invent_ym    = lv_invent_yyyymm
+          AND    stc.item_id      = stcr.item_id
+          AND    stc.lot_id       = stcr.lot_id
+          AND    stc.whse_code    = stcr.invent_whse_code
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            on_inv_qty_tbl :=  0;
+            ln_cargo_qty   :=  0;
+        END;
+--
+       END IF;
+--
+-- 2008/12/03 v1.20 UPDATE END
       END IF;
 --
 -- 2008/11/17 v1.16 ADD START
