@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOI_INVENTORY_APPROVE_V
  * Description : ’I‰µ³”F‰æ–Êƒrƒ…[
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/05/13    1.1   T.Nakamura       [T1_0877]CREATE•¶‚ÌƒZƒ~ƒRƒƒ“‚ğíœ
  *  2009/05/22    1.2   T.Nakamura       [T1_1150]‹’“_ƒR[ƒh‚É‚æ‚éiğŒ‚ğíœ
  *  2009/07/24    1.3   H.Sasaki         [0000830]’I‰µŠÇ—‚Ì’ŠoğŒ‚ğC³
+ *  2009/07/29    1.4   N.Abe            [0000878]’ŠoğŒAo—Í‡˜C³
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW XXCOI_INVENTORY_APPROVE_V(
@@ -134,7 +135,17 @@ FROM     mtl_secondary_inventories        msi                       -- •ÛŠÇêŠƒ
                                        ,xic.base_code             base_code
                                        ,xic.subinventory_code     subinventory_code
                               FROM      xxcoi_inv_control        xic
+-- == 2009/07/29 V1.4 Added START =============================================================
+                                       ,(SELECT MIN(TO_CHAR(oap.period_start_date, 'YYYYMM')) period_date
+                                         FROM   org_acct_periods  oap
+                                         WHERE  oap.organization_id  = xxcoi_common_pkg.get_organization_id('S01')
+                                         AND    oap.open_flag        = 'Y'
+                                        ) oap_sub
+-- == 2009/07/29 V1.4 Added END   =============================================================
                               WHERE     xic.inventory_kbn    =   '2'
+-- == 2009/07/29 V1.4 Added START =============================================================
+                              AND       xic.inventory_year_month = oap_sub.period_date
+-- == 2009/07/29 V1.4 Added END   =============================================================
                               GROUP BY  xic.inventory_year_month
                                        ,xic.base_code
                                        ,xic.subinventory_code
@@ -152,6 +163,9 @@ WHERE   msi.organization_id             = ici.organization_id
 AND     msi.attribute7                  = hca.account_number
 AND     hca.customer_class_code         = '1'
 AND     msi.secondary_inventory_name    = ici.subinventory_code
+-- == 2009/07/29 V1.4 Added START =============================================================
+AND     msi.attribute13 <> '7'
+-- == 2009/07/29 V1.4 Added END   =============================================================
 AND     msi.attribute1 <> '5'
 AND     msi.attribute1 <> '8'
 AND     flv.lookup_type                 = 'XXCOI1_INV_STATUS_F'
