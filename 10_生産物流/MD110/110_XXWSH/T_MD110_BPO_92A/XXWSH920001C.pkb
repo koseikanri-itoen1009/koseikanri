@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/06/23   1.8   Oracle 北寒寺 正夫 変更要求#93対応
  *  2008/07/25   1.9   Oracle 北寒寺 正夫 結合テスト不具合修正
  *  2008/09/08   1.10  Oracle 椎名 昭圭   PT 6-1_28 指摘44 対応
+ *  2008/09/10   1.11  Oracle 椎名 昭圭   PT 6-1_28 指摘44 修正
  *
  *****************************************************************************************/
 --
@@ -939,7 +940,10 @@ AS
       END IF;
 --
       -- ロット D1)需要数  実績未計上の出荷依頼
-      xxcmn_common2_pkg.get_dem_lot_ship_qty(
+-- 2008/09/10 v1.11 UPDATE START
+--      xxcmn_common2_pkg.get_dem_lot_ship_qty(
+      xxcmn_common2_pkg.get_dem_lot_ship_qty2(
+-- 2008/09/10 v1.11 UPDATE END
         ln_whse_id,
 -- 2008/09/08 v1.7 UPDATE START
 --        ln_item_id,
@@ -958,7 +962,10 @@ AS
       END IF;
 --
       -- ロット D2)需要数  実績未計上の支給指示
-      xxcmn_common2_pkg.get_dem_lot_provide_qty(
+-- 2008/09/10 v1.11 UPDATE START
+--      xxcmn_common2_pkg.get_dem_lot_provide_qty(
+      xxcmn_common2_pkg.get_dem_lot_provide_qty2(
+-- 2008/09/10 v1.11 UPDATE END
         ln_whse_id,
 -- 2008/09/08 v1.7 UPDATE START
 --        ln_item_id,

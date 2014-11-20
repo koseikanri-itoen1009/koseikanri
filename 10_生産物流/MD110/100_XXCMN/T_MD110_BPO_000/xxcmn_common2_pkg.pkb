@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -23,8 +23,10 @@ AS
  *  get_sup_lot_order_qty         p   なし  ロット    S2  供給数  発注受入予定
  *  get_sup_lot_produce_qty       p   なし  ロット    S3  供給数  生産入庫予定
  *  get_sup_lot_inv_out_qty       p   なし  ロット    S4  供給数  実績計上済の移動出庫実績
- *  get_dem_lot_ship_qty          p   なし  ロット    D1  需要数  実績未計上の出荷依頼
- *  get_dem_lot_provide_qty       p   なし  ロット    D2  需要数  実績未計上の支給指示
+ *  get_dem_lot_ship_qty          p   なし  ロット    D1  需要数  実績未計上の出荷依頼（IDベース）
+ *  get_dem_lot_ship_qty2         p   なし  ロット    D1  需要数  実績未計上の出荷依頼（CODEベース）
+ *  get_dem_lot_provide_qty       p   なし  ロット    D2  需要数  実績未計上の支給指示（IDベース）
+ *  get_dem_lot_provide_qty2      p   なし  ロット    D2  需要数  実績未計上の支給指示（CODEベース）
  *  get_dem_lot_inv_out_qty       p   なし  ロット    D3  需要数  実績未計上の移動指示
  *  get_dem_lot_inv_in_qty        p   なし  ロット    D4  需要数  実績計上済の移動入庫実績
  *  get_dem_lot_produce_qty       p   なし  ロット    D5  需要数  実績未計上の生産投入予定
@@ -64,6 +66,7 @@ AS
  *  2008/07/16   1.5   oracle 北寒寺   変更要求#93対応
  *  2008/07/25   1.6   oracle 北寒寺   結合テスト不具合対応
  *  2008/09/09   1.7   oracle 椎名     PT 6-1_28 指摘44 対応
+ *  2008/09/09   1.8   oracle 椎名     PT 6-1_28 指摘44 修正
  *
  *****************************************************************************************/
 --
@@ -1214,10 +1217,15 @@ AS
    ***********************************************************************************/
   PROCEDURE get_dem_lot_ship_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
+-- 2008/09/10 v1.8 UPDATE START
+/*
 -- 2008/09/09 v1.7 UPDATE START
 --    in_item_id     IN NUMBER,               -- 品目ID
-    in_item_code   IN VARCHAR2,               -- 品目ID
+    in_item_code   IN VARCHAR2,               -- 品目
 -- 2008/09/09 v1.7 UPDATE END
+*/
+    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/10 v1.8 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -1277,11 +1285,16 @@ AS
     AND     oha.order_header_id       = ola.order_header_id
     AND     ola.delete_flag           = cv_flag_off
     AND     ola.order_line_id         = mld.mov_line_id
+-- 2008/09/10 v1.8 UPDATE START
+/*
 -- 2008/09/09 v1.7 UPDATE START
 --    AND     mld.item_id               = in_item_id
     AND     ola.shipping_item_code    = mld.item_code
     AND     ola.shipping_item_code    = in_item_code
 -- 2008/09/09 v1.7 UPDATE END
+*/
+    AND     mld.item_id               = in_item_id
+-- 2008/09/10 v1.8 UPDATE END
     AND     mld.lot_id                = in_lot_id
     AND     mld.document_type_code    = cv_doc_type
     AND     mld.record_type_code      = cv_rec_type
@@ -1314,16 +1327,123 @@ AS
 --
   END get_dem_lot_ship_qty;
 --
+-- 2008/09/10 v1.8 ADD START
+  /**********************************************************************************
+   * Procedure Name   : get_dem_lot_ship_qty2
+   * Description      : ロット D1)需要数  実績未計上の出荷依頼（CODEベース）
+   ***********************************************************************************/
+  PROCEDURE get_dem_lot_ship_qty2(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_code   IN VARCHAR2,             -- 品目
+    in_lot_id      IN NUMBER,               -- ロットID
+    id_eff_date    IN DATE,                 -- 有効日付
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_dem_lot_ship_qty2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_off       CONSTANT VARCHAR2(1) := 'N';   -- OFF
+    cv_flag_on        CONSTANT VARCHAR2(1) := 'Y';   -- ON
+    cv_req_status     CONSTANT VARCHAR2(2) := '03';  -- 締め済み
+    cv_doc_type       CONSTANT VARCHAR2(2) := '10';  -- 出荷依頼
+    cv_rec_type       CONSTANT VARCHAR2(2) := '10';  -- 指示
+    cv_ship_pro_type  CONSTANT VARCHAR2(1) := '1';   -- 出荷依頼
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    INTO    on_qty
+    FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
+            xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
+            xxinv_mov_lot_details      mld,  -- 移動ロット詳細（アドオン）
+            oe_transaction_types_all  otta   -- 受注タイプ
+    WHERE   oha.deliver_from_id       = in_whse_id
+    AND     oha.req_status            = cv_req_status
+    AND     oha.actual_confirm_class  = cv_flag_off
+    AND     oha.latest_external_flag  = cv_flag_on
+    AND     oha.schedule_ship_date   <= id_eff_date
+    AND     oha.order_header_id       = ola.order_header_id
+    AND     ola.delete_flag           = cv_flag_off
+    AND     ola.order_line_id         = mld.mov_line_id
+    AND     ola.shipping_item_code    = mld.item_code
+    AND     ola.shipping_item_code    = in_item_code
+    AND     mld.lot_id                = in_lot_id
+    AND     mld.document_type_code    = cv_doc_type
+    AND     mld.record_type_code      = cv_rec_type
+    AND     otta.attribute1           = cv_ship_pro_type
+    AND     otta.transaction_type_id  = oha.order_type_id
+    ;
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_dem_lot_ship_qty2;
+--
+-- 2008/09/10 v1.8 ADD END
   /**********************************************************************************
    * Procedure Name   : get_dem_lot_provide_qty
    * Description      : ロット D2)需要数  実績未計上の支給指示
    ***********************************************************************************/
   PROCEDURE get_dem_lot_provide_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
+-- 2008/09/10 v1.8 UPDATE START
+/*
 -- 2008/09/09 v1.7 UPDATE START
 --    in_item_id     IN NUMBER,               -- 品目ID
-    in_item_code   IN VARCHAR2,               -- 品目ID
+    in_item_code   IN VARCHAR2,               -- 品目
 -- 2008/09/09 v1.7 UPDATE END
+*/
+    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/10 v1.8 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -1383,11 +1503,16 @@ AS
     AND     oha.order_header_id       = ola.order_header_id
     AND     ola.delete_flag           = cv_flag_off
     AND     ola.order_line_id         = mld.mov_line_id
+-- 2008/09/10 v1.8 UPDATE START
+/*
 -- 2008/09/09 v1.7 UPDATE START
 --    AND     mld.item_id               = in_item_id
     AND     ola.shipping_item_code    = mld.item_code
     AND     ola.shipping_item_code    = in_item_code
 -- 2008/09/09 v1.7 UPDATE END
+*/
+    AND     mld.item_id               = in_item_id
+-- 2008/09/10 v1.8 UPDATE END
     AND     mld.lot_id                = in_lot_id
     AND     mld.document_type_code    = cv_doc_type
     AND     mld.record_type_code      = cv_rec_type
@@ -1420,6 +1545,108 @@ AS
 --
   END get_dem_lot_provide_qty;
 --
+-- 2008/09/10 v1.8 ADD START
+  /**********************************************************************************
+   * Procedure Name   : get_dem_lot_provide_qty2
+   * Description      : ロット D2)需要数  実績未計上の支給指示（CODEベース）
+   ***********************************************************************************/
+  PROCEDURE get_dem_lot_provide_qty2(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_code   IN VARCHAR2,             -- 品目
+    in_lot_id      IN NUMBER,               -- ロットID
+    id_eff_date    IN DATE,                 -- 有効日付
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_dem_lot_provide_qty2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_off       CONSTANT VARCHAR2(1) := 'N';   -- OFF
+    cv_flag_on        CONSTANT VARCHAR2(1) := 'Y';   -- ON
+    cv_req_status     CONSTANT VARCHAR2(2) := '07';  -- 受領済み
+    cv_doc_type       CONSTANT VARCHAR2(2) := '30';  -- 支給指示
+    cv_rec_type       CONSTANT VARCHAR2(2) := '10';  -- 指示
+    cv_ship_pro_type  CONSTANT VARCHAR2(1) := '2';   -- 支給依頼
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    INTO    on_qty
+    FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
+            xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
+            xxinv_mov_lot_details      mld,  -- 移動ロット詳細（アドオン）
+            oe_transaction_types_all  otta   -- 受注タイプ
+    WHERE   oha.deliver_from_id       = in_whse_id
+    AND     oha.req_status            = cv_req_status
+    AND     oha.actual_confirm_class  = cv_flag_off
+    AND     oha.latest_external_flag  = cv_flag_on
+    AND     oha.schedule_ship_date   <= id_eff_date
+    AND     oha.order_header_id       = ola.order_header_id
+    AND     ola.delete_flag           = cv_flag_off
+    AND     ola.order_line_id         = mld.mov_line_id
+    AND     ola.shipping_item_code    = mld.item_code
+    AND     ola.shipping_item_code    = in_item_code
+    AND     mld.lot_id                = in_lot_id
+    AND     mld.document_type_code    = cv_doc_type
+    AND     mld.record_type_code      = cv_rec_type
+    AND     otta.attribute1           = cv_ship_pro_type
+    AND     otta.transaction_type_id  = oha.order_type_id
+    ;
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_dem_lot_provide_qty2;
+--
+-- 2008/09/10 v1.8 ADD END
   /**********************************************************************************
    * Procedure Name   : get_dem_lot_inv_out_qty
    * Description      : ロット D3)需要数  実績未計上の移動指示
@@ -3476,7 +3703,10 @@ AS
       END IF;
 --
       -- ロット D1)需要数  実績未計上の出荷依頼
-      get_dem_lot_ship_qty(
+-- 2008/09/10 v1.8 UPDATE START
+--      get_dem_lot_ship_qty(
+      get_dem_lot_ship_qty2(
+-- 2008/09/10 v1.8 UPDATE END
         ln_whse_id,
 -- 2008/09/09 v1.7 UPDATE START
 --        ln_item_id,
@@ -3495,7 +3725,10 @@ AS
       END IF;
 --
       -- ロット D2)需要数  実績未計上の支給指示
-      get_dem_lot_provide_qty(
+-- 2008/09/10 v1.8 UPDATE START
+--      get_dem_lot_provide_qty(
+      get_dem_lot_provide_qty2(
+-- 2008/09/10 v1.8 UPDATE END
         ln_whse_id,
 -- 2008/09/09 v1.7 UPDATE START
 --        ln_item_id,

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(SPEC)
  * Description            : 共通関数2(SPEC)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  --------------------------- ---- ----- --------------------------------------------------
@@ -23,8 +23,10 @@ AS
  *  get_sup_lot_order_qty         P   なし  ロット    S2  供給数  発注受入予定
  *  get_sup_lot_produce_qty       P   なし  ロット    S3  供給数  生産入庫予定
  *  get_sup_lot_inv_out_qty       P   なし  ロット    S4  供給数  実績計上済の移動出庫実績
- *  get_dem_lot_ship_qty          P   なし  ロット    D1  需要数  実績未計上の出荷依頼
- *  get_dem_lot_provide_qty       P   なし  ロット    D2  需要数  実績未計上の支給指示
+ *  get_dem_lot_ship_qty          p   なし  ロット    D1  需要数  実績未計上の出荷依頼（IDベース）
+ *  get_dem_lot_ship_qty2         p   なし  ロット    D1  需要数  実績未計上の出荷依頼（CODEベース）
+ *  get_dem_lot_provide_qty       p   なし  ロット    D2  需要数  実績未計上の支給指示（IDベース）
+ *  get_dem_lot_provide_qty2      p   なし  ロット    D2  需要数  実績未計上の支給指示（CODEベース）
  *  get_dem_lot_inv_out_qty       P   なし  ロット    D3  需要数  実績未計上の移動指示
  *  get_dem_lot_inv_in_qty        P   なし  ロット    D4  需要数  実績計上済の移動入庫実績
  *  get_dem_lot_produce_qty       P   なし  ロット    D5  需要数  実績未計上の生産投入予定
@@ -64,6 +66,7 @@ AS
  * 2008/07/16   1.5   oracle 北寒寺     変更要求#93対応
  * 2008/07/25   1.6   oracle 北寒寺     結合テスト不具合対応
  * 2008/09/09   1.7   oracle 椎名       PT 6-1_28 指摘44 対応
+ * 2008/09/09   1.8   oracle 椎名       PT 6-1_28 指摘44 修正
  *
  *****************************************************************************************/
 --
@@ -191,10 +194,15 @@ AS
   -- ロット D1)需要数  実績未計上の出荷依頼
   PROCEDURE get_dem_lot_ship_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
+-- 2008/09/10 V1.8 UPDATE START
+/*
 -- 2008/09/09 v1.7 UPDATE START
 --    in_item_id     IN NUMBER,               -- 品目ID
-    in_item_code   IN VARCHAR2,             -- 品目ID
+    in_item_code   IN VARCHAR2,             -- 品目
 -- 2008/09/09 v1.7 UPDATE END
+*/
+    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/10 v1.8 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -202,13 +210,31 @@ AS
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
 --
+-- 2008/09/10 v1.8 ADD START
+  -- ロット D1)需要数  実績未計上の出荷依頼（CODEベース）
+  PROCEDURE get_dem_lot_ship_qty2(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_code   IN VARCHAR2,             -- 品目
+    in_lot_id      IN NUMBER,               -- ロットID
+    id_eff_date    IN DATE,                 -- 有効日付
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
+--
+-- 2008/09/10 v1.8 ADD END
   -- ロット D2)需要数  実績未計上の支給指示
   PROCEDURE get_dem_lot_provide_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
+-- 2008/09/10 V1.8 UPDATE START
+/*
 -- 2008/09/09 v1.7 UPDATE START
 --    in_item_id     IN NUMBER,               -- 品目ID
-    in_item_code   IN VARCHAR2,             -- 品目ID
+    in_item_code   IN VARCHAR2,             -- 品目
 -- 2008/09/09 v1.7 UPDATE END
+*/
+    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/10 v1.8 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -216,6 +242,19 @@ AS
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
 --
+-- 2008/09/10 v1.8 ADD START
+  -- ロット D2)需要数  実績未計上の支給指示（CODEベース）
+  PROCEDURE get_dem_lot_provide_qty2(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_code   IN VARCHAR2,             -- 品目
+    in_lot_id      IN NUMBER,               -- ロットID
+    id_eff_date    IN DATE,                 -- 有効日付
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
+--
+-- 2008/09/10 v1.8 ADD END
   -- ロット D3)需要数  実績未計上の移動指示
   PROCEDURE get_dem_lot_inv_out_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
