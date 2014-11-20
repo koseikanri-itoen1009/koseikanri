@@ -7,7 +7,7 @@ AS
  * Description      : 顧客の標準画面よりメンテナンスされた名称・住所情報を、
  *                  : パーティアドオンマスタへ反映し、内容の同期を行います。
  * MD.050           : 生産顧客情報同期 MD050_CMM_005_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/18    1.0   Masayuki.Sano    新規作成
  *  2009/02/26    1.1   Masayuki.Sano    結合テスト動作不正対応
+ *  2010/02/15    1.2   Yutaka.Kuboshima 障害E_本稼動_01419 差分テーブルにパーティサイトアドオンを追加
+ *                                                          パーティアドオンの初期値を変更
  *
  *****************************************************************************************/
 --
@@ -93,18 +95,22 @@ AS
   cv_app_name_xxcmm   CONSTANT VARCHAR2(30) := 'XXCMM';      -- マスタ
   cv_app_name_xxccp   CONSTANT VARCHAR2(30) := 'XXCCP';      -- 共通・IF
   -- ■ カスタム・プロファイル・オプション
-  cv_pro_init01       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT01';
-                                 -- XXCMN:パーティアドオンマスタ登録画面_引当順初期値
-  cv_pro_init03       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT03';
-                                 -- XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値
-  cv_pro_init04       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT04';
-                                 -- XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--  cv_pro_init01       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT01';
+--                                 -- XXCMN:パーティアドオンマスタ登録画面_引当順初期値
+--  cv_pro_init03       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT03';
+--                                 -- XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値
+--  cv_pro_init04       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT04';
+--                                 -- XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
   cv_pro_init05       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT05';
                                  -- XXCMN:パーティアドオンマスタ登録画面_拠点大分類初期値
-  cv_pro_init06       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT16';
-                                 -- XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値
-  cv_pro_init07       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT17';
-                                 -- XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値 
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--  cv_pro_init06       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT16';
+--                                 -- XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値
+--  cv_pro_init07       CONSTANT VARCHAR2(50) := 'XXCMN_830001F_INIT17';
+--                                 -- XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値 
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
   cv_pro_sys_ctrl_cal CONSTANT VARCHAR2(26) := 'XXCMM1_003A00_SYS_CAL_CODE';
                                  -- システム稼動日カレンダコード定義プロファイル
   -- ■ メッセージ・コード（エラー/警告）
@@ -142,12 +148,16 @@ AS
   cv_tok_value        CONSTANT VARCHAR2(20) := 'VALUE';
   -- ■ トークン値
   cv_tvl_sys_ctrl_cal CONSTANT VARCHAR2(80) := 'XXCMM:顧客アドオン機能用システム稼働日カレンダコード値';
-  cv_tvl_pro_init01   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_引当順初期値';
-  cv_tvl_pro_init03   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値';
-  cv_tvl_pro_init04   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値';
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--  cv_tvl_pro_init01   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_引当順初期値';
+--  cv_tvl_pro_init03   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値';
+--  cv_tvl_pro_init04   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値';
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
   cv_tvl_pro_init05   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_拠点大分類初期値';
-  cv_tvl_pro_init06   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値';
-  cv_tvl_pro_init07   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値';
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--  cv_tvl_pro_init06   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値';
+--  cv_tvl_pro_init07   CONSTANT VARCHAR2(80) := 'XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値';
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
   cv_tvl_sales_ou     CONSTANT VARCHAR2(20) := 'SALES-OU';
   cv_tvl_itoe_ou_mfg  CONSTANT VARCHAR2(20) := 'ITOE-OU-MFG';
   cv_tvl_update_from  CONSTANT VARCHAR2(20) := '処理日(From)';
@@ -192,12 +202,16 @@ AS
   gv_in_proc_date_from        VARCHAR2(50);   -- 処理日(FROM)
   gv_in_proc_date_to          VARCHAR2(50);   -- 処理日(TO)
   -- データ・プロファイル
-  gv_pro_init01     fnd_profile_option_values.profile_option_value%TYPE;  -- 引当順初期値
-  gv_pro_init03     fnd_profile_option_values.profile_option_value%TYPE;  -- 振替グループ初期値
-  gv_pro_init04     fnd_profile_option_values.profile_option_value%TYPE;  -- 物流ブロック初期値
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--  gv_pro_init01     fnd_profile_option_values.profile_option_value%TYPE;  -- 引当順初期値
+--  gv_pro_init03     fnd_profile_option_values.profile_option_value%TYPE;  -- 振替グループ初期値
+--  gv_pro_init04     fnd_profile_option_values.profile_option_value%TYPE;  -- 物流ブロック初期値
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
   gv_pro_init05     fnd_profile_option_values.profile_option_value%TYPE;  -- 拠点大分類初期値
-  gv_pro_init06     fnd_profile_option_values.profile_option_value%TYPE;  -- ドリンク運賃振替基準初期値
-  gv_pro_init07     fnd_profile_option_values.profile_option_value%TYPE;  -- リーフ運賃振替基準初期値
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--  gv_pro_init06     fnd_profile_option_values.profile_option_value%TYPE;  -- ドリンク運賃振替基準初期値
+--  gv_pro_init07     fnd_profile_option_values.profile_option_value%TYPE;  -- リーフ運賃振替基準初期値
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
   gv_sys_ctrl_cal   fnd_profile_option_values.profile_option_value%TYPE;  -- カレンダーコード
   -- 処理の対象となるテーブル
   gt_parties_tab  xxcmn_parties_ttype;  -- 住所情報
@@ -321,55 +335,61 @@ AS
     --==============================================================
     --６．プロファイルの取得を行います。
     --==============================================================
-    -- XXCMN:パーティアドオンマスタ登録画面_引当順初期値
-    gv_pro_init01    := FND_PROFILE.VALUE(cv_pro_init01);
-    -- XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値
-    gv_pro_init03    := FND_PROFILE.VALUE(cv_pro_init03);
-    -- XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値
-    gv_pro_init04    := FND_PROFILE.VALUE(cv_pro_init04);
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--    -- XXCMN:パーティアドオンマスタ登録画面_引当順初期値
+--    gv_pro_init01    := FND_PROFILE.VALUE(cv_pro_init01);
+--    -- XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値
+--    gv_pro_init03    := FND_PROFILE.VALUE(cv_pro_init03);
+--    -- XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値
+--    gv_pro_init04    := FND_PROFILE.VALUE(cv_pro_init04);
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
     -- XXCMN:パーティアドオンマスタ登録画面_拠点大分類初期値
     gv_pro_init05    := FND_PROFILE.VALUE(cv_pro_init05);
-    -- XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値
-    gv_pro_init06    := FND_PROFILE.VALUE(cv_pro_init06);
-    -- XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値 
-    gv_pro_init07    := FND_PROFILE.VALUE(cv_pro_init07);
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--    -- XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値
+--    gv_pro_init06    := FND_PROFILE.VALUE(cv_pro_init06);
+--    -- XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値 
+--    gv_pro_init07    := FND_PROFILE.VALUE(cv_pro_init07);
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
 --
     --==============================================================
     --７．プロファイル取得失敗時、以下の例外処理を行います。
     --==============================================================
-    -- XXCMN:パーティアドオンマスタ登録画面_引当順初期値
-    IF ( gv_pro_init01 IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxcmm    -- マスタ
-                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
-                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
-                     ,iv_token_value1 => cv_tvl_pro_init01    -- 値      :引当順初期値
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    -- XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値
-    IF ( gv_pro_init03 IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxcmm    -- マスタ
-                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
-                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
-                     ,iv_token_value1 => cv_tvl_pro_init03    -- 値      :振替グループ初期値
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    -- XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値
-    IF ( gv_pro_init04 IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxcmm    -- マスタ
-                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
-                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
-                     ,iv_token_value1 => cv_tvl_pro_init04    -- 値      :物流ブロック初期値
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--    -- XXCMN:パーティアドオンマスタ登録画面_引当順初期値
+--    IF ( gv_pro_init01 IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm    -- マスタ
+--                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+--                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+--                     ,iv_token_value1 => cv_tvl_pro_init01    -- 値      :引当順初期値
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+--    -- XXCMN:パーティアドオンマスタ登録画面_振替グループ初期値
+--    IF ( gv_pro_init03 IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm    -- マスタ
+--                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+--                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+--                     ,iv_token_value1 => cv_tvl_pro_init03    -- 値      :振替グループ初期値
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+--    -- XXCMN:パーティアドオンマスタ登録画面_物流ブロック初期値
+--    IF ( gv_pro_init04 IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm    -- マスタ
+--                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+--                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+--                     ,iv_token_value1 => cv_tvl_pro_init04    -- 値      :物流ブロック初期値
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
     -- XXCMN:パーティアドオンマスタ登録画面_拠点大分類初期値
     IF ( gv_pro_init05 IS NULL) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
@@ -381,28 +401,30 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
-    -- XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値
-    IF ( gv_pro_init06 IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxcmm    -- マスタ
-                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
-                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
-                     ,iv_token_value1 => cv_tvl_pro_init06    -- 値      :ドリンク運賃振替基準初期値
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    -- XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値
-    IF ( gv_pro_init07 IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name_xxcmm    -- マスタ
-                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
-                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
-                     ,iv_token_value1 => cv_tvl_pro_init07    -- 値      :リーフ運賃振替基準初期値
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete start by Yutaka.Kuboshima
+--    -- XXCMN:パーティアドオンマスタ登録画面_ドリンク運賃振替基準初期値
+--    IF ( gv_pro_init06 IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm    -- マスタ
+--                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+--                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+--                     ,iv_token_value1 => cv_tvl_pro_init06    -- 値      :ドリンク運賃振替基準初期値
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+--    -- XXCMN:パーティアドオンマスタ登録画面_リーフ運賃振替基準初期値
+--    IF ( gv_pro_init07 IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm    -- マスタ
+--                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+--                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+--                     ,iv_token_value1 => cv_tvl_pro_init07    -- 値      :リーフ運賃振替基準初期値
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- 2010/02/15 Ver1.2 E_本稼動_01419 delete end by Yutaka.Kuboshima
 --
     --==============================================================
     --８．営業側の組織IDを取得します。
@@ -573,6 +595,15 @@ AS
                    WHERE  xcp1.party_id = hca.party_id
                    AND    xcp1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
                  )
+-- 2010/02/15 Ver1.2 E_本稼動_01419 add start by Yutaka.Kuboshima
+              -- パーティサイトアドオンを差分テーブルに追加
+              OR EXISTS(
+                   SELECT xps1.party_site_id
+                   FROM   xxcmn_party_sites xps1
+                   WHERE  xps1.party_id = hca.party_id
+                   AND    xps1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+                 )
+-- 2010/02/15 Ver1.2 E_本稼動_01419 add end by Yutaka.Kuboshima
              )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
       FOR UPDATE OF xcp.party_id  NOWAIT
       ;
@@ -633,6 +664,15 @@ AS
                    WHERE  xcp1.party_id = hca.party_id
                    AND    xcp1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
                  )
+-- 2010/02/15 Ver1.2 E_本稼動_01419 add start by Yutaka.Kuboshima
+              -- パーティサイトアドオンを差分テーブルに追加
+              OR EXISTS(
+                   SELECT xps1.party_site_id
+                   FROM   xxcmn_party_sites xps1
+                   WHERE  xps1.party_id = hca.party_id
+                   AND    xps1.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
+                 )
+-- 2010/02/15 Ver1.2 E_本稼動_01419 add end by Yutaka.Kuboshima
              )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
       ;
 --
@@ -1309,7 +1349,10 @@ AS
         ,program_update_date    -- (列名)ﾌﾟﾛｸﾞﾗﾑ更新日
       )VALUES(
          lt_party_id                                       -- (値)パーティーID
-        ,gd_process_date + 1                               -- (値)適用開始日
+-- 2010/02/15 Ver1.2 E_本稼動_01419 modify start by Yutaka.Kuboshima
+--        ,gd_process_date + 1                               -- (値)適用開始日
+        ,gd_process_date                                  -- (値)適用開始日
+-- 2010/02/15 Ver1.2 E_本稼動_01419 modify end by Yutaka.Kuboshima
         ,TO_DATE('99991231', 'YYYYMMDD')                   -- (値)適用終了日
         ,SUBSTRB(it_parties_rec.party_name, 1, 60)         -- (値)正式名
         ,SUBSTRB(it_parties_rec.party_short_name, 1, 20)   -- (値)略称
@@ -1319,11 +1362,19 @@ AS
         ,SUBSTRB(lv_address_line, 31, 30)                  -- (値)住所２
         ,SUBSTRB(it_parties_rec.phone, 1, 15)              -- (値)電話番号
         ,SUBSTRB(it_parties_rec.fax, 1, 15)                -- (値)FAX番号
-        ,gv_pro_init01                                     -- (値)引当順
-        ,gv_pro_init06                                     -- (値)ドリンク運賃振替基準
-        ,gv_pro_init07                                     -- (値)リーフ運賃振替基準
-        ,gv_pro_init03                                     -- (値)振替グループ
-        ,gv_pro_init04                                     -- (値)物流ブロック
+-- 2010/02/15 Ver1.2 E_本稼動_01419 modify start by Yutaka.Kuboshima
+--        ,gv_pro_init01                                     -- (値)引当順
+--        ,gv_pro_init06                                     -- (値)ドリンク運賃振替基準
+--        ,gv_pro_init07                                     -- (値)リーフ運賃振替基準
+--        ,gv_pro_init03                                     -- (値)振替グループ
+--        ,gv_pro_init04                                     -- (値)物流ブロック
+         -- 初期値をNULLに変更
+        ,NULL                                              -- (値)引当順
+        ,NULL                                              -- (値)ドリンク運賃振替基準
+        ,NULL                                              -- (値)リーフ運賃振替基準
+        ,NULL                                              -- (値)振替グループ
+        ,NULL                                              -- (値)物流ブロック
+-- 2010/02/15 Ver1.2 E_本稼動_01419 modify end by Yutaka.Kuboshima
         ,gv_pro_init05                                     -- (値)拠点大分類
         ,NULL                                              -- (値)EOS宛先
         ,cn_created_by                                     -- (値)作成者
@@ -1701,7 +1752,7 @@ AS
     -- ===============================================
     -- A-6. 終了処理
     -- ===============================================
-    -- リターン・コードが異常終了の場合のメッセージ出力 & 件数の算出
+    -- リターン・コードが異常終了の場合のメッセージ出力 、 件数の算出
     IF (lv_retcode = cv_status_error) THEN
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
