@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•écçÇï\ÅiáTÅjêªïi
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2008/12/17    1.29  A.Shiina         ñ{î‘è·äQ774ëŒâû
  *  2008/12/18    1.30  N.Yoshida        ñ{î‘è·äQ773ëŒâû
  *  2008/12/19    1.31  A.Shiina         ñ{î‘è·äQ799ëŒâû
+ *  2008/12/25    1.32  A.Shiina         ñ{î‘è·äQ674ëŒâû
  *
  *****************************************************************************************/
 --
@@ -16710,12 +16711,18 @@ AS
 -- 2008/12/18 v1.30 UPDATE START
         BEGIN
            SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
-                 ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                 ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+                 ,NVL(SUM(NVL(stc.cargo_stock  , 0) - NVL(stc.cargo_stock_not_stn, 0)),0) as cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
   -- 2008/12/10 v1.24 UPDATE START
   --               ,0 as price
   --               ,0 as cargo_price
                  ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
-                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE START
+--                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+                 ,NVL(SUM(ROUND((NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) * NVL(ln_unit_price, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE END
   -- 2008/12/10 v1.24 UPDATE END
            INTO   on_inv_qty
                  ,on_cargo_qty
@@ -16746,12 +16753,18 @@ AS
 -- 2008/12/18 v1.30 UPDATE START
         BEGIN
            SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
-                 ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                 ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+                 ,NVL(SUM(NVL(stc.cargo_stock  , 0) - NVL(stc.cargo_stock_not_stn, 0)),0) as cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
   -- 2008/12/10 v1.24 UPDATE START
   --               ,0 as price
   --               ,0 as cargo_price
                  ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
-                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE START
+--                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+                 ,NVL(SUM(ROUND((NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) * NVL(ln_unit_price, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE END
   -- 2008/12/10 v1.24 UPDATE END
            INTO   on_inv_qty
                  ,on_cargo_qty
@@ -16781,9 +16794,15 @@ AS
 -- 2008/12/18 v1.30 UPDATE START
         BEGIN
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
-                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
+                ,NVL(SUM(NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)),0)   as cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
                 ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0) as price
-                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE START
+--                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
+                ,NVL(SUM(ROUND((NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE END
           INTO   on_inv_qty
                 ,on_cargo_qty
                 ,on_inv_amt
@@ -16816,9 +16835,15 @@ AS
 -- 2008/12/18 v1.30 UPDATE START
         BEGIN
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
-                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
+                ,NVL(SUM(NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)),0)   as cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
                 ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0) as price
-                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE START
+--                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
+                ,NVL(SUM(ROUND((NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) * NVL(xlc.unit_ploce, 0))),0)   as cargo_price
+-- 2008/12/25 v1.32 UPDATE END
           INTO   on_inv_qty
                 ,on_cargo_qty
                 ,on_inv_amt
@@ -16917,7 +16942,10 @@ AS
           FROM  (SELECT  stc.whse_code
                         ,stc.item_id
                         ,stc.lot_id
-                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                        ,SUM(NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
                  FROM    xxinv_stc_inventory_month_stck   stc
                         ,ic_whse_mst                      iwm
                  WHERE   stc.whse_code    = gt_main_data(ln_idx).locat_code
@@ -17005,7 +17033,10 @@ AS
           FROM  (SELECT  stc.whse_code
                         ,stc.item_id
                         ,stc.lot_id
-                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                        ,SUM(NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
                  FROM    xxinv_stc_inventory_month_stck   stc
                         ,ic_whse_mst                      iwm
                  WHERE   stc.item_id      = gt_main_data(ln_idx).item_id
@@ -17097,7 +17128,10 @@ AS
           FROM  (SELECT  stc.whse_code
                         ,stc.item_id
                         ,stc.lot_id
-                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                        ,SUM(NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
                  FROM    xxinv_stc_inventory_month_stck   stc
                         ,ic_whse_mst                      iwm
                  WHERE   stc.whse_code    = gt_main_data(ln_idx).locat_code
@@ -17190,7 +17224,10 @@ AS
           FROM  (SELECT  stc.whse_code
                         ,stc.item_id
                         ,stc.lot_id
-                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE START
+--                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                        ,SUM(NVL(stc.cargo_stock, 0) - NVL(stc.cargo_stock_not_stn, 0)) AS cargo_stock
+-- 2008/12/25 v1.32 UPDATE END
                  FROM    xxinv_stc_inventory_month_stck   stc
                         ,ic_whse_mst                      iwm
                  WHERE   stc.item_id      = gt_main_data(ln_idx).item_id
