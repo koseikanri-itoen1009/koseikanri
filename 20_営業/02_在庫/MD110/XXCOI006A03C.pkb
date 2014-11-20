@@ -6,12 +6,14 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  ins_month_tran_data    受払情報確定処理                     (A-17, A-18)
+ *  ins_inv_data           月首在庫、棚卸確定処理               (A-15, A-16)
  *  close_process          終了処理                             (A-14)
  *  ins_month_balance      月首残高出力                         (A-13)
  *  ins_daily_invcntl      棚卸管理出力（当日取引データ）       (A-11)
@@ -50,6 +52,7 @@ AS
  *  2009/08/20    1.14  H.Sasaki         [0001003]夜間強制確定処理の分割（PT対応）
  *  2010/01/05    1.15  H.Sasaki         [E_本稼動_00850]日次データ取得SQLの分割（PT対応）
  *  2010/04/09    1.16  N.Abe            [E_本稼動_02219]資材取引取得SQLの日付指定の修正
+ *  2010/12/14    1.17  H.Sasaki         [E_本稼動_05549]PT対応（受払取得元を累計に変更）
  *
  *****************************************************************************************/
 --
@@ -145,6 +148,9 @@ AS
   cv_msg_xxcoi1_10233   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10233';
   cv_msg_xxcoi1_10285   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10285';
   cv_msg_xxcoi1_10293   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10293';
+-- == 2010/12/14 V1.17 Added START ===============================================================
+  cv_msg_xxcoi1_10428   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10428';
+-- == 2010/12/14 V1.17 Added END   ===============================================================
   cv_token_10233_1      CONSTANT VARCHAR2(30) :=  'INV_KBN';
   cv_token_10233_2      CONSTANT VARCHAR2(30) :=  'BASE_CODE';
   cv_token_10233_3      CONSTANT VARCHAR2(30) :=  'STARTUP_FLG';
@@ -5121,6 +5127,21 @@ AS
       AND     xirm.practice_month     =   gv_f_inv_acct_period
       FOR UPDATE NOWAIT;
     --
+-- == 2010/12/14 V1.17 Added START ===============================================================
+    CURSOR  tmp_lock_conc_cur
+    IS
+      SELECT  1
+      FROM    xxcoi_inv_rcp_monthly_tmp   xirmt
+      WHERE   xirmt.base_code         =   it_base_code
+      FOR UPDATE NOWAIT;
+    --
+    CURSOR  tmp_lock_cur
+    IS
+      SELECT  1
+      FROM    xxcoi_inv_rcp_monthly_tmp   xirmt
+      FOR UPDATE NOWAIT;
+-- == 2010/12/14 V1.17 Added END   ===============================================================
+    --
     -- <カーソル名>レコード型
   BEGIN
 --
@@ -5186,6 +5207,45 @@ AS
         lv_errbuf   := lv_errmsg;
         RAISE global_process_expt;
     END;
+-- == 2010/12/14 V1.17 Added START ===============================================================
+    -- ===================================
+    --  2.月次在庫一時表削除
+    -- ===================================
+    BEGIN
+      IF (gv_param_exec_flag = cv_exec_1) THEN
+        -- 「コンカレント起動」の場合
+        --  一時表ロック
+        OPEN  tmp_lock_conc_cur;
+        CLOSE tmp_lock_conc_cur;
+        --  一時表削除
+        DELETE FROM xxcoi_inv_rcp_monthly_tmp
+        WHERE   base_code         =   it_base_code;
+      ELSIF (gv_param_exec_flag = cv_exec_2) THEN
+        -- 「月次夜間強制確定｣の場合
+        --  一時表ロック
+        OPEN  tmp_lock_cur;
+        CLOSE tmp_lock_cur;
+        --  一時表削除
+        DELETE FROM xxcoi_inv_rcp_monthly_tmp;
+      END IF;
+      --
+    EXCEPTION
+      WHEN lock_error_expt THEN     -- ロック取得失敗時
+        IF (tmp_lock_conc_cur%ISOPEN) THEN
+          CLOSE tmp_lock_conc_cur;
+        END IF;
+        IF (tmp_lock_cur%ISOPEN) THEN
+          CLOSE tmp_lock_cur;
+        END IF;
+        --
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_short_name
+                        ,iv_name         => cv_msg_xxcoi1_10428
+                       );
+        lv_errbuf   := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+-- == 2010/12/14 V1.17 Added END   ===============================================================
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -5212,6 +5272,1022 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END del_invrcp_monthly;
+-- == 2010/12/14 V1.17 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : ins_inv_data(A-15, A-16)
+   * Description      : 月首在庫、棚卸確定処理
+   ***********************************************************************************/
+  PROCEDURE ins_inv_data(
+      it_base_code      IN  VARCHAR2                      --  対象拠点
+    , ov_errbuf         OUT VARCHAR2                      --  エラー・メッセージ                  --# 固定 #
+    , ov_retcode        OUT VARCHAR2                      --  リターン・コード                    --# 固定 #
+    , ov_errmsg         OUT VARCHAR2                      --  ユーザー・エラー・メッセージ        --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_inv_data'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_standard_cost      xxcoi_inv_rcp_monthly_tmp.standard_cost%TYPE;
+    lt_operation_cost     xxcoi_inv_rcp_monthly_tmp.operation_cost%TYPE;
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    --  棚卸情報取得カーソル
+    CURSOR  inv_qty_cur
+    IS
+      SELECT  msi.attribute7                                  base_code                         --  拠点コード
+            , sub.subinventory_code                           subinventory_code                 --  保管場所コード
+            , msib.inventory_item_id                          inventory_item_id                 --  品目ID
+            , msi.attribute1                                  subinventory_type                 --  保管場所区分
+            , SUM(CASE  WHEN  sub.month_type = 0
+                          THEN  sub.inventory_quantity  ELSE  0 END
+              )                                               month_begin_quantity              --  月首在庫数
+            , SUM(CASE  WHEN  sub.month_type = 1 AND  sub.quality_goods_kbn = cv_quality_0
+                          THEN  sub.inventory_quantity  ELSE  0 END
+              )                                               inv_result                        --  棚卸数（良品）
+            , SUM(CASE  WHEN  sub.month_type = 1 AND  sub.quality_goods_kbn = cv_quality_1
+                          THEN  sub.inventory_quantity  ELSE  0 END
+              )                                               inv_result_bad                    --  棚卸数（不良品）
+      FROM    (
+                --  月首在庫数（前月棚卸数）
+                SELECT  xic.subinventory_code                           subinventory_code       --  保管場所
+                      , xir.item_code                                   item_code               --  品目コード
+                      , 0                                               month_type              --  月区分
+                      , xir.quality_goods_kbn                           quality_goods_kbn       --  良品区分
+                      , xir.case_qty * xir.case_in_qty + xir.quantity   inventory_quantity      --  棚卸数
+                FROM    xxcoi_inv_control   xic
+                      , xxcoi_inv_result    xir
+                WHERE   xic.inventory_seq         =     xir.inventory_seq
+                AND     xic.inventory_date        >=    ADD_MONTHS(TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month)), -1)
+                AND     xic.inventory_date        <     TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+                AND     xic.inventory_kbn         =     cv_inv_kbn_2
+                UNION ALL
+                --  当月棚卸数
+                SELECT  xic.subinventory_code                           subinventory_code       --  保管場所
+                      , xir.item_code                                   item_code               --  品目コード
+                      , 1                                               month_type              --  月区分
+                      , xir.quality_goods_kbn                           quality_goods_kbn       --  良品区分
+                      , xir.case_qty * xir.case_in_qty + xir.quantity   inventory_quantity      --  棚卸数
+                FROM    xxcoi_inv_control   xic
+                      , xxcoi_inv_result    xir
+                WHERE   xic.inventory_seq         =     xir.inventory_seq
+                AND     xic.inventory_date        >=    TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+                AND     xic.inventory_date        <     LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month)) + 1
+                AND     xic.inventory_kbn         =     cv_inv_kbn_2
+              )     sub
+            , mtl_secondary_inventories   msi
+            , mtl_system_items_b          msib
+      WHERE   sub.subinventory_code     =   msi.secondary_inventory_name
+      AND     sub.item_code             =   msib.segment1
+      AND     msi.organization_id       =   gn_f_organization_id
+      AND     msib.organization_id      =   gn_f_organization_id
+      AND     msi.attribute7            =   NVL(it_base_code, msi.attribute7)
+      GROUP BY  msi.attribute7
+              , sub.subinventory_code
+              , msib.inventory_item_id
+              , msi.attribute1
+      ;
+    -- <カーソル名>レコード型
+    TYPE rec_inv_qty  IS RECORD(
+        base_code               xxcoi_inv_rcp_monthly_tmp.base_code%TYPE
+      , subinventory_code       xxcoi_inv_rcp_monthly_tmp.subinventory_code%TYPE
+      , inventory_item_id       xxcoi_inv_rcp_monthly_tmp.inventory_item_id%TYPE
+      , subinventory_type       xxcoi_inv_rcp_monthly_tmp.subinventory_type%TYPE
+      , month_begin_quantity    xxcoi_inv_rcp_monthly_tmp.month_begin_quantity%TYPE
+      , inv_result              xxcoi_inv_rcp_monthly_tmp.inv_result%TYPE
+      , inv_result_bad          xxcoi_inv_rcp_monthly_tmp.inv_result_bad%TYPE
+    );
+    TYPE  tab_inv_qty IS TABLE OF rec_inv_qty INDEX BY BINARY_INTEGER;
+    inv_qty_tab                    tab_inv_qty;
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        ループ処理の記述         ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+--
+    inv_qty_tab.DELETE;
+    --
+    OPEN  inv_qty_cur;
+    --
+    <<inv_qty_loop>>
+    LOOP
+      FETCH inv_qty_cur BULK COLLECT INTO inv_qty_tab LIMIT 50000;
+      EXIT WHEN inv_qty_tab.COUNT = 0;
+      --
+      IF  (gv_param_exec_flag = cv_exec_2)  THEN
+        --  夜間処理の場合別起動の為、カウントする
+        gn_target_cnt   :=    gn_target_cnt + inv_qty_tab.COUNT;
+      END IF;
+      --
+      -- ===============================
+      --  原価取得
+      -- ===============================
+      <<set_cost_loop>>
+      FOR ln_cnt IN 1 .. inv_qty_tab.COUNT LOOP
+        IF  (inv_qty_tab(ln_cnt).inv_result = 0)
+            AND
+            (inv_qty_tab(ln_cnt).inv_result_bad = 0)
+            AND
+            (inv_qty_tab(ln_cnt).month_begin_quantity = 0)
+        THEN
+          --  月首在庫、在庫（良品）、在庫（不良品）が全て０の場合、レコードを作成しない
+          IF  (gv_param_exec_flag = cv_exec_2)  THEN
+            --  夜間処理の場合別起動の為、カウントする
+            gn_target_cnt :=  gn_target_cnt - 1;
+          END IF;
+        ELSE
+          -- ===================================
+          --  標準原価取得
+          -- ===================================
+          xxcoi_common_pkg.get_cmpnt_cost(
+              in_item_id        =>  inv_qty_tab(ln_cnt).inventory_item_id               --  品目ID
+            , in_org_id         =>  gn_f_organization_id                                --  組織ID
+            , id_period_date    =>  LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))   --  対象日
+            , ov_cmpnt_cost     =>  lt_standard_cost                                    --  標準原価
+            , ov_errbuf         =>  lv_errbuf                                           --  エラーメッセージ
+            , ov_retcode        =>  lv_retcode                                          --  リターン・コード
+            , ov_errmsg         =>  lv_errmsg                                           --  ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) OR (lt_standard_cost IS NULL) THEN
+            lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                                iv_application    =>  cv_short_name
+                              , iv_name           =>  cv_msg_xxcoi1_10285
+                            );
+            lv_errbuf   :=  lv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+          --
+          -- ===================================
+          --  営業原価取得
+          -- ===================================
+          xxcoi_common_pkg.get_discrete_cost(
+              in_item_id        =>  inv_qty_tab(ln_cnt).inventory_item_id               --  品目ID
+            , in_org_id         =>  gn_f_organization_id                                --  組織ID
+            , id_target_date    =>  LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))   --  対象日
+            , ov_discrete_cost  =>  lt_operation_cost                                   --  営業原価
+            , ov_errbuf         =>  lv_errbuf                                           --  エラーメッセージ
+            , ov_retcode        =>  lv_retcode                                          --  リターン・コード
+            , ov_errmsg         =>  lv_errmsg                                           --  ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) OR (lt_operation_cost IS NULL) THEN
+            lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                                iv_application    =>  cv_short_name
+                              , iv_name           =>  cv_msg_xxcoi1_10293
+                            );
+            lv_errbuf   :=  lv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+          --
+          -- ===============================
+          --  月首在庫、棚卸確定
+          -- ===============================
+          INSERT INTO xxcoi_inv_rcp_monthly_tmp(
+              base_code
+            , subinventory_code
+            , inventory_item_id
+            , subinventory_type
+            , operation_cost
+            , standard_cost
+            , sales_shipped
+            , sales_shipped_b
+            , return_goods
+            , return_goods_b
+            , warehouse_ship
+            , truck_ship
+            , others_ship
+            , warehouse_stock
+            , truck_stock
+            , others_stock
+            , change_stock
+            , change_ship
+            , goods_transfer_old
+            , goods_transfer_new
+            , sample_quantity
+            , sample_quantity_b
+            , customer_sample_ship
+            , customer_sample_ship_b
+            , customer_support_ss
+            , customer_support_ss_b
+            , ccm_sample_ship
+            , ccm_sample_ship_b
+            , vd_supplement_stock
+            , vd_supplement_ship
+            , inventory_change_in
+            , inventory_change_out
+            , factory_return
+            , factory_return_b
+            , factory_change
+            , factory_change_b
+            , removed_goods
+            , removed_goods_b
+            , factory_stock
+            , factory_stock_b
+            , wear_decrease
+            , wear_increase
+            , selfbase_ship
+            , selfbase_stock
+            , inv_result
+            , inv_result_bad
+            , inv_wear
+            , month_begin_quantity
+          )VALUES(
+              inv_qty_tab(ln_cnt).base_code
+            , inv_qty_tab(ln_cnt).subinventory_code
+            , inv_qty_tab(ln_cnt).inventory_item_id
+            , inv_qty_tab(ln_cnt).subinventory_type
+            , lt_operation_cost
+            , lt_standard_cost
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , 0
+            , inv_qty_tab(ln_cnt).inv_result
+            , inv_qty_tab(ln_cnt).inv_result_bad
+            , 0
+            , inv_qty_tab(ln_cnt).month_begin_quantity
+          );
+        END IF;
+      END LOOP set_cost_loop;
+      --
+    END LOOP  inv_qty_loop;
+    --
+    CLOSE inv_qty_cur;
+    --
+    -- ===============================
+    --  棚卸ステータス更新
+    -- ===============================
+    UPDATE    xxcoi_inv_control   xic
+    SET       xic.inventory_status          =   cv_invsts_2
+            , xic.last_updated_by           =   cn_created_by
+            , xic.last_update_date          =   SYSDATE
+            , xic.last_update_login         =   cn_last_update_login
+            , xic.request_id                =   cn_request_id
+            , xic.program_application_id    =   cn_program_application_id
+            , xic.program_id                =   cn_program_id
+            , xic.program_update_date       =   SYSDATE
+    WHERE xic.inventory_kbn     =   cv_inv_kbn_2
+    AND   xic.inventory_date    >=  TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+    AND   xic.inventory_date    <   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month)) + 1
+    AND   xic.inventory_status  =   cv_invsts_1
+    AND EXISTS( SELECT  1                             --  手動実行の場合、該当する拠点（保管場所）のみ更新
+                FROM    mtl_secondary_inventories   msi
+                WHERE   msi.attribute7                  =   NVL(it_base_code, msi.attribute7)
+                AND     msi.secondary_inventory_name    =   xic.subinventory_code
+        )
+    ;
+    --  成功件数
+    IF  (gv_param_exec_flag = cv_exec_2)  THEN
+      --  夜間処理の場合別起動の為、カウントする
+      gn_normal_cnt :=  gn_target_cnt;
+    END IF;
+    --
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+    --
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_inv_data;
+  --
+  /**********************************************************************************
+   * Procedure Name   : ins_month_tran_data(A-17, A-18)
+   * Description      : 受払情報確定処理
+   ***********************************************************************************/
+  PROCEDURE ins_month_tran_data(
+      it_base_code      IN  VARCHAR2                      --  対象拠点
+    , ov_errbuf         OUT VARCHAR2                      --  エラー・メッセージ                  --# 固定 #
+    , ov_retcode        OUT VARCHAR2                      --  リターン・コード                    --# 固定 #
+    , ov_errmsg         OUT VARCHAR2                      --  ユーザー・エラー・メッセージ        --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_month_tran_data'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    TYPE rec_chk_inv  IS RECORD(
+        base_code           xxcoi_inv_control.base_code%TYPE
+      , subinventory_code   xxcoi_inv_control.subinventory_code%TYPE
+      , subinventory_type   xxcoi_inv_control.warehouse_kbn%TYPE
+    );
+    TYPE  tab_chk_inv IS TABLE OF rec_chk_inv INDEX BY VARCHAR2(30);
+    lt_chk_inv            tab_chk_inv;
+    lt_add_inv            tab_chk_inv;
+    --
+    ln_set_cnt        NUMBER;
+    ln_dummy          NUMBER;
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    -- <カーソル名>
+    --  月末コンカレント実行（拠点指定）
+    CURSOR  invrcp1_qty_cur
+    IS
+      SELECT  /*+ LEADING(msi)  */
+          xirs.base_code                      base_code                       --  拠点コード
+        , xirs.subinventory_code              subinventory_code               --  保管場所
+        , xirs.inventory_item_id              inventory_item_id               --  品目ID
+        , xirs.subinventory_type              subinventory_type               --  保管場所区分
+        , xirs.operation_cost                 operation_cost                  --  営業原価
+        , xirs.standard_cost                  standard_cost                   --  標準原価
+        , xirs.sales_shipped                  sales_shipped                   --  売上出庫
+        , xirs.sales_shipped_b                sales_shipped_b                 --  売上出庫振戻
+        , xirs.return_goods                   return_goods                    --  返品
+        , xirs.return_goods_b                 return_goods_b                  --  返品振戻
+        , xirs.warehouse_ship                 warehouse_ship                  --  倉庫へ返庫
+        , xirs.truck_ship                     truck_ship                      --  営業車へ出庫
+        , xirs.others_ship                    others_ship                     --  入出庫＿その他出庫
+        , xirs.warehouse_stock                warehouse_stock                 --  倉庫より入庫
+        , xirs.truck_stock                    truck_stock                     --  営業車より入庫
+        , xirs.others_stock                   others_stock                    --  入出庫＿その他入庫
+        , xirs.change_stock                   change_stock                    --  倉替入庫
+        , xirs.change_ship                    change_ship                     --  倉替出庫
+        , xirs.goods_transfer_old             goods_transfer_old              --  商品振替（旧商品）
+        , xirs.goods_transfer_new             goods_transfer_new              --  商品振替（新商品）
+        , xirs.sample_quantity                sample_quantity                 --  見本出庫
+        , xirs.sample_quantity_b              sample_quantity_b               --  見本出庫振戻
+        , xirs.customer_sample_ship           customer_sample_ship            --  顧客見本出庫
+        , xirs.customer_sample_ship_b         customer_sample_ship_b          --  顧客見本出庫振戻
+        , xirs.customer_support_ss            customer_support_ss             --  顧客協賛見本出庫
+        , xirs.customer_support_ss_b          customer_support_ss_b           --  顧客協賛見本出庫振戻
+        , xirs.ccm_sample_ship                ccm_sample_ship                 --  顧客広告宣伝費A自社商品
+        , xirs.ccm_sample_ship_b              ccm_sample_ship_b               --  顧客広告宣伝費A自社商品振戻
+        , xirs.vd_supplement_stock            vd_supplement_stock             --  消化VD補充入庫
+        , xirs.vd_supplement_ship             vd_supplement_ship              --  消化VD補充出庫
+        , xirs.inventory_change_in            inventory_change_in             --  基準在庫変更入庫
+        , xirs.inventory_change_out           inventory_change_out            --  基準在庫変更出庫
+        , xirs.factory_return                 factory_return                  --  工場返品
+        , xirs.factory_return_b               factory_return_b                --  工場返品振戻
+        , xirs.factory_change                 factory_change                  --  工場倉替
+        , xirs.factory_change_b               factory_change_b                --  工場倉替振戻
+        , xirs.removed_goods                  removed_goods                   --  廃却
+        , xirs.removed_goods_b                removed_goods_b                 --  廃却振戻
+        , xirs.factory_stock                  factory_stock                   --  工場入庫
+        , xirs.factory_stock_b                factory_stock_b                 --  工場入庫振戻
+        , xirs.wear_decrease                  wear_decrease                   --  棚卸減耗増
+        , xirs.wear_increase                  wear_increase                   --  棚卸減耗減
+        , xirs.selfbase_ship                  selfbase_ship                   --  保管場所移動＿自拠点出庫
+        , xirs.selfbase_stock                 selfbase_stock                  --  保管場所移動＿自拠点入庫
+        , NVL(xirmt.inv_result, 0)            inv_result                      --  棚卸結果
+        , NVL(xirmt.inv_result_bad, 0)        inv_result_bad                  --  棚卸結果（不良品）
+        , xirs.sales_shipped                    * -1  + xirs.sales_shipped_b          *  1
+          + xirs.return_goods                   *  1  + xirs.return_goods_b           * -1
+          + xirs.warehouse_ship                 * -1  + xirs.truck_ship               * -1
+          + xirs.others_ship                    * -1  + xirs.warehouse_stock          *  1
+          + xirs.truck_stock                    *  1  + xirs.others_stock             *  1
+          + xirs.change_stock                   *  1  + xirs.change_ship              * -1
+          + xirs.goods_transfer_old             * -1  + xirs.goods_transfer_new       *  1
+          + xirs.sample_quantity                * -1  + xirs.sample_quantity_b        *  1
+          + xirs.customer_sample_ship           * -1  + xirs.customer_sample_ship_b   *  1
+          + xirs.customer_support_ss            * -1  + xirs.customer_support_ss_b    *  1
+          + xirs.ccm_sample_ship                * -1  + xirs.ccm_sample_ship_b        *  1
+          + xirs.vd_supplement_stock            *  1  + xirs.vd_supplement_ship       * -1
+          + xirs.inventory_change_in            *  1  + xirs.inventory_change_out     * -1
+          + xirs.factory_return                 * -1  + xirs.factory_return_b         *  1
+          + xirs.factory_change                 * -1  + xirs.factory_change_b         *  1
+          + xirs.removed_goods                  * -1  + xirs.removed_goods_b          *  1
+          + xirs.factory_stock                  *  1  + xirs.factory_stock_b          * -1
+          + xirs.wear_decrease                  *  1  + xirs.wear_increase            * -1
+          + xirs.selfbase_ship                  * -1  + xirs.selfbase_stock           *  1
+          + NVL(xirmt.inv_result, 0)            * -1  + NVL(xirmt.inv_result_bad, 0)  * -1
+          + NVL(xirmt.month_begin_quantity, 0)  *  1
+                                              inv_wear                        --  棚卸減耗
+        , NVL(xirmt.month_begin_quantity, 0)  month_begin_quantity            --  月首棚卸高
+      FROM    xxcoi_inv_reception_sum     xirs
+            , xxcoi_inv_rcp_monthly_tmp   xirmt
+            , mtl_secondary_inventories   msi
+      WHERE   xirs.base_code              =   msi.attribute7
+      AND     xirs.subinventory_code      =   msi.secondary_inventory_name
+      AND     xirs.organization_id        =   gn_f_organization_id
+      AND     xirs.practice_date          =   gv_f_inv_acct_period
+      AND     msi.organization_id         =   gn_f_organization_id
+      AND     msi.attribute7              =   it_base_code
+      AND     xirs.base_code              =   xirmt.base_code(+)
+      AND     xirs.subinventory_code      =   xirmt.subinventory_code(+)
+      AND     xirs.inventory_item_id      =   xirmt.inventory_item_id(+)
+      UNION ALL
+      SELECT
+          xirmt.base_code                     base_code                       --  拠点コード
+        , xirmt.subinventory_code             subinventory_code               --  保管場所
+        , xirmt.inventory_item_id             inventory_item_id               --  品目ID
+        , xirmt.subinventory_type             subinventory_type               --  保管場所区分
+        , xirmt.operation_cost                operation_cost                  --  営業原価
+        , xirmt.standard_cost                 standard_cost                   --  標準原価
+        , 0                                   sales_shipped                   --  売上出庫
+        , 0                                   sales_shipped_b                 --  売上出庫振戻
+        , 0                                   return_goods                    --  返品
+        , 0                                   return_goods_b                  --  返品振戻
+        , 0                                   warehouse_ship                  --  倉庫へ返庫
+        , 0                                   truck_ship                      --  営業車へ出庫
+        , 0                                   others_ship                     --  入出庫＿その他出庫
+        , 0                                   warehouse_stock                 --  倉庫より入庫
+        , 0                                   truck_stock                     --  営業車より入庫
+        , 0                                   others_stock                    --  入出庫＿その他入庫
+        , 0                                   change_stock                    --  倉替入庫
+        , 0                                   change_ship                     --  倉替出庫
+        , 0                                   goods_transfer_old              --  商品振替（旧商品）
+        , 0                                   goods_transfer_new              --  商品振替（新商品）
+        , 0                                   sample_quantity                 --  見本出庫
+        , 0                                   sample_quantity_b               --  見本出庫振戻
+        , 0                                   customer_sample_ship            --  顧客見本出庫
+        , 0                                   customer_sample_ship_b          --  顧客見本出庫振戻
+        , 0                                   customer_support_ss             --  顧客協賛見本出庫
+        , 0                                   customer_support_ss_b           --  顧客協賛見本出庫振戻
+        , 0                                   ccm_sample_ship                 --  顧客広告宣伝費A自社商品
+        , 0                                   ccm_sample_ship_b               --  顧客広告宣伝費A自社商品振戻
+        , 0                                   vd_supplement_stock             --  消化VD補充入庫
+        , 0                                   vd_supplement_ship              --  消化VD補充出庫
+        , 0                                   inventory_change_in             --  基準在庫変更入庫
+        , 0                                   inventory_change_out            --  基準在庫変更出庫
+        , 0                                   factory_return                  --  工場返品
+        , 0                                   factory_return_b                --  工場返品振戻
+        , 0                                   factory_change                  --  工場倉替
+        , 0                                   factory_change_b                --  工場倉替振戻
+        , 0                                   removed_goods                   --  廃却
+        , 0                                   removed_goods_b                 --  廃却振戻
+        , 0                                   factory_stock                   --  工場入庫
+        , 0                                   factory_stock_b                 --  工場入庫振戻
+        , 0                                   wear_decrease                   --  棚卸減耗増
+        , 0                                   wear_increase                   --  棚卸減耗減
+        , 0                                   selfbase_ship                   --  保管場所移動＿自拠点出庫
+        , 0                                   selfbase_stock                  --  保管場所移動＿自拠点入庫
+        , xirmt.inv_result                    inv_result                      --  棚卸結果
+        , xirmt.inv_result_bad                inv_result_bad                  --  棚卸結果（不良品）
+        , xirmt.inv_result  * -1  + xirmt.inv_result_bad  * -1
+          + xirmt.month_begin_quantity  *  1
+                                              inv_wear                        --  棚卸減耗
+        , xirmt.month_begin_quantity          month_begin_quantity            --  月首棚卸高
+      FROM    xxcoi_inv_rcp_monthly_tmp   xirmt
+      WHERE   xirmt.base_code             =   it_base_code
+      AND   NOT EXISTS( SELECT  /*+ LEADING(msi)  */
+                                1
+                        FROM    xxcoi_inv_reception_sum     xirs
+                              , mtl_secondary_inventories   msi
+                        WHERE   xirs.base_code              =   msi.attribute7
+                        AND     xirs.subinventory_code      =   msi.secondary_inventory_name
+                        AND     xirs.organization_id        =   gn_f_organization_id
+                        AND     xirs.practice_date          =   gv_f_inv_acct_period
+                        AND     msi.organization_id         =   gn_f_organization_id
+                        AND     msi.attribute7              =   it_base_code
+                        AND     xirs.base_code              =   xirmt.base_code
+                        AND     xirs.subinventory_code      =   xirmt.subinventory_code
+                        AND     xirs.inventory_item_id      =   xirmt.inventory_item_id
+                )
+      ;
+    --
+    --  月末強制確定（全拠点）
+    CURSOR  invrcp2_qty_cur
+    IS
+      SELECT
+          xirs.base_code                      base_code                       --  拠点コード
+        , xirs.subinventory_code              subinventory_code               --  保管場所
+        , xirs.inventory_item_id              inventory_item_id               --  品目ID
+        , xirs.subinventory_type              subinventory_type               --  保管場所区分
+        , xirs.operation_cost                 operation_cost                  --  営業原価
+        , xirs.standard_cost                  standard_cost                   --  標準原価
+        , xirs.sales_shipped                  sales_shipped                   --  売上出庫
+        , xirs.sales_shipped_b                sales_shipped_b                 --  売上出庫振戻
+        , xirs.return_goods                   return_goods                    --  返品
+        , xirs.return_goods_b                 return_goods_b                  --  返品振戻
+        , xirs.warehouse_ship                 warehouse_ship                  --  倉庫へ返庫
+        , xirs.truck_ship                     truck_ship                      --  営業車へ出庫
+        , xirs.others_ship                    others_ship                     --  入出庫＿その他出庫
+        , xirs.warehouse_stock                warehouse_stock                 --  倉庫より入庫
+        , xirs.truck_stock                    truck_stock                     --  営業車より入庫
+        , xirs.others_stock                   others_stock                    --  入出庫＿その他入庫
+        , xirs.change_stock                   change_stock                    --  倉替入庫
+        , xirs.change_ship                    change_ship                     --  倉替出庫
+        , xirs.goods_transfer_old             goods_transfer_old              --  商品振替（旧商品）
+        , xirs.goods_transfer_new             goods_transfer_new              --  商品振替（新商品）
+        , xirs.sample_quantity                sample_quantity                 --  見本出庫
+        , xirs.sample_quantity_b              sample_quantity_b               --  見本出庫振戻
+        , xirs.customer_sample_ship           customer_sample_ship            --  顧客見本出庫
+        , xirs.customer_sample_ship_b         customer_sample_ship_b          --  顧客見本出庫振戻
+        , xirs.customer_support_ss            customer_support_ss             --  顧客協賛見本出庫
+        , xirs.customer_support_ss_b          customer_support_ss_b           --  顧客協賛見本出庫振戻
+        , xirs.ccm_sample_ship                ccm_sample_ship                 --  顧客広告宣伝費A自社商品
+        , xirs.ccm_sample_ship_b              ccm_sample_ship_b               --  顧客広告宣伝費A自社商品振戻
+        , xirs.vd_supplement_stock            vd_supplement_stock             --  消化VD補充入庫
+        , xirs.vd_supplement_ship             vd_supplement_ship              --  消化VD補充出庫
+        , xirs.inventory_change_in            inventory_change_in             --  基準在庫変更入庫
+        , xirs.inventory_change_out           inventory_change_out            --  基準在庫変更出庫
+        , xirs.factory_return                 factory_return                  --  工場返品
+        , xirs.factory_return_b               factory_return_b                --  工場返品振戻
+        , xirs.factory_change                 factory_change                  --  工場倉替
+        , xirs.factory_change_b               factory_change_b                --  工場倉替振戻
+        , xirs.removed_goods                  removed_goods                   --  廃却
+        , xirs.removed_goods_b                removed_goods_b                 --  廃却振戻
+        , xirs.factory_stock                  factory_stock                   --  工場入庫
+        , xirs.factory_stock_b                factory_stock_b                 --  工場入庫振戻
+        , xirs.wear_decrease                  wear_decrease                   --  棚卸減耗増
+        , xirs.wear_increase                  wear_increase                   --  棚卸減耗減
+        , xirs.selfbase_ship                  selfbase_ship                   --  保管場所移動＿自拠点出庫
+        , xirs.selfbase_stock                 selfbase_stock                  --  保管場所移動＿自拠点入庫
+        , NVL(xirmt.inv_result, 0)            inv_result                      --  棚卸結果
+        , NVL(xirmt.inv_result_bad, 0)        inv_result_bad                  --  棚卸結果（不良品）
+        , xirs.sales_shipped              * -1  + xirs.sales_shipped_b          *  1
+          + xirs.return_goods             *  1  + xirs.return_goods_b           * -1
+          + xirs.warehouse_ship           * -1  + xirs.truck_ship               * -1
+          + xirs.others_ship              * -1  + xirs.warehouse_stock          *  1
+          + xirs.truck_stock              *  1  + xirs.others_stock             *  1
+          + xirs.change_stock             *  1  + xirs.change_ship              * -1
+          + xirs.goods_transfer_old       * -1  + xirs.goods_transfer_new       *  1
+          + xirs.sample_quantity          * -1  + xirs.sample_quantity_b        *  1
+          + xirs.customer_sample_ship     * -1  + xirs.customer_sample_ship_b   *  1
+          + xirs.customer_support_ss      * -1  + xirs.customer_support_ss_b    *  1
+          + xirs.ccm_sample_ship          * -1  + xirs.ccm_sample_ship_b        *  1
+          + xirs.vd_supplement_stock      *  1  + xirs.vd_supplement_ship       * -1
+          + xirs.inventory_change_in      *  1  + xirs.inventory_change_out     * -1
+          + xirs.factory_return           * -1  + xirs.factory_return_b         *  1
+          + xirs.factory_change           * -1  + xirs.factory_change_b         *  1
+          + xirs.removed_goods            * -1  + xirs.removed_goods_b          *  1
+          + xirs.factory_stock            *  1  + xirs.factory_stock_b          * -1
+          + xirs.wear_decrease            *  1  + xirs.wear_increase            * -1
+          + xirs.selfbase_ship            * -1  + xirs.selfbase_stock           *  1
+          + NVL(xirmt.inv_result, 0)      * -1  + NVL(xirmt.inv_result_bad, 0)  * -1
+          + NVL(xirmt.month_begin_quantity, 0)  *  1
+                                              inv_wear                        --  棚卸減耗
+        , NVL(xirmt.month_begin_quantity, 0)  month_begin_quantity            --  月首棚卸高
+      FROM    xxcoi_inv_reception_sum     xirs
+            , xxcoi_inv_rcp_monthly_tmp   xirmt
+      WHERE   xirs.organization_id        =   gn_f_organization_id
+      AND     xirs.practice_date          =   gv_f_inv_acct_period
+      AND     xirs.base_code              =   xirmt.base_code(+)
+      AND     xirs.subinventory_code      =   xirmt.subinventory_code(+)
+      AND     xirs.inventory_item_id      =   xirmt.inventory_item_id(+)
+      UNION ALL
+      SELECT
+          xirmt.base_code                     base_code                       --  拠点コード
+        , xirmt.subinventory_code             subinventory_code               --  保管場所
+        , xirmt.inventory_item_id             inventory_item_id               --  品目ID
+        , xirmt.subinventory_type             subinventory_type               --  保管場所区分
+        , xirmt.operation_cost                operation_cost                  --  営業原価
+        , xirmt.standard_cost                 standard_cost                   --  標準原価
+        , 0                                   sales_shipped                   --  売上出庫
+        , 0                                   sales_shipped_b                 --  売上出庫振戻
+        , 0                                   return_goods                    --  返品
+        , 0                                   return_goods_b                  --  返品振戻
+        , 0                                   warehouse_ship                  --  倉庫へ返庫
+        , 0                                   truck_ship                      --  営業車へ出庫
+        , 0                                   others_ship                     --  入出庫＿その他出庫
+        , 0                                   warehouse_stock                 --  倉庫より入庫
+        , 0                                   truck_stock                     --  営業車より入庫
+        , 0                                   others_stock                    --  入出庫＿その他入庫
+        , 0                                   change_stock                    --  倉替入庫
+        , 0                                   change_ship                     --  倉替出庫
+        , 0                                   goods_transfer_old              --  商品振替（旧商品）
+        , 0                                   goods_transfer_new              --  商品振替（新商品）
+        , 0                                   sample_quantity                 --  見本出庫
+        , 0                                   sample_quantity_b               --  見本出庫振戻
+        , 0                                   customer_sample_ship            --  顧客見本出庫
+        , 0                                   customer_sample_ship_b          --  顧客見本出庫振戻
+        , 0                                   customer_support_ss             --  顧客協賛見本出庫
+        , 0                                   customer_support_ss_b           --  顧客協賛見本出庫振戻
+        , 0                                   ccm_sample_ship                 --  顧客広告宣伝費A自社商品
+        , 0                                   ccm_sample_ship_b               --  顧客広告宣伝費A自社商品振戻
+        , 0                                   vd_supplement_stock             --  消化VD補充入庫
+        , 0                                   vd_supplement_ship              --  消化VD補充出庫
+        , 0                                   inventory_change_in             --  基準在庫変更入庫
+        , 0                                   inventory_change_out            --  基準在庫変更出庫
+        , 0                                   factory_return                  --  工場返品
+        , 0                                   factory_return_b                --  工場返品振戻
+        , 0                                   factory_change                  --  工場倉替
+        , 0                                   factory_change_b                --  工場倉替振戻
+        , 0                                   removed_goods                   --  廃却
+        , 0                                   removed_goods_b                 --  廃却振戻
+        , 0                                   factory_stock                   --  工場入庫
+        , 0                                   factory_stock_b                 --  工場入庫振戻
+        , 0                                   wear_decrease                   --  棚卸減耗増
+        , 0                                   wear_increase                   --  棚卸減耗減
+        , 0                                   selfbase_ship                   --  保管場所移動＿自拠点出庫
+        , 0                                   selfbase_stock                  --  保管場所移動＿自拠点入庫
+        , xirmt.inv_result                    inv_result                      --  棚卸結果
+        , xirmt.inv_result_bad                inv_result_bad                  --  棚卸結果（不良品）
+        , xirmt.inv_result  * -1  + xirmt.inv_result_bad  * -1
+          + xirmt.month_begin_quantity  *  1
+                                              inv_wear                        --  棚卸減耗
+        , xirmt.month_begin_quantity          month_begin_quantity            --  月首棚卸高
+      FROM    xxcoi_inv_rcp_monthly_tmp   xirmt
+      WHERE NOT EXISTS( SELECT  1
+                        FROM    xxcoi_inv_reception_sum   xirs
+                        WHERE   xirs.organization_id        =   gn_f_organization_id
+                        AND     xirs.practice_date          =   gv_f_inv_acct_period
+                        AND     xirs.base_code              =   xirmt.base_code
+                        AND     xirs.subinventory_code      =   xirmt.subinventory_code
+                        AND     xirs.inventory_item_id      =   xirmt.inventory_item_id
+                )
+      ;
+    -- <カーソル名>レコード型
+    TYPE t_month_ttype IS TABLE OF invrcp1_qty_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    t_month_tab     t_month_ttype;
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        ループ処理の記述         ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+--
+    --  初期化
+    ln_set_cnt  :=  1;
+    --
+    lt_chk_inv.DELETE;
+    lt_add_inv.DELETE;
+    t_month_tab.DELETE;
+    --
+    --  データ取得（月末）
+    IF (gv_param_exec_flag = cv_exec_1) THEN
+      --  コンカレント起動時
+      OPEN  invrcp1_qty_cur;
+    ELSE
+      -- 強制確定時
+      OPEN  invrcp2_qty_cur;
+    END IF;
+    --
+    <<set_invrcp_loop>>
+    LOOP
+      IF (gv_param_exec_flag = cv_exec_1) THEN
+        FETCH invrcp1_qty_cur BULK COLLECT INTO t_month_tab LIMIT 50000;
+      ELSE
+        FETCH invrcp2_qty_cur BULK COLLECT INTO t_month_tab LIMIT 50000;
+      END IF;
+      --
+      EXIT WHEN t_month_tab.COUNT = 0;
+      -- カウント
+      gn_target_cnt := gn_target_cnt + t_month_tab.COUNT;
+      --
+      <<chk_inv_ctl_loop>>
+      FOR ln_cnt IN 1 .. t_month_tab.COUNT LOOP
+        IF    t_month_tab(ln_cnt).sales_shipped             = 0
+          AND t_month_tab(ln_cnt).sales_shipped_b           = 0
+          AND t_month_tab(ln_cnt).return_goods              = 0
+          AND t_month_tab(ln_cnt).return_goods_b            = 0
+          AND t_month_tab(ln_cnt).warehouse_ship            = 0
+          AND t_month_tab(ln_cnt).truck_ship                = 0
+          AND t_month_tab(ln_cnt).others_ship               = 0
+          AND t_month_tab(ln_cnt).warehouse_stock           = 0
+          AND t_month_tab(ln_cnt).truck_stock               = 0
+          AND t_month_tab(ln_cnt).others_stock              = 0
+          AND t_month_tab(ln_cnt).change_stock              = 0
+          AND t_month_tab(ln_cnt).change_ship               = 0
+          AND t_month_tab(ln_cnt).goods_transfer_old        = 0
+          AND t_month_tab(ln_cnt).goods_transfer_new        = 0
+          AND t_month_tab(ln_cnt).sample_quantity           = 0
+          AND t_month_tab(ln_cnt).sample_quantity_b         = 0
+          AND t_month_tab(ln_cnt).customer_sample_ship      = 0
+          AND t_month_tab(ln_cnt).customer_sample_ship_b    = 0
+          AND t_month_tab(ln_cnt).customer_support_ss       = 0
+          AND t_month_tab(ln_cnt).customer_support_ss_b     = 0
+          AND t_month_tab(ln_cnt).ccm_sample_ship           = 0
+          AND t_month_tab(ln_cnt).ccm_sample_ship_b         = 0
+          AND t_month_tab(ln_cnt).vd_supplement_stock       = 0
+          AND t_month_tab(ln_cnt).vd_supplement_ship        = 0
+          AND t_month_tab(ln_cnt).inventory_change_in       = 0
+          AND t_month_tab(ln_cnt).inventory_change_out      = 0
+          AND t_month_tab(ln_cnt).factory_return            = 0
+          AND t_month_tab(ln_cnt).factory_return_b          = 0
+          AND t_month_tab(ln_cnt).factory_change            = 0
+          AND t_month_tab(ln_cnt).factory_change_b          = 0
+          AND t_month_tab(ln_cnt).removed_goods             = 0
+          AND t_month_tab(ln_cnt).removed_goods_b           = 0
+          AND t_month_tab(ln_cnt).factory_stock             = 0
+          AND t_month_tab(ln_cnt).factory_stock_b           = 0
+          AND t_month_tab(ln_cnt).wear_decrease             = 0
+          AND t_month_tab(ln_cnt).wear_increase             = 0
+          AND t_month_tab(ln_cnt).selfbase_ship             = 0
+          AND t_month_tab(ln_cnt).selfbase_stock            = 0
+          AND t_month_tab(ln_cnt).inv_result                = 0
+          AND t_month_tab(ln_cnt).inv_result_bad            = 0
+          AND t_month_tab(ln_cnt).month_begin_quantity      = 0
+        THEN
+          --  月首、受払、棚卸の全項目が０の場合データを作成しない
+          gn_target_cnt :=  gn_target_cnt - 1;
+        ELSE
+          -- ===================================
+          --  棚卸管理の存在チェック
+          -- ===================================
+          IF  (lt_chk_inv.EXISTS(t_month_tab(ln_cnt).subinventory_code) = FALSE) THEN
+            --  未チェックの保管場所コードの場合
+            BEGIN
+              lt_chk_inv(t_month_tab(ln_cnt).subinventory_code).subinventory_code  :=  cv_yes;
+              --
+              SELECT  1
+              INTO    ln_dummy
+              FROM    xxcoi_inv_control     xic
+              WHERE   xic.inventory_kbn       =   cv_inv_kbn_2
+              AND     xic.inventory_date      >=  TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+              AND     xic.inventory_date      <   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month)) + 1
+              AND     xic.subinventory_code   =   t_month_tab(ln_cnt).subinventory_code
+              AND     ROWNUM  = 1;
+            EXCEPTION
+              WHEN  NO_DATA_FOUND THEN
+                lt_add_inv(ln_set_cnt).base_code          :=  t_month_tab(ln_cnt).base_code;
+                lt_add_inv(ln_set_cnt).subinventory_code  :=  t_month_tab(ln_cnt).subinventory_code;
+                lt_add_inv(ln_set_cnt).subinventory_type  :=  t_month_tab(ln_cnt).subinventory_type;
+                ln_set_cnt  :=  ln_set_cnt  + 1;
+            END;
+          END IF;
+          --
+          -- ===================================
+          --  月次棚卸作成
+          -- ===================================
+          INSERT INTO xxcoi_inv_reception_monthly(
+              inv_seq                                                 --  01.棚卸SEQ
+            , base_code                                               --  02.拠点コード
+            , organization_id                                         --  03.組織ID
+            , subinventory_code                                       --  04.保管場所
+            , subinventory_type                                       --  05.保管場所区分
+            , practice_month                                          --  06.年月
+            , practice_date                                           --  07.年月日
+            , inventory_kbn                                           --  08.棚卸区分
+            , inventory_item_id                                       --  09.品目ID
+            , operation_cost                                          --  10.営業原価
+            , standard_cost                                           --  11.標準原価
+            , sales_shipped                                           --  12.売上出庫
+            , sales_shipped_b                                         --  13.売上出庫振戻
+            , return_goods                                            --  14.返品
+            , return_goods_b                                          --  15.返品振戻
+            , warehouse_ship                                          --  16.倉庫へ返庫
+            , truck_ship                                              --  17.営業車へ出庫
+            , others_ship                                             --  18.入出庫＿その他出庫
+            , warehouse_stock                                         --  19.倉庫より入庫
+            , truck_stock                                             --  20.営業車より入庫
+            , others_stock                                            --  21.入出庫＿その他入庫
+            , change_stock                                            --  22.倉替入庫
+            , change_ship                                             --  23.倉替出庫
+            , goods_transfer_old                                      --  24.商品振替（旧商品）
+            , goods_transfer_new                                      --  25.商品振替（新商品）
+            , sample_quantity                                         --  26.見本出庫
+            , sample_quantity_b                                       --  27.見本出庫振戻
+            , customer_sample_ship                                    --  28.顧客見本出庫
+            , customer_sample_ship_b                                  --  29.顧客見本出庫振戻
+            , customer_support_ss                                     --  30.顧客協賛見本出庫
+            , customer_support_ss_b                                   --  31.顧客協賛見本出庫振戻
+            , ccm_sample_ship                                         --  32.顧客広告宣伝費A自社商品
+            , ccm_sample_ship_b                                       --  33.顧客広告宣伝費A自社商品振戻
+            , vd_supplement_stock                                     --  34.消化VD補充入庫
+            , vd_supplement_ship                                      --  35.消化VD補充出庫
+            , inventory_change_in                                     --  36.基準在庫変更入庫
+            , inventory_change_out                                    --  37.基準在庫変更出庫
+            , factory_return                                          --  38.工場返品
+            , factory_return_b                                        --  39.工場返品振戻
+            , factory_change                                          --  40.工場倉替
+            , factory_change_b                                        --  41.工場倉替振戻
+            , removed_goods                                           --  42.廃却
+            , removed_goods_b                                         --  43.廃却振戻
+            , factory_stock                                           --  44.工場入庫
+            , factory_stock_b                                         --  45.工場入庫振戻
+            , wear_decrease                                           --  46.棚卸減耗増
+            , wear_increase                                           --  47.棚卸減耗減
+            , selfbase_ship                                           --  48.保管場所移動＿自拠点出庫
+            , selfbase_stock                                          --  49.保管場所移動＿自拠点入庫
+            , inv_result                                              --  50.棚卸結果
+            , inv_result_bad                                          --  51.棚卸結果（不良品）
+            , inv_wear                                                --  52.棚卸減耗
+            , month_begin_quantity                                    --  53.月首棚卸高
+            , created_by                                              --  54.作成者
+            , creation_date                                           --  55.作成日
+            , last_updated_by                                         --  56.最終更新者
+            , last_update_date                                        --  57.最終更新日
+            , last_update_login                                       --  58.最終更新ログイン
+            , request_id                                              --  59.要求ID
+            , program_application_id                                  --  60.コンカレント・プログラム・アプリケーションID
+            , program_id                                              --  61.コンカレント・プログラムID
+            , program_update_date                                     --  62.プログラム更新日
+          )VALUES(
+              1                                                       --  01
+            , t_month_tab(ln_cnt).base_code                           --  02
+            , gn_f_organization_id                                    --  03
+            , t_month_tab(ln_cnt).subinventory_code                   --  04
+            , t_month_tab(ln_cnt).subinventory_type                   --  05
+            , gv_f_inv_acct_period                                    --  06
+            , gd_f_process_date                                       --  07
+            , cv_inv_kbn_2                                            --  08
+            , t_month_tab(ln_cnt).inventory_item_id                   --  09
+            , t_month_tab(ln_cnt).operation_cost                      --  10
+            , t_month_tab(ln_cnt).standard_cost                       --  11
+            , t_month_tab(ln_cnt).sales_shipped                       --  12
+            , t_month_tab(ln_cnt).sales_shipped_b                     --  13
+            , t_month_tab(ln_cnt).return_goods                        --  14
+            , t_month_tab(ln_cnt).return_goods_b                      --  15
+            , t_month_tab(ln_cnt).warehouse_ship                      --  16
+            , t_month_tab(ln_cnt).truck_ship                          --  17
+            , t_month_tab(ln_cnt).others_ship                         --  18
+            , t_month_tab(ln_cnt).warehouse_stock                     --  19
+            , t_month_tab(ln_cnt).truck_stock                         --  20
+            , t_month_tab(ln_cnt).others_stock                        --  21
+            , t_month_tab(ln_cnt).change_stock                        --  22
+            , t_month_tab(ln_cnt).change_ship                         --  23
+            , t_month_tab(ln_cnt).goods_transfer_old                  --  24
+            , t_month_tab(ln_cnt).goods_transfer_new                  --  25
+            , t_month_tab(ln_cnt).sample_quantity                     --  26
+            , t_month_tab(ln_cnt).sample_quantity_b                   --  27
+            , t_month_tab(ln_cnt).customer_sample_ship                --  28
+            , t_month_tab(ln_cnt).customer_sample_ship_b              --  29
+            , t_month_tab(ln_cnt).customer_support_ss                 --  30
+            , t_month_tab(ln_cnt).customer_support_ss_b               --  31
+            , t_month_tab(ln_cnt).ccm_sample_ship                     --  32
+            , t_month_tab(ln_cnt).ccm_sample_ship_b                   --  33
+            , t_month_tab(ln_cnt).vd_supplement_stock                 --  34
+            , t_month_tab(ln_cnt).vd_supplement_ship                  --  35
+            , t_month_tab(ln_cnt).inventory_change_in                 --  36
+            , t_month_tab(ln_cnt).inventory_change_out                --  37
+            , t_month_tab(ln_cnt).factory_return                      --  38
+            , t_month_tab(ln_cnt).factory_return_b                    --  39
+            , t_month_tab(ln_cnt).factory_change                      --  40
+            , t_month_tab(ln_cnt).factory_change_b                    --  41
+            , t_month_tab(ln_cnt).removed_goods                       --  42
+            , t_month_tab(ln_cnt).removed_goods_b                     --  43
+            , t_month_tab(ln_cnt).factory_stock                       --  44
+            , t_month_tab(ln_cnt).factory_stock_b                     --  45
+            , t_month_tab(ln_cnt).wear_decrease                       --  46
+            , t_month_tab(ln_cnt).wear_increase                       --  47
+            , t_month_tab(ln_cnt).selfbase_ship                       --  48
+            , t_month_tab(ln_cnt).selfbase_stock                      --  49
+            , t_month_tab(ln_cnt).inv_result                          --  50
+            , t_month_tab(ln_cnt).inv_result_bad                      --  51
+            , t_month_tab(ln_cnt).inv_wear                            --  52
+            , t_month_tab(ln_cnt).month_begin_quantity                --  53
+            , cn_created_by                                           --  54
+            , SYSDATE                                                 --  55
+            , cn_last_updated_by                                      --  56
+            , SYSDATE                                                 --  57
+            , cn_last_update_login                                    --  58
+            , cn_request_id                                           --  59
+            , cn_program_application_id                               --  60
+            , cn_program_id                                           --  61
+            , SYSDATE                                                 --  62
+          );
+        END IF;
+      END LOOP  chk_inv_ctl_loop;
+      --
+    END LOOP  set_invrcp_loop;
+    --
+    IF (gv_param_exec_flag = cv_exec_1) THEN
+      --  コンカレント起動時
+      CLOSE invrcp1_qty_cur;
+    ELSE
+      -- 強制確定時
+      CLOSE invrcp2_qty_cur;
+    END IF;
+    -- ===================================
+    --  棚卸データ作成
+    -- ===================================
+    IF (lt_add_inv.COUNT <> 0) AND (gv_param_exec_flag = cv_exec_3) THEN
+      --  月次夜間強制確定時に、棚卸管理未登録データありの場合
+      <<ins_inv_loop>>
+      FOR ln_cnt IN 1 .. lt_add_inv.COUNT LOOP
+        --  A-5をコール
+        ins_inv_control(
+            it_base_code            =>  lt_add_inv(ln_cnt).base_code              --  拠点
+          , it_subinv_code          =>  lt_add_inv(ln_cnt).subinventory_code      --  保管場所
+          , it_subinv_type          =>  lt_add_inv(ln_cnt).subinventory_type      --  保管場所区分
+          , ov_errbuf               =>  lv_errbuf                                 --  エラーメッセージ
+          , ov_retcode              =>  lv_retcode                                --  リターン・コード
+          , ov_errmsg               =>  lv_errmsg                                 --  ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+      END LOOP  ins_inv_loop;
+    END IF;
+    --  成功件数
+    gn_normal_cnt :=  gn_target_cnt;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_month_tran_data;
+  --
+-- == 2010/12/14 V1.17 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -5904,8 +6980,11 @@ AS
       END IF;
       --
       --
-      IF (gv_param_exec_flag = cv_exec_1) THEN
-        -- 起動フラグ：１（コンカレント起動）
+-- == 2010/12/14 V1.17 Modified START ===============================================================
+--      IF (gv_param_exec_flag = cv_exec_1) THEN
+      IF (gv_param_inventory_kbn = cv_inv_kbn_1) THEN
+        -- 棚卸区分：1（月中）
+-- == 2010/12/14 V1.17 Modified END   ===============================================================
         --
         -- ===================================
         --  A-4.日次から月次作成
@@ -5972,54 +7051,116 @@ AS
           RAISE global_process_expt;
         END IF;
         --
-      ELSIF (gv_param_exec_flag = cv_exec_2) THEN
-        -- 起動フラグ：２（夜間強制確定（棚卸情報取込））
-        --
-        -- ===================================
-        --  A-7.棚卸情報の反映
-        -- ===================================
-        ins_inv_result(
-          it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
-         ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
-         ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
-         ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        END IF;
-        --
-        -- ===================================
-        --  A-13.月首棚卸数の反映
-        -- ===================================
-        ins_month_balance(
-          it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
-         ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
-         ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
-         ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        END IF;
-        --
+-- == 2010/12/14 V1.17 Modified START ===============================================================
+--      ELSIF (gv_param_exec_flag = cv_exec_2) THEN
+--        -- 起動フラグ：２（夜間強制確定（棚卸情報取込））
+--        --
+--        -- ===================================
+--        --  A-7.棚卸情報の反映
+--        -- ===================================
+--        ins_inv_result(
+--          it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
+--         ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
+--         ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        -- 終了パラメータ判定
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        --
+--        -- ===================================
+--        --  A-13.月首棚卸数の反映
+--        -- ===================================
+--        ins_month_balance(
+--          it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
+--         ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
+--         ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        -- 終了パラメータ判定
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        --
+--      ELSE
+--        -- 起動フラグ：３（夜間強制確定（日次情報取込））
+--        -- ===================================
+--        --  A-4.日次から月次作成
+--        -- ===================================
+--        ins_invrcp_daily(
+--          it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
+--         ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
+--         ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        -- 終了パラメータ判定
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        --
+--      END IF;
       ELSE
-        -- 起動フラグ：３（夜間強制確定（日次情報取込））
+        -- 棚卸区分：2（月末）
+        --
         -- ===================================
-        --  A-4.日次から月次作成
+        --  A-15, A-16.月首在庫、棚卸確定処理
         -- ===================================
-        ins_invrcp_daily(
-          it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
-         ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
-         ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
-         ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
+        IF ((gv_param_exec_flag = cv_exec_2) OR (gv_param_exec_flag = cv_exec_1)) THEN
+          --  （夜間）棚卸情報取込、または、コンカレント起動
+          ins_inv_data(
+            it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
+           ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
+           ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
         END IF;
         --
+        -- ===================================
+        --  A-17, A-18.受払情報確定処理
+        -- ===================================
+        IF ((gv_param_exec_flag = cv_exec_3) OR (gv_param_exec_flag = cv_exec_1)) THEN
+          --  （夜間）強制確定、または、コンカレント起動時
+          ins_month_tran_data(
+            it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
+           ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
+           ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        -- ===================================
+        --  A-10.資材の取込
+        -- ===================================
+        IF ((gv_param_exec_flag = cv_exec_1)
+            AND
+            (gn_f_last_transaction_id <> gn_f_max_transaction_id)
+           )
+        THEN
+          -- コンカレント起動かつ、日次データ未作成の資材取引が存在する場合
+          --
+          ins_daily_data(
+            it_base_code      =>  gt_f_account_number(ln_main_cnt)    -- 対象拠点コード
+           ,ov_errbuf         =>  lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode        =>  lv_retcode                          -- リターン・コード             --# 固定 #
+           ,ov_errmsg         =>  lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+        END IF;
       END IF;
+-- == 2010/12/14 V1.17 Modified END   ===============================================================
     END LOOP main_loop;
 -- == 2009/08/20 V1.14 Deleted END   ===============================================================
 --

@@ -1,0 +1,165 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : xxcoi_inv_rcp_monthly_tmp
+ * Description : åééüç›å…àÍéûï\
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/12/13    1.0   H.Sasaki         êVãKçÏê¨
+ *
+ ************************************************************************/
+ CREATE TABLE xxcoi.xxcoi_inv_rcp_monthly_tmp (
+                  base_code                       VARCHAR2(4)   NOT NULL
+                , subinventory_code               VARCHAR2(10)  NOT NULL
+                , inventory_item_id               NUMBER        NOT NULL
+                , subinventory_type               VARCHAR2(1)
+                , operation_cost                  NUMBER(7,0)   NOT NULL
+                , standard_cost                   NUMBER(9,2)   NOT NULL
+                , sales_shipped                   NUMBER(11,2)
+                , sales_shipped_b                 NUMBER(11,2)
+                , return_goods                    NUMBER(11,2)
+                , return_goods_b                  NUMBER(11,2)
+                , warehouse_ship                  NUMBER(11,2)
+                , truck_ship                      NUMBER(11,2)
+                , others_ship                     NUMBER(11,2)
+                , warehouse_stock                 NUMBER(11,2)
+                , truck_stock                     NUMBER(11,2)
+                , others_stock                    NUMBER(11,2)
+                , change_stock                    NUMBER(11,2)
+                , change_ship                     NUMBER(11,2)
+                , goods_transfer_old              NUMBER(11,2)
+                , goods_transfer_new              NUMBER(11,2)
+                , sample_quantity                 NUMBER(11,2)
+                , sample_quantity_b               NUMBER(11,2)
+                , customer_sample_ship            NUMBER(11,2)
+                , customer_sample_ship_b          NUMBER(11,2)
+                , customer_support_ss             NUMBER(11,2)
+                , customer_support_ss_b           NUMBER(11,2)
+                , ccm_sample_ship                 NUMBER(11,2)
+                , ccm_sample_ship_b               NUMBER(11,2)
+                , vd_supplement_stock             NUMBER(11,2)
+                , vd_supplement_ship              NUMBER(11,2)
+                , inventory_change_in             NUMBER(11,2)
+                , inventory_change_out            NUMBER(11,2)
+                , factory_return                  NUMBER(11,2)
+                , factory_return_b                NUMBER(11,2)
+                , factory_change                  NUMBER(11,2)
+                , factory_change_b                NUMBER(11,2)
+                , removed_goods                   NUMBER(11,2)
+                , removed_goods_b                 NUMBER(11,2)
+                , factory_stock                   NUMBER(11,2)
+                , factory_stock_b                 NUMBER(11,2)
+                , wear_decrease                   NUMBER(11,2)
+                , wear_increase                   NUMBER(11,2)
+                , selfbase_ship                   NUMBER(11,2)
+                , selfbase_stock                  NUMBER(11,2)
+                , inv_result                      NUMBER(11,2)
+                , inv_result_bad                  NUMBER(11,2)
+                , inv_wear                        NUMBER(11,2)
+                , month_begin_quantity            NUMBER(11,2)
+  ,CONSTRAINT xxcoi_inv_rcp_monthly_tmp_pk PRIMARY KEY (base_code, subinventory_code, inventory_item_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE  xxcoi.xxcoi_inv_rcp_monthly_tmp                                       IS  'åééüç›å…àÍéûï\';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.base_code                             IS  'ãíì_ÉRÅ[Éh'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.subinventory_code                     IS  'ï€ä«èÍèä'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.inventory_item_id                     IS  'ïiñ⁄ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.subinventory_type                     IS  'ï€ä«èÍèäãÊï™'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.operation_cost                        IS  'âcã∆å¥âø'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.standard_cost                         IS  'ïWèÄå¥âø'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.sales_shipped                         IS  'îÑè„èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.sales_shipped_b                       IS  'îÑè„èoå…êUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.return_goods                          IS  'ï‘ïi'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.return_goods_b                        IS  'ï‘ïiêUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.warehouse_ship                        IS  'ëqå…Ç÷ï‘å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.truck_ship                            IS  'âcã∆é‘Ç÷èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.others_ship                           IS  'ì¸èoå…ÅQÇªÇÃëºèoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.warehouse_stock                       IS  'ëqå…ÇÊÇËì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.truck_stock                           IS  'âcã∆é‘ÇÊÇËì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.others_stock                          IS  'ì¸èoå…ÅQÇªÇÃëºì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.change_stock                          IS  'ëqë÷ì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.change_ship                           IS  'ëqë÷èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.goods_transfer_old                    IS  'è§ïiêUë÷Åiãåè§ïiÅj'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.goods_transfer_new                    IS  'è§ïiêUë÷ÅiêVè§ïiÅj'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.sample_quantity                       IS  'å©ñ{èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.sample_quantity_b                     IS  'å©ñ{èoå…êUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.customer_sample_ship                  IS  'å⁄ãqå©ñ{èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.customer_sample_ship_b                IS  'å⁄ãqå©ñ{èoå…êUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.customer_support_ss                   IS  'å⁄ãqã¶é^å©ñ{èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.customer_support_ss_b                 IS  'å⁄ãqã¶é^å©ñ{èoå…êUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.ccm_sample_ship                       IS  'å⁄ãqçLçêêÈì`îÔAé©é–è§ïi'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.ccm_sample_ship_b                     IS  'å⁄ãqçLçêêÈì`îÔAé©é–è§ïiêUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.vd_supplement_stock                   IS  'è¡âªVDï‚è[ì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.vd_supplement_ship                    IS  'è¡âªVDï‚è[èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.inventory_change_in                   IS  'äÓèÄç›å…ïœçXì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.inventory_change_out                  IS  'äÓèÄç›å…ïœçXèoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.factory_return                        IS  'çHèÍï‘ïi'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.factory_return_b                      IS  'çHèÍï‘ïiêUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.factory_change                        IS  'çHèÍëqë÷'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.factory_change_b                      IS  'çHèÍëqë÷êUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.removed_goods                         IS  'îpãp'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.removed_goods_b                       IS  'îpãpêUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.factory_stock                         IS  'çHèÍì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.factory_stock_b                       IS  'çHèÍì¸å…êUñﬂ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.wear_decrease                         IS  'íIâµå∏ñ’ëù'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.wear_increase                         IS  'íIâµå∏ñ’å∏'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.selfbase_ship                         IS  'ï€ä«èÍèäà⁄ìÆÅQé©ãíì_èoå…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.selfbase_stock                        IS  'ï€ä«èÍèäà⁄ìÆÅQé©ãíì_ì¸å…'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.inv_result                            IS  'íIâµåãâ '
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.inv_result_bad                        IS  'íIâµåãâ Åiïsó«ïiÅj'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.inv_wear                              IS  'íIâµå∏ñ’'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_rcp_monthly_tmp.month_begin_quantity                  IS  'åééÒíIâµçÇ'
+/
