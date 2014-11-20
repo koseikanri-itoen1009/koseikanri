@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009-07-08    1.13  D.Abe            【0000464】品目カテゴリと機種コードのメーカーチェックを追加
  *  2009-07-14    1.14  K.Satomura       【0000476】機器状態２の故障中を4から9へ変更
  *  2009-07-16    1.15  K.Hosoi          【0000375,0000419】
+ *  2009-08-10    1.16  K.Satomura       【0000662】顧客担当営業員存在チェックをコメントアウト
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -2778,20 +2779,34 @@ AS
     --
     -- 該当データが存在しない場合
     IF ( ln_cnt_rec = 0 ) THEN
-      lv_errbuf := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                     , iv_name         => cv_tkn_number_48          -- メッセージコード
-                     , iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
-                     , iv_token_value1 => cv_cust_resources_v       -- トークン値1
-                     , iv_token_name2  => cv_tkn_item               -- トークンコード2
-                     , iv_token_value2 => cv_tkn_val_cust_cd        -- トークン値2
-                     , iv_token_name3  => cv_tkn_value              -- トークンコード3
-                     , iv_token_value3 => iv_account_number         -- トークン値3
-                   );
+      /* 2009.08.11 K.Satomura 0000662対応 START */
+      SELECT COUNT(1)
+      INTO   ln_cnt_rec
+      FROM   xxcmm_cust_accounts xca -- 顧客アドオンマスタ
+      WHERE  xca.customer_code        = iv_account_number
+      AND    xca.cnvs_business_person IS NOT NULL
+      ;
       --
-      RAISE sql_expt;
-      --
+      IF (ln_cnt_rec = 0) THEN
+      /* 2009.08.11 K.Satomura 0000662対応 END */
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_48          -- メッセージコード
+                       , iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       , iv_token_value1 => cv_cust_resources_v       -- トークン値1
+                       , iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       , iv_token_value2 => cv_tkn_val_cust_cd        -- トークン値2
+                       , iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       , iv_token_value3 => iv_account_number         -- トークン値3
+                     );
+        --
+        RAISE sql_expt;
+        --
+      /* 2009.08.11 K.Satomura 0000662対応 START */
+      END IF;
+      /* 2009.08.11 K.Satomura 0000662対応 END */
     END IF;
+    /* 2009.08.11 K.Satomura 0000662対応 END */
     --
     -- 設置用物件コードが設定されている場合
     IF ( iv_install_code IS NOT NULL ) THEN
