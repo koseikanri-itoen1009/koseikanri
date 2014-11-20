@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼締め解除処理
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷依頼締め解除処理  T_MD070_BPO_40K
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,7 +28,7 @@ AS
  *  2008/07/04    1.2  Oracle 北寒寺正夫 ST#366対応 締解除時の拠点、拠点カテゴリがALLの際の
  *                                       条件が共通関数の条件と異なるため共通関数からコピーし
  *                                       実装
- *
+ *  2009/01/20    1.3  Oracle 伊藤ひとみ 本番障害#1053対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -341,28 +341,68 @@ AS
       -- パラメータ「拠点」が入力された場合
       IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
         -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索      
-        SELECT  COUNT(*)
+-- Ver1.3 H.Itou Mod Start 締め管理テーブルの拠点がALLの場合は顧客マスタを結合しない
+--        SELECT  COUNT(*)
+--        INTO    ln_count
+--        FROM    xxwsh_tightening_control  xtc
+--               ,xxcmn_cust_accounts2_v    xcav
+--        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+--        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+--        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
+--        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+--                                                ,xtc.sales_branch_category)
+--                                          IN (DECODE(xtc.prod_class
+--                                                     , cv_prod_class_2, xcav.drink_base_category
+--                                                     , cv_prod_class_1, xcav.leaf_base_category)
+--                                              ,cv_all)
+--        AND     xtc.lead_time_day         =  in_lead_time_day
+--        AND     xtc.schedule_ship_date    =  id_ship_date
+--        AND     xtc.prod_class            =  iv_prod_class
+--        AND     xtc.base_record_class     =  cv_no
+--        AND     xtc.tighten_release_class =  cv_cancel
+--        AND     xcav.party_number         =  iv_sales_branch
+--        AND     xcav.start_date_active    <= id_ship_date
+--        AND     xcav.end_date_active      >= id_ship_date
+--        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        SELECT  COUNT(1) cnt
         INTO    ln_count
-        FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
-        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
-        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
-        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
-                                                ,xtc.sales_branch_category)
-                                          IN (DECODE(xtc.prod_class
-                                                     , cv_prod_class_2, xcav.drink_base_category
-                                                     , cv_prod_class_1, xcav.leaf_base_category)
-                                              ,cv_all)
-        AND     xtc.lead_time_day         =  in_lead_time_day
-        AND     xtc.schedule_ship_date    =  id_ship_date
-        AND     xtc.prod_class            =  iv_prod_class
-        AND     xtc.base_record_class     =  cv_no
-        AND     xtc.tighten_release_class =  cv_cancel
-        AND     xcav.party_number         =  iv_sales_branch
-        AND     xcav.start_date_active    <= id_ship_date
-        AND     xcav.end_date_active      >= id_ship_date
-        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+        FROM   (-- 拠点がALLでない場合(顧客マスタを結合)
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  iv_sales_branch
+                AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+                                                        ,xtc.sales_branch_category)
+                                                  IN (DECODE(xtc.prod_class
+                                                             , cv_prod_class_2, xcav.drink_base_category
+                                                             , cv_prod_class_1, xcav.leaf_base_category)
+                                                      ,cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_cancel
+                AND     xcav.party_number         =  xtc.sales_branch
+                AND     xcav.start_date_active    <= id_ship_date
+                AND     xcav.end_date_active      >= id_ship_date
+                AND     xcav.customer_class_code  =  cv_customer_class_code_1
+                -- 拠点がALLの場合
+                UNION ALL
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  cv_all
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_cancel)
+                ;
+-- Ver1.3 H.Itou Mod End
 --
         -- 合致するデータがあれば｢締め解除｣を返す
         IF (ln_count > 0) THEN
@@ -372,27 +412,68 @@ AS
       -- パラメータ「拠点カテゴリ」が入力された場合
       ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
         -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
-        SELECT  COUNT(*)
+-- Ver1.3 H.Itou Mod Start 締め管理テーブルの拠点がALLの場合は顧客マスタを結合しない
+--        SELECT  COUNT(*)
+--        INTO    ln_count
+--        FROM    xxwsh_tightening_control  xtc
+--               ,xxcmn_cust_accounts2_v    xcav
+--        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+--        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+--        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+--        AND     xtc.lead_time_day         =  in_lead_time_day
+--        AND     xtc.schedule_ship_date    =  id_ship_date
+--        AND     xtc.prod_class            =  iv_prod_class
+--        AND     xtc.base_record_class     =  cv_no
+--        AND     xtc.tighten_release_class =  cv_cancel
+--        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
+--        AND     iv_sales_branch_category
+--                                          IN (DECODE(iv_prod_class
+--                                 , cv_prod_class_2, xcav.drink_base_category
+--                                 , cv_prod_class_1, xcav.leaf_base_category)
+--                                 ,cv_all)
+--        AND     xcav.start_date_active    <= id_ship_date
+--        AND     xcav.end_date_active      >= id_ship_date
+--        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        SELECT  COUNT(1) cnt
         INTO    ln_count
-        FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
-        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
-        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
-        AND     xtc.lead_time_day         =  in_lead_time_day
-        AND     xtc.schedule_ship_date    =  id_ship_date
-        AND     xtc.prod_class            =  iv_prod_class
-        AND     xtc.base_record_class     =  cv_no
-        AND     xtc.tighten_release_class =  cv_cancel
-        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
-        AND     iv_sales_branch_category
-                                          IN (DECODE(iv_prod_class
-                                 , cv_prod_class_2, xcav.drink_base_category
-                                 , cv_prod_class_1, xcav.leaf_base_category)
-                                 ,cv_all)
-        AND     xcav.start_date_active    <= id_ship_date
-        AND     xcav.end_date_active      >= id_ship_date
-        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+        FROM   (-- 拠点がALLでない場合(顧客マスタを結合)
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch         <>  cv_all
+                AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_cancel
+                AND     xtc.sales_branch          =  xcav.party_number
+                AND     iv_sales_branch_category
+                                                  IN (DECODE(iv_prod_class
+                                         , cv_prod_class_2, xcav.drink_base_category
+                                         , cv_prod_class_1, xcav.leaf_base_category)
+                                         ,cv_all)
+                AND     xcav.start_date_active    <= id_ship_date
+                AND     xcav.end_date_active      >= id_ship_date
+                AND     xcav.customer_class_code  =  cv_customer_class_code_1
+                -- 拠点がALLの場合
+                UNION ALL
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  cv_all
+                AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_cancel)
+                ;
+-- Ver1.3 H.Itou Mod End
 --
         -- 合致するデータが1件でもあれば｢締め解除｣を返す
         IF (ln_count > 0) THEN
@@ -401,7 +482,7 @@ AS
 --
       -- パラメータ「拠点」および「拠点カテゴリ」が'ALL'の場合
       ELSIF ((NVL(iv_sales_branch,cv_all) = cv_all) AND (NVL(iv_sales_branch_category,cv_all) = cv_all)) THEN
-        SELECT  COUNT(*)
+        SELECT  COUNT(1) cnt
         INTO    ln_count
         FROM    xxwsh_tightening_control  xtc
         WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
@@ -424,28 +505,68 @@ AS
       -- パラメータ「拠点」が入力された場合
       IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
         -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索
-        SELECT  COUNT(*)
+-- Ver1.3 H.Itou Mod Start 締め管理テーブルの拠点がALLの場合は顧客マスタを結合しない
+--        SELECT  COUNT(*)
+--        INTO    ln_count
+--        FROM    xxwsh_tightening_control  xtc
+--               ,xxcmn_cust_accounts2_v    xcav
+--        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+--        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+--        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
+--        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+--                                                ,xtc.sales_branch_category)
+--                                          IN (DECODE(xtc.prod_class
+--                                                     , cv_prod_class_2, xcav.drink_base_category
+--                                                     , cv_prod_class_1, xcav.leaf_base_category)
+--                                              ,cv_all)
+--        AND     xtc.lead_time_day         =  in_lead_time_day
+--        AND     xtc.schedule_ship_date    =  id_ship_date
+--        AND     xtc.prod_class            =  iv_prod_class
+--        AND     xtc.base_record_class     =  cv_no
+--        AND     xtc.tighten_release_class =  cv_close
+--        AND     xcav.party_number         =  iv_sales_branch
+--        AND     xcav.start_date_active    <= id_ship_date
+--        AND     xcav.end_date_active      >= id_ship_date
+--        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        SELECT  COUNT(1) cnt
         INTO    ln_count
-        FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
-        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
-        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
-        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
-                                                ,xtc.sales_branch_category)
-                                          IN (DECODE(xtc.prod_class
-                                                     , cv_prod_class_2, xcav.drink_base_category
-                                                     , cv_prod_class_1, xcav.leaf_base_category)
-                                              ,cv_all)
-        AND     xtc.lead_time_day         =  in_lead_time_day
-        AND     xtc.schedule_ship_date    =  id_ship_date
-        AND     xtc.prod_class            =  iv_prod_class
-        AND     xtc.base_record_class     =  cv_no
-        AND     xtc.tighten_release_class =  cv_close
-        AND     xcav.party_number         =  iv_sales_branch
-        AND     xcav.start_date_active    <= id_ship_date
-        AND     xcav.end_date_active      >= id_ship_date
-        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+        FROM   (-- 拠点がALLでない場合(顧客マスタを結合)
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          = iv_sales_branch
+                AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+                                                        ,xtc.sales_branch_category)
+                                                  IN (DECODE(xtc.prod_class
+                                                             , cv_prod_class_2, xcav.drink_base_category
+                                                             , cv_prod_class_1, xcav.leaf_base_category)
+                                                      ,cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_close
+                AND     xcav.party_number         =  xtc.sales_branch
+                AND     xcav.start_date_active    <= id_ship_date
+                AND     xcav.end_date_active      >= id_ship_date
+                AND     xcav.customer_class_code  =  cv_customer_class_code_1
+                -- 拠点がALLの場合
+                UNION ALL
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  cv_all
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_close)
+                ;
+-- Ver1.3 H.Itou Mod End
 --
         -- 合致するデータがあれば｢再締め済み｣を返す
         IF (ln_count > 0) THEN
@@ -455,27 +576,69 @@ AS
       -- パラメータ「拠点カテゴリ」が入力された場合
       ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
         -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
-        SELECT  COUNT(*)
+-- Ver1.3 H.Itou Mod Start 締め管理テーブルの拠点がALLの場合は顧客マスタを結合しない
+--        SELECT  COUNT(*)
+--        INTO    ln_count
+--        FROM    xxwsh_tightening_control  xtc
+--               ,xxcmn_cust_accounts2_v    xcav
+--        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+--        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+--        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+--        AND     xtc.lead_time_day         =  in_lead_time_day
+--        AND     xtc.schedule_ship_date    =  id_ship_date
+--        AND     xtc.prod_class            =  iv_prod_class
+--        AND     xtc.base_record_class     =  cv_no
+--        AND     xtc.tighten_release_class =  cv_close
+--        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
+--        AND     iv_sales_branch_category
+--                                          IN (DECODE(iv_prod_class
+--                                 , cv_prod_class_2, xcav.drink_base_category
+--                                 , cv_prod_class_1, xcav.leaf_base_category)
+--                                 ,cv_all)
+--        AND     xcav.start_date_active    <= id_ship_date
+--        AND     xcav.end_date_active      >= id_ship_date
+--        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        SELECT  COUNT(1) cnt
         INTO    ln_count
-        FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
-        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
-        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
-        AND     xtc.lead_time_day         =  in_lead_time_day
-        AND     xtc.schedule_ship_date    =  id_ship_date
-        AND     xtc.prod_class            =  iv_prod_class
-        AND     xtc.base_record_class     =  cv_no
-        AND     xtc.tighten_release_class =  cv_close
-        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
-        AND     iv_sales_branch_category
-                                          IN (DECODE(iv_prod_class
-                                 , cv_prod_class_2, xcav.drink_base_category
-                                 , cv_prod_class_1, xcav.leaf_base_category)
-                                 ,cv_all)
-        AND     xcav.start_date_active    <= id_ship_date
-        AND     xcav.end_date_active      >= id_ship_date
-        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+        FROM   (-- 拠点がALLでない場合(顧客マスタを結合)
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch         <>  cv_all
+                AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_close
+                AND     xtc.sales_branch          =  xcav.party_number
+                AND     iv_sales_branch_category
+                                                  IN (DECODE(iv_prod_class
+                                         , cv_prod_class_2, xcav.drink_base_category
+                                         , cv_prod_class_1, xcav.leaf_base_category)
+                                         ,cv_all)
+                AND     xcav.start_date_active    <= id_ship_date
+                AND     xcav.end_date_active      >= id_ship_date
+                AND     xcav.customer_class_code  =  cv_customer_class_code_1
+                -- 拠点がALLの場合
+                UNION ALL
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  cv_all
+                AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_no
+                AND     xtc.tighten_release_class =  cv_close)
+                ;
+-- Ver1.3 H.Itou Mod End
 --
         -- 合致するデータが1件でもあれば｢再締め済み｣を返す
         IF (ln_count > 0) THEN
@@ -507,28 +670,68 @@ AS
       -- パラメータ「拠点」が入力された場合
       IF ((iv_sales_branch IS NOT NULL) AND (iv_sales_branch <> 'ALL')) THEN
         -- 「拠点」および、「拠点」に紐付く「拠点カテゴリ」で解除レコードを検索
-        SELECT  COUNT(*)
+-- Ver1.3 H.Itou Mod Start 締め管理テーブルの拠点がALLの場合は顧客マスタを結合しない
+--        SELECT  COUNT(*)
+--        INTO    ln_count
+--        FROM    xxwsh_tightening_control  xtc
+--               ,xxcmn_cust_accounts2_v    xcav
+--        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+--        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+--        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
+--        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+--                                                ,xtc.sales_branch_category)
+--                                          IN (DECODE(xtc.prod_class
+--                                                     , cv_prod_class_2, xcav.drink_base_category
+--                                                     , cv_prod_class_1, xcav.leaf_base_category)
+--                                              ,cv_all)
+--        AND     xtc.lead_time_day         =  in_lead_time_day
+--        AND     xtc.schedule_ship_date    =  id_ship_date
+--        AND     xtc.prod_class            =  iv_prod_class
+--        AND     xtc.base_record_class     =  cv_yes
+--        AND     xtc.tighten_release_class =  cv_close
+--        AND     xcav.party_number         =  iv_sales_branch
+--        AND     xcav.start_date_active    <= id_ship_date
+--        AND     xcav.end_date_active      >= id_ship_date
+--        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        SELECT  COUNT(1) cnt
         INTO    ln_count
-        FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
-        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
-        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch          IN (NVL(iv_sales_branch, cv_all), cv_all)
-        AND     DECODE(xtc.sales_branch_category,NULL,cv_all
-                                                ,xtc.sales_branch_category)
-                                          IN (DECODE(xtc.prod_class
-                                                     , cv_prod_class_2, xcav.drink_base_category
-                                                     , cv_prod_class_1, xcav.leaf_base_category)
-                                              ,cv_all)
-        AND     xtc.lead_time_day         =  in_lead_time_day
-        AND     xtc.schedule_ship_date    =  id_ship_date
-        AND     xtc.prod_class            =  iv_prod_class
-        AND     xtc.base_record_class     =  cv_yes
-        AND     xtc.tighten_release_class =  cv_close
-        AND     xcav.party_number         =  iv_sales_branch
-        AND     xcav.start_date_active    <= id_ship_date
-        AND     xcav.end_date_active      >= id_ship_date
-        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+        FROM   (-- 拠点がALLでない場合(顧客マスタを結合)
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  iv_sales_branch
+                AND     DECODE(xtc.sales_branch_category,NULL,cv_all
+                                                        ,xtc.sales_branch_category)
+                                                  IN (DECODE(xtc.prod_class
+                                                             , cv_prod_class_2, xcav.drink_base_category
+                                                             , cv_prod_class_1, xcav.leaf_base_category)
+                                                      ,cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_yes
+                AND     xtc.tighten_release_class =  cv_close
+                AND     xcav.party_number         =  xtc.sales_branch
+                AND     xcav.start_date_active    <= id_ship_date
+                AND     xcav.end_date_active      >= id_ship_date
+                AND     xcav.customer_class_code  =  cv_customer_class_code_1
+                -- 拠点がALLの場合
+                UNION ALL
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  cv_all
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_yes
+                AND     xtc.tighten_release_class =  cv_close)
+                ;
+-- Ver1.3 H.Itou Mod End
 --
         -- 合致するデータがあれば｢初回締め済｣を返す
         IF (ln_count > 0) THEN
@@ -538,27 +741,68 @@ AS
       -- パラメータ「拠点カテゴリ」が入力された場合
       ELSIF ((iv_sales_branch_category IS NOT NULL) AND (iv_sales_branch_category <> 'ALL')) THEN
         -- 「拠点カテゴリ」および、「拠点カテゴリ」に紐付く全ての「拠点」で解除レコードを検索
-        SELECT  COUNT(*)
+-- Ver1.3 H.Itou Mod Start 締め管理テーブルの拠点がALLの場合は顧客マスタを結合しない
+--        SELECT  COUNT(*)
+--        INTO    ln_count
+--        FROM    xxwsh_tightening_control  xtc
+--               ,xxcmn_cust_accounts2_v    xcav
+--        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+--        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+--        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+--        AND     xtc.lead_time_day         =  in_lead_time_day
+--        AND     xtc.schedule_ship_date    =  id_ship_date
+--        AND     xtc.prod_class            =  iv_prod_class
+--        AND     xtc.base_record_class     =  cv_yes
+--        AND     xtc.tighten_release_class =  cv_close
+--        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
+--        AND     iv_sales_branch_category
+--                                          IN (DECODE(iv_prod_class
+--                                 , cv_prod_class_2, xcav.drink_base_category
+--                                 , cv_prod_class_1, xcav.leaf_base_category)
+--                                 ,cv_all)
+--        AND     xcav.start_date_active    <= id_ship_date
+--        AND     xcav.end_date_active      >= id_ship_date
+--        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+--
+        SELECT  COUNT(1) cnt
         INTO    ln_count
-        FROM    xxwsh_tightening_control  xtc
-               ,xxcmn_cust_accounts2_v    xcav
-        WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
-        AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
-        AND     xtc.lead_time_day         =  in_lead_time_day
-        AND     xtc.schedule_ship_date    =  id_ship_date
-        AND     xtc.prod_class            =  iv_prod_class
-        AND     xtc.base_record_class     =  cv_yes
-        AND     xtc.tighten_release_class =  cv_close
-        AND     xtc.sales_branch          IN (xcav.party_number, cv_all)
-        AND     iv_sales_branch_category
-                                          IN (DECODE(iv_prod_class
-                                 , cv_prod_class_2, xcav.drink_base_category
-                                 , cv_prod_class_1, xcav.leaf_base_category)
-                                 ,cv_all)
-        AND     xcav.start_date_active    <= id_ship_date
-        AND     xcav.end_date_active      >= id_ship_date
-        AND     xcav.customer_class_code  =  cv_customer_class_code_1;
+        FROM   (-- 拠点がALLでない場合(顧客マスタを結合)
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                       ,xxcmn_cust_accounts2_v    xcav
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch         <>  cv_all
+                AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_yes
+                AND     xtc.tighten_release_class =  cv_close
+                AND     xtc.sales_branch          =  xcav.party_number
+                AND     iv_sales_branch_category
+                                                  IN (DECODE(iv_prod_class
+                                         , cv_prod_class_2, xcav.drink_base_category
+                                         , cv_prod_class_1, xcav.leaf_base_category)
+                                         ,cv_all)
+                AND     xcav.start_date_active    <= id_ship_date
+                AND     xcav.end_date_active      >= id_ship_date
+                AND     xcav.customer_class_code  =  cv_customer_class_code_1
+                -- 拠点がALLの場合
+                UNION ALL
+                SELECT  1
+                FROM    xxwsh_tightening_control  xtc
+                WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
+                AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
+                AND     xtc.sales_branch          =  cv_all
+                AND     xtc.sales_branch_category IN (iv_sales_branch_category, cv_all)
+                AND     xtc.lead_time_day         =  in_lead_time_day
+                AND     xtc.schedule_ship_date    =  id_ship_date
+                AND     xtc.prod_class            =  iv_prod_class
+                AND     xtc.base_record_class     =  cv_yes
+                AND     xtc.tighten_release_class =  cv_close)
+                ;
+-- Ver1.3 H.Itou Mod End
 --
         -- 合致するデータが1件でもあれば｢初回締め済｣を返す
         IF (ln_count > 0) THEN
@@ -895,7 +1139,7 @@ AS
       gn_error_cnt := gn_error_cnt + 1;   -- エラー件数カウント
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := 	gv_status_error;
+      ov_retcode := gv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       gn_error_cnt := gn_error_cnt + 1;   -- エラー件数カウント
