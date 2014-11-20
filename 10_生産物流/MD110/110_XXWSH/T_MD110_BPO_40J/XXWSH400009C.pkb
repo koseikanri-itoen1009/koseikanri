@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *  2008/07/02    1.5   Satoshi Yunba    禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/03    1.6   椎名  昭圭       ST不具合対応#344･357･406対応
  *  2008/07/10    1.7   上原  正好       変更要求#91対応 配送区分情報VIEWを外部結合に変更
+ *  2008/07/15    1.8   熊本  和郎       TE080指摘事項#3対応(受注明細アドオン.削除フラグを条件に追加)
+ *  2008/07/31    1.9   Yuko  Kawano     結合テスト不具合対応(総重量/総容積の算出ロジック変更)
  *
  *****************************************************************************************/
 --
@@ -118,6 +120,9 @@ AS
 -- 2008/07/03 ST不具合対応#344 Start
   gv_cancel                    CONSTANT VARCHAR2(2)  := '99';
 -- 2008/07/03 ST不具合対応#344 End
+--add start 1.8
+  gv_nodelete                  CONSTANT VARCHAR2(1)  := 'N';
+--add end 1.8
 --
   ------------------------------
   -- 項目編集関連
@@ -643,9 +648,15 @@ AS
               -- MOD END 1.7
                               CASE 
                                 WHEN xoha.weight_capacity_class = '1'
-                                 THEN xola.pallet_weight + xoha.sum_weight
+-- 2008/07/31 Y.Kawano mod start
+--                                 THEN xola.pallet_weight + xoha.sum_weight
+                                 THEN xoha.sum_pallet_weight + xoha.sum_weight
+-- 2008/07/31 Y.Kawano mod end
                                 WHEN xoha.weight_capacity_class = '2'
-                                 THEN xola.pallet_weight + xoha.sum_capacity
+-- 2008/07/31 Y.Kawano mod start
+--                                 THEN xola.pallet_weight + xoha.sum_capacity
+                                 THEN xoha.sum_pallet_weight + xoha.sum_capacity
+-- 2008/07/31 Y.Kawano mod end
                               END
              END                                                        -- 総重量/総容積
             ,CASE 
@@ -762,6 +773,10 @@ AS
             -- 受注ヘッダアドオン.受注ヘッダアドオンID＝受注明細アドオン.受注ヘッダアドオンID
         AND xola.request_item_code           = xim2v.item_no
                                        -- 受注明細アドオン.依頼品目＝OPM品目マスタ.品目コード
+--add start 1.8
+        AND NVL(xola.delete_flag,gv_nodelete) = gv_nodelete
+                                       -- 受注明細アドオン.削除フラグ＝未削除
+--add end 1.8
 -- 2008/07/04 ST不具合対応#406 Start
 --        AND xim2v.item_id                    = xic4v.item_id
                                        -- OPM品目マスタ.品目ID＝OPM品目カテゴリマスタ.品目ID
@@ -979,7 +994,10 @@ AS
             insert_xml_plsql_table(iox_xml_data, 'sum_palette', 
                                     lt_main_data(get_user_rec -1).pallet_sum_quantity,'D','C');
             insert_xml_plsql_table(iox_xml_data, 'sum_weight', 
-                                    lt_main_data(get_user_rec -1).sum_weight, 'D', 'C');
+-- 2008/07/31 Y.Kawano mod start
+--                                    lt_main_data(get_user_rec -1).sum_weight, 'D', 'C');
+                                    CEIL(TRUNC(lt_main_data(get_user_rec -1).sum_weight, 1)), 'D', 'C');
+-- 2008/07/31 Y.Kawano mod end
             insert_xml_plsql_table(iox_xml_data, 'unit_sum2', 
                                     lt_main_data(get_user_rec -1).sum_weight_capacity_class, 'D', 'C');
             insert_xml_plsql_table(iox_xml_data, 'carry_rate', 
