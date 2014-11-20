@@ -13,6 +13,10 @@ AS
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  get_supervisor         管理者取得プロシージャ
+ *  get_job                役職取得プロシージャ
+ *  get_location           事業所取得プロシージャ
+ *  wsh_grants_proc        出荷ロールマスタの登録・削除処理を行うプロシージャ
+ *  po_agents_proc         購買担当マスタの登録・削除処理を行うプロシージャ
  *  ins_user_sec           セキュリティ属性登録プロシージャ
  *  get_ccid               CCID取得プロシージャ
  *  init_get_profile       プロファイル取得プロシージャ
@@ -64,6 +68,15 @@ AS
  *  2009/06/25    1.7   SCS 吉川 博章    障害No.0000161 対応
  *  2009/07/06    1.8   SCS 伊藤 和之    障害No.0000412 対応(PT対応)
  *  2009/07/10    1.9   SCS 吉川 博章    障害No.0000492 対応
+ *  2009/08/06    1.10  SCS 久保島 豊    障害No.0000510,0000793,0000794,0000869,0000910,0000924 対応
+ *                                       0000510 役職の設定処理を追加
+ *                                       0000793 発令日チェック変更
+ *                                               (「発令日 > 業務日付」->「発令日 > 業務日付 + 1」)
+ *                                       0000794 最上位の管理者の場合、管理者を設定しないように変更
+ *                                       0000869 所属コード(旧)、勤務地拠点コード(旧)の存在チェック方法変更
+ *                                               (「全部門階層ビュー」->「AFF部門」)
+ *                                       0000910 購買担当マスタ、出荷ロールマスタ登録・削除処理追加
+ *                                       0000924 所属コード(新)が財務経理部の場合、照会範囲に'T'を設定するように変更
  *
  *****************************************************************************************/
 --
@@ -219,6 +232,14 @@ AS
   cv_prf_def_aff8              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEF_AFF8';     -- AFF8(SEG8:予備2)
 -- End Ver1.3
   cv_prf_password              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_PASSWORD';     -- 初期パスワード
+-- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add start by Yutaka.Kuboshima
+  cv_prf_base_manager          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_JOB_BASE_MANAGER'; -- 拠点・部門管理者_役職名
+  cv_prf_base_chrge            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_JOB_BASE_CHRGE';   -- 拠点・部門担当者_役職名
+  cv_prf_po_chrge              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_JOB_PO_CHRGE';     -- PO_購買担当者_役職名
+  cv_prf_role_id               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_ROLE_ID';          -- 役割ID
+  cv_prf_zaimu_bumon_cd        CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_ZAIMU_BUMON_CD';   -- 財務経理部_部門コード
+  cv_prf_aff_dept_cd           CONSTANT VARCHAR2(30)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';       -- AFFダミー部門コード
+-- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add end by Yutaka.Kuboshima
   --
   -- トークン
   cv_cnt_token                 CONSTANT VARCHAR2(10)  := 'COUNT';              -- 件数メッセージ用トークン名
@@ -247,6 +268,14 @@ AS
   cv_prf_def_aff7_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ７：予備１';
   cv_prf_def_aff8_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ８：予備２';
 -- End Ver1.3
+-- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add start by Yutaka.Kuboshima
+  cv_prf_base_manager_nm       CONSTANT VARCHAR2(40)  := '拠点・部門管理者_役職名';
+  cv_prf_base_chrge_nm         CONSTANT VARCHAR2(40)  := '拠点・部門担当者_役職名';
+  cv_prf_po_chrge_nm           CONSTANT VARCHAR2(40)  := 'PO_購買担当者_役職名';
+  cv_prf_role_id_nm            CONSTANT VARCHAR2(40)  := '役割ID';
+  cv_prf_zaimu_bumon_cd_nm     CONSTANT VARCHAR2(40)  := '財務経理部_部門コード';
+  cv_prf_aff_dept_cd_nm        CONSTANT VARCHAR2(40)  := 'AFF部門ダミーコード';
+-- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add end by Yutaka.Kuboshima
   cv_prf_password_nm           CONSTANT VARCHAR2(20)  := '初期パスワード';       -- プロファイル;
   cv_xxcmm1_in_if_nm           CONSTANT VARCHAR2(20)  := '社員インタフェース';   -- ファイル名
   cv_per_all_people_f_nm       CONSTANT VARCHAR2(20)  := '従業員マスタ';         -- ファイル名
@@ -284,6 +313,13 @@ AS
   cv_att_code_ihp              CONSTANT VARCHAR2(20)  := 'ICX_HR_PERSON_ID';    -- セキュリティ属性名（ICX_HR_PERSON_ID）
   cv_att_code_tp               CONSTANT VARCHAR2(20)  := 'TO_PERSON_ID';        -- セキュリティ属性名（TO_PERSON_ID）
 -- End Ver1.4
+-- 2009/08/06 Ver1.10 障害0000510,0000869,0000910 add start by Yutaka.Kuboshima
+  cv_permission_on             CONSTANT VARCHAR2(1)   := '1';                   -- 購買担当、出荷担当権限有
+  cv_permission_off            CONSTANT VARCHAR2(1)   := '0';                   -- 購買担当、出荷担当権限無
+--
+  cv_flex_aff_bumon            CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';     -- 値セット名(AFF部門)
+  cv_no                        CONSTANT VARCHAR2(1)   := 'N';                   -- 有効フラグ(N)
+-- 2009/08/06 Ver1.10 障害0000510,0000869,0000910 add start by Yutaka.Kuboshima
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -534,6 +570,14 @@ AS
   -- アプリケーションID【ICX：Self-Service Web Applications】
   gn_appl_id_icx               fnd_application.application_id%TYPE;
 -- End Ver1.4
+-- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add start by Yutaka.Kuboshima
+  gv_base_manager              VARCHAR2(255);         -- 拠点・部門担当者_役職名
+  gv_base_chrge                VARCHAR2(255);         -- 拠点・部門管理者_役職名
+  gv_po_chrge                  VARCHAR2(255);         -- PO_購買担当者_役職名
+  gn_role_id                   NUMBER;                -- 役割ID
+  gv_zaimu_bumon_cd            VARCHAR2(255);         -- 財務経理部_部門コード
+  gv_aff_dept_cd               VARCHAR2(255);         -- AFFダミー部門コード
+-- 2009/08/06 Ver1.10 障害0000510,0000910,0000924 add end by Yutaka.Kuboshima
 --
   gf_file_hand                 UTL_FILE.FILE_TYPE;   -- ファイル・ハンドルの宣言
 --
@@ -700,6 +744,7 @@ AS
                ,ppos.actual_termination_date  DESC       -- 退職日の降順
     ;
     --
+  --
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -756,6 +801,514 @@ AS
 --
   END get_supervisor;
 -- End Ver1.6
+--
+--
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+  /***********************************************************************************
+   * Procedure Name   : get_job
+   * Description      : 役職を取得します。
+   ***********************************************************************************/
+  PROCEDURE get_job(
+    in_person_id               IN  NUMBER         --  従業員ID
+   ,iv_location_code           IN  VARCHAR2       --  所属コード(新)
+   ,iv_job_post_order          IN  VARCHAR2       --  職位並順コード（新)
+   ,id_hire_date               IN  DATE           --  入社日
+   ,iv_purchasing_flag         IN  VARCHAR2       --  購買担当フラグ
+   ,on_job_id                  OUT NUMBER         --  役職ID
+   ,ov_errbuf                  OUT VARCHAR2       --  エラー・メッセージ           --# 固定 #
+   ,ov_retcode                 OUT VARCHAR2       --  リターン・コード             --# 固定 #
+   ,ov_errmsg                  OUT VARCHAR2 )     --  ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_job';   -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ln_supervisor_id       per_all_people_f.person_id%TYPE;    -- 管理者(従業員)ID
+    lv_job_name            per_jobs.name%TYPE;                 -- 役職名
+    ln_job_id              per_jobs.job_id%TYPE;               -- 役職ID
+    --
+    -- 管理者割当カーソル
+    CURSOR get_job_cur
+    IS
+      SELECT    paa.person_id             person_id      -- 従業員ID
+      FROM      per_periods_of_service    ppos           -- 従業員サービス期間マスタ
+               ,per_all_assignments_f     paa            -- アサインメントマスタ
+      WHERE     paa.person_id                            != in_person_id                    -- 自身以外
+      AND       paa.ass_attribute5                        = iv_location_code                -- 所属コード(新)
+      AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) >  0                               -- 職位並順コード（新)
+      AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER( iv_job_post_order )
+      AND       paa.period_of_service_id                  = ppos.period_of_service_id       -- サービスID
+      AND       ppos.date_start                          <= id_hire_date                    -- 入社日
+      AND       NVL( ppos.actual_termination_date, id_hire_date )
+                                                         >= id_hire_date                    -- 退職日
+      ORDER BY  paa.ass_attribute11                      -- 職位並順コード（新)
+               ,ppos.actual_termination_date  DESC       -- 退職日の降順
+    ;
+    --
+    -- 役職ID取得カーソル
+    CURSOR get_job_id_cur(p_job_name IN VARCHAR2)
+    IS
+      SELECT    pj.job_id
+      FROM      per_jobs pj -- 役職マスタ
+      WHERE     pj.name = p_job_name;
+  --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --
+    -- 購買担当フラグが'1'(購買担当権限有)の場合
+    IF (iv_purchasing_flag = cv_permission_on) THEN
+      lv_job_name := gv_po_chrge;
+    ELSE
+      -- カーソルオープン
+      OPEN  get_job_cur;
+      -- フェッチ
+      FETCH get_job_cur INTO ln_supervisor_id;
+      --
+      -- 管理者が取得できない場合
+      IF ( get_job_cur%NOTFOUND ) THEN
+        -- 拠点・部門管理者の役職をセットします
+        lv_job_name := gv_base_manager;
+      ELSE
+        -- 拠点・部門担当者の役職をセットします
+        lv_job_name := gv_base_chrge;
+      END IF;
+      -- クローズ
+      CLOSE get_job_cur;
+    END IF;
+    --
+    -- 役職IDを取得します
+    OPEN get_job_id_cur(lv_job_name);
+    FETCH get_job_id_cur INTO ln_job_id;
+    CLOSE get_job_id_cur;
+    -- OUTパラメータにセットします
+    on_job_id := ln_job_id;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_job;
+-- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
+--
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+  /***********************************************************************************
+   * Procedure Name   : get_location
+   * Description      : 事業所を取得します。
+   ***********************************************************************************/
+  PROCEDURE get_location(
+    iv_office_location_code    IN  VARCHAR2       --  勤務地拠点コード(新)
+   ,ov_purchasing_flag         OUT VARCHAR2       --  購買担当フラグ
+   ,ov_shipping_flag           OUT VARCHAR2       --  出荷担当フラグ
+   ,ov_errbuf                  OUT VARCHAR2       --  エラー・メッセージ           --# 固定 #
+   ,ov_retcode                 OUT VARCHAR2       --  リターン・コード             --# 固定 #
+   ,ov_errmsg                  OUT VARCHAR2 )     --  ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_location';   -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ln_supervisor_id       per_all_people_f.person_id%TYPE;    -- 管理者(従業員)ID
+    --
+    -- 事業所取得カーソル
+    CURSOR get_location_cur
+    IS
+      SELECT hla.attribute3 purchasing_flag   -- 購買担当フラグ
+            ,hla.attribute4 shipping_flag     -- 出荷担当フラグ
+      FROM   hr_locations_all hla             -- 事業所マスタ
+      WHERE  hla.location_code = iv_office_location_code;
+    -- 事業所取得カーソルレコード型
+    get_location_rec get_location_cur%ROWTYPE;
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --
+    -- カーソルオープン
+    OPEN  get_location_cur;
+    -- フェッチ
+    FETCH get_location_cur INTO get_location_rec;
+    --
+    -- 事業所が取得できない場合
+    IF ( get_location_cur%NOTFOUND ) THEN
+      ov_purchasing_flag := NULL;
+      ov_shipping_flag   := NULL;
+    -- 事業所が取得できた場合
+    ELSE
+      ov_purchasing_flag := get_location_rec.purchasing_flag;
+      ov_shipping_flag   := get_location_rec.shipping_flag;
+    END IF;
+    --
+    -- クローズ
+    CLOSE get_location_cur;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_location;
+--
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
+--
+-- 2009/08/06 Ver1.10 障害0000910 add start by Yutaka.Kuboshima
+  /***********************************************************************************
+   * Procedure Name   : wsh_grants_proc
+   * Description      : 出荷ロールマスタの登録・削除処理を行います。
+   ***********************************************************************************/
+  PROCEDURE wsh_grants_proc(
+    ir_masters_rec   IN     masters_rec, -- 対象従業員情報
+    iv_shipping_flag IN     VARCHAR2,    -- 出荷担当フラグ
+    ov_errbuf        OUT    VARCHAR2,    -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT    VARCHAR2,    -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT    VARCHAR2)    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'wsh_grants_proc'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_grant_id  wsh_grants.grant_id%TYPE;
+    ln_cnt       NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- 出荷ロールマスタ存在チェックカーソル
+    CURSOR wsh_grants_exists_cur
+    IS
+      SELECT COUNT(1)
+      FROM   per_all_people_f papf
+            ,fnd_user         fu
+            ,wsh_grants       wgs
+      WHERE  papf.person_id = fu.employee_id
+        AND  wgs.user_id    = fu.user_id
+        AND  papf.person_id = ir_masters_rec.person_id
+        AND  ROWNUM = 1;
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := cv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 出荷ロールマスタが登録されているか
+    OPEN wsh_grants_exists_cur;
+    FETCH wsh_grants_exists_cur INTO ln_cnt;
+    CLOSE wsh_grants_exists_cur;
+    -- 出荷担当フラグが'1'(出荷担当権限有)の場合かつ、出荷ロールマスタが未登録の場合
+    IF (iv_shipping_flag = cv_permission_on) AND (ln_cnt = 0) THEN
+      -- 登録処理
+      INSERT INTO wsh_grants
+      (grant_id,
+       user_id,
+       role_id,
+       organization_id,
+       start_date,
+       end_date,
+       created_by,
+       creation_date,
+       last_updated_by,
+       last_update_date,
+       last_update_login
+      )
+      VALUES (
+       wsh_grants_s.NEXTVAL,                      --GRANT_ID
+       ir_masters_rec.user_id,                    --USER_ID
+       gn_role_id,                                --ROLE_ID
+       NULL,                                      --ORGANIZATION_ID
+       cd_process_date,                           --START_DATE(生産システムではSYSDATE,営業システムでは業務日付)
+       NULL,                                      --END_DATE
+       gn_created_by,
+       gd_creation_date,
+       gn_last_update_by,
+       gd_last_update_date,
+       gn_last_update_login
+      );
+--
+    -- 出荷担当フラグが'0'(出荷担当権限無)の場合かつ、出荷ロールマスタが登録されている場合
+    -- または、退職区分が'Y'の場合
+    ELSIF ( (iv_shipping_flag = cv_permission_off) AND (ln_cnt = 1) )
+      OR (ir_masters_rec.retire_kbn = gv_sts_yes)
+    THEN
+      -- 削除処理
+      DELETE wsh_grants
+      WHERE  user_id = ir_masters_rec.user_id;
+    END IF;
+--
+  EXCEPTION
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END wsh_grants_proc;
+--
+  /***********************************************************************************
+   * Procedure Name   : po_agents_proc
+   * Description      : 購買担当マスタの登録・削除処理を行います。
+   ***********************************************************************************/
+  PROCEDURE po_agents_proc(
+    ir_masters_rec     IN     masters_rec, -- 対象従業員情報
+    iv_purchasing_flag IN     VARCHAR2,    -- 購買担当フラグ
+    ov_errbuf          OUT    VARCHAR2,    -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT    VARCHAR2,    -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT    VARCHAR2)    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'po_agents_proc'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_rowid                      ROWID;
+    lv_api_name                   VARCHAR2(200);
+    ln_cnt                        NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- 購買担当マスタ存在チェックカーソル
+    CURSOR po_agents_exists_cur
+    IS
+      SELECT COUNT(1)
+      FROM   per_all_people_f papf
+            ,po_agents        po
+      WHERE  papf.person_id = po.agent_id
+        AND  papf.person_id = ir_masters_rec.person_id
+        AND  ROWNUM = 1;
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := cv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 購買担当マスタが登録されているか
+    OPEN po_agents_exists_cur;
+    FETCH po_agents_exists_cur INTO ln_cnt;
+    CLOSE po_agents_exists_cur;
+    -- 購買担当フラグが'1'(購買担当権限有)の場合かつ、購買担当マスタが未登録の場合
+    IF (iv_purchasing_flag = cv_permission_on) AND (ln_cnt = 0) THEN
+      BEGIN
+        -- 登録処理
+        PO_AGENTS_PKG.INSERT_ROW(
+          X_ROWID               => lv_rowid
+         ,X_AGENT_ID            => ir_masters_rec.person_id           -- 従業員ID
+         ,X_LAST_UPDATE_DATE    => gd_last_update_date
+         ,X_LAST_UPDATED_BY     => gn_last_update_by
+         ,X_LAST_UPDATE_LOGIN   => gn_last_update_login
+         ,X_CREATION_DATE       => gd_creation_date
+         ,X_CREATED_BY          => gn_last_update_by
+         ,X_LOCATION_ID         => NULL
+         ,X_CATEGORY_ID         => NULL
+         ,X_AUTHORIZATION_LIMIT => NULL
+         ,X_START_DATE_ACTIVE   => NULL
+         ,X_END_DATE_ACTIVE     => NULL
+         ,X_ATTRIBUTE_CATEGORY  => NULL
+         ,X_ATTRIBUTE1          => NULL
+         ,X_ATTRIBUTE2          => NULL
+         ,X_ATTRIBUTE3          => NULL
+         ,X_ATTRIBUTE4          => NULL
+         ,X_ATTRIBUTE5          => NULL
+         ,X_ATTRIBUTE6          => NULL
+         ,X_ATTRIBUTE7          => NULL
+         ,X_ATTRIBUTE8          => NULL
+         ,X_ATTRIBUTE9          => NULL
+         ,X_ATTRIBUTE10         => NULL
+         ,X_ATTRIBUTE11         => NULL
+         ,X_ATTRIBUTE12         => NULL
+         ,X_ATTRIBUTE13         => NULL
+         ,X_ATTRIBUTE14         => NULL
+         ,X_ATTRIBUTE15         => NULL
+        );
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_api_name := 'PO_AGENTS_PKG.INSERT_ROW';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_api_err
+                      ,iv_token_name1  => cv_tkn_apiname
+                      ,iv_token_value1 => lv_api_name
+                      ,iv_token_name2  => cv_tkn_ng_word
+                      ,iv_token_value2 => cv_employee_nm    -- '社員番号'
+                      ,iv_token_name3  => cv_tkn_ng_data
+                      ,iv_token_value3 => ir_masters_rec.employee_number
+                      );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_others_expt;
+      END;
+--
+    -- 購買担当フラグが'0'(購買担当権限無)の場合かつ、購買担当マスタが登録されている場合
+    -- または、退職区分が'Y'の場合
+    ELSIF ( (iv_purchasing_flag = cv_permission_off) AND (ln_cnt = 1) )
+      OR (ir_masters_rec.retire_kbn = gv_sts_yes)
+    THEN
+      -- 削除処理
+      DELETE po_agents
+      WHERE  agent_id = ir_masters_rec.person_id;
+    END IF;
+--
+  EXCEPTION
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END po_agents_proc;
+--
+-- 2009/08/06 Ver1.10 障害0000910 add end by Yutaka.Kuboshima
 --
 -- Ver1.4 Add  2009/05/21  セキュリティ属性登録プロシージャを追加  T1_0966
   /***********************************************************************************
@@ -1190,6 +1743,64 @@ AS
       RAISE global_process_expt;
     END IF;
     --
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+    --
+    -- 拠点・部門管理者_役職名取得
+    gv_base_manager := FND_PROFILE.VALUE(cv_prf_base_manager);
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_base_manager IS NULL) THEN
+      lv_token_value1 := cv_prf_base_manager_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 拠点・部門担当者_役職名取得
+    gv_base_chrge := FND_PROFILE.VALUE(cv_prf_base_chrge);
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_base_chrge IS NULL) THEN
+      lv_token_value1 := cv_prf_base_chrge_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- PO_購買担当者_役職名取得
+    gv_po_chrge := FND_PROFILE.VALUE(cv_prf_po_chrge);
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_po_chrge IS NULL) THEN
+      lv_token_value1 := cv_prf_po_chrge_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    BEGIN
+      -- 役割ID取得
+      gn_role_id := TO_NUMBER(FND_PROFILE.VALUE(cv_prf_role_id));
+      -- プロファイルが取得できない場合はエラー
+      IF (gn_role_id IS NULL) THEN
+        lv_token_value1 := cv_prf_role_id_nm;
+        RAISE global_process_expt;
+      END IF;
+    EXCEPTION
+      -- 数値変換エラー
+      WHEN OTHERS THEN
+        lv_token_value1 := cv_prf_role_id_nm;
+        RAISE global_process_expt;
+    END;
+    --
+    -- 財務経理部_部門コード取得
+    gv_zaimu_bumon_cd := FND_PROFILE.VALUE(cv_prf_zaimu_bumon_cd);
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_zaimu_bumon_cd IS NULL) THEN
+      lv_token_value1 := cv_prf_zaimu_bumon_cd_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- AFFダミー部門コード取得
+    gv_aff_dept_cd := FND_PROFILE.VALUE(cv_prf_aff_dept_cd);
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_aff_dept_cd IS NULL) THEN
+      lv_token_value1 := cv_prf_aff_dept_cd_nm;
+      RAISE global_process_expt;
+    END IF;
+    --
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1450,7 +2061,7 @@ AS
    ***********************************************************************************/
   PROCEDURE check_aff_bumon(
     iv_bumon       IN  VARCHAR2,     --   チェック対象データ
-    iv_flg         IN  VARCHAR2,     --   業務日付時点でのAFF部門''、過去も含めたAFF部門'A'
+    iv_flg         IN  VARCHAR2,     --   業務日付時点でのAFF部門''、部門階層ビュー不使用'A'
     iv_token       IN  VARCHAR2,     --   エラー時のトークン
     iv_employee_nm IN  VARCHAR2,     --   社員番号
     ov_errbuf      OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1527,12 +2138,24 @@ AS
 --        FROM   xxcmm_hierarchy_dept_all_v xhd
 --        WHERE  xhd.cur_dpt_cd = iv_bumon   -- 最下層部門コードが同じ
 --        AND    ROWNUM = 1;
-        SELECT xwhd.cur_dpt_cd
+-- 2009/08/06 Ver1.10 障害0000869 modify start by Yutaka.Kuboshima
+--        SELECT xwhd.cur_dpt_cd
+--        INTO   lv_bumon
+--        FROM   xxcmm_wk_hiera_dept xwhd
+--        WHERE  xwhd.cur_dpt_cd  = iv_bumon   -- 最下層部門コードが同じ
+--        AND    xwhd.process_kbn = '1'        -- 処理区分(1：全部門、2：部門)
+--        AND    ROWNUM = 1;
+        -- 部門階層ビューから直接AFF部門から検索するように修正
+        SELECT ffv.flex_value
         INTO   lv_bumon
-        FROM   xxcmm_wk_hiera_dept xwhd
-        WHERE  xwhd.cur_dpt_cd  = iv_bumon   -- 最下層部門コードが同じ
-        AND    xwhd.process_kbn = '1'        -- 処理区分(1：全部門、2：部門)
-        AND    ROWNUM = 1;
+        FROM   fnd_flex_values ffv
+              ,fnd_flex_value_sets ffvs
+        WHERE  ffv.flex_value_set_id    = ffvs.flex_value_set_id
+          AND  ffvs.flex_value_set_name = cv_flex_aff_bumon
+          AND  ffv.flex_value           = iv_bumon
+          AND  ffv.summary_flag         = cv_no
+          AND  ROWNUM = 1;
+-- 2009/08/06 Ver1.10 障害0000869 modify start by Yutaka.Kuboshima
 --Ver1.8 Mod  2009/07/06  0000412 END
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -1647,7 +2270,10 @@ AS
                     ,iv_token_name1  => cv_tkn_ng_word
                     ,iv_token_value1 => cv_locations_all_nm
                     ,iv_token_name2  => cv_tkn_ng_code
-                    ,iv_token_value2 => cv_office_location||ir_masters_rec.location_code
+-- 2009/08/06 Ver1.10 modify start by Yutaka.Kuboshima
+--                    ,iv_token_value2 => cv_office_location||ir_masters_rec.location_code
+                    ,iv_token_value2 => cv_office_location||ir_masters_rec.office_location_code
+-- 2009/08/06 Ver1.10 modify start by Yutaka.Kuboshima
                     ,iv_token_name3  => cv_tkn_ng_user
                     ,iv_token_value3 => ir_masters_rec.employee_number
                    );
@@ -2025,6 +2651,9 @@ AS
     cv_announce_date_nm   CONSTANT VARCHAR2(20) := '発令日';              -- 項目名
     cv_announce_date_nm1  CONSTANT VARCHAR2(20) := '発令日未設定';        -- 項目名
     cv_announce_date_nm2  CONSTANT VARCHAR2(20) := '発令日未来日付';      -- 項目名
+-- 2009/08/06 Ver1.10 障害0000793 add start by Yutaka.Kuboshima
+    cv_announce_date_nm3  CONSTANT VARCHAR2(20) := '発令日日付エラー';    -- 項目名
+-- 2009/08/06 Ver1.10 障害0000793 add end by Yutaka.Kuboshima
     cv_sex_nm             CONSTANT VARCHAR2(10) := '性別';                -- 項目名
     cv_division_nm        CONSTANT VARCHAR2(20) := '社員・外部委託区分';  -- 項目名
     cv_location_cd        CONSTANT VARCHAR2(20) := '所属コード';          -- 項目名
@@ -2036,6 +2665,9 @@ AS
     --
     -- *** ローカル変数 ***
     lv_token_value2       VARCHAR2(30);
+-- 2009/08/06 Ver1.10 障害0000793 add start by Yutaka.Kuboshima
+    ld_announce_date           DATE;
+-- 2009/08/06 Ver1.10 障害0000793 add end by Yutaka.Kuboshima
     --
     -- *** ローカル・カーソル ***
     --
@@ -2113,6 +2745,18 @@ AS
     END IF;
     --
     --発令日
+-- 2009/08/06 Ver1.10 障害0000793 add start by Yutaka.Kuboshima
+    BEGIN
+      IF (ir_masters_rec.announce_date IS NOT NULL) THEN
+        -- 日付妥当性チェック
+        ld_announce_date := TO_DATE(ir_masters_rec.announce_date,'YYYYMMDD');
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_token_value2 := cv_announce_date_nm3;
+        RAISE global_process_expt;
+    END;
+-- 2009/08/06 Ver1.10 障害0000793 add end by Yutaka.Kuboshima
     IF (ir_masters_rec.announce_date IS NULL) THEN
       lv_token_value2 := cv_announce_date_nm1; -- '発令日未設定'
       RAISE global_process_expt;
@@ -2122,7 +2766,10 @@ AS
     ELSIF (LENGTHB(ir_masters_rec.announce_date) <> 8) THEN -- 日付妥当性チェック
       lv_token_value2 := cv_announce_date_nm; -- '発令日'
       RAISE global_process_expt;
-    ELSIF (ir_masters_rec.announce_date > cc_process_date) THEN
+-- 2009/08/06 Ver1.10 障害0000793 modify start by Yutaka.Kuboshima
+--    ELSIF (ir_masters_rec.announce_date > cc_process_date) THEN
+    ELSIF (ir_masters_rec.announce_date > TO_CHAR(cd_process_date + 1,'YYYYMMDD')) THEN
+-- 2009/08/06 Ver1.10 障害0000793 modify end by Y.Kuboshima
       lv_token_value2 := cv_announce_date_nm2; -- '発令日未来日付'
       RAISE global_process_expt;
     END IF;
@@ -4669,6 +5316,13 @@ AS
     lb_spp_delete_warning           BOOLEAN;
     lv_entries_changes_warn         VARCHAR2(1);
     lb_tax_district_changed_warn    BOOLEAN;
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+    ln_job_id                       per_all_assignments_f.job_id%TYPE; -- 役職ID
+    lv_reference_range              per_all_people_f.attribute29%TYPE; -- 照会範囲
+    --
+    lv_purchasing_flag              VARCHAR2(1);                       -- 購買担当フラグ
+    lv_shipping_flag                VARCHAR2(1);                       -- 出荷担当フラグ
+-- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
     --
     lv_api_name                   VARCHAR2(200); -- エラートークン用
 --Ver1.5 Add  2009/06/02
@@ -4691,7 +5345,18 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-
+    --
+-- 2009/08/06 Ver1.10 障害0000924 add start by Yutaka.Kuboshima
+    -- 照会範囲の設定
+    -- 所属コード(新)が財務経理部の場合
+    IF (ir_masters_rec.location_code = gv_zaimu_bumon_cd) THEN
+      -- 照会範囲に'T'を設定します
+      lv_reference_range := gv_aff_dept_cd;
+    ELSE
+      -- 照会範囲に所属コード(新)を設定します
+      lv_reference_range := ir_masters_rec.location_code;
+    END IF;
+-- 2009/08/06 Ver1.10 障害0000924 add end by Yutaka.Kuboshima
     -- 従業員マスタ(API)
     BEGIN
       --
@@ -4730,7 +5395,10 @@ AS
         ,P_ATTRIBUTE21                  =>  ir_masters_rec.job_type_old           -- 職種コード（旧）
         ,P_ATTRIBUTE22                  =>  ir_masters_rec.job_type_name_old      -- 職種名（旧）
         ,P_ATTRIBUTE28                  =>  ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
-        ,P_ATTRIBUTE29                  =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+-- 2009/08/06 Ver1.10 障害0000924 modify start by Yutaka.Kuboshima
+--        ,P_ATTRIBUTE29                  =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+        ,P_ATTRIBUTE29                  =>  lv_reference_range                    -- 照会範囲
+-- 2009/08/06 Ver1.10 障害0000924 modify end by Yutaka.Kuboshima
         ,P_ATTRIBUTE30                  =>  ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
         ,P_PER_INFORMATION_CATEGORY     => gv_info_category                       -- 'JP'
         ,P_PER_INFORMATION18            =>  ir_masters_rec.last_name_kanji        -- 漢字姓
@@ -4767,6 +5435,30 @@ AS
         RAISE global_process_expt;
     END;
     --
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+    -- 事業所取得
+    get_location(
+      ir_masters_rec.location_code           -- IN : 所属コード(新)
+     ,lv_purchasing_flag                     -- OUT: 購買担当フラグ
+     ,lv_shipping_flag                       -- OUT: 出荷担当フラグ
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    -- 役職取得
+    get_job(
+      ir_masters_rec.person_id               -- IN ：従業員ID
+     ,ir_masters_rec.location_code           -- IN ：所属コード(新)
+     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+     ,ir_masters_rec.hire_date               -- IN ：入社日
+     ,lv_purchasing_flag                     -- IN : 購買担当フラグ
+     ,ln_job_id                              -- OUT：役職ID
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
+--
 -- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
     -- 管理者取得
     get_supervisor(
@@ -4780,6 +5472,12 @@ AS
      ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
     );
 -- End1.6
+-- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
+    -- 最上位の管理者の場合、管理者はNULLに設定します
+    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+      ir_masters_rec.supervisor_id := NULL;
+    END IF;
+-- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
     --
     -- アサインメントマスタ(API)
     BEGIN
@@ -4854,6 +5552,9 @@ AS
           ,P_EFFECTIVE_DATE                =>  SYSDATE
           ,P_DATETRACK_UPDATE_MODE         =>  gv_upd_mode                          -- 'CORRECTION'
           ,P_ASSIGNMENT_ID                 =>  ir_masters_rec.assignment_id         -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+          ,P_JOB_ID                        =>  ln_job_id                            -- 役職ID
+-- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
           ,P_LOCATION_ID                   =>  ir_masters_rec.location_id           -- 事業所(勤務地拠点コード変更時）
           ,P_OBJECT_VERSION_NUMBER         =>  ir_masters_rec.paa_version           -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
           ,P_SPECIAL_CEILING_STEP_ID       =>  ln_special_ceiling_step_id           -- OUT
@@ -5398,6 +6099,12 @@ AS
     lb_spp_delete_warning           BOOLEAN;
     lv_entries_changes_warn         VARCHAR2(1);
     lb_tax_district_changed_warn    BOOLEAN;
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+    ln_job_id                       per_all_assignments_f.job_id%TYPE;
+    --
+    lv_purchasing_flag              VARCHAR2(1);   -- 購買担当フラグ
+    lv_shipping_flag                VARCHAR2(1);   -- 出荷担当フラグ
+-- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
     --
     lv_api_name                   VARCHAR2(200); -- エラートークン用
 --Ver1.5 Add  2009/06/02
@@ -5421,6 +6128,30 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
     --
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+    -- 事業所取得
+    get_location(
+      ir_masters_rec.location_code           -- IN : 所属コード(新)
+     ,lv_purchasing_flag                     -- OUT: 購買担当フラグ
+     ,lv_shipping_flag                       -- OUT: 出荷担当フラグ
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    -- 役職取得
+    get_job(
+      ir_masters_rec.person_id               -- IN ：従業員ID
+     ,ir_masters_rec.location_code           -- IN ：所属コード(新)
+     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+     ,ir_masters_rec.hire_date               -- IN ：入社日
+     ,lv_purchasing_flag                     -- IN : 購買担当フラグ
+     ,ln_job_id                              -- OUT：役職ID
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+-- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
+--
 -- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
     -- 管理者取得
     get_supervisor(
@@ -5434,6 +6165,12 @@ AS
      ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
     );
 -- End1.6
+-- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
+    -- 最上位の管理者の場合、管理者はNULLに設定します
+    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+      ir_masters_rec.supervisor_id := NULL;
+    END IF;
+-- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
     --
     -- アサインメントマスタ(API)
     BEGIN
@@ -5505,6 +6242,9 @@ AS
         ,P_EFFECTIVE_DATE                =>  SYSDATE
         ,P_DATETRACK_UPDATE_MODE         =>  gv_upd_mode                      -- 'CORRECTION'
         ,P_ASSIGNMENT_ID                 =>  ir_masters_rec.assignment_id     -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+        ,P_JOB_ID                        =>  ln_job_id                        -- 役職ID
+-- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
         ,P_LOCATION_ID                   =>  ir_masters_rec.location_id       -- 事業所(勤務地拠点コード変更時）
         ,P_OBJECT_VERSION_NUMBER         =>  ir_masters_rec.paa_version       -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
         ,P_SPECIAL_CEILING_STEP_ID       =>  ln_special_ceiling_step_id       -- OUT
@@ -5630,6 +6370,13 @@ AS
     lb_spp_delete_warning           BOOLEAN;
     lv_entries_changes_warn         VARCHAR2(200);
     lb_tax_district_changed_warn    BOOLEAN;
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+    ln_job_id                       per_all_assignments_f.job_id%TYPE; -- 役職ID
+    lv_reference_range              per_all_people_f.attribute29%TYPE; -- 照会範囲
+    --
+    lv_purchasing_flag              VARCHAR2(1);                       -- 購買担当フラグ
+    lv_shipping_flag                VARCHAR2(1);                       -- 出荷担当フラグ
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
     --
     lv_api_name                     VARCHAR2(200); -- エラートークン用
     --
@@ -5652,6 +6399,17 @@ AS
     --
     -- 新規登録社員
     --
+-- 2009/08/06 Ver1.10 障害0000924 add start by Yutaka.Kuboshima
+    -- 照会範囲の設定
+    -- 所属コード(新)が財務経理部の場合
+    IF (ir_masters_rec.location_code = gv_zaimu_bumon_cd) THEN
+      -- 照会範囲に'T'を設定します
+      lv_reference_range := gv_aff_dept_cd;
+    ELSE
+      -- 照会範囲に所属コード(新)を設定します
+      lv_reference_range := ir_masters_rec.location_code;
+    END IF;
+-- 2009/08/06 Ver1.10 障害0000924 add end by Yutaka.Kuboshima
     -- 従業員マスタ(API)
     BEGIN
       --
@@ -5688,7 +6446,10 @@ AS
         ,P_ATTRIBUTE21                  => ir_masters_rec.job_type_old           -- 職種コード（旧）
         ,P_ATTRIBUTE22                  => ir_masters_rec.job_type_name_old      -- 職種名（旧）
         ,P_ATTRIBUTE28                  => ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
-        ,P_ATTRIBUTE29                  => ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+-- 2009/08/06 Ver1.10 障害0000924 modify start by Yutaka.Kuboshima
+--        ,P_ATTRIBUTE29                  => ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+        ,P_ATTRIBUTE29                  => lv_reference_range                    -- 照会範囲
+-- 2009/08/06 Ver1.10 障害0000924 modify end by Yutaka.Kuboshima
         ,P_ATTRIBUTE30                  => ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
         ,P_PER_INFORMATION_CATEGORY     => gv_info_category                      -- 'JP'
         ,P_PER_INFORMATION18            => ir_masters_rec.last_name_kanji        -- 漢字姓
@@ -5728,6 +6489,30 @@ AS
         RAISE global_process_expt;
     END;
     --
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+    -- 事業所取得
+    get_location(
+      ir_masters_rec.location_code           -- IN : 所属コード(新)
+     ,lv_purchasing_flag                     -- OUT: 購買担当フラグ
+     ,lv_shipping_flag                       -- OUT: 出荷担当フラグ
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    -- 役職取得
+    get_job(
+      ir_masters_rec.person_id               -- IN ：従業員ID
+     ,ir_masters_rec.location_code           -- IN ：所属コード(新)
+     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+     ,ir_masters_rec.hire_date               -- IN ：入社日
+     ,lv_purchasing_flag                     -- IN : 購買担当フラグ
+     ,ln_job_id                              -- OUT：役職ID
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
+--
 -- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
     -- 管理者取得
     get_supervisor(
@@ -5741,6 +6526,12 @@ AS
      ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
     );
 -- End1.6
+-- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
+    -- 最上位の管理者の場合、管理者はNULLに設定します
+    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+      ir_masters_rec.supervisor_id := NULL;
+    END IF;
+-- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
     --
     -- アサインメントマスタ(API)
     BEGIN
@@ -5812,6 +6603,9 @@ AS
         ,P_EFFECTIVE_DATE                =>  SYSDATE
         ,P_DATETRACK_UPDATE_MODE         =>  gv_upd_mode                        -- 'CORRECTION'
         ,P_ASSIGNMENT_ID                 =>  ir_masters_rec.assignment_id       -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
+        ,P_JOB_ID                        =>  ln_job_id                          -- 役職ID
+-- 2009/08/06 Ver1.10 障害0000510 add start by Yutaka.Kuboshima
         ,P_LOCATION_ID                   =>  ir_masters_rec.location_id         -- 事業所(勤務地拠点コードから求めたID）
         ,P_OBJECT_VERSION_NUMBER         =>  ir_masters_rec.paa_version         -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
         ,P_SPECIAL_CEILING_STEP_ID       =>  ln_special_ceiling_step_id         -- OUT
@@ -5895,6 +6689,34 @@ AS
         RAISE global_process_expt;
     END;
     --
+-- 2009/08/06 Ver1.10 障害0000910 add start by Yutaka.Kuboshima
+    -- 購買担当マスタ登録
+    po_agents_proc(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_purchasing_flag   -- 購買担当フラグ
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- 出荷ロールマスタ登録
+    wsh_grants_proc(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_shipping_flag     -- 出荷担当フラグ
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+-- 2009/08/06 Ver1.10 障害0000910 add end by Yutaka.Kuboshima
 -- Ver1.4 Add  2009/05/21  セキュリティ属性登録処理をコール  T1_0966
     ins_user_sec(
       ir_masters_rec       -- 対象従業員情報
@@ -5974,6 +6796,10 @@ AS
     -- *** ローカル変数 ***
     --
     lv_api_name                 VARCHAR2(200); -- エラートークン用
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+    lv_purchasing_flag          VARCHAR2(1);   -- 購買担当フラグ
+    lv_shipping_flag            VARCHAR2(1);   -- 出荷担当フラグ
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
     --
     -- *** ローカル・カーソル ***
     --
@@ -6130,6 +6956,43 @@ AS
       END;
     END IF;
     --
+-- 2009/08/06 Ver1.10 障害0000910 add start by Yutaka.Kuboshima
+    -- 事業所取得
+    get_location(
+      ir_masters_rec.location_code           -- IN : 所属コード(新)
+     ,lv_purchasing_flag                     -- OUT: 購買担当フラグ
+     ,lv_shipping_flag                       -- OUT: 出荷担当フラグ
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    -- 購買担当マスタ登録
+    po_agents_proc(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_purchasing_flag   -- 購買担当フラグ
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- 出荷ロールマスタ登録
+    wsh_grants_proc(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_shipping_flag     -- 出荷担当フラグ
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+-- 2009/08/06 Ver1.10 障害0000910 add end by Yutaka.Kuboshima
 -- Ver1.4 Add  2009/05/21  セキュリティ属性登録処理をコール  T1_0966
     ins_user_sec(
       ir_masters_rec       -- 対象従業員情報
@@ -6211,6 +7074,11 @@ AS
 --Ver1.5 Add  2009/06/02
     lv_sqlerrm         VARCHAR2(5000);  -- SQLERRM退避
 --End Ver1.5
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add start by Yutaka.Kuboshima
+    lv_purchasing_flag VARCHAR2(1);   -- 購買担当フラグ
+    lv_shipping_flag   VARCHAR2(1);   -- 出荷担当フラグ
+-- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
+
 --
   BEGIN
 --
@@ -6332,6 +7200,43 @@ AS
       END;
     END IF;
     --
+-- 2009/08/06 Ver1.10 障害0000910 add start by Yutaka.Kuboshima
+    -- 事業所取得
+    get_location(
+      ir_masters_rec.location_code           -- IN : 所属コード(新)
+     ,lv_purchasing_flag                     -- OUT: 購買担当フラグ
+     ,lv_shipping_flag                       -- OUT: 出荷担当フラグ
+     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode                             -- リターン・コード             --# 固定 #
+     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    -- 購買担当マスタ登録
+    po_agents_proc(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_purchasing_flag   -- 購買担当フラグ
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- 出荷ロールマスタ登録
+    wsh_grants_proc(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_shipping_flag     -- 出荷担当フラグ
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+-- 2009/08/06 Ver1.10 障害0000910 add end by Yutaka.Kuboshima
 -- Ver1.4 Add  2009/05/29  セキュリティ属性登録処理をコール  T1_0966
     ins_user_sec(
       ir_masters_rec       -- 対象従業員情報
@@ -6613,17 +7518,19 @@ AS
     --
 --Ver1.8 Mod  2009/07/06  0000412 START
     -- INSERT処理(社員データ取込用_部門階層一時ワーク)
-    INSERT INTO xxcmm_wk_hiera_dept
-      SELECT  xhd.cur_dpt_cd,        -- 最下層部門コード
-              xhd.dpt1_cd,           -- １階層目部門コード
-              xhd.dpt2_cd,           -- ２階層目部門コード
-              xhd.dpt3_cd,           -- ３階層目部門コード
-              xhd.dpt4_cd,           -- ４階層目部門コード
-              xhd.dpt5_cd,           -- ５階層目部門コード
-              xhd.dpt6_cd,           -- ６階層目部門コード
-              '1'                    -- 処理区分(1：全部門、2：部門)
-      FROM    xxcmm_hierarchy_dept_all_v xhd
-    ;
+-- 2009/08/06 Ver1.10 障害0000869 delete start by Yutaka.Kuboshima
+--    INSERT INTO xxcmm_wk_hiera_dept
+--      SELECT  xhd.cur_dpt_cd,        -- 最下層部門コード
+--              xhd.dpt1_cd,           -- １階層目部門コード
+--              xhd.dpt2_cd,           -- ２階層目部門コード
+--              xhd.dpt3_cd,           -- ３階層目部門コード
+--              xhd.dpt4_cd,           -- ４階層目部門コード
+--              xhd.dpt5_cd,           -- ５階層目部門コード
+--              xhd.dpt6_cd,           -- ６階層目部門コード
+--              '1'                    -- 処理区分(1：全部門、2：部門)
+--      FROM    xxcmm_hierarchy_dept_all_v xhd
+--    ;
+-- 2009/08/06 Ver1.10 障害0000869 delete end by Yutaka.Kuboshima
     INSERT INTO xxcmm_wk_hiera_dept
       SELECT  xhd.cur_dpt_cd,        -- 最下層部門コード
               xhd.dpt1_cd,           -- １階層目部門コード
