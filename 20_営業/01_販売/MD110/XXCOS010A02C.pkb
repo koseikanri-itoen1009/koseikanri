@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/06/17    1.6   K.Kiriu          [T1_1462]ロック不備対応
  *  2009/07/01    1.7   M.Sano           [0000064]受注DFF項目追加に伴う、連携項目追加
  *  2009/08/04    1.7   M.Sano           [0000923]情報区分がNULL、01、02のみ対象とするように変更
+ *  2009/11/05    1.8   N.Maeda          [E_T4_00081] 予定出荷日セット内容をNULLに変更
  *
  *****************************************************************************************/
 --
@@ -1367,11 +1368,14 @@ AS
                                                            NVL( gt_edi_headers ( gn_idx ).order_date,
                                                              gt_edi_headers ( gn_idx ).creation_date ))); 
                                                                                                   -- 要求日
-    gt_schedule_ship_date( gn_l_idx_all )          :=  NVL( gt_edi_headers ( gn_idx ).shop_delivery_date,
-                                                         NVL( gt_edi_headers ( gn_idx ).center_delivery_date,
-                                                           NVL( gt_edi_headers ( gn_idx ).order_date,
-                                                             gt_edi_headers ( gn_idx ).creation_date ))); 
+-- ************** 2009/11/05 1.8 N.Maeda MOD START ************** --
+--    gt_schedule_ship_date( gn_l_idx_all )          :=  NVL( gt_edi_headers ( gn_idx ).shop_delivery_date,
+--                                                         NVL( gt_edi_headers ( gn_idx ).center_delivery_date,
+--                                                           NVL( gt_edi_headers ( gn_idx ).order_date,
+--                                                             gt_edi_headers ( gn_idx ).creation_date ))); 
+    gt_schedule_ship_date( gn_l_idx_all )          := NULL;
                                                                                                   -- 予定出荷日
+-- ************** 2009/11/05 1.8 N.Maeda MOD  END  ************** --
 --****************************** 2009/04/15 1.4 T.Kitajima MOD START ******************************--
 --    gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).conv_customer_code;   -- 顧客発注番号
     gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).invoice_number;  -- 顧客発注番号
