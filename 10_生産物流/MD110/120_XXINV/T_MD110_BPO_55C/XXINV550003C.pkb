@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.6
+ * Version          : 1.7
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -37,6 +37,7 @@ AS
  *  2008/6/17     1.4  Kazuo Kumamoto   結合テスト不具合(ソート順変更・受入だけの伝票は先に出力)
  *  2008/07/02    1.5  Satoshi Yunba    禁則文字対応
  *  2008/09/26    1.6  Akiyosi Shiina   T_S_528対応
+ *  2008/10/16    1.7  Takao Ohashi     T_S_492,T_S_557,T_S_494対応
  *
  *****************************************************************************************/
 --
@@ -117,6 +118,9 @@ AS
   gc_cost_0                 CONSTANT NUMBER       := 0 ;                -- 出力用：0円
   -- クイックコード:参照タイプコード
   gc_lookup_type_new_div    CONSTANT VARCHAR2(18) := 'XXCMN_NEW_DIVISION' ; -- 新区分
+-- add start 1.7
+  gc_lookup_type_purpose_id CONSTANT VARCHAR2(22) := 'XXINV_ITEM_TRANS_CLASS' ; -- 品目振替目的
+-- add end 1.7
   gc_apl_code               CONSTANT VARCHAR2(3)  := 'FND' ;                -- クイックコード用
   -- 日付型マスク
   gc_date_mask              CONSTANT VARCHAR2(21) := 'YYYY/MM/DD HH24:MI:SS' ; -- 日付型マスク
@@ -162,6 +166,7 @@ AS
       ,creation_date_from  DATE                                               -- 17 : 更新時間FROM
       ,creation_date_to    DATE                                               -- 18 : 更新時間TO
     ) ;
+--
   -- 明細情報データ
   TYPE rec_data_type_dtl IS RECORD
     (
@@ -180,6 +185,9 @@ AS
       ,entry_date          gme_batch_header.actual_cmplt_date%TYPE       -- 入出庫日
       ,pay_reason_code     xxcmn_rcv_pay_mst.new_div_invent%TYPE         -- 払出事由コード
       ,pay_reason_name     fnd_lookup_values.meaning%TYPE                -- 払出事由名称
+-- add start 1.7
+      ,pay_purpose_name    fnd_lookup_values.attribute1%TYPE             -- 払出品目振替目的
+-- add end 1.7
       ,pay_item_no         xxcmn_item_mst2_v.item_no%TYPE                -- 払出品目コード
 --mod start 1.2
 --      ,pay_item_name       xxcmn_item_mst2_v.item_desc1%TYPE             -- 払出品目名称
@@ -190,6 +198,9 @@ AS
       ,pay_unt_price       ic_lots_mst.attribute7%TYPE                   -- 払出単価
       ,rcv_reason_code     xxcmn_rcv_pay_mst.new_div_invent%TYPE         -- 受入事由コード
       ,rcv_reason_name     fnd_lookup_values.meaning%TYPE                -- 受入事由名称
+-- add start 1.7
+      ,rcv_purpose_name    fnd_lookup_values.attribute1%TYPE             -- 受入品目振替目的
+-- add end 1.7
       ,rcv_item_no         xxcmn_item_mst2_v.item_no%TYPE                -- 受入品目コード
 --mod start 1.2
 --      ,rcv_item_name       xxcmn_item_mst2_v.item_desc1%TYPE             -- 受入品目名称
@@ -528,6 +539,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS pay_reason_name' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS pay_purpose_name' ;
+-- add end 1.7
     lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
 --mod start 1.2
 --    lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS pay_item_name' ;
@@ -554,6 +568,9 @@ AS
     lv_sql_body := lv_sql_body || '  END                         AS pay_unt_price' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_reason_name' ;
+-- add end 1.7
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_purpose_name' ;
+-- add start 1.7
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
@@ -573,6 +590,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,xxcmn_item_locations2_v  xilv' ;
     lv_sql_body := lv_sql_body || ' ,xxcmn_locations2_v        xlv' ;
     lv_sql_body := lv_sql_body || ' ,fnd_lookup_values         flv' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,fnd_lookup_values        flv2' ;
+-- add end 1.7
     lv_sql_body := lv_sql_body || ' ,xxcmn_stnd_unit_price_v xsupv' ;
     lv_sql_body := lv_sql_body || ' ,fnd_user                   fu' ;
     lv_sql_body := lv_sql_body || ' ,per_all_assignments_f    paaf' ;
@@ -666,6 +686,12 @@ AS
     lv_sql_body := lv_sql_body || ' AND flv.language               = :para_language_code ' ;
 -- 2008/09/26 v1.6 UPDATE END
     lv_sql_body := lv_sql_body || ' AND flv.lookup_code            = xrpm.new_div_invent ';
+-- add start 1.7
+    -- クイックコード(品目振替目的)結合
+    lv_sql_body := lv_sql_body || ' AND flv2.lookup_type           = :para_lookup_type_purpose_id ' ;
+    lv_sql_body := lv_sql_body || ' AND flv2.language              = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND flv2.lookup_code           = gbh.attribute7 ';
+-- add end 1.7
     -- ユーザマスタ結合
     lv_sql_body := lv_sql_body || ' AND fu.user_id                 = gbh.created_by' ;
     -- 従業員マスタ結合
@@ -852,6 +878,10 @@ AS
                                                                       ,gv_sql_date_from
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
+-- add start 1.7
+                                                                      ,gc_lookup_type_purpose_id
+                                                                      ,gc_language_code
+-- add end 1.7
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
@@ -940,6 +970,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS entry_date' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_reason_name' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
+-- add start 1.7
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_lot_no' ;
@@ -947,6 +980,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,0                           AS pay_unt_price' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS rcv_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS rcv_reason_name' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS rcv_purpose_name' ;
+-- add end 1.7
     lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS rcv_item_no' ;
 --mod start 1.2
 --    lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS rcv_item_name' ;
@@ -979,6 +1015,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,gme_batch_header          gbh' ;
     lv_sql_body := lv_sql_body || ' ,ic_tran_pnd               itp' ;
     lv_sql_body := lv_sql_body || ' ,fnd_lookup_values         flv' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,fnd_lookup_values        flv2' ;
+-- add end 1.7
     lv_sql_body := lv_sql_body || ' ,xxcmn_stnd_unit_price_v xsupv' ;
     ------------------------------------------------------------
     -- WHERE句
@@ -1040,6 +1079,12 @@ AS
     lv_sql_body := lv_sql_body || ' AND flv.language               = :para_language_code      ' ;
 -- 2008/09/26 v1.6 UPDATE END
     lv_sql_body := lv_sql_body || ' AND flv.lookup_code            = xrpm.new_div_invent ';
+-- add start 1.7
+    -- クイックコード(品目振替目的)結合
+    lv_sql_body := lv_sql_body || ' AND flv2.lookup_type           = :para_lookup_type_purpose_id ' ;
+    lv_sql_body := lv_sql_body || ' AND flv2.language              = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND flv2.lookup_code           = gbh.attribute7 ';
+-- add end 1.7
     -------------------------------------------------------------------------------
     lv_sql_body := lv_sql_body || ' AND gbh.batch_id = ' || in_batch_id ;
     -------------------------------------------------------------------------------
@@ -1066,6 +1111,10 @@ AS
                                                                       ,gv_sql_date_from
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
+-- add start 1.7
+                                                                      ,gc_lookup_type_purpose_id
+                                                                      ,gc_language_code
+-- add end 1.7
                                                                       ;
 -- 2008/09/26 v1.6 UPDATE END
 --
@@ -1144,6 +1193,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,itc.trans_date              AS entry_date';
       lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
       lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS pay_reason_name' ;
+-- add start 1.7
+      lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
+-- add end 1.7
       lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
 --mod start 1.2
 --      lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS pay_item_name';
@@ -1151,7 +1203,10 @@ AS
       lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name';
       lv_sql_body := lv_sql_body || ' ,DECODE(ilm.lot_id,0,NULL,ilm.lot_no) AS pay_lot_no';
 --mod end 1.2
-      lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itc.trans_qty),4) AS pay_quant';
+-- mod start 1.7
+--      lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itc.trans_qty),4) AS pay_quant';
+      lv_sql_body := lv_sql_body || ' ,ROUND(itc.trans_qty,4) * -1 AS pay_quant';
+-- mod end 1.7
       lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
       lv_sql_body := lv_sql_body || '      ROUND(xsupv.stnd_unit_price,3)' ;
@@ -1165,6 +1220,9 @@ AS
       lv_sql_body := lv_sql_body || '  END                         AS pay_unt_price' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_reason_code' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_reason_name' ;
+-- add start 1.7
+      lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_purpose_name' ;
+-- add end 1.7
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name';
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no';
@@ -1183,6 +1241,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,itc.trans_date              AS entry_date';
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_reason_code' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_reason_name' ;
+-- add start 1.7
+      lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
+-- add end 1.7
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_no' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_name';
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_lot_no';
@@ -1190,6 +1251,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,0                           AS pay_unt_price' ;
       lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS rcv_reason_code' ;
       lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS rcv_reason_name' ;
+-- add start 1.7
+      lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_purpose_name' ;
+-- add end 1.7
       lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS rcv_item_no' ;
 --mod start 1.2
 --      lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS rcv_item_name';
@@ -1197,7 +1261,10 @@ AS
       lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS rcv_item_name';
       lv_sql_body := lv_sql_body || ' ,DECODE(ilm.lot_id,0,NULL,ilm.lot_no) AS rcv_lot_no';
 --mod end 1.2
-      lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itc.trans_qty),4) AS rcv_quant';
+-- mod start 1.7
+--      lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itc.trans_qty),4) AS rcv_quant';
+      lv_sql_body := lv_sql_body || ' ,ROUND(itc.trans_qty,4) AS rcv_quant';
+-- mod end 1.7
       lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
       lv_sql_body := lv_sql_body || '      ROUND(xsupv.stnd_unit_price,3)' ;
@@ -1243,7 +1310,9 @@ AS
 --    lv_sql_body := lv_sql_body || ' AND xrpm.use_div_invent_rep    = ''' || gc_use_div_invent_rep || '''';
     lv_sql_body := lv_sql_body || ' AND xrpm.use_div_invent_rep    = :para_use_div_invent_rep' ;
 -- 2008/09/26 v1.6 UPDATE END
-    lv_sql_body := lv_sql_body || ' AND xrpm.rcv_pay_div           = TO_CHAR( SIGN( itc.trans_qty ) )';
+-- del start 1.7
+--    lv_sql_body := lv_sql_body || ' AND xrpm.rcv_pay_div           = TO_CHAR( SIGN( itc.trans_qty ) )';
+-- del end 1.7
     lv_sql_body := lv_sql_body || ' AND xrpm.rcv_pay_div           = :line_type';
     -- OPM品目情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND itc.item_id                = ximv.item_id' ;
@@ -1540,6 +1609,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,xoha.shipped_date           AS entry_date' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS pay_reason_name' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
+-- add end 1.7
     lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
 --mod start 1.2
 --    lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS pay_item_name' ;
@@ -1570,6 +1642,9 @@ AS
     lv_sql_body := lv_sql_body || ' END                          AS pay_unt_price' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_reason_name' ;
+-- add start 1.7
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_purpose_name' ;
+-- add end 1.7
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name';
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no';
@@ -1981,6 +2056,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). entry_date         := lt_prod_pay_data(i-1).entry_date ;
             lt_prod_all_data(ln_prod_cnt). pay_reason_code    := lt_prod_pay_data(i-1).pay_reason_code ;
             lt_prod_all_data(ln_prod_cnt). pay_reason_name    := NULL ;
+-- add start 1.7
+            lt_prod_all_data(ln_prod_cnt). pay_purpose_name   := NULL ;
+-- add end 1.7
             lt_prod_all_data(ln_prod_cnt). pay_item_no        := NULL ;
             lt_prod_all_data(ln_prod_cnt). pay_item_name      := NULL ;
             lt_prod_all_data(ln_prod_cnt). pay_lot_no         := NULL ;
@@ -1988,6 +2066,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). pay_unt_price      := 0 ;
             lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
             lt_prod_all_data(ln_prod_cnt). rcv_reason_name    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_name ;
+-- add start 1.7
+            lt_prod_all_data(ln_prod_cnt). rcv_purpose_name   := lt_prod_rcv_data(ln_rcv_cnt).rcv_purpose_name ;
+-- add end 1.7
             lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
             lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
             lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
@@ -2031,6 +2112,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). entry_date         := lt_prod_pay_data(i).entry_date ;
         lt_prod_all_data(ln_prod_cnt). pay_reason_code    := lt_prod_pay_data(i).pay_reason_code ;
         lt_prod_all_data(ln_prod_cnt). pay_reason_name    := lt_prod_pay_data(i).pay_reason_name ;
+-- add start 1.7
+        lt_prod_all_data(ln_prod_cnt). pay_purpose_name   := lt_prod_pay_data(i).pay_purpose_name ;
+-- add end 1.7
         lt_prod_all_data(ln_prod_cnt). pay_item_no        := lt_prod_pay_data(i).pay_item_no ;
         lt_prod_all_data(ln_prod_cnt). pay_item_name      := lt_prod_pay_data(i).pay_item_name ;
         lt_prod_all_data(ln_prod_cnt). pay_lot_no         := lt_prod_pay_data(i).pay_lot_no ;
@@ -2038,6 +2122,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). pay_unt_price      := lt_prod_pay_data(i).pay_unt_price ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_name    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_name ;
+-- add start 1.7
+        lt_prod_all_data(ln_prod_cnt). rcv_purpose_name   := lt_prod_rcv_data(ln_rcv_cnt).rcv_purpose_name ;
+-- add start 1.7
         lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
         lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
@@ -2061,6 +2148,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). entry_date         := lt_prod_pay_data(i).entry_date ;
         lt_prod_all_data(ln_prod_cnt). pay_reason_code    := lt_prod_pay_data(i).pay_reason_code ;
         lt_prod_all_data(ln_prod_cnt). pay_reason_name    := lt_prod_pay_data(i).pay_reason_name ;
+-- add start 1.7
+        lt_prod_all_data(ln_prod_cnt). pay_purpose_name   := lt_prod_pay_data(i).pay_purpose_name ;
+-- add end 1.7
         lt_prod_all_data(ln_prod_cnt). pay_item_no        := lt_prod_pay_data(i).pay_item_no ;
         lt_prod_all_data(ln_prod_cnt). pay_item_name      := lt_prod_pay_data(i).pay_item_name ;
         lt_prod_all_data(ln_prod_cnt). pay_lot_no         := lt_prod_pay_data(i).pay_lot_no ;
@@ -2068,6 +2158,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). pay_unt_price      := lt_prod_pay_data(i).pay_unt_price ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_name    := NULL ;
+-- add start 1.7
+        lt_prod_all_data(ln_prod_cnt). rcv_purpose_name   := NULL ;
+-- add end 1.7
         lt_prod_all_data(ln_prod_cnt). rcv_item_no        := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_item_name      := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := NULL ;
@@ -2096,6 +2189,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). entry_date         := lt_prod_pay_data(i).entry_date ;NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_reason_code    := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_reason_name    := NULL ;
+-- add start 1.7
+          lt_prod_all_data(ln_prod_cnt). pay_purpose_name   := NULL ;
+-- add end 1.7
           lt_prod_all_data(ln_prod_cnt). pay_item_no        := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_item_name      := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_lot_no         := NULL ;
@@ -2103,6 +2199,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). pay_unt_price      := 0 ;
           lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
           lt_prod_all_data(ln_prod_cnt). rcv_reason_name    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_name ;
+-- add start 1.7
+          lt_prod_all_data(ln_prod_cnt). rcv_purpose_name   := lt_prod_rcv_data(ln_rcv_cnt).rcv_purpose_name ;
+-- add end 
           lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
           lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
           lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
@@ -2263,6 +2362,9 @@ AS
     ,entry_date          -- 入出庫日
     ,pay_reason_code     -- 払出事由コード
     ,pay_reason_name     -- 払出事由名称
+-- add start 1.7
+    ,pay_purpose_name    -- 払出品目振替目的
+-- add end 1.7
     ,pay_item_no         -- 払出品目コード
     ,pay_item_name       -- 払出品目名称
     ,pay_lot_no          -- 払出ロットNO
@@ -2270,6 +2372,9 @@ AS
     ,pay_unt_price       -- 払出単価
     ,rcv_reason_code     -- 受入事由コード
     ,rcv_reason_name     -- 受入事由名称
+-- add start 1.7
+    ,rcv_purpose_name    -- 受入品目振替目的
+-- add end 1.7
     ,rcv_item_no         -- 受入品目コード
     ,rcv_item_name       -- 受入品目名称
     ,rcv_lot_no          -- 受入ロットNO
@@ -2980,6 +3085,13 @@ AS
           gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
         END IF ;
 --
+-- add start 1.7
+        -- 払出品目振替目的
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'pay_purpose_name' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).pay_purpose_name;
+-- add end 1.7
         -- 払出品目コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'pay_item_code' ;
@@ -3021,6 +3133,13 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_reason_value' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).rcv_reason_name;
+-- add start 1.7
+        -- 受入品目振替目的
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_purpose_name' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).rcv_purpose_name;
+-- add end 1.7
         -- 受入品目コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_item_code' ;
