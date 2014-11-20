@@ -1,0 +1,6 @@
+CREATE INDEX xxcos.xxcos_dlv_headers_n01 ON xxcos.xxcos_dlv_headers (
+  hht_invoice_no  -- HHTì`ï[No.
+ ,customer_number -- å⁄ãqÉRÅ[Éh
+)
+TABLESPACE xxidx2
+;

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.6
+ * Version          : 2.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2009/05/21    2.4   S.Kayahara       [T1_1060]売上実績CSV作成(A-4)に参照タイプ（納品伝票区分特定マスタ）取得処理追加
  *  2009/05/29    2.5   T.Kitajima       [T1_1120]org_id追加
  *  2009/06/02    2.6   N.Maeda          [T1_1291]端数処理修正
+ *  2009/06/05    2.7   S.Kayahara       [T1_1330]売上金額の編集処理(edit_sales_amount)削除
  *
  *****************************************************************************************/
 --
@@ -610,46 +611,48 @@ AS
       RETURN cv_def_article_code;
   END;
 --
-/************************************************************************
- * Function Name   : edit_sales_amount
- * Description     : 売上金額の編集(整数の場合、少数点以下を切り捨てる)
- ************************************************************************/
-  FUNCTION edit_sales_amount
-  ( in_amount      IN NUMBER           -- 売上金額
-  )
-  RETURN VARCHAR2                      -- 売上金額
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name    CONSTANT VARCHAR2(100) := 'edit_sales_amount'; -- プログラム名
+--****************************** 2009/06/05 2.7 S.Kayahara MOD START ******************************--
+--/************************************************************************
+-- * Function Name   : edit_sales_amount
+-- * Description     : 売上金額の編集(整数の場合、少数点以下を切り捨てる)
+-- ************************************************************************/
+--  FUNCTION edit_sales_amount
+--  ( in_amount      IN NUMBER           -- 売上金額
+--  )
+--  RETURN VARCHAR2                      -- 売上金額
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name    CONSTANT VARCHAR2(100) := 'edit_sales_amount'; -- プログラム名
 --
-    -- *** ローカル変数 ***
-    ln_amount          NUMBER;    -- 売上金額
-  BEGIN
+--    -- *** ローカル変数 ***
+--    ln_amount          NUMBER;    -- 売上金額
+--  BEGIN
 --
-    ln_amount := in_amount - ROUND(in_amount);
+--    ln_amount := in_amount - ROUND(in_amount);
 --
-    -- 少数点判定
-    IF ( ln_amount = 0 ) THEN
-      -- 少数点がない場合
---****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
---      RETURN TO_CHAR(ROUND(in_amount));
-      RETURN TO_CHAR( in_amount );
---****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
-    ELSE
-      -- 少数点がある場合
---****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
+--    -- 少数点判定
+--    IF ( ln_amount = 0 ) THEN
+--      -- 少数点がない場合
+----****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
+----      RETURN TO_CHAR(ROUND(in_amount));
+--      RETURN TO_CHAR( in_amount );
+----****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
+--    ELSE
+--      -- 少数点がある場合
+----****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
+----      RETURN TO_CHAR(in_amount);
+--      RETURN TO_CHAR( ROUND( in_amount ) );
+----****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
+--    END IF;
+--
+--  EXCEPTION
+--    WHEN OTHERS THEN
 --      RETURN TO_CHAR(in_amount);
-      RETURN TO_CHAR( ROUND( in_amount ) );
---****************************** 2009/04/23 2.3 2 T.Kitajima MOD  END  ******************************--
-    END IF;
+--  END;
 --
-  EXCEPTION
-    WHEN OTHERS THEN
-      RETURN TO_CHAR(in_amount);
-  END;
---
+--****************************** 2009/06/05 2.7 S.Kayahara MOD End ******************************--
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -1567,8 +1570,11 @@ AS
       -- カード売上区分
       || cv_d_cot || it_sales_actual.xsel_delivery_base_code || cv_d_cot             || cv_delimiter 
       -- 納品拠点コード
-      || edit_sales_amount(ln_sales_amount_cash)                                     || cv_delimiter 
+--****************************** 2009/06/05 2.7 S.Kayahara MOD START ******************************--
+--      || edit_sales_amount(ln_sales_amount_cash)                                     || cv_delimiter
+      || ln_sales_amount_cash                                                        || cv_delimiter 
       -- 売上金額
+--****************************** 2009/06/05 2.7 S.Kayahara MOD End ******************************--
       || ln_sales_quantity_cash                                                      || cv_delimiter 
       -- 売上数量
       || ln_tax_cash                                                                 || cv_delimiter 
@@ -1631,8 +1637,11 @@ AS
         -- カード売上区分
         || cv_d_cot || it_sales_actual.xsel_delivery_base_code || cv_d_cot            || cv_delimiter 
         -- 納品拠点コード
-        || edit_sales_amount(ln_sales_amount_card)                                    || cv_delimiter 
+--****************************** 2009/06/05 2.7 S.Kayahara MOD START ******************************--
+--        || edit_sales_amount(ln_sales_amount_card)                                    || cv_delimiter 
+        || ln_sales_amount_card                                                       || cv_delimiter
         -- 売上金額
+--****************************** 2009/06/05 2.7 S.Kayahara MOD END   ******************************--
         || ln_sales_quantity_card                                                     || cv_delimiter 
         -- 売上数量
         || ln_tax_card                                                                || cv_delimiter 
@@ -1640,7 +1649,7 @@ AS
 --****************************** 2009/05/21 2.4 S.Kayahara MOD  START  ******************************--
 --      || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot              || cv_delimiter 
       || cv_d_cot || lt_dlv_invoice_class || cv_d_cot                                || cv_delimiter              
---****************************** 2009/05/21 2.4 S.Kayahara MOD  END  ******************************--      
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  END    ******************************--      
         -- 売上返品区分
         || cv_d_cot || it_sales_actual.xsel_sales_class || cv_d_cot                   || cv_delimiter 
         -- 売上区分
@@ -1934,7 +1943,10 @@ AS
         || cv_d_cot || cv_def_results_employee_cd || cv_d_cot                    || cv_delimiter    -- 成績者コード
         || cv_d_cot || cv_def_card_sale_class || cv_d_cot                        || cv_delimiter    -- カード売上区分
         || cv_d_cot || cv_def_delivery_base_code || cv_d_cot                     || cv_delimiter    -- 納品拠点コード
-        || (-1) * edit_sales_amount(gt_ar_deal_tbl(ln_idx).rctla_revenue_amount) || cv_delimiter    -- 売上金額
+--****************************** 2009/06/05 2.7 S.Kayahara MOD START ******************************--
+--        || (-1) * edit_sales_amount(gt_ar_deal_tbl(ln_idx).rctla_revenue_amount) || cv_delimiter    -- 売上金額
+        || (-1) * gt_ar_deal_tbl(ln_idx).rctla_revenue_amount                    || cv_delimiter    -- 売上金額
+--****************************** 2009/06/05 2.7 S.Kayahara MOD END   ******************************--
         || cn_non_sales_quantity                                                 || cv_delimiter    -- 売上数量
         || (-1) * gt_ar_deal_tbl(ln_idx).rctla_t_revenue_amount                  || cv_delimiter    -- 消費税額
         || cv_d_cot || lt_dlv_invoice_class || cv_d_cot                          || cv_delimiter    -- 売上返品区分

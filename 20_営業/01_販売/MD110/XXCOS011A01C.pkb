@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI納品返品情報ワークテーブルに取込まれたEDI返品確定データを
  *                    EDIヘッダ情報テーブル、EDI明細情報テーブルにそれぞれ登録します。
  * MD.050           : 返品確定データ取込（MD050_COS_011_A01）
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                      [T1_1055]価格表、単価取得ロジック変更
  *  2009/05/28    1.3   T.Kitajima      [T1_0711]処理後件数対応
  *                                      [T1_1164]oracleエラー対応
+ *  2009/06/04    1.4   T.Kitajima      [T1_1289]処理後件数対応
  *
  *****************************************************************************************/
 --
@@ -169,6 +170,9 @@ AS
 --****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
   cv_msg_price_err          CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-00123'; -- 単価取得エラーメッセージ
 --****************************** 2009/05/19 1.2 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+  cv_msg_count              CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12176'; -- 処理件数メッセージ
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
   --* -------------------------------------------------------------------------------------------
   --トークン
   cv_msg_in_param           CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12168';  -- 実行区分
@@ -195,6 +199,13 @@ AS
   cv_param1                 CONSTANT   VARCHAR2(50) :=  'PARAM1';
   cv_param2                 CONSTANT   VARCHAR2(50) :=  'PARAM2';
   cv_application1           CONSTANT   VARCHAR2(5)   := 'XXCOI';             -- アプリケーション名
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+  cv_tkn_cnt1               CONSTANT   VARCHAR2(50) :=  'COUNT1';            -- カウント1
+  cv_tkn_cnt2               CONSTANT   VARCHAR2(50) :=  'COUNT2';            -- カウント2
+  cv_tkn_cnt3               CONSTANT   VARCHAR2(50) :=  'COUNT3';            -- カウント3
+  cv_tkn_cnt4               CONSTANT   VARCHAR2(50) :=  'COUNT4';            -- カウント4
+  cv_tkn_cnt5               CONSTANT   VARCHAR2(50) :=  'COUNT5';            -- カウント5
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
   --* -------------------------------------------------------------------------------------------
   --メッセージ用文字列
   cv_msg_str_profile_name   CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12155';  -- プロファイル名
@@ -251,6 +262,10 @@ AS
   gn_normal_lines_cnt        NUMBER DEFAULT 0; -- 正常件数(lines)
   -- 伝票番号
   gv_invoice_number          VARCHAR2(12) DEFAULT NULL;
+--
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+  gn_msg_cnt                 NUMBER;                        -- メッセージ件数
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
   --
   --* -------------------------------------------------------------------------------------------
   -- ===============================
@@ -3647,9 +3662,14 @@ AS
     -- * -------------------------------------------------------------
     IF ( lv_process_flag =  cv_status_warn ) THEN
       gv_status_work_warn :=  cv_status_warn;
-      gn_warn_cnt         :=  gn_warn_cnt  +  1;
+--****************************** 2009/06/04 1.4 T.Kitajima DEL START ******************************--
+--      gn_warn_cnt         :=  gn_warn_cnt  +  1;
+--****************************** 2009/06/04 1.4 T.Kitajima DEL  END  ******************************--
     ELSIF ( lv_process_flag =  cv_status_error ) THEN
       gv_status_work_err  :=  cv_status_error;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+      gn_error_cnt        :=  gn_error_cnt + 1;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
     END IF;
     --* -------------------------------------------------------------
     --  ヘッダキーブレイク編集
@@ -4778,6 +4798,13 @@ AS
         );
 --
     END LOOP  xxcos_edi_lines_insert;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+--
+  --成功件数
+  gn_normal_cnt := gn_normal_lines_cnt;
+--
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
+
     -- ***************************************
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
@@ -5957,8 +5984,10 @@ AS
       FETCH get_edideli_work_data_cur BULK COLLECT INTO gt_edideli_work_data;
       -- 抽出件数セット
       gn_target_cnt := get_edideli_work_data_cur%ROWCOUNT;
-      -- 正常件数 = 抽出件数
-      gn_normal_cnt := gn_target_cnt;
+--****************************** 2009/06/04 1.4 T.Kitajima DEL START ******************************--
+--      -- 正常件数 = 抽出件数
+--      gn_normal_cnt := gn_target_cnt;
+--****************************** 2009/06/04 1.4 T.Kitajima DEL  END  ******************************--
       --
       -- カーソルCLOSE
       CLOSE get_edideli_work_data_cur;
@@ -6025,6 +6054,9 @@ AS
                which  => FND_FILE.OUTPUT,
                buff   => gt_err_edideli_work_data(ln_no).errmsg1 --ユーザー・エラーメッセージ
           );
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+          gn_msg_cnt := gn_msg_cnt + 1;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
         END IF;
         --ステータス(error2)
         IF  ( gt_err_edideli_work_data(ln_no).err_status2 = cv_status_warn ) THEN
@@ -6035,6 +6067,9 @@ AS
                which  => FND_FILE.OUTPUT,
                buff   => gt_err_edideli_work_data(ln_no).errmsg2 --ユーザー・エラーメッセージ
           );
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+          gn_msg_cnt := gn_msg_cnt + 1;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
         END IF;
       --
       END IF;
@@ -6215,6 +6250,9 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
+    gn_msg_cnt    := 0;
+--****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
 --
     --空行挿入
     FND_FILE.PUT_LINE(
@@ -6436,24 +6474,32 @@ AS
       END IF;
     END IF;
 --
---****************************** 2009/05/28 1.3 T.Kitajima MOD START ******************************--
---    --==============================================================
---    -- コンカレントステータス、件数の設定
---    --==============================================================
---    IF ( gv_status_work_err = cv_status_error ) THEN
---     ov_retcode    := cv_status_error;  --ステータス：エラー
---      gn_warn_cnt   := 0;                --警告件数：0
---     gn_normal_cnt := 0;                --正常件数：0
---      gn_error_cnt  := 1;
---    ELSIF ( gv_status_work_warn =  cv_status_warn ) THEN
---      ov_retcode    := cv_status_warn;   --ステータス：警告
---    END IF;
-      IF ( gv_status_work_err = cv_status_error ) THEN
-        ov_retcode    := cv_status_error;  --ステータス：エラー
-      ELSIF ( gn_warn_cnt != 0 ) THEN
-        ov_retcode    := cv_status_warn;   --ステータス：警告
-      END IF;
---****************************** 2009/05/28 1.3 T.Kitajima MOD  END  ******************************--
+--****************************** 2009/06/03 1.4 T.Kitajima MOD START ******************************--
+----****************************** 2009/05/28 1.4 T.Kitajima MOD START ******************************--
+----    --==============================================================
+----    -- コンカレントステータス、件数の設定
+----    --==============================================================
+----    IF ( gv_status_work_err = cv_status_error ) THEN
+----     ov_retcode    := cv_status_error;  --ステータス：エラー
+----      gn_warn_cnt   := 0;                --警告件数：0
+----     gn_normal_cnt := 0;                --正常件数：0
+----      gn_error_cnt  := 1;
+----    ELSIF ( gv_status_work_warn =  cv_status_warn ) THEN
+----      ov_retcode    := cv_status_warn;   --ステータス：警告
+----    END IF;
+--      IF ( gv_status_work_err = cv_status_error ) THEN
+--        ov_retcode    := cv_status_error;  --ステータス：エラー
+--      ELSIF ( gn_warn_cnt != 0 ) THEN
+--        ov_retcode    := cv_status_warn;   --ステータス：警告
+--      END IF;
+----****************************** 2009/05/28 1.3 T.Kitajima MOD  END  ******************************--
+    IF    ( gv_status_work_err  =  cv_status_error ) THEN
+      ov_retcode    := cv_status_error;  --ステータス：エラー
+    ELSIF ( gv_status_work_warn =  cv_status_warn ) THEN
+      ov_retcode    := cv_status_error;  --ステータス：エラー
+      ov_retcode    := cv_status_warn;   --ステータス：警告
+    END IF;
+--****************************** 2009/06/03 1.4 T.Kitajima MOD  END  ******************************--
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ###################################
@@ -6550,18 +6596,20 @@ AS
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
---****************************** 2009/05/28 1.3 T.Kitajima ADD START ******************************--
-    --==============================================================
-    -- コンカレントステータス、件数の設定
-    --==============================================================
-    IF ( lv_retcode = cv_status_error ) THEN
-      gn_warn_cnt   := 0;                --警告件数：0
-      gn_normal_cnt := 0;                --正常件数：0
-      gn_error_cnt  := 1;
-    ELSIF ( lv_retcode = cv_status_warn ) THEN
-      gn_normal_cnt := gn_normal_cnt - gn_warn_cnt;
-    END IF;
---****************************** 2009/05/28 1.3 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/03 1.4 T.Kitajima DEL START ******************************--
+----****************************** 2009/05/28 1.3 T.Kitajima ADD START ******************************--
+--    --==============================================================
+--    -- コンカレントステータス、件数の設定
+--    --==============================================================
+--    IF ( lv_retcode = cv_status_error ) THEN
+--      gn_warn_cnt   := 0;                --警告件数：0
+--      gn_normal_cnt := 0;                --正常件数：0
+--      gn_error_cnt  := 1;
+--    ELSIF ( lv_retcode = cv_status_warn ) THEN
+--      gn_normal_cnt := gn_normal_cnt - gn_warn_cnt;
+--    END IF;
+----****************************** 2009/05/28 1.3 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/06/03 1.4 T.Kitajima DEL  END  ******************************--
 
     --エラー出力
     IF (lv_retcode = cv_status_error) THEN
@@ -6582,53 +6630,78 @@ AS
     --==============================================================
     --* Description      : 終了処理(A-11)
     --==============================================================
-    --対象件数出力
-    gv_out_msg  := xxccp_common_pkg.get_msg(
-                iv_application  => cv_appl_short_name,
-                iv_name         => cv_target_rec_msg,
-                iv_token_name1  => cv_cnt_token,
-                iv_token_value1 => TO_CHAR(gn_target_cnt)
-                );
-    FND_FILE.PUT_LINE(
-      which  => FND_FILE.OUTPUT,
-      buff   => gv_out_msg
-    );
-    --
-    --成功件数出力
-    gv_out_msg  := xxccp_common_pkg.get_msg(
-                iv_application  => cv_appl_short_name,
-                iv_name         => cv_success_rec_msg,
-                iv_token_name1  => cv_cnt_token,
-                iv_token_value1 => TO_CHAR(gn_normal_cnt)
-                );
-    FND_FILE.PUT_LINE(
-      which  => FND_FILE.OUTPUT,
-      buff   => gv_out_msg
-    );
-    --
-    --エラー件数出力
-    gv_out_msg  := xxccp_common_pkg.get_msg(
-                iv_application  => cv_appl_short_name,
-                iv_name         => cv_error_rec_msg,
-                iv_token_name1  => cv_cnt_token,
-                iv_token_value1 => TO_CHAR(gn_error_cnt)
-                );
-    FND_FILE.PUT_LINE(
-      which  => FND_FILE.OUTPUT,
-      buff   => gv_out_msg
-    );
-    --
-    --警告件数出力
+--****************************** 2009/06/03 1.4 T.Kitajima MOD START ******************************--
+--    --対象件数出力
+--    gv_out_msg  := xxccp_common_pkg.get_msg(
+--                iv_application  => cv_appl_short_name,
+--                iv_name         => cv_target_rec_msg,
+--                iv_token_name1  => cv_cnt_token,
+--                iv_token_value1 => TO_CHAR(gn_target_cnt)
+--                );
+--    FND_FILE.PUT_LINE(
+--      which  => FND_FILE.OUTPUT,
+--      buff   => gv_out_msg
+--    );
+--    --
+--    --成功件数出力
+--    gv_out_msg  := xxccp_common_pkg.get_msg(
+--                iv_application  => cv_appl_short_name,
+--                iv_name         => cv_success_rec_msg,
+--                iv_token_name1  => cv_cnt_token,
+--                iv_token_value1 => TO_CHAR(gn_normal_cnt)
+--                );
+--    FND_FILE.PUT_LINE(
+--      which  => FND_FILE.OUTPUT,
+--      buff   => gv_out_msg
+--    );
+--    --
+--    --エラー件数出力
+--    gv_out_msg  := xxccp_common_pkg.get_msg(
+--                iv_application  => cv_appl_short_name,
+--                iv_name         => cv_error_rec_msg,
+--                iv_token_name1  => cv_cnt_token,
+--                iv_token_value1 => TO_CHAR(gn_error_cnt)
+--                );
+--    FND_FILE.PUT_LINE(
+--      which  => FND_FILE.OUTPUT,
+--      buff   => gv_out_msg
+--    );
+--    --
+--    --警告件数出力
+--    gv_out_msg  := xxccp_common_pkg.get_msg(
+--                iv_application  => cv_application,
+--                iv_name         => cv_warn_rec_msg,
+--                iv_token_name1  => cv_cnt_token,
+--                iv_token_value1 => TO_CHAR(gn_warn_cnt)
+--                );
+--    FND_FILE.PUT_LINE(
+--      which  => FND_FILE.OUTPUT,
+--      buff   => gv_out_msg
+--    );
+    IF ( gn_error_cnt != 0 ) THEN
+      gn_warn_cnt := gn_target_cnt - gn_error_cnt;
+    ELSE
+      gn_warn_cnt := 0;
+    END IF;
     gv_out_msg  := xxccp_common_pkg.get_msg(
                 iv_application  => cv_application,
-                iv_name         => cv_warn_rec_msg,
-                iv_token_name1  => cv_cnt_token,
-                iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                iv_name         => cv_msg_count,
+                iv_token_name1  => cv_tkn_cnt1,
+                iv_token_value1 => TO_CHAR(gn_target_cnt),
+                iv_token_name2  => cv_tkn_cnt2,
+                iv_token_value2 => TO_CHAR(gn_normal_cnt),
+                iv_token_name3  => cv_tkn_cnt3,
+                iv_token_value3 => TO_CHAR(gn_error_cnt),
+                iv_token_name4  => cv_tkn_cnt4,
+                iv_token_value4 => TO_CHAR(gn_warn_cnt),
+                iv_token_name5  => cv_tkn_cnt5,
+                iv_token_value5 => TO_CHAR(gn_msg_cnt)
                 );
     FND_FILE.PUT_LINE(
       which  => FND_FILE.OUTPUT,
       buff   => gv_out_msg
     );
+--****************************** 2009/06/04 1.4 T.Kitajima MOD  END  ******************************--
     --
     --空行挿入
     FND_FILE.PUT_LINE(

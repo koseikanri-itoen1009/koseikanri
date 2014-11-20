@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : ”[•i“`•[ƒwƒbƒ_î•ñƒrƒ…[
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2008/12/08    1.0   T.Tyou           V‹Kì¬
  *  2009/04/09    1.1   K.kiriu          [T1_0248]•S‰Ý“XHHT‹æ•ª‚Æ•S‰Ý“X‰æ–ÊŽí•Ê‚Ì•s®‡C³
  *                                       [T1_0259]”[•iŽÒ‚ÌŒ‹‡•s³‘Î‰ž
+ *  2009/06/03    1.2   K.Kiriu          [T1_1269]ƒpƒtƒH[ƒ}ƒ“ƒX‘Î‰ž
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_headers_info_v
 (
@@ -142,112 +143,167 @@ FROM
 /* 2009/04/09 Ver1.9 Add End   */
        (
        --ƒJ[ƒh”„‹æ•ª
-       SELECT look_val.lookup_code lookup_code
-             ,look_val.meaning meaning
-       FROM    fnd_lookup_values     look_val,
-               fnd_lookup_types_tl   types_tl,
-               fnd_lookup_types      types,
-               fnd_application_tl    appl,
-               fnd_application       app
-       WHERE   appl.application_id   = types.application_id
-       AND     look_val.language     = 'JA'
-       AND     appl.language         = 'JA'
-       AND     types_tl.lookup_type  = look_val.lookup_type
-       AND     app.application_id    = appl.application_id
-       AND     look_val.lookup_type = 'XXCOS1_CARD_SALE_CLASS'
-       AND     app.application_short_name = 'XXCOS'
-       AND     types.lookup_type = types_tl.lookup_type
-       AND     types.security_group_id = types_tl.security_group_id
-       AND     types.view_application_id = types_tl.view_application_id
-       AND     types_tl.language = userenv('LANG')
-       AND     look_val.attribute1 = 'Y'
-       AND     xxccp_common_pkg2.get_process_date      >= 
-         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-       AND     xxccp_common_pkg2.get_process_date      <= 
-         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
-       AND     look_val.enabled_flag = 'Y'
-       ORDER BY look_val.lookup_code
+/* 2009/06/03 Ver1.2 Mod Start */
+--       SELECT look_val.lookup_code lookup_code
+--             ,look_val.meaning meaning
+--       FROM    fnd_lookup_values     look_val,
+--               fnd_lookup_types_tl   types_tl,
+--               fnd_lookup_types      types,
+--               fnd_application_tl    appl,
+--               fnd_application       app
+--       WHERE   appl.application_id   = types.application_id
+--       AND     look_val.language     = 'JA'
+--       AND     appl.language         = 'JA'
+--       AND     types_tl.lookup_type  = look_val.lookup_type
+--       AND     app.application_id    = appl.application_id
+--       AND     look_val.lookup_type = 'XXCOS1_CARD_SALE_CLASS'
+--       AND     app.application_short_name = 'XXCOS'
+--       AND     types.lookup_type = types_tl.lookup_type
+--       AND     types.security_group_id = types_tl.security_group_id
+--       AND     types.view_application_id = types_tl.view_application_id
+--       AND     types_tl.language = userenv('LANG')
+--       AND     look_val.attribute1 = 'Y'
+--       AND     xxccp_common_pkg2.get_process_date      >= 
+--         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--       AND     xxccp_common_pkg2.get_process_date      <= 
+--         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+--       AND     look_val.enabled_flag = 'Y'
+--       ORDER BY look_val.lookup_code]
+       SELECT  xlvv.lookup_code        lookup_code
+              ,xlvv.meaning            meaning
+              ,xlvv.start_date_active  start_date_active
+              ,xlvv.end_date_active    end_date_active
+       FROM    xxcos_lookup_values_v  xlvv
+       WHERE   xlvv.lookup_type    = 'XXCOS1_CARD_SALE_CLASS'
+       AND     xlvv.attribute1     = 'Y'
+/* 2009/06/03 Ver1.2 Mod End   */
        ) csc,
        (
        --“ü—Í‹æ•ª
-       SELECT look_val.lookup_code lookup_code
-             ,look_val.meaning meaning
-       FROM    fnd_lookup_values     look_val,
-               fnd_lookup_types_tl   types_tl,
-               fnd_lookup_types      types,
-               fnd_application_tl    appl,
-               fnd_application       app
-       WHERE   appl.application_id   = types.application_id
-       AND     look_val.language     = 'JA'
-       AND     appl.language         = 'JA'
-       AND     types_tl.lookup_type  = look_val.lookup_type
-       AND     app.application_id    = appl.application_id
-       AND     look_val.lookup_type = 'XXCOS1_INPUT_CLASS'
-       AND     app.application_short_name = 'XXCOS'
-       AND     types.lookup_type = types_tl.lookup_type
-       AND     types.security_group_id = types_tl.security_group_id
-       AND     types.view_application_id = types_tl.view_application_id
-       AND     types_tl.language = userenv('LANG')
-       AND     look_val.attribute1 = 'Y'
-       AND     xxccp_common_pkg2.get_process_date      >= 
-         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-       AND     xxccp_common_pkg2.get_process_date      <= 
-         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
-       AND     look_val.enabled_flag = 'Y'
-       ORDER BY look_val.lookup_code
+/* 2009/06/03 Ver1.2 Mod Start */
+--       SELECT look_val.lookup_code lookup_code
+--             ,look_val.meaning meaning
+--       FROM    fnd_lookup_values     look_val,
+--               fnd_lookup_types_tl   types_tl,
+--               fnd_lookup_types      types,
+--               fnd_application_tl    appl,
+--               fnd_application       app
+--       WHERE   appl.application_id   = types.application_id
+--       AND     look_val.language     = 'JA'
+--       AND     appl.language         = 'JA'
+--       AND     types_tl.lookup_type  = look_val.lookup_type
+--       AND     app.application_id    = appl.application_id
+--       AND     look_val.lookup_type = 'XXCOS1_INPUT_CLASS'
+--       AND     app.application_short_name = 'XXCOS'
+--       AND     types.lookup_type = types_tl.lookup_type
+--       AND     types.security_group_id = types_tl.security_group_id
+--       AND     types.view_application_id = types_tl.view_application_id
+--       AND     types_tl.language = userenv('LANG')
+--       AND     look_val.attribute1 = 'Y'
+--       AND     xxccp_common_pkg2.get_process_date      >= 
+--         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--       AND     xxccp_common_pkg2.get_process_date      <= 
+--         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+--       AND     look_val.enabled_flag = 'Y'
+--       ORDER BY look_val.lookup_code
+       SELECT  xlvv.lookup_code        lookup_code
+              ,xlvv.meaning            meaning
+              ,xlvv.start_date_active  start_date_active
+              ,xlvv.end_date_active    end_date_active
+       FROM    xxcos_lookup_values_v  xlvv
+       WHERE   xlvv.lookup_type = 'XXCOS1_INPUT_CLASS'
+       AND     xlvv.attribute1  = 'Y'
+/* 2009/06/03 Ver1.2 Mod End   */
        ) ic,                                                      
        (
        --•S‰Ý“X‰æ–ÊŽí•Ê
-       SELECT look_val.lookup_code lookup_code
-             ,look_val.meaning meaning
-       FROM    fnd_lookup_values     look_val,
-               fnd_lookup_types_tl   types_tl,
-               fnd_lookup_types      types,
-               fnd_application_tl    appl,
-               fnd_application       app
-       WHERE   appl.application_id   = types.application_id
-       AND     look_val.language     = 'JA'
-       AND     appl.language         = 'JA'
-       AND     types_tl.lookup_type  = look_val.lookup_type
-       AND     app.application_id    = appl.application_id
-       AND     look_val.lookup_type = 'XXCOS1_DEPARTMENT_SCREEN_CLASS'
-       AND     app.application_short_name = 'XXCOS'
-       AND     types.lookup_type = types_tl.lookup_type
-       AND     types.security_group_id = types_tl.security_group_id
-       AND     types.view_application_id = types_tl.view_application_id
-       AND     types_tl.language = userenv('LANG')
+/* 2009/06/03 Ver1.2 Mod Start */
+--       SELECT look_val.lookup_code lookup_code
+--             ,look_val.meaning meaning
+--       FROM    fnd_lookup_values     look_val,
+--               fnd_lookup_types_tl   types_tl,
+--               fnd_lookup_types      types,
+--               fnd_application_tl    appl,
+--               fnd_application       app
+--       WHERE   appl.application_id   = types.application_id
+--       AND     look_val.language     = 'JA'
+--       AND     appl.language         = 'JA'
+--       AND     types_tl.lookup_type  = look_val.lookup_type
+--       AND     app.application_id    = appl.application_id
+--       AND     look_val.lookup_type = 'XXCOS1_DEPARTMENT_SCREEN_CLASS'
+--       AND     app.application_short_name = 'XXCOS'
+--       AND     types.lookup_type = types_tl.lookup_type
+--       AND     types.security_group_id = types_tl.security_group_id
+--       AND     types.view_application_id = types_tl.view_application_id
+--       AND     types_tl.language = userenv('LANG')
 /* 2009/04/09 Ver1.1 Del Start */
 --       AND     look_val.attribute2 = 'Y'
-/* 2009/04/09 Ver1.1 Del Start */
-       AND     xxccp_common_pkg2.get_process_date      >= 
-         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-       AND     xxccp_common_pkg2.get_process_date      <= 
-         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
-       AND     look_val.enabled_flag = 'Y'
+/* 2009/04/09 Ver1.1 Del End   */
+--       AND     xxccp_common_pkg2.get_process_date      >= 
+--         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--       AND     xxccp_common_pkg2.get_process_date      <= 
+--         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+--       AND     look_val.enabled_flag = 'Y'
 /* 2009/04/09 Ver1.1 Del Start */
 --       ORDER BY look_val.lookup_code
-/* 2009/04/09 Ver1.1 Del Start */
-       ) dsc                                                      
+/* 2009/04/09 Ver1.1 Del End   */
+--       ) dsc
+       SELECT  xlvv.lookup_code        lookup_code
+              ,xlvv.meaning            meaning
+              ,xlvv.start_date_active  start_date_active
+              ,xlvv.end_date_active    end_date_active
+       FROM    xxcos_lookup_values_v  xlvv
+       WHERE   xlvv.lookup_type = 'XXCOS1_DEPARTMENT_SCREEN_CLASS'
+       ) dsc,
+/* 2009/06/03 Ver1.2 Mod End   */
+/* 2009/06/03 Ver1.2 Add Start */
+       (
+       --‰c‹Æ“ú
+       SELECT xxccp_common_pkg2.get_process_date process_date
+       FROM   DUAL
+       ) pd
+/* 2009/06/03 Ver1.2 Add End   */
 WHERE  xdh.customer_number = xsv.account_number
 AND    xsv.cust_account_id = custadd.customer_id 
 AND    hp.party_id         = xsv.party_id
 /* 2009/04/09 Ver1.1 Del Start */
 --AND    xdh.dlv_by_code     = xsv.employee_number   --2009/01/09’Ç‰Á
-/* 2009/04/09 Ver1.1 Del Start */
-AND    (xdh.dlv_date >=  
-  NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-AND    xdh.dlv_date <=  
-  NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
-OR
-       add_months( xdh.dlv_date, -1 ) >=  
-       NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-AND    add_months( xdh.dlv_date, -1 ) <=  
-       NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+/* 2009/04/09 Ver1.1 Del End   */
+/* 2009/06/03 Ver1.2 Mod Start   */
+--AND    (xdh.dlv_date >=  
+--  NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--AND    xdh.dlv_date <=  
+--  NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+--OR
+--       add_months( xdh.dlv_date, -1 ) >=  
+--       NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--AND    add_months( xdh.dlv_date, -1 ) <=  
+--       NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+--       )
+--AND    xdh.card_sale_class = csc.lookup_code(+)
+--AND    xdh.input_class IN (
+--        ic.lookup_code
+--       )
+AND    (
+         xdh.dlv_date >=
+           NVL( xsv.effective_start_date, FND_DATE.STRING_TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+         AND
+         xdh.dlv_date <=  
+           NVL( xsv.effective_end_date, FND_DATE.STRING_TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+       OR
+         add_months( xdh.dlv_date, -1 ) >=  
+           NVL( xsv.effective_start_date, FND_DATE.STRING_TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+         AND
+         add_months( xdh.dlv_date, -1 ) <=  
+           NVL( xsv.effective_end_date, FND_DATE.STRING_TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
        )
-AND    xdh.card_sale_class = csc.lookup_code(+)
-AND    xdh.input_class IN (
-        ic.lookup_code
-       )
+AND    xdh.card_sale_class  = csc.lookup_code
+AND    pd.process_date     >= NVL(csc.start_date_active, pd.process_date)
+AND    pd.process_date     <= NVL(csc.end_date_active, pd.process_date)
+AND    xdh.input_class      = ic.lookup_code
+AND    pd.process_date     >= NVL(ic.start_date_active, pd.process_date)
+AND    pd.process_date     <= NVL(ic.end_date_active, pd.process_date)
+/* 2009/06/03 Ver1.2 Mod End   */
 /* 2009/04/09 Ver1.1 Mod Start */
 --AND  ( xdh.department_screen_class IS NULL    --2009/02/06’Ç‰Á Žd—l•ÏX‚Ì‚½‚ß
 --       OR
@@ -257,18 +313,30 @@ AND    xdh.input_class IN (
 --     )
 AND    xdh.department_screen_class = dsc.lookup_code
 /* 2009/04/09 Ver1.1 Mod End   */
+/* 2009/06/03 Ver1.2 Add Start */
+AND    pd.process_date     >= NVL(dsc.start_date_active, pd.process_date)
+AND    pd.process_date     <= NVL(dsc.end_date_active, pd.process_date)
+/* 2009/06/03 Ver1.2 Add End   */
 /* 2009/04/09 Ver1.1 Add Start */
 AND    xdh.dlv_by_code     = papf_dlv.employee_number
-AND    xdh.dlv_date >=
-  NVL(papf_dlv.effective_start_date, FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-AND    xdh.dlv_date <=
-  NVL(papf_dlv.effective_end_date, FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+/* 2009/06/03 Ver1.2 Mod Start */
+--AND    xdh.dlv_date >=
+--  NVL(papf_dlv.effective_start_date, FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--AND    xdh.dlv_date <=
+--  NVL(papf_dlv.effective_end_date, FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+AND    xdh.dlv_date        >= papf_dlv.effective_start_date
+AND    xdh.dlv_date        <= papf_dlv.effective_end_date
+/* 2009/06/03 Ver1.2 Mod End   */
 /* 2009/04/09 Ver1.1 Add End   */
 AND    xdh.performance_by_code = papf.employee_number    --2009/01/09•ÏX ”[•iŽÒ[„¬ÑŽÒ
-AND    xdh.dlv_date >=  
-  NVL(papf.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
-AND    xdh.dlv_date <=  
-  NVL(papf.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+/* 2009/06/03 Ver1.2 Mod Start */
+--AND    xdh.dlv_date >=
+--  NVL(papf.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--AND    xdh.dlv_date <=
+--  NVL(papf.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+AND    xdh.dlv_date            >= papf.effective_start_date
+AND    xdh.dlv_date            <= papf.effective_end_date
+/* 2009/06/03 Ver1.2 Mod End   */
 ;
 COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.order_no_hht                IS  'Žó’No.(HHT)';
 COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.digestion_ln_number         IS  'Ž}”Ô';

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A02R (body)
  * Description      : ピックリスト（出荷先・販売先・製品別）
  * MD.050           : ピックリスト（出荷先・販売先・製品別） MD050_COS_012_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                       コメント化を外す。
  *  2009/04/03    1.3   N.Maeda          【ST障害No.T1_0086対応】
  *                                       非在庫品目を抽出対象より除外するよう変更。
+ *  2009/06/05    1.4   T.Kitajima       [T1_1334]受注明細、EDI明細結合条件変更
  *
  *****************************************************************************************/
 --
@@ -1326,7 +1327,10 @@ AS
           AND oola.orig_sys_document_ref      = xeh.order_connection_number
           AND xeh.data_type_code              IN ( ct_data_type_code_edi, ct_data_type_code_shop )
           AND xeh.edi_header_info_id          = xel.edi_header_info_id
-          AND xel.line_no                     = oola.line_number
+--****************************** 2009/06/05 1.4 T.Kitajima MOD START ******************************--
+--          AND xel.line_no                     = oola.line_number
+          AND xel.order_connection_line_number  = oola.orig_sys_line_ref
+--****************************** 2009/06/05 1.4 T.Kitajima MOD  MOD  ******************************--
           AND ooha.org_id                     = gn_org_id
           AND msib.segment1   NOT IN ( 
                 SELECT  look_val.lookup_code    -- 非在庫品目
