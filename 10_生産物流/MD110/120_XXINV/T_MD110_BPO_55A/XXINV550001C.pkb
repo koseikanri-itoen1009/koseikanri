@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.35
+ * Version          : 1.37
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -62,6 +62,8 @@ AS
  *  2008/12/16    1.33  Akiyoshi Shiina    統合指摘 #742対応
  *  2008/12/19    1.34  Yasuhisa Yamamoto  統合指摘 #732対応
  *  2008/12/25    1.35  Yasuhisa Yamamoto  統合指摘 #674対応
+ *  2008/12/29    1.36  Akiyoshi Shiina    統合指摘 #809対応
+ *  2008/12/30    1.37  Yasuhisa Yamamoto  本番指摘 #898対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -940,7 +942,10 @@ AS
           ,ilm.lot_id                                           -- ロットID
           ,SUM( NVL( xrpm.stock_quantity,   0 ) )
                                            AS stock_quantity    -- 取引数量（入庫数）
-          ,SUM( NVL( xrpm.leaving_quantity, 0 ) )
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--          ,SUM( NVL( xrpm.leaving_quantity, 0 ) )
+          ,SUM( NVL( xrpm.leaving_quantity, 0 ) * (-1) )
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
                                            AS leaving_quantity  -- 取引数量（出庫数）
           ,ilm.attribute1  AS manufacture_date                  -- 製造年月日
           ,ilm.attribute3  AS expiration_date                   -- 賞味期限
@@ -982,7 +987,10 @@ AS
                    ,xrpmv.case_amt                              -- 棚卸ケース数
                    ,xrpmv.loose_amt                             -- 棚卸バラ
                    ,xrpmv.trans_cnt                             -- トランザクション系データの抽出確認用
-                           -- 文書タイプ"ADJI"（在庫調整）の抽出
+-- 2008/12/29 v1.36 UPDATE START
+--                           -- 文書タイプ"ADJI"（在庫調整）の抽出
+                           -- 文書タイプ"ADJI"（在庫調整）の抽出（払出）
+-- 2008/12/29 v1.36 UPDATE END
             FROM ( SELECT /*+ leading(itc_adji) */ itc_adji.whse_code
                           ,itc_adji.location
                           ,itc_adji.item_id
@@ -1030,6 +1038,69 @@ AS
                     AND    itc_adji.doc_line                 = iaj_adji.doc_line
                     AND    xrpm6v.doc_type                   = itc_adji.doc_type
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
+-- 2008/12/29 v1.36 ADD START
+                    AND    xrpm6v.rcv_pay_div                = gc_rcv_pay_div_harai
+                    AND    (
+                            ((itc_adji.reason_code           = gc_reason_adji_xvst)
+                               AND (ijm_adji.attribute4     IS NULL))
+                          OR (itc_adji.reason_code          <> gc_reason_adji_xvst)
+                           )
+                    -- 文書タイプ"ADJI"（在庫調整）の抽出（受入）
+                    UNION ALL
+                    SELECT /*+ leading(itc_adji) */ itc_adji.whse_code
+                          ,itc_adji.location
+                          ,itc_adji.item_id
+                          ,itc_adji.lot_id
+                          ,itc_adji.trans_date
+                          ,itc_adji.trans_qty
+                          ,xrpm6v.rcv_pay_div
+                          ,0  AS month_stock_be                 -- 前月末在庫数
+                          ,0  AS cargo_stock_be                 -- 前月積送中在庫数
+                          ,0  AS month_stock_nw                 -- 当月末在庫数
+                          ,0  AS cargo_stock_nw                 -- 当月積送中在庫数
+                          ,0  AS case_amt                       -- 棚卸ケース数
+                          ,0  AS loose_amt                      -- 棚卸バラ
+                          ,1  AS trans_cnt                      -- トランザクション系データの抽出確認用
+                    FROM   xxinv_rcv_pay_mst6_v      xrpm6v     -- 受払区分情報VIEW_ADJI
+                          ,ic_tran_cmp               itc_adji   -- OPM完了在庫トランザクション
+                          ,ic_adjs_jnl               iaj_adji   -- OPM在庫調整ジャーナル
+                          ,ic_jrnl_mst               ijm_adji   -- OPMジャーナルマスタ
+                    WHERE  itc_adji.doc_type                 = gc_doc_type_adji
+                    AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
+                    AND    itc_adji.trans_date         BETWEEN gd_date_ymt_first
+                                                           AND gd_date_ymt_last
+                    AND    iaj_adji.journal_id               = ijm_adji.journal_id
+                     AND   ((ijm_adji.attribute1 IS NULL )
+                       OR  ((ijm_adji.attribute1 IS NOT NULL)
+                        AND ((itc_adji.reason_code = gc_reason_adji_xvst)
+                          OR (EXISTS(
+                                 SELECT /*+ leading(ijm_x201) use_nl(ijm_x201 xrart_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x201
+                                       ,xxpo_rcv_and_rtn_txns xrart_adji
+                                 WHERE  TO_NUMBER ( ijm_x201.attribute1 ) = xrart_adji.txns_id
+                                 AND    itc_adji.reason_code = gc_reason_adji_xrart
+                                 AND    ijm_adji.attribute1  = ijm_x201.attribute1
+                                 UNION
+                                 SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x988
+                                       ,xxpo_namaha_prod_txns  xnpt_adji
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 AND    itc_adji.reason_code = gc_reason_adji_xnpt
+                                 AND    ijm_adji.attribute1  = ijm_x988.attribute1
+                                 ))
+                            )))
+                    AND    itc_adji.doc_type                 = iaj_adji.trans_type
+                    AND    itc_adji.doc_id                   = iaj_adji.doc_id
+                    AND    itc_adji.doc_line                 = iaj_adji.doc_line
+                    AND    xrpm6v.doc_type                   = itc_adji.doc_type
+                    AND    xrpm6v.reason_code                = itc_adji.reason_code
+                    AND    xrpm6v.rcv_pay_div                = gc_rcv_pay_div_uke
+                    AND    (
+                            ((itc_adji.reason_code           = gc_reason_adji_xvst)
+                               AND (ijm_adji.attribute4      = gc_y))
+                          OR (itc_adji.reason_code          <> gc_reason_adji_xvst)
+                           )
+-- 2008/12/29 v1.36 ADD END
                     -- 文書タイプ"XFER"（積送あり移動）と"TRNI"（積送なし移動）の抽出（入庫）
                     UNION ALL
                     SELECT 
@@ -1468,7 +1539,10 @@ AS
           ,ilm.lot_id                                           -- ロットID
           ,SUM( NVL( xrpm.stock_quantity,   0 ) )
                                            AS stock_quantity    -- 取引数量（入庫数）
-          ,SUM( NVL( xrpm.leaving_quantity, 0 ) )
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--          ,SUM( NVL( xrpm.leaving_quantity, 0 ) )
+          ,SUM( NVL( xrpm.leaving_quantity, 0 ) * (-1) )
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
                                            AS leaving_quantity  -- 取引数量（出庫数）
           ,ilm.attribute1  AS manufacture_date                  -- 製造年月日
           ,ilm.attribute3  AS expiration_date                   -- 賞味期限
@@ -1510,7 +1584,10 @@ AS
                    ,xrpmv.case_amt                              -- 棚卸ケース数
                    ,xrpmv.loose_amt                             -- 棚卸バラ
                    ,xrpmv.trans_cnt                             -- トランザクション系データの抽出確認用
-                           -- 文書タイプ"ADJI"（在庫調整）の抽出
+-- 2008/12/29 v1.36 UPDATE START
+--                           -- 文書タイプ"ADJI"（在庫調整）の抽出
+                           -- 文書タイプ"ADJI"（在庫調整）の抽出（払出）
+-- 2008/12/29 v1.36 UPDATE END
             FROM ( SELECT /*+ leading(itc_adji) */ itc_adji.whse_code
                           ,itc_adji.location
                           ,itc_adji.item_id
@@ -1558,6 +1635,69 @@ AS
                     AND    itc_adji.doc_line                 = iaj_adji.doc_line
                     AND    xrpm6v.doc_type                   = itc_adji.doc_type
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
+-- 2008/12/29 v1.36 ADD START
+                    AND    xrpm6v.rcv_pay_div                = gc_rcv_pay_div_harai
+                    AND    (
+                            ((itc_adji.reason_code           = gc_reason_adji_xvst)
+                               AND (ijm_adji.attribute4     IS NULL))
+                          OR (itc_adji.reason_code          <> gc_reason_adji_xvst)
+                           )
+                    -- 文書タイプ"ADJI"（在庫調整）の抽出（受入）
+                    UNION ALL
+                    SELECT /*+ leading(itc_adji) */ itc_adji.whse_code
+                          ,itc_adji.location
+                          ,itc_adji.item_id
+                          ,itc_adji.lot_id
+                          ,itc_adji.trans_date
+                          ,itc_adji.trans_qty
+                          ,xrpm6v.rcv_pay_div
+                          ,0  AS month_stock_be                 -- 前月末在庫数
+                          ,0  AS cargo_stock_be                 -- 前月積送中在庫数
+                          ,0  AS month_stock_nw                 -- 当月末在庫数
+                          ,0  AS cargo_stock_nw                 -- 当月積送中在庫数
+                          ,0  AS case_amt                       -- 棚卸ケース数
+                          ,0  AS loose_amt                      -- 棚卸バラ
+                          ,1  AS trans_cnt                      -- トランザクション系データの抽出確認用
+                    FROM   xxinv_rcv_pay_mst6_v      xrpm6v     -- 受払区分情報VIEW_ADJI
+                          ,ic_tran_cmp               itc_adji   -- OPM完了在庫トランザクション
+                          ,ic_adjs_jnl               iaj_adji   -- OPM在庫調整ジャーナル
+                          ,ic_jrnl_mst               ijm_adji   -- OPMジャーナルマスタ
+                    WHERE  itc_adji.doc_type                 = gc_doc_type_adji
+                    AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
+                    AND    itc_adji.trans_date         BETWEEN gd_date_ymt_first
+                                                           AND gd_date_ymt_last
+                    AND    iaj_adji.journal_id               = ijm_adji.journal_id
+                     AND   ((ijm_adji.attribute1 IS NULL )
+                       OR  ((ijm_adji.attribute1 IS NOT NULL)
+                        AND ((itc_adji.reason_code = gc_reason_adji_xvst)
+                          OR (EXISTS(
+                                 SELECT /*+ leading(ijm_x201) use_nl(ijm_x201 xrart_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x201
+                                       ,xxpo_rcv_and_rtn_txns xrart_adji
+                                 WHERE  TO_NUMBER ( ijm_x201.attribute1 ) = xrart_adji.txns_id
+                                 AND    itc_adji.reason_code = gc_reason_adji_xrart
+                                 AND    ijm_adji.attribute1  = ijm_x201.attribute1
+                                 UNION
+                                 SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x988
+                                       ,xxpo_namaha_prod_txns  xnpt_adji
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 AND    itc_adji.reason_code = gc_reason_adji_xnpt
+                                 AND    ijm_adji.attribute1  = ijm_x988.attribute1
+                                 ))
+                            )))
+                    AND    itc_adji.doc_type                 = iaj_adji.trans_type
+                    AND    itc_adji.doc_id                   = iaj_adji.doc_id
+                    AND    itc_adji.doc_line                 = iaj_adji.doc_line
+                    AND    xrpm6v.doc_type                   = itc_adji.doc_type
+                    AND    xrpm6v.reason_code                = itc_adji.reason_code
+                    AND    xrpm6v.rcv_pay_div                = gc_rcv_pay_div_uke
+                    AND    (
+                            ((itc_adji.reason_code           = gc_reason_adji_xvst)
+                               AND (ijm_adji.attribute4      = gc_y))
+                          OR (itc_adji.reason_code          <> gc_reason_adji_xvst)
+                           )
+-- 2008/12/29 v1.36 ADD END
                     -- 文書タイプ"XFER"（積送あり移動）と"TRNI"（積送なし移動）の抽出（入庫）
                     UNION ALL
                     SELECT 
@@ -2344,26 +2484,44 @@ AS
       -- 当月入庫数
       IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
         -- 単位区分（本数）
-        ln_stock_quantity := ABS( ROUND( gt_main_data(i).stock_quantity, 3 ) );
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--        ln_stock_quantity := ABS( ROUND( gt_main_data(i).stock_quantity, 3 ) );
+        ln_stock_quantity := ROUND( gt_main_data(i).stock_quantity, 3 );
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
       ELSIF ( ir_param.iv_um_class = gc_um_class_case ) THEN
         -- 単位区分（ケース）
         IF ( ln_quantity = 0 ) THEN
-          ln_stock_quantity := ABS( ROUND( gt_main_data(i).stock_quantity / 1, 3 ) );
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--          ln_stock_quantity := ABS( ROUND( gt_main_data(i).stock_quantity / 1, 3 ) );
+          ln_stock_quantity := ROUND( gt_main_data(i).stock_quantity / 1, 3 );
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
         ELSE
-          ln_stock_quantity := ABS( ROUND( gt_main_data(i).stock_quantity / ln_quantity, 3 ) );
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--          ln_stock_quantity := ABS( ROUND( gt_main_data(i).stock_quantity / ln_quantity, 3 ) );
+          ln_stock_quantity := ROUND( gt_main_data(i).stock_quantity / ln_quantity, 3 );
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
         END IF;
       END IF;
 --
       -- 当月出庫数
       IF (    ir_param.iv_um_class = gc_um_class_honsu ) THEN
         -- 単位区分（本数）
-        ln_leaving_quantity := ABS( ROUND( gt_main_data(i).leaving_quantity, 3 ) );
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--        ln_leaving_quantity := ABS( ROUND( gt_main_data(i).leaving_quantity, 3 ) );
+        ln_leaving_quantity := ROUND( gt_main_data(i).leaving_quantity, 3 );
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
       ELSIF ( ir_param.iv_um_class = gc_um_class_case ) THEN
         -- 単位区分（ケース）
         IF ( ln_quantity = 0 ) THEN
-          ln_leaving_quantity := ABS( ROUND( gt_main_data(i).leaving_quantity / 1, 3 ) );
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--          ln_leaving_quantity := ABS( ROUND( gt_main_data(i).leaving_quantity / 1, 3 ) );
+          ln_leaving_quantity := ROUND( gt_main_data(i).leaving_quantity / 1, 3 );
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
         ELSE
-          ln_leaving_quantity := ABS( ROUND( gt_main_data(i).leaving_quantity / ln_quantity, 3 ) );
+-- 2008/12/30 Y.Yamamoto v1.37 update start #898
+--          ln_leaving_quantity := ABS( ROUND( gt_main_data(i).leaving_quantity / ln_quantity, 3 ) );
+          ln_leaving_quantity := ROUND( gt_main_data(i).leaving_quantity / ln_quantity, 3 );
+-- 2008/12/30 Y.Yamamoto v1.37 update end   #898
         END IF;
       END IF;
 --
