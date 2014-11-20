@@ -5,7 +5,7 @@
 ## Program Name     : ADZZAFFCUST                                               ##
 ## Description      : AFF顧客マスタ更新(FND_LOAD)                               ##
 ## MD.070           : MD050_IPO_CMM_003_A38_AFF顧客マスタ更新（FND_LOAD）       ##
-## Version          : 1.2                                                       ##
+## Version          : 1.3                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -23,6 +23,7 @@
 ##  2009/02/16    1.0   Takuya.Kaihara   新規作成                               ##
 ##  2009/06/04    1.1   Yutaka.Kuboshima 障害T1_1052の対応                      ##
 ##  2009/07/09    1.2   Yutaka.Kuboshima 統合テスト障害0000230の対応            ##
+##  2010/01/14    1.3   Shigeto.Niki     障害：E_本稼動_00868の対応             ##
 ##                                                                              ##
 ##################################################################################
 
@@ -79,6 +80,11 @@ fi
 #L_compos_file_path="${2}/${1}"
 L_compos_file_path="${L_load_file_path}/${L_load_file_name}"
 ##2009/07/09 Ver1.2 modify end by Yutaka.Kuboshima
+
+##2010/01/14 Ver1.3 add start by Shigeto.Niki
+#ログ出力ディレクトリの変更
+cd "${L_log_file_path}"
+##2010/01/14 Ver1.3 add end by Shigeto.Niki
 
 if [ -f "${L_compos_file_path}" ]
 then
