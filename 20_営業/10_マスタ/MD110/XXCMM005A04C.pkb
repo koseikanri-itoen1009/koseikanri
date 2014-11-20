@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/06/09    1.7   Yutaka.Kuboshima 障害T1_1320の対応
  *  2009/09/02    1.8   Yutaka.Kuboshima 障害0001222の対応
  *  2009/10/02    1.9   Shigeto.Niki     障害I_E_542、E_T3_00469の対応
+ *  2011/03/23    1.10  Naoki.Horigome   E_本稼動_02541、02550対応
  *
  *****************************************************************************************/
 --
@@ -166,6 +167,9 @@ AS
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
   cv_cust_sts_stop    CONSTANT VARCHAR2(2)  := '90';                          -- 顧客ステータス(中止決裁済)
 -- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+-- 2011/03/23 Ver1.10 add start by Naoki.Horigome
+  cv_asterisk         CONSTANT VARCHAR2(2)  := '＊';
+-- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
 -- 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -211,6 +215,9 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gv_process_date       VARCHAR2(50);     -- 業務日付(フォーマット：YYYY/MM/DD)
+-- 2011/03/23 Ver1.10 add start by Naoki.Horigome
+  gv_next_proc_date     VARCHAR2(8);      -- 翌業務日付(フォーマット：YYYYMMDD)
+-- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
   -- 入力パラメータ
   gv_update_from        VARCHAR2(50);     -- 最終更新日(FROM)
   gv_update_to          VARCHAR2(50);     -- 最終更新日(TO)
@@ -335,8 +342,15 @@ AS
     --==============================================================
     gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date, cv_date_format);
 --
+-- 2011/03/23 Ver1.10 add start by Naoki.Horigome
     --==============================================================
-    --４．パラメータチェックを行います。
+    --４．翌業務日付を取得します。
+    --==============================================================
+    gv_next_proc_date := TO_CHAR(xxccp_common_pkg2.get_process_date + 1, cv_date_format2);
+-- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
+--
+    --==============================================================
+    --５．パラメータチェックを行います。
     --==============================================================
     -- "最終更新日(From) > 最終更新日(To)"の場合、パラメータエラー
     lv_update_from := NVL(gv_update_from, gv_process_date);
@@ -942,7 +956,10 @@ AS
 --          FROM   fnd_flex_values   ffvl
 --          WHERE  ffvl.flex_value_set_id = gt_out_tab(ln_idx).flex_value_set_id
 --          AND    ffvl.flex_value        = gt_out_tab(ln_idx).district_cd
-        SELECT SUBSTRB(flv.meaning, 1, 16)
+-- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+--        SELECT SUBSTRB(flv.meaning, 1, 16)
+        SELECT NVL(SUBSTRB(flv.meaning, 1, 16), cv_asterisk)
+-- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
         INTO lv_district_name
         FROM fnd_lookup_values flv
         WHERE flv.lookup_type  = cv_lookup_area
@@ -956,12 +973,18 @@ AS
 -- 2009/05/21 Ver1.5 modify end by Yutaka.Kuboshima
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-            lv_district_name := '';
+-- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+--            lv_district_name := '';
+            lv_district_name := cv_asterisk;
+-- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
           WHEN OTHERS THEN
             RAISE global_api_others_expt;
         END;
       ELSE
-        lv_district_name := '';
+-- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+--        lv_district_name := '';
+        lv_district_name := cv_asterisk;
+-- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
       END IF;
 --
       -- ■ 最終更新日時時分秒を取得
@@ -1002,7 +1025,10 @@ AS
       -- 3.チームコード
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_term_code  || cv_dqu;
       -- 4.適用開始日
-      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).start_date_active, cv_date_format2);
+-- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+--      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).start_date_active, cv_date_format2);
+      lv_outline := lv_outline || cv_sep || gv_next_proc_date;
+-- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
       -- 5.適用終了日
 -- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
 --      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
