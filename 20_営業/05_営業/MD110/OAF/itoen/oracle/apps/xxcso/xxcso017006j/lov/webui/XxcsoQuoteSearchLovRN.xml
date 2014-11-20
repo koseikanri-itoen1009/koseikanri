@@ -16,7 +16,8 @@ HISTORY
    <ui:contents>
       <oa:table name="XxcsoQuoteSearchLovRN" id="XxcsoQuoteSearchLovTIRN" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/XxcsoQuoteSearchLovTIRN">
          <ui:contents>
-            <oa:messageStyledText id="QuoteType" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteType" maximumLength="1" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteTypeSearch" sortState="yes" initSortSeq="first"/>
+            <oa:formValue id="QuoteType" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteType" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteTypeSearch"/>
+            <oa:messageStyledText id="QuoteTypeName" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteTypeSearch" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteTypeName" sortState="yes" initSortSeq="first" maximumLength="30"/>
             <oa:messageStyledText id="QuoteNumber" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteNumber" maximumLength="12" queryable="true" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteNumberSearch" sortState="yes" initSortSeq="second"/>
             <oa:messageStyledText id="QuoteRevisionNumber" dataType="NUMBER" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteRevisionNumber" maximumLength="2" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteRevisionSearch" queryable="true" sortState="yes" initSortSeq="third"/>
             <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="AccountNumber" maximumLength="9" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/AccountNumber" queryable="true" sortState="yes"/>

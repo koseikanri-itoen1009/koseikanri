@@ -30,6 +30,7 @@ public class XxcsoQuoteSearchLovVORowImpl extends OAViewRowImpl
   protected static final int ACCOUNTNUMBER = 3;
   protected static final int PARTYNAME = 4;
   protected static final int MEANING = 5;
+  protected static final int QUOTETYPENAME = 6;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -163,6 +164,8 @@ public class XxcsoQuoteSearchLovVORowImpl extends OAViewRowImpl
         return getPartyName();
       case MEANING:
         return getMeaning();
+      case QUOTETYPENAME:
+        return getQuoteTypeName();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -191,9 +194,30 @@ public class XxcsoQuoteSearchLovVORowImpl extends OAViewRowImpl
       case MEANING:
         setMeaning((String)value);
         return;
+      case QUOTETYPENAME:
+        setQuoteTypeName((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute QuoteTypeName
+   */
+  public String getQuoteTypeName()
+  {
+    return (String)getAttributeInternal(QUOTETYPENAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute QuoteTypeName
+   */
+  public void setQuoteTypeName(String value)
+  {
+    setAttributeInternal(QUOTETYPENAME, value);
   }
 }

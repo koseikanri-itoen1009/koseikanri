@@ -20,6 +20,11 @@ SELECT xqh.quote_type quote_type
         ,xqh.status
         ,xxcso_util_common_pkg.get_online_sysdate
        ) meaning
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+         'XXCSO1_QUOTE_TYPE'
+        ,xqh.quote_type
+        ,xxcso_util_common_pkg.get_online_sysdate
+       ) quote_type_name
 FROM xxcso_quote_headers xqh
     ,xxcso_employees_v2 xev2
     ,xxcso_resource_custs_v2 xrcv2
@@ -160,5 +165,15 @@ WHERE xev2.employee_number = xrcv2.employee_number
       <DesignTime>
          <Attr Name="_DisplaySize" Value="80" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteTypeName"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_TYPE_NAME"
+      Expression="QUOTE_TYPE_NAME"
+      SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>
