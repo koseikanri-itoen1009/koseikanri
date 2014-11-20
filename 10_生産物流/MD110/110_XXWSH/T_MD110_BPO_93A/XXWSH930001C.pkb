@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -93,6 +93,7 @@ AS
  *  2008/08/13    1.15 Oracle 福田 直樹  内部変更#176対応(出荷/支給のとき着荷日の未来日チェックはしない)
  *  2008/08/13    1.15 Oracle 福田 直樹  内部変更#177対応(出荷日/着荷日の逆転チェック追加対応)
  *  2008/08/18    1.15 Oracle 福田 直樹  TE080_930指摘#32対応(指示にあって実績にない品目は実績0で更新する)
+ *  2008/09/02    1.16 Oracle 福田 直樹  統合テスト障害#27対応(内部変更#176の再修正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4939,7 +4940,7 @@ AS
         --
         --END IF;
         -- 2008/08/13 内部変更#176対応 Del End -------------------------------------------------
-        --
+--
         -- 2008/08/13 内部変更#176対応 Add Start -----------------------------------------------
         -- 出荷/支給のときは着荷日の未来日チェックはしない(出荷日のみチェックする)
         IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR  -- 有償出荷報告
@@ -4951,17 +4952,32 @@ AS
             lv_dterr_flg := gv_date_chk_1;
           END IF;
 --
-        -- 移動のときは出荷日/着荷日共に未来日チェックをする
-        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220) OR     -- 移動出庫確定報告
-               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230)) THEN  -- 移動入庫確定報告
+        -- 2008/09/02 統合テスト障害#27 Del Start ----------------------------------------------
+        ---- 移動のときは出荷日/着荷日共に未来日チェックをする
+        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220) OR     -- 移動出庫確定報告
+        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230)) THEN  -- 移動入庫確定報告
+        --
+        --  IF ((TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) AND (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate))) THEN
+        --    lv_dterr_flg := gv_date_chk_3;
+        --  ELSIF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN
+        --    lv_dterr_flg := gv_date_chk_1;
+        --  ELSIF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN
+        --    lv_dterr_flg := gv_date_chk_2;
+        --  END IF;
+        -- 2008/09/02 統合テスト障害#27 Del End ----------------------------------------------
 --
-          IF ((TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) AND (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate))) THEN
-            lv_dterr_flg := gv_date_chk_3;
-          ELSIF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN
+        -- 2008/09/02 統合テスト障害#27 Add Start ----------------------------------------------
+        -- 移動の場合、出庫実績計上時(220)は出荷日、入庫実績計上時(230)は着荷日の未来日チェックをする
+        ELSIF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220) THEN     -- 移動出庫確定報告
+          IF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN  -- 出荷日のみチェック
             lv_dterr_flg := gv_date_chk_1;
-          ELSIF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN
+          END IF;
+--
+        ELSIF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN     -- 移動入庫確定報告
+          IF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN  -- 着荷日のみチェック
             lv_dterr_flg := gv_date_chk_2;
           END IF;
+        -- 2008/09/02 統合テスト障害#27 Add End ----------------------------------------------
 --
         END IF;
         -- 2008/08/13 内部変更#176対応 Add End -----------------------------------------------
