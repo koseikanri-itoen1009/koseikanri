@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.14
+ * Version          : 1.15
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -44,6 +44,7 @@ AS
  *  2009/12/29    1.12  N.Maeda          [E_本稼動_00697] 処理条件を検収日⇒納品日に変更
  *  2010/03/01    1.13  K.Aatsushiba     [E_本稼動_01399] 上様の売上値引き対応
  *  2012/08/15    1.14  T.Osawa          [E_本稼動_09922] 電子帳簿の対応
+ *  2012/11/13    1.15  K.Nakamura       [E_本稼動_02459] パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -109,7 +110,9 @@ AS
   cv_xxccp_short_nm         CONSTANT VARCHAR2(10) := 'XXCCP';            -- 共通領域短縮アプリ名
   cv_xxcos_short_nm         CONSTANT VARCHAR2(10) := 'XXCOS';            -- 販物アプリケーション短縮名
   cv_pkg_name               CONSTANT VARCHAR2(20) := 'XXCOS013A03C';     -- パッケージ名
-  cv_no_para_msg            CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなしメッセージ
+--***************************** 2012/11/13 1.15 K.Nakamura DEL START *****************************--
+--  cv_no_para_msg            CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなしメッセージ
+--***************************** 2012/11/13 1.15 K.Nakamura DEL END   *****************************--
   cv_process_date_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00014'; -- 業務日付取得エラー
   cv_pro_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00004'; -- プロファイル取得エラー
   cv_data_get_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00013'; -- データ抽出エラーメッセージ
@@ -151,7 +154,7 @@ AS
   cv_skip_data_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12885'; -- スキップデータ
   cv_prof_bulk_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12886';  -- 結果セット取得件数（バルク）
   cv_prof_journal_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12887';  -- 仕訳バッチ作成件数
---****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
   cv_sales_exp_h_nomal      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12888';
   cv_sales_exp_h_warn       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12889';
@@ -163,7 +166,13 @@ AS
 --
 /* 2010/03/01 Ver1.13 Add Start */
   cv_pf_discount_item_code       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12892'; -- 値引品目
-/* 2010/03/01 Ver1.13 Mod Start */
+/* 2010/03/01 Ver1.13 Add End */
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+  cv_param_err_msg          CONSTANT  VARCHAR2(20) := 'APP-XXCOS1-00019'; -- パラメータ指定エラーメッセージ
+  cv_param_msg              CONSTANT  VARCHAR2(20) := 'APP-XXCOS1-12893'; -- パラメータ出力メッセージ
+  cv_pro_start_months       CONSTANT  VARCHAR2(20) := 'APP-XXCOS1-12894'; -- GLへの販売実績データ連携対象開始月
+  cv_param_name             CONSTANT  VARCHAR2(20) := 'APP-XXCOS1-12895'; -- パラメータ名(起動モード)
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -189,7 +198,10 @@ AS
   cv_tkn_header_to          CONSTANT  VARCHAR2(20) := 'HEADER_TO';        -- 販売実績ヘッダID(TO)
   cv_tkn_count              CONSTANT  VARCHAR2(20) := 'HEADER_COUNT';     -- 販売実績ヘッダ件数
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
-
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+  cv_tkn_in_param           CONSTANT  VARCHAR2(20) := 'IN_PARAM';        -- パラメータ名
+  cv_tkn_param1             CONSTANT  VARCHAR2(20) := 'PARAM1';          -- パラメータ1
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
   cv_blank                  CONSTANT VARCHAR2(1)   := '';                -- ブランク
   cv_tkn_key_data           CONSTANT VARCHAR2(20)  := 'KEY_DATA';        -- キー項目
 --
@@ -206,6 +218,11 @@ AS
   cv_dic_return             CONSTANT  VARCHAR2(1)  := '2';               -- 納品伝票区分:返品
   cv_dic_return_correction  CONSTANT  VARCHAR2(1)  := '4';               -- 納品伝票区分:返品訂正
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+  cv_months                 CONSTANT  VARCHAR2(2)  := 'MM';              -- 書式フォーマットMM
+  cv_mode1                  CONSTANT  VARCHAR2(1)  := '1';               -- GLへの販売実績データ連携起動モード:処理モード
+  cv_mode2                  CONSTANT  VARCHAR2(1)  := '2';               -- GLへの販売実績データ連携起動モード:対象外更新モード
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
 --
   -- クイックコードタイプ
   ct_qct_gyotai_sho         CONSTANT  VARCHAR2(50) := 'XXCOS1_GYOTAI_SHO_MST_013_A03';  -- 業態小分類特定マスタ
@@ -249,9 +266,11 @@ AS
   cn_bulk_collect_count    NUMBER;                            -- 結果セット取得件数
   cn_journal_batch_count   NUMBER;                            -- 仕訳バッチ作成件数
   cn_commit_exec_flag      NUMBER DEFAULT 0;     -- コミット実行フラグ(0:未実行,1:実行あり)
--- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-  gn_last_flag             NUMBER DEFAULT 0;
--- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+--***************************** 2012/11/13 1.15 K.Nakamura DEL START *****************************--
+---- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+--  gn_last_flag             NUMBER DEFAULT 0;
+---- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+--***************************** 2012/11/13 1.15 K.Nakamura DEL END   *****************************--
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
@@ -405,6 +424,10 @@ AS
   -- ===============================
   --初期取得
   gd_process_date                     DATE;                                         -- 業務日付
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+  gd_from_date                        DATE;                                         -- 取得条件となる日付(From)
+  gv_mode                             VARCHAR2(1);                                  -- 起動モード
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
   gv_company_code                     VARCHAR2(30);                                 -- 会社コード
   gv_set_bks_id                       VARCHAR2(30);                                 -- 会計帳簿ID
   gv_set_bks_nm                       VARCHAR2(30);                                 -- 会計帳簿名称
@@ -420,7 +443,7 @@ AS
 --
 /* 2010/03/01 Ver1.13 Add Start */
   gt_discount_item_code               fnd_profile_option_values.profile_option_value%TYPE;      -- 値引品目
-/* 2010/03/01 Ver1.13 Add Start */
+/* 2010/03/01 Ver1.13 Add End */
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
 --
@@ -479,10 +502,13 @@ AS
     AND ( xseh.gl_interface_flag             = cv_n_flag
           OR xseh.gl_interface_flag          = cv_w_flag )
 -- ***************** 2009/10/07 1.10 N.Maeda MOD  END  ***************** --
--- ***************** 2009/12/29 1.12 N.Maeda MOD START ***************** --
---    AND xseh.inspect_date                   <= gd_process_date
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+    AND xseh.delivery_date                   >= gd_from_date
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
+---- ***************** 2009/12/29 1.12 N.Maeda MOD START ***************** --
+----    AND xseh.inspect_date                   <= gd_process_date
     AND xseh.delivery_date                   <= gd_process_date
--- ***************** 2009/12/29 1.12 N.Maeda MOD  END  ***************** --
+---- ***************** 2009/12/29 1.12 N.Maeda MOD  END  ***************** --
     AND xsel.item_code                      <> gv_var_elec_item_cd
     AND hca.account_number                   = xseh.ship_to_customer_code
     AND xchv.ship_account_number             = xseh.ship_to_customer_code
@@ -572,7 +598,11 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
-      ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--      ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
+      iv_mode       IN  VARCHAR2     --   起動モード
+    , ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
     , ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
     , ov_errmsg     OUT VARCHAR2 )   --   ユーザー・エラー・メッセージ --# 固定 #
   IS
@@ -613,12 +643,19 @@ AS
 /* 2010/03/01 Ver1.13 Add Start */
     ct_discount_item_cd      CONSTANT VARCHAR2(30) := 'XXCOS1_DISCOUNT_ITEM_CODE';    -- XXCOS:売上値引品目
 /* 2010/03/01 Ver1.13 Add End */
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+    ct_013a03_start_months   CONSTANT VARCHAR2(30) := 'XXCOS1_013A03_START_MONTHS';   -- XXCOS:GLへの販売実績データ連携対象開始月
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
 --
     -- *** ローカル変数 ***
     lv_profile_name          VARCHAR2(50);                           -- プロファイル名
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
     lv_tmp                   VARCHAR2(100);
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+    lv_param_name            VARCHAR2(50);                           -- パラメータ名
+    lv_013a03_start_months   NUMBER;                                 -- XXCOS:GLへの販売実績データ連携対象開始月
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
 --
     -- *** ローカル例外 ***
     non_lookup_value_expt    EXCEPTION;                               -- LOOKUP取得エラー
@@ -636,11 +673,20 @@ AS
 --##################  固定ステータス初期化部 END     ###################
 --
     --==============================================================
-    -- コンカレント入力パラメータなしメッセージ出力
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--    -- コンカレント入力パラメータなしメッセージ出力
+    -- コンカレント入力パラメータ出力
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
     --==============================================================
     gv_out_msg := xxccp_common_pkg.get_msg(
-                      iv_application => cv_xxccp_short_nm
-                    , iv_name        => cv_no_para_msg
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--                      iv_application => cv_xxccp_short_nm
+--                    , iv_name        => cv_no_para_msg
+                      iv_application  => cv_xxcos_short_nm
+                    , iv_name         => cv_param_msg
+                    , iv_token_name1  => cv_tkn_param1
+                    , iv_token_value1 => iv_mode
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
                   );
 --
     -- メッセージ出力
@@ -655,7 +701,10 @@ AS
       ,buff   => cv_blank
     );
     --===================================================
-    -- コンカレント入力パラメータなしログ出力
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--    -- コンカレント入力パラメータなしログ出力
+    -- コンカレント入力パラメータ出力
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
     --===================================================
     -- 空行出力
     FND_FILE.PUT_LINE(
@@ -675,6 +724,27 @@ AS
       ,buff   => cv_blank
     );
 --
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+    --==================================
+    -- パラメータのチェック
+    --==================================
+    IF ( iv_mode IS NULL ) OR
+       ( iv_mode NOT IN ( cv_mode1, cv_mode2 ) )
+    THEN
+      lv_param_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+        ,iv_name        => cv_param_name                   -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_short_nm
+                     , iv_name         => cv_param_err_msg
+                     , iv_token_name1  => cv_tkn_in_param
+                     , iv_token_value1 => lv_param_name
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
     --==================================
     -- 業務日付取得
     --==================================
@@ -687,310 +757,363 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
     -- ===============================
-    -- プロファイル取得：会計帳簿ID
+    -- プロファイル取得：GLへの販売実績データ連携対象開始月
     -- ===============================
-    gv_set_bks_id := FND_PROFILE.VALUE( ct_pro_bks_id );
-    -- プロファイルが取得できない場合
-    IF ( gv_set_bks_id IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_pro_bks_id                   -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- ===============================
-    -- プロファイル取得：会計帳簿名称
-    -- ===============================
-    gv_set_bks_nm := FND_PROFILE.VALUE( ct_pro_bks_nm );
-    -- プロファイルが取得できない場合
-    IF ( gv_set_bks_nm IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_pro_bks_nm                   -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- ===============================
-    -- プロファイル取得：在庫組織コード
-    -- ===============================
-    gv_org_cd := FND_PROFILE.VALUE( ct_pro_org_cd );
-    -- プロファイルが取得できない場合
-    IF ( gv_org_cd IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_pro_org_cd                   -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- ===============================
-    -- 在庫組織ID取得
-    -- ===============================
-    gv_org_id := xxcoi_common_pkg.get_organization_id( gv_org_cd );
-    -- 在庫組織ID取得できない場合はエラー
-    IF ( gv_org_id IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application => cv_xxcos_short_nm
-                     , iv_name        => cv_org_id_get_msg
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    -----------------------------------------------------------------------
---
-    --==================================
-    -- XXCOI:会社コード
-    --==================================
-    gv_company_code := FND_PROFILE.VALUE( ct_pro_company_cd );
---
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_company_code IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_pro_company_cd               -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    --==================================
-    -- XXCOS:変動電気料(品目コード)取得
-    --==================================
-    gv_var_elec_item_cd := FND_PROFILE.VALUE( ct_var_elec_item_cd );
---
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_var_elec_item_cd IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_var_elec_item_cd             -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    --==================================
-    -- 5.クイックコード取得
-    --==================================
-    -- カード売り区分=現金:0
     BEGIN
-      SELECT flvl.lookup_code
-      INTO   gt_card_sale_cls
-      FROM   fnd_lookup_values           flvl
-      WHERE  flvl.lookup_type            = ct_qct_card_cls
-        AND  flvl.attribute3             = ct_attribute_y
-        AND  flvl.enabled_flag           = ct_enabled_yes
---****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
---        AND  flvl.language               = USERENV( 'LANG' )
-        AND  flvl.language               = ct_lang
---****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
-        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
-                             AND         NVL( flvl.end_date_active,   gd_process_date );
---
+      lv_013a03_start_months := TO_NUMBER(FND_PROFILE.VALUE( ct_013a03_start_months )) * -1;
     EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-      -- クイックコード取得出来ない場合
+      -- プロファイル値が数値以外の場合
+      WHEN VALUE_ERROR THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_pro_start_months             -- メッセージID
+        );
         lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application   => cv_xxcos_short_nm
-                       , iv_name          => cv_card_sale_cls_msg
-                       , iv_token_name1   => cv_tkn_lookup_type
-                       , iv_token_value1  => ct_qct_card_cls
-                       , iv_token_name2   => cv_tkn_lookup_dff3
-                       , iv_token_value2  => ct_attribute_y
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
                      );
         lv_errbuf := lv_errmsg;
-        RAISE non_lookup_value_expt;
+        RAISE global_api_expt;
     END;
+    -- プロファイルが取得できない場合
+    IF ( lv_013a03_start_months IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+        ,iv_name        => cv_pro_start_months             -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_short_nm
+                     , iv_name         => cv_pro_msg
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => lv_profile_name
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
 --
-    -- 消費税区分=非課税:4
-    BEGIN
-      SELECT flvl.attribute3
-      INTO   gt_no_tax_cls
-      FROM   fnd_lookup_values           flvl
-      WHERE  flvl.lookup_type            = ct_qct_tax_cls
-        AND  flvl.attribute4             = ct_attribute_y
-        AND  flvl.enabled_flag           = ct_enabled_yes
+    --==================================
+    -- GLへの販売実績データ連携対象開始日付取得
+    --==================================
+    gd_from_date := TRUNC(ADD_MONTHS(gd_process_date, lv_013a03_start_months), cv_months);
+--
+    -- パラメータ変数設定
+    gv_mode := iv_mode;
+--
+    -- 起動モードが1の場合のみ
+    IF ( gv_mode = cv_mode1 ) THEN
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
+--
+      -- ===============================
+      -- プロファイル取得：会計帳簿ID
+      -- ===============================
+      gv_set_bks_id := FND_PROFILE.VALUE( ct_pro_bks_id );
+      -- プロファイルが取得できない場合
+      IF ( gv_set_bks_id IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_pro_bks_id                   -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      -- ===============================
+      -- プロファイル取得：会計帳簿名称
+      -- ===============================
+      gv_set_bks_nm := FND_PROFILE.VALUE( ct_pro_bks_nm );
+      -- プロファイルが取得できない場合
+      IF ( gv_set_bks_nm IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_pro_bks_nm                   -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      -- ===============================
+      -- プロファイル取得：在庫組織コード
+      -- ===============================
+      gv_org_cd := FND_PROFILE.VALUE( ct_pro_org_cd );
+      -- プロファイルが取得できない場合
+      IF ( gv_org_cd IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_pro_org_cd                   -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      -- ===============================
+      -- 在庫組織ID取得
+      -- ===============================
+      gv_org_id := xxcoi_common_pkg.get_organization_id( gv_org_cd );
+      -- 在庫組織ID取得できない場合はエラー
+      IF ( gv_org_id IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application => cv_xxcos_short_nm
+                       , iv_name        => cv_org_id_get_msg
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      -----------------------------------------------------------------------
+--
+      --==================================
+      -- XXCOI:会社コード
+      --==================================
+      gv_company_code := FND_PROFILE.VALUE( ct_pro_company_cd );
+--
+      -- プロファイルが取得できない場合はエラー
+      IF ( gv_company_code IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_pro_company_cd               -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      --==================================
+      -- XXCOS:変動電気料(品目コード)取得
+      --==================================
+      gv_var_elec_item_cd := FND_PROFILE.VALUE( ct_var_elec_item_cd );
+--
+      -- プロファイルが取得できない場合はエラー
+      IF ( gv_var_elec_item_cd IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_var_elec_item_cd             -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      --==================================
+      -- 5.クイックコード取得
+      --==================================
+      -- カード売り区分=現金:0
+      BEGIN
+        SELECT flvl.lookup_code
+        INTO   gt_card_sale_cls
+        FROM   fnd_lookup_values           flvl
+        WHERE  flvl.lookup_type            = ct_qct_card_cls
+          AND  flvl.attribute3             = ct_attribute_y
+          AND  flvl.enabled_flag           = ct_enabled_yes
 --****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
---        AND  flvl.language               = USERENV( 'LANG' )
-        AND  flvl.language               = ct_lang
+--          AND  flvl.language               = USERENV( 'LANG' )
+          AND  flvl.language               = ct_lang
 --****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
-        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
-                             AND         NVL( flvl.end_date_active,   gd_process_date );
+          AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+                               AND         NVL( flvl.end_date_active,   gd_process_date );
 --
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
         -- クイックコード取得出来ない場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   => cv_xxcos_short_nm
-                      , iv_name          => cv_tax_cls_msg
-                      , iv_token_name1   => cv_tkn_lookup_type
-                      , iv_token_value1  => ct_qct_tax_cls
-                      , iv_token_name2   => cv_tkn_lookup_dff4
-                      , iv_token_value2  => ct_attribute_y
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE non_lookup_value_expt;
-    END;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application   => cv_xxcos_short_nm
+                         , iv_name          => cv_card_sale_cls_msg
+                         , iv_token_name1   => cv_tkn_lookup_type
+                         , iv_token_value1  => ct_qct_card_cls
+                         , iv_token_name2   => cv_tkn_lookup_dff3
+                         , iv_token_value2  => ct_attribute_y
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE non_lookup_value_expt;
+      END;
 --
-    -- 顧客区分=上様:12
-    BEGIN
-      SELECT flvl.meaning
-      INTO   gt_cust_cls_cd
-      FROM   fnd_lookup_values           flvl
-      WHERE  flvl.lookup_type            = ct_cust_cls_cd
-        AND  flvl.lookup_code            LIKE ct_qcc_code
-        AND  flvl.enabled_flag           = ct_enabled_yes
+      -- 消費税区分=非課税:4
+      BEGIN
+        SELECT flvl.attribute3
+        INTO   gt_no_tax_cls
+        FROM   fnd_lookup_values           flvl
+        WHERE  flvl.lookup_type            = ct_qct_tax_cls
+          AND  flvl.attribute4             = ct_attribute_y
+          AND  flvl.enabled_flag           = ct_enabled_yes
 --****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
---        AND  flvl.language               = USERENV( 'LANG' )
-        AND  flvl.language               = ct_lang
+--          AND  flvl.language               = USERENV( 'LANG' )
+          AND  flvl.language               = ct_lang
 --****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
-        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
-                             AND         NVL( flvl.end_date_active,   gd_process_date );
+          AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+                               AND         NVL( flvl.end_date_active,   gd_process_date );
+  --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- クイックコード取得出来ない場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application   => cv_xxcos_short_nm
+                        , iv_name          => cv_tax_cls_msg
+                        , iv_token_name1   => cv_tkn_lookup_type
+                        , iv_token_value1  => ct_qct_tax_cls
+                        , iv_token_name2   => cv_tkn_lookup_dff4
+                        , iv_token_value2  => ct_attribute_y
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE non_lookup_value_expt;
+      END;
 --
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- クイックコード取得出来ない場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   => cv_xxcos_short_nm
-                      , iv_name          => cv_cust_err_msg
-                      , iv_token_name1   => cv_tkn_lookup_type
-                      , iv_token_value1  => ct_cust_cls_cd
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE non_lookup_value_expt;
-    END;
+      -- 顧客区分=上様:12
+      BEGIN
+        SELECT flvl.meaning
+        INTO   gt_cust_cls_cd
+        FROM   fnd_lookup_values           flvl
+        WHERE  flvl.lookup_type            = ct_cust_cls_cd
+          AND  flvl.lookup_code            LIKE ct_qcc_code
+          AND  flvl.enabled_flag           = ct_enabled_yes
+--****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
+--          AND  flvl.language               = USERENV( 'LANG' )
+          AND  flvl.language               = ct_lang
+--****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
+          AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+                               AND         NVL( flvl.end_date_active,   gd_process_date );
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- クイックコード取得出来ない場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application   => cv_xxcos_short_nm
+                        , iv_name          => cv_cust_err_msg
+                        , iv_token_name1   => cv_tkn_lookup_type
+                        , iv_token_value1  => ct_cust_cls_cd
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE non_lookup_value_expt;
+      END;
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
 --
-    --==================================
-    -- XXCOI:結果セット取得件数
-    --==================================
-    lv_tmp := FND_PROFILE.VALUE( ct_bulk_collect_count );
+      --==================================
+      -- XXCOI:結果セット取得件数
+      --==================================
+      lv_tmp := FND_PROFILE.VALUE( ct_bulk_collect_count );
 --
-    -- プロファイルが取得できない場合はエラー
-    IF ( lv_tmp IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_prof_bulk_msg                -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    cn_bulk_collect_count := TO_NUMBER(lv_tmp);
+      -- プロファイルが取得できない場合はエラー
+      IF ( lv_tmp IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_prof_bulk_msg                -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      cn_bulk_collect_count := TO_NUMBER(lv_tmp);
 --
-    --==================================
-    -- XXCOI:仕訳バッチ作成件数
-    --==================================
-    lv_tmp := FND_PROFILE.VALUE( ct_journal_batch_count );
+      --==================================
+      -- XXCOI:仕訳バッチ作成件数
+      --==================================
+      lv_tmp := FND_PROFILE.VALUE( ct_journal_batch_count );
 --
-    -- プロファイルが取得できない場合はエラー
-    IF ( lv_tmp IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-        ,iv_name        => cv_prof_journal_msg               -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    cn_journal_batch_count := TO_NUMBER(lv_tmp);
+      -- プロファイルが取得できない場合はエラー
+      IF ( lv_tmp IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+          ,iv_name        => cv_prof_journal_msg               -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      cn_journal_batch_count := TO_NUMBER(lv_tmp);
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
-    -- 勘定科目=現金
-    BEGIN
-      SELECT flvl.meaning
-      INTO   gt_segment3_cash
-      FROM   fnd_lookup_values           flvl
-      WHERE  flvl.lookup_type            = ct_qct_acnt_title_cd
-        AND  flvl.lookup_code            LIKE ct_qcc_code
-        AND  flvl.enabled_flag           = ct_enabled_yes
-        AND  flvl.language               = ct_lang
-        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
-                             AND         NVL( flvl.end_date_active,   gd_process_date );
+      -- 勘定科目=現金
+      BEGIN
+        SELECT flvl.meaning
+        INTO   gt_segment3_cash
+        FROM   fnd_lookup_values           flvl
+        WHERE  flvl.lookup_type            = ct_qct_acnt_title_cd
+          AND  flvl.lookup_code            LIKE ct_qcc_code
+          AND  flvl.enabled_flag           = ct_enabled_yes
+          AND  flvl.language               = ct_lang
+          AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+                               AND         NVL( flvl.end_date_active,   gd_process_date );
 --
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- クイックコード取得出来ない場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   => cv_xxcos_short_nm
-                      , iv_name          => cv_acnt_title_err_msg
-                      , iv_token_name1   => cv_tkn_lookup_type
-                      , iv_token_value1  => ct_qct_acnt_title_cd
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE non_lookup_value_expt;
-    END;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- クイックコード取得出来ない場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application   => cv_xxcos_short_nm
+                        , iv_name          => cv_acnt_title_err_msg
+                        , iv_token_name1   => cv_tkn_lookup_type
+                        , iv_token_value1  => ct_qct_acnt_title_cd
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE non_lookup_value_expt;
+      END;
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
 --
 /* 2010/03/01 Ver1.13 Add Start */
-    --==================================
-    -- XXCOS:値引品目
-    --==================================
-    gt_discount_item_code := FND_PROFILE.VALUE( ct_discount_item_cd );
+      --==================================
+      -- XXCOS:値引品目
+      --==================================
+      gt_discount_item_code := FND_PROFILE.VALUE( ct_discount_item_cd );
 --
-    -- プロファイルが取得できない場合はエラー
-    IF ( gt_discount_item_code IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm                -- アプリケーション短縮名
-        ,iv_name        => cv_pf_discount_item_code         -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
+      -- プロファイルが取得できない場合はエラー
+      IF ( gt_discount_item_code IS NULL ) THEN
+        lv_profile_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_nm                -- アプリケーション短縮名
+          ,iv_name        => cv_pf_discount_item_code         -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_nm
+                       , iv_name         => cv_pro_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => lv_profile_name
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+/* 2010/03/01 Ver1.13 Add End */
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
     END IF;
-/* 2010/03/01 Ver1.13 Add Start */
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
 --
   EXCEPTION
 --
@@ -3257,9 +3380,13 @@ AS
     --==============================================================
 --
     -- 処理対象データのインタフェース済フラグを一括更新する
--- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-    IF ( gn_last_flag = 0 ) THEN
--- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+---- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
+--    IF ( gn_last_flag = 0 ) THEN
+---- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+    -- 起動モードが1の場合
+    IF ( gv_mode = cv_mode1 ) THEN
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
       IF ( gt_sales_h_tbl2.COUNT > 0 ) THEN
           -- 正常データ更新
@@ -3346,6 +3473,10 @@ AS
           xseh.program_update_date    = cd_program_update_date             -- プログラム更新日
         WHERE
           xseh.gl_interface_flag      = cv_n_flag
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+        AND
+          xseh.delivery_date          >= gd_from_date
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
         AND
 -- ***************** 2009/12/29 1.12 N.Maeda MOD START ***************** --
 --          xseh.inspect_date           <= gd_process_date
@@ -3360,6 +3491,11 @@ AS
                          );
           RAISE global_update_data_expt;
       END;
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+      -- 件数出力
+      gn_target_cnt := SQL%ROWCOUNT;
+      gn_normal_cnt := gn_target_cnt;
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
 --      END IF;
     END IF;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
@@ -3416,7 +3552,11 @@ AS
    **********************************************************************************/
   PROCEDURE submain
   (
-      ov_errbuf    OUT VARCHAR2             --   エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--      ov_errbuf    OUT VARCHAR2             --   エラー・メッセージ           --# 固定 #
+      iv_mode      IN  VARCHAR2             --   起動モード
+    , ov_errbuf    OUT VARCHAR2             --   エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
     , ov_retcode   OUT VARCHAR2             --   リターン・コード             --# 固定 #
     , ov_errmsg    OUT VARCHAR2 )           --   ユーザー・エラー・メッセージ --# 固定 #
   IS
@@ -3493,7 +3633,11 @@ AS
     -- A-1.初期処理
     -- ===============================
     init(
-        ov_errbuf  => lv_errbuf             -- エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--        ov_errbuf  => lv_errbuf             -- エラー・メッセージ           --# 固定 #
+        iv_mode    => iv_mode               -- 起動モード
+      , ov_errbuf  => lv_errbuf             -- エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
       , ov_retcode => lv_retcode            -- リターン・コード             --# 固定 #
       , ov_errmsg  => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
     );
@@ -3501,238 +3645,249 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- A-2.データ取得
-    -- ===============================
-    get_data(
-        ov_errbuf  => lv_errbuf             -- エラー・メッセージ           --# 固定 #
-      , ov_retcode => lv_retcode            -- リターン・コード             --# 固定 #
-      , ov_errmsg  => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-    );
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+    -- 起動モードが1の場合のみ
+    IF ( gv_mode = cv_mode1 ) THEN
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
+      -- ===============================
+      -- A-2.データ取得
+      -- ===============================
+      get_data(
+          ov_errbuf  => lv_errbuf             -- エラー・メッセージ           --# 固定 #
+        , ov_retcode => lv_retcode            -- リターン・コード             --# 固定 #
+        , ov_errmsg  => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+      );
 --
-    IF ( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
 --
 --****************************** 2009/09/14 1.9 Atsushiba  MOD START ******************************--
 --
-    -- 初期化
-    gt_sales_exp_tbl.DELETE;
-    lv_retcode_tmp := cv_status_normal;
-    <<bulk_loop>>
-    LOOP
       -- 初期化
-      gt_sales_exp_wk_tbl.DELETE;
-      ln_pre_header_id := NULL;
-      ln_lock_header_id := NULL;
-      --
-      -- データ取得
-      FETCH sales_data_cur BULK COLLECT INTO gt_sales_exp_wk_tbl LIMIT cn_bulk_collect_count;
-      -- 
-      EXIT WHEN ln_fetch_end_flag = 1;
+      gt_sales_exp_tbl.DELETE;
+      lv_retcode_tmp := cv_status_normal;
+      <<bulk_loop>>
+      LOOP
+        -- 初期化
+        gt_sales_exp_wk_tbl.DELETE;
+        ln_pre_header_id := NULL;
+        ln_lock_header_id := NULL;
+        --
+        -- データ取得
+        FETCH sales_data_cur BULK COLLECT INTO gt_sales_exp_wk_tbl LIMIT cn_bulk_collect_count;
+        -- 
+        EXIT WHEN ln_fetch_end_flag = 1;
 --
-      -- データ有無チェック
-      IF ( sales_data_cur%NOTFOUND ) THEN
-        ln_fetch_end_flag := 1;
-      END IF;
-      --
+        -- データ有無チェック
+        IF ( sales_data_cur%NOTFOUND ) THEN
+          ln_fetch_end_flag := 1;
+        END IF;
+        --
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-      IF ( ln_fetch_end_flag = 1 ) AND ( gt_sales_exp_wk_tbl.COUNT = 0 ) THEN
-          gt_sales_exp_wk_tbl := gt_sales_exp_evacu_tbl;
-          gt_sales_exp_evacu_tbl.DELETE;
-          gn_target_cnt       := gn_target_cnt - gt_sales_exp_wk_tbl.COUNT;
-          ln_target_wk_cnt    := ln_target_wk_cnt - gt_sales_exp_wk_tbl.COUNT;
-      END IF;
+        IF ( ln_fetch_end_flag = 1 ) AND ( gt_sales_exp_wk_tbl.COUNT = 0 ) THEN
+            gt_sales_exp_wk_tbl := gt_sales_exp_evacu_tbl;
+            gt_sales_exp_evacu_tbl.DELETE;
+            gn_target_cnt       := gn_target_cnt - gt_sales_exp_wk_tbl.COUNT;
+            ln_target_wk_cnt    := ln_target_wk_cnt - gt_sales_exp_wk_tbl.COUNT;
+        END IF;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
-      <<journal_loop>>
-      FOR ln_idx IN 1..gt_sales_exp_wk_tbl.COUNT LOOP
+        <<journal_loop>>
+        FOR ln_idx IN 1..gt_sales_exp_wk_tbl.COUNT LOOP
 -- 
-        -- 販売実績IDの件数が基準値以上かつ販売実績IDがブレイク
-        -- または、フェッチ読込終了かつ配列の最後
-        IF ( ( gt_sales_header_tbl.COUNT >= cn_journal_batch_count
-               AND ln_pre_header_id <> gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)
-             OR ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT )
-           )
-        THEN
-          --
+          -- 販売実績IDの件数が基準値以上かつ販売実績IDがブレイク
+          -- または、フェッチ読込終了かつ配列の最後
+          IF ( ( gt_sales_header_tbl.COUNT >= cn_journal_batch_count
+                 AND ln_pre_header_id <> gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)
+               OR ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT )
+             )
+          THEN
+            --
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-          ln_last_dara_count := 0;
-          gt_sales_exp_evacu_tbl.DELETE;
+            ln_last_dara_count := 0;
+            gt_sales_exp_evacu_tbl.DELETE;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
-          -- フェッチ読込終了かつ配列の最後の場合
-          IF ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT ) THEN
-            gn_target_cnt := gn_target_cnt + 1;
-            gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
-          END IF;
-          --
-          BEGIN
-            -- 処理対象データをロック
-            <<lock_loop>>
-            FOR ln_lock_ind IN 1..gt_sales_exp_tbl.COUNT LOOP
-              IF (ln_lock_header_id <> gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id) THEN
-                SELECT  xseh.sales_exp_header_id
-                INTO    ln_header_id_wk
-                FROM    xxcos_sales_exp_headers xseh
-                WHERE   xseh.sales_exp_header_id = gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id
-                FOR UPDATE OF  xseh.sales_exp_header_id
-                NOWAIT;
+            -- フェッチ読込終了かつ配列の最後の場合
+            IF ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT ) THEN
+              gn_target_cnt := gn_target_cnt + 1;
+              gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
+            END IF;
+            --
+            BEGIN
+              -- 処理対象データをロック
+              <<lock_loop>>
+              FOR ln_lock_ind IN 1..gt_sales_exp_tbl.COUNT LOOP
+                IF (ln_lock_header_id <> gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id) THEN
+                  SELECT  xseh.sales_exp_header_id
+                  INTO    ln_header_id_wk
+                  FROM    xxcos_sales_exp_headers xseh
+                  WHERE   xseh.sales_exp_header_id = gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id
+                  FOR UPDATE OF  xseh.sales_exp_header_id
+                  NOWAIT;
+                END IF;
+                --
+                ln_lock_header_id := gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id;
+              END LOOP lock_loop;
+              --
+              -- ===============================
+              -- A-3.一般会計OIF集約処理 (A-4 処理の呼出を含め)
+              -- ===============================
+              edit_work_data(
+                   ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+                 , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
+                 , ov_errmsg  => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+              IF ( lv_retcode = cv_status_error ) THEN
+                gn_error_cnt := 1;
+                RAISE global_process_expt;
+              ELSIF ( lv_retcode = cv_status_warn ) THEN
+                lv_retcode_tmp := cv_status_warn;
+              END IF;
+--
+              -- ===============================
+              -- A-5.一般会計OIFデータ登録処理
+              -- ===============================
+              insert_gl_data(
+                    ov_errbuf       => lv_errbuf     -- エラー・メッセージ
+                  , ov_retcode      => lv_retcode    -- リターン・コード
+                  , ov_errmsg       => lv_errmsg     -- ユーザー・エラー・メッセージ
+                );
+              IF ( lv_retcode = cv_status_error ) THEN
+                gn_error_cnt := 1;
+                RAISE global_insert_data_expt;
+              END IF;
+--
+              -- ===============================
+              -- A-6.販売実績データの更新処理
+              -- ===============================
+              upd_data(
+                  ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+                , ov_retcode => lv_retcode          -- リターン・コード
+                , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+                );
+              IF ( lv_retcode = cv_status_error ) THEN
+                gn_error_cnt := 1;
+                RAISE global_update_data_expt;
               END IF;
               --
-              ln_lock_header_id := gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id;
-            END LOOP lock_loop;
-            --
-            -- ===============================
-            -- A-3.一般会計OIF集約処理 (A-4 処理の呼出を含め)
-            -- ===============================
-            edit_work_data(
-                 ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
-               , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
-               , ov_errmsg  => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            IF ( lv_retcode = cv_status_error ) THEN
-              gn_error_cnt := 1;
-              RAISE global_process_expt;
-            ELSIF ( lv_retcode = cv_status_warn ) THEN
-              lv_retcode_tmp := cv_status_warn;
-            END IF;
-  --
-            -- ===============================
-            -- A-5.一般会計OIFデータ登録処理
-            -- ===============================
-            insert_gl_data(
-                  ov_errbuf       => lv_errbuf     -- エラー・メッセージ
-                , ov_retcode      => lv_retcode    -- リターン・コード
-                , ov_errmsg       => lv_errmsg     -- ユーザー・エラー・メッセージ
-              );
-            IF ( lv_retcode = cv_status_error ) THEN
-              gn_error_cnt := 1;
-              RAISE global_insert_data_expt;
-            END IF;
-    --
-            -- ===============================
-            -- A-6.販売実績データの更新処理
-            -- ===============================
-            upd_data(
-                ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-              , ov_retcode => lv_retcode          -- リターン・コード
-              , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
-              );
-            IF ( lv_retcode = cv_status_error ) THEN
-              gn_error_cnt := 1;
-              RAISE global_update_data_expt;
-            END IF;
-            --
-            -- 正常処理件数設定
-            gn_normal_cnt := gn_normal_cnt + gt_gl_interface_tbl2.COUNT;
-            --
-            -- 警告件数設定
-            ln_warn_wk_cnt := ln_warn_wk_cnt + gn_warn_cnt;
-            --
-            -- コミット
-            COMMIT;
-            cn_commit_exec_flag := 1;
-            --
-          EXCEPTION
-            -- ロックエラー
-            WHEN lock_expt THEN
-              -- ロックエラーメッセージ
-              lv_table_name := xxccp_common_pkg.get_msg(
-                    iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-                  , iv_name        => cv_tkn_sales_msg);                -- メッセージID
-              lv_errmsg     := xxccp_common_pkg.get_msg(
-                    iv_application   => cv_xxcos_short_nm
-                  , iv_name          => cv_table_lock_msg
-                  , iv_token_name1   => cv_tkn_tbl
-                  , iv_token_value1  => lv_table_name);
-              -- メッセージ出力
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.OUTPUT
-                ,buff   => lv_errmsg
-              );
+              -- 正常処理件数設定
+              gn_normal_cnt := gn_normal_cnt + gt_gl_interface_tbl2.COUNT;
               --
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.OUTPUT
-                ,buff   => cv_blank
-              );
+              -- 警告件数設定
+              ln_warn_wk_cnt := ln_warn_wk_cnt + gn_warn_cnt;
               --
-              -- スキップメッセージ
-              lv_errmsg := xxccp_common_pkg.get_msg(
-                    iv_application   => cv_xxcos_short_nm
-                  , iv_name          => cv_skip_data_msg
-                  , iv_token_name1   => cv_tkn_header_from           -- ヘッダ(FROM)
-                  , iv_token_value1  => TO_CHAR(gt_sales_exp_tbl(1).sales_exp_header_id)
-                  , iv_token_name2   => cv_tkn_header_to             -- ヘッダ(TO)
-                  , iv_token_value2  => TO_CHAR(gt_sales_exp_tbl(gt_sales_exp_tbl.COUNT).sales_exp_header_id)
-                  , iv_token_name3   => cv_tkn_count                 -- ヘッダ件数
-                  , iv_token_value3  => TO_CHAR(gt_sales_header_tbl.COUNT)
-                  );
-              -- メッセージ出力
-              -- 空行出力
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => cv_blank
-              );
+              -- コミット
+              COMMIT;
+              cn_commit_exec_flag := 1;
               --
-              FND_FILE.PUT_LINE(
-                 which  => FND_FILE.LOG
-                ,buff   => lv_errmsg
-              );
+            EXCEPTION
+              -- ロックエラー
+              WHEN lock_expt THEN
+                -- ロックエラーメッセージ
+                lv_table_name := xxccp_common_pkg.get_msg(
+                      iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+                    , iv_name        => cv_tkn_sales_msg);                -- メッセージID
+                lv_errmsg     := xxccp_common_pkg.get_msg(
+                      iv_application   => cv_xxcos_short_nm
+                    , iv_name          => cv_table_lock_msg
+                    , iv_token_name1   => cv_tkn_tbl
+                    , iv_token_value1  => lv_table_name);
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => lv_errmsg
+                );
+                --
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => cv_blank
+                );
+                --
+                -- スキップメッセージ
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application   => cv_xxcos_short_nm
+                    , iv_name          => cv_skip_data_msg
+                    , iv_token_name1   => cv_tkn_header_from           -- ヘッダ(FROM)
+                    , iv_token_value1  => TO_CHAR(gt_sales_exp_tbl(1).sales_exp_header_id)
+                    , iv_token_name2   => cv_tkn_header_to             -- ヘッダ(TO)
+                    , iv_token_value2  => TO_CHAR(gt_sales_exp_tbl(gt_sales_exp_tbl.COUNT).sales_exp_header_id)
+                    , iv_token_name3   => cv_tkn_count                 -- ヘッダ件数
+                    , iv_token_value3  => TO_CHAR(gt_sales_header_tbl.COUNT)
+                    );
+                -- メッセージ出力
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+                --
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_errmsg
+                );
 --
-              lv_retcode_tmp := cv_status_warn;
-              -- スキップ件数
-              ln_warn_wk_cnt := ln_warn_wk_cnt + gt_sales_exp_tbl.COUNT;
-          END;
-          --
-          -- 初期化
-          gt_sales_header_tbl.DELETE;    -- 販売実績ヘッダID件数用
-          gt_sales_card_tbl.DELETE;      -- カードデータ用
-          gt_sales_exp_tbl.DELETE;       -- 販売実績データ用
-          gt_sales_h_tbl.DELETE;         -- AR連携フラグ更新用
-          gt_sales_h_tbl2.DELETE;        -- AR連携フラグ更新用
-          gt_gl_interface_tbl.DELETE;    -- GL-OIFデータ編集用
-          gt_gl_interface_tbl2.DELETE;   -- GL-OIF登録用
-          ln_sales_idx := 1;
-          gn_target_cnt := 0;
-          gn_warn_cnt := 0;
+                lv_retcode_tmp := cv_status_warn;
+                -- スキップ件数
+                ln_warn_wk_cnt := ln_warn_wk_cnt + gt_sales_exp_tbl.COUNT;
+            END;
+            --
+            -- 初期化
+            gt_sales_header_tbl.DELETE;    -- 販売実績ヘッダID件数用
+            gt_sales_card_tbl.DELETE;      -- カードデータ用
+            gt_sales_exp_tbl.DELETE;       -- 販売実績データ用
+            gt_sales_h_tbl.DELETE;         -- AR連携フラグ更新用
+            gt_sales_h_tbl2.DELETE;        -- AR連携フラグ更新用
+            gt_gl_interface_tbl.DELETE;    -- GL-OIFデータ編集用
+            gt_gl_interface_tbl2.DELETE;   -- GL-OIF登録用
+            ln_sales_idx := 1;
+            gn_target_cnt := 0;
+            gn_warn_cnt := 0;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-          gt_sales_h_tbl_w.DELETE;       -- 販売実績データ用(警告)
-          gt_sales_h_tbl_work_w.DELETE;
+            gt_sales_h_tbl_w.DELETE;       -- 販売実績データ用(警告)
+            gt_sales_h_tbl_work_w.DELETE;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
 --
-        END IF;
+          END IF;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-        IF ( cn_bulk_collect_count = gt_sales_exp_wk_tbl.COUNT ) THEN
-          ln_last_dara_count := ln_last_dara_count + 1;
-          gt_sales_exp_evacu_tbl( ln_last_dara_count ) := gt_sales_exp_wk_tbl(ln_idx);
-        END IF;
+          IF ( cn_bulk_collect_count = gt_sales_exp_wk_tbl.COUNT ) THEN
+            ln_last_dara_count := ln_last_dara_count + 1;
+            gt_sales_exp_evacu_tbl( ln_last_dara_count ) := gt_sales_exp_wk_tbl(ln_idx);
+          END IF;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
-        gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
-        ln_sales_idx := ln_sales_idx + 1;
-        gt_sales_header_tbl(TO_CHAR(gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)) := NULL;
-        ln_target_wk_cnt := ln_target_wk_cnt + 1;
-        gn_target_cnt := gn_target_cnt + 1;
-        ln_pre_header_id := gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id;
-      END LOOP journal_loop;
+          gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
+          ln_sales_idx := ln_sales_idx + 1;
+          gt_sales_header_tbl(TO_CHAR(gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)) := NULL;
+          ln_target_wk_cnt := ln_target_wk_cnt + 1;
+          gn_target_cnt := gn_target_cnt + 1;
+          ln_pre_header_id := gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id;
+        END LOOP journal_loop;
+        --
+      END LOOP bulk_loop;
       --
-    END LOOP bulk_loop;
-    --
-    gn_target_cnt := ln_target_wk_cnt;
-    gn_warn_cnt   := ln_warn_wk_cnt;
+      gn_target_cnt := ln_target_wk_cnt;
+      gn_warn_cnt   := ln_warn_wk_cnt;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD START ***************** --
-    gn_last_flag := 1;
-    -- ===============================
-    -- A-6.販売実績データの更新処理
-    -- ===============================
-    upd_data(
-        ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-      , ov_retcode => lv_retcode          -- リターン・コード
-      , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
-            );
-    IF ( lv_retcode = cv_status_error ) THEN
-      gn_error_cnt := 1;
-      RAISE global_update_data_expt;
-    END IF;
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--      gn_last_flag := 1;
+    -- 起動モードが2の場合のみ
+    ELSIF ( gv_mode = cv_mode2 ) THEN
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
+      -- ===============================
+      -- A-6.販売実績データの更新処理
+      -- ===============================
+      upd_data(
+          ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+        , ov_retcode => lv_retcode          -- リターン・コード
+        , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+              );
+      IF ( lv_retcode = cv_status_error ) THEN
+        gn_error_cnt := 1;
+        RAISE global_update_data_expt;
+      END IF;
 -- ***************** 2009/10/07 1.10 N.Maeda ADD  END  ***************** --
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+    END IF;
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
     --
     IF ((gn_warn_cnt > 0 )
         OR ( lv_retcode_tmp = cv_status_warn )) THEN
@@ -3740,22 +3895,29 @@ AS
       ov_retcode := cv_status_warn;
     END IF;
     --
-    -- カーソルクローズ
-    IF ( sales_data_cur%ISOPEN ) THEN
-      CLOSE sales_data_cur;
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
+    -- 起動モードが1の場合のみ
+    IF ( gv_mode = cv_mode1 ) THEN
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+      --
+      IF ( gn_target_cnt = 0 ) THEN
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcos_short_nm
+                        , iv_name         => cv_no_data_msg);
+        lv_errbuf  := lv_errmsg;
+        lv_retcode := cv_status_warn;
+        RAISE global_no_data_expt;
+      END IF;
+      --
+      lv_retcode := lv_retcode_tmp;
+--***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
     END IF;
-    --
-    IF ( gn_target_cnt = 0 ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_xxcos_short_nm
-                      , iv_name         => cv_no_data_msg);
-      lv_errbuf  := lv_errmsg;
-      lv_retcode := cv_status_warn;
-      RAISE global_no_data_expt;
-    END IF;
-    --
-    lv_retcode := lv_retcode_tmp;
-    --
+--***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
+  --
 --
 --    -- 販売実績情報抽出が0件時は、抽出レコードなしで終了
 --    IF ( gn_target_cnt > 0 ) THEN
@@ -3926,7 +4088,11 @@ AS
 --
   PROCEDURE main(
       errbuf      OUT VARCHAR2               -- エラー・メッセージ  --# 固定 #
-    , retcode     OUT VARCHAR2 )             -- リターン・コード    --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--    , retcode     OUT VARCHAR2 )             -- リターン・コード    --# 固定 #
+    , retcode     OUT VARCHAR2               -- リターン・コード    --# 固定 #
+    , iv_mode     IN  VARCHAR2 )             -- 起動モード
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
   IS
 --
 --###########################  固定部 START   ###########################
@@ -3980,7 +4146,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-        ov_errbuf  => lv_errbuf              -- エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD START *****************************--
+--        ov_errbuf  => lv_errbuf              -- エラー・メッセージ           --# 固定 #
+        iv_mode    => iv_mode                -- 起動モード
+      , ov_errbuf  => lv_errbuf              -- エラー・メッセージ           --# 固定 #
+--***************************** 2012/11/13 1.15 K.Nakamura MOD END   *****************************--
       , ov_retcode => lv_retcode             -- リターン・コード             --# 固定 #
       , ov_errmsg  => lv_errmsg              -- ユーザー・エラー・メッセージ --# 固定 #
     );
