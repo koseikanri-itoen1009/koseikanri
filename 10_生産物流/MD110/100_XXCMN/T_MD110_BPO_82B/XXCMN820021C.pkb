@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/01/15    1.11  T.Ohashi         本番#897対応
  *  2009/02/06    1.12  A.Shiina         本番#1154対応
  *  2009/02/09    1.13  A.Shiina         本番#1154再対応(Ver.1.10へ戻し)
+ *  2009/02/16    1.14  A.Shiina         本番#1173対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -858,11 +859,17 @@ AS
 -- 2008/12/14 MOD E
         END IF;
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
-        lr_amount.d_unit_price := lr_amount.s_unit_price - lr_amount.r_unit_price ;
+-- 2009/02/16 v1.14 UPDATE START
+--        lr_amount.d_unit_price := lr_amount.s_unit_price - lr_amount.r_unit_price ;
+        lr_amount.d_unit_price := lr_amount.r_unit_price - lr_amount.s_unit_price ;
+-- 2009/02/16 v1.14 UPDATE END
       END IF ;
       lr_amount.s_amount     := re_main.s_amount ;
       lr_amount.r_amount     := re_main.r_amount ;
-      lr_amount.d_amount     := re_main.s_amount - re_main.r_amount ;
+-- 2009/02/16 v1.14 UPDATE START
+--      lr_amount.d_amount     := re_main.s_amount - re_main.r_amount ;
+      lr_amount.d_amount     := re_main.r_amount - re_main.s_amount ;
+-- 2009/02/16 v1.14 UPDATE END
 --
       -- ----------------------------------------------------
       -- 開始タグ
@@ -2322,11 +2329,19 @@ AS
         lr_amount_rcv.s_unit_price := ROUND( lr_amount_rcv.s_amount / lr_ref.quant, 2 ) ; 
         lr_amount_dif.r_unit_price := ROUND( lr_amount_dif.r_amount / lr_ref.quant, 2 ) ;
         lr_amount_rcv.r_unit_price := ROUND( lr_amount_rcv.r_amount / lr_ref.quant, 2 ) ;
-        lr_amount_dif.d_unit_price := lr_amount_dif.s_unit_price - lr_amount_dif.r_unit_price ;
-        lr_amount_rcv.d_unit_price := lr_amount_rcv.s_unit_price - lr_amount_rcv.r_unit_price ;
+-- 2009/02/16 v1.14 UPDATE START
+--        lr_amount_dif.d_unit_price := lr_amount_dif.s_unit_price - lr_amount_dif.r_unit_price ;
+--        lr_amount_rcv.d_unit_price := lr_amount_rcv.s_unit_price - lr_amount_rcv.r_unit_price ;
+        lr_amount_dif.d_unit_price := lr_amount_dif.r_unit_price - lr_amount_dif.s_unit_price ;
+        lr_amount_rcv.d_unit_price := lr_amount_rcv.r_unit_price - lr_amount_rcv.s_unit_price ;
+-- 2009/02/16 v1.14 UPDATE END
       END IF ;
-      lr_amount_dif.d_amount     := lr_amount_dif.s_amount     - lr_amount_dif.r_amount ;
-      lr_amount_rcv.d_amount     := lr_amount_rcv.s_amount     - lr_amount_rcv.r_amount ;
+-- 2009/02/16 v1.14 UPDATE START
+--      lr_amount_dif.d_amount     := lr_amount_dif.s_amount     - lr_amount_dif.r_amount ;
+--      lr_amount_rcv.d_amount     := lr_amount_rcv.s_amount     - lr_amount_rcv.r_amount ;
+      lr_amount_dif.d_amount     := lr_amount_dif.r_amount     - lr_amount_dif.s_amount ;
+      lr_amount_rcv.d_amount     := lr_amount_rcv.r_amount     - lr_amount_rcv.s_amount ;
+-- 2009/02/16 v1.14 UPDATE END
 --
       gv_quant_dpt  := gv_quant_dpt + lr_ref.quant ;  -- 数量（部署計）
 --
@@ -2488,11 +2503,17 @@ AS
 --            lr_amount_dtl.r_unit_price := re_sum_dtl.r_test_up; 
           END IF;
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
-          lr_amount_dtl.d_unit_price := lr_amount_dtl.s_unit_price - lr_amount_dtl.r_unit_price ;
+-- 2009/02/16 v1.14 UPDATE START
+--          lr_amount_dtl.d_unit_price := lr_amount_dtl.s_unit_price - lr_amount_dtl.r_unit_price ;
+          lr_amount_dtl.d_unit_price := lr_amount_dtl.r_unit_price - lr_amount_dtl.s_unit_price ;
+-- 2009/02/16 v1.14 UPDATE END
         END IF ;
         lr_amount_dtl.s_amount     := re_sum_dtl.s_amount ;
         lr_amount_dtl.r_amount     := re_sum_dtl.r_amount ;
-        lr_amount_dtl.d_amount     := re_sum_dtl.s_amount - re_sum_dtl.r_amount ;
+-- 2009/02/16 v1.14 UPDATE START
+--        lr_amount_dtl.d_amount     := re_sum_dtl.s_amount - re_sum_dtl.r_amount ;
+        lr_amount_dtl.d_amount     := re_sum_dtl.r_amount - re_sum_dtl.s_amount ;
+-- 2009/02/16 v1.14 UPDATE END
 --
         -- ----------------------------------------------------
         -- データタグ出力
@@ -3351,11 +3372,19 @@ AS
         lr_amount_rcv.s_unit_price := ROUND( lr_amount_rcv.s_amount / lr_ref.quant, 2 ) ; 
         lr_amount_dif.r_unit_price := ROUND( lr_amount_dif.r_amount / lr_ref.quant, 2 ) ;
         lr_amount_rcv.r_unit_price := ROUND( lr_amount_rcv.r_amount / lr_ref.quant, 2 ) ;
-        lr_amount_dif.d_unit_price := lr_amount_dif.s_unit_price - lr_amount_dif.r_unit_price ;
-        lr_amount_rcv.d_unit_price := lr_amount_rcv.s_unit_price - lr_amount_rcv.r_unit_price ;
+-- 2009/02/16 v1.14 UPDATE START
+--        lr_amount_dif.d_unit_price := lr_amount_dif.s_unit_price - lr_amount_dif.r_unit_price ;
+--        lr_amount_rcv.d_unit_price := lr_amount_rcv.s_unit_price - lr_amount_rcv.r_unit_price ;
+        lr_amount_dif.d_unit_price := lr_amount_dif.r_unit_price - lr_amount_dif.s_unit_price ;
+        lr_amount_rcv.d_unit_price := lr_amount_rcv.r_unit_price - lr_amount_rcv.s_unit_price ;
+-- 2009/02/16 v1.14 UPDATE END
       END IF ;
-      lr_amount_dif.d_amount     := lr_amount_dif.s_amount     - lr_amount_dif.r_amount ;
-      lr_amount_rcv.d_amount     := lr_amount_rcv.s_amount     - lr_amount_rcv.r_amount ;
+-- 2009/02/16 v1.14 UPDATE START
+--      lr_amount_dif.d_amount     := lr_amount_dif.s_amount     - lr_amount_dif.r_amount ;
+--      lr_amount_rcv.d_amount     := lr_amount_rcv.s_amount     - lr_amount_rcv.r_amount ;
+      lr_amount_dif.d_amount     := lr_amount_dif.r_amount     - lr_amount_dif.s_amount ;
+      lr_amount_rcv.d_amount     := lr_amount_rcv.r_amount     - lr_amount_rcv.s_amount ;
+-- 2009/02/16 v1.14 UPDATE END
 --
       gv_quant_dpt  := gv_quant_dpt + lr_ref.quant ;  -- 数量（部署計）
 --
@@ -3512,11 +3541,17 @@ AS
             lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / re_sum_dtl.r_quantity, 2 ) ;
           END IF;
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
-          lr_amount_dtl.d_unit_price := lr_amount_dtl.s_unit_price - lr_amount_dtl.r_unit_price ;
+-- 2009/02/16 v1.14 UPDATE START
+--          lr_amount_dtl.d_unit_price := lr_amount_dtl.s_unit_price - lr_amount_dtl.r_unit_price ;
+          lr_amount_dtl.d_unit_price := lr_amount_dtl.r_unit_price - lr_amount_dtl.s_unit_price ;
+-- 2009/02/16 v1.14 UPDATE END
         END IF ;
         lr_amount_dtl.s_amount     := re_sum_dtl.s_amount ;
         lr_amount_dtl.r_amount     := re_sum_dtl.r_amount ;
-        lr_amount_dtl.d_amount     := re_sum_dtl.s_amount - re_sum_dtl.r_amount ;
+-- 2009/02/16 v1.14 UPDATE START
+--        lr_amount_dtl.d_amount     := re_sum_dtl.s_amount - re_sum_dtl.r_amount ;
+        lr_amount_dtl.d_amount     := re_sum_dtl.r_amount - re_sum_dtl.s_amount ;
+-- 2009/02/16 v1.14 UPDATE END
 --
         -- ----------------------------------------------------
         -- データタグ出力
