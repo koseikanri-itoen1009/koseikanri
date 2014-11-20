@@ -270,7 +270,10 @@ SELECT
 -- 2009-03-10 H.Iida MOD START 本番障害#1131
 --                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( PO.rcv_qty, 0 )
 --                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入数量）
-                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 )
+-- 2009-12-28 Y.Fukami MOD START 本稼動障害#696
+--                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 )
+                 ,ROUND(NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 ))
+-- 2009-12-28 Y.Fukami MOD END
                                                             kobki_converted_price         --粉引後金額（粉引後単価×受入返品実績(アドオン).数量）
 -- 2009-03-10 H.Iida MOD END
                  ,XRART.created_by                          u_created_by                  --受入_作成者
