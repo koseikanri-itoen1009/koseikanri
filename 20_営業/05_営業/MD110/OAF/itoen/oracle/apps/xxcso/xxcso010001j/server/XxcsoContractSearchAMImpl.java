@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractSearchAMImpl
 * 概要説明   : 契約書検索アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-10-31 1.0  SCS及川領    新規作成
 * 2009-05-26 1.1  SCS柳平直人  [ST障害T1_1165]明細チェック障害対応
 * 2009-06-10 1.2  SCS柳平直人  [ST障害T1_1317]明細チェック最大件数対応
+* 2010-02-09 1.3  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.server;
@@ -653,23 +654,25 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
         }
       }
 
-      ////////////////////
-      // マスタ連携チェック
-      ////////////////////
-      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
-      {
-      // コピーボタン押下時のみマスタ連携チェック
-        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals( statusCode )
-          && XxcsoContractConstants.CONSTANT_COM_KBN0.equals( cooperateFlag )
-        )
-        {
-          mMessage
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00397
-              );
-          returnValue = Boolean.FALSE;
-       }
-      }
+// 2010-02-09 [E_本稼動_01538] Mod Start
+      //////////////////////
+      //// マスタ連携チェック
+      //////////////////////
+      //if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+      //{
+      //// コピーボタン押下時のみマスタ連携チェック
+      //  if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals( statusCode )
+      //    && XxcsoContractConstants.CONSTANT_COM_KBN0.equals( cooperateFlag )
+      //  )
+      //  {
+      //    mMessage
+      //      = XxcsoMessage.createErrorMessage(
+      //          XxcsoConstants.APP_XXCSO1_00397
+      //        );
+      //    returnValue = Boolean.FALSE;
+      // }
+      //}
+// 2010-02-09 [E_本稼動_01538] Mod End
     }
 
     if ( ! returnValue.booleanValue() )
@@ -1082,18 +1085,77 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
     }
 
+// 2010-02-09 [E_本稼動_01538] Mod Start
+    OracleCallableStatement stmt;
+    String ContractNumber;
+// 2010-02-09 [E_本稼動_01538] Mod End
     //明細選択チェック
     while ( summaryRow != null )
     {
       if ( "Y".equals(summaryRow.getSelectFlag()) )
       {
         // マスタ連携チェック
-        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
-               summaryRow.getStatuscd())
-          && XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
-               summaryRow.getCooperateFlag())
-           )
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        // ***********************************
+        // データ行を取得
+        // ***********************************
+        // マスタ連携中チェック
+        ContractNumber = null;
+        stmt = null;
+
+        try
         {
+          StringBuffer sql = new StringBuffer(300);
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010001j_pkg.chk_cooperate_wait(");
+          sql.append("        iv_contract_number    => :2");
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, summaryRow.getContractNumber());
+
+          stmt.execute();
+
+          ContractNumber = stmt.getString(1);
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractConstants.TOKEN_VALUE_COOPERATE_WAIT_INFO_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+
+        if (!(ContractNumber == null || "".equals(ContractNumber)))
+        {
+        //if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
+        //       summaryRow.getStatuscd())
+        //  && XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+        //       summaryRow.getCooperateFlag())
+        //   )
+        //{
+// 2010-02-09 [E_本稼動_01538] Mod End
           // 詳細、PDF作成は確認ダイアログを表示
           mMessage
             = XxcsoMessage.createErrorMessage(
@@ -1243,6 +1305,249 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
     return Integer.parseInt(maxSize);
   }
 // 2009-06-10 [ST障害T1_1317] Add End
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * 取消済契約書チェックです。
+   * @return returnValue
+   *****************************************************************************
+   */
+  public Boolean cancelContractCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    Boolean returnValue = Boolean.TRUE;
+
+    //インスタンス取得
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+    if ( summaryRow == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
+    }
+
+    OracleCallableStatement stmt = null;
+
+    //明細選択チェック
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()))
+      {
+        // 取消済契約書チェック
+        String CancelContractNumber = null;
+        stmt = null;
+
+        try
+        {
+          StringBuffer sql = new StringBuffer(300);
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010001j_pkg.chk_cancel_contract(");
+          sql.append("        iv_contract_number   => :2");
+          sql.append("       ,iv_account_number    => :3");
+          sql.append("       );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, summaryRow.getContractNumber());
+          stmt.setString(3, summaryRow.getInstallAccountNumber());
+
+          stmt.execute();
+
+          CancelContractNumber = stmt.getString(1);
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractConstants.TOKEN_VALUE_CANCEL_CONTRACT
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+
+        if (!(CancelContractNumber == null || "".equals(CancelContractNumber)))
+        {
+          mMessage
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00594
+              );
+          returnValue = Boolean.FALSE;
+        }
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+
+    //先頭行にカーソルを戻す
+    summaryVo.first();
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+  }
+  /*****************************************************************************
+   * 最新契約書チェックです。
+   * @return returnValue
+   *****************************************************************************
+   */
+  public Boolean latestContractCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    Boolean returnValue = Boolean.TRUE;
+
+    //インスタンス取得
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+    if ( summaryRow == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
+    }
+    XxcsoContractAuthorityCheckVOImpl checkVo
+      = getXxcsoContractAuthorityCheckVO1();
+    if ( checkVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoContractAuthorityCheckVOImpl"
+        );
+    }
+
+
+
+    OracleCallableStatement stmt = null;
+
+    //明細選択チェック
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()))
+      {
+        // 最新契約書チェック
+        String ContractNumber = null;
+        stmt = null;
+
+        //権限チェックパッケージCALL
+        checkVo.getAuthority( summaryRow.getSpDecisionHeaderId());
+
+        XxcsoContractAuthorityCheckVORowImpl checkRow
+          = (XxcsoContractAuthorityCheckVORowImpl) checkVo.first();
+
+        if ( checkRow == null )
+        {
+          throw XxcsoMessage.createInstanceLostError
+            ("XxcsoContractAuthorityCheckVORowImpl");
+        }
+
+        // 権限エラーチェック
+        if (! XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+              checkRow.getAuthority() ) )
+        {
+          try
+          {
+            StringBuffer sql = new StringBuffer(300);
+            sql.append("BEGIN");
+            sql.append("  :1 := xxcso_010001j_pkg.chk_latest_contract(");
+            sql.append("        iv_contract_number   => :2");
+            sql.append("       ,iv_account_number    => :3");
+            sql.append("       );");
+            sql.append("END;");
+
+            stmt
+              = (OracleCallableStatement)
+                  txn.createCallableStatement(sql.toString(), 0);
+
+            stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+            stmt.setString(2, summaryRow.getContractNumber());
+            stmt.setString(3, summaryRow.getInstallAccountNumber());
+
+            stmt.execute();
+
+            ContractNumber = stmt.getString(1);
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+            throw
+              XxcsoMessage.createSqlErrorMessage(
+                e
+               ,XxcsoContractConstants.TOKEN_VALUE_LATEST_CONTRACT
+              );
+          }
+          finally
+          {
+            try
+            {
+              if ( stmt != null )
+              {
+                stmt.close();
+              }
+            }
+            catch ( SQLException e )
+            {
+              XxcsoUtils.unexpected(txn, e);
+            }
+          }
+
+          if (!(ContractNumber == null || "".equals(ContractNumber)))
+          {
+            mMessage
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00593
+                 ,XxcsoConstants.TOKEN_RECORD
+                 ,ContractNumber
+                );
+            returnValue = Boolean.FALSE;
+          }
+          break;
+        }
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+
+    //先頭行にカーソルを戻す
+    summaryVo.first();
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
 
   /**
    * 

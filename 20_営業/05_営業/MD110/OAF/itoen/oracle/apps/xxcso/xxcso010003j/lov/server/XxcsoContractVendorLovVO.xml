@@ -36,6 +36,11 @@ SELECT  pv.segment1                          AS vendor_number
          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
         )                                 AS inquiry_base_name
        ,pv.vendor_id                      AS vendor_id2
+       ,xxcso_util_common_pkg.get_lookup_meaning(
+          'XXCSO1_KOZA_TYPE'
+         ,xbav.bank_account_type
+         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        ) bank_account_type_name
 FROM    po_vendors            pv
        ,po_vendor_sites       pvs
        ,xxcso_bank_accts_v    xbav
@@ -351,6 +356,19 @@ WHERE   pv.vendor_type_lookup_code    = 'VD'
       SQLType="NUMERIC" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankAccountTypeName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BANK_ACCOUNT_TYPE_NAME"
+      Expression="BANK_ACCOUNT_TYPE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
 * 2009-04-09 1.1  SCS柳平直人  [ST障害T1_0327]レイアウト調整処理修正
+* 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -219,13 +220,33 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       }
       else
       {
-        // AMへのパラメータ作成
-        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_DECISION };
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        // マスタ連携待ちチェック
+        am.invokeMethod("cooperateWaitCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogCooperate(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_DECISION
+          );
+        }
+        else
+        {
+// 2010-02-09 [E_本稼動_01538] Mod End
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_DECISION };
 
-        HashMap returnMap
-          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
 
-        this.redirect(pageContext, returnMap);
+          this.redirect(pageContext, returnMap);
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        }
+// 2010-02-09 [E_本稼動_01538] Mod End
+         
       }
     }
 
@@ -247,6 +268,57 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       String actionValue
         = pageContext.getParameter(XxcsoConstants.TOKEN_ACTION);
 
+// 2010-02-09 [E_本稼動_01538] Mod Start
+      // 確定ボタン押下の場合
+      if ( XxcsoConstants.TOKEN_VALUE_DECISION.equals(actionValue) )
+      {
+        // マスタ連携待ちチェック
+        am.invokeMethod("cooperateWaitCheck");
+        // メッセージの取得
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogCooperate(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_DECISION
+          );
+        }
+        else
+        {
+          // AMへのパラメータ作成
+          Serializable[] params    = { actionValue };
+
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+          this.redirect(pageContext, returnMap);
+        }
+      }
+      else
+      {
+// 2010-02-09 [E_本稼動_01538] Mod End
+        // AMへのパラメータ作成
+        Serializable[] params    = { actionValue };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+// 2010-02-09 [E_本稼動_01538] Mod Start
+      }
+// 2010-02-09 [E_本稼動_01538] Mod End
+    }
+
+// 2010-02-09 [E_本稼動_01538] Mod Start
+    /////////////////////////////////////
+    // 確認ダイアログでのOKボタン(マスタ連携待ち)
+    /////////////////////////////////////
+    if ( pageContext.getParameter("ConfirmOkButtonCooperate") != null )
+    {
+      String actionValue
+        = pageContext.getParameter(XxcsoConstants.TOKEN_ACTION);
+
       // AMへのパラメータ作成
       Serializable[] params    = { actionValue };
 
@@ -255,7 +327,7 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
       this.redirect(pageContext, returnMap);
     }
-
+// 2010-02-09 [E_本稼動_01538] Mod End
     /////////////////////////////////////
     // オーナー変更チェックボックス押下
     /////////////////////////////////////
@@ -338,7 +410,47 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
       pageContext.redirectToDialogPage(confirmDialog);
   }
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * 確認ダイアログ生成処理(マスタ連携待ち)
+   * @param pageContext ページコンテキスト
+   * @param confirmMsg  確認画面表示用メッセージ
+   *****************************************************************************
+   */
+  private void createConfirmDialogCooperate(
+    OAPageContext pageContext
+   ,OAException   confirmMsg
+   ,String        actionValue
+  )
+  {
+      // ダイアログを生成
+      OADialogPage confirmDialogCooperate
+        = new OADialogPage(
+            OAException.CONFIRMATION
+           ,confirmMsg
+           ,null
+           ,""
+           ,""
+          );
+          
+      String ok = pageContext.getMessage("AK", "FWK_TBX_T_YES", null);
+      String no = pageContext.getMessage("AK", "FWK_TBX_T_NO", null);
 
+      confirmDialogCooperate.setOkButtonItemName("ConfirmOkButtonCooperate");
+      confirmDialogCooperate.setOkButtonToPost(true);
+      confirmDialogCooperate.setNoButtonToPost(true);
+      confirmDialogCooperate.setPostToCallingPage(true);
+      confirmDialogCooperate.setOkButtonLabel(ok);
+      confirmDialogCooperate.setNoButtonLabel(no);
+
+      Hashtable param = new Hashtable(1);
+      param.put(XxcsoConstants.TOKEN_ACTION, actionValue);
+
+      confirmDialogCooperate.setFormParameters(param);
+
+      pageContext.redirectToDialogPage(confirmDialogCooperate);
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
   /*****************************************************************************
    * 再表示時処理
    * @param pageContext ページコンテキスト

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2009-10-14 1.6  SCS阿部大輔  [共通課題IE554,IE573]住所対応
 * 2010-01-26 1.7  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
 * 2010-01-20 1.8  SCS阿部大輔  [E_本稼動_01212]口座番号対応
+* 2010-02-09 1.9  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -3030,6 +3031,104 @@ public class XxcsoContractRegistValidateUtils
     return oaeMsg;
   }
 
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * ＤＢ値検証処理
+   * @param contMngVo    契約管理テーブル情報用ビューインスタンス
+   * @return OAException エラー
+   *****************************************************************************
+   */
+  public static OAException validateDb(
+    OADBTransaction                     txn
+   ,XxcsoContractManagementFullVOImpl   contMngVo
+ )
+  {
+    OAException oaeMsg = null;
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // ***********************************
+    // データ行を取得
+    // ***********************************
+    XxcsoContractManagementFullVORowImpl contMngVoRow
+      = (XxcsoContractManagementFullVORowImpl) contMngVo.first();
+
+    OracleCallableStatement stmt = null;
+    // 新規登録の場合は処理終了。
+    String ContractNumber = contMngVoRow.getContractNumber();
+    if (ContractNumber == null || "".equals(ContractNumber))
+    {
+      return oaeMsg;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(300);
+    sql.append("BEGIN xxcso_010003j_pkg.chk_validate_db(");
+    sql.append("  iv_contract_number => :1");
+    sql.append(" ,id_last_update_date=> :2");
+    sql.append(" ,ov_errbuf          => :3");
+    sql.append(" ,ov_retcode         => :4");
+    sql.append(" ,ov_errmsg          => :5");
+    sql.append(");");
+    sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setString(1, contMngVoRow.getContractNumber());
+      stmt.setDATE(2, contMngVoRow.getLastUpdateDate());
+      stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+
+      stmt.execute();
+
+      String errBuf   = stmt.getString(3);
+      String retCode  = stmt.getString(4);
+      String errMsg   = stmt.getString(5);
+
+      if (! "0".equals(retCode) )
+      {
+        oaeMsg
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00003
+             ,XxcsoConstants.TOKEN_RECORD
+             ,XxcsoConstants.TOKEN_VALUE_CONTRACT_NUMBER +
+              contMngVoRow.getContractNumber()
+            );
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_VALIDATE_DB_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return oaeMsg;
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
 
   /*****************************************************************************
    * BM重複チェック

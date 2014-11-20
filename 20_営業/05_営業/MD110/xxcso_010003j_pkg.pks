@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.5
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -24,6 +24,9 @@ AS
  *  get_sales_charge          F    V      販売手数料発生可否判別
  *  chk_double_byte           F    V      全角文字チェック（共通関数ラッピング）
  *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
+ *  chk_cooperate_wait        F    V      マスタ連携待ちチェック
+ *  reflect_contract_status   P    -      契約書確定情報反映処理
+ *  chk_validate_db           P    -      ＤＢ更新判定チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -39,6 +42,7 @@ AS
  *                                                      chk_double_byte
  *                                                      chk_single_byte_kana
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
+ *  2010/02/10    1.5   D.Abe            E_本稼動_01538対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -138,6 +142,33 @@ AS
     iv_value                       IN  VARCHAR2
   ) RETURN VARCHAR2;
 -- 20090427_N.Yanagitaira T1_0708 Add END
+--
+/* 2010.02.10 D.Abe E_本稼動_01538対応 START */
+  -- マスタ連携待ちチェック
+  FUNCTION chk_cooperate_wait(
+    iv_account_number             IN  VARCHAR2         -- 顧客コード
+  ) RETURN VARCHAR2;
+--
+  -- 契約書確定情報反映処理
+  PROCEDURE reflect_contract_status(
+    iv_contract_management_id     IN  VARCHAR2         -- 契約書ID
+   ,iv_account_number             IN  VARCHAR2         -- 顧客コード
+   ,iv_status                     IN  VARCHAR2         -- ステータス
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  );
+--
+  -- ＤＢ更新判定チェック
+  PROCEDURE chk_validate_db(
+    iv_contract_number            IN  VARCHAR2         -- 契約書番号
+   ,id_last_update_date           IN  DATE
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  );
+--
+/* 2010.02.10 D.Abe E_本稼動_01538対応 END */
 --
 END xxcso_010003j_pkg;
 /

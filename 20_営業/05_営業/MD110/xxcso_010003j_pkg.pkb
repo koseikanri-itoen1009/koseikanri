@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -24,6 +24,9 @@ AS
  *  get_sales_charge          F    V      販売手数料発生可否判別
  *  chk_double_byte           F    V      全角文字チェック（共通関数ラッピング）
  *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
+ *  chk_cooperate_wait        F    V      マスタ連携待ちチェック
+ *  reflect_contract_status   P    -      契約書確定情報反映処理
+ *  chk_validate_db           P    -      ＤＢ更新判定チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -41,6 +44,7 @@ AS
  *  2009/05/01    1.4   T.Mori           [ST障害T1_0897]スキーマ名設定
  *  2009/06/05    1.5   N.Yanagitaira    [ST障害T1_1307]chk_single_byte_kana修正
  *  2009/09/09    1.6   Daisuke.Abe      統合テスト障害対応(0001323)
+ *  2010/02/10    1.7   D.Abe            E_本稼動_01538対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1233,6 +1237,198 @@ AS
   END chk_single_byte_kana;
 --
 -- 20090427_N.Yanagitaira T1_0708 Add END
+/* 2010.02.10 D.Abe E_本稼動_01538対応 START */
+   /**********************************************************************************
+   * Function Name    : chk_cooperate_wait
+   * Description      : マスタ連携待ちチェック
+   ***********************************************************************************/
+  FUNCTION chk_cooperate_wait(
+    iv_account_number             IN  VARCHAR2         -- 顧客コード
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_cooperate_wait';
+    cv_contract_status_submit    CONSTANT VARCHAR2(1)     := '1';  -- ステータス＝確定済
+    cv_un_cooperate              CONSTANT VARCHAR2(1)     := '0';  -- マスタ連携フラグ＝未連携
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_contract_number       xxcso_contract_managements.contract_number%TYPE;
+  BEGIN
+--
+    lv_contract_number := NULL;
+
+    -- マスタ連携待ちのチェック
+    BEGIN
+      -- マスタ連携待ちの契約書を取得
+      SELECT xcm1.contract_number
+      INTO   lv_contract_number
+      FROM   xxcso_contract_managements xcm1
+      WHERE  xcm1.contract_management_id IN
+            (
+             SELECT MAX(xcm2.contract_management_id)
+             FROM   xxcso.xxcso_contract_managements xcm2
+             WHERE  xcm2.install_account_number = iv_account_number --顧客コード
+             AND    xcm2.status            = cv_contract_status_submit
+             AND    xcm2.cooperate_flag    = cv_un_cooperate
+             AND    xcm2.batch_proc_status IS NULL
+            )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_contract_number := NULL;
+    END;
+    --
+    RETURN lv_contract_number;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+  WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_cooperate_wait;
+--
+   /**********************************************************************************
+   * Function Name    : reflect_contract_status
+   * Description      : 契約書確定情報反映処理
+   ***********************************************************************************/
+  PROCEDURE reflect_contract_status(
+    iv_contract_management_id     IN  VARCHAR2         -- 契約書ID
+   ,iv_account_number             IN  VARCHAR2         -- 顧客コード
+   ,iv_status                     IN  VARCHAR2         -- ステータス
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name               CONSTANT VARCHAR2(100) := 'reflect_contract_status';
+    cv_contract_status_apply  CONSTANT VARCHAR2(1)   := '0'; -- ステータス＝入力中
+    cv_contract_status_submit CONSTANT VARCHAR2(1)   := '1'; -- ステータス＝確定済
+    cv_contract_status_cancel CONSTANT VARCHAR2(1)   := '9'; -- ステータス＝取消済
+    cv_un_cooperate           CONSTANT VARCHAR2(1)   := '0'; -- マスタ連携フラグ＝未連携
+    cv_finish_cooperate       CONSTANT VARCHAR2(1)   := '1'; -- マスタ連携フラグ＝連携済
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_contract_number       xxcso_contract_managements.contract_number%TYPE;
+    ln_count                 NUMBER;
+    ld_sysdate       DATE;
+  BEGIN
+--
+    -- 初期化
+    ov_retcode := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ld_sysdate := SYSDATE;
+
+    -- 確定済みの場合
+    IF (iv_status = cv_contract_status_submit) THEN
+      -- マスタ連携待ちの契約書を更新
+      UPDATE  xxcso_contract_managements xcm
+      SET     xcm.status            = cv_contract_status_cancel
+             ,xcm.last_updated_by   = fnd_global.user_id
+             ,xcm.last_update_date  = ld_sysdate
+             ,xcm.last_update_login = fnd_global.login_id
+      WHERE  xcm.install_account_number = iv_account_number --顧客コード
+      AND    xcm.status             = cv_contract_status_submit
+      AND    xcm.cooperate_flag     = cv_un_cooperate
+      AND    xcm.batch_proc_status IS NULL
+      AND    xcm.contract_management_id <> TO_NUMBER(iv_contract_management_id)
+      ;
+      
+      -- 作成中の契約書を更新
+      UPDATE  xxcso_contract_managements xcm
+      SET     xcm.status            = cv_contract_status_cancel
+             ,xcm.last_updated_by   = fnd_global.user_id
+             ,xcm.last_update_date  = ld_sysdate
+             ,xcm.last_update_login = fnd_global.login_id
+      WHERE  xcm.install_account_number = iv_account_number --顧客コード
+      AND    xcm.status             = cv_contract_status_apply
+      ;
+    
+    END IF;
+
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+  WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END reflect_contract_status;
+--
+  /**********************************************************************************
+   * Function Name    : chk_validate_db
+   * Description      : ＤＢ更新判定チェック
+   ***********************************************************************************/
+  PROCEDURE chk_validate_db(
+    iv_contract_number            IN  VARCHAR2         -- 契約書番号
+   ,id_last_update_date           IN  DATE
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_validate_db';
+
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ld_last_update_date          DATE;
+    lb_return_value              BOOLEAN;
+--
+  BEGIN
+--
+    -- 初期化
+    ov_retcode := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+--
+    lb_return_value := FALSE;
+
+    SELECT  xcm.last_update_date
+    INTO    ld_last_update_date
+    FROM    xxcso_contract_managements  xcm
+    WHERE   xcm.contract_number = iv_contract_number
+    ;
+
+    IF ( id_last_update_date < ld_last_update_date ) THEN
+      lb_return_value := TRUE;
+    END IF;
+
+    IF (lb_return_value) THEN
+      ov_retcode := xxcso_common_pkg.gv_status_warn;
+    END IF;
+    --
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_validate_db;
+--
+
+/* 2010.02.10 D.Abe E_本稼動_01538対応 END */
 --
 END xxcso_010003j_pkg;
 /

@@ -1,0 +1,2 @@
+CREATE INDEX ap.xxcso_ap_bank_accounts_all_n05 ON ap_bank_accounts_all (UPPER(bank_account_num)) TABLESPACE apps_ts_tx_idx
+/

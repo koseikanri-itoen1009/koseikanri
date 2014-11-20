@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoContractManagementsEOImpl
 * 概要説明   : 契約管理テーブルエンティティクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-22 1.0  SCS小川浩  新規作成
+* 2010-02-09 1.1  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -25,6 +26,12 @@ import oracle.apps.fnd.framework.server.OADBTransaction;
 import itoen.oracle.apps.xxcso.common.util.XxcsoMessage;
 import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
 import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
+// 2010-02-09 [E_本稼動_01538] Mod Start
+import oracle.jbo.server.TransactionEvent;
+import oracle.jdbc.OracleTypes;
+import java.sql.CallableStatement;
+import java.sql.SQLException;
+// 2010-02-09 [E_本稼動_01538] Mod End
 
 /*******************************************************************************
  * 契約管理テーブルのエンティティクラスです。
@@ -286,10 +293,103 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
     XxcsoUtils.debug(txn, "[END]");
   }
 
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * コミット前処理です。
+   * 保存時処理をCallします。
+   * @see oracle.jbo.server.TransactionListener.beforeCommit
+   *****************************************************************************
+   */
+  public void beforeCommit(TransactionEvent e)
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
 
+    StringBuffer sql = new StringBuffer(300);
+      
+    sql.append("BEGIN xxcso_010003j_pkg.reflect_contract_status(");
+    sql.append("  iv_contract_management_id => :1");
+    sql.append(" ,iv_account_number         => :2");
+    sql.append(" ,iv_status                 => :3");
+    sql.append(" ,ov_errbuf                 => :4");
+    sql.append(" ,ov_retcode                => :5");
+    sql.append(" ,ov_errmsg                 => :6");
+    sql.append(");");
+    sql.append("END;");
 
+    CallableStatement stmt = null;
+      
+    try
+    {
+      stmt = txn.createCallableStatement(sql.toString(), 0);
 
+      stmt.setString(1, getContractManagementId().stringValue());
+      stmt.setString(2, getInstallAccountNumber());
+      stmt.setString(3, getStatus());
+      stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(6, OracleTypes.VARCHAR);
 
+      stmt.execute();
+
+      String errBuf   = stmt.getString(4);
+      String retCode  = stmt.getString(5);
+      String errMsg   = stmt.getString(6);
+
+      if ( "1".equals(retCode) )
+      {
+        XxcsoUtils.unexpected(txn, errBuf);
+        throw
+          XxcsoMessage.createAssociateErrorMessage(
+            XxcsoConstants.TOKEN_VALUE_CONTRACT_REGIST
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoConstants.TOKEN_VALUE_DECISION
+           ,errBuf
+          );
+      }
+
+      if ( "2".equals(retCode) )
+      {
+        XxcsoUtils.unexpected(txn, errBuf);
+        throw
+          XxcsoMessage.createCriticalErrorMessage(
+            XxcsoConstants.TOKEN_VALUE_CONTRACT_REGIST
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoConstants.TOKEN_VALUE_DECISION
+           ,errBuf
+          );
+      }
+    }
+    catch ( SQLException sqle )
+    {
+      XxcsoUtils.unexpected(txn, sqle);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          sqle,
+          XxcsoConstants.TOKEN_VALUE_CONTRACT_REGIST
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoConstants.TOKEN_VALUE_DECISION
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException sqle )
+      {
+        XxcsoUtils.unexpected(txn, sqle);
+      }
+    }
+   
+    XxcsoUtils.debug(txn, "[END]");
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
   
   /**
    * 

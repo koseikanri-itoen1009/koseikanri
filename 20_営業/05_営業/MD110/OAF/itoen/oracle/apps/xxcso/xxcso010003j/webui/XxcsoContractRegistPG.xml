@@ -553,7 +553,7 @@ HISTORY
                                           <lovMap id="Bm1BankAccountNumberMap" lovItem="BankAccountNum" resultTo="Bm1BankAccountNumber" useForValidation="no"/>
                                           <lovMap id="Bm1BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm1BankAccountNameKana" useForValidation="no"/>
                                           <lovMap id="Bm1BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm1BankAccountNameKanji" useForValidation="no"/>
-                                          <lovMap id="Bm1SupplierId2Map" lovItem="VendorId2" resultTo="Bm1SpCustomerId"/>
+                                          <lovMap id="Bm1SupplierId2Map" lovItem="VendorId2" resultTo="Bm1SpCustomerId" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm1BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout">
@@ -738,7 +738,7 @@ HISTORY
                                           <lovMap id="Bm2BankAccountNumberMap" lovItem="BankAccountNum" resultTo="Bm2BankAccountNumber" useForValidation="no"/>
                                           <lovMap id="Bm2BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm2BankAccountNameKana" useForValidation="no"/>
                                           <lovMap id="Bm2BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm2BankAccountNameKanji" useForValidation="no"/>
-                                          <lovMap id="Bm2SupplierId2Map" lovItem="VendorId2" resultTo="Bm2SpCustomerId"/>
+                                          <lovMap id="Bm2SupplierId2Map" lovItem="VendorId2" resultTo="Bm2SpCustomerId" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm2BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout">
@@ -921,7 +921,7 @@ HISTORY
                                           <lovMap id="Bm3BankAccountNumberMap" lovItem="BankAccountNum" resultTo="Bm3BankAccountNumber" useForValidation="no"/>
                                           <lovMap id="Bm3BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm3BankAccountNameKana" useForValidation="no"/>
                                           <lovMap id="Bm3BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm3BankAccountNameKanji" useForValidation="no"/>
-                                          <lovMap id="Bm3SupplierId2Map" lovItem="VendorId2" resultTo="Bm3SpCustomerId"/>
+                                          <lovMap id="Bm3SupplierId2Map" lovItem="VendorId2" resultTo="Bm3SpCustomerId" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm3BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout">

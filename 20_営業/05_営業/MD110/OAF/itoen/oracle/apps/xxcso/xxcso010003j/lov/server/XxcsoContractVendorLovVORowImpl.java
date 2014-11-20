@@ -48,6 +48,7 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
   protected static final int INQUIRYBASECODE = 20;
   protected static final int INQUIRYBASENAME = 21;
   protected static final int VENDORID2 = 22;
+  protected static final int BANKACCOUNTTYPENAME = 23;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -487,6 +488,8 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
         return getInquiryBaseName();
       case VENDORID2:
         return getVendorId2();
+      case BANKACCOUNTTYPENAME:
+        return getBankAccountTypeName();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -566,6 +569,9 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
       case VENDORID2:
         setVendorId2((Number)value);
         return;
+      case BANKACCOUNTTYPENAME:
+        setBankAccountTypeName((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -606,5 +612,23 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
   public void setVendorId2(Number value)
   {
     setAttributeInternal(VENDORID2, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BankAccountTypeName
+   */
+  public String getBankAccountTypeName()
+  {
+    return (String)getAttributeInternal(BANKACCOUNTTYPENAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BankAccountTypeName
+   */
+  public void setBankAccountTypeName(String value)
+  {
+    setAttributeInternal(BANKACCOUNTTYPENAME, value);
   }
 }

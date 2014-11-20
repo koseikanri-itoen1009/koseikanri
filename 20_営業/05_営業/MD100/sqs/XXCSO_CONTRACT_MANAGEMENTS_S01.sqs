@@ -3,12 +3,17 @@
  * SEQUENCE Name   : xxcso_contract_managements_s01
  * Description     : 
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    èââÒçÏê¨
+ *  2010/03/01    1.1  D.Abe         E_ñ{â“ìÆ_01538ëŒâû
  ************************************************************************/
-CREATE SEQUENCE xxcso.xxcso_contract_managements_s01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE;
+/* 2010.03.01 D.Abe E_ñ{â“ìÆ_01538ëŒâû START */
+--CREATE SEQUENCE xxcso.xxcso_contract_managements_s01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE;
+CREATE SEQUENCE xxcso.xxcso_contract_managements_s01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1 NOCACHE  ORDER  NOCYCLE;
+/* 2010.03.01 D.Abe E_ñ{â“ìÆ_01538ëŒâû END */
+

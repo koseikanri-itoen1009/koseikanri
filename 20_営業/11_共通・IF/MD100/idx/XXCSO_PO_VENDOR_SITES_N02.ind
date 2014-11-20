@@ -1,0 +1,2 @@
+CREATE INDEX po.xxcso_po_vendor_sites_n02 ON po.po_vendor_sites_all (UPPER(SUBSTRB(attribute1, 1, 80))) TABLESPACE apps_ts_tx_idx
+/

@@ -220,4 +220,9 @@
    <attributeSet docName="Bm1BankAccountTypeBlank" prompt="BM1口座種別"/>
    <attributeSet docName="Bm2BankAccountTypeBlank" prompt="BM2口座種別"/>
    <attributeSet docName="Bm3BankAccountTypeBlank" prompt="BM3口座種別"/>
+   <attributeSet docName="VendorAddress1" prompt="送付先住所1"/>
+   <attributeSet docName="VendorAddress2" prompt="送付先住所2"/>
+   <attributeSet docName="BankAccountTypeName" prompt="口座種別"/>
+   <attributeSet docName="BankAccountNum" prompt="口座番号"/>
+   <attributeSet docName="BankAccountHolderNameAlt" prompt="口座名義カナ"/>
 </package>

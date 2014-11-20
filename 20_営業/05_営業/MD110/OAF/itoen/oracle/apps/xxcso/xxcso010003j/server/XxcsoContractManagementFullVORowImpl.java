@@ -73,9 +73,10 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
   protected static final int CONTRACTYEARDATE = 44;
   protected static final int BASELEADERPOSITIONNAME = 45;
   protected static final int INSTANCEID = 46;
-  protected static final int XXCSOBM1DESTINATIONFULLVO = 47;
-  protected static final int XXCSOBM2DESTINATIONFULLVO = 48;
-  protected static final int XXCSOBM3DESTINATIONFULLVO = 49;
+  protected static final int LATESTCONTRACTNUMBER = 47;
+  protected static final int XXCSOBM1DESTINATIONFULLVO = 48;
+  protected static final int XXCSOBM2DESTINATIONFULLVO = 49;
+  protected static final int XXCSOBM3DESTINATIONFULLVO = 50;
   protected static final int XXCSOBM1DESTINATIONFULLVO1 = 37;
   /**
    * 
@@ -841,6 +842,8 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
         return getBaseLeaderPositionName();
       case INSTANCEID:
         return getInstanceId();
+      case LATESTCONTRACTNUMBER:
+        return getLatestContractNumber();
       case XXCSOBM1DESTINATIONFULLVO:
         return getXxcsoBm1DestinationFullVO();
       case XXCSOBM2DESTINATIONFULLVO:
@@ -997,6 +1000,9 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
         return;
       case INSTANCEID:
         setInstanceId((Number)value);
+        return;
+      case LATESTCONTRACTNUMBER:
+        setLatestContractNumber((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -1238,6 +1244,24 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
   public void setInstanceId(Number value)
   {
     setAttributeInternal(INSTANCEID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute LatestContractNumber
+   */
+  public String getLatestContractNumber()
+  {
+    return (String)getAttributeInternal(LATESTCONTRACTNUMBER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute LatestContractNumber
+   */
+  public void setLatestContractNumber(String value)
+  {
+    setAttributeInternal(LATESTCONTRACTNUMBER, value);
   }
 
 

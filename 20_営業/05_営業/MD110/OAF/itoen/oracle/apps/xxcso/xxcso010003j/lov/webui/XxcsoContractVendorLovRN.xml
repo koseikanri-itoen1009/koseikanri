@@ -23,16 +23,17 @@ HISTORY
             <oa:formValue id="Zip" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="Zip"/>
             <oa:formValue id="State" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="State"/>
             <oa:formValue id="City" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="City"/>
-            <oa:formValue id="AddressLine1" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="AddressLine1"/>
-            <oa:formValue id="AddressLine2" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="AddressLine2"/>
+            <oa:messageStyledText id="AddressLine1" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="AddressLine1" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/VendorAddress1" sortState="yes"/>
+            <oa:messageStyledText id="AddressLine2" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="AddressLine2" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/VendorAddress2" sortState="yes"/>
             <oa:formValue id="PhoneNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="PhoneNumber"/>
             <oa:formValue id="BankNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankNumber"/>
-            <oa:formValue id="BankName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankName"/>
+            <oa:messageStyledText id="BankName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankName" sortState="yes"/>
             <oa:formValue id="BankBranchNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankBranchNumber"/>
-            <oa:formValue id="BankBranchName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankBranchName"/>
+            <oa:messageStyledText id="BankBranchName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankBranchName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankBranchName" sortState="yes"/>
             <oa:formValue id="BankAccountType" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountType"/>
-            <oa:formValue id="BankAccountNum" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountNum"/>
-            <oa:formValue id="BankAccountHolderNameAlt" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountHolderNameAlt"/>
+            <oa:messageStyledText id="BankAccountTypeName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankAccountTypeName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountTypeName" maximumLength="4000" sortState="yes"/>
+            <oa:messageStyledText id="BankAccountNum" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountNum" queryable="true" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankAccountNum" sortState="yes"/>
+            <oa:messageStyledText id="BankAccountHolderNameAlt" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountHolderNameAlt" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankAccountHolderNameAlt" sortState="yes"/>
             <oa:formValue id="BankAccountHolderName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountHolderName"/>
             <oa:formValue id="BmTransferCommissionType" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTransferCommissionType"/>
             <oa:formValue id="BmPaymentType" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BmPaymentType"/>

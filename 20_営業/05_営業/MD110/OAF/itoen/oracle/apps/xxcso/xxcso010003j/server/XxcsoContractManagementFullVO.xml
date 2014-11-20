@@ -144,6 +144,23 @@ SELECT XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
         FROM     csi_item_instances cii
         WHERE    cii.external_reference(+) = XxcsoContractManagementsEO.INSTALL_CODE
        )                         AS instance_id
+      ,(
+        SELECT xcm1.contract_number
+        FROM   xxcso_contract_managements xcm1
+        WHERE  xcm1.contract_number IN 
+               (
+                SELECT MAX(xcm2.contract_number)
+                FROM   xxcso_contract_managements xcm2
+                WHERE  xcm2.install_account_number = 
+                            XxcsoContractManagementsEO.install_account_number
+                AND    xcm2.contract_number        > 
+                            XxcsoContractManagementsEO.CONTRACT_NUMBER
+                AND    ((xcm2.status = '1' AND xcm2.cooperate_flag IS NOT NULL)
+                        OR
+                        (xcm2.status = '0')
+                       )
+               )
+       )  AS latest_contract_number
 FROM   XXCSO_CONTRACT_MANAGEMENTS XxcsoContractManagementsEO
       ,xxcso_employees_v2         xev
       ,xxcso_locations_v2         xlv
@@ -568,6 +585,19 @@ AND   xcasv.cust_account_id           = xsdc.customer_id
       SQLType="NUMERIC" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LatestContractNumber"
+      IsPersistent="false"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LATEST_CONTRACT_NUMBER"
+      Expression="LATEST_CONTRACT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
       </DesignTime>
    </ViewAttribute>
    <ViewLinkAccessor

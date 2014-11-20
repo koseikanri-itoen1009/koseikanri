@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : 自販機設置契約情報登録表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-28 1.0  SCS柳平直人  新規作成
 * 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
+* 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -82,35 +83,52 @@ public class XxcsoContractRegistPropertyUtils
     // 上記以外のステータスの場合
     else
     {
-      // ログインユーザー権限によるページ属性設定
-      if (userAuthRow != null)
+// 2010-02-09 [E_本稼動_01538] Mod Start
+      String ContractNumber1 = mngRow.getContractNumber();
+      String ContractNumber2 = mngRow.getLatestContractNumber();
+      // 契約書新旧判定
+      if (! isContractNumberCheck(mngRow.getContractNumber(),
+                                  mngRow.getLatestContractNumber()
+                                 )
+         )
       {
-        String userAuth = userAuthRow.getUserAuthority();
-        // 権限なし
-        if (XxcsoContractRegistConstants.AUTH_NONE.equals(userAuth))
+        setPageSecurityNone(pageRdrRow);
+      }
+      else
+      {
+// 2010-02-09 [E_本稼動_01538] Mod End
+        // ログインユーザー権限によるページ属性設定
+        if (userAuthRow != null)
         {
-          setPageSecurityNone(pageRdrRow);
+          String userAuth = userAuthRow.getUserAuthority();
+          // 権限なし
+          if (XxcsoContractRegistConstants.AUTH_NONE.equals(userAuth))
+          {
+            setPageSecurityNone(pageRdrRow);
+          }
+          // 獲得営業員または売上担当営業員
+          else if (XxcsoContractRegistConstants.AUTH_ACCOUNT.equals(userAuth))
+          {
+            setPageSecurityAccount(pageRdrRow);
+          }
+          // 拠点長
+          else if (XxcsoContractRegistConstants.AUTH_BASE_LEADER.equals(userAuth))
+          {
+            setPageSecurityBaseLeader(pageRdrRow);
+          }
+          // 上記以外は想定外のため、編集不可状態にする
+          else
+          {
+            setPageSecurityNone(pageRdrRow);
+          }
         }
-        // 獲得営業員または売上担当営業員
-        else if (XxcsoContractRegistConstants.AUTH_ACCOUNT.equals(userAuth))
-        {
-          setPageSecurityAccount(pageRdrRow);
-        }
-        // 拠点長
-        else if (XxcsoContractRegistConstants.AUTH_BASE_LEADER.equals(userAuth))
-        {
-          setPageSecurityBaseLeader(pageRdrRow);
-        }
-        // 上記以外は想定外のため、編集不可状態にする
         else
         {
           setPageSecurityNone(pageRdrRow);
         }
+// 2010-02-09 [E_本稼動_01538] Mod Start
       }
-      else
-      {
-        setPageSecurityNone(pageRdrRow);
-      }
+// 2010-02-09 [E_本稼動_01538] Mod End
     }
 
     // /////////////////////
@@ -373,5 +391,41 @@ public class XxcsoContractRegistPropertyUtils
     }
     return retVal;
   }
+
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * 契約書新旧判定
+   * @param  ContractNumber1 契約書番号（現在）
+   * @param  ContractNumber2 契約書番号（最新）
+   * @return boolean         true:新契約書 false:旧契約書
+   *****************************************************************************
+   */
+  private static boolean isContractNumberCheck(
+    String ContractNumber1
+   ,String ContractNumber2)
+  {
+    boolean retVal = false;
+
+    if ( ContractNumber1 == null)
+    {
+      return true;
+    }
+    if ( ContractNumber2 == null)
+    {
+      return true;
+    }
+    // 最新の契約書の場合
+    if ( ContractNumber1.equals(ContractNumber2))
+    {
+      retVal = true;
+    }
+    else
+    {
+      retVal = false;
+    }
+    return retVal;
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
+
 
 }

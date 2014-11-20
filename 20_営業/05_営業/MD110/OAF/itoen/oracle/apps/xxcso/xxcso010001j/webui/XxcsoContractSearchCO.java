@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractSearchCO
 * 概要説明   : 契約書情報検索コントローラクラス
-* バージョン : 1.0
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-11-05 1.0  SCS及川領    新規作成
 * 2009-02-17 1.1  SCS柳平直人  [CT1内部]確認ダイアログパラメータ修正
 * 2009-06-10 1.2  SCS柳平直人  [ST障害T1_1317]明細チェック最大件数対応
+* 2010-02-09 1.3  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.webui;
@@ -186,17 +187,31 @@ public class XxcsoContractSearchCO extends OAControllerImpl
       }
       else
       {
-        //パラメータ値取得
-        HashMap params = (HashMap)am.invokeMethod("getUrlParamCopy");
-        //登録更新画面に遷移
-        pageContext.forwardImmediately(
-          XxcsoConstants.FUNC_CONTRACT_REGIST_PG
-         ,OAWebBeanConstants.KEEP_MENU_CONTEXT
-         ,null
-         ,params
-         ,true
-         ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
-        );
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        // 取消済契約書チェック
+        returnValue = (Boolean)am.invokeMethod("cancelContractCheck");
+        if ( ! returnValue.booleanValue() )
+        {
+          OAException msg = (OAException)am.invokeMethod("getMessage");
+          pageContext.putDialogMessage(msg);
+        }
+        else
+        {
+// 2010-02-09 [E_本稼動_01538] Mod End
+          //パラメータ値取得
+          HashMap params = (HashMap)am.invokeMethod("getUrlParamCopy");
+          //登録更新画面に遷移
+          pageContext.forwardImmediately(
+            XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+           ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+           ,null
+           ,params
+           ,true
+           ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+          );
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        }
+// 2010-02-09 [E_本稼動_01538] Mod End
       }
     }
 
@@ -218,30 +233,60 @@ public class XxcsoContractSearchCO extends OAControllerImpl
       }
       else
       {
-        // マスタ連携チェック
-        returnValue = (Boolean)am.invokeMethod("cooperateCheck");
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        // 取消済契約書チェック
+        returnValue = (Boolean)am.invokeMethod("cancelContractCheck");
         if ( ! returnValue.booleanValue() )
         {
-          OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
-
-          this.createConfirmDetailsDialog(
-            pageContext
-           ,confirmMsg
-          );
+          OAException msg = (OAException)am.invokeMethod("getMessage");
+          pageContext.putDialogMessage(msg);
         }
         else
         {
-          //パラメータ値取得
-          HashMap params = (HashMap)am.invokeMethod("getUrlParamDetails");
-          //登録更新画面に遷移
-          pageContext.forwardImmediately(
-            XxcsoConstants.FUNC_CONTRACT_REGIST_PG
-           ,OAWebBeanConstants.KEEP_MENU_CONTEXT
-           ,null
-           ,params
-           ,true
-           ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
-          );
+// 2010-02-09 [E_本稼動_01538] Mod End
+          // マスタ連携チェック
+          returnValue = (Boolean)am.invokeMethod("cooperateCheck");
+          if ( ! returnValue.booleanValue() )
+          {
+            OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+
+            this.createConfirmDetailsDialog(
+              pageContext
+             ,confirmMsg
+            );
+          }
+          else
+          {
+// 2010-02-09 [E_本稼動_01538] Mod Start
+            // 最新契約書チェック
+            returnValue = (Boolean)am.invokeMethod("latestContractCheck");
+            if ( ! returnValue.booleanValue() )
+            {
+              OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+
+              this.createConfirmLatestContractDialog(
+                pageContext
+               ,confirmMsg
+              );
+            }
+            else
+            {
+// 2010-02-09 [E_本稼動_01538] Mod End
+              //パラメータ値取得
+              HashMap params = (HashMap)am.invokeMethod("getUrlParamDetails");
+              //登録更新画面に遷移
+              pageContext.forwardImmediately(
+                XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+               ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+               ,null
+               ,params
+               ,true
+               ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+              );
+// 2010-02-09 [E_本稼動_01538] Mod Start
+            }
+          }
+// 2010-02-09 [E_本稼動_01538] Mod End
         }
       }
     }
@@ -264,22 +309,36 @@ public class XxcsoContractSearchCO extends OAControllerImpl
       }
       else
       {
-        // マスタ連携チェック
-        returnValue = (Boolean)am.invokeMethod("cooperateCheck");
+// 2010-02-09 [E_本稼動_01538] Mod Start
+        // 取消済契約書チェック
+        returnValue = (Boolean)am.invokeMethod("cancelContractCheck");
         if ( ! returnValue.booleanValue() )
         {
-          OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
-
-          this.createConfirmPdfDialog(
-            pageContext
-           ,confirmMsg
-          );
+          OAException msg = (OAException)am.invokeMethod("getMessage");
+          pageContext.putDialogMessage(msg);
         }
         else
         {
-          // PDF処理をCALL
-          am.invokeMethod("handlePdfCreateButton");
+// 2010-02-09 [E_本稼動_01538] Mod End
+          // マスタ連携チェック
+          returnValue = (Boolean)am.invokeMethod("cooperateCheck");
+          if ( ! returnValue.booleanValue() )
+          {
+            OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+          
+            this.createConfirmPdfDialog(
+              pageContext
+             ,confirmMsg
+            );
+          }
+          else
+          {
+            // PDF処理をCALL
+            am.invokeMethod("handlePdfCreateButton");
+          }
+// 2010-02-09 [E_本稼動_01538] Mod Start
         }
+// 2010-02-09 [E_本稼動_01538] Mod End
       }
     }
 
@@ -304,7 +363,23 @@ public class XxcsoContractSearchCO extends OAControllerImpl
        ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
       );
     }
-
+// 2010-02-09 [E_本稼動_01538] Mod Start
+    // 確認ダイアログでのOKボタン（最新契約書）
+    if ( pageContext.getParameter("ConfirmLatestContractOkButton") != null )
+    {
+      //パラメータ値取得
+      HashMap params = (HashMap)am.invokeMethod("getUrlParamDetails");
+      //登録更新画面に遷移
+      pageContext.forwardImmediately(
+        XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+       ,null
+       ,params
+       ,true
+       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+      );
+    }
+// 2010-02-09 [E_本稼動_01538] Mod End
     XxcsoUtils.debug(pageContext, "[END]");
   }
 
@@ -380,4 +455,43 @@ public class XxcsoContractSearchCO extends OAControllerImpl
 
     XxcsoUtils.debug(pageContext, "[END]");
   }
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * 確認ダイアログ生成処理（最新契約書）
+   * @param pageContext ページコンテキスト
+   * @param confirmMsg  確認画面表示用メッセージ
+   *****************************************************************************
+   */
+  private void createConfirmLatestContractDialog(
+    OAPageContext pageContext
+   ,OAException   confirmMsg
+  )
+  {
+    XxcsoUtils.debug(pageContext, "[START]");
+    // ダイアログを生成
+    OADialogPage confirmLatestContractDialog
+      = new OADialogPage(
+          OAException.CONFIRMATION
+         ,confirmMsg
+         ,null
+         ,""
+         ,""
+        );
+          
+    String ok = pageContext.getMessage("AK", "FWK_TBX_T_YES", null);
+    String no = pageContext.getMessage("AK", "FWK_TBX_T_NO", null);
+
+    confirmLatestContractDialog.setOkButtonItemName("ConfirmLatestContractOkButton");
+    confirmLatestContractDialog.setOkButtonToPost(true);
+    confirmLatestContractDialog.setNoButtonToPost(true);
+    confirmLatestContractDialog.setPostToCallingPage(true);
+    confirmLatestContractDialog.setOkButtonLabel(ok);
+    confirmLatestContractDialog.setNoButtonLabel(no);
+
+    pageContext.redirectToDialogPage(confirmLatestContractDialog);
+
+    XxcsoUtils.debug(pageContext, "[END]");
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
+
 }

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 * 2010-01-26 1.3  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
 * 2010-01-20 1.4  SCS阿部大輔  [E_本稼動_01176]口座種別対応
+* 2010-02-09 1.5  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -955,13 +956,28 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       //{
 // 2010-01-26 [E_本稼動_01314] Add End
       this.validateAll(false);
+// 2010-02-09 [E_本稼動_01538] Mod Start
+      /////////////////////////////////////
+      // 検証処理：ＤＢ値検証
+      /////////////////////////////////////
+      OAException oaeMsg = null;
 
+      oaeMsg
+        = XxcsoContractRegistValidateUtils.validateDb(
+            txn
+           ,mngVo
+          );
+      if (oaeMsg != null)
+      {
+        throw oaeMsg;
+      }
+// 2010-02-09 [E_本稼動_01538] Mod End
       // 保存処理を実行します。
       this.commit();
 // 2010-01-26 [E_本稼動_01314] Add Start
       //}
 // 2010-01-26 [E_本稼動_01314] Add End
-   }
+    }
     else
     {
       this.rollback();
@@ -1151,6 +1167,22 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
 
+// 2010-02-09 [E_本稼動_01538] Mod Start
+    /////////////////////////////////////
+    // 検証処理：ＤＢ値検証
+    /////////////////////////////////////
+    OAException oaeMsg = null;
+
+    oaeMsg
+      = XxcsoContractRegistValidateUtils.validateDb(
+          txn
+         ,mngVo
+        );
+    if (oaeMsg != null)
+    {
+      throw oaeMsg;
+    }
+// 2010-02-09 [E_本稼動_01538] Mod End
     // 確定ボタン押下の場合
     if ( XxcsoConstants.TOKEN_VALUE_DECISION.equals(actionValue) )
     {
@@ -1614,7 +1646,6 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       throw oaeMsg;
     }
 
-
     XxcsoUtils.debug(txn, "[END]");
   }
 
@@ -1772,8 +1803,110 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[END]");
   }
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  /*****************************************************************************
+   * マスタ連携待ちチェック処理です。
+   *****************************************************************************
+   */
+  public void cooperateWaitCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
 
+    XxcsoUtils.debug(txn, "[START]");
 
+    mMessage = this.cooperateWaitInfo();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+  /*****************************************************************************
+   * マスタ連携待ちチェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException cooperateWaitInfo()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException confirmMsg = null;
+
+    // 画面インスタンス取得
+    XxcsoContractManagementFullVOImpl mngVo
+      = getXxcsoContractManagementFullVO1();
+    if ( mngVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
+    }
+    // 画面行インスタンス取得
+    XxcsoContractManagementFullVORowImpl mngRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+
+    OracleCallableStatement stmt = null;
+
+    // マスタ連携待ちチェック
+    String ContractNumber = null;
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(300);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_cooperate_wait(");
+      sql.append("        iv_account_number    => :2");
+      sql.append("        );");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, mngRow.getInstallAccountNumber());
+
+      stmt.execute();
+
+      ContractNumber = stmt.getString(1);
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_COOPERATE_WAIT_INFO_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    if (!(ContractNumber == null || "".equals(ContractNumber)))
+    {
+      confirmMsg
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00595
+           ,XxcsoConstants.TOKEN_RECORD
+           ,ContractNumber
+          );
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// 2010-02-09 [E_本稼動_01538] Mod End
   /**
    * 
    * Container's getter for XxcsoContractManagementFullVO1

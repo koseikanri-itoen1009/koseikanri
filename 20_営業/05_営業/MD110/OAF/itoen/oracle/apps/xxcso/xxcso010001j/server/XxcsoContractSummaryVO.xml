@@ -66,6 +66,7 @@ WITH
            )
           )
    AND  xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+   AND  xcm.status <> '9'
    ORDER BY xcm.contract_number
   )
 SELECT line_data.contract_management_id

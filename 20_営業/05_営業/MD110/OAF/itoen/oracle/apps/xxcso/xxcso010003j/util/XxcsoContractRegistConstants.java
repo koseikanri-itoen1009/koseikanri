@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 1.0
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 *                                       BM支払区分の追加
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 * 2009-04-27 1.3  SCS柳平直人  [ST障害T1_0708]文字列チェック処理統一修正
+* 2010-02-09 1.4  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -341,6 +342,14 @@ public class XxcsoContractRegistConstants
   public static final String
     TOKEN_VALUE_DOUBLE_BYTE_CHK         = "全角文字チェック";
 // 2009-04-27 [ST障害T1_0708] Add End
+// 2010-02-09 [E_本稼動_01538] Mod Start
+  public static final String 
+    TOKEN_VALUE_COOPERATE_WAIT_INFO_CHK = "マスタ連携待ちチェック";
+  public static final String 
+    TOKEN_VALUE_COOPERATE_STATUS_CHK    = "マスタ連携中チェック";
+  public static final String 
+    TOKEN_VALUE_VALIDATE_DB_CHK         = "DB値検証チェック";
+// 2010-02-09 [E_本稼動_01538] Mod End
 
   // PDF出力時付加文言
   public static final String

@@ -6,7 +6,8 @@
 * C³—š—ğ
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-22 1.0  SCS¬ì_  V‹Kì¬
+* 2009-01-22 1.0  SCS¬ì_    V‹Kì¬
+* 2010-02-09 1.3  SCSˆ¢•”‘å•ã  [E_–{‰Ò“®_01538]Œ_–ñ‘‚Ì•¡”Šm’è‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -218,7 +219,9 @@ public class XxcsoContractSpCustsEOImpl extends OAPlsqlEntityImpl
     
     XxcsoUtils.debug(txn, "[START]");
 
-    super.updateRow();
+// 2010-02-09 [E_–{‰Ò“®_01538] Mod Start
+    //super.updateRow();
+// 2010-02-09 [E_–{‰Ò“®_01538] Mod End
 
     XxcsoUtils.debug(txn, "[END]");
   }
