@@ -1,0 +1,133 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOK_BM_BALANCE_RTN_INFO
+ * Description : 自販機販売手数料組み戻し管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/09/21    1.0   SCSK T.Osawa     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_BM_BALANCE_RTN_INFO (
+     BM_BALANCE_ID                  NUMBER        NOT NULL
+    ,BASE_CODE                      VARCHAR2(4)   NOT NULL
+    ,SUPPLIER_CODE                  VARCHAR2(9)   NOT NULL
+    ,SUPPLIER_SITE_CODE             VARCHAR2(10)  NOT NULL
+    ,CUST_CODE                      VARCHAR2(9)   NOT NULL
+    ,CLOSING_DATE                   DATE          NOT NULL
+    ,SELLING_AMT_TAX                NUMBER  (12)
+    ,BACKMARGIN                     NUMBER  (12)
+    ,BACKMARGIN_TAX                 NUMBER  (8)
+    ,ELECTRIC_AMT                   NUMBER  (12)
+    ,ELECTRIC_AMT_TAX               NUMBER  (8)
+    ,TAX_CODE                       VARCHAR2(50)
+    ,EXPECT_PAYMENT_DATE            DATE          NOT NULL
+    ,EXPECT_PAYMENT_AMT_TAX         NUMBER  (12)
+    ,PAYMENT_AMT_TAX                NUMBER  (12)
+    ,BALANCE_CANCEL_DATE            DATE
+    ,RESV_FLAG                      VARCHAR2(1)
+    ,RETURN_FLAG                    VARCHAR2(1)
+    ,PUBLICATION_DATE               DATE
+    ,FB_INTERFACE_STATUS            VARCHAR2(1)
+    ,FB_INTERFACE_DATE              DATE
+    ,EDI_INTERFACE_STATUS           VARCHAR2(1)
+    ,EDI_INTERFACE_DATE             DATE
+    ,GL_INTERFACE_STATUS            VARCHAR2(1)
+    ,GL_INTERFACE_DATE              DATE
+    ,AMT_FIX_STATUS                 VARCHAR2(1)   NOT NULL
+    ,ORG_SLIP_NUMBER                VARCHAR2(50)
+    ,PROC_TYPE                      VARCHAR2(1)
+    ,EB_STATUS                      VARCHAR2(1)
+    ,CREATED_BY                     NUMBER(15,0)  NOT NULL
+    ,CREATION_DATE                  DATE          NOT NULL
+    ,LAST_UPDATED_BY                NUMBER(15,0)  NOT NULL
+    ,LAST_UPDATE_DATE               DATE          NOT NULL
+    ,LAST_UPDATE_LOGIN              NUMBER(15,0)
+    ,REQUEST_ID                     NUMBER(15,0)
+    ,PROGRAM_APPLICATION_ID         NUMBER(15,0)
+    ,PROGRAM_ID                     NUMBER(15,0)
+    ,PROGRAM_UPDATE_DATE            DATE
+)
+/
+COMMENT ON TABLE XXCOK.XXCOK_BM_BALANCE_RTN_INFO IS '自販機販売手数料組み戻し管理テーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.BM_BALANCE_ID                     IS '販手残高ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.BASE_CODE                         IS '拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.SUPPLIER_CODE                     IS '仕入先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.SUPPLIER_SITE_CODE                IS '仕入先サイトコード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.CUST_CODE                         IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.CLOSING_DATE                      IS '締め日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.SELLING_AMT_TAX                   IS '販売金額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.BACKMARGIN                        IS '販売手数料'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.BACKMARGIN_TAX                    IS '販売手数料（消費税額）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.ELECTRIC_AMT                      IS '電気料'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.ELECTRIC_AMT_TAX                  IS '電気料（消費税額）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.TAX_CODE                          IS '税金コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.EXPECT_PAYMENT_DATE               IS '支払予定日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.EXPECT_PAYMENT_AMT_TAX            IS '支払予定額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.PAYMENT_AMT_TAX                   IS '支払額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.BALANCE_CANCEL_DATE               IS '残高取消日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.RESV_FLAG                         IS '保留フラグ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.RETURN_FLAG                       IS '組み戻しフラグ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.PUBLICATION_DATE                  IS '案内書発効日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.FB_INTERFACE_STATUS               IS '連携ステータス（本振用FB）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.FB_INTERFACE_DATE                 IS '連携日（本振用FB）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.EDI_INTERFACE_STATUS              IS '連携ステータス（EDI支払案内書）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.EDI_INTERFACE_DATE                IS '連携日（EDI支払案内書）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.GL_INTERFACE_STATUS               IS '連携ステータス（GL）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.GL_INTERFACE_DATE                 IS '連携日（GL）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.AMT_FIX_STATUS                    IS '金額確定ステータス'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.ORG_SLIP_NUMBER                   IS '元伝票番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.PROC_TYPE                         IS '処理区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.EB_STATUS                         IS '電子帳簿処理ステータス'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.CREATED_BY                        IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.CREATION_DATE                     IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.LAST_UPDATED_BY                   IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.LAST_UPDATE_DATE                  IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.LAST_UPDATE_LOGIN                 IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.REQUEST_ID                        IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.PROGRAM_APPLICATION_ID            IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.PROGRAM_ID                        IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_BALANCE_RTN_INFO.PROGRAM_UPDATE_DATE               IS 'プログラム更新日'
+/

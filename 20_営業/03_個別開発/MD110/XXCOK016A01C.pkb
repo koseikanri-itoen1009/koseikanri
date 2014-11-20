@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2011/04/14    1.6   S.Niki           [E_本稼動_07143]前月担当拠点の管理元拠点ユーザーが処理できるよう変更
  *  2012/07/04    1.7   K.Onotsuka       [E_本稼動_08365]処理区分が以下の場合、販手残高テーブルの処理区分に各々の区分値を更新する
  *                                                       「残高取消」⇒'1'「保留」⇒'2'「保留解除」⇒'0'
+ *  2012/09/20    1.8   T.Osawa          [E_本稼動_10100]残高更新Excelアップロードの改修について
  *
  *****************************************************************************************/
 --
@@ -82,6 +83,9 @@ AS
   -- アプリケーション短縮名
   cv_ap_type_xxccp  CONSTANT VARCHAR2(5)  := 'XXCCP';                            -- 共通
   cv_ap_type_xxcok  CONSTANT VARCHAR2(5)  := 'XXCOK';                            -- 個別開発
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+  cv_ap_type_xxcfo  CONSTANT VARCHAR2(5)  := 'XXCFO';                            -- 会計
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
   -- ステータス・コード
   cv_status_normal  CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_normal; -- 正常:0
   cv_status_warn    CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_warn;   -- 警告:1
@@ -91,6 +95,9 @@ AS
   cv_status_lock    CONSTANT VARCHAR2(1)  := '7';                                -- ロックエラー:7
   cv_status_update  CONSTANT VARCHAR2(1)  := '8';                                -- 更新エラー:8
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+  cv_status_insert  CONSTANT VARCHAR2(1)  := '9';                                -- 挿入エラー:9
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
 -- 2012/07/04 Ver.1.7 [E_本稼動_08365] SCSK K.Onotsuka ADD START
   cv_proc_type0_upd CONSTANT VARCHAR2(1)  := '0';                                -- (UPDATE用)処理区分：保留解除
   cv_proc_type1_upd CONSTANT VARCHAR2(1)  := '1';                                -- (UPDATE用)処理区分：消込済
@@ -155,6 +162,9 @@ AS
   cv_errmsg_10487   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10487';                 -- 残高取消組み合わせチェックエラー2（拠点）
   cv_errmsg_10488   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10488';                 -- 保留顧客組み合わせチェックエラーメッセージ（拠点）
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+  cv_errmsg_00024   CONSTANT VARCHAR2(16) := 'APP-XXCFO1-00024';                 -- データ挿入エラー
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
   -- メッセージトークン定義
   cv_tkn_file_id    CONSTANT VARCHAR2(7)  := 'FILE_ID';                          -- ファイルIDトークン
   cv_tkn_format     CONSTANT VARCHAR2(6)  := 'FORMAT';                           -- ファイルパターントークン
@@ -169,11 +179,27 @@ AS
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
   cv_tkn_pbase_code CONSTANT VARCHAR2(19) := 'PAST_SALE_BASE_CODE';              -- 前月売上拠点トークン
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+  cv_tkn_table      CONSTANT VARCHAR2(5)  := 'TABLE';                            --テーブル
+  cv_tkn_errmsg     CONSTANT VARCHAR2(6)  := 'ERRMSG';                           --エラーメッセージ
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
   -- プロファイル定義
   cv_dept_act_code  CONSTANT VARCHAR2(20) := 'XXCOK1_AFF2_DEPT_ACT';             -- 業務管理部部門コード
   cv_prof_org_id    CONSTANT VARCHAR2(30) := 'ORG_ID';                           -- 組織ID
   -- 参照表定義
   cv_lk_proc_type   CONSTANT VARCHAR2(27) := 'XXCOK1_BM_BALANCE_PROC_TYPE';      -- 残高アップロード処理区分
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+  cv_bm_balance_rtn_info
+                    CONSTANT VARCHAR2(30) := 'XXCOK_BM_BALANCE_RTN_INFO';        -- 自販機販売手数料組み戻し管理テーブル
+  cv_backmargin_balance
+                    CONSTANT VARCHAR2(30) := 'XXCOK_BACKMARGIN_BALANCE';         -- 販手残高テーブル
+  cv_bm_balance_id  CONSTANT VARCHAR2(30) := 'BM_BALANCE_ID';                    -- 販手残高ID
+  cv_supplier_code  CONSTANT VARCHAR2(30) := 'SUPPLIER_CODE';                    -- 仕入先コード
+  cv_publication_date  
+                    CONSTANT VARCHAR2(30) := 'PUBLICATION_DATE';                 -- 案内書発効日
+  --
+  cv_date_format    CONSTANT VARCHAR2(30) := 'YYYY/MM/DD';                       -- 日付書式
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
   ------------------------------------------------------------
   -- ユーザー定義グローバル変数
   ------------------------------------------------------------
@@ -349,6 +375,9 @@ AS
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
     lv_out_msg VARCHAR2(2000);  -- メッセージ
     lb_retcode BOOLEAN;         -- APIリターン・メッセージ用
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+    ln_cnt     NUMBER;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
     --===============================
     -- ローカルカーソル定義
     --===============================
@@ -362,6 +391,45 @@ AS
     )
     IS
       SELECT xbb.bm_balance_id AS bm_balance_id -- 販手残高ID
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+            ,xbb.base_code                        AS base_code                            --拠点コード
+            ,xbb.supplier_code                    AS supplier_code                        --仕入先コード
+            ,xbb.supplier_site_code               AS supplier_site_code                   --仕入先サイトコード
+            ,xbb.cust_code                        AS cust_code                            --顧客コード
+            ,xbb.closing_date                     AS closing_date                         --締め日
+            ,xbb.selling_amt_tax                  AS selling_amt_tax                      --販売金額（税込）
+            ,xbb.backmargin                       AS backmargin                           --販売手数料
+            ,xbb.backmargin_tax                   AS backmargin_tax                       --販売手数料（消費税額）
+            ,xbb.electric_amt                     AS electric_amt                         --電気料
+            ,xbb.electric_amt_tax                 AS electric_amt_tax                     --電気料（消費税額）
+            ,xbb.tax_code                         AS tax_code                             --税金コード
+            ,xbb.expect_payment_date              AS expect_payment_date                  --支払予定日
+            ,xbb.expect_payment_amt_tax           AS expect_payment_amt_tax               --支払予定額（税込）
+            ,xbb.payment_amt_tax                  AS payment_amt_tax                      --支払額（税込）
+            ,xbb.balance_cancel_date              AS balance_cancel_date                  --残高取消日
+            ,xbb.resv_flag                        AS resv_flag                            --保留フラグ
+            ,xbb.return_flag                      AS return_flag                          --組み戻しフラグ
+            ,xbb.publication_date                 AS publication_date                     --案内書発効日
+            ,xbb.fb_interface_status              AS fb_interface_status                  --連携ステータス（本振用FB）
+            ,xbb.fb_interface_date                AS fb_interface_date                    --連携日（本振用FB）
+            ,xbb.edi_interface_status             AS edi_interface_status                 --連携ステータス（EDI支払案内書）
+            ,xbb.edi_interface_date               AS edi_interface_date                   --連携日（EDI支払案内書）
+            ,xbb.gl_interface_status              AS gl_interface_status                  --連携ステータス（GL）
+            ,xbb.gl_interface_date                AS gl_interface_date                    --連携日（GL）
+            ,xbb.amt_fix_status                   AS amt_fix_status                       --金額確定ステータス
+            ,xbb.org_slip_number                  AS org_slip_number                      --元伝票番号
+            ,xbb.proc_type                        AS proc_type                            --処理区分
+            ,NULL                                 AS eb_status                            --電子帳簿処理ステータス
+            ,cn_created_by                        AS created_by                           --作成者
+            ,SYSDATE                              AS creation_date                        --作成日
+            ,cn_last_upd_by                       AS last_updated_by                      --最終更新者
+            ,SYSDATE                              AS last_update_date                     --最終更新日
+            ,cn_last_upd_login                    AS last_update_login                    --最終更新ログイン
+            ,cn_request_id                        AS request_id                           --要求ID
+            ,cn_prg_appl_id                       AS program_application_id               --コンカレント･プログラム・アプリケーションID
+            ,cn_program_id                        AS program_id                           --コンカレント･プログラムID
+            ,SYSDATE                              AS program_update_date                  --プログラム更新日
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
       WHERE  xbb.supplier_code       = iv_vendor_code
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
@@ -495,10 +563,17 @@ AS
     TYPE bm_bel_cancel_tab_type IS TABLE OF ROWID INDEX BY PLS_INTEGER;
     l_bm_bel_cancel_tab  bm_bel_cancel_tab_type;
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+    TYPE bm_rollback_tab_type IS TABLE OF bm_rollback_cur%ROWTYPE INDEX BY PLS_INTEGER;
+    l_bm_rollback_tab         bm_rollback_tab_type;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
     --===============================
     -- ローカル例外
     --===============================
     update_err_expt EXCEPTION; -- 更新エラー
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+    insert_err_expt EXCEPTION; -- 挿入エラー
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
   --
   BEGIN
   --
@@ -516,6 +591,10 @@ AS
          it_check_data(in_index).vendor_code -- 仕入先コード
         ,it_check_data(in_index).pay_date    -- 支払日
       );
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+      l_bm_rollback_tab.DELETE;
+      FETCH bm_rollback_cur BULK COLLECT INTO l_bm_rollback_tab;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
       CLOSE bm_rollback_cur;
     -------------------------------------------------
     -- 2.業務管理部残高取消ロック処理
@@ -631,6 +710,105 @@ AS
     -------------------------------------------------
     BEGIN
       IF ( it_check_data(in_index).proc_type = cv_proc_type1 ) THEN
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+        -- 元伝票番号がNULL以外を対象に、組み戻し管理テーブルに出力
+        <<bm_balance_rtn_info_loop>>
+        FOR ln_cnt IN 1..l_bm_rollback_tab.COUNT LOOP
+          IF ( l_bm_rollback_tab(ln_cnt).org_slip_number IS NOT NULL ) THEN
+            BEGIN
+              INSERT INTO xxcok_bm_balance_rtn_info (
+                  bm_balance_id                                                   --販手残高ID
+                , base_code                                                       --拠点コード
+                , supplier_code                                                   --仕入先コード
+                , supplier_site_code                                              --仕入先サイトコード
+                , cust_code                                                       --顧客コード
+                , closing_date                                                    --締め日
+                , selling_amt_tax                                                 --販売金額（税込）
+                , backmargin                                                      --販売手数料
+                , backmargin_tax                                                  --販売手数料（消費税額）
+                , electric_amt                                                    --電気料
+                , electric_amt_tax                                                --電気料（消費税額）
+                , tax_code                                                        --税金コード
+                , expect_payment_date                                             --支払予定日
+                , expect_payment_amt_tax                                          --支払予定額（税込）
+                , payment_amt_tax                                                 --支払額（税込）
+                , balance_cancel_date                                             --残高取消日
+                , resv_flag                                                       --保留フラグ
+                , return_flag                                                     --組み戻しフラグ
+                , publication_date                                                --案内書発効日
+                , fb_interface_status                                             --連携ステータス（本振用FB）
+                , fb_interface_date                                               --連携日（本振用FB）
+                , edi_interface_status                                            --連携ステータス（EDI支払案内書）
+                , edi_interface_date                                              --連携日（EDI支払案内書）
+                , gl_interface_status                                             --連携ステータス（GL）
+                , gl_interface_date                                               --連携日（GL）
+                , amt_fix_status                                                  --金額確定ステータス
+                , org_slip_number                                                 --元伝票番号
+                , proc_type                                                       --処理区分
+                , eb_status                                                       --電子帳簿処理ステータス
+                , created_by                                                      --作成者
+                , creation_date                                                   --作成日
+                , last_updated_by                                                 --最終更新者
+                , last_update_date                                                --最終更新日
+                , last_update_login                                               --最終更新ログイン
+                , request_id                                                      --要求ID
+                , program_application_id                                          --コンカレント・プログラム・アプリケーションID
+                , program_id                                                      --コンカレント・プログラムID
+                , program_update_date                                             --プログラム更新日
+              ) VALUES (
+                  l_bm_rollback_tab(ln_cnt).bm_balance_id                         --販手残高ID
+                , l_bm_rollback_tab(ln_cnt).base_code                             --拠点コード
+                , l_bm_rollback_tab(ln_cnt).supplier_code                         --仕入先コード
+                , l_bm_rollback_tab(ln_cnt).supplier_site_code                    --仕入先サイトコード
+                , l_bm_rollback_tab(ln_cnt).cust_code                             --顧客コード
+                , l_bm_rollback_tab(ln_cnt).closing_date                          --締め日
+                , l_bm_rollback_tab(ln_cnt).selling_amt_tax                       --販売金額（税込）
+                , l_bm_rollback_tab(ln_cnt).backmargin                            --販売手数料
+                , l_bm_rollback_tab(ln_cnt).backmargin_tax                        --販売手数料（消費税額
+                , l_bm_rollback_tab(ln_cnt).electric_amt                          --電気料
+                , l_bm_rollback_tab(ln_cnt).electric_amt_tax                      --電気料（消費税額）
+                , l_bm_rollback_tab(ln_cnt).tax_code                              --税金コード
+                , l_bm_rollback_tab(ln_cnt).expect_payment_date                   --支払予定日
+                , l_bm_rollback_tab(ln_cnt).expect_payment_amt_tax                --支払予定額（税込）
+                , l_bm_rollback_tab(ln_cnt).payment_amt_tax                       --支払額（税込）
+                , l_bm_rollback_tab(ln_cnt).balance_cancel_date                   --残高取消日
+                , l_bm_rollback_tab(ln_cnt).resv_flag                             --保留フラグ
+                , l_bm_rollback_tab(ln_cnt).return_flag                           --組み戻しフラグ
+                , l_bm_rollback_tab(ln_cnt).publication_date                      --案内書発効日
+                , l_bm_rollback_tab(ln_cnt).fb_interface_status                   --連携ステータス（本振
+                , l_bm_rollback_tab(ln_cnt).fb_interface_date                     --連携日（本振用FB）
+                , l_bm_rollback_tab(ln_cnt).edi_interface_status                  --連携ステータス（EDI
+                , l_bm_rollback_tab(ln_cnt).edi_interface_date                    --連携日（EDI支払案内
+                , l_bm_rollback_tab(ln_cnt).gl_interface_status                   --連携ステータス（GL）
+                , l_bm_rollback_tab(ln_cnt).gl_interface_date                     --連携日（GL）
+                , l_bm_rollback_tab(ln_cnt).amt_fix_status                        --金額確定ステータス
+                , l_bm_rollback_tab(ln_cnt).org_slip_number                       --元伝票番号
+                , l_bm_rollback_tab(ln_cnt).proc_type                             --処理区分
+                , l_bm_rollback_tab(ln_cnt).eb_status                             --電子帳簿処理ステータス
+                , l_bm_rollback_tab(ln_cnt).created_by                            --作成者
+                , l_bm_rollback_tab(ln_cnt).creation_date                         --作成日
+                , l_bm_rollback_tab(ln_cnt).last_updated_by                       --最終更新者
+                , l_bm_rollback_tab(ln_cnt).last_update_date                      --最終更新日
+                , l_bm_rollback_tab(ln_cnt).last_update_login                     --最終更新ログイン
+                , l_bm_rollback_tab(ln_cnt).request_id                            --要求ID
+                , l_bm_rollback_tab(ln_cnt).program_application_id                --コンカレント・プログ
+                , l_bm_rollback_tab(ln_cnt).program_id                            --コンカレント・プログ
+                , l_bm_rollback_tab(ln_cnt).program_update_date                   --プログラム更新日
+              );
+            EXCEPTION
+              WHEN OTHERS THEN
+                ov_errmsg := SQLERRM || ' ' || 
+                             xxcfr_common_pkg.get_col_comment(cv_backmargin_balance, cv_bm_balance_id) ||
+                                cv_msg_part || l_bm_rollback_tab(ln_cnt).bm_balance_id || ' ' ||
+                             xxcfr_common_pkg.get_col_comment(cv_backmargin_balance, cv_supplier_code) ||
+                                cv_msg_part || l_bm_rollback_tab(ln_cnt).supplier_code || ' ' ||
+                             xxcfr_common_pkg.get_col_comment(cv_backmargin_balance, cv_publication_date) ||
+                                cv_msg_part || TO_CHAR(l_bm_rollback_tab(ln_cnt).publication_date, cv_date_format); 
+                RAISE insert_err_expt;
+            END;
+          END IF;
+        END LOOP bm_balance_rtn_info_loop;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.expect_payment_amt_tax = xbb.payment_amt_tax       -- 支払予定額
@@ -917,6 +1095,10 @@ AS
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       END IF;
     EXCEPTION
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+      WHEN insert_err_expt THEN
+        RAISE insert_err_expt;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
       WHEN OTHERS THEN
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
         --エラー内容設定
@@ -964,6 +1146,10 @@ AS
 --      ov_retcode := cv_status_error;
       ov_retcode := cv_status_update;
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+    WHEN insert_err_expt THEN
+      ov_retcode := cv_status_insert;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -3101,6 +3287,33 @@ AS
                         );
           -- エラー件数をインクリメント
           gn_error_cnt := gn_error_cnt + 1;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
+        -- ステータスエラー判定(挿入エラー)
+        ELSIF ( lv_retcode = cv_status_insert ) THEN
+          -- メッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcfo
+                          ,iv_name         => cv_errmsg_00024
+                          ,iv_token_name1  => cv_tkn_table
+                          ,iv_token_name2  => cv_tkn_errmsg
+                          ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_bm_balance_rtn_info)
+                          ,iv_token_value2 => lv_errmsg
+                        );
+          -- メッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_zero          -- 改行
+                        );
+          -- エラー内容出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_errbuf       -- メッセージ
+                          ,in_new_line   => cn_one          -- 改行
+                        );
+          -- エラー件数をインクリメント
+          gn_error_cnt := gn_error_cnt + 1;
+-- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD END
         -- ステータスエラー判定(その他例外)
         ELSIF ( lv_retcode = cv_status_error ) THEN
           -- エラー終了
