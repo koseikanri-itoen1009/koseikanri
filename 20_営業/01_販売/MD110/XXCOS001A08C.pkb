@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : ï‘ïié¿ê—ÉfÅ[É^çÏê¨ÅiÇgÇgÇsÅj
  * MD.050           : ï‘ïié¿ê—ÉfÅ[É^çÏê¨ÅiÇgÇgÇsÅj(MD050_COS_001_A08)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2009/08/21    1.18  N.Maeda          [0001141] ëOåéîÑè„ãíì_çló∂èàóùí«â¡
  *  2009/09/04    1.19  N.Maeda          [0001211] ê≈ä÷òAçÄñ⁄éÊìæäÓèÄì˙èCê≥
  *  2009/10/29    1.20  M.Sano           [0001373] éQè∆ViewïœçX[xxcos_rs_info_v ÅÀ xxcos_rs_info2_v]
+ *  2009/12/18    1.21  N.Maeda          [E_ñ{â“ìÆ_00224] ílà¯ÉwÉbÉ_ëŒâû
  *
  *****************************************************************************************/
 --
@@ -2760,12 +2761,29 @@ AS
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- ì‡ê≈Åiì`ï[â€ê≈Åj
 --
-                -- îÑè„ã‡äzçáåv
-                lt_sale_amount_sum := lt_tax_include - lt_sales_consumption_tax;
-                -- ñ{ëÃã‡äzçáåv
-                lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-                -- è¡îÔê≈ã‡äzçáåv
-                lt_tax_amount_sum  := lt_sales_consumption_tax;
+-- ********** 2009/12/18 1.21 N.Maeda ADD START ************ --
+                -- ñæç◊Ç™ílà¯Ç´ñæç◊ÉfÅ[É^ÇÃÇ›Ç≈Ç†Ç¡ÇΩèÍçá
+                IF ( ln_line_data_count = 1 ) THEN
+--
+                  -- îÑè„ã‡äzçáåv    =  îÑè„ílà¯äz
+                  lt_sale_amount_sum :=  - (lt_sale_discount_amount );
+                  -- ñ{ëÃã‡äzçáåv    =  îÑè„ílà¯äz
+                  lt_pure_amount_sum :=  - (lt_sale_discount_amount );
+                  -- è¡îÔê≈ã‡äzçáåv  =  îÑè„ílà¯ñæç◊ÇÃè¡îÔê≈äz
+                  lt_tax_amount_sum  :=  - (lt_tax_amount );
+--
+                -- è„ãLà»äOÇÃèÍçá
+                ELSE
+-- ********** 2009/12/18 1.21 N.Maeda ADD  END  ************ --
+                  -- îÑè„ã‡äzçáåv(ílà¯å„ñ{ëÃã‡äz) =   ê≈çûÇ›ã‡äz - îÑè„è¡îÔê≈ã‡äz
+                  lt_sale_amount_sum := lt_tax_include - lt_sales_consumption_tax;
+                  -- ñ{ëÃã‡äzçáåv(ílà¯å„ñ{ëÃã‡äz) = çáåvã‡äz - îÑè„ílà¯äz
+                  lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+                  -- è¡îÔê≈ã‡äzçáåv  = îÑè„è¡îÔê≈äz
+                  lt_tax_amount_sum  := lt_sales_consumption_tax;
+-- ********** 2009/12/18 1.21 N.Maeda ADD START ************ --
+                END IF;
+-- ********** 2009/12/18 1.21 N.Maeda ADD  END  ************ --
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- ì‡ê≈ÅiíPâøçûÇ›Åj
 --
@@ -2875,24 +2893,36 @@ AS
             INTO    lt_max_cancel_correct_class
             FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                     xxcos_dlv_lines dls
-            WHERE   dhs.order_no_hht = dls.order_no_hht
-            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- *********** 2009/12/18 1.21 N.Maeda MOD START *********** --
+            WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+            AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--            WHERE   dhs.order_no_hht = dls.order_no_hht
+--            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- *********** 2009/12/18 1.21 N.Maeda MOD  END  *********** --
             AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
             AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
             AND     dhs.results_forward_flag = cv_untreated_flg
             AND     dhs.program_application_id IS NULL
-            AND     dls.program_application_id IS NULL
+-- *********** 2009/12/18 1.21 N.Maeda DEL START *********** --
+--            AND     dls.program_application_id IS NULL
+-- *********** 2009/12/18 1.21 N.Maeda DEL  END  *********** --
             AND     dhs.order_no_hht        = lt_order_no_hht
             AND     dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
                                                 FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                                                         xxcos_dlv_lines dls
-                                                WHERE   dhs.order_no_hht = dls.order_no_hht
-                                                AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- *********** 2009/12/18 1.21 N.Maeda MOD START *********** --
+                                                WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+                                                AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--                                                WHERE   dhs.order_no_hht = dls.order_no_hht
+--                                                AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- *********** 2009/12/18 1.21 N.Maeda MOD  END  *********** --
                                                 AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
                                                 AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
                                                 AND     dhs.results_forward_flag = cv_untreated_flg
                                                 AND     dhs.program_application_id IS  NULL
-                                                AND     dls.program_application_id IS  NULL
+-- *********** 2009/12/18 1.21 N.Maeda DEL START *********** --
+--                                                AND     dls.program_application_id IS  NULL
+-- *********** 2009/12/18 1.21 N.Maeda DEL  END  *********** --
                                                 AND     dhs.order_no_hht        = lt_order_no_hht )
             GROUP BY dhs.cancel_correct_class;
           EXCEPTION
@@ -2905,13 +2935,19 @@ AS
             INTO    lt_min_digestion_ln_number
             FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                     xxcos_dlv_lines dls
-            WHERE   dhs.order_no_hht = dls.order_no_hht
-            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- *********** 2009/12/18 1.21 N.Maeda MOD START *********** --
+            WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+            AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--            WHERE   dhs.order_no_hht = dls.order_no_hht
+--            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- *********** 2009/12/18 1.21 N.Maeda MOD  END  *********** --
             AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
             AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
             AND     dhs.results_forward_flag = cv_untreated_flg
             AND     dhs.program_application_id IS NULL
-            AND     dls.program_application_id IS NULL
+-- *********** 2009/12/18 1.21 N.Maeda DEL START *********** --
+--            AND     dls.program_application_id IS NULL
+-- *********** 2009/12/18 1.21 N.Maeda DEL  END  *********** --
             AND     dhs.order_no_hht        = lt_order_no_hht;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
@@ -5523,6 +5559,13 @@ AS
 --
 --****************************** 2009/06/29 1.16 T.Kitajima ADD START ******************************--
       BEGIN
+-- ************* 2009/12/18 1.21 N.Maeda ADD START ************--
+        lt_row_id                   := gt_dlv_headers_data( ck_no ).row_id;                    -- çsID
+        lt_order_no_hht             := gt_dlv_headers_data( ck_no ).order_no_hht;              -- éÛíçNo.ÅiHHTÅj
+        lt_digestion_ln_number      := gt_dlv_headers_data( ck_no ).digestion_ln_number;       -- é}î‘
+        lt_hht_invoice_no           := gt_dlv_headers_data( ck_no ).hht_invoice_no;            -- HHTì`ï[No.
+-- ************* 2009/12/18 1.21 N.Maeda ADD  END  ************--
+
         OPEN get_headers_cur(
                              gt_dlv_headers_data( ck_no ).order_no_hht,
                              gt_dlv_headers_data( ck_no ).digestion_ln_number,
@@ -5531,14 +5574,18 @@ AS
         FETCH get_headers_cur INTO l_get_headers_cur;
         CLOSE get_headers_cur;
 --
-        lt_row_id                   := gt_dlv_headers_data( ck_no ).row_id;                    -- çsID
-        lt_order_no_hht             := gt_dlv_headers_data( ck_no ).order_no_hht;              -- éÛíçNo.ÅiHHTÅj
-        lt_digestion_ln_number      := gt_dlv_headers_data( ck_no ).digestion_ln_number;       -- é}î‘
+-- ************* 2009/12/18 1.21 N.Maeda DEL START ************--
+--        lt_row_id                   := gt_dlv_headers_data( ck_no ).row_id;                    -- çsID
+--        lt_order_no_hht             := gt_dlv_headers_data( ck_no ).order_no_hht;              -- éÛíçNo.ÅiHHTÅj
+--        lt_digestion_ln_number      := gt_dlv_headers_data( ck_no ).digestion_ln_number;       -- é}î‘
+-- ************* 2009/12/18 1.21 N.Maeda DEL  END  ************--
         lt_order_no_ebs             := l_get_headers_cur.order_no_ebs;                         -- éÛíçNo.ÅiEBSÅj
         lt_base_code                := l_get_headers_cur.base_code;                            -- ãíì_ÉRÅ[Éh
         lt_performance_by_code      := l_get_headers_cur.performance_by_code;                  -- ê¨ê—é“ÉRÅ[Éh
         lt_dlv_by_code              := l_get_headers_cur.dlv_by_code;                          -- î[ïié“ÉRÅ[Éh
-        lt_hht_invoice_no           := gt_dlv_headers_data( ck_no ).hht_invoice_no;            -- HHTì`ï[No.
+-- ************* 2009/12/18 1.21 N.Maeda DEL START ************--
+--        lt_hht_invoice_no           := gt_dlv_headers_data( ck_no ).hht_invoice_no;            -- HHTì`ï[No.
+-- ************* 2009/12/18 1.21 N.Maeda DEL  END  ************--
         lt_dlv_date                 := l_get_headers_cur.dlv_date;                             -- î[ïiì˙
         lt_inspect_date             := l_get_headers_cur.inspect_date;                         -- åüé˚ì˙
         lt_sales_classification     := l_get_headers_cur.sales_classification;                 -- îÑè„ï™óﬁãÊï™
@@ -6797,24 +6844,36 @@ AS
             INTO    lt_max_cancel_correct_class
             FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                     xxcos_dlv_lines dls
-            WHERE   dhs.order_no_hht = dls.order_no_hht
-            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 N.Maeda MOD START ********** --
+            WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+            AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--            WHERE   dhs.order_no_hht = dls.order_no_hht
+--            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 N.Maeda MOD  END  ********** --
             AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
             AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
             AND     dhs.results_forward_flag = cv_untreated_flg
             AND     dhs.program_application_id IS NOT NULL
-            AND     dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 N.Maeda DEL START ********** --
+--            AND     dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 N.Maeda DEL  END  ********** --
             AND     dhs.order_no_hht        = lt_order_no_hht
             AND     dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
                                                 FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                                                         xxcos_dlv_lines dls
-                                                WHERE   dhs.order_no_hht = dls.order_no_hht
-                                                AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 N.Maeda MOD START ********** --
+                                                WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+                                                AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--                                                WHERE   dhs.order_no_hht = dls.order_no_hht
+--                                                AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 N.Maeda MOD  END  ********** --
                                                 AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
                                                 AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
                                                 AND     dhs.results_forward_flag = cv_untreated_flg
                                                 AND     dhs.program_application_id IS NOT NULL
-                                                AND     dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 N.Maeda DEL START ********** --
+--                                                AND     dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 N.Maeda DEL  END  ********** --
                                                 AND     dhs.order_no_hht        = lt_order_no_hht )
             GROUP BY dhs.cancel_correct_class;
           EXCEPTION
@@ -6827,13 +6886,19 @@ AS
             INTO    lt_min_digestion_ln_number
             FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                     xxcos_dlv_lines dls
-            WHERE   dhs.order_no_hht = dls.order_no_hht
-            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 N.Maeda MOD START ********** --
+            WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+            AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--            WHERE   dhs.order_no_hht = dls.order_no_hht
+--            AND     dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 N.Maeda MOD  END  ********** --
             AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
             AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
             AND     dhs.results_forward_flag = cv_untreated_flg
             AND     dhs.program_application_id IS NOT NULL
-            AND     dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 N.Maeda DEL START ********** --
+--            AND     dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 N.Maeda DEL  END  ********** --
             AND     dhs.order_no_hht        = lt_order_no_hht;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
@@ -9133,13 +9198,19 @@ AS
              dhs.hht_invoice_no             -- HHTì`ï[No.
       FROM   xxcos_dlv_headers dhs,         -- î[ïiÉwÉbÉ_
              xxcos_dlv_lines dls
-      WHERE  dhs.order_no_hht           = dls.order_no_hht
-      AND    dhs.digestion_ln_number    = dls.digestion_ln_number
+-- ********** 2009/12/18 1.21 N.Maeda MOD START ************** --
+      WHERE  dhs.order_no_hht           = dls.order_no_hht(+)
+      AND    dhs.digestion_ln_number    = dls.digestion_ln_number(+)
+--      WHERE  dhs.order_no_hht           = dls.order_no_hht
+--      AND    dhs.digestion_ln_number    = dls.digestion_ln_number
+-- ********** 2009/12/18 1.21 N.Maeda MOD  END  ************** --
       AND    dhs.system_class           NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND    dhs.input_class            IN ( cv_returns_input, cv_vd_returns_input )
       AND    dhs.results_forward_flag   = cv_untreated_flg
       AND    dhs.program_application_id IS NOT NULL
-      AND    dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 1.21 N.Maeda DEL START ************** --
+--      AND    dls.program_application_id IS NOT NULL
+-- ********** 2009/12/18 1.21 N.Maeda DEL  END  ************** --
       GROUP BY dhs.ROWID,dhs.order_no_hht,dhs.digestion_ln_number,dhs.hht_invoice_no
       ORDER BY dhs.order_no_hht,dhs.digestion_ln_number;
 --****************************** 2009/06/29 1.16 T.Kitajima MOD  END  ******************************--
@@ -9281,13 +9352,19 @@ AS
              dhs.hht_invoice_no             -- HHTì`ï[No.
       FROM   xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
              xxcos_dlv_lines dls
-      WHERE  dhs.order_no_hht = dls.order_no_hht
-      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 1.21 N.Maeda MOD START ************** --
+      WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--      WHERE  dhs.order_no_hht = dls.order_no_hht
+--      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+-- ********** 2009/12/18 1.21 N.Maeda MOD  END  ************** --
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND    dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
       AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.program_application_id IS NULL --éÛíçâÊñ ìoò^ÉfÅ[É^
-      AND    dls.program_application_id IS NULL
+-- ********** 2009/12/18 1.21 N.Maeda DEL START ************** --
+--      AND    dls.program_application_id IS NULL
+-- ********** 2009/12/18 1.21 N.Maeda DEL  END  ************** --
       GROUP BY dhs.ROWID,dhs.order_no_hht,dhs.digestion_ln_number,dhs.hht_invoice_no
       ORDER BY dhs.order_no_hht,dhs.digestion_ln_number;
 --****************************** 2009/06/29 1.16 T.Kitajima MOD  END  ******************************--
