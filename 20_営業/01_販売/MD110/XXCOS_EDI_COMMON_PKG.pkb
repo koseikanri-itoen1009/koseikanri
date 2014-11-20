@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -21,6 +21,7 @@ AS
  *  2008/11/26   1.0   H.Fujimoto       新規作成
  *  2009/03/03   1.1   H.Fujimoto       結合不具合No152
  *  2009/03/24   1.2   T.Miyata         ST障害：T1_0126
+ *  2009/04/24   1.3   K.Kiriu          ST障害：T1_0112
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -126,6 +127,9 @@ AS
         ,item_name           xxcmn_item_mst_b.item_name%TYPE             -- OPM品目アドオン.正式名
         ,item_name_alt       xxcmn_item_mst_b.item_name_alt%TYPE         -- OPM品目アドオン.カナ名
 /* 2009/03/03 Ver1.1 Add  End  */
+/* 2009/04/24 Ver1.3 Add Start */
+        ,edi_rep_uom         mtl_units_of_measure_tl.attribute1%TYPE     -- EDI・帳票用単位
+/* 2009/04/24 Ver1.3 Add End   */
     );
     -- 伝票計テーブル
     TYPE invoice_sum_rtype IS RECORD (
@@ -364,6 +368,9 @@ AS
          ,ximb.item_name            item_name           -- OPM品目アドオン.正式名
          ,ximb.item_name_alt        item_name_alt       -- OPM品目アドオン.カナ名
 /* 2009/03/03 Ver1.1 Add  End  */
+/* 2009/04/24 Ver1.3 Add Start */
+         ,muom.attribute1          edi_rep_uom         -- EDI・帳票用単位
+/* 2009/04/24 Ver1.3 Add End   */
         BULK COLLECT INTO lt_line_tab
         FROM oe_order_lines_all    oola  -- 受注明細
             ,ic_item_mst_b         iimb  -- OPM品目マスタ
@@ -374,6 +381,9 @@ AS
 --*** 2009/03/24 Ver1.3 ADD    START ***/
             ,oe_transaction_types_tl ottt  -- 受注タイプテーブル
 --*** 2009/03/24 Ver1.3 ADD    END   ***/
+/* 2009/04/24 Ver1.3 Add Start */
+            ,mtl_units_of_measure_tl muom  -- 単位マスタ
+/* 2009/04/24 Ver1.3 Add End   */
         WHERE oola.header_id            = lt_head_tab(ln_head_cnt).header_id
         AND   oola.ordered_item         = iimb.item_no
         AND   iimb.item_id              = ximb.item_id
@@ -416,6 +426,10 @@ AS
                              ottt.name      = flvs.order_l_type_name  -- 受注タイプ．名前＝参照タイプ．受注明細タイプ名
                      )
 --*** 2009/03/24 Ver1.3 MODIFY END   ***
+/* 2009/04/24 Ver1.3 Add Start */
+        AND   oola.order_quantity_uom   = muom.uom_code            -- 受注明細.受注単位＝単位マスタ.単位コード
+        AND   muom.language             = USERENV('LANG')          -- 単位マスタ.言語＝日本語
+/* 2009/04/24 Ver1.3 Add End   */
         ;
 --
         -- 該当明細あり？
@@ -676,7 +690,10 @@ AS
                  ,NULL                                             -- 引合
                  ,NULL                                             -- 引合区分
                  ,NULL                                             -- 照合
-                 ,lt_line_tab(ln_line_cnt).order_quantity_uom      -- 単位
+/* 2009/04/24 Ver1.3 Mod Start */
+--                 ,lt_line_tab(ln_line_cnt).order_quantity_uom      -- 単位
+                 ,lt_line_tab(ln_line_cnt).edi_rep_uom             -- 単位
+/* 2009/04/24 Ver1.3 Mod End   */
                  ,NULL                                             -- 単価区分
                  ,NULL                                             -- 親梱包番号
                  ,NULL                                             -- 梱包番号

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       [障害COS_114] CSV出力レコード抽出条件に手書伝票伝送区分を追加
  *  2009/02/24    1.8   T.Nakamura       [障害COS_119] CSV出力レコード抽出条件の在庫組織IDを修正
  *  2009/04/02    1.9   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
+ *  2009/04/27    1.10  K.Kiriu          [T1_0112] 単位項目内容不正対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -1804,10 +1805,12 @@ AS
                     ,xel.deal_code                                                      deal_code                     --引合
                     ,xel.deal_class                                                     deal_class                    --引合区分
                     ,xel.collation_code                                                 collation_code                --照合
+-- 2009/04/27 K.Kiriu Ver.1.10 mod start
 -- 2009/02/17 T.Nakamura Ver.1.4 mod start
---                    ,xel.uom_code                                                       uom_code                      --単位
-                    ,xel.line_uom                                                       uom_code                      --単位
+                    ,xel.uom_code                                                       uom_code                      --単位
+--                    ,xel.line_uom                                                       uom_code                      --単位
 -- 2009/02/17 T.Nakamura Ver.1.4 mod end
+-- 2009/04/27 K.Kiriu Ver.1.10 mod end
                     ,xel.unit_price_class                                               unit_price_class              --単価区分
                     ,xel.parent_packing_number                                          parent_packing_number         --親梱包番号
                     ,xel.packing_number                                                 packing_number                --梱包番号
@@ -2448,7 +2451,10 @@ AS
                     ,NULL                                                               deal_code                     --引合
                     ,NULL                                                               deal_class                    --引合区分
                     ,NULL                                                               collation_code                --照合
-                    ,oola.order_quantity_uom                                            uom_code                      --単位
+-- 2009/04/27 K.Kiriu Ver.1.10 mod start
+--                    ,oola.order_quantity_uom                                            uom_code                      --単位
+                    ,muom.attribute1                                                    uom_code                      --単位
+-- 2009/04/27 K.Kiriu Ver.1.10 mod end
                     ,NULL                                                               unit_price_class              --単価区分
                     ,NULL                                                               parent_packing_number         --親梱包番号
                     ,NULL                                                               packing_number                --梱包番号
@@ -2732,6 +2738,9 @@ AS
                     AND    hcas.org_id             = g_prf_rec.org_id
                    )                                                                  cdm
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD  END  *************************************
+-- 2009/04/27 K.Kiriu Ver.1.10 mod start
+                  ,mtl_units_of_measure_tl                                              muom                          -- 単位マスタ
+-- 2009/04/27 K.Kiriu Ver.1.10 mod end
               --受注タイプ(ヘッダ)抽出条件
               WHERE ottt_h.language                 = USERENV('LANG')
               AND   ottt_h.source_lang              = USERENV('LANG')
@@ -2818,6 +2827,11 @@ AS
               AND ooha.delivery_base_code           = cdm.account_number(+)
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD  END  *************************************
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
+-- 2009/04/27 K.Kiriu Ver.1.10 mod start
+              --単位マスタ抽出条件
+              AND   oola.order_quantity_uom         = muom.uom_code
+              AND   muom.language                   = USERENV('LANG')
+-- 2009/04/27 K.Kiriu Ver.1.10 mod end
       )                                                                                 tbl01
       ORDER BY tbl01.invoice_number,tbl01.line_no
       ;

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/02/19    1.5   T.Nakamura       [障害COS_109] ログ出力にエラーメッセージを出力等
  *  2009/02/20    1.6   T.Nakamura       [障害COS_110] フッタレコード作成処理実行時のエラーハンドリングを追加
  *  2009/04/02    1.7   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
+ *  2009/04/27    1.8   K.Kiriu          [T1_0112] 単位項目内容不正対応
  *
  *****************************************************************************************/
 --
@@ -1687,10 +1688,12 @@ AS
             ,xe.deal_code                                                       deal_code                     --引合
             ,xe.deal_class                                                      deal_class                    --引合区分
             ,xe.collation_code                                                  collation_code                --照合
+-- 2009/04/27 K.kiriu Ver.1.8 mod start
 -- 2009/02/17 T.Nakamura Ver.1.4 mod start
---            ,xe.uom_code                                                        uom_code                      --単位
-            ,xe.line_uom                                                        uom_code                      --単位
+            ,xe.uom_code                                                        uom_code                      --単位
+--            ,xe.line_uom                                                        uom_code                      --単位
 -- 2009/02/17 T.Nakamura Ver.1.4 mod end
+-- 2009/04/27 K.kiriu Ver.1.8 mod end
             ,xe.unit_price_class                                                unit_price_class              --単価区分
             ,xe.parent_packing_number                                           parent_packing_number         --親梱包番号
             ,xe.packing_number                                                  packing_number                --梱包番号
@@ -2068,10 +2071,12 @@ AS
                     ,xel.deal_code                                              deal_code                     --引合
                     ,xel.deal_class                                             deal_class                    --引合区分
                     ,xel.collation_code                                         collation_code                --照合
+-- 2009/04/27 K.Kiriu Ver.1.8 mod start
 -- 2009/02/17 T.Nakamura Ver.1.4 mod start
---                    ,xel.uom_code                                               uom_code                      --単位
-                    ,xel.line_uom                                               line_uom                      --単位
+                    ,xel.uom_code                                               uom_code                      --単位
+                    ,xel.line_uom                                               line_uom                      --明細単位
 -- 2009/02/17 T.Nakamura Ver.1.4 mod end
+-- 2009/04/27 K.Kiriu Ver.1.8 mod end
                     ,xel.unit_price_class                                       unit_price_class              --単価区分
                     ,xel.parent_packing_number                                  parent_packing_number         --親梱包番号
                     ,xel.packing_number                                         packing_number                --梱包番号

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                                 処理中のインパラ.チェーン店コードを
  *                                                 インパラ.帳票様式チェーン店コードへ変更
  *  2009/04/02    1.8   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
+ *  2009/04/27    1.9   K.Kiriu          [T1_0112] 単位項目内容不正対応
  *
  *****************************************************************************************/
 --
@@ -1807,10 +1808,12 @@ AS
             ,xel.deal_code                                                      deal_code                     --引合
             ,xel.deal_class                                                     deal_class                    --引合区分
             ,xel.collation_code                                                 collation_code                --照合
+-- 2009/04/27 K.Kiriu Ver.1.9 Mod start
 -- 2009/02/17 T.Nakamura Ver.1.4 add start
---            ,xel.uom_code                                                       uom_code                      --単位
-            ,xel.line_uom                                                       uom_code                      --単位
+            ,xel.uom_code                                                       uom_code                      --単位
+--            ,xel.line_uom                                                       uom_code                      --単位
 -- 2009/02/17 T.Nakamura Ver.1.4 add end
+-- 2009/04/27 K.Kiriu Ver.1.9 Mod end
             ,xel.unit_price_class                                               unit_price_class              --単価区分
             ,xel.parent_packing_number                                          parent_packing_number         --親梱包番号
             ,xel.packing_number                                                 packing_number                --梱包番号

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/03/12    1.5   T.kitajima       [T1_0033] 重量/容積連携
  *  2009/04/02    1.6   T.kitajima       [T1_0114] 納品拠点情報取得方法変更
  *  2009/04/13    1.7   T.kitajima       [T1_0264] 帳票様式チェーン店コード追加対応
+ *  2009/04/27    1.8   K.Kiriu          [T1_0112] 単位項目内容不正対応
  *
  *****************************************************************************************/
 --
@@ -2563,7 +2564,10 @@ AS
             ,NULL                                                               deal_code                     --引合
             ,NULL                                                               deal_class                    --引合区分
             ,NULL                                                               collation_code                --照合
-            ,oola.order_quantity_uom                                            uom_code                      --単位
+/* 2009/04/27 Ver1.8 Add Start */
+--            ,oola.order_quantity_uom                                            uom_code                      --単位
+            ,muom.attribute1                                                    uom_code                      --単位
+/* 2009/04/27 Ver1.8 Add End   */
             ,NULL                                                               unit_price_class              --単価区分
             ,NULL                                                               parent_packing_number         --親梱包番号
             ,NULL                                                               packing_number                --梱包番号
@@ -2908,6 +2912,9 @@ AS
             AND    hps.party_site_id       = hcas.party_site_id
             AND    hcas.org_id             = g_prf_rec.org_id
            )                                                                    cdm
+/* 2009/04/27 Ver1.8 Add Start */
+          ,mtl_units_of_measure_tl                                              muom                          -- 単位マスタ
+/* 2009/04/27 Ver1.8 Add End   */
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD  END  *******************************************************
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD START *************************************
 --       WHERE ( i_input_rec.chain_code       IS NOT NULL                                                       --チェーン店コード
@@ -2975,6 +2982,11 @@ AS
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
        AND   cdm.account_number(+)          = ivoh.delivery_base_code                                         --顧客コード=納品拠点コード
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD  END  *******************************************************
+/* 2009/04/27 Ver1.8 Add Start */
+       --単位マスタ
+       AND   oola.order_quantity_uom        = muom.uom_code                                                   --受注単位
+       AND   muom.language                  = USERENV( 'LANG' )                                               --言語(単位マスタ)
+/* 2009/04/27 Ver1.8 Add End   */
        ORDER BY ivoh.cust_po_number                                                                           --受注ヘッダ（顧客発注）
                ,oola.line_number                                                                              --受注明細  （明細番号）
        FOR UPDATE OF ooha_lock.header_id NOWAIT                                                               --ロック
