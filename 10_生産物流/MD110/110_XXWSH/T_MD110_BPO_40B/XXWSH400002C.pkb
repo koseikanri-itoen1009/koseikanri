@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2008/10/14    1.21  伊藤  ひとみ     統合テスト指摘118 1依頼に重複品目がある場合はエラー終了とする。
  *                                       統合テスト指摘240 積載効率チェック(合計値算出)のINパラメータに基準日を追加。
  *  2008/11/20    1.22  伊藤  ひとみ     統合テスト指摘141,658対応
+ *  2009/01/09    1.23  伊藤  ひとみ     本番障害#894対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2758,89 +2759,105 @@ AS
     ln_cnt    := 0;
     lv_yn_flg := gv_no;
 --
-    ----------------------------------------------------------------------------
-    -- 1.品目/出荷先/出荷元保管場所にて物流構成アドオンへの存在チェック       --
-    ----------------------------------------------------------------------------
-    SELECT COUNT (xsr.item_code)
-    INTO   ln_cnt
-    FROM   xxcmn_sourcing_rules  xsr   -- 物流構成アドオンマスタ T
-    WHERE  xsr.item_code          = gt_head_line(gn_i).ord_i_code
-    AND    xsr.ship_to_code       = gt_head_line(gn_i).p_s_code
-    AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
-    AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
-    AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
-    AND    ROWNUM                 = 1
-    ;
+-- 2009/01/08 H.Itou Mod Start 本番障害#894
+--    ----------------------------------------------------------------------------
+--    -- 1.品目/出荷先/出荷元保管場所にて物流構成アドオンへの存在チェック       --
+--    ----------------------------------------------------------------------------
+--    SELECT COUNT (xsr.item_code)
+--    INTO   ln_cnt
+--    FROM   xxcmn_sourcing_rules  xsr   -- 物流構成アドオンマスタ T
+--    WHERE  xsr.item_code          = gt_head_line(gn_i).ord_i_code
+--    AND    xsr.ship_to_code       = gt_head_line(gn_i).p_s_code
+--    AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
+--    AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
+--    AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
+--    AND    ROWNUM                 = 1
+--    ;
+----
+--    IF (ln_cnt = 1) THEN
+--      lv_yn_flg := gv_yes;
+--    END IF;
+----
+--    ----------------------------------------------------------------------------
+--    -- 2.品目/管轄拠点/出荷元保管場所にて物流構成アドオンへの存在チェック     --
+--    ----------------------------------------------------------------------------
+--    -- 上記1にて0件の場合
+--    IF (lv_yn_flg = gv_no) THEN
+--      SELECT COUNT (xsr.item_code)
+--      INTO   ln_cnt
+--      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
+--      WHERE  xsr.item_code          = gt_head_line(gn_i).ord_i_code
+--      AND    xsr.base_code          = gt_head_line(gn_i).h_s_branch
+--      AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
+--      AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
+--      AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
+--      AND    ROWNUM                 = 1
+--      ;
+----
+--      IF (ln_cnt = 1) THEN
+--        lv_yn_flg := gv_yes;
+--      END IF;
+--    END IF;
+----
+--    ----------------------------------------------------------------------------
+--    -- 3.全品目/出荷先/出荷元保管場所にて物流構成アドオンへの存在チェック     --
+--    ----------------------------------------------------------------------------
+--    -- 上記2にて0件の場合
+--    IF (lv_yn_flg = gv_no) THEN
+--      SELECT COUNT (xsr.item_code)
+--      INTO   ln_cnt
+--      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
+--      WHERE  xsr.item_code          = gv_all_item
+--      AND    xsr.ship_to_code       = gt_head_line(gn_i).p_s_code
+--      AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
+--      AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
+--      AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
+--      AND    ROWNUM                 = 1
+--      ;
+----
+--      IF (ln_cnt = 1) THEN
+--        lv_yn_flg := gv_yes;
+--      END IF;
+--    END IF;
+----
+--    ----------------------------------------------------------------------------
+--    -- 4.全品目/管轄拠点/出荷元保管場所にて物流構成アドオンへの存在チェック   --
+--    ----------------------------------------------------------------------------
+--    -- 上記3にて0件の場合
+--    IF (lv_yn_flg = gv_no) THEN
+--      SELECT COUNT (xsr.item_code)
+--      INTO   ln_cnt
+--      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
+--      WHERE  xsr.item_code          = gv_all_item
+--      AND    xsr.base_code          = gt_head_line(gn_i).h_s_branch
+--      AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
+--      AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
+--      AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
+--      AND    ROWNUM                 = 1
+--      ;
+----
+--      IF (ln_cnt = 1) THEN
+--        lv_yn_flg := gv_yes;
+--      END IF;
+--    END IF;
 --
-    IF (ln_cnt = 1) THEN
-      lv_yn_flg := gv_yes;
-    END IF;
+    -- 物流構成存在チェック関数
+    lv_retcode := xxwsh_common_pkg.chk_sourcing_rules(
+                    it_item_code          => gt_head_line(gn_i).ord_i_code -- 1.品目コード
+                   ,it_base_code          => gt_head_line(gn_i).h_s_branch -- 2.管轄拠点
+                   ,it_ship_to_code       => gt_head_line(gn_i).p_s_code   -- 3.配送先
+                   ,it_delivery_whse_code => gt_head_line(gn_i).lo_code    -- 4.出庫倉庫
+                   ,id_standard_date      => gt_head_line(gn_i).ship_date  -- 5.基準日(適用日基準日)
+                  );
 --
-    ----------------------------------------------------------------------------
-    -- 2.品目/管轄拠点/出荷元保管場所にて物流構成アドオンへの存在チェック     --
-    ----------------------------------------------------------------------------
-    -- 上記1にて0件の場合
-    IF (lv_yn_flg = gv_no) THEN
-      SELECT COUNT (xsr.item_code)
-      INTO   ln_cnt
-      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
-      WHERE  xsr.item_code          = gt_head_line(gn_i).ord_i_code
-      AND    xsr.base_code          = gt_head_line(gn_i).h_s_branch
-      AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
-      AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
-      AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
-      AND    ROWNUM                 = 1
-      ;
+-- 2009/01/08 H.Itou Mod End
 --
-      IF (ln_cnt = 1) THEN
-        lv_yn_flg := gv_yes;
-      END IF;
-    END IF;
---
-    ----------------------------------------------------------------------------
-    -- 3.全品目/出荷先/出荷元保管場所にて物流構成アドオンへの存在チェック     --
-    ----------------------------------------------------------------------------
-    -- 上記2にて0件の場合
-    IF (lv_yn_flg = gv_no) THEN
-      SELECT COUNT (xsr.item_code)
-      INTO   ln_cnt
-      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
-      WHERE  xsr.item_code          = gv_all_item
-      AND    xsr.ship_to_code       = gt_head_line(gn_i).p_s_code
-      AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
-      AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
-      AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
-      AND    ROWNUM                 = 1
-      ;
---
-      IF (ln_cnt = 1) THEN
-        lv_yn_flg := gv_yes;
-      END IF;
-    END IF;
---
-    ----------------------------------------------------------------------------
-    -- 4.全品目/管轄拠点/出荷元保管場所にて物流構成アドオンへの存在チェック   --
-    ----------------------------------------------------------------------------
-    -- 上記3にて0件の場合
-    IF (lv_yn_flg = gv_no) THEN
-      SELECT COUNT (xsr.item_code)
-      INTO   ln_cnt
-      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
-      WHERE  xsr.item_code          = gv_all_item
-      AND    xsr.base_code          = gt_head_line(gn_i).h_s_branch
-      AND    xsr.delivery_whse_code = gt_head_line(gn_i).lo_code
-      AND    xsr.start_date_active <= gt_head_line(gn_i).ship_date
-      AND    xsr.end_date_active   >= gt_head_line(gn_i).ship_date
-      AND    ROWNUM                 = 1
-      ;
---
-      IF (ln_cnt = 1) THEN
-        lv_yn_flg := gv_yes;
-      END IF;
-    END IF;
---
-    -- 上記4にて0件の場合。ワーニング
-    IF (lv_yn_flg = gv_no) THEN
+-- 2009/01/08 H.Itou Mod Start 本番障害#894
+--    -- 上記4にて0件の場合、ワーニング
+--    IF (lv_yn_flg = gv_no) THEN
+     -- 戻り値が正常でない場合、ワーニング
+     IF (lv_retcode <> gv_status_normal) THEN
+-- 2009/01/08 H.Itou Mod End
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
