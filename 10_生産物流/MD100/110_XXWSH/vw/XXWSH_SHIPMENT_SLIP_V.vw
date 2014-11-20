@@ -63,7 +63,10 @@ SELECT
 --   END                                                 AS   case_quantity        -- ケース数量
   ,CASE 
     WHEN  ( ( xic4v.item_class_code = '5' ) AND ( xim2v.conv_unit IS NOT NULL  ) ) THEN
-          TRUNC ((xola.quantity / TO_NUMBER(
+-- 2009/01/13 MOD START
+--          TRUNC ((xola.quantity / TO_NUMBER(
+          TRUNC ((xmld.actual_quantity / TO_NUMBER(
+-- 2009/01/13 MOD END
                                             CASE
                                               WHEN ( xim2v.num_of_cases > 0 ) THEN
                                                 xim2v.num_of_cases
@@ -72,7 +75,10 @@ SELECT
                                             END
                                           )),3 )
     ELSE
-          xola.quantity
+-- 2009/01/13 MOD START
+--          xola.quantity
+          xmld.actual_quantity
+-- 2009/01/13 MOD END
    END                                                 AS   case_quantity        -- ケース数量
 -- 2008/10/17 MOD END
   ,ilm.attribute3                                      AS   lot_no               -- ロットNo
@@ -100,7 +106,7 @@ FROM   xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v    xott2v       -- 受注タイプ情報VIEW2
       ,xxinv_mov_lot_details            xmld         -- 移動ロット詳細 ( アドオン ) 
       ,xxcmn_item_mst2_v                xim2v        -- OPM品目情報VIEW2
-      ,xxcmn_item_categories4_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
+      ,xxcmn_item_categories5_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
       ,ic_lots_mst                      ilm          -- OPMロットマスタ
       ,xxcmn_cust_acct_sites2_v         xcas2v       -- 顧客サイト
       ,xxcmn_cust_accounts2_v           xcav         -- 顧客情報VIEW2
@@ -224,7 +230,7 @@ FROM   xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v    xott2v       -- 受注タイプ情報VIEW2
       ,xxinv_mov_lot_details            xmld         -- 移動ロット詳細 ( アドオン ) 
       ,xxcmn_item_mst2_v                xim2v        -- OPM品目情報VIEW2
-      ,xxcmn_item_categories4_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
+      ,xxcmn_item_categories5_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
       ,ic_lots_mst                      ilm          -- OPMロットマスタ
       ,xxcmn_cust_acct_sites2_v         xcas2v       -- 顧客サイト
       ,xxcmn_cust_accounts2_v           xcav         -- 顧客情報VIEW2
@@ -315,7 +321,7 @@ FROM
       ,xxwsh_oe_transaction_types2_v    xott2v       -- 受注タイプ情報VIEW2
       ,xxinv_mov_lot_details            xmld         -- 移動ロット詳細 ( アドオン ) 
       ,xxcmn_item_mst2_v                xim2v        -- OPM品目情報VIEW2
-      ,xxcmn_item_categories4_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
+      ,xxcmn_item_categories5_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
       ,ic_lots_mst                      ilm          -- OPMロットマスタ
 WHERE     xoha.req_status               =            '08'
       AND xott2v.shipping_shikyu_class  =            '2'  -- 支給依頼
@@ -423,7 +429,7 @@ FROM
       ,xxwsh_oe_transaction_types2_v    xott2v       -- 受注タイプ情報VIEW2
       ,xxinv_mov_lot_details            xmld         -- 移動ロット詳細 ( アドオン ) 
       ,xxcmn_item_mst2_v                xim2v        -- OPM品目情報VIEW2
-      ,xxcmn_item_categories4_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
+      ,xxcmn_item_categories5_v         xic4v        -- OPM品目カテゴリ割当情報VIEW4
       ,ic_lots_mst                      ilm          -- OPMロットマスタ
        --支給の場合
 WHERE     xoha.req_status               =            '07' -- 出荷実績計上済
