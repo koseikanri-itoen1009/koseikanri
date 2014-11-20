@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/09/02    1.6   M.Sano           [0001227]PT対応
  *  2009/10/02    1.7   S.Miyakoshi      [0001378対応]帳票ワークテーブルの桁あふれ対応
  *  2010/01/18    1.8   S.Miyakoshi      [E_本稼動_00711]PT対応 ログイン拠点情報VIEWからの取得をメインSQL外で処理する
+ *  2010/02/17    1.9   N.Maeda          [E_本稼動_01553]INパラメータ(納品日)妥当性チェック内容の修正
  *
  *****************************************************************************************/
 --
@@ -180,6 +181,9 @@ AS
   cv_msg_vl_key_request_id  CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00088';    --要求ID
   cv_msg_vl_min_date        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00120';    --MIN日付
   cv_msg_vl_max_date        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00056';    --MAX日付
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+  cv_msg_vl_target_month    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11859';    --原価割れチェックリスト取得対象月数
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
   --日付フォーマット
   cv_yyyymmdd               CONSTANT  VARCHAR2(100) :=  'YYYYMMDD';            --YYYYMMDD型
   cv_yyyy_mm_dd             CONSTANT  VARCHAR2(100) :=  'YYYY/MM/DD';          --YYYY/MM/DD型
@@ -214,6 +218,9 @@ AS
                                                                                -- プロファイル名(在庫組織コード)
   cv_prof_min_date          CONSTANT  VARCHAR2(100) :=  'XXCOS1_MIN_DATE';     -- プロファイル名(MIN日付)
   cv_prof_max_date          CONSTANT  VARCHAR2(100) :=  'XXCOS1_MAX_DATE';     -- プロファイル名(MAX日付)
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+  cv_prof_target_month      CONSTANT  VARCHAR2(100) :=  'XXCOS1_BELOW_COST_CL_TARGET_MONTH'; -- プロファイル名(原価割れチェックリスト取得対象月数)
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -241,6 +248,10 @@ AS
   gd_proc_date              DATE;                                               --業務日付
   gd_min_date               DATE;                                               --MIN日付
   gd_max_date               DATE;                                               --MAX日付
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+  gn_target_month           NUMBER;                                             --原価割れチェックリスト取得対象月数
+  gv_date_err_flag          VARCHAR2(10);
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
   g_base_info_tab           g_base_info_ttype;                                  --拠点情報コレクション
   gv_base_code              hz_cust_accounts.account_number%TYPE;               --拠点コード
@@ -454,6 +465,26 @@ AS
       RAISE global_api_expt;
     END;
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+    -- ===================================================
+    -- プロファイル:原価割れチェックリスト取得対象月数取得
+    -- ===================================================
+    gn_target_month := FND_PROFILE.VALUE( cv_prof_target_month );
+    IF ( gn_target_month IS NULL ) THEN
+      lv_date_item            :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_vl_target_month
+      );
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_prof_err,
+        iv_token_name1        =>  cv_tkn_nm_profile1,
+        iv_token_value1       =>  lv_date_item
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -508,19 +539,25 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lt_account_cls       fnd_lookup_values.meaning%TYPE;   --会計区分
-    ld_acc_date_from     DATE;                             --会計期間(FROM)
-    ld_acc_date_to       DATE;                             --会計期間(TO)
+-- ******** 2010/02/17 1.9 N.Maeda DEL START ******** --
+--    lt_account_cls       fnd_lookup_values.meaning%TYPE;   --会計区分
+--    ld_acc_date_from     DATE;                             --会計期間(FROM)
+--    ld_acc_date_to       DATE;                             --会計期間(TO)
+-- ******** 2010/02/17 1.9 N.Maeda DEL  END  ******** --
     ld_dlv_date_from     DATE;                             --納品日(FROM)
     ld_dlv_date_to       DATE;                             --納品日(TO)
     lv_check_item        VARCHAR2(100);                    --納品日(FROM)又は納品日(TO)文言
     lv_check_item1       VARCHAR2(100);                    --納品日(FROM)文言
     lv_check_item2       VARCHAR2(100);                    --納品日(TO)文言
-    ld_acc_date_from_ym  DATE;                             --会計期間(FROM)_年月
-    ld_acc_date_pre_ym   DATE;                             --会計期間前月_年月
+-- ******** 2010/02/17 1.9 N.Maeda DEL START ******** --
+--    ld_acc_date_from_ym  DATE;                             --会計期間(FROM)_年月
+--    ld_acc_date_pre_ym   DATE;                             --会計期間前月_年月
+-- ******** 2010/02/17 1.9 N.Maeda DEL  END  ******** --
     ld_dlv_date_from_ym  DATE;                             --納品日(FROM)_年月
     ld_dlv_date_to_ym    DATE;                             --納品日(TO)_年月
-    lv_acc_status        VARCHAR2(100);                    --会計期間ステータス
+-- ******** 2010/02/17 1.9 N.Maeda DEL START ******** --
+--    lv_acc_status        VARCHAR2(100);                    --会計期間ステータス
+-- ******** 2010/02/17 1.9 N.Maeda DEL  END  ******** --
 --
     -- *** ローカル・カーソル ***
 --
@@ -535,38 +572,14 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    --会計区分取得
-    BEGIN
--- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
-      SELECT  look_val.meaning            acc_cls
-      INTO    lt_account_cls
-      FROM    fnd_lookup_values           look_val
-      WHERE   look_val.language           = cv_lang
-      AND     look_val.lookup_type        = cv_type_acc
-      AND     look_val.attribute1         = cv_diff_y
-      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
-      AND     look_val.enabled_flag       = ct_enabled_flg_y
-      AND     rownum                      = 1
-      ;
---
+-- ******** 2010/02/17 1.9 N.Maeda DEL START ******** --
+--    --会計区分取得
+--    BEGIN
+---- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
 --      SELECT  look_val.meaning            acc_cls
 --      INTO    lt_account_cls
---      FROM    fnd_lookup_values           look_val,
---              fnd_lookup_types_tl         types_tl,
---              fnd_lookup_types            types,
---              fnd_application_tl          appl,
---              fnd_application             app
---      WHERE   appl.application_id         = types.application_id
---      AND     app.application_id          = appl.application_id
---      AND     types_tl.lookup_type        = look_val.lookup_type
---      AND     types.lookup_type           = types_tl.lookup_type
---      AND     types.security_group_id     = types_tl.security_group_id
---      AND     types.view_application_id   = types_tl.view_application_id
---      AND     types_tl.language           = cv_lang
---      AND     look_val.language           = cv_lang
---      AND     appl.language               = cv_lang
---      AND     app.application_short_name  = cv_xxcos_short_name
+--      FROM    fnd_lookup_values           look_val
+--      WHERE   look_val.language           = cv_lang
 --      AND     look_val.lookup_type        = cv_type_acc
 --      AND     look_val.attribute1         = cv_diff_y
 --      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
@@ -574,27 +587,53 @@ AS
 --      AND     look_val.enabled_flag       = ct_enabled_flg_y
 --      AND     rownum                      = 1
 --      ;
--- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        RAISE global_acc_period_cls_get_expt;
-    END;
-    --会計期間情報取得
-    xxcos_common_pkg.get_account_period(
-      iv_account_period     =>  lt_account_cls,           --会計区分
-      id_base_date          =>  NULL,                     --基準日
-      ov_status             =>  lv_acc_status,            --会計期間ステータス
-      od_start_date         =>  ld_acc_date_from,         --会計(FROM)
-      od_end_date           =>  ld_acc_date_to,           --会計(TO)
-      ov_errbuf             =>  lv_errbuf,                --エラーメッセージ
-      ov_retcode            =>  lv_retcode,               --リターンコード
-      ov_errmsg             =>  lv_errmsg                 --ユーザ・エラー・メッセージ
-    );
-    --会計期間情報取得失敗
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      RAISE global_account_period_get_expt;
-    END IF;
+----
+----      SELECT  look_val.meaning            acc_cls
+----      INTO    lt_account_cls
+----      FROM    fnd_lookup_values           look_val,
+----              fnd_lookup_types_tl         types_tl,
+----              fnd_lookup_types            types,
+----              fnd_application_tl          appl,
+----              fnd_application             app
+----      WHERE   appl.application_id         = types.application_id
+----      AND     app.application_id          = appl.application_id
+----      AND     types_tl.lookup_type        = look_val.lookup_type
+----      AND     types.lookup_type           = types_tl.lookup_type
+----      AND     types.security_group_id     = types_tl.security_group_id
+----      AND     types.view_application_id   = types_tl.view_application_id
+----      AND     types_tl.language           = cv_lang
+----      AND     look_val.language           = cv_lang
+----      AND     appl.language               = cv_lang
+----      AND     app.application_short_name  = cv_xxcos_short_name
+----      AND     look_val.lookup_type        = cv_type_acc
+----      AND     look_val.attribute1         = cv_diff_y
+----      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+----      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+----      AND     look_val.enabled_flag       = ct_enabled_flg_y
+----      AND     rownum                      = 1
+----      ;
+---- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        RAISE global_acc_period_cls_get_expt;
+--    END;
+--    --会計期間情報取得
+--    xxcos_common_pkg.get_account_period(
+--      iv_account_period     =>  lt_account_cls,           --会計区分
+--      id_base_date          =>  NULL,                     --基準日
+--      ov_status             =>  lv_acc_status,            --会計期間ステータス
+--      od_start_date         =>  ld_acc_date_from,         --会計(FROM)
+--      od_end_date           =>  ld_acc_date_to,           --会計(TO)
+--      ov_errbuf             =>  lv_errbuf,                --エラーメッセージ
+--      ov_retcode            =>  lv_retcode,               --リターンコード
+--      ov_errmsg             =>  lv_errmsg                 --ユーザ・エラー・メッセージ
+--    );
+--    --会計期間情報取得失敗
+--    IF ( lv_retcode <> cv_status_normal ) THEN
+--      RAISE global_account_period_get_expt;
+--    END IF;
 --
+-- ******** 2010/02/17 1.9 N.Maeda DEL  END  ******** --
     --納品日(FROM)書式チェック
     ld_dlv_date_from := FND_DATE.STRING_TO_DATE( iv_dlv_date_from, cv_yyyy_mm_dd );
     IF ( ld_dlv_date_from IS NULL ) THEN
@@ -618,61 +657,106 @@ AS
     IF ( ld_dlv_date_from > ld_dlv_date_to ) THEN
       RAISE global_date_rever_chk_expt;
     END IF;
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
 --
-    --会計期間(FROM)年月取得
-    ld_acc_date_from_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( ld_acc_date_from, cv_yyyy_mm ), cv_yyyy_mm );
-    --会計期間前月取得
-    ld_acc_date_pre_ym := ADD_MONTHS( ld_acc_date_from_ym, -1 );
-    --納品日(FROM)日付範囲チェック
-    ld_dlv_date_from_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( ld_dlv_date_from, cv_yyyy_mm ), cv_yyyy_mm );
-    IF ( ld_dlv_date_from_ym >= ld_acc_date_pre_ym AND ld_dlv_date_from_ym <= ld_acc_date_from_ym ) THEN
+--    --会計期間(FROM)年月取得
+--    ld_acc_date_from_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( ld_acc_date_from, cv_yyyy_mm ), cv_yyyy_mm );
+--    --会計期間前月取得
+--    ld_acc_date_pre_ym := ADD_MONTHS( ld_acc_date_from_ym, -1 );
+--    --納品日(FROM)日付範囲チェック
+--    ld_dlv_date_from_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( ld_dlv_date_from, cv_yyyy_mm ), cv_yyyy_mm );
+    -- 取得開始可能月-月初日付取得
+    ld_dlv_date_from_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( (   add_months( gd_proc_date 
+                                                               , ( gn_target_month * (-1) ) 
+                                                                           ) 
+                                                             )
+                                                             , cv_yyyy_mm 
+                                                            )
+                                                    , cv_yyyy_mm );
+    -- 取得開始可能月-最終日取得
+    ld_dlv_date_to_ym := LAST_DAY( gd_proc_date );
+--    IF ( ld_dlv_date_from_ym >= ld_acc_date_pre_ym AND ld_dlv_date_from_ym <= ld_acc_date_from_ym ) THEN
+    IF ( ld_dlv_date_from_ym <= ld_dlv_date_from ) AND ( ld_dlv_date_to_ym >= ld_dlv_date_from )THEN
       NULL;
     ELSE
       lv_check_item         :=  xxccp_common_pkg.get_msg(
         iv_application      =>  cv_xxcos_short_name,
         iv_name             =>  cv_msg_vl_date_from
       );
-      RAISE global_date_range_chk_expt;
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_date_range_err,
+        iv_token_name1        =>  cv_tkn_nm_para_date,
+        iv_token_value1       =>  lv_check_item,
+        iv_token_name2        =>  cv_tkn_nm_date_min,
+        iv_token_value2       =>  TO_CHAR( ld_dlv_date_from_ym, cv_yyyy_mm ),
+        iv_token_name3        =>  cv_tkn_nm_date_max,
+        iv_token_value3       =>  TO_CHAR( ld_dlv_date_to_ym , cv_yyyy_mm )
+      );
+      FND_FILE.PUT_LINE( which  => FND_FILE.LOG ,buff   => lv_errmsg );
+      gv_date_err_flag := cv_status_error;
+--      RAISE global_date_range_chk_expt;
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
     END IF;
-    --納品日(TO)日付範囲チェック
-    ld_dlv_date_to_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( ld_dlv_date_to, cv_yyyy_mm ), cv_yyyy_mm );
-    IF ( ld_dlv_date_to_ym >= ld_acc_date_pre_ym AND ld_dlv_date_to_ym <= ld_acc_date_from_ym ) THEN
+--    --納品日(TO)日付範囲チェック
+--    ld_dlv_date_to_ym := FND_DATE.STRING_TO_DATE( TO_CHAR( ld_dlv_date_to, cv_yyyy_mm ), cv_yyyy_mm );
+--    IF ( ld_dlv_date_to_ym >= ld_acc_date_pre_ym AND ld_dlv_date_to_ym <= ld_acc_date_from_ym ) THEN
+    -- 取得可能最終日チェック
+    IF ( ld_dlv_date_from_ym <= ld_dlv_date_to ) AND ( ld_dlv_date_to_ym >= ld_dlv_date_to )THEN
       NULL;
     ELSE
       lv_check_item         :=  xxccp_common_pkg.get_msg(
         iv_application      =>  cv_xxcos_short_name,
         iv_name             =>  cv_msg_vl_date_to
       );
-      RAISE global_date_range_chk_expt;
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_date_range_err,
+        iv_token_name1        =>  cv_tkn_nm_para_date,
+        iv_token_value1       =>  lv_check_item,
+        iv_token_name2        =>  cv_tkn_nm_date_min,
+        iv_token_value2       =>  TO_CHAR( ld_dlv_date_from_ym, cv_yyyy_mm ),
+        iv_token_name3        =>  cv_tkn_nm_date_max,
+        iv_token_value3       =>  TO_CHAR( ld_dlv_date_to_ym , cv_yyyy_mm )
+      );
+      FND_FILE.PUT_LINE( which  => FND_FILE.LOG ,buff   => lv_errmsg );
+      gv_date_err_flag := cv_status_error;
+--      RAISE global_date_range_chk_expt;
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
     END IF;
 --
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
     --チェックOK
     od_dlv_date_from := ld_dlv_date_from;
     od_dlv_date_to   := ld_dlv_date_to;
 --
   EXCEPTION
-    -- *** 会計期間区分取得例外ハンドラ ***
-    WHEN global_acc_period_cls_get_expt THEN
-      ov_errmsg               :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_acc_cls_get_err,
-        iv_token_name1        =>  cv_tkn_nm_account,
-        iv_token_value1       =>  cv_msg_vl_acc_cls_ar,
-        iv_token_name2        =>  cv_tkn_nm_acc_type,
-        iv_token_value2       =>  cv_type_acc
-      );
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
-    -- *** 会計期間取得例外ハンドラ ***
-    WHEN global_account_period_get_expt THEN
-      ov_errmsg               :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_acc_perd_get_err,
-        iv_token_name1        =>  cv_tkn_nm_account,
-        iv_token_value1       =>  cv_msg_vl_acc_cls_ar
-      );
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- ******** 2010/02/17 1.9 N.Maeda DEL START ******** --
+--    -- *** 会計期間区分取得例外ハンドラ ***
+--    WHEN global_acc_period_cls_get_expt THEN
+--      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxcos_short_name,
+--        iv_name               =>  cv_msg_acc_cls_get_err,
+--        iv_token_name1        =>  cv_tkn_nm_account,
+--        iv_token_value1       =>  cv_msg_vl_acc_cls_ar,
+--        iv_token_name2        =>  cv_tkn_nm_acc_type,
+--        iv_token_value2       =>  cv_type_acc
+--      );
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** 会計期間取得例外ハンドラ ***
+--    WHEN global_account_period_get_expt THEN
+--      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxcos_short_name,
+--        iv_name               =>  cv_msg_acc_perd_get_err,
+--        iv_token_name1        =>  cv_tkn_nm_account,
+--        iv_token_value1       =>  cv_msg_vl_acc_cls_ar
+--      );
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+--      ov_retcode := cv_status_error;
+-- ******** 2010/02/17 1.9 N.Maeda DEL  END  ******** --
     -- *** 書式チェック例外ハンドラ ***
     WHEN global_format_chk_expt THEN
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
@@ -703,20 +787,20 @@ AS
       );
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
-    -- *** 日付範囲チェック例外ハンドラ ***
-    WHEN global_date_range_chk_expt THEN
-      ov_errmsg               :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_date_range_err,
-        iv_token_name1        =>  cv_tkn_nm_para_date,
-        iv_token_value1       =>  lv_check_item,
-        iv_token_name2        =>  cv_tkn_nm_date_min,
-        iv_token_value2       =>  TO_CHAR( ld_acc_date_pre_ym, cv_yyyy_mm ),
-        iv_token_name3        =>  cv_tkn_nm_date_max,
-        iv_token_value3       =>  TO_CHAR( ld_acc_date_from_ym, cv_yyyy_mm )
-      );
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
+--    -- *** 日付範囲チェック例外ハンドラ ***
+--    WHEN global_date_range_chk_expt THEN
+--      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxcos_short_name,
+--        iv_name               =>  cv_msg_date_range_err,
+--        iv_token_name1        =>  cv_tkn_nm_para_date,
+--        iv_token_value1       =>  lv_check_item,
+--        iv_token_name2        =>  cv_tkn_nm_date_min,
+--        iv_token_value2       =>  TO_CHAR( ld_acc_date_pre_ym, cv_yyyy_mm ),
+--        iv_token_name3        =>  cv_tkn_nm_date_max,
+--        iv_token_value3       =>  TO_CHAR( ld_acc_date_from_ym, cv_yyyy_mm )
+--      );
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+--      ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2089,6 +2173,9 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+-- ******** 2010/02/17 1.9 N.Maeda ADD START ******** --
+    gv_date_err_flag := cv_status_normal;
+-- ******** 2010/02/17 1.9 N.Maeda ADD  END  ******** --
 --
     -- ===============================
     -- A-1  初期処理
@@ -2125,59 +2212,62 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- A-3  対象データ取得
-    -- ===============================
-    get_data(
-      iv_sale_base_code,  -- 売上拠点コード
-      ld_dlv_date_from,   -- 納品日(FROM)
-      ld_dlv_date_to,     -- 納品日(TO)
-      iv_sale_emp_code,   -- 営業担当者コード
-      iv_ship_to_code,    -- 出荷先コード
-      lv_errbuf,          -- エラー・メッセージ           --# 固定 #
-      lv_retcode,         -- リターン・コード             --# 固定 #
-      lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+-- ******** 2010/02/17 1.9 N.Maeda ADD START ******** --
+    IF ( gv_date_err_flag = cv_status_normal ) THEN
+-- ******** 2010/02/17 1.9 N.Maeda ADD  END  ******** --
+      -- ===============================
+      -- A-3  対象データ取得
+      -- ===============================
+      get_data(
+        iv_sale_base_code,  -- 売上拠点コード
+        ld_dlv_date_from,   -- 納品日(FROM)
+        ld_dlv_date_to,     -- 納品日(TO)
+        iv_sale_emp_code,   -- 営業担当者コード
+        iv_ship_to_code,    -- 出荷先コード
+        lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+        lv_retcode,         -- リターン・コード             --# 固定 #
+        lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
+      IF ( lv_retcode = cv_status_normal ) THEN
+        NULL;
+      ELSE
+        RAISE global_process_expt;
+      END IF;
 --
-    -- ===============================
-    -- A-4  営業原価チェック
-    -- ===============================
-    IF ( g_err_item_cd_tab.COUNT > 0 ) THEN
-     check_cost(
-       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-       lv_retcode,        -- リターン・コード             --# 固定 #
-       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-     IF ( lv_retcode = cv_status_normal ) THEN
-       NULL;
-     ELSE
-       RAISE global_process_expt;
-     END IF;
-    END IF;
+      -- ===============================
+      -- A-4  営業原価チェック
+      -- ===============================
+      IF ( g_err_item_cd_tab.COUNT > 0 ) THEN
+       check_cost(
+         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+         lv_retcode,        -- リターン・コード             --# 固定 #
+         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+       IF ( lv_retcode = cv_status_normal ) THEN
+         NULL;
+       ELSE
+         RAISE global_process_expt;
+       END IF;
+      END IF;
 --
-    -- ===============================
-    -- A-5  帳票ワークテーブル登録
-    -- ===============================
-    insert_rpt_wrk_data(
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-    IF ( lv_retcode = cv_status_normal ) THEN
-      COMMIT;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+      -- ===============================
+      -- A-5  帳票ワークテーブル登録
+      -- ===============================
+      insert_rpt_wrk_data(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF ( lv_retcode = cv_status_normal ) THEN
+        COMMIT;
+      ELSE
+        RAISE global_process_expt;
+      END IF;
 --
-    -- ===============================
-    -- A-6  SVF起動
-    -- ===============================
-    execute_svf(
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      -- ===============================
+      -- A-6  SVF起動
+      -- ===============================
+      execute_svf(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 --
 -- 2009/06/25  Ver1.4  T1_1437  Mod Start
 --    IF ( lv_retcode = cv_status_normal ) THEN
@@ -2185,43 +2275,49 @@ AS
 --    ELSE
 --      RAISE global_process_expt;
 --    END IF;
-    --
-    --エラーでもワークテーブルを削除する為、エラー情報を保持
-    lv_errbuf_svf  := lv_errbuf;
-    lv_retcode_svf := lv_retcode;
-    lv_errmsg_svf  := lv_errmsg;
+      --
+      --エラーでもワークテーブルを削除する為、エラー情報を保持
+      lv_errbuf_svf  := lv_errbuf;
+      lv_retcode_svf := lv_retcode;
+      lv_errmsg_svf  := lv_errmsg;
 -- 2009/06/25  Ver1.4 T1_1437  Mod End
 --
-    -- ===============================
-    -- A-7  帳票ワークテーブル削除
-    -- ===============================
-    delete_rpt_wrk_data(
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+      -- ===============================
+      -- A-7  帳票ワークテーブル削除
+      -- ===============================
+      delete_rpt_wrk_data(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF ( lv_retcode = cv_status_normal ) THEN
+        NULL;
+      ELSE
+        RAISE global_process_expt;
+      END IF;
 --
 -- 2009/06/25  Ver1.4 T1_1437  Add start
-    --エラーの場合、ロールバックするのでここでコミット
-    COMMIT;
+      --エラーの場合、ロールバックするのでここでコミット
+      COMMIT;
 --
-    --SVF実行結果確認
-    IF ( lv_retcode_svf = cv_status_error ) THEN
-      lv_errbuf  := lv_errbuf_svf;
-      lv_retcode := lv_retcode_svf;
-      lv_errmsg  := lv_errmsg_svf;
-      RAISE global_process_expt;
+      --SVF実行結果確認
+      IF ( lv_retcode_svf = cv_status_error ) THEN
+        lv_errbuf  := lv_errbuf_svf;
+        lv_retcode := lv_retcode_svf;
+        lv_errmsg  := lv_errmsg_svf;
+        RAISE global_process_expt;
+      END IF;
+  -- 2009/06/25  Ver1.4 T1_1437  Add End
+-- ******** 2010/02/17 1.9 N.Maeda ADD START ******** --
     END IF;
--- 2009/06/25  Ver1.4 T1_1437  Add End
+-- ******** 2010/02/17 1.9 N.Maeda ADD  END  ******** --
 --
     --明細0件時／営業原価チェックエラー時ステータス制御処理
 --****************************** 2009/06/17 1.3 N.Nishimura MOD START ******************************--
 --    IF ( gn_target_cnt = 0 OR gn_warn_cnt > 0 ) THEN
-    IF ( gn_target_cnt <> 0 ) THEN
+-- ******** 2010/02/17 1.9 N.Maeda MOD START ******** --
+--    IF ( gn_target_cnt <> 0 ) THEN
+    IF ( gn_target_cnt <> 0 ) OR ( gv_date_err_flag != cv_status_normal ) THEN
+-- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
 --****************************** 2009/06/17 1.3 N.Nishimura MOD  END  ******************************--
       ov_retcode := cv_status_warn;
     END IF;
