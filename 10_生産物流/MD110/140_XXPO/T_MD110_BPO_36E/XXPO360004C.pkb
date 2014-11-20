@@ -7,7 +7,7 @@ AS
  * Description      : édì¸ñæç◊ï\
  * MD.050/070       : óLèûéxããí†ï[Issue1.0(T_MD050_BPO_360)
  *                  : óLèûéxããí†ï[Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2008/10/21    1.16  T.Ohashi         T_S_456,T_TE080_BPO_300 éwìE29ëŒâû
  *  2008/11/04    1.17  Y.Yamamoto       ìùçáè·äQ#470
  *  2008/12/08    1.18  H.Itou           ñ{î‘è·äQ#551
+ *  2008/12/09    1.19  T.Yoshimoto      ñ{î‘è·äQ#579
  *****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -692,34 +693,36 @@ AS
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) AS   unit_price, '                -- íPâø
+-- 2008/12/08 T.Yoshimoto Mod Start ñ{î‘è·äQ#597
 -- 2008/12/08 H.Itou Mod Start ñ{î‘è·äQ#551
---              || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
---              || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
---              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
---              || ' , rcrt.quantity ) * '
---              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
---              || ' rcrt.kobki_converted_unit_price,'
---              || ' pla.unit_price) , '
---              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
---              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
---              || ' , rcrt.quantity ) * '
---              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
---              || ' rcrt.kobki_converted_unit_price,'
---              || ' pla.unit_price) ), ' || cn_sts_num_zero
               || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
               || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.rcv_rtn_quantity ) * '
+              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) , '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.rcv_rtn_quantity ) * '
+              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) ), ' || cn_sts_num_zero
+--              || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
+--              || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
+--              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
+--              || ' , rcrt.rcv_rtn_quantity ) * '
+--              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
+--              || ' rcrt.kobki_converted_unit_price,'
+--              || ' pla.unit_price) , '
+--              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
+--              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
+--              || ' , rcrt.rcv_rtn_quantity ) * '
+--              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
+--              || ' rcrt.kobki_converted_unit_price,'
+--              || ' pla.unit_price) ), ' || cn_sts_num_zero
 -- 2008/12/08 H.Itou Mod End
+-- 2008/12/08 T.Yoshimoto Mod End ñ{î‘è·äQ#597
               || ' ) AS amount_pay, '                                   -- édì¸ã‡äz
               || ' xilv.segment1 AS deliver_dist,'                      -- ï€ä«ëqå…ÉRÅ[Éh
 -- mod start 1.16
@@ -953,12 +956,14 @@ AS
                 || ' rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' AS total_cnt,'
                 || ' rcrt.rcv_rtn_uom           AS  rtn_uom,'
                 || ' rcrt.kobki_converted_unit_price  AS  unit_price,'
+-- 2008/12/08 T.Yoshimoto Mod Start ñ{î‘è·äQ#597
 -- 2008/12/08 H.Itou Mod Start ñ{î‘è·äQ#551
---                || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
---                || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
-                || ' ROUND((( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) * ( '
+                || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
                 || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
+--                || ' ROUND((( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) * ( '
+--                || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
 -- 2008/12/08 H.Itou Mod End
+-- 2008/12/08 T.Yoshimoto Mod End ñ{î‘è·äQ#597
                 || ' AS amount_pay,'
                 || ' rcrt.location_code         AS  deliver_dist,'
                 || ' rcrt.line_description      AS  po_attr15,'
