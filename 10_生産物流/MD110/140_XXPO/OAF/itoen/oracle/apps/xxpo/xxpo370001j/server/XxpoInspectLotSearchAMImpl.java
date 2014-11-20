@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotSearchAMImpl
 * 概要説明   : 検査ロット情報検索・登録アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-12-24 1.2  二瓶大輔       本番障害#743対応
 * 2009-02-06 1.3  伊藤ひとみ     本番障害#1147対応
 * 2009-02-13 1.4  伊藤ひとみ     本番障害#1147対応
+* 2009-02-17 1.5  伊藤ひとみ     本番障害#1096対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370001j.server;
@@ -492,7 +493,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
    * @throws OAException OA例外
    ***************************************************************************
    */
-  public List doInsert() throws OAException
+// 2009-02-17 H.Itou Mod Start
+//  public List doInsert() throws OAException
+  public ArrayList[] doInsert() throws OAException
+// 2009-02-17 H.Itou Mod End
   {
     // 変数定義
     Number lotId = null;
@@ -502,10 +506,17 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     String testCode = null;
     int qtInspectReqNo = 0;
 
-    // 処理結果メッセージ格納用リストの定義
-    List exptArray = new ArrayList();
+// 2009-02-17 H.Itou Del End
+//    // 処理結果メッセージ格納用リストの定義
+//    List exptArray = new ArrayList();
+// 2009-02-17 H.Itou Del End
     // 戻り値用リストの定義
-    List retArray = new ArrayList();
+    ArrayList retArray = new ArrayList();
+
+// 2009-02-17 H.Itou Add Start
+    // 完了メッセージ
+    ArrayList messages = new ArrayList();
+// 2009-02-17 H.Itou Add End
 
     // トランザクションの取得
     OADBTransaction trans = getOADBTransaction();
@@ -535,7 +546,9 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
       // *      ロット作成API     * //
       // ************************* //
       lotId = callCreateLot(trans, lotNo, testCode);
-
+// 2009-02-17 H.Itou Add Start
+      registRow.setAttribute("LotId", lotId); 
+// 2009-02-17 H.Itou Add End
       // 戻り値リストにロットIDを追加
       retArray.add(lotId);
 
@@ -547,29 +560,47 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
       // Catchした例外をスローする
       throw createLotExpt;
     }
+// 2009-02-17 H.Itou Add Start 本番障害#1096
+    // ロット作成成功メッセージ
+    MessageToken[] tokens = {
+      new MessageToken("PROCESS", XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
 
+    messages.add(
+      new OAException(
+        XxcmnConstants.APPL_XXCMN,
+        XxcmnConstants.XXCMN05001,
+        tokens,
+        OAException.INFORMATION,
+        null));
+// 2009-02-17 H.Itou Add End
     // 品目に紐づく試験有無区分が「1(有)」の場合
     if ("1".equals(testCode))
     {
-      try
-      {
-        // ************************* //
-        // * 品質検査依頼情報作成API * //
-        // ************************* //
-        qtInspectReqNo = callMakeQtInspection(trans,
-                                              lotId,
-                                              itemId,
-                                              0,
-                                              "insert"); 
-        // 戻り値リストに品質検査依頼No.を追加
-        retArray.add(new Number(qtInspectReqNo));
-
-      } catch(OAException makeQtInspectExpt)
-      {
-        // ロールバックの実行
-        trans.executeCommand(
-          "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
-
+// 2009-02-17 H.Itou Mod Start 本番障害#1096
+      // ******************************* //
+      // * 品質検査依頼情報作成・更新  * //
+      // ******************************* //
+      callMakeQtInspection(messages);
+//      try
+//      {
+//
+//        // ************************* //
+//        // * 品質検査依頼情報作成API * //
+//        // ************************* //
+//        qtInspectReqNo = callMakeQtInspection(trans,
+//                                              lotId,
+//                                              itemId,
+//                                              0,
+//                                              "insert"); 
+//        // 戻り値リストに品質検査依頼No.を追加
+//        retArray.add(new Number(qtInspectReqNo));
+//
+//      } catch(OAException makeQtInspectExpt)
+//      {
+//        // ロールバックの実行
+//        trans.executeCommand(
+//          "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+//
 // 20080321 del yoshimoto Start
 /*
         // メッセージをリストに追加
@@ -586,16 +617,24 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
 */
 // 20080321 del yoshimoto End
 
-        // 品質検査依頼情報作成失敗メッセージ
-        exptArray.add(makeQtInspectExpt);
-
-        // 例外の出力
-        OAException.raiseBundledOAException(exptArray);
-      }
+//        // 品質検査依頼情報作成失敗メッセージ
+//        exptArray.add(makeQtInspectExpt);
+//
+//        // 例外の出力
+//        OAException.raiseBundledOAException(exptArray);
+//      }
+// 2009-02-17 H.Itou Mod End
     }
     // コミット
     trans.commit();
-    return retArray;
+// 2009-02-17 H.Itou Mod Start
+    // 戻り値
+    ArrayList result[] = new ArrayList[2];
+    result[0] = retArray; // 新規登録したロットID
+    result[1] = messages; // 完了メッセージ
+//    return retArray;
+    return result;
+// 2009-02-17 H.Itou Mod End
   }
 
   /***************************************************************************
@@ -603,7 +642,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
    * @throws OAException
    ***************************************************************************
    */
-  public List doUpdate() throws OAException
+// 2009-02-17 H.Itou Mod Start
+//  public List doUpdate() throws OAException
+  public ArrayList doUpdate() throws OAException
+// 2009-02-17 H.Itou Mod Start
   {
     // 変数定義
     Number lotId = null;
@@ -614,7 +656,11 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     int qtInspectReqNo = 0;
     
     // 処理結果メッセージ格納用リストの定義
-    List exptArray = new ArrayList();
+// 2009-02-17 H.Itou Mod Start
+//    List exptArray = new ArrayList();
+    ArrayList messages = new ArrayList();
+// 2009-02-17 H.Itou Mod Start
+
     // 日付/時刻フォーマットサブクラス定義
     SimpleDateFormat sdf1 = new SimpleDateFormat("yyyy/MM/dd");
     
@@ -668,6 +714,20 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
       // 異常終了した場合、Catchした例外をスローする
       throw updateLotExpt;
     }
+// 2009-02-17 H.Itou Add Start
+    // ロット情報更新成功メッセージ
+    MessageToken[] tokens = {
+      new MessageToken("PROCESS",
+                       XxpoConstants.TOKEN_NAME_UPDATE_LOT_INFO) };
+
+    messages.add(
+      new OAException(
+        XxcmnConstants.APPL_XXCMN,
+        XxcmnConstants.XXCMN05001,
+        tokens,
+        OAException.INFORMATION,
+        null));
+// 2009-02-17 H.Itou Add End
 
     // 製造日/仕入日を取得
     Date attribute1Date =
@@ -679,32 +739,44 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 製造日/仕入日が変更された場合
     if (!txtAttribute1Date.equals(preAttribute1))
-    {        
+    {
+// 2009-02-17 H.Itou Add Start 本番障害#1096
+      String createLotDiv = (String)registRow.getAttribute("Attribute24"); // 作成区分
+// 2009-02-17 H.Itou Add End
       // 品目に紐づく試験有無区分が「1(有)」の場合
-      if ("1".equals(testCode))
+// 2009-02-17 H.Itou Mod Start 本番障害#1096
+//      if ("1".equals(testCode))
+      if ("1".equals(testCode)
+        && "1".equals(createLotDiv)) // 作成区分が1:検査ロットの場合
+// 2009-02-17 H.Itou Mod End
       {
-        try
-        {
-          // ロック処理
-          getInspectLock(trans, qtInspectReqNo, lotId, itemId);
-          // 排他制御
-          chkInspectEexclusiveControl(trans, qtInspectReqNo, lotId, itemId);
-      
-          // ************************* //
-          // * 品質検査依頼情報更新API * //
-          // ************************* //        
-          qtInspectReqNo = callMakeQtInspection(trans,
-                                                lotId,
-                                                itemId,
-                                                qtInspectReqNo,
-                                                "update");              
-        } catch(OAException makeQtInspectExpt)
-        {
-          // ロールバック、コミット(ロックの解除)の実行
-          trans.executeCommand(
-            "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
-          trans.commit();
-          
+// 2009-02-17 H.Itou Mod Start 本番障害#1096
+      // ******************************* //
+      // * 品質検査依頼情報作成・更新  * //
+      // ******************************* //       
+      callMakeQtInspection(messages);   
+//        try
+//        {
+//          // ロック処理
+//          getInspectLock(trans, qtInspectReqNo, lotId, itemId);
+//          // 排他制御
+//          chkInspectEexclusiveControl(trans, qtInspectReqNo, lotId, itemId);
+//      
+//          // ************************* //
+//          // * 品質検査依頼情報更新API * //
+//          // ************************* //        
+//          qtInspectReqNo = callMakeQtInspection(trans,
+//                                                lotId,
+//                                                itemId,
+//                                                qtInspectReqNo,
+//                                                "update");                         
+//        } catch(OAException makeQtInspectExpt)
+//        {
+//          // ロールバック、コミット(ロックの解除)の実行
+//          trans.executeCommand(
+//            "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+//          trans.commit();
+//          
 // 20080321 del yoshimoto Start
 /*
           // メッセージの追加
@@ -721,57 +793,63 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
                           null));
 */
 // 20080321 del yoshimoto End
-
-          // 品質検査依頼情報更新失敗メッセージ           
-          exptArray.add(makeQtInspectExpt);
-
-          // 例外の出力
-          OAException.raiseBundledOAException(exptArray);
-        }
-        // 正常終了した場合、メッセージをリストに格納
-        // ロット情報更新成功メッセージ
-        MessageToken[] tokens = {
-          new MessageToken("PROCESS",
-                           XxpoConstants.TOKEN_NAME_UPDATE_LOT_INFO) };
-
-        exptArray.add(new OAException(
-                        XxcmnConstants.APPL_XXCMN,
-                        XxcmnConstants.XXCMN05001,
-                        tokens,
-                        OAException.INFORMATION,
-                        null));
-
-        // 品質検査依頼情報更新成功メッセージ
-        MessageToken[] tokens2 = { new MessageToken(
-          "PROCESS", XxpoConstants.TOKEN_NAME_UPDATE_QT_INSPECTION) };
-
-        exptArray.add(new OAException(
-                        XxcmnConstants.APPL_XXCMN,
-                        XxcmnConstants.XXCMN05001,
-                        tokens2,
-                        OAException.INFORMATION,
-                        null));
-        // コミット
-        trans.commit();
-
-        // メッセージの出力
-        return exptArray;
+//
+//          // 品質検査依頼情報更新失敗メッセージ           
+//          exptArray.add(makeQtInspectExpt);
+//
+//          // 例外の出力
+//          OAException.raiseBundledOAException(exptArray);
+//        }
+//        // 正常終了した場合、メッセージをリストに格納
+//        // ロット情報更新成功メッセージ
+//        MessageToken[] tokens = {
+//          new MessageToken("PROCESS",
+//                           XxpoConstants.TOKEN_NAME_UPDATE_LOT_INFO) };
+//
+//        exptArray.add(new OAException(
+//                        XxcmnConstants.APPL_XXCMN,
+//                        XxcmnConstants.XXCMN05001,
+//                        tokens,
+//                        OAException.INFORMATION,
+//                        null));
+//
+//        // 品質検査依頼情報更新成功メッセージ
+//        MessageToken[] tokens2 = { new MessageToken(
+//          "PROCESS", XxpoConstants.TOKEN_NAME_UPDATE_QT_INSPECTION) };
+//
+//        exptArray.add(new OAException(
+//                        XxcmnConstants.APPL_XXCMN,
+//                        XxcmnConstants.XXCMN05001,
+//                        tokens2,
+//                        OAException.INFORMATION,
+//                        null));
+//        // コミット
+//        trans.commit();
+//
+//        // メッセージの出力
+//        return exptArray;
+// 2009-02-17 H.Itou Mod End
       }
     }
-    // ロット情報更新成功メッセージ
-    MessageToken[] tokens = {
-      new MessageToken("PROCESS", XxpoConstants.TOKEN_NAME_UPDATE_LOT_INFO) };
-
-    exptArray.add(new OAException(
-                    XxcmnConstants.APPL_XXCMN,
-                    XxcmnConstants.XXCMN05001,
-                    tokens,
-                    OAException.INFORMATION,
-                    null));
+// 2009-02-17 H.Itou Del Start
+//    // ロット情報更新成功メッセージ
+//    MessageToken[] tokens = {
+//      new MessageToken("PROCESS", XxpoConstants.TOKEN_NAME_UPDATE_LOT_INFO) };
+//
+//    exptArray.add(new OAException(
+//                    XxcmnConstants.APPL_XXCMN,
+//                    XxcmnConstants.XXCMN05001,
+//                    tokens,
+//                    OAException.INFORMATION,
+//                    null));
+// 2009-02-17 H.Itou Del End
     // コミット
     trans.commit();
-    // メッセージの出力
-    return exptArray;
+// 2009-02-17 H.Itou Mod Start
+//    // メッセージの出力
+//    return exptArray;
+    return messages;
+// 2009-02-17 H.Itou Mod End
   }
 
   /***************************************************************************
@@ -1363,21 +1441,32 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
 
   /***************************************************************************
    * 品質検査依頼情報の作成/更新を行う処理です。
-   * @param trans トランザクション
-   * @param lotId ロットID
-   * @param itemId 品目ID
-   * @param pQtInspectReqNo 検査依頼No
-   * @param chkInsUpd 処理区分(insert:作成、update：更新)
-   * @return rQtInspectReqNo 検査依頼No
+   * @param message - メッセージ
    * @throws OAException OA例外
    ***************************************************************************
    */
-  public int callMakeQtInspection(OADBTransaction trans,
-                                     Number lotId,
-                                     Number itemId,
-                                     int    pQtInspectReqNo,
-                                     String chkInsUpd) throws OAException
+// 2009-02-17 H.Itou Mod Start 本番障害#1096
+//  public int callMakeQtInspection(OADBTransaction trans,
+//                                     Number lotId,
+//                                     Number itemId,
+//                                     int    pQtInspectReqNo,
+//                                     String chkInsUpd) throws OAException
+  public void callMakeQtInspection(ArrayList message) throws OAException
+// 2009-02-17 H.Itou Mod End
   {
+// 2009-02-17 H.Itou Add Start 本番障害#1096
+    // トランザクション取得
+    OADBTransaction trans = getOADBTransaction();
+    // VOの取得
+    OAViewObject registVo = (OAViewObject)getXxpoLotsMstRegVO1();
+    // 現在行の取得
+    Row registRow = registVo.getCurrentRow();
+    
+    Number lotId  = (Number)registRow.getAttribute("LotId");  // ロットID
+    Number itemId = (Number)registRow.getAttribute("ItemId"); // 品目ID
+    int pQtInspectReqNo;
+// 2009-02-17 H.Itou Add End
+
     // 変数定義
     int rQtInspectReqNo = 0;
     String retCode = null;
@@ -1410,7 +1499,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
       trans.createCallableStatement(sb.toString(), trans.DEFAULT);
 
     // 作成の場合
-    if ("insert".equals(chkInsUpd))
+// 2009-02-17 H.Itou Mod Start 本番障害#1096
+//    if ("insert".equals(chkInsUpd))
+    if (XxcmnUtility.isBlankOrNull(registRow.getAttribute("Attribute22")))
+// 2009-02-17 H.Itou Mod End
     {
       try
       {
@@ -1432,12 +1524,33 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
         // 正常終了
         if ("0".equals(retCode))
         {
+// 2009-02-17 H.Itou Add Start
+          // 品質検査依頼情報作成成功メッセージ
+          MessageToken[] tokens =
+            { new MessageToken("PROCESS", XxpoConstants.TOKEN_NAME_CREATE_QT_INSPECTION) };
+
+          message.add(
+            new OAException(
+              XxcmnConstants.APPL_XXCMN,
+              XxcmnConstants.XXCMN05001,
+              tokens,
+              OAException.INFORMATION,
+              null));
+// 2009-02-17 H.Itou Add End
+// 2009-02-17 H.Itou Del Start
           // 検査依頼Noを取得
-          rQtInspectReqNo = cstmt.getInt(5);
+//          rQtInspectReqNo = cstmt.getInt(5);
+// 2009-02-17 H.Itou Del End
 
         // 異常終了
         } else
         {
+// 2009-02-17 H.Itou Add Start
+        // ロールバックの実行
+        trans.executeCommand(
+          "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+// 2009-02-17 H.Itou Add End
+
           // エラーメッセージ出力
           MessageToken[] tokens = { 
             new MessageToken("INFO_NAME",
@@ -1453,6 +1566,11 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
         }
       } catch(SQLException expt)
       {
+// 2009-02-17 H.Itou Add Start
+        // ロールバックの実行
+        trans.executeCommand(
+          "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+// 2009-02-17 H.Itou Add End
         throw OAException.wrapperException(expt);
 
       } finally
@@ -1465,6 +1583,11 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
           
           } catch (SQLException expt2)
           {
+// 2009-02-17 H.Itou Add Start
+            // ロールバックの実行
+            trans.executeCommand(
+              "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+// 2009-02-17 H.Itou Add End
             // ログの取得
             XxcmnUtility.writeLog(
               trans,
@@ -1478,10 +1601,25 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
       }
 
     // 更新の場合
-    } else if ("update".equals(chkInsUpd))
+// 2009-02-17 H.Itou Mod Start 本番障害#1096
+//    } else if ("update".equals(chkInsUpd))
+    } else
+// 2009-02-17 H.Itou Mod End
     {
       try
       {
+// 2009-02-17 H.Itou Add Start 本番障害#1096
+        // 検査依頼No取得
+        pQtInspectReqNo =
+          Integer.parseInt((String)registRow.getAttribute("Attribute22"));
+
+        // ロック処理
+        getInspectLock(trans, pQtInspectReqNo, lotId, itemId);
+
+        // 排他制御
+        chkInspectEexclusiveControl(trans, pQtInspectReqNo, lotId, itemId);
+// 2009-02-17 H.Itou Add End
+
         // バインド変数に値を設定
         cstmt.setString(1, "2");
         cstmt.setInt(2, XxcmnUtility.intValue(lotId));
@@ -1499,11 +1637,31 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
 
         if ("0".equals(retCode))
         {
-          // 検査依頼Noを取得
-          rQtInspectReqNo = cstmt.getInt(5);
+// 2009-02-17 H.Itou Add Start
+          // 品質検査依頼情報更新成功メッセージ
+          MessageToken[] tokens =
+            { new MessageToken("PROCESS", XxpoConstants.TOKEN_NAME_UPDATE_QT_INSPECTION) };
+
+          message.add(
+            new OAException(
+              XxcmnConstants.APPL_XXCMN,
+              XxcmnConstants.XXCMN05001,
+              tokens,
+              OAException.INFORMATION,
+              null));
+// 2009-02-17 H.Itou Add End
+// 2009-02-17 H.Itou Del Start
+//          // 検査依頼Noを取得
+//          rQtInspectReqNo = cstmt.getInt(5);
+// 2009-02-17 H.Itou Del End
 
         } else
         {
+// 2009-02-17 H.Itou Add Start
+          // ロールバックの実行
+          trans.executeCommand(
+            "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+// 2009-02-17 H.Itou Add End
           // エラーメッセージ出力
           MessageToken[] tokens = {
             new MessageToken(
@@ -1522,6 +1680,11 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
         }
       } catch(SQLException expt)
       {
+// 2009-02-17 H.Itou Add Start
+        // ロールバックの実行
+        trans.executeCommand(
+          "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+// 2009-02-17 H.Itou Add End
         // ログの取得
         XxcmnUtility.writeLog(
           trans,
@@ -1541,6 +1704,11 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
             cstmt.close();
           } catch (SQLException expt2)
           {
+// 2009-02-17 H.Itou Add Start
+            // ロールバックの実行
+            trans.executeCommand(
+              "ROLLBACK TO SAVEPOINT " + XxpoConstants.SAVE_POINT_XXPO370002J);
+// 2009-02-17 H.Itou Add End
             // ログの取得
             XxcmnUtility.writeLog(
               trans,
@@ -1554,8 +1722,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
         }
       }
     }
-    // 検査依頼Noを返す
-    return rQtInspectReqNo;
+// 2009-02-17 H.Itou Del Start
+//    // 検査依頼Noを返す
+//    return rQtInspectReqNo;
+// 2009-02-17 H.Itou Del End
   }
 
   /***************************************************************************

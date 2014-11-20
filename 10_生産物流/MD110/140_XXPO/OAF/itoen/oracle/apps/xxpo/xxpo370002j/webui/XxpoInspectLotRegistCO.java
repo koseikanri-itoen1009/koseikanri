@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotRegistCO
 * 概要説明   : 検査ロット:登録コントローラ
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者        修正内容
@@ -9,6 +9,7 @@
 * 2008-01-29 1.0  戸谷田 大輔    新規作成
 * 2008-05-09 1.1  熊本 和郎      内部変更要求#28,41,43対応
 * 2009-02-06 1.2  伊藤 ひとみ    エラー発生時の再表示の制御について修正
+* 2009-02-17 1.3  伊藤 ひとみ    本番障害#1096対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370002j.webui;
@@ -23,8 +24,9 @@ import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
 import itoen.oracle.apps.xxpo.util.XxpoConstants;
 
 import java.io.Serializable;
-
-import oracle.apps.fnd.common.MessageToken;
+// del start 1.3
+//import oracle.apps.fnd.common.MessageToken;
+// del end 1.3
 import oracle.apps.fnd.common.VersionInfo;
 import oracle.apps.fnd.framework.OAApplicationModule;
 import oracle.apps.fnd.framework.OAException;
@@ -43,7 +45,7 @@ import java.sql.SQLException;
 /***************************************************************************
  * 検査ロット:登録コントローラクラスです。
  * @author  ORACLE 戸谷田 大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
@@ -284,7 +286,10 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
 //        try
 //        {
 // del end 1.2
-          List list = (List)am.invokeMethod("doUpdate");
+// mod start 1.3
+//          List list = (List)am.invokeMethod("doUpdate");
+          ArrayList list = (ArrayList)am.invokeMethod("doUpdate");
+// mod end 1.3
 // del start 1.2
 //          OAException oae = OAException.getBundledOAException(list);
 //          pageContext.putDialogMessage(oae);
@@ -300,8 +305,10 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
             pageContext, XxpoConstants.TXN_XXPO370002J);
 // add start 1.2
           pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+
           // メッセージ出力
           OAException.raiseBundledOAException(list);
+
 // add end 1.2
 // del start 1.2
 //          pageContext.forwardImmediatelyToCurrentPage(
@@ -324,55 +331,67 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
 //        try
 //        {
 // del end 1.1
+// mod start 1.3
+//          // ロット情報、品質検査依頼情報作成処理呼び出し
+//          List result = (List)am.invokeMethod("doInsert");
+//// mod start 1.2 パラメータはpageContext.putParameterで渡す。
+////          map.put("pSearchLotId", result.get(0));
+//          // 再表示のため、パラメータをセット。
+//          pageContext.putParameter("pSearchLotId", result.get(0));// 新規作成したロットID
+//// mod end 1.2
           // ロット情報、品質検査依頼情報作成処理呼び出し
-          List result = (List)am.invokeMethod("doInsert");
-// mod start 1.2 パラメータはpageContext.putParameterで渡す。
-//          map.put("pSearchLotId", result.get(0));
+          ArrayList[] result = (ArrayList[])am.invokeMethod("doInsert");
+          lotId = (Number)result[0].get(0); // 新規作成したロットID
+          exptArray = result[1]; // 完了メッセージ
           // 再表示のため、パラメータをセット。
-          pageContext.putParameter("pSearchLotId", result.get(0));// 新規作成したロットID
-// mod end 1.2
-          // メッセージをリストに追加
-          // ロット情報作成成功メッセージ
-// mod start 1.2 メッセージはexptArrayに格納する。
-// mod start 1.1
-          MessageToken[] tokens = {
-            new MessageToken("PROCESS",
-                             XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
-          exptArray.add(new OAException(
-                          XxcmnConstants.APPL_XXCMN,
-                          XxcmnConstants.XXCMN05001,
-                          tokens,
-                          OAException.INFORMATION,
-                          null));
-//          MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS, XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
-//          map.put(
-//            XxpoConstants.URL_PARAM_MAIN_MESSAGE,
-//            pageContext.getMessage(XxcmnConstants.APPL_XXCMN,
-//                                   XxcmnConstants.XXCMN05001,
-//                                   tokens));
-// mod end 1.1
-// mod end 1.2
-          if (result.size() > 1) 
-          {
-            // 品質検査依頼情報作成成功メッセージ
-            MessageToken[] tokens2 =
-              { new MessageToken("PROCESS",
-                                 XxpoConstants.TOKEN_NAME_CREATE_QT_INSPECTION) };
-
-            exptArray.add(new OAException(
-                            XxcmnConstants.APPL_XXCMN,
-                            XxcmnConstants.XXCMN05001,
-                            tokens2,
-                            OAException.INFORMATION,
-                            null));
-          }
+          pageContext.putParameter("pSearchLotId", lotId);// 新規作成したロットID
+// mod start 1.3
+// del start 1.3
+//          // メッセージをリストに追加
+//          // ロット情報作成成功メッセージ
+//// mod start 1.2 メッセージはexptArrayに格納する。
+//// mod start 1.1
+//          MessageToken[] tokens = {
+//            new MessageToken("PROCESS",
+//                             XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
+//          exptArray.add(new OAException(
+//                          XxcmnConstants.APPL_XXCMN,
+//                          XxcmnConstants.XXCMN05001,
+//                          tokens,
+//                          OAException.INFORMATION,
+//                          null));
+////          MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS, XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
+////          map.put(
+////            XxpoConstants.URL_PARAM_MAIN_MESSAGE,
+////            pageContext.getMessage(XxcmnConstants.APPL_XXCMN,
+////                                   XxcmnConstants.XXCMN05001,
+////                                   tokens));
+//// mod end 1.1
+//// mod end 1.2
+//          if (result.size() > 1) 
+//          {
+//            // 品質検査依頼情報作成成功メッセージ
+//            MessageToken[] tokens2 =
+//              { new MessageToken("PROCESS",
+//                                 XxpoConstants.TOKEN_NAME_CREATE_QT_INSPECTION) };
+//
+//            exptArray.add(new OAException(
+//                            XxcmnConstants.APPL_XXCMN,
+//                            XxcmnConstants.XXCMN05001,
+//                            tokens2,
+//                            OAException.INFORMATION,
+//                            null));
+//          }
+// del end 1.3
           // トランザクション終了
           TransactionUnitHelper.endTransactionUnit(
             pageContext, XxpoConstants.TXN_XXPO370002J);
 // add start 1.2
           pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+
           // メッセージ出力
           OAException.raiseBundledOAException(exptArray);
+
 // add end 1.2
           // 同一画面へ遷移
 // mod start 1.1

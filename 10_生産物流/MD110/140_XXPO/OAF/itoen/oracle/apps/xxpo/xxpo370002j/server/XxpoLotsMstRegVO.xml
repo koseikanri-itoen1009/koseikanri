@@ -20,7 +20,10 @@ SELECT ilm.attribute8    AS attribute8
       ,ilm.lot_no    AS lot_no
       ,ilm.lot_id    AS lot_id
       ,DECODE(ximv.test_code, '1', '10', '0', '50', NULL) AS attribute23
-      ,'1'     AS attribute24
+-- 2009-02-17 H.Itou Mod Start ñ{î‘è·äQ#1096
+--      ,'1'     AS attribute24
+      ,ilm.attribute24 AS attribute24
+-- 2009-02-17 H.Itou Mod End
       ,ilm.attribute20 AS attribute20
       ,ilm.attribute21 AS attribute21
       ,ilm.attribute1  AS attribute1
