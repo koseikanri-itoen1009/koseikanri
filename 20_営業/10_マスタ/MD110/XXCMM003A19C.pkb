@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/24    1.0   Takuya Kaihara   新規作成
  *  2009/03/09    1.1   Takuya Kaihara   プロファイル値共通化
+ *  2009/04/13    1.2   Yutaka.Kuboshima 障害T1_0499,T1_0509の対応
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,9 @@ AS
   cv_profile_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00002';             --プロファイル取得エラー
   cv_file_path_invalid_msg   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00003';             --ファイルパス不正エラー
   cv_write_err_msg           CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00009';             --CSVデータ出力エラー
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+  cv_exist_err_msg           CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00010';             --CSVファイル存在チェック
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
   cv_emsg_file_close         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00489';             --ファイルクローズエラー
   cv_term_spec_msg           CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00343';             --期間指定エラー
   --トークン
@@ -176,6 +180,11 @@ AS
     cv_invalid_name  CONSTANT VARCHAR2(20) := 'CSV出力ファイル名';            --プロファイル取得失敗（ファイル名）
 --
     -- *** ローカル変数 ***
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+    lv_file_chk     BOOLEAN;
+    ln_file_size    NUMBER;
+    ln_block_size   NUMBER;
+-- 2009/4/13 Ver1.2 add end by Yutaka.Kuboshima
 --
     -- *** ローカル・カーソル ***
 --
@@ -210,6 +219,17 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE init_err_expt;
     END IF;
+--
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+    -- ファイル存在チェック
+    UTL_FILE.FGETATTR(gv_out_file_dir, gv_out_file_file, lv_file_chk, ln_file_size, ln_block_size);
+    IF (lv_file_chk) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                            cv_exist_err_msg);
+      lv_errbuf := lv_errmsg;
+      RAISE init_err_expt;
+    END IF;
+-- 2009/4/13 Ver1.2 add end by Yutaka.Kuboshima
 --
     -- 業務日付取得処理
     gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date, cv_fnd_date);
@@ -374,6 +394,9 @@ AS
     cv_hht_syohi          CONSTANT VARCHAR2(30)     := 'XXCOS1_CONSUMPTION_TAX_CLASS'; --HHT消費税区分
     cv_bill_to            CONSTANT VARCHAR2(7)      := 'BILL_TO';                 --使用目的・請求先
     cv_other_to           CONSTANT VARCHAR2(8)      := 'OTHER_TO';                --使用目的・出荷先
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+    cv_base               CONSTANT VARCHAR2(2)      := '1';                       --顧客区分(拠点)
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
     cv_cust_cd            CONSTANT VARCHAR2(2)      := '10';                      --顧客区分(顧客)
     cv_ucust_cd           CONSTANT VARCHAR2(2)      := '12';                      --顧客区分(上様顧客)
     cv_round_cd           CONSTANT VARCHAR2(2)      := '15';                      --顧客区分(巡回)
@@ -387,6 +410,9 @@ AS
     cv_vd_11              CONSTANT VARCHAR2(2)      := '11';                      --VD
     cv_pay_tm             CONSTANT VARCHAR2(8)      := '00_00_00';                --支払条件
     cv_oj_party           CONSTANT VARCHAR2(5)      := 'PARTY';                   --ノート・コード
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+    cv_dept_div_mult      CONSTANT VARCHAR2(2)      := '1';                       --百貨店HHT区分(拠点複)
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
 --
     cv_cdvd_code          CONSTANT VARCHAR2(1)      := '0';                       --カードベンダ区分
     cv_null_code          CONSTANT VARCHAR2(1)      := '0';                       --HHT書式(NULL)
@@ -641,10 +667,25 @@ AS
       AND    jnt.language = cv_language_ja
       ORDER BY jnb.jtf_note_id DESC;
 --
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+    -- 拠点検索カーソル
+    CURSOR serch_base_cur(p_sale_base_code IN VARCHAR2)
+    IS
+      SELECT xca.management_base_code management_base_code, -- 管理元拠点コード
+             xca.dept_hht_div         dept_hht_div          -- 百貨店HHT区分
+      FROM hz_cust_accounts    hca,                         -- 顧客マスタ
+           xxcmm_cust_accounts xca                          -- 顧客追加情報マスタ
+      WHERE hca.cust_account_id     = xca.customer_id
+        AND hca.customer_class_code = cv_base
+        AND hca.account_number      = p_sale_base_code;
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
     -- HHT連携IFデータ作成カーソルレコード型
     cust_data_rec cust_data_cur%ROWTYPE;
     -- ノートカーソルレコード型
     note_data_rec note_data_cur%ROWTYPE;
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+    serch_base_rec serch_base_cur%ROWTYPE;
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -677,6 +718,41 @@ AS
       --縦線削除
       lv_note_str := SUBSTRB(lv_note_str, 1, LENGTHB(lv_note_str) - 1);
 --
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+      -- 売上拠点に設定されている拠点を検索します。
+      OPEN serch_base_cur(cust_data_rec.sale_base_code);
+      FETCH serch_base_cur INTO serch_base_rec;
+      CLOSE serch_base_cur;
+      -- 売上拠点に設定されている百貨店HHT区分'1'の場合
+      IF (NVL(serch_base_rec.dept_hht_div, 0) = cv_dept_div_mult) THEN
+        -- 売上拠点コードを管理元拠点コードに設定
+        cust_data_rec.sale_base_code      := serch_base_rec.management_base_code;
+      END IF;
+      -- 変数初期化
+      serch_base_rec := NULL;
+      -- 前月売上拠点に設定されている拠点を検索します。
+      OPEN serch_base_cur(cust_data_rec.past_sale_base_code);
+      FETCH serch_base_cur INTO serch_base_rec;
+      CLOSE serch_base_cur;
+      -- 前月売上拠点に設定されている百貨店HHT区分'1'の場合
+      IF (NVL(serch_base_rec.dept_hht_div, 0) = cv_dept_div_mult) THEN
+        -- 前月売上拠点コードを管理元拠点コードに設定
+        cust_data_rec.past_sale_base_code := serch_base_rec.management_base_code;
+      END IF;
+      -- 変数初期化
+      serch_base_rec := NULL;
+      -- 予約売上拠点に設定されている拠点を検索します。
+      OPEN serch_base_cur(cust_data_rec.rsv_sale_base_code);
+      FETCH serch_base_cur INTO serch_base_rec;
+      CLOSE serch_base_cur;
+      -- 予約売上拠点に設定されている百貨店HHT区分'1'の場合
+      IF (NVL(serch_base_rec.dept_hht_div, 0) = cv_dept_div_mult) THEN
+        -- 予約売上拠点コードを管理元拠点コードに設定
+        cust_data_rec.rsv_sale_base_code  := serch_base_rec.management_base_code;
+      END IF;
+      -- 変数初期化
+      serch_base_rec := NULL;
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
       -- ===============================
       -- 出力値設定
       -- ===============================--
@@ -761,6 +837,11 @@ AS
         ,buff   => lv_errbuf
       );
     WHEN write_failure_expt THEN                       --*** CSVデータ出力エラー ***
+-- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
+      IF (serch_base_cur%ISOPEN) THEN
+        CLOSE serch_base_cur;
+      END IF;
+-- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
