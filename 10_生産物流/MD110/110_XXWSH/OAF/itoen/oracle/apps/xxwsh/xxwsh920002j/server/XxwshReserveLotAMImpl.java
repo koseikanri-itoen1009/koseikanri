@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-10-22 1.3  二瓶　大輔     統合テスト指摘194対応
 * 2008-10-24 1.4  二瓶　大輔     TE080_BPO_600 No22
 * 2008-12-10 1.5  伊藤ひとみ     本番#587対応
+* 2008-12-11 1.6  伊藤ひとみ     本番#675対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -38,7 +39,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
  
@@ -2051,7 +2052,10 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-12-10 H.Itou Add Start
           BigDecimal temp = XxcmnUtility.bigDecimalValue(shipToCanEncQty);
           // 入庫先引当可能数 - (画面表示時引当数 - 引当数)
-          temp = temp.subtract(actualQuantityBkBigD).subtract(actualQuantityBigD);
+// 2008-12-11 H.Itou Add Start
+//          temp = temp.subtract(actualQuantityBkBigD).subtract(actualQuantityBigD);
+          temp = temp.subtract(actualQuantityBkBigD).add(actualQuantityBigD);
+// 2008-12-11 H.Itou Add End
 // 2008-12-10 H.Itou Add End
           // 入庫先引当可能数 - (画面表示時引当数 - 引当数) < 0 の場合
 // 2008-12-10 H.Itou Mod Start
