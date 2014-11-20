@@ -1,3 +1,17 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcmm_out_people_d_dispenser
+ * Description     : 自販機差分連携用社員データ
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/03/02    1.0  マスタTM      初回作成
+ *  2009/07/09    1.1  K.Ito         【0000493】ストレージ句の見直し対応
+ ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_out_people_d_dispenser (
   person_id                NUMBER(10),
   employee_number          VARCHAR2(30),
@@ -12,6 +26,7 @@ CREATE TABLE xxcmm.xxcmm_out_people_d_dispenser (
   CONSTRAINT xxcmm_out_dispenser_pk PRIMARY KEY (person_id)
   USING INDEX TABLESPACE xxidx2
   )
+  PCTFREE 5 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M)
 /
 COMMENT ON TABLE  xxcmm.xxcmm_out_people_d_dispenser                      IS '自販機差分連携用社員データ'
 /
