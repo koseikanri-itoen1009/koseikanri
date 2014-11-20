@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/10/16    1.15  Oracle 丸下        管轄拠点をCSVファイルのコード値を使用するように修正
  *  2008/11/19    1.16  Oracle 伊藤ひとみ  統合テスト指摘683対応
  *  2008/11/20    1.17  Oracle 伊藤ひとみ  統合テスト指摘141,658対応
+ *  2009/01/08    1.18  Oracle 伊藤ひとみ  本番障害#894対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1919,89 +1920,105 @@ AS
     ln_cnt    := 0;
     lv_yn_flg := gv_no;
 --
-    ------------------------------------------------------------------
-    -- 1.品目/配送先/出荷先にて物流構成アドオンへの存在チェック     --
-    ------------------------------------------------------------------
-    SELECT COUNT (xsr.item_code)
-    INTO   ln_cnt
-    FROM   xxcmn_sourcing_rules  xsr   -- 物流構成アドオンマスタ T
-    WHERE  xsr.item_code          = gt_to_plan(gn_i).item_no
-    AND    xsr.ship_to_code       = gt_to_plan(gn_i).ship_t_no
-    AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
-    AND    xsr.start_date_active <= gd_ship_day
-    AND    xsr.end_date_active   >= gd_ship_day
-    AND    ROWNUM                 = 1
-    ;
+-- 2009/01/08 H.Itou Mod Start 本番障害#894
+--    ------------------------------------------------------------------
+--    -- 1.品目/配送先/出荷先にて物流構成アドオンへの存在チェック     --
+--    ------------------------------------------------------------------
+--    SELECT COUNT (xsr.item_code)
+--    INTO   ln_cnt
+--    FROM   xxcmn_sourcing_rules  xsr   -- 物流構成アドオンマスタ T
+--    WHERE  xsr.item_code          = gt_to_plan(gn_i).item_no
+--    AND    xsr.ship_to_code       = gt_to_plan(gn_i).ship_t_no
+--    AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
+--    AND    xsr.start_date_active <= gd_ship_day
+--    AND    xsr.end_date_active   >= gd_ship_day
+--    AND    ROWNUM                 = 1
+--    ;
+----
+--    IF (ln_cnt > 0) THEN
+--      lv_yn_flg := gv_yes;
+--    END IF;
+----
+--    ------------------------------------------------------------------
+--    -- 2.品目/拠点/出荷元にて物流構成アドオンへの存在チェック       --
+--    ------------------------------------------------------------------
+--    -- 上記1にて0件の場合
+--    IF (lv_yn_flg = gv_no) THEN
+--      SELECT COUNT (xsr.item_code)
+--      INTO   ln_cnt
+--      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
+--      WHERE  xsr.item_code          = gt_to_plan(gn_i).item_no
+--      AND    xsr.base_code          = gt_to_plan(gn_i).ktn
+--      AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
+--      AND    xsr.start_date_active <= gd_ship_day
+--      AND    xsr.end_date_active   >= gd_ship_day
+--      AND    ROWNUM                 = 1
+--      ;
+----
+--      IF (ln_cnt > 0) THEN
+--        lv_yn_flg := gv_yes;
+--      END IF;
+--    END IF;
+----
+--    ------------------------------------------------------------------
+--    -- 3.全品目/配送先/出荷元にて物流構成アドオンへの存在チェック   --
+--    ------------------------------------------------------------------
+--    -- 上記2にて0件の場合
+--    IF (lv_yn_flg = gv_no) THEN
+--      SELECT COUNT (xsr.item_code)
+--      INTO   ln_cnt
+--      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
+--      WHERE  xsr.item_code          = gv_all_item
+--      AND    xsr.ship_to_code       = gt_to_plan(gn_i).ship_t_no
+--      AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
+--      AND    xsr.start_date_active <= gd_ship_day
+--      AND    xsr.end_date_active   >= gd_ship_day
+--      AND    ROWNUM                 = 1
+--      ;
+----
+--      IF (ln_cnt > 0) THEN
+--        lv_yn_flg := gv_yes;
+--      END IF;
+--    END IF;
+----
+--    ------------------------------------------------------------------
+--    -- 4.全品目/拠点/出荷元にて物流構成アドオンへの存在チェック     --
+--    ------------------------------------------------------------------
+--    -- 上記3にて0件の場合
+--    IF (lv_yn_flg = gv_no) THEN
+--      SELECT COUNT (xsr.item_code)
+--      INTO   ln_cnt
+--      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
+--      WHERE  xsr.item_code          = gv_all_item
+--      AND    xsr.base_code          = gt_to_plan(gn_i).ktn
+--      AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
+--      AND    xsr.start_date_active <= gd_ship_day
+--      AND    xsr.end_date_active   >= gd_ship_day
+--      AND    ROWNUM                 = 1
+--      ;
+----
+--      IF (ln_cnt > 0) THEN
+--        lv_yn_flg := gv_yes;
+--      END IF;
+--    END IF;
 --
-    IF (ln_cnt > 0) THEN
-      lv_yn_flg := gv_yes;
-    END IF;
+    -- 物流構成存在チェック関数
+    lv_retcode := xxwsh_common_pkg.chk_sourcing_rules(
+                    it_item_code          => gt_to_plan(gn_i).item_no    -- 1.品目コード
+                   ,it_base_code          => gt_to_plan(gn_i).ktn        -- 2.管轄拠点
+                   ,it_ship_to_code       => gt_to_plan(gn_i).ship_t_no  -- 3.配送先
+                   ,it_delivery_whse_code => gt_to_plan(gn_i).ship_fr    -- 4.出庫倉庫
+                   ,id_standard_date      => gd_ship_day                 -- 5.基準日(適用日基準日)
+                  );
 --
-    ------------------------------------------------------------------
-    -- 2.品目/拠点/出荷元にて物流構成アドオンへの存在チェック       --
-    ------------------------------------------------------------------
-    -- 上記1にて0件の場合
-    IF (lv_yn_flg = gv_no) THEN
-      SELECT COUNT (xsr.item_code)
-      INTO   ln_cnt
-      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
-      WHERE  xsr.item_code          = gt_to_plan(gn_i).item_no
-      AND    xsr.base_code          = gt_to_plan(gn_i).ktn
-      AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
-      AND    xsr.start_date_active <= gd_ship_day
-      AND    xsr.end_date_active   >= gd_ship_day
-      AND    ROWNUM                 = 1
-      ;
+-- 2009/01/08 H.Itou Mod End
 --
-      IF (ln_cnt > 0) THEN
-        lv_yn_flg := gv_yes;
-      END IF;
-    END IF;
---
-    ------------------------------------------------------------------
-    -- 3.全品目/配送先/出荷元にて物流構成アドオンへの存在チェック   --
-    ------------------------------------------------------------------
-    -- 上記2にて0件の場合
-    IF (lv_yn_flg = gv_no) THEN
-      SELECT COUNT (xsr.item_code)
-      INTO   ln_cnt
-      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
-      WHERE  xsr.item_code          = gv_all_item
-      AND    xsr.ship_to_code       = gt_to_plan(gn_i).ship_t_no
-      AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
-      AND    xsr.start_date_active <= gd_ship_day
-      AND    xsr.end_date_active   >= gd_ship_day
-      AND    ROWNUM                 = 1
-      ;
---
-      IF (ln_cnt > 0) THEN
-        lv_yn_flg := gv_yes;
-      END IF;
-    END IF;
---
-    ------------------------------------------------------------------
-    -- 4.全品目/拠点/出荷元にて物流構成アドオンへの存在チェック     --
-    ------------------------------------------------------------------
-    -- 上記3にて0件の場合
-    IF (lv_yn_flg = gv_no) THEN
-      SELECT COUNT (xsr.item_code)
-      INTO   ln_cnt
-      FROM   xxcmn_sourcing_rules  xsr  -- 物流構成アドオンマスタ T
-      WHERE  xsr.item_code          = gv_all_item
-      AND    xsr.base_code          = gt_to_plan(gn_i).ktn
-      AND    xsr.delivery_whse_code = gt_to_plan(gn_i).ship_fr
-      AND    xsr.start_date_active <= gd_ship_day
-      AND    xsr.end_date_active   >= gd_ship_day
-      AND    ROWNUM                 = 1
-      ;
---
-      IF (ln_cnt > 0) THEN
-        lv_yn_flg := gv_yes;
-      END IF;
-    END IF;
---
-    -- 上記4にて0件の場合、ワーニング
-    IF (lv_yn_flg = gv_no) THEN
+-- 2009/01/08 H.Itou Mod Start 本番障害#894
+--    -- 上記4にて0件の場合、ワーニング
+--    IF (lv_yn_flg = gv_no) THEN
+     -- 戻り値が正常でない場合、ワーニング
+     IF (lv_retcode <> gv_status_normal) THEN
+-- 2009/01/08 H.Itou Mod End
 --
       -- エラーリスト作成
       pro_err_list_make
