@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_get_qty_pkg(BODY)
  * Description            : 共通関数引当数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  2008/12/25   1.0   Oracle 北寒寺正夫 新規作成
  *  2009/01/21   1.1   SCS二瓶           本番障害#1020
  *  2009/11/25   1.2   SCS北寒寺         営業障害管理表No11
+ *  2009/11/27   1.3   SCS伊藤           営業障害管理表No11
  *****************************************************************************************/
 --
   cv_doc_type_10 CONSTANT VARCHAR2(2) := '10';
@@ -309,7 +310,10 @@ AS
         ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
           -- I2)実績未取在庫数  移動入庫（入庫報告有）
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -333,7 +337,10 @@ AS
         ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
           -- I4)実績未取在庫数  移動出庫（出庫報告有）
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -356,7 +363,10 @@ AS
         ) - 
         ( -- I5)実績未取在庫数  出荷
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
+-- Ver1.3 2009/11/27 END
                 NVL(
 --        SELECT  NVL(
 -- Ver1.2 2009/11/25 END
@@ -393,7 +403,10 @@ AS
         ) - 
         ( -- I6)実績未取在庫数  支給
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
+-- Ver1.3 2009/11/27 END
                 NVL(
 --        SELECT  NVL(
 -- Ver1.2 2009/11/25 END
@@ -427,7 +440,10 @@ AS
         ) + 
         ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
 --        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
 -- Ver1.2 2009/11/25 END
@@ -451,7 +467,10 @@ AS
         ) + 
         ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
 --        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
 -- Ver1.2 2009/11/25 END
@@ -657,7 +676,10 @@ AS
       SELECT
         ( -- S1)供給数  移動入庫予定
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -679,7 +701,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_10
         ) + 
         ( -- S2)供給数  発注受入予定
-        SELECT  NVL(SUM(pla.quantity), 0)
+-- Ver1.3 2009/11/27 START
+--        SELECT  NVL(SUM(pla.quantity), 0)
+        SELECT  /*+ LEADING(iimb msib pla pha) INDEX(mil MTL_ITEM_LOCATION_N1) */
+                NVL(SUM(pla.quantity), 0)
+-- Ver1.3 2009/11/27 END
         FROM    ic_item_mst_b      iimb
                ,mtl_system_items_b msib
                ,po_lines_all       pla
@@ -728,7 +754,10 @@ AS
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -751,7 +780,10 @@ AS
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -778,7 +810,10 @@ AS
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -805,7 +840,10 @@ AS
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -828,7 +866,10 @@ AS
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+-- Ver1.3 2009/11/27 START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+-- Ver1.3 2009/11/27 END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -877,7 +918,11 @@ AS
         AND     mil.attribute5         = it_head_loc
         ) - 
         ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.3 2009/11/27 START
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+        SELECT  /*+ LEADING(iimb msib pla pha) INDEX(mil MTL_ITEM_LOCATION_N1) */
+                NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.3 2009/11/27 END
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
