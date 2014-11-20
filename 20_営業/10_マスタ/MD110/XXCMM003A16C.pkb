@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/06    1.0   Takuya Kaihara   新規作成
  *  2009/03/09    1.1   Takuya Kaihara   プロファイル値共通化
+ *  2009/04/07    1.2   Yutaka.Kuboshima 障害T1_0320の対応
  *
  *****************************************************************************************/
 --
@@ -622,7 +623,10 @@ AS
     cv_gyotai_syo         CONSTANT VARCHAR2(25)     := 'XXCMM_CUST_GYOTAI_SHO';  --業態分類(小分類)
     cv_enabled_flag       CONSTANT VARCHAR2(1)      := 'Y';                      --使用可能
     cv_par_lookup_cd      CONSTANT VARCHAR2(2)      := '11';                     --業態中分類：VD
-    cv_lookup_cd_syo      CONSTANT VARCHAR2(2)      := '11';                     --業態小分類：問屋帳合
+-- 2009/04/07 Ver1.2 modify start by Yutaka.Kuboshima
+--    cv_lookup_cd_syo      CONSTANT VARCHAR2(2)      := '11';                     --業態小分類：問屋帳合
+    cv_lookup_cd_syo      CONSTANT VARCHAR2(2)      := '12';                     --業態小分類：帳合問屋
+-- 2009/04/07 Ver1.2 modify end by Yutaka.Kuboshima
     cv_fset_name          CONSTANT VARCHAR2(15)     := 'XX03_PARTNER';           --値セット名
 --
     cv_err_cust_code_msg  CONSTANT VARCHAR2(20)     := '顧客コード';             --CSV出力エラー文字列
