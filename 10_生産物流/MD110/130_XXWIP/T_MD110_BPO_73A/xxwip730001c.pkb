@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -112,6 +112,7 @@ AS
  *  2008/12/24    1.17 Oracle 野村       本番#323対応
  *  2008/12/26    1.18 Oracle 野村       本番#323対応（ログ対応）
  *  2008/12/29    1.19 Oracle 野村       本番#882対応
+ *  2009/01/23    1.20 Oracle 野村       本番#1074対応
  *
  *****************************************************************************************/
 --
@@ -2614,6 +2615,9 @@ AS
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
         --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、配送No、個数、重量、出庫日、入庫日、支払判断区分
+-- ##### 20090123 Ver.1.20 本番#1074 START #####
+-- 更新時の条件をなくし、変更があった場合は更新するように修正
+/*****
         IF ((gt_order_inf_tab(ln_index).result_freight_carrier_code  <> lv_delivery_company_code )
           OR (gt_order_inf_tab(ln_index).deliver_from                 <> lv_whs_code              )
           OR (gt_order_inf_tab(ln_index).result_deliver_to            <> lv_shipping_address_code )
@@ -2630,6 +2634,8 @@ AS
 -- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           OR (gt_order_inf_tab(ln_index).qty                          <> ln_qty                   )
           OR (gt_order_inf_tab(ln_index).delivery_weight              <> ln_delivery_weight       )) THEN
+*****/
+-- ##### 20090123 Ver.1.20 本番#1074 END   #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
           IF (gv_debug_flg = gv_debug_on) THEN
@@ -2738,6 +2744,9 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要でない場合
         -- **************************************************
+-- ##### 20090123 Ver.1.20 本番#1074 START #####
+-- 適用のみの更新処理は廃止する
+/*****
         ELSE
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
           IF (gv_debug_flg = gv_debug_on) THEN
@@ -2756,6 +2765,8 @@ AS
                                 gt_order_inf_tab(ln_index).shipping_instructions;
 --
         END IF;
+*****/
+-- ##### 20090123 Ver.1.20 本番#1074 END   #####
       END IF;
 --
     END LOOP order_loop;
@@ -3917,6 +3928,9 @@ AS
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
         --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量、出庫日、入庫日、支払判断区分
+-- ##### 20090123 Ver.1.20 本番#1074 START #####
+-- 更新時の条件をなくし、変更があった場合は更新するように修正
+/*****
         IF ((gt_move_inf_tab(ln_index).actual_freight_carrier_code <> lv_delivery_company_code )
           OR (gt_move_inf_tab(ln_index).shipped_locat_code   <> lv_whs_code              )
           OR (gt_move_inf_tab(ln_index).ship_to_locat_code   <> lv_shipping_address_code )
@@ -3933,6 +3947,8 @@ AS
 -- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           OR (gt_move_inf_tab(ln_index).qty                  <> ln_qty                   )
           OR (gt_move_inf_tab(ln_index).delivery_weight      <> ln_delivery_weight       )) THEN
+*****/
+-- ##### 20090123 Ver.1.20 本番#1074 END   #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
           IF (gv_debug_flg = gv_debug_on) THEN
@@ -4045,6 +4061,9 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要でない場合
         -- **************************************************
+-- ##### 20090123 Ver.1.20 本番#1074 START #####
+-- 適用のみの更新処理は廃止する
+/*****
         ELSE
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
@@ -4064,6 +4083,8 @@ AS
           ut_line_description_tab(ln_line_des_update_cnt) := gt_move_inf_tab(ln_index).description;
 --
         END IF;
+*****/
+-- ##### 20090123 Ver.1.20 本番#1074 END   #####
       END IF;
 --
     END LOOP move_loop;

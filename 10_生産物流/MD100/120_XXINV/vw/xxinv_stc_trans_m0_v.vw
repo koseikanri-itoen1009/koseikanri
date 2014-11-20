@@ -792,7 +792,9 @@ AS
         ,mtl_item_locations           mil_out_om                  -- OPM保管場所マスタ
         ,ic_item_mst_b                iimb2_out_om                -- OPM品目マスタ
         ,mtl_system_items_b           msib2_out_om                -- 品目マスタ
-        ,hz_parties                   hpat_out_om
+-- 2009/01/23 Upd N.Yoshida Start
+--        ,hz_parties                   hpat_out_om
+-- 2009/01/23 Upd N.Yoshida End
         ,hz_cust_accounts             hcsa_out_om
         ,hz_party_sites               hpas_out_om
         ,xxcmn_party_sites            xpas_out_om
@@ -843,8 +845,11 @@ AS
      AND xrpm.item_div_ahead                         IS NULL))
   AND   (xrpm.ship_prov_rcv_pay_category              = otta_out_om.attribute11
   OR     xrpm.ship_prov_rcv_pay_category             IS NULL)
-  AND    xoha_out_om.customer_id                      = hpat_out_om.party_id
-  AND    hpat_out_om.party_id                         = hcsa_out_om.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    xoha_out_om.customer_id                      = hpat_out_om.party_id
+  AND    xoha_out_om.head_sales_branch                = hcsa_out_om.account_number
+--  AND    hpat_out_om.party_id                         = hcsa_out_om.party_id
+-- 2009/01/23 Upd N.Yoshida End
 -- 2008/12/24 #826 Y.Yamamoto delete start
 --  AND    hpat_out_om.status                           = 'A'
 --  AND    hcsa_out_om.status                           = 'A'
@@ -859,7 +864,10 @@ AS
   AND    xpas_out_om.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om.end_date_active                 >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano Start
-  AND    hpat_out_om.party_id                         = xp_out_om.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    hpat_out_om.party_id                         = xp_out_om.party_id
+  AND    hcsa_out_om.party_id                         = xp_out_om.party_id
+-- 2009/01/23 Upd N.Yoshida End
   AND    xp_out_om.start_date_active                 <= TRUNC(SYSDATE)
   AND    xp_out_om.end_date_active                   >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano End
@@ -1808,7 +1816,9 @@ AS
         ,ic_whse_mst                  iwm_in_po_e_rma                  -- OPM倉庫マスタ
         ,mtl_item_locations           mil_in_po_e_rma                  -- OPM保管場所マスタ
         ,oe_transaction_types_all     otta_in_po_e_rma                 -- 受注タイプ
-        ,hz_parties                   hpat_in_po_e_rma
+-- 2009/01/23 Upd N.Yoshida Start
+--        ,hz_parties                   hpat_in_po_e_rma
+-- 2009/01/23 Upd N.Yoshida End
         ,hz_cust_accounts             hcsa_in_po_e_rma
         ,hz_party_sites               hpas_in_po_e_rma
         ,xxcmn_party_sites            xpas_in_po_e_rma
@@ -1846,8 +1856,11 @@ AS
   AND    otta_in_po_e_rma.order_category_code         = 'RETURN'
   AND    xoha_in_po_e_rma.latest_external_flag        = 'Y'            -- ON
   AND    xola_in_po_e_rma.delete_flag                 = 'N'            -- OFF
-  AND    xoha_in_po_e_rma.customer_id                 = hpat_in_po_e_rma.party_id
-  AND    hpat_in_po_e_rma.party_id                    = hcsa_in_po_e_rma.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    xoha_in_po_e_rma.customer_id                 = hpat_in_po_e_rma.party_id
+--  AND    hpat_in_po_e_rma.party_id                    = hcsa_in_po_e_rma.party_id
+  AND    xoha_in_po_e_rma.head_sales_branch           = hcsa_in_po_e_rma.account_number
+-- 2009/01/23 Upd N.Yoshida End
 -- 2008/12/24 #826 Y.Yamamoto delete start
 --  AND    hpat_in_po_e_rma.status                      = 'A'
 --  AND    hcsa_in_po_e_rma.status                      = 'A'
@@ -1862,7 +1875,10 @@ AS
   AND    xpas_in_po_e_rma.start_date_active          <= TRUNC(SYSDATE)
   AND    xpas_in_po_e_rma.end_date_active            >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano Start
-  AND    hpat_in_po_e_rma.party_id                    = xp_in_po_e_rma.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    hpat_in_po_e_rma.party_id                    = xp_in_po_e_rma.party_id
+  AND    hcsa_in_po_e_rma.party_id                    = xp_in_po_e_rma.party_id
+-- 2009/01/23 Upd N.Yoshida End
   AND    xp_in_po_e_rma.start_date_active            <= TRUNC(SYSDATE)
   AND    xp_in_po_e_rma.end_date_active              >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano End
@@ -2624,7 +2640,9 @@ AS
         ,ic_item_mst_b                iimb_out_om_e                    -- OPM品目マスタ
         ,mtl_system_items_b           msib_out_om_e                    -- 品目マスタ
         ,oe_transaction_types_all     otta_out_om_e                    -- 受注タイプ
-        ,hz_parties                   hpat_out_om_e
+-- 2009/01/23 Upd N.Yoshida Start
+--        ,hz_parties                   hpat_out_om_e
+-- 2009/01/23 Upd N.Yoshida End
         ,hz_cust_accounts             hcsa_out_om_e
         ,hz_party_sites               hpas_out_om_e
         ,xxcmn_party_sites            xpas_out_om_e
@@ -2674,8 +2692,11 @@ AS
      AND xrpm.item_div_ahead                           IS NULL))
   AND   (xrpm.ship_prov_rcv_pay_category                = otta_out_om_e.attribute11
       OR xrpm.ship_prov_rcv_pay_category               IS NULL)
-  AND    xoha_out_om_e.customer_id                      = hpat_out_om_e.party_id
-  AND    hpat_out_om_e.party_id                         = hcsa_out_om_e.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    xoha_out_om_e.customer_id                      = hpat_out_om_e.party_id
+--  AND    hpat_out_om_e.party_id                         = hcsa_out_om_e.party_id
+  AND    xoha_out_om_e.head_sales_branch                = hcsa_out_om_e.account_number
+-- 2009/01/23 Upd N.Yoshida End
 -- 2008/12/24 #826 Y.Yamamoto delete start
 --  AND    hpat_out_om_e.status                           = 'A'
 --  AND    hcsa_out_om_e.status                           = 'A'
@@ -2691,7 +2712,10 @@ AS
   AND    xpas_out_om_e.end_date_active                 >= TRUNC(SYSDATE)
   AND    xrpm.stock_adjustment_div                      = otta_out_om_e.attribute4
 -- 2008/12/01 Upd Y.Kawano Start
-  AND    hpat_out_om_e.party_id                         = xp_out_om_e.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    hpat_out_om_e.party_id                         = xp_out_om_e.party_id
+  AND    hcsa_out_om_e.party_id                         = xp_out_om_e.party_id
+-- 2009/01/23 Upd N.Yoshida End
   AND    xp_out_om_e.start_date_active                 <= TRUNC(SYSDATE)
   AND    xp_out_om_e.end_date_active                   >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano End
@@ -3152,7 +3176,9 @@ AS
         ,ic_item_mst_b                iimb_out_om3_e                    -- OPM品目マスタ
         ,mtl_system_items_b           msib_out_om3_e                    -- 品目マスタ
         ,oe_transaction_types_all     otta_out_om3_e                 -- 受注タイプ
-        ,hz_parties                   hpat_out_om3_e
+-- 2009/01/23 Upd N.Yoshida Start
+--        ,hz_parties                   hpat_out_om3_e
+-- 2009/01/23 Upd N.Yoshida End
         ,hz_cust_accounts             hcsa_out_om3_e
         ,hz_party_sites               hpas_out_om3_e
         ,xxcmn_party_sites            xpas_out_om3_e
@@ -3191,8 +3217,11 @@ AS
   AND    xrpm.stock_adjustment_div                       = '2'
   AND    xrpm.ship_prov_rcv_pay_category                 = otta_out_om3_e.attribute11
   AND    xrpm.ship_prov_rcv_pay_category                IN ( '01' , '02' )
-  AND    xoha_out_om3_e.customer_id                      = hpat_out_om3_e.party_id
-  AND    hpat_out_om3_e.party_id                         = hcsa_out_om3_e.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    xoha_out_om3_e.customer_id                      = hpat_out_om3_e.party_id
+--  AND    hpat_out_om3_e.party_id                         = hcsa_out_om3_e.party_id
+  AND    xoha_out_om3_e.head_sales_branch                = hcsa_out_om3_e.account_number
+-- 2009/01/23 Upd N.Yoshida End
 -- 2008/12/24 #826 Y.Yamamoto delete start
 --  AND    hpat_out_om3_e.status                           = 'A'
 --  AND    hcsa_out_om3_e.status                           = 'A'
@@ -3207,7 +3236,10 @@ AS
   AND    xpas_out_om3_e.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om3_e.end_date_active                 >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano Start
-  AND    hpat_out_om3_e.party_id                         = xp_out_om3_e.party_id
+-- 2009/01/23 Upd N.Yoshida Start
+--  AND    hpat_out_om3_e.party_id                         = xp_out_om3_e.party_id
+  AND    hcsa_out_om3_e.party_id                         = xp_out_om3_e.party_id
+-- 2009/01/23 Upd N.Yoshida End
   AND    xp_out_om3_e.start_date_active                 <= TRUNC(SYSDATE)
   AND    xp_out_om3_e.end_date_active                   >= TRUNC(SYSDATE)
 -- 2008/12/01 Upd Y.Kawano End
