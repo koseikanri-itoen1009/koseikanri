@@ -1,0 +1,1 @@
+imp outln/outln file=XXCFR_RAXTRX_OUTLINE.dmp fromuser=outln ignore=Y

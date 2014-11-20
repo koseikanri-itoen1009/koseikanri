@@ -1,1 +1,1 @@
-exp outln/outln file=XXCOP_INCOIN_OUTLINE.dmp tables='OL$' 'OL$HINTS' 'OL$NODES' query= \"where ol_name like \'XXCOP_INCOIN_OUTLINE%\'\"
+exp outln/outln file=XXCFR_RAXTRX_OUTLINE.dmp tables='OL$' 'OL$HINTS' 'OL$NODES' query= \"where ol_name like \'XXCFR_RAXTRX_OUTLINE%\'\"
