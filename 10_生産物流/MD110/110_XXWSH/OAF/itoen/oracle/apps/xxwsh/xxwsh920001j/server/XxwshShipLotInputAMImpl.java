@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 *                              内部変更#174 実績計上済区分がYの場合のみ受注コピー処理を行う
 * 2008-09-25 1.5  伊藤ひとみ   T_TE080_BPO_400指摘93 受注タイプ：廃棄・見本の場合、ロットステータスチェックを行わない
 * 2008-10-17 1.6  伊藤ひとみ   統合テスト指摘346 入庫実績の場合も在庫クローズチェックを行う。
+* 2009-03-04 1.7  飯田　甫     本番障害#1234対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -1422,10 +1423,13 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     String actualQtySum = null;
 
     // ステータスが04 出荷実績計上済 OR 08 出荷実績計上済 の場合
-// 2008-06-13 H.Itou MOD START 04 出荷実績計上済かつ、ヘッダに紐付く出荷実績数量がすべて登録済の場合に変更
-    if ((XxwshConstants.TRANSACTION_STATUS_ADD.equals(reqStatus)
-      && XxwshUtility.checkShippedQuantityEntry(getOADBTransaction(), orderHeaderId))
-// 2008-06-13 H.Itou MOD END
+// 2009-03-04 H.Iida MOD START 「ヘッダに紐付く出荷実績数量がすべて登録済の場合」の条件を削除
+//// 2008-06-13 H.Itou MOD START 04 出荷実績計上済かつ、ヘッダに紐付く出荷実績数量がすべて登録済の場合に変更
+//    if ((XxwshConstants.TRANSACTION_STATUS_ADD.equals(reqStatus)
+//      && XxwshUtility.checkShippedQuantityEntry(getOADBTransaction(), orderHeaderId))
+//// 2008-06-13 H.Itou MOD END
+    if (XxwshConstants.TRANSACTION_STATUS_ADD.equals(reqStatus)
+// 2009-03-04 H.Iida MOD END
       || XxwshConstants.XXPO_TRANSACTION_STATUS_ADD.equals(reqStatus))
     {
 // 2008-07-23 H.Itou ADD START
