@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(spec)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -18,7 +18,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009/12/01    1.0   M.Hokkanji      新規作成
+ *  2009/12/01    1.0   M.Hokkanji       新規作成
+ *  2010/02/03    1.1   Y.Goto           E_本稼動_01222
  *
  *****************************************************************************************/
 --
@@ -35,6 +36,10 @@ AS
     ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
     ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
     ,iv_item_code           IN     VARCHAR2                 -- 9.品目コード
+--20100203_Ver1.1_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days        IN     VARCHAR2                 --10.稼動日数
+    ,iv_stock_adjust_value  IN     VARCHAR2                 --11.在庫日数調整値
+--20100203_Ver1.1_E_本稼動_01222_SCS.Goto_ADD_END
   );
 END XXCOP006A01C;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/11/13    1.0   M.Hokkanji       新規作成
  *  2010/01/07    1.1   Y.Goto           E_本稼動_00936
+ *  2010/02/03    1.2   Y.Goto           E_本稼動_01222
  *
  *****************************************************************************************/
 --
@@ -121,6 +122,10 @@ AS
   cv_forecast_date_to_tl    CONSTANT VARCHAR2(100) := '出荷予測期間(TO)';
   cv_allocated_date_tl      CONSTANT VARCHAR2(100) := '出荷引当済日';
   cv_item_code_tl           CONSTANT VARCHAR2(100) := '品目コード';
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+  cv_working_days_tl        CONSTANT VARCHAR2(100) := '稼働日数';
+  cv_stock_adjust_value_tl  CONSTANT VARCHAR2(100) := '在庫日数調整値';
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
   --プロファイル
   cv_pf_master_org_id       CONSTANT VARCHAR2(100) := 'XXCMN_MASTER_ORG_ID';
   cv_pf_source_org_id       CONSTANT VARCHAR2(100) := 'XXCOP1_DUMMY_SOURCE_ORG_ID';
@@ -150,6 +155,9 @@ AS
   cv_msg_00065              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00065';
   cv_msg_10009              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10009';
   cv_msg_10045              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10045';
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+  cv_msg_10057              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10057';
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
   cv_msg_10046              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10046';
   cv_msg_10047              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10047';
   cv_msg_10050              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10050';
@@ -176,6 +184,10 @@ AS
   cv_msg_10045_token_7      CONSTANT VARCHAR2(100) := 'FORECAST_DATE_TO';
   cv_msg_10045_token_8      CONSTANT VARCHAR2(100) := 'ALLOCATED_DATE';
   cv_msg_10045_token_9      CONSTANT VARCHAR2(100) := 'ITEM_NO';
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+  cv_msg_10057_token_1      CONSTANT VARCHAR2(100) := 'WORKING_DAYS';
+  cv_msg_10057_token_2      CONSTANT VARCHAR2(100) := 'STOCK_ADJUST_VALUE';
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
   cv_msg_10046_token_1      CONSTANT VARCHAR2(100) := 'GATEGORY_NAME';
   cv_msg_10051_token_1      CONSTANT VARCHAR2(100) := 'DEBUG_LEVEL';
   cv_msg_10051_token_2      CONSTANT VARCHAR2(100) := 'RECEIPT_DATE';
@@ -270,6 +282,10 @@ AS
   gd_forecast_date_to       DATE;                                               --出荷予測期間TO
   gd_allocated_date         DATE;                                               --出荷引当済日
   gv_item_code              VARCHAR2(7);                                        --品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+  gn_working_days           NUMBER;                                             --稼動日数
+  gn_stock_adjust_value     NUMBER;                                             --在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
   --品目カテゴリセットID
   gn_prod_class_set_id      NUMBER;                                             --品目カテゴリ:本社商品区分
   gn_crowd_class_set_id     NUMBER;                                             --政策群コード
@@ -510,6 +526,10 @@ AS
     ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
     ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
     ,iv_item_code           IN     VARCHAR2                 -- 9.品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days        IN     VARCHAR2                 --10.稼動日数
+    ,iv_stock_adjust_value  IN     VARCHAR2                 --11.在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
     ,ov_errbuf              OUT    VARCHAR2                 --   エラー・メッセージ           --# 固定 #
     ,ov_retcode             OUT    VARCHAR2                 --   リターン・コード             --# 固定 #
     ,ov_errmsg              OUT    VARCHAR2                 --   ユーザー・エラー・メッセージ --# 固定 #
@@ -589,12 +609,26 @@ AS
                    ,iv_token_name8  => cv_msg_10045_token_8
                    ,iv_token_value8 => iv_allocated_date
                    ,iv_token_name9  => cv_msg_10045_token_9
-                   ,iv_token_value9 => iv_item_code                   
+                   ,iv_token_value9 => iv_item_code
                  );
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => lv_errmsg
     );
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_msg_appl_cont
+                   ,iv_name         => cv_msg_10057
+                   ,iv_token_name1  => cv_msg_10057_token_1
+                   ,iv_token_value1 => iv_working_days
+                   ,iv_token_name2  => cv_msg_10057_token_2
+                   ,iv_token_value2 => iv_stock_adjust_value
+                 );
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => lv_errmsg
+    );
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
     --空白行を挿入
     fnd_file.put_line(
        which  => FND_FILE.LOG
@@ -804,6 +838,39 @@ AS
       lv_chk_parameter := cv_item_code_tl;
       gv_item_code := iv_item_code;
 --
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+      -- ===============================
+      -- 稼動日数
+      -- ===============================
+      lv_chk_parameter := cv_working_days_tl;
+      --値のNULLチェック
+      IF (iv_working_days IS NULL) THEN
+        RAISE param_invalid_expt;
+      END IF;
+      --数値型チェック
+      BEGIN
+        gn_working_days := TO_NUMBER(iv_working_days);
+      EXCEPTION
+        WHEN OTHERS THEN
+        RAISE param_invalid_expt;
+      END;
+      IF (gn_working_days <= 0) THEN
+        RAISE param_invalid_expt;
+      END IF;
+--
+      -- ===============================
+      -- 在庫日数調整値
+      -- ===============================
+      lv_chk_parameter := cv_stock_adjust_value_tl;
+      --数値型チェック
+      BEGIN
+        gn_stock_adjust_value := TO_NUMBER(iv_stock_adjust_value);
+      EXCEPTION
+        WHEN OTHERS THEN
+        RAISE param_invalid_expt;
+      END;
+--
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
     EXCEPTION
       WHEN param_invalid_expt THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1172,6 +1239,10 @@ AS
                                              , argument7         => TO_CHAR(gd_forecast_date_to,'YYYY/MM/DD')       --出荷予測期間TO
                                              , argument8         => TO_CHAR(gd_allocated_date,'YYYY/MM/DD')         --出荷引当済日
                                              , argument9         => item_rec(i).item_no                             --品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+                                             , argument10        => TO_CHAR(gn_working_days)                        --稼動日数
+                                             , argument11        => TO_CHAR(gn_stock_adjust_value)                  --在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
                                              );
         -- エラーの場合
         IF ( req_rec(ln_target_cnt).request_id = 0 ) THEN
@@ -1633,6 +1704,10 @@ AS
     ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
     ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
     ,iv_item_code           IN     VARCHAR2                 -- 9.品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days        IN     VARCHAR2                 --10.稼動日数
+    ,iv_stock_adjust_value  IN     VARCHAR2                 --11.在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
     ,ov_errbuf              OUT    VARCHAR2                 --   エラー・メッセージ           --# 固定 #
     ,ov_retcode             OUT    VARCHAR2                 --   リターン・コード             --# 固定 #
     ,ov_errmsg              OUT    VARCHAR2                 --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1695,6 +1770,10 @@ AS
        ,iv_forecast_date_to   => iv_forecast_date_to         -- 出荷予測期間(TO)
        ,iv_allocated_date     => iv_allocated_date           -- 出荷引当済日
        ,iv_item_code          => iv_item_code                -- 品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+       ,iv_working_days       => iv_working_days             -- 稼動日数
+       ,iv_stock_adjust_value => iv_stock_adjust_value       -- 在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
        ,ov_errbuf             => lv_errbuf                   -- エラー・メッセージ           --# 固定 #
        ,ov_retcode            => lv_retcode                  -- リターン・コード             --# 固定 #
        ,ov_errmsg             => lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1777,6 +1856,10 @@ AS
     ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
     ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
     ,iv_item_code           IN     VARCHAR2                 -- 9.品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days        IN     VARCHAR2                 --10.稼動日数
+    ,iv_stock_adjust_value  IN     VARCHAR2                 --11.在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
   )
 --
 --
@@ -1833,6 +1916,10 @@ AS
       ,iv_forecast_date_to   => iv_forecast_date_to         -- 出荷予測期間(TO)
       ,iv_allocated_date     => iv_allocated_date           -- 出荷引当済日
       ,iv_item_code          => iv_item_code                -- 品目コード
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_START
+      ,iv_working_days       => iv_working_days             -- 稼動日数
+      ,iv_stock_adjust_value => iv_stock_adjust_value       -- 在庫日数調整値
+--20100203_Ver1.2_E_本稼動_01222_SCS.Goto_ADD_END
       ,ov_errbuf             => lv_errbuf                   -- エラー・メッセージ           --# 固定 #
       ,ov_retcode            => lv_retcode                  -- リターン・コード             --# 固定 #
       ,ov_errmsg             => lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #

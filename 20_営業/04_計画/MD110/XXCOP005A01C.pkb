@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 2.5
+ * Version          : 2.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/11/20    2.3   Y.Goto           I_E_479_018
  *  2009/11/19    2.4   T.Tsukino        deleteエラーの修正
  *  2009/12/03    2.5   Y.Goto           I_E_479_021(アプリPT対応)
+ *  2010/02/03    2.6   Y.Goto           E_本稼動_01222
  *
  *****************************************************************************************/
 --
@@ -197,6 +198,9 @@ AS
   cv_msg_10048_token_6      CONSTANT VARCHAR2(100) := 'FORECAST_DATE_FROM';
   cv_msg_10048_token_7      CONSTANT VARCHAR2(100) := 'FORECAST_DATE_TO';
   cv_msg_10048_token_8      CONSTANT VARCHAR2(100) := 'ALLOCATED_DATE';
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+  cv_msg_10048_token_9      CONSTANT VARCHAR2(100) := 'WORKING_DAYS';
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
 --
   --メッセージトークン値
   cv_msg_wk_tbl             CONSTANT VARCHAR2(100) := '物流計画ワークテーブル';
@@ -262,6 +266,9 @@ AS
   gd_forcast_from               DATE;                     -- 出荷予測期間（FROM）
   gd_forcast_to                 DATE;                     -- 出荷予測期間（TO）
   gd_schedule_date              DATE;                     -- 出荷引当済日
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+  gn_working_days               NUMBER;                   -- 稼動日数
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
   gd_process_date               DATE;                     -- 業務日付
 --
 --
@@ -425,6 +432,9 @@ AS
     ,iv_forcast_from  IN    VARCHAR2    --   6.出荷予測期間（FROM)
     ,iv_forcast_to    IN    VARCHAR2    --   7.出荷予測期間（TO）
     ,iv_schedule_date IN    VARCHAR2    --   8.出荷引当済日
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days  IN    VARCHAR2    --   9.稼動日数
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
     ,ov_errbuf        OUT   VARCHAR2    --   エラー・メッセージ           --# 固定 #
     ,ov_retcode       OUT   VARCHAR2    --   リターン・コード             --# 固定 #
     ,ov_errmsg        OUT   VARCHAR2    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -472,19 +482,21 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    --空白行を挿入
-    fnd_file.put_line(
-       which  => FND_FILE.LOG
-      ,buff   => NULL
-    );
-    -- =======================
-    -- 入力パラメータの出力
-    -- =======================
-    --空白行を挿入
-    fnd_file.put_line(
-       which  => FND_FILE.LOG
-      ,buff   => NULL
-    );
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_DEL_START
+--    --空白行を挿入
+--    fnd_file.put_line(
+--       which  => FND_FILE.LOG
+--      ,buff   => NULL
+--    );
+--    -- =======================
+--    -- 入力パラメータの出力
+--    -- =======================
+--    --空白行を挿入
+--    fnd_file.put_line(
+--       which  => FND_FILE.LOG
+--      ,buff   => NULL
+--    );
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_DEL_END
     -- ヘッダ情報の抽出
     lv_errmsg := xxccp_common_pkg.get_msg(          
              iv_application  => cv_msg_appl_cont    
@@ -505,6 +517,10 @@ AS
             ,iv_token_value7 => iv_forcast_to       
             ,iv_token_name8  => cv_msg_10048_token_8
             ,iv_token_value8 => iv_schedule_date    
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+            ,iv_token_name9  => cv_msg_10048_token_9
+            ,iv_token_value9 => iv_working_days
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
             );
     IF (lv_retcode <> cv_status_normal) THEN
       RAISE global_api_others_expt;
@@ -514,6 +530,11 @@ AS
                       which  => FND_FILE.LOG
                      ,buff   => lv_errmsg
                      );
+    --デバックメッセージ出力
+    xxcop_common_pkg.put_debug_message(
+       iov_debug_mode => gv_debug_mode
+      ,iv_value       => NULL
+    );
     -- ==================
     -- 業務日付の取得
     -- ==================
@@ -737,6 +758,23 @@ AS
       lv_retcode := cv_status_error;
       RAISE past_date_invalid_expt;
     END IF;
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+    --稼動日数NULLチェック
+    IF (iv_working_days IS NULL) THEN
+      RAISE param_invalid_expt;
+    END IF;
+    --稼動日数 数値型チェック
+    BEGIN
+      gn_working_days := TO_NUMBER(iv_working_days);
+    EXCEPTION
+      WHEN OTHERS THEN
+      RAISE param_invalid_expt;
+    END;
+    --稼動日数 正数チェック
+    IF (gn_working_days <= 0) THEN
+      RAISE param_invalid_expt;
+    END IF;
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
     -- =====================================
     -- 関連テーブル削除処理
     -- =====================================
@@ -1425,33 +1463,38 @@ AS
     IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
     END IF;
-    --  出荷実績稼働日数取得
-    xxcop_common_pkg2.get_working_days(
-         iv_calendar_code            =>           io_xwsp_rec.receipt_calendar_code
-        ,in_organization_id          =>           NULL
-        ,in_loct_id                  =>           NULL
-        ,id_from_date                =>           gd_pace_from
-        ,id_to_date                  =>           gd_pace_to
-        ,on_working_days             =>           ln_working_days
-        ,ov_errbuf                   =>           lv_errbuf
-        ,ov_retcode                  =>           lv_retcode
-        ,ov_errmsg                   =>           lv_errmsg
-      );
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_api_expt;
-    ELSIF (ln_working_days = 0) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_msg_appl_cont
-                    ,iv_name         => cv_msg_00056
-                    ,iv_token_name1  => cv_msg_00056_token_1
-                    ,iv_token_value1 => TO_CHAR(gd_pace_from,cv_date_format_slash)
-                    ,iv_token_name2  => cv_msg_00056_token_2
-                    ,iv_token_value2 => TO_CHAR(gd_pace_to,cv_date_format_slash)
-      );
-      RAISE internal_process_expt;
-    END IF;
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_DEL_START
+--    --  出荷実績稼働日数取得
+--    xxcop_common_pkg2.get_working_days(
+--         iv_calendar_code            =>           io_xwsp_rec.receipt_calendar_code
+--        ,in_organization_id          =>           NULL
+--        ,in_loct_id                  =>           NULL
+--        ,id_from_date                =>           gd_pace_from
+--        ,id_to_date                  =>           gd_pace_to
+--        ,on_working_days             =>           ln_working_days
+--        ,ov_errbuf                   =>           lv_errbuf
+--        ,ov_retcode                  =>           lv_retcode
+--        ,ov_errmsg                   =>           lv_errmsg
+--      );
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_api_expt;
+--    ELSIF (ln_working_days = 0) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_msg_appl_cont
+--                    ,iv_name         => cv_msg_00056
+--                    ,iv_token_name1  => cv_msg_00056_token_1
+--                    ,iv_token_value1 => TO_CHAR(gd_pace_from,cv_date_format_slash)
+--                    ,iv_token_name2  => cv_msg_00056_token_2
+--                    ,iv_token_value2 => TO_CHAR(gd_pace_to,cv_date_format_slash)
+--      );
+--      RAISE internal_process_expt;
+--    END IF;
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_DEL_END
     --1稼動日あたりの出荷ペースを取得
-    io_xwsp_rec.shipping_pace  :=   ROUND(ln_shipped_quantity/ln_working_days,0);
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_MOD_START
+--    io_xwsp_rec.shipping_pace  :=   ROUND(ln_shipped_quantity/ln_working_days,0);
+    io_xwsp_rec.shipping_pace  :=   ROUND(ln_shipped_quantity/gn_working_days,0);
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_MOD_END
     --  io_xwsp_rec := lr_xwsp_rec;
   END IF;
 --  
@@ -3945,9 +3988,12 @@ AS
     ,iv_forcast_from  IN    VARCHAR2    --   6.出荷予測期間（FROM)
     ,iv_forcast_to    IN    VARCHAR2    --   7.出荷予測期間（TO）
     ,iv_schedule_date IN    VARCHAR2    --   8.出荷引当済日
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days  IN  VARCHAR2      --   9.稼動日数
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
     ,ov_errbuf        OUT   VARCHAR2    --   エラー・メッセージ           --# 固定 #
     ,ov_retcode       OUT   VARCHAR2    --   リターン・コード             --# 固定 #
-    ,ov_errmsg        OUT   VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
+    ,ov_errmsg        OUT   VARCHAR2    --   ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -4046,6 +4092,9 @@ AS
       ,iv_forcast_from  =>      iv_forcast_from     --   6.出荷予測期間（FROM)
       ,iv_forcast_to    =>      iv_forcast_to       --   7.出荷予測期間（TO）
       ,iv_schedule_date =>      iv_schedule_date    --   8.出荷引当済日
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+      ,iv_working_days  =>      iv_working_days     --   9.稼動日数
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
       ,ov_errbuf        =>      lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,ov_retcode       =>      lv_retcode          -- リターン・コード             --# 固定 #
       ,ov_errmsg        =>      lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4286,6 +4335,9 @@ AS
     ,iv_forcast_from               IN  VARCHAR2         --   6.出荷予測期間（FROM)
     ,iv_forcast_to                 IN  VARCHAR2         --   7.出荷予測期間（TO）
     ,iv_schedule_date              IN  VARCHAR2         --   8.出荷引当済日
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days               IN  VARCHAR2         --   9.稼動日数
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
   )
 --
 --###########################  固定部 START   ###########################
@@ -4345,6 +4397,9 @@ AS
       ,iv_forcast_from  =>       iv_forcast_from  --   6.出荷予測期間（FROM)
       ,iv_forcast_to    =>       iv_forcast_to    --   7.出荷予測期間（TO）
       ,iv_schedule_date =>       iv_schedule_date --   8.出荷引当済日
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_START
+      ,iv_working_days  =>       iv_working_days  --   9.稼動日数
+--20100203_Ver2.6_E_本稼動_01222_SCS.Goto_ADD_END
       ,ov_errbuf        =>       lv_errbuf        --   エラー・メッセージ           --# 固定 #
       ,ov_retcode       =>       lv_retcode       --   リターン・コード             --# 固定 #
       ,ov_errmsg        =>       lv_errmsg        --   ユーザー・エラー・メッセージ --# 固定 #

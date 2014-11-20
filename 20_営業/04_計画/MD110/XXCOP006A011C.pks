@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A011C(spec)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 3.0
+ * Version          : 3.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/06/12    1.4   Y.Goto           T1_1394対応
  *  2009/07/13    2.0   Y.Goto           0000669対応(共通課題IE479)
  *  2009/11/30    3.0   Y.Goto           I_E_479_019(横持計画パラレル化対応、アプリPT対応、プログラムIDの変更)
+ *  2010/02/03    3.1   Y.Goto           E_本稼動_01222
  *
  *****************************************************************************************/
 --
@@ -41,6 +42,10 @@ AS
     ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
     ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
     ,iv_item_code           IN     VARCHAR2                 -- 9.品目コード
+--20100203_Ver3.1_E_本稼動_01222_SCS.Goto_ADD_START
+    ,iv_working_days        IN     VARCHAR2                 --10.稼動日数
+    ,iv_stock_adjust_value  IN     VARCHAR2                 --11.在庫日数調整値
+--20100203_Ver3.1_E_本稼動_01222_SCS.Goto_ADD_END
   );
 END XXCOP006A011C;
 /
