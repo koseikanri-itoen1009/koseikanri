@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/01/09    1.15  N.Yoshida        本番#986対応
  *  2009/07/09    1.16  Marushita        本番#1574対応
  *  2012/03/23    1.17  Y.Horikawa       E_本稼動_09257対応（E_本稼動_08924対応）
+ *  2013/06/27    1.18  S.Niki           E_本稼動_10839対応（消費税増税対応）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -92,6 +93,9 @@ AS
   -- 項目編集関連
   ------------------------------
   gc_char_yyyymm_format   CONSTANT VARCHAR2(30) := 'YYYYMM' ;
+-- v1.18 ADD START
+  gc_char_std_format      CONSTANT VARCHAR2(30) := 'YYYY/MM/DD' ;
+-- v1.18 ADD END
   gc_char_dt_format       CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS' ;
   gc_char_yyyy_format     CONSTANT VARCHAR2(30) := 'YYYY' ;
   gc_char_mm_format       CONSTANT VARCHAR2(30) := 'MM' ;
@@ -166,7 +170,9 @@ AS
    ,commission_tax   NUMBER                                         -- 消費税等(口銭)
    ,payment_tax      NUMBER                                         -- 消費税等(支払)
 -- 2008/12/05 v1.13 ADD END
-   ,c_tax            NUMBER                                         -- 消費税
+-- v1.18 DEL START
+--   ,c_tax            NUMBER                                         -- 消費税
+-- v1.18 DEL END
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -854,6 +860,9 @@ AS
     cv_rma               CONSTANT VARCHAR2( 3) := 'RMA';
 -- 2008/11/13 v1.8 ADD END
     cv_cat_set_name_mtof CONSTANT VARCHAR2(30) := 'XXCMN_MONTH_TRANS_OUTPUT_FLAG';
+-- v1.18 ADD START
+    cv_sts_num_3         CONSTANT VARCHAR2( 1) := '3'; -- 実績区分：発注なし仕入先返品
+-- v1.18 ADD END
 --
     cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
     cn_item_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
@@ -866,7 +875,9 @@ AS
     -- *** ローカル・変数 ***
     lv_sql        VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_in         VARCHAR2(1000) ;
-    lt_lkup_code  fnd_lookup_values.lookup_code%TYPE;
+-- v1.18 DEL START
+--    lt_lkup_code  fnd_lookup_values.lookup_code%TYPE;
+-- v1.18 DEL END
 --
 -- 2008/10/14 v1.6 ADD START
     lv_select     VARCHAR2(32000) ;
@@ -1468,9 +1479,12 @@ AS
 --      || '           ) AS payment_tax '
 ---- 2008/12/05 v1.13 ADD END
       || '      ,SUM(mst.commission_tax) AS commission_tax '
-      || '      ,SUM(mst.payment_tax) AS payment_tax '
--- 2012/03/23 v1.17 Mod End
-      || '      ,:para_lkup_code              AS c_tax ';
+-- v1.18 MOD START
+--      || '      ,SUM(mst.payment_tax) AS payment_tax '
+---- 2012/03/23 v1.17 Mod End
+--      || '      ,:para_lkup_code              AS c_tax ';
+      || '      ,SUM(mst.payment_tax) AS payment_tax ';
+-- v1.18 MOD END
 --
     -- ----------------------------------------------------
     -- 購買関連生成
@@ -1547,24 +1561,41 @@ AS
       || '             END AS assessment '                                      -- 賦課金額
       || '            ,CASE plla.attribute3 '
       || '               WHEN ''1'' THEN '
-      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '               WHEN ''2'' THEN '
-      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '               ELSE '
       || '                 0 '
       || '             END AS commission_tax '                                  -- 口銭消費税金額
       || '            ,CASE plla.attribute3 '
       || '               WHEN ''1'' THEN '
       || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
-      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
-      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
+--      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '               WHEN ''2'' THEN '
       || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
-      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
-      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
+--      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '               ELSE '
       || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
-      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100)) '
+      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '             END AS payment_tax '                                     -- 支払消費税金額
       || '            ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS j_amt '
 -- 2012/03/23 v1.17 Mod End
@@ -1632,6 +1663,9 @@ AS
 -- 2008/11/13 v1.8 ADD START
       || '             ,xxcmn_rcv_pay_mst        xrpm '
 -- 2008/11/13 v1.8 ADD END
+-- v1.18 ADD START
+      || '             ,xxcmn_lookup_values2_v   xlv2v '  -- 消費税率情報VIEW
+-- v1.18 ADD END
       || '       WHERE  itp.doc_type                = :para_porc '
       || '       AND    itp.completed_ind           = :para_one '
       || '       AND    itp.trans_date '
@@ -1706,6 +1740,12 @@ AS
       || '         :para_max_date, :para_char_dt_format)) >= TRUNC(itp.trans_date) '
 -- 2008/11/13 v1.8 UPDATE END
 -- 2008/10/28 H.Itou Mod End
+-- v1.18 ADD START
+      || '       AND    xlv2v.lookup_type         = :para_xxcmn_ctr '  -- 消費税率マスタ(LOOKUP表)
+      -- 発注データの納入日基準
+      || '       AND    xlv2v.start_date_active  < (FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) + 1) '
+      || '       AND    xlv2v.end_date_active    >= FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) '
+-- v1.18 ADD END
 -- 2008/11/13 v1.8 ADD START
       || '       AND    xrpm.doc_type             = :para_porc '
       || '       AND    xrpm.source_document_code <> :para_rma '
@@ -1858,27 +1898,46 @@ AS
       || '             ,CASE xrrt.kousen_type '
       || '                WHEN ''1'' THEN '
       || '                  SUM(ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
-      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '                WHEN ''2'' THEN '
       || '                  SUM(ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
-      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '                ELSE '
       || '                  0 '
       || '              END AS commission_tax '                                         -- 口銭消費税金額
       || '             ,CASE xrrt.kousen_type '
       || '                WHEN ''1'' THEN '
       || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+-- v1.18 MOD START
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+--      || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+--      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
       || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
-      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '                WHEN ''2'' THEN '
       || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+-- v1.18 MOD START
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+--      || '                  - ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+--      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
       || '                  - ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
-      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '                ELSE '
       || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+-- v1.18 MOD START
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+-- v1.18 MOD END
       || '              END AS payment_tax '                                            -- 支払消費税金額
       || '             ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS j_amt '
 -- 2012/03/23 v1.17 Mod End
@@ -1943,6 +2002,18 @@ AS
 -- 2008/11/13 v1.8 ADD START
       || '             ,xxcmn_rcv_pay_mst        xrpm '
 -- 2008/11/13 v1.8 ADD END
+-- v1.18 ADD START
+      || '             ,xxcmn_lookup_values2_v   xlv2v '  -- 消費税率情報VIEW
+      || '             ,(SELECT xrrt2.txns_id                   AS txns_id '
+      || '                     ,CASE WHEN xrrt2.txns_type = '|| cv_sts_num_3 ||' THEN TRUNC(xrrt2.txns_date) '
+      || '                           ELSE NVL(FND_DATE.STRING_TO_DATE(pha2.attribute4, :para_char_std_format) '
+      || '                                  , TRUNC(xrrt2.txns_date)) '
+      || '                      END                             AS txns_date '
+      || '               FROM   xxpo_rcv_and_rtn_txns  xrrt2 '
+      || '                     ,po_headers_all         pha2 '
+      || '               WHERE  xrrt2.source_document_number = pha2.segment1(+) '
+      || '               )                       pha '    -- 元発注データ情報
+-- v1.18 ADD END
       || '       WHERE  itc.doc_type        = :para_adji '
       || '       AND    itc.reason_code     = :para_x201 '
       || '       AND    itc.trans_date '
@@ -2009,6 +2080,12 @@ AS
       || '         :para_max_date, :para_char_dt_format)) >= TRUNC(itc.trans_date) '
 -- 2008/11/13 v1.8 UPDATE END
 -- 2008/10/28 H.Itou Mod End
+-- v1.18 ADD START
+      || '       AND    xrrt.txns_id                  =  pha.txns_id '
+      || '       AND    xlv2v.lookup_type             =  :para_xxcmn_ctr '      -- 消費税率マスタ(LOOKUP表)
+      || '       AND    xlv2v.start_date_active       < (pha.txns_date + 1) '
+      || '       AND    xlv2v.end_date_active         >= pha.txns_date '
+-- v1.18 ADD END
 -- 2008/11/13 v1.8 ADD START
       || '       AND    xrpm.doc_type             = :para_adji '
       || '       AND    itc.doc_type              = xrpm.doc_type '
@@ -2146,11 +2223,13 @@ AS
 --
 -- 2008/10/14 v1.6 ADD END
 --yutsuzuk add
-    SELECT flv.lookup_code
-    INTO   lt_lkup_code
-    FROM   xxcmn_lookup_values_v flv
-    WHERE  flv.lookup_type = gv_xxcmn_ctr
-    AND    ROWNUM          = 1;
+-- v1.18 DEL START
+--    SELECT flv.lookup_code
+--    INTO   lt_lkup_code
+--    FROM   xxcmn_lookup_values_v flv
+--    WHERE  flv.lookup_type = gv_xxcmn_ctr
+--    AND    ROWNUM          = 1;
+-- v1.18 DEL END
 --yutsuzuk add
 -- 2008/10/14 v1.6 UPDATE START
 /*
@@ -2177,28 +2256,36 @@ AS
                   || lv_porc_po
                   || lv_adji
                   || lv_group
-                  || lv_order   USING  lt_lkup_code
--- 2012/03/23 v1.17 Del Start
----- 2008/12/05 ADD START
---                                      ,lt_lkup_code
---                                      ,lt_lkup_code
---                                      ,lt_lkup_code
----- 2008/12/05 ADD END
--- 2012/03/23 v1.17 Del End
-                                      ,cv_zero
+-- v1.18 MOD START
+--                  || lv_order   USING  lt_lkup_code
+---- 2012/03/23 v1.17 Del Start
+------ 2008/12/05 ADD START
+----                                      ,lt_lkup_code
+----                                      ,lt_lkup_code
+----                                      ,lt_lkup_code
+------ 2008/12/05 ADD END
+---- 2012/03/23 v1.17 Del End
+--                                      ,cv_zero
+                  || lv_order   USING  cv_zero
+-- v1.18 MOD END
 -- 2012/03/23 v1.17 Mod Start
 --                                      ,cv_zero
 --                                      ,cv_zero
-                                      ,lt_lkup_code
-                                      ,lt_lkup_code
+-- v1.18 MOD START
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,cv_zero
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,cv_zero
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,cv_zero
+--                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,lt_lkup_code
-                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,lt_lkup_code
-                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,lt_lkup_code
+-- v1.18 MOD END
 -- 2012/03/23 v1.17 Mod End
                                       ,cv_porc
                                       ,gn_one
@@ -2226,6 +2313,11 @@ AS
                                       ,gc_char_dt_format
                                       ,gv_max_date
                                       ,gc_char_dt_format
+-- v1.18 ADD START
+                                      ,gv_xxcmn_ctr       -- 消費税率マスタ(LOOKUP表)
+                                      ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
+                                      ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
+-- v1.18 ADD END
                                       ,cv_porc
                                       ,cv_rma
                                       ,cv_po
@@ -2238,16 +2330,22 @@ AS
 -- 2012/03/23 v1.17 Mod Start
 --                                      ,cv_zero
 --                                      ,cv_zero
-                                      ,lt_lkup_code
-                                      ,lt_lkup_code
+-- v1.18 MOD START
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,cv_zero
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,cv_zero
+--                                      ,lt_lkup_code
+--                                      ,lt_lkup_code
+--                                      ,cv_zero
+--                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,lt_lkup_code
-                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,lt_lkup_code
-                                      ,lt_lkup_code
                                       ,cv_zero
-                                      ,lt_lkup_code
+                                      ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
+-- v1.18 MOD END
 -- 2012/03/23 v1.17 Mod End
                                       ,cv_adji
                                       ,cv_x201
@@ -2271,6 +2369,9 @@ AS
                                       ,gc_char_dt_format
                                       ,gv_max_date
                                       ,gc_char_dt_format
+-- v1.18 ADD START
+                                      ,gv_xxcmn_ctr       -- 消費税率マスタ(LOOKUP表)
+-- v1.18 ADD END
                                       ,cv_adji
                                       ;
 -- 2008/11/13 v1.8 UPDATE END
@@ -2371,7 +2472,9 @@ AS
     ln_payment_amount        NUMBER; -- 支払金額
     ln_standard_amount       NUMBER; -- 標準金額
     ln_difference_amount     NUMBER; -- 差異
-    ln_tax                   NUMBER; -- 消費税
+-- v1.18 DEL START
+--    ln_tax                   NUMBER; -- 消費税
+-- v1.18 DEL END
 --
   BEGIN
 --
@@ -2389,8 +2492,10 @@ AS
     ln_payment_amount        := 0; -- 支払金額
     ln_standard_amount       := 0; -- 標準金額
     ln_difference_amount     := 0; -- 差異
-    -- 消費税係数
-    ln_tax := TO_NUMBER(NVL(it_data_rec.c_tax,gn_zero)) / gn_100;
+-- v1.18 DEL START
+--    -- 消費税係数
+--    ln_tax := TO_NUMBER(NVL(it_data_rec.c_tax,gn_zero)) / gn_100;
+-- v1.18 DEL END
     -- -----------------------------------------------------
     -- 品目ＬＧ開始タグ出力
     -- -----------------------------------------------------
