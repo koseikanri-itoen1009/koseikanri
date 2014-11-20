@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 1.7                                                       ##
+## Version          : 1.8                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -77,6 +77,10 @@
 ##                                       ・エラーメッセージ内のパスを表示しない ##
 ##  2009/08/19    1.7   Masayuki.Sano    [障害0000835]                          ##
 ##                                       ・一時ファイル名変更                   ##
+##  2009/08/27    1.8   Masayuki.Sano    [障害0000643]                          ##
+##                                       ・エラーステータスの追加(10,11)        ##
+##                                       ・コピー、削除、ファイルチェックの削除 ##
+##                                       ・ステータステーブルの作成項目変更     ##
 ##                                                                              ##
 ##################################################################################
 
@@ -91,13 +95,13 @@ C_request_id=${4}                    #本コンカレントの要求ID
 C_collon="  :  "
 C_paracount=${#}
 
-# 2009/08/19 Ver1.7 Mod START
+# 2009/08/19 Ver1.7 Del START
 #C_cmdname="/var/tmp"                           #テンポラリファイル出力先
 #C_fname="${C_program_id}_${C_request_id}"      #テンポラリファイル名 [SQL結果格納]
 #C_std_out="${C_cmdname}/${C_fname}.env"        #テンポラリファイル名(パス付き)
 #C_fname2="${C_program_id}_${C_request_id}_2"   #テンポラリファイル名2 [COCSUB結果ログ]
 #C_std_out2="${C_cmdname}/${C_fname2}.stdout"   #テンポラリファイル名2(パス付き)
-# 2009/08/19 Ver1.7 Mod End
+# 2009/08/19 Ver1.7 Del End
 
 C_field_name='$SRS$.'
 C_prof_request_id="XXCCP1_REQUEST_ID"                   #プロファイル|XXCCP:出力用_要求ID
@@ -145,6 +149,10 @@ C_prof_rep_status_max="XXCCP1_REPORT_STATUS_MAX"            #プロファイル|XXCCP:
 C_prof_rep_status_interval="XXCCP1_REPORT_STATUS_INTERVAL"  #プロファイル|XXCCP:帳票監視間隔時間
 C_prof_rep_jobnet_last="XXCCP1_REPORT_JOBNET_LAST"          #プロファイル|XXCCP:帳票ジョブネット名(末尾)
 # 2009/04/02 Ver.1.4 Masayuki.Sano add END
+# 2009/08/27 Ver1.8 Masayuki.Sano add START
+C_prof_copyshell_path="XXCCP1_ZBZZCOPYFILE_PATH"             #プロファイル|XXCCP:IFファイルコピーシェルパス
+C_prof_delshell_path="XXCCP1_ZBZZDELETEFILE_PATH"            #プロファイル|XXCCP:IFファイル削除シェルパス
+# 2009/08/27 Ver1.8 Masayuki.Sano add END
 
 C_ofil=$APPLCSF/$APPLOUT/o$4.out   #レポート出力ファイル名(パス付き)
 
@@ -207,7 +215,10 @@ update_job_process()
             ,xijs.program_update_date    = TO_DATE('${L_update_date}','YYYYMMDDHH24MISS')
 -- 2009/05/11 Ver.1.5 Masayuki.Sano Update End
       WHERE  xijs.if_job_status_id = $L_if_job_status_id
-      AND    xijs.status_code NOT IN ('1','8','9')  -- 2009/04/02 Ver.1.5 Masayuki.Sano Add
+-- 2009/08/27 Ver1.8 Masayuki.Sano mod Start
+--      AND    xijs.status_code NOT IN ('1','8','9')  -- 2009/04/02 Ver.1.5 Masayuki.Sano Add
+      AND    xijs.status_code IN ('0','i')
+-- 2009/08/27 Ver1.8 Masayuki.Sano mod End
       ;
       EXIT SUCCESS COMMIT
 EOF
@@ -429,6 +440,10 @@ SELECT --固定出力メッセージ
       ,'C_rep_status_interval='''||FND_PROFILE.VALUE('${C_prof_rep_status_interval}')||''''
       ,'C_rep_jobnet_last='''||FND_PROFILE.VALUE('${C_prof_rep_jobnet_last}')||''''
 -- 2009/04/02 Ver.1.4 Masayuki.Sano ADD End
+-- 2009/08/27 Ver.1.8 Masayuki.Sano add Start
+      ,'C_copyshell_path='''||FND_PROFILE.VALUE('${C_prof_copyshell_path}')||''''
+      ,'C_delshell_path='''||FND_PROFILE.VALUE('${C_prof_delshell_path}')||''''
+-- 2009/08/27 Ver.1.8 Masayuki.Sano add End
       --WHOカラム値
       ,'C_requested_by='''||fcr.requested_by||''''                                    --要求者(USER_ID)
       ,'C_last_update_login='''||fcr.conc_login_id||''''                              --最終更新ログイン(LOGIN_ID)
@@ -856,6 +871,18 @@ then
   shell_end "${C_10016_msg}( ${C_prof_rep_jobnet_last} )"
 fi
 # 2009/04/02 Ver.1.4 Masayuki.Sano add END
+# 2009/08/27 Ver1.8 Masayuki.Sano add Start
+#XXCCP:IFファイルコピーシェルパス
+if [ -z "${C_copyshell_path}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_copyshell_path} )"
+fi
+#XXCCP:IFファイル削除シェルパス
+if [ -z "${C_delshell_path}" ]
+then
+  shell_end "${C_10016_msg}( ${C_prof_delshell_path} )"
+fi
+# 2009/08/27 Ver1.8 Masayuki.Sano add End
 
 #ディレクトリ情報取得(A-2)
 #業務系列コードを小文字変換
@@ -925,74 +952,78 @@ do
   fi
 
   #ファイル存在チェック(A-4)
-  if [ -f ${L_file_dir_to} ]
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#  if [ -f ${L_file_dir_to} ]
+#  then
+## 2009/03/19 Ver.1.3 Koji.Oomata mod START
+#    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+#    SET HEADING OFF
+#    SET LINES 240
+#-- 2009/06/03 Ver.1.6 Masayuki.Sano mod START
+#--    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||''''
+#    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_nam}')||''''
+#-- 2009/06/03 Ver.1.6 Masayuki.Sano mod END
+#    FROM DUAL
+#    ;
+#    EXIT
+#EOF
+## 2009/03/19 Ver.1.3 Koji.Oomata mod End
+#    . $C_std_out
+#    if [ -z "${L_status_err}" ]
+#    then
+#      L_status_err="${C_10010_msg}"
+#    else
+#      L_status_err="${L_status_err}\n${C_10010_msg}"
+#    fi
+## 2009/04/02 Ver.1.4 Masayuki.Sano add START
+#  # ※ ファイルが存在しない場合、下記チェック処理を実行する。
+#  else
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
+  #A-4．多重制御ステータス確認
+  #[ 同一ファイルでジョブ状況ステータスが'実行中'であるものを抽出]
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+  SET HEADING OFF
+  SET LINES 240
+  SELECT 'L_cnt=''' || COUNT(1) || ''''
+  FROM   xxccp_if_job_status xijs
+  WHERE  xijs.if_system_name = '${8}'          -- IF連携システム名
+  AND    xijs.if_file_name   = '${L_file_nam}' -- ファイル名
+  AND    xijs.job_process    = 'R'             -- 実行中
+  ;
+  EXIT
+EOF
+  . ${C_std_out}
+  #[ 取得できた件数が0件以外の場合、エラーメッセージセット]
+  if [ "${L_cnt}" != "0" ]
   then
-# 2009/03/19 Ver.1.3 Koji.Oomata mod START
-    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+    # 実行中ステータス確認エラーメッセージを取得
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
     SET HEADING OFF
     SET LINES 240
+    SELECT 'C_10062_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                     ,'APP-XXCCP1-10062'
+                                                     ,'FILE_NAME'
 -- 2009/06/03 Ver.1.6 Masayuki.Sano mod START
---    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_dir_to}')||''''
-    SELECT 'C_10010_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10010','FILE_NAME','${L_file_nam}')||''''
+--                                                      ,'${L_file_dir_to}')||''''
+                                                    ,'${L_file_nam}')||''''
 -- 2009/06/03 Ver.1.6 Masayuki.Sano mod END
     FROM DUAL
     ;
     EXIT
 EOF
-# 2009/03/19 Ver.1.3 Koji.Oomata mod End
     . $C_std_out
+    # エラーメッセージにセット
     if [ -z "${L_status_err}" ]
     then
-      L_status_err="${C_10010_msg}"
+      L_status_err="${C_10062_msg}"
     else
-      L_status_err="${L_status_err}\n${C_10010_msg}"
+      L_status_err="${L_status_err}\n${C_10062_msg}"
     fi
-# 2009/04/02 Ver.1.4 Masayuki.Sano add START
-  # ※ ファイルが存在しない場合、下記チェック処理を実行する。
-  else
-    #A-4．多重制御ステータス確認
-    #[ 同一ファイルでジョブ状況ステータスが'実行中'であるものを抽出]
-    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
-    SET HEADING OFF
-    SET LINES 240
-    SELECT 'L_cnt=''' || COUNT(1) || ''''
-    FROM   xxccp_if_job_status xijs
-    WHERE  xijs.if_system_name = '${8}'          -- IF連携システム名
-    AND    xijs.if_file_name   = '${L_file_nam}' -- ファイル名
-    AND    xijs.job_process    = 'R'             -- 実行中
-    ;
-    EXIT
-EOF
-    . ${C_std_out}
-    #[ 取得できた件数が0件以外の場合、エラーメッセージセット]
-    if [ "${L_cnt}" != "0" ]
-    then
-      # 実行中ステータス確認エラーメッセージを取得
-      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
-      SET HEADING OFF
-      SET LINES 240
-      SELECT 'C_10062_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
-                                                       ,'APP-XXCCP1-10062'
-                                                       ,'FILE_NAME'
--- 2009/06/03 Ver.1.6 Masayuki.Sano mod START
---                                                      ,'${L_file_dir_to}')||''''
-                                                      ,'${L_file_nam}')||''''
--- 2009/06/03 Ver.1.6 Masayuki.Sano mod END
-      FROM DUAL
-      ;
-      EXIT
-EOF
-      . $C_std_out
-      # エラーメッセージにセット
-      if [ -z "${L_status_err}" ]
-      then
-        L_status_err="${C_10062_msg}"
-      else
-        L_status_err="${L_status_err}\n${C_10062_msg}"
-      fi
-    fi
-# 2009/04/02 Ver.1.4 Masayuki.Sano add END
   fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
+# 2009/08/27 Ver1.8 del Masayuki.Sano Start
+#  fi
+# 2009/08/27 Ver1.8 del Masayuki.Sano End
 
   #ループカウント +1
   loop_cnt=`expr $loop_cnt + 1`
@@ -1440,32 +1471,34 @@ do
   #ファイル移動処理(A-7)
   #移動元ファイル(ディレクトリ付き)
   L_cm_file_dir=`printf "$L_file_dir_all" | cut -d " " -f $loop_cnt`
-  cp -p ${L_cm_file_dir} ${L_if_mov_to}
-  L_return=${?}
-# 2009/04/02 Ver.1.4 Masayuki.Sano add START
-  if [ ${L_return} -ne 0 ]
-  then
-    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
-    SET HEADING OFF
-    SET LINES 240
-    SELECT 'C_10064_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10064')||''''
-    FROM DUAL
-    ;
-    EXIT
-EOF
-    . $C_std_out
-    #(メッセージをセット)
-    if [ -z "${L_status_err}" ]
-    then
-      L_status_err="${C_10064_msg}"
-    else
-      L_status_err="${L_status_err}\n${C_10064_msg}"
-    fi
-    #(ジョブ状況ステータスを終了に更新)
-    update_job_process ${L_if_job_status_id_all}
-    #(処理終了)
-    shell_end ${L_status_err}
-  fi
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#  cp -p ${L_cm_file_dir} ${L_if_mov_to}
+#  L_return=${?}
+## 2009/04/02 Ver.1.4 Masayuki.Sano add START
+#  if [ ${L_return} -ne 0 ]
+#  then
+#    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+#    SET HEADING OFF
+#    SET LINES 240
+#    SELECT 'C_10064_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10064')||''''
+#    FROM DUAL
+#    ;
+#    EXIT
+#EOF
+#    . $C_std_out
+#    #(メッセージをセット)
+#    if [ -z "${L_status_err}" ]
+#    then
+#      L_status_err="${C_10064_msg}"
+#    else
+#      L_status_err="${L_status_err}\n${C_10064_msg}"
+#    fi
+#    #(ジョブ状況ステータスを終了に更新)
+#    update_job_process ${L_if_job_status_id_all}
+#    #(処理終了)
+#    shell_end ${L_status_err}
+#  fi
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
 # 2009/04/02 Ver.1.4 Masayuki.Sano add END
   #バックアップ処理(A-8)
   #バックアップ元ファイル(拡張子なし)
@@ -1482,8 +1515,12 @@ EOF
   #バックアップファイル名(ディレクトリ付き)
   L_new_file_dir="${L_if_bkup_to}/${L_new_file_name}"
   #ファイル移動処理
-  mv ${L_cm_file_dir} ${L_new_file_dir}
+# 2009/08/27 Ver1.8 Masayuki.Sano mod Start
+#  mv ${L_cm_file_dir} ${L_new_file_dir}
+#  L_return=${?}
+  cp ${L_cm_file_dir} ${L_new_file_dir}
   L_return=${?}
+# 2009/08/27 Ver1.8 Masayuki.Sano mod End
 # 2009/04/02 Ver.1.4 Masayuki.Sano add START
   if [ ${L_return} -ne 0 ]
   then
@@ -1700,10 +1737,17 @@ EOF
 
   #対向システムジョブ状況更新処理(XXCCP009A02)起動シェルのフルパス
   L_sts_updt="${C_sts_updt_path}/AZXXCCP009A02C.ksh"
+# 2009/08/27 Ver1.8 Masayuki.Sano mod Start
+#  #jpqjobsubコマンド発行
+#  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} ${L_jobnet_parf}"
+#  #jpqjobsubコマンド成功判定
+#  L_ret_code=${?}
+  #IFファイル名(ディレクトリ無し)
+  L_file_nam=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
   #jpqjobsubコマンド発行
-  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} ${L_jobnet_parf}"
-  #jpqjobsubコマンド成功判定
+  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
   L_ret_code=${?}
+# 2009/08/27 Ver1.8 Masayuki.Sano mod End
   if [ ${L_ret_code} -ne 0 ]
   then
 # 2009/03/19 Ver.1.3 Koji.Oomata mod START
@@ -1745,17 +1789,19 @@ done
 if [ -n "${L_status_err}" ]
 then
 # 2009/04/02 Ver.1.4 Masayuki.Sano add Start
-  #ファイル削除処理(A-12)
-  loop_cnt=1
-  while test ${7} -ge ${loop_cnt}
-  do
-    #対象ファイル名(ディレクトリ無し)
-    L_file_nam=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
-    L_del_file="${L_if_mov_to}/${L_file_nam}"
-    file_delete ${L_del_file}
-    #ループカウント +1
-    loop_cnt=`expr $loop_cnt + 1`
-  done
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#  #ファイル削除処理(A-12)
+#  loop_cnt=1
+#  while test ${7} -ge ${loop_cnt}
+#  do
+#    #対象ファイル名(ディレクトリ無し)
+#    L_file_nam=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
+#    L_del_file="${L_if_mov_to}/${L_file_nam}"
+#    file_delete ${L_del_file}
+#    #ループカウント +1
+#    loop_cnt=`expr $loop_cnt + 1`
+#  done
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
   #終了処理(A-13)
   update_job_process ${L_if_job_status_id_all}
 # 2009/04/02 Ver.1.4 Masayuki.Sano add END
@@ -1860,27 +1906,27 @@ do
 # 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 
 # 2009/03/19 Ver.1.3 Koji.Oomata mod START
-    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
-    SET HEADING OFF
-    SET LINES 240
+  sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+  SET HEADING OFF
+  SET LINES 240
 -- 2009/04/02 Ver.1.4 Masayuki.Sano update Start
 --    SELECT 'L_time_out_tmp='''||TO_CHAR(sysdate + '${C_status_max}' / 86400,'YYYYMMDDHH24MISS')||''''
 --          ,'L_status_code='''||xijs.status_code||''''
-    SELECT 'L_status_code='''||xijs.status_code||''''
+  SELECT 'L_status_code='''||xijs.status_code||''''
 -- 2009/04/02 Ver.1.4 Masayuki.Sano update END
-          ,'L_jobnet_name='''||xijs.jobnet_name||''''
-          ,'L_if_file_name='''||xijs.if_file_name||''''
-    FROM  DUAL
-         ,xxccp_if_job_status xijs
+        ,'L_jobnet_name='''||xijs.jobnet_name||''''
+        ,'L_if_file_name='''||xijs.if_file_name||''''
+  FROM  DUAL
+       ,xxccp_if_job_status xijs
 -- 2009/04/02 Ver.1.4 Masayuki.Sano update Start
 --    WHERE xijs.pk_request_id_val = '${L_pk_request_id_val}'
-    WHERE xijs.request_id_val = '${L_pk_request_id_val}'
+  WHERE xijs.request_id_val = '${L_pk_request_id_val}'
 -- 2009/04/02 Ver.1.4 Masayuki.Sano update END
-    ;
-    EXIT
+  ;
+  EXIT
 EOF
 # 2009/03/19 Ver.1.3 Koji.Oomata mod End
-    . $C_std_out
+  . $C_std_out
 # 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
 #    #タイムアウト時間取得
 #    if [ "${L_cnt}" = '1' ]
@@ -1890,131 +1936,201 @@ EOF
 #    fi
 # 2009/04/02 Ver.1.4 Masayuki.Sano delete END
 
-    #ステータス判定
-    #｢正常」に更新
-    if [ "${L_status_code}" = '1' ]
+  #ステータス判定
+  #｢正常」に更新
+  if [ "${L_status_code}" = '1' ]
+  then
+    #成功件数を+1カウント
+    L_success_cnt=`expr $L_success_cnt + 1`
+    #正常終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_succes_req_id}" ]
     then
-      #成功件数を+1カウント
-      L_success_cnt=`expr $L_success_cnt + 1`
-      #正常終了要求IDに処理順付要求IDを追加
-      if [ -z "${L_succes_req_id}" ]
-      then
-        L_succes_req_id="${L_pk_request_id_val}"
-      else
-        L_succes_req_id="${L_succes_req_id} ${L_pk_request_id_val}"
-      fi
-# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
-#      break 1
-# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
-    elif [ "${L_status_code}" = '8' ]
-    then
-      #エラー件数を+1カウント
-      L_error_cnt=`expr $L_error_cnt + 1`
-      #エラー終了要求IDに処理順付要求IDを追加
-      if [ -z "${L_error_req_id}" ]
-      then
-        L_error_req_id="${L_pk_request_id_val}"
-      else
-        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
-      fi
-      #エラーメッセージ取得
-# 2009/03/19 Ver.1.3 Koji.Oomata mod START
-      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
-      SET HEADING OFF
-      SET LINES 240
-      SELECT 'C_10018_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10018','JOBNET_NAME','${L_jobnet_name}')||''''
-      FROM  DUAL
-      ;
-      EXIT
-EOF
-# 2009/03/19 Ver.1.3 Koji.Oomata mod End
-      . $C_std_out
-      if [ -z "${L_status_err}" ]
-      then
-        L_status_err="${C_10018_msg}"
-      else
-        L_status_err="${L_status_err}\n${C_10018_msg}"
-      fi
-      #ファイル削除処理(A-12)
-      L_del_file="${L_if_mov_to}/${L_if_file_name}"
-      file_delete ${L_del_file}
-# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
-#      break 1
-# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
-    elif [ "${L_status_code}" = '9' ]
-    then
-      #エラー件数を+1カウント
-      L_error_cnt=`expr $L_error_cnt + 1`
-      #エラー終了要求IDに処理順付要求IDを追加
-      if [ -z "${L_error_req_id}" ]
-      then
-        L_error_req_id="${L_pk_request_id_val}"
-      else
-        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
-      fi
-      #エラーメッセージ取得
-# 2009/03/19 Ver.1.3 Koji.Oomata mod START
-      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
-      SET HEADING OFF
-      SET LINES 240
-      SELECT 'C_10019_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10019','JOBNET_NAME','${L_jobnet_name}')||''''
-      FROM  DUAL
-      ;
-      EXIT
-EOF
-# 2009/03/19 Ver.1.3 Koji.Oomata mod End
-      . $C_std_out
-      if [ -z "${L_status_err}" ]
-      then
-        L_status_err="${C_10019_msg}"
-      else
-        L_status_err="${L_status_err}\n${C_10019_msg}"
-      fi
-      #ファイル削除処理(A-12)
-      L_del_file="${L_if_mov_to}/${L_if_file_name}"
-      file_delete ${L_del_file}
-# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
-#      break 1
-# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
-# 2009/04/02 Ver.1.4 Masayuki.Sano add START
-    elif [ "${L_status_code}" = '0' ]
-    then
-      #エラー件数を+1カウント
-      L_error_cnt=`expr $L_error_cnt + 1`
-      #エラー終了要求IDに処理順付要求IDを追加
-      if [ -z "${L_error_req_id}" ]
-      then
-        L_error_req_id="${L_pk_request_id_val}"
-      else
-        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
-      fi
-      #エラーメッセージ取得
-      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
-      SET HEADING OFF
-      SET LINES 240
-      SELECT 'C_10009_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
-                                                       ,'APP-XXCCP1-10009'
-                                                       ,'LIMIT'
-                                                       ,'${L_status_max}'
-                                                       ,'JOBNET_NAME'
-                                                       ,'${L_jobnet_name}')||''''
-      FROM  DUAL
-      ;
-      EXIT
-EOF
-      . $C_std_out
-      if [ -z "${L_status_err}" ]
-      then
-        L_status_err="${C_10009_msg}"
-      else
-        L_status_err="${L_status_err}\n${C_10009_msg}"
-      fi
-      #ファイル削除処理(A-12)
-      L_del_file="${L_if_mov_to}/${L_if_file_name}"
-      file_delete ${L_del_file}
-# 2009/04/02 Ver.1.4 Masayuki.Sano add END
-    #ステータス値が1,8,9いずれでもない場合
+      L_succes_req_id="${L_pk_request_id_val}"
     else
+      L_succes_req_id="${L_succes_req_id} ${L_pk_request_id_val}"
+    fi
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
+  elif [ "${L_status_code}" = '8' ]
+  then
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_pk_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+    fi
+    #エラーメッセージ取得
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10018_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10018','JOBNET_NAME','${L_jobnet_name}')||''''
+    FROM  DUAL
+    ;
+    EXIT
+EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10018_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10018_msg}"
+    fi
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#      #ファイル削除処理(A-12)
+#      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+#      file_delete ${L_del_file}
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
+  elif [ "${L_status_code}" = '9' ]
+  then
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_pk_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+    fi
+    #エラーメッセージ取得
+# 2009/03/19 Ver.1.3 Koji.Oomata mod START
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}  # 2009/04/02 Ver.1.4 Masayuki.Sano update
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10019_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}','APP-XXCCP1-10019','JOBNET_NAME','${L_jobnet_name}')||''''
+    FROM  DUAL
+    ;
+    EXIT
+EOF
+# 2009/03/19 Ver.1.3 Koji.Oomata mod End
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10019_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10019_msg}"
+    fi
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#      #ファイル削除処理(A-12)
+#      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+#      file_delete ${L_del_file}
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
+#      break 1
+# 2009/04/02 Ver.1.4 Masayuki.Sano delete END
+# 2009/08/27 Ver1.8 Masayuki.Sano add Start
+  #ステータス値が10の場合
+  elif [ "${L_status_code}" = '10' ]
+  then
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_pk_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+    fi
+    #エラーメッセージ取得
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10064_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                     ,'APP-XXCCP1-10064'
+                                                     ,'JOBNET_NAME'
+                                                     ,'${L_jobnet_name}')||''''
+    FROM  DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10064_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10064_msg}"
+    fi
+  #ステータス値が11の場合
+  elif [ "${L_status_code}" = '11' ]
+  then
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_pk_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+    fi
+    #エラーメッセージ取得
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10067_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                     ,'APP-XXCCP1-10067'
+                                                     ,'JOBNET_NAME'
+                                                     ,'${L_jobnet_name}')||''''
+    FROM  DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10067_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10067_msg}"
+    fi
+# 2009/08/27 Ver1.8 Masayuki.Sano add End
+# 2009/04/02 Ver.1.4 Masayuki.Sano add START
+  elif [ "${L_status_code}" = '0' ]
+  then
+    #エラー件数を+1カウント
+    L_error_cnt=`expr $L_error_cnt + 1`
+    #エラー終了要求IDに処理順付要求IDを追加
+    if [ -z "${L_error_req_id}" ]
+    then
+      L_error_req_id="${L_pk_request_id_val}"
+    else
+      L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+    fi
+    #エラーメッセージ取得
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_10009_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                     ,'APP-XXCCP1-10009'
+                                                     ,'LIMIT'
+                                                     ,'${L_status_max}'
+                                                     ,'JOBNET_NAME'
+                                                     ,'${L_jobnet_name}')||''''
+    FROM  DUAL
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${L_status_err}" ]
+    then
+      L_status_err="${C_10009_msg}"
+    else
+      L_status_err="${L_status_err}\n${C_10009_msg}"
+    fi
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#      #ファイル削除処理(A-12)
+#      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+#      file_delete ${L_del_file}
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
+# 2009/04/02 Ver.1.4 Masayuki.Sano add END
+   #ステータス値が1,8,9いずれでもない場合
+   else
 # 2009/04/02 Ver.1.4 Masayuki.Sano update Start
 #      #待機処理
 #      sleep ${C_status_interval}
@@ -2022,39 +2138,41 @@ EOF
 #      L_time=`date +"%Y%m%d%H%M%S"`
 #      echo "Sleep_Time ${loop_cnt}-${L_cnt} :  ${C_status_interval}"
 #      echo "  Sleep_End Time  :  ${L_time}"
-      #エラー件数を+1カウント
-      L_error_cnt=`expr $L_error_cnt + 1`
-      #エラー終了要求IDに処理順付要求IDを追加
-      if [ -z "${L_error_req_id}" ]
-      then
-        L_error_req_id="${L_pk_request_id_val}"
-      else
-        L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
-      fi
-      #エラーメッセージ取得
-      sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
-      SET HEADING OFF
-      SET LINES 240
-      SELECT 'C_10066_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
-                                                       ,'APP-XXCCP1-10066'
-                                                       ,'JOBNET_NAME'
-                                                       ,'${L_jobnet_name}')||''''
-      FROM  DUAL
-      ;
-      EXIT
+     #エラー件数を+1カウント
+     L_error_cnt=`expr $L_error_cnt + 1`
+     #エラー終了要求IDに処理順付要求IDを追加
+     if [ -z "${L_error_req_id}" ]
+     then
+       L_error_req_id="${L_pk_request_id_val}"
+     else
+       L_error_req_id="${L_error_req_id} ${L_pk_request_id_val}"
+     fi
+     #エラーメッセージ取得
+     sqlplus -s ${C_ora_login} <<EOF >>${C_std_out}
+     SET HEADING OFF
+     SET LINES 240
+     SELECT 'C_10066_msg='''||xxccp_common_pkg.get_msg('${C_appl_name}'
+                                                      ,'APP-XXCCP1-10066'
+                                                      ,'JOBNET_NAME'
+                                                      ,'${L_jobnet_name}')||''''
+     FROM  DUAL
+     ;
+     EXIT
 EOF
-      . $C_std_out
-      if [ -z "${L_status_err}" ]
-      then
-        L_status_err="${C_10066_msg}"
-      else
-        L_status_err="${L_status_err}\n${C_10066_msg}"
-      fi
-      #ファイル削除処理(A-12)
-      L_del_file="${L_if_mov_to}/${L_if_file_name}"
-      file_delete ${L_del_file}
+     . $C_std_out
+     if [ -z "${L_status_err}" ]
+     then
+       L_status_err="${C_10066_msg}"
+     else
+       L_status_err="${L_status_err}\n${C_10066_msg}"
+     fi
+# 2009/08/27 Ver1.8 Masayuki.Sano del Start
+#      #ファイル削除処理(A-12)
+#      L_del_file="${L_if_mov_to}/${L_if_file_name}"
+#      file_delete ${L_del_file}
+# 2009/08/27 Ver1.8 Masayuki.Sano del End
 # 2009/04/02 Ver.1.4 Masayuki.Sano update END
-    fi
+   fi
 # 2009/04/02 Ver.1.4 Masayuki.Sano delete Start
 #    #ループカウント +1
 #    L_cnt=`expr $L_cnt + 1`
