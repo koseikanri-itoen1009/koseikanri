@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.6
+ * Version          : 3.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009/11/09    3.4   K.Yamaguchi      [仕様変更I_E_633] 入金値引の対象となる非在庫品目を取得できるように変更
  *  2009/12/10    3.5   K.Yamaguchi      [E_本稼動_00363] 支払日で営業日が考慮されていない点を修正
  *  2009/12/21    3.6   K.Yamaguchi      [E_本稼動_00460] 定額条件・電気料のみの場合に売上金額をセット
+ *  2010/02/03    3.7   K.Yamaguchi      [E_本稼動_XXXXX] 顧客使用目的でステータス判定追加
  *
  *****************************************************************************************/
   --==================================================
@@ -218,6 +219,10 @@ AS
   cv_tax_rounding_rule_nearest     CONSTANT VARCHAR2(10)    :=  'NEAREST'; -- 四捨五入
   cv_tax_rounding_rule_up          CONSTANT VARCHAR2(10)    :=  'UP';      -- 切り上げ
   cv_tax_rounding_rule_down        CONSTANT VARCHAR2(10)    :=  'DOWN';    -- 切り捨て
+-- 2010/02/03 Ver.3.7 [E_本稼動_XXXXX] SCS K.Yamaguchi ADD START
+  -- 顧客マスタ有効ステータス
+  cv_cust_status_available         CONSTANT VARCHAR2(1)     := 'A';  -- 有効
+-- 2010/02/03 Ver.3.7 [E_本稼動_XXXXX] SCS K.Yamaguchi ADD END
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
   -- 税コードダミー
   ct_tax_code_dummy                CONSTANT ar_vat_tax_b.tax_code%TYPE := NULL;
@@ -512,6 +517,10 @@ AS
       AND ship_hcsu.site_use_code      = cv_site_use_code_ship
       AND bill_hcsu.site_use_id        = ship_hcsu.bill_to_site_use_id
       AND bill_hcsu.site_use_code      = cv_site_use_code_bill
+-- 2010/02/03 Ver.3.7 [E_本稼動_XXXXX] SCS K.Yamaguchi ADD START
+      AND ship_hcsu.status             = cv_cust_status_available
+      AND bill_hcsu.status             = cv_cust_status_available
+-- 2010/02/03 Ver.3.7 [E_本稼動_XXXXX] SCS K.Yamaguchi ADD END
       AND bill_hcas.cust_acct_site_id  = bill_hcsu.cust_acct_site_id
       AND bill_hca.cust_account_id     = bill_hcas.cust_account_id
       AND bill_xca.customer_id         = bill_hca.cust_account_id
