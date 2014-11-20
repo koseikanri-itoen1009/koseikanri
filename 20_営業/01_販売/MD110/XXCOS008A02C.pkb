@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,8 @@ AS
  *  2009/10/13    1.15  M.Sano           [0001526] 赤黒フラグの判定方法の修正
  *  2009/10/16    1.16  M.Sano           [E_T4_00014] PT対応
  *  2009/10/19    1.17  K.Satomura       [0001381] 受注明細．販売実績作成済フラグ追加対応
+ *  2009/12/16    1.18  M.Sano           [E_本稼動_00373] 販売実績単位チェックを品目ごとに行うように変更
+ *                                                        納品予定日のチェックを全データに対して行うように修正
  *
  *****************************************************************************************/
 --
@@ -136,7 +138,7 @@ AS
   global_delivered_from_err_expt EXCEPTION;
   --*** API呼び出しエラー例外ハンドラ ***
   global_api_err_expt           EXCEPTION;
-/* 2009/09/30 Ver1.14 Add Strat */
+/* 2009/09/30 Ver1.14 Add Start */
   --*** 拠点コード不一致例外ハンドラ ***
   global_base_code_err_expt     EXCEPTION;
 /* 2009/09/30 Ver1.14 Add End */
@@ -196,11 +198,11 @@ AS
                                        :=  'APP-XXCOS1-11680';   -- 基準数量不一致エラー
   ct_msg_dlv_date_err       CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-11681';   -- 納品日不一致エラー
-/* 2009/07/09 Ver1.11 Add Strat */
+/* 2009/07/09 Ver1.11 Add Start */
   ct_msg_close_note         CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-11683';   -- 受注明細クローズ件数
 /* 2009/07/09 Ver1.11 Add End   */
-/* 2009/09/30 Ver1.14 Add Strat */
+/* 2009/09/30 Ver1.14 Add Start */
   cv_msg_base_mismatch_err  CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00193';   -- 成績計上者所属拠点不整合エラー
   cv_msg_err_param1_note    CONSTANT fnd_new_messages.message_name%TYPE
@@ -235,7 +237,7 @@ AS
   cv_tkn_target_date        CONSTANT  VARCHAR2(100)  :=  'TARGET_DATE';    -- 日付項目名
   cv_tkn_kdate              CONSTANT  VARCHAR2(100)  :=  'KDATE';          -- 対象日
   cv_tkn_sdate              CONSTANT  VARCHAR2(100)  :=  'SDATE';          -- 出荷実績日
-/* 2009/09/30 Ver1.14 Add Strat */
+/* 2009/09/30 Ver1.14 Add Start */
   cv_tkn_base_code          CONSTANT  VARCHAR2(100)  :=  'BASE_CODE';         -- 拠点名
   cv_tkn_base_name          CONSTANT  VARCHAR2(100)  :=  'BASE_NAME';         -- 拠点コード
   cv_tkn_invoice_num        CONSTANT  VARCHAR2(100)  :=  'INVOICE_NUM';       -- 納品伝票番号
@@ -581,6 +583,9 @@ AS
   g_line_id_tab               g_line_id_ttype;                -- 受注明細ID(受注クローズ用)
 /* 2009/07/09 Ver1.11 Add End   */
   g_order_req_tab             g_v_order_data_ttype;           -- 受注データ(依頼No・品目単位の数量チェック用)
+/* 2009/12/16 Ver1.18 Add Start */
+  g_order_chk_tab             g_v_order_data_ttype;           -- 受注データ(販売実績データチェック用)
+/* 2009/12/16 Ver1.18 Add End   */
   g_order_exp_tab             g_v_order_data_ttype;           -- 受注データ(販売実績作成用)
   g_sale_hdr_tab              g_sale_results_headers_ttype;   -- 販売実績ヘッダ
   g_sale_line_tab             g_sale_results_lines_ttype;     -- 販売実績明細
@@ -1358,7 +1363,10 @@ AS
     , xchv.bill_tax_round_rule              AS bill_tax_round_rule        -- 税金－端数処理
     , oola.attribute6                       AS child_item_code            -- 品目子コード
     , oola.packing_instructions             AS packing_instructions       -- 依頼No
-    , xola.request_no                       AS request_no                 -- 出荷依頼No
+/* 2009/12/16 Ver1.18 Mod Start */
+--    , xola.request_no                       AS request_no                 -- 出荷依頼No
+    , xoha.request_no                       AS request_no                 -- 出荷依頼No
+/* 2009/12/16 Ver1.18 Mod End   */
 /* 2009/07/08 Ver1.10 Mod Start */
 --    , xola.shipping_item_code               AS shipping_item_code         -- 出荷品目
     , xola.request_item_code                AS shipping_item_code         -- 依頼品目
@@ -1567,10 +1575,17 @@ AS
     AND oola.global_attribute5 IS NULL
 -- ********** 2009/10/19 1.17 K.Satomura  ADD End   ************ --
     ORDER BY
-      ooha.header_id                              -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
-    , oola.request_date                           -- 受注明細.要求日
+/* 2009/12/16 Ver1.18 Mod Start */
+--      ooha.header_id                              -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
+--    , oola.request_date                           -- 受注明細.要求日
+--    , NVL( oola.attribute4, oola.request_date )   -- 受注明細.検収日(NULL時は、受注明細.要求日)
+--    , oola.line_id                                -- 受注明細.受注明細ID
+      oola.request_date                           -- 受注明細.要求日
     , NVL( oola.attribute4, oola.request_date )   -- 受注明細.検収日(NULL時は、受注明細.要求日)
+    , xoha.request_no                             -- 受注ヘッダアドオン.出荷依頼No
+    , NVL( oola.attribute6, oola.ordered_item )   -- 受注明細.子品目(NULL時は、受注明細.品目コード)
     , oola.line_id                                -- 受注明細.受注明細ID
+/* 2009/12/16 Ver1.18 Mod End   */
 -- ********** 2009/10/16 1.16 M.Sano  DEL Start ************ --
 --    FOR UPDATE OF
 --      ooha.header_id
@@ -2963,62 +2978,134 @@ AS
           ld_inspect_date       := quantity_tab(i).inspect_date;
           -- 最終履歴納品予定日
           ld_request_date       := quantity_tab(i).request_date;
+/* 2009/12/16 Ver1.18 Add Start */
+--
+          -- ユーザ・エラーメッセージの初期化
+          lv_errmsg := NULL;
+--
+          -- ===============================
+          -- 1.検収日逆転チェック
+          -- ===============================
+          -- 検収予定日と着荷日を比較
+          IF ( ld_inspect_date IS NOT NULL AND ld_inspect_date < g_order_req_tab( lv_now ).arrival_date ) THEN
+            lv_errmsg := lv_errmsg
+                      || xxccp_common_pkg.get_msg(
+                          iv_application => cv_xxcos_appl_short_nm,
+                          iv_name        => ct_msg_reverse_date_err,
+                          iv_token_name1 => cv_tkn_target_date,
+                          iv_token_value1=> xxccp_common_pkg.get_msg(
+                                                iv_application => cv_xxcos_appl_short_nm,
+                                                iv_name        => cv_inspect_date
+                                            ),
+                          iv_token_name2 => cv_tkn_kdate,
+                          iv_token_value2=> TO_CHAR(ld_inspect_date, cv_fmt_date),        -- 最終履歴検収予定日
+                          iv_token_name3 => cv_tkn_sdate,
+                          iv_token_value3=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date), -- 着荷日
+                          iv_token_name4 => cv_tkn_order_number,
+                          iv_token_value4=> g_order_req_tab( lv_now ).order_number,       -- 受注番号
+                          iv_token_name5 => cv_tkn_line_number,
+                          iv_token_value5=> g_order_req_tab( lv_now ).line_number,        -- 明細番号
+                          iv_token_name6 => cv_tkn_req_no,
+                          iv_token_value6=> g_order_req_tab( lv_now ).request_no          -- 依頼No
+                        )
+                      || cv_line_feed;
+            g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+          END IF;    
+--
+          -- ===============================
+          -- 2.納品日不一致チェック
+          -- ===============================
+          -- 納品予定日と着荷日を比較
+          IF ( ld_request_date != g_order_req_tab( lv_now ).arrival_date ) THEN
+            lv_errmsg := lv_errmsg
+                      || xxccp_common_pkg.get_msg(
+                          iv_application => cv_xxcos_appl_short_nm,
+                          iv_name        => ct_msg_dlv_date_err,
+                          iv_token_name1 => cv_tkn_req_no,
+                          iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
+                          iv_token_name2 => cv_tkn_item_code,
+                          iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code, -- 品目
+                          iv_token_name3 => cv_tkn_kdate,
+                          iv_token_value3=> TO_CHAR(ld_request_date, cv_fmt_date),        -- 納品日
+                          iv_token_name4 => cv_tkn_sdate,
+                          iv_token_value4=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)  -- 着荷日
+                        )
+                      || cv_line_feed;
+            g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+          END IF;
+--
+          --( 関数で使用する為、コンカレント出力へ出力。）
+          IF ( lv_errmsg IS NOT NULL ) THEN
+            --メッセージ出力
+            --空行挿入
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => ''
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg     --エラーメッセージ
+            );
+          END IF;
+/* 2009/12/16 Ver1.18 Add End   */
 --
         END LOOP;
 --
         -- ユーザ・エラーメッセージの初期化
         lv_errmsg := NULL;
 --
-        -- ===============================
-        -- 1.検収日逆転チェック
-        -- ===============================
-        -- 最終履歴検収予定日と着荷日を比較
-        IF ( ld_inspect_date IS NOT NULL AND ld_inspect_date < g_order_req_tab( lv_now ).arrival_date ) THEN
-          lv_errmsg := lv_errmsg
-                    || xxccp_common_pkg.get_msg(
-                        iv_application => cv_xxcos_appl_short_nm,
-                        iv_name        => ct_msg_reverse_date_err,
-                        iv_token_name1 => cv_tkn_target_date,
-                        iv_token_value1=> xxccp_common_pkg.get_msg(
-                                              iv_application => cv_xxcos_appl_short_nm,
-                                              iv_name        => cv_inspect_date
-                                          ),
-                        iv_token_name2 => cv_tkn_kdate,
-                        iv_token_value2=> TO_CHAR(ld_inspect_date, cv_fmt_date),        -- 最終履歴検収予定日
-                        iv_token_name3 => cv_tkn_sdate,
-                        iv_token_value3=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date), -- 着荷日
-                        iv_token_name4 => cv_tkn_order_number,
-                        iv_token_value4=> g_order_req_tab( lv_now ).order_number,       -- 受注番号
-                        iv_token_name5 => cv_tkn_line_number,
-                        iv_token_value5=> g_order_req_tab( lv_now ).line_number,        -- 明細番号
-                        iv_token_name6 => cv_tkn_req_no,
-                        iv_token_value6=> g_order_req_tab( lv_now ).request_no          -- 依頼No
-                      )
-                    || cv_line_feed;
-          g_order_req_tab( lv_now ).check_status := cn_check_status_error;
-        END IF;    
---
-        -- ===============================
-        -- 2.納品日不一致チェック
-        -- ===============================
-        -- 最終履歴納品予定日と着荷日を比較
-        IF ( ld_request_date != g_order_req_tab( lv_now ).arrival_date ) THEN
-          lv_errmsg := lv_errmsg
-                    || xxccp_common_pkg.get_msg(
-                        iv_application => cv_xxcos_appl_short_nm,
-                        iv_name        => ct_msg_dlv_date_err,
-                        iv_token_name1 => cv_tkn_req_no,
-                        iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
-                        iv_token_name2 => cv_tkn_item_code,
-                        iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code, -- 品目
-                        iv_token_name3 => cv_tkn_kdate,
-                        iv_token_value3=> TO_CHAR(ld_request_date, cv_fmt_date),        -- 納品日
-                        iv_token_name4 => cv_tkn_sdate,
-                        iv_token_value4=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)  -- 着荷日
-                      )
-                    || cv_line_feed;
-          g_order_req_tab( lv_now ).check_status := cn_check_status_error;
-        END IF;
+/* 2009/12/16 Ver1.18 Del Start */
+--        -- ===============================
+--        -- 1.検収日逆転チェック
+--        -- ===============================
+--        -- 最終履歴検収予定日と着荷日を比較
+--        IF ( ld_inspect_date IS NOT NULL AND ld_inspect_date < g_order_req_tab( lv_now ).arrival_date ) THEN
+--          lv_errmsg := lv_errmsg
+--                    || xxccp_common_pkg.get_msg(
+--                        iv_application => cv_xxcos_appl_short_nm,
+--                        iv_name        => ct_msg_reverse_date_err,
+--                        iv_token_name1 => cv_tkn_target_date,
+--                        iv_token_value1=> xxccp_common_pkg.get_msg(
+--                                              iv_application => cv_xxcos_appl_short_nm,
+--                                              iv_name        => cv_inspect_date
+--                                          ),
+--                        iv_token_name2 => cv_tkn_kdate,
+--                        iv_token_value2=> TO_CHAR(ld_inspect_date, cv_fmt_date),        -- 最終履歴検収予定日
+--                        iv_token_name3 => cv_tkn_sdate,
+--                        iv_token_value3=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date), -- 着荷日
+--                        iv_token_name4 => cv_tkn_order_number,
+--                        iv_token_value4=> g_order_req_tab( lv_now ).order_number,       -- 受注番号
+--                        iv_token_name5 => cv_tkn_line_number,
+--                        iv_token_value5=> g_order_req_tab( lv_now ).line_number,        -- 明細番号
+--                        iv_token_name6 => cv_tkn_req_no,
+--                        iv_token_value6=> g_order_req_tab( lv_now ).request_no          -- 依頼No
+--                      )
+--                    || cv_line_feed;
+--          g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+--        END IF;    
+----
+--        -- ===============================
+--        -- 2.納品日不一致チェック
+--        -- ===============================
+--        -- 最終履歴納品予定日と着荷日を比較
+--        IF ( ld_request_date != g_order_req_tab( lv_now ).arrival_date ) THEN
+--          lv_errmsg := lv_errmsg
+--                    || xxccp_common_pkg.get_msg(
+--                        iv_application => cv_xxcos_appl_short_nm,
+--                        iv_name        => ct_msg_dlv_date_err,
+--                        iv_token_name1 => cv_tkn_req_no,
+--                        iv_token_value1=> g_order_req_tab( lv_now ).request_no,         -- 依頼No
+--                        iv_token_name2 => cv_tkn_item_code,
+--                        iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code, -- 品目
+--                        iv_token_name3 => cv_tkn_kdate,
+--                        iv_token_value3=> TO_CHAR(ld_request_date, cv_fmt_date),        -- 納品日
+--                        iv_token_name4 => cv_tkn_sdate,
+--                        iv_token_value4=> TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)  -- 着荷日
+--                      )
+--                    || cv_line_feed;
+--          g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+--        END IF;
+/* 2009/12/16 Ver1.18 Del Start */
 --
         -- ===============================
         -- 3.基準数量不一致チェック
@@ -3133,24 +3220,33 @@ AS
 --
 --
     --==================================================================
-    -- 販売実績のヘッダを作成する単位のエラーチェックを行い
+    -- 品目・納品日・検収日・依頼No単位のエラーチェックを行い
     -- 正常データのみの受注データを作成する
     --==================================================================
 --
-    --販売実績のヘッダを作成する単位でソートが可能になるようにデータを作成する
-    --販売実績ヘッダの作成単位：ヘッダID／納品日／検収日
+    --品目・納品日・検収日・依頼No単位でソートする。
     lv_now := g_order_req_tab.first;
 --
     -- PL/SQL表の添え字がNULLになるまでループする
     WHILE lv_now IS NOT NULL LOOP
+/* 2009/12/16 Ver1.18 Mod Start */
+--      -- ソート用のキーとなる添え字の設定
+--      lv_key := g_order_req_tab( lv_now ).header_id                                     -- 受注ヘッダID
+--             || TO_CHAR( g_order_req_tab( lv_now ).dlv_date,     ct_target_date_format) -- 納品日
+--             || TO_CHAR( g_order_req_tab( lv_now ).inspect_date, ct_target_date_format) -- 検収日
+--             || TO_CHAR( g_order_req_tab( lv_now ).request_no )                         -- 依頼No
+--             || g_order_req_tab( lv_now ).line_id;                                      -- 受注明細ID
+--      -- 作成した添え字を基に、販売実績ヘッダを作成する単位でソートできるように新しくPL/SQL表を作成する
+--      g_order_exp_tab( lv_key ) := g_order_req_tab( lv_now );
       -- ソート用のキーとなる添え字の設定
-      lv_key := g_order_req_tab( lv_now ).header_id                                     -- 受注ヘッダID
-             || TO_CHAR( g_order_req_tab( lv_now ).dlv_date,     ct_target_date_format) -- 納品日
+      lv_key := TO_CHAR( g_order_req_tab( lv_now ).dlv_date,     ct_target_date_format) -- 納品日
              || TO_CHAR( g_order_req_tab( lv_now ).inspect_date, ct_target_date_format) -- 検収日
              || TO_CHAR( g_order_req_tab( lv_now ).request_no )                         -- 依頼No
+             || g_order_req_tab( lv_now ).shipping_item_code                            -- 品目コード
              || g_order_req_tab( lv_now ).line_id;                                      -- 受注明細ID
       -- 作成した添え字を基に、販売実績ヘッダを作成する単位でソートできるように新しくPL/SQL表を作成する
-      g_order_exp_tab( lv_key ) := g_order_req_tab( lv_now );
+      g_order_chk_tab( lv_key ) := g_order_req_tab( lv_now );
+/* 2009/12/16 Ver1.18 Mod End   */
       -- 処理中のレコードの次のレコードの添え字を取得する（次のレコードが無い場合はNULLが設定される）
       lv_now := g_order_req_tab.next( lv_now );
     END LOOP;
@@ -3158,7 +3254,10 @@ AS
     -- 作成元の受注データを削除
     g_order_req_tab.DELETE;
 --
-    lv_now      := g_order_exp_tab.first;   -- 作成したPL/SQL表の始めのレコードの添え字を取得
+/* 2009/12/16 Ver1.18 Mod Start */
+--    lv_now      := g_order_exp_tab.first;   -- 作成したPL/SQL表の始めのレコードの添え字を取得
+    lv_now      := g_order_chk_tab.first;   -- 作成したPL/SQL表の始めのレコードの添え字を取得
+/* 2009/12/16 Ver1.18 Mod End   */
     lv_bfr      := NULL;                    -- 現在処理中のPL/SQL表の1つ前のレコードの添え字の初期化
     lv_break    := lv_now;                  -- 販売実績ヘッダを作成する単位となる始めのPL/SQL表の添え字を設定
     ln_err_flag := cn_check_status_normal;  -- 販売実績ヘッダを作成する単位内のデータにエラーが設定されていると
@@ -3167,14 +3266,49 @@ AS
     -- 作成したPL/SQL表の添え字がNULLになるまでループする
     WHILE lv_now IS NOT NULL LOOP
 --
+/* 2009/12/16 Ver1.18 Mod Start */
+--      -- 以下の内容をブレイクするキーとする
+--      -- ・現在処理中のPL/SQL表の1つ前のレコードの添え字がNULL
+--      -- ・現在処理中のレコードと1つ前のレコードの販売実績ヘッダを作成する単位が異なる
+--      IF ( lv_bfr IS NULL )
+--        OR (   g_order_exp_tab( lv_now ).header_id     != g_order_exp_tab( lv_bfr ).header_id
+--            OR g_order_exp_tab( lv_now ).dlv_date      != g_order_exp_tab( lv_bfr ).dlv_date
+--            OR g_order_exp_tab( lv_now ).inspect_date  != g_order_exp_tab( lv_bfr ).inspect_date
+--            OR g_order_exp_tab( lv_now ).request_no    != g_order_exp_tab( lv_bfr ).request_no   ) THEN
+----
+--        -- 販売実績ヘッダを作成する単位内のデータにエラーが設定されている時は
+--        -- その単位内のデータのステータスをエラーにする
+--        IF ( ln_err_flag = cn_check_status_error ) THEN
+--          -- PL/SQL表の添え字が現在処理中のデータの添え字になるまでループする
+--          WHILE ( lv_break IS NOT NULL AND lv_now > lv_break ) LOOP
+--            lv_del := lv_break;                           -- 削除対象となるレコードの添え字を設定
+--            lv_break := g_order_exp_tab.next( lv_break ); -- 削除対象となるレコードの次のレコードの添え字を取得
+--            g_order_exp_tab.DELETE( lv_del );             -- 削除対象となるレコードを削除
+--            gn_warn_cnt := gn_warn_cnt + 1;
+--          END LOOP;       
+--          ln_err_flag := cn_check_status_normal;
+--        END IF;
+----
+--        -- 現在処理中のレコードの添え字を次のブレイクキーの位置となる添え字として保持
+--        lv_break := lv_now;
+--      END IF;
+----
+--      -- 処理中のレコードがエラーの場合、エラーフラグをエラーに設定する
+--      IF ( g_order_exp_tab( lv_now ).check_status = cn_check_status_error ) THEN
+--        ln_err_flag := cn_check_status_error;
+--      END IF;
+----
+--      lv_bfr := lv_now;                         -- 現在処理中のインデックスを保存する
+--      lv_now := g_order_exp_tab.next( lv_now ); -- 次のインデックスを取得する（次が無い時はNULLが返される）
+----
       -- 以下の内容をブレイクするキーとする
       -- ・現在処理中のPL/SQL表の1つ前のレコードの添え字がNULL
-      -- ・現在処理中のレコードと1つ前のレコードの販売実績ヘッダを作成する単位が異なる
+      -- ・現在処理中のレコードと1つ前のレコードの納品日、検収日、出荷依頼No、品目のいずれかが異なる
       IF ( lv_bfr IS NULL )
-        OR (   g_order_exp_tab( lv_now ).header_id     != g_order_exp_tab( lv_bfr ).header_id
-            OR g_order_exp_tab( lv_now ).dlv_date      != g_order_exp_tab( lv_bfr ).dlv_date
-            OR g_order_exp_tab( lv_now ).inspect_date  != g_order_exp_tab( lv_bfr ).inspect_date
-            OR g_order_exp_tab( lv_now ).request_no    != g_order_exp_tab( lv_bfr ).request_no   ) THEN
+        OR (   g_order_chk_tab( lv_now ).dlv_date           != g_order_chk_tab( lv_bfr ).dlv_date
+            OR g_order_chk_tab( lv_now ).inspect_date       != g_order_chk_tab( lv_bfr ).inspect_date
+            OR g_order_chk_tab( lv_now ).request_no         != g_order_chk_tab( lv_bfr ).request_no
+            OR g_order_chk_tab( lv_now ).shipping_item_code != g_order_chk_tab( lv_bfr ).shipping_item_code ) THEN
 --
         -- 販売実績ヘッダを作成する単位内のデータにエラーが設定されている時は
         -- その単位内のデータのステータスをエラーにする
@@ -3182,8 +3316,8 @@ AS
           -- PL/SQL表の添え字が現在処理中のデータの添え字になるまでループする
           WHILE ( lv_break IS NOT NULL AND lv_now > lv_break ) LOOP
             lv_del := lv_break;                           -- 削除対象となるレコードの添え字を設定
-            lv_break := g_order_exp_tab.next( lv_break ); -- 削除対象となるレコードの次のレコードの添え字を取得
-            g_order_exp_tab.DELETE( lv_del );             -- 削除対象となるレコードを削除
+            lv_break := g_order_chk_tab.next( lv_break ); -- 削除対象となるレコードの次のレコードの添え字を取得
+            g_order_chk_tab.DELETE( lv_del );             -- 削除対象となるレコードを削除
             gn_warn_cnt := gn_warn_cnt + 1;
           END LOOP;       
           ln_err_flag := cn_check_status_normal;
@@ -3194,21 +3328,26 @@ AS
       END IF;
 --
       -- 処理中のレコードがエラーの場合、エラーフラグをエラーに設定する
-      IF ( g_order_exp_tab( lv_now ).check_status = cn_check_status_error ) THEN
+      IF ( g_order_chk_tab( lv_now ).check_status = cn_check_status_error ) THEN
         ln_err_flag := cn_check_status_error;
       END IF;
 --
       lv_bfr := lv_now;                         -- 現在処理中のインデックスを保存する
-      lv_now := g_order_exp_tab.next( lv_now ); -- 次のインデックスを取得する（次が無い時はNULLが返される）
+      lv_now := g_order_chk_tab.next( lv_now ); -- 次のインデックスを取得する（次が無い時はNULLが返される）
 --
+/* 2009/12/16 Ver1.18 Mod End   */
     END LOOP;
 --
     IF ( ln_err_flag = cn_check_status_error ) THEN
       -- PL/SQL表の添え字が現在処理中のデータの添え字になるまでループする
       WHILE ( lv_break IS NOT NULL ) LOOP
         lv_del := lv_break;                           -- 削除対象となるレコードの添え字を設定
-        lv_break := g_order_exp_tab.next( lv_break ); -- 削除対象となるレコードの次のレコードの添え字を取得
-        g_order_exp_tab.DELETE( lv_del );             -- 削除対象となるレコードを削除
+/* 2009/12/16 Ver1.18 Mod Start */
+--        lv_break := g_order_exp_tab.next( lv_break ); -- 削除対象となるレコードの次のレコードの添え字を取得
+--        g_order_exp_tab.DELETE( lv_del );             -- 削除対象となるレコードを削除
+        lv_break := g_order_chk_tab.next( lv_break ); -- 削除対象となるレコードの次のレコードの添え字を取得
+        g_order_chk_tab.DELETE( lv_del );             -- 削除対象となるレコードを削除
+/* 2009/12/16 Ver1.18 Mod End   */
         gn_warn_cnt := gn_warn_cnt + 1;
       END LOOP;
     END IF;
@@ -3280,6 +3419,9 @@ AS
 /* 2009/06/09 Ver1.9 Add Start */
     ln_tax_amount_sum       NUMBER;           -- ヘッダ単位の消費税金額計算用(小数点考慮)
 /* 2009/06/09 Ver1.9 Add End   */
+/* 2009/12/16 Ver1.18 Mod Start */
+    lv_sort_key             VARCHAR2(100);    -- 販売実績登録用配列のソートキー
+/* 2009/12/16 Ver1.18 Mod End   */
 --
     -- *** ローカル・レコード ***
 --
@@ -3293,6 +3435,30 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+/* 2009/12/16 Ver1.18 Mod Start */
+    ------------------------------------------------------------------------------
+    --販売実績のヘッダを作成する単位でソートが可能になるようにデータを作成する
+    --販売実績ヘッダの作成単位：ヘッダID／納品日／検収日/出荷依頼No
+    ------------------------------------------------------------------------------
+    ln_now_index := g_order_chk_tab.first;
+    WHILE ln_now_index IS NOT NULL LOOP
+      -- [1] ソート用のキーとなる添え字の設定
+      lv_sort_key := g_order_chk_tab( ln_now_index ).header_id                                     -- 受注ヘッダID
+                  || TO_CHAR( g_order_chk_tab( ln_now_index ).dlv_date,     ct_target_date_format) -- 納品日
+                  || TO_CHAR( g_order_chk_tab( ln_now_index ).inspect_date, ct_target_date_format) -- 検収日
+                  || TO_CHAR( g_order_chk_tab( ln_now_index ).request_no )                         -- 依頼No
+                  || g_order_chk_tab( ln_now_index ).line_id;                                      -- 受注明細ID
+      -- [2] 作成した添え字を基に、販売実績ヘッダを作成する単位でソートできるように新しくPL/SQL表を作成する
+      g_order_exp_tab( lv_sort_key ) := g_order_chk_tab( ln_now_index );
+      -- [3] 処理中のレコードの次のレコードの添え字を取得する（次のレコードが無い場合はNULLが設定される）
+      ln_now_index := g_order_chk_tab.next( ln_now_index );
+    END LOOP;
+    g_order_chk_tab.DELETE; -- (ソート変更前の配列は不要の為、領域解放)
+--
+    ------------------------------------------------------------------------------
+    --販売実績ヘッダ登録用の配列に受注データを格納する
+    ------------------------------------------------------------------------------
+/* 2009/12/16 Ver1.18 Mod End   */
     j := 0;                         -- 販売実績ヘッダの添え字
     k := 0;                         -- 販売実績明細の添え字
     ln_tax_amount := 0;             -- 明細の消費税金額の積み上げ合計金額
@@ -4161,6 +4327,10 @@ AS
     ln_err_flag               NUMBER;       -- 販売実績ヘッダを作成する単位のデータにエラーがあるか判断するフラグ
                                             -- 値は、ユーザー定義グローバル定数のデータチェックステータス値に依存する
     lv_idx_key                VARCHAR2(100);-- PL/SQL表ソート用インデックス文字列
+/* 2009/12/16 Ver1.18 Add Start */
+    lv_request_item_code_bfr  xxwsh_order_lines_all.shipping_item_code%TYPE;  -- 依頼品目(1レコード前)
+    lv_request_item_code_now  xxwsh_order_lines_all.shipping_item_code%TYPE;  -- 依頼品目(対象レコード)
+/* 2009/12/16 Ver1.18 Add End   */
 --
     -- *** ローカル・レコード ***
 --
@@ -4246,34 +4416,41 @@ AS
       END IF;
     END LOOP loop_make_check_data;
 --
+/* 2009/12/16 Ver1.18 Add Start */
+    -- 初期化処理
+    lv_request_item_code_bfr  := NULL;  -- 依頼品目(1レコード前)
+    lv_request_item_code_now  := NULL;  -- 依頼品目(対象レコード)
+/* 2009/12/16 Ver1.18 Add End   */
 /* 2009/07/09 Ver1.11 Add End   */
     ln_err_flag := cn_check_status_normal;
 --
     <<loop_make_data>>
     FOR i IN 1..g_order_data_tab.COUNT LOOP
 --
-      --販売実績ヘッダ作成単位チェック
-      IF ( (i = 1) OR (   g_order_data_tab(i).header_id    != g_order_data_tab(i-1).header_id
-                       OR g_order_data_tab(i).dlv_date     != g_order_data_tab(i-1).dlv_date
-                       OR g_order_data_tab(i).inspect_date != g_order_data_tab(i-1).inspect_date
-                       OR g_order_data_tab(i).request_no   != g_order_data_tab(i-1).request_no ) ) THEN
+/* 2009/12/16 Ver1.18 Del Start */
+--      --販売実績ヘッダ作成単位チェック
+--      IF ( (i = 1) OR (   g_order_data_tab(i).header_id    != g_order_data_tab(i-1).header_id
+--                       OR g_order_data_tab(i).dlv_date     != g_order_data_tab(i-1).dlv_date
+--                       OR g_order_data_tab(i).inspect_date != g_order_data_tab(i-1).inspect_date
+--                       OR g_order_data_tab(i).request_no   != g_order_data_tab(i-1).request_no ) ) THEN
 --
-        --販売実績ヘッダを作成する単位のデータにエラーがある場合、
-        --コレクション内で同じ単位のデータに対してもチェックステータスをエラーにする
-        IF ( ln_err_flag = cn_check_status_error ) THEN
---
-          <<loop_set_check_status>>
-          FOR k IN ln_idx..(i - 1) LOOP
-            g_order_data_tab(k).check_status := cn_check_status_error;
-            gn_warn_cnt := gn_warn_cnt + 1;
-          END LOOP loop_set_check_status;
---
-          ln_err_flag := cn_check_status_normal;
-        END IF;
---
-        ln_idx := i;
---
-      END IF;
+--        --販売実績ヘッダを作成する単位のデータにエラーがある場合、
+--        --コレクション内で同じ単位のデータに対してもチェックステータスをエラーにする
+--        IF ( ln_err_flag = cn_check_status_error ) THEN
+----
+--          <<loop_set_check_status>>
+--          FOR k IN ln_idx..(i - 1) LOOP
+--            g_order_data_tab(k).check_status := cn_check_status_error;
+--            gn_warn_cnt := gn_warn_cnt + 1;
+--          END LOOP loop_set_check_status;
+----
+--          ln_err_flag := cn_check_status_normal;
+--        END IF;
+----
+--        ln_idx := i;
+----
+--      END IF;
+/* 2009/12/16 Ver1.18 Del End   */
 --
       -- ===============================
       -- A-4.項目編集
@@ -4333,10 +4510,38 @@ AS
         END IF;
       END IF;
 --
+/* 2009/12/16 Ver1.18 Mod Start */
+      -- 参照中と1レコード前の依頼品目コードを受注明細から取得する。
+      -- (受注明細アドオン.依頼品目の場合、NULLの可能性がある為）
+      lv_request_item_code_bfr := lv_request_item_code_now;
+      lv_request_item_code_now := NVL( g_order_data_tab(i).child_item_code, g_order_data_tab(i).item_code );
+      -- 品目単位でチェックを行う。(納品日・検収日・出荷依頼No・依頼品目)
+      IF ( (i = 1) OR (   lv_request_item_code_now         != lv_request_item_code_bfr
+                       OR g_order_data_tab(i).dlv_date     != g_order_data_tab(i-1).dlv_date
+                       OR g_order_data_tab(i).inspect_date != g_order_data_tab(i-1).inspect_date
+                       OR g_order_data_tab(i).request_no   != g_order_data_tab(i-1).request_no ) ) THEN
+--
+        --販売実績ヘッダを作成する単位のデータにエラーがある場合、
+        --コレクション内で同じ単位のデータに対してもチェックステータスをエラーにする
+        IF ( ln_err_flag = cn_check_status_error ) THEN
+--
+          <<loop_set_check_status>>
+          FOR k IN ln_idx..(i - 1) LOOP
+            g_order_data_tab(k).check_status := cn_check_status_error;
+            gn_warn_cnt := gn_warn_cnt + 1;
+          END LOOP loop_set_check_status;
+--
+          ln_err_flag := cn_check_status_normal;
+        END IF;
+--
+        ln_idx := i;
+--
+      END IF;
+--
+/* 2009/12/16 Ver1.18 Mod End   */
       IF ( g_order_data_tab(i).check_status = cn_check_status_error ) THEN
         ln_err_flag := cn_check_status_error;
       END IF;
---
 --
     END LOOP loop_make_data;
 --
@@ -4398,7 +4603,10 @@ AS
       END IF;
     END IF;
 --
-    IF ( g_order_exp_tab.COUNT > 0 ) THEN
+/* 2009/12/16 Ver1.18 Mod Start */
+--    IF ( g_order_exp_tab.COUNT > 0 ) THEN
+    IF ( g_order_chk_tab.COUNT > 0 ) THEN
+/* 2009/12/16 Ver1.18 Mod End   */
       -- ===============================
       -- A-8.販売実績PL/SQL表作成
       -- ===============================
