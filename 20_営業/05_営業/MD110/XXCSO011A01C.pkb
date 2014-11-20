@@ -35,11 +35,11 @@ AS
  *  insert_wk_req_proc        作業依頼／発注情報連携対象テーブル登録処理(A-19)
  *  update_wk_req_proc        作業依頼／発注情報連携対象テーブル更新処理(A-20)
  *  start_approval_wf_proc    承認ワークフロー起動(エラー通知)(A-21)
+ *  verifyauthority           承認者権限（製品）チェック(A-22)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
  *  main_for_denegation       メイン処理（発注依頼否認用）
- *  main_for_approval_update  メイン処理（発注依頼承認更新用）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *                                       【ST障害対応517】顧客マスタ存在チェック処理を修正
  *  2009-05-01    1.9   Tomoko.Mori      T1_0897対応
  *  2009-05-11    1.10  D.Abe            【ST障害対応965】廃棄申請時の機器状態３、廃棄フラグ更新処理のタイミング変更
+ *  2009-05-15    1.11  D.Abe            【ST障害対応669】承認者権限（製品）チェックを追加
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -303,7 +304,9 @@ AS
   cn_num4                  CONSTANT NUMBER        := 4;
   cn_num9                  CONSTANT NUMBER        := 9;
 /* 20090511_abe_ST965 END*/
-
+/* 20090515_abe_ST669 START*/
+  cv_VerifyAuthority_y        CONSTANT VARCHAR2(1) := 'Y';  -- 承認権限チェックフラグ(OK)
+/* 20090515_abe_ST669 END*/
 
 /*20090403_yabuki_ST297 START*/
   -- 固定の数値
@@ -4536,6 +4539,98 @@ AS
     --
   END start_approval_wf_proc;
 /* 20090410_abe_T1_0108 END*/
+/* 20090515_abe_ST669 START*/
+  /**********************************************************************************
+   * Procedure Name   : VerifyAuthority
+   * Description      : 承認者権限（製品）チェック(A-22)
+   ***********************************************************************************/
+  FUNCTION VerifyAuthority(itemtype VARCHAR2, itemkey VARCHAR2) RETURN VARCHAR2 is
+
+  L_DM_CALL_REC  PO_DOC_MANAGER_PUB.DM_CALL_REC_TYPE;
+
+  x_progress varchar2(200);
+  BEGIN
+
+
+    L_DM_CALL_REC.Action := 'VERIFY_AUTHORITY_CHECK';
+
+    L_DM_CALL_REC.Document_Type    :=  wf_engine.GetItemAttrText (itemtype => itemtype,
+                                           itemkey  => itemkey,
+                                           aname    => 'DOCUMENT_TYPE');
+
+    L_DM_CALL_REC.Document_Subtype :=  wf_engine.GetItemAttrText (itemtype => itemtype,
+                                           itemkey  => itemkey,
+                                           aname    => 'DOCUMENT_SUBTYPE');
+
+    L_DM_CALL_REC.Document_Id      :=  wf_engine.GetItemAttrNumber (itemtype => itemtype,
+                                           itemkey  => itemkey,
+                                           aname    => 'DOCUMENT_ID');
+
+
+    L_DM_CALL_REC.Line_Id          := NULL;
+    L_DM_CALL_REC.Shipment_Id      := NULL;
+    L_DM_CALL_REC.Distribution_Id  := NULL;
+    L_DM_CALL_REC.Employee_id      := wf_engine.GetItemAttrNumber (itemtype => itemtype,
+                                           itemkey  => itemkey,
+                                           aname    => 'APPROVER_EMPID');
+
+    L_DM_CALL_REC.New_Document_Status  := NULL;
+    L_DM_CALL_REC.Offline_Code     := NULL;
+
+    L_DM_CALL_REC.Note             := NULL;
+
+    L_DM_CALL_REC.Approval_Path_Id := NULL;
+
+    L_DM_CALL_REC.Forward_To_Id    := NULL;
+
+    L_DM_CALL_REC.Action_date    := NULL;
+
+    L_DM_CALL_REC.Override_funds    := NULL;
+
+  -- Below are the output parameters
+
+    L_DM_CALL_REC.Info_Request     := NULL;
+
+    L_DM_CALL_REC.Document_Status  := NULL;
+
+    L_DM_CALL_REC.Online_Report_Id := NULL;
+
+    L_DM_CALL_REC.Return_Code      := NULL;
+
+    L_DM_CALL_REC.Error_Msg        := NULL;
+
+    /* This is the variable that contains the return value from the
+    ** call to the DOC MANAGER:
+    ** SUCCESS =0,  TIMEOUT=1,  NO MANAGER=2,  OTHER=3
+    */
+    L_DM_CALL_REC.Return_Value    := NULL;
+
+    /* Call the API that calls the Document manager */
+
+    PO_DOC_MANAGER_PUB.CALL_DOC_MANAGER(L_DM_CALL_REC);
+
+
+    IF L_DM_CALL_REC.Return_Value = 0 THEN
+
+       IF ( L_DM_CALL_REC.Return_Code is NULL )  THEN
+
+          return('Y');
+
+       ELSE
+
+          return('N');
+
+       END IF;
+
+    ELSE
+       return('F');
+    END IF;
+
+  EXCEPTION
+    WHEN OTHERS THEN
+       return('F');
+  END VerifyAuthority;
+/* 20090515_abe_ST669 END*/
   --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -6704,9 +6799,9 @@ AS
     --
   BEGIN
     --
-    -- ===============================================
-    -- submainの呼び出し（実際の処理はsubmainで行う）
-    -- ===============================================
+        -- ========================================
+        -- A-13. 設置用物件更新処理
+        -- ========================================
     submain(
         iv_itemtype    => itemtype
       , iv_itemkey     => itemkey
@@ -6790,6 +6885,10 @@ AS
     lv_errbuf_wf      VARCHAR2(5000);  -- エラー・メッセージ
     ln_notification_id NUMBER;
     /* 20090410_abe_T1_0108 END*/
+    /* 20090515_abe_ST669 START*/
+    lv_proc_kbn_req_aprv    VARCHAR2(1);  --処理区分（2:承認、3:否認）
+    lv_doc_mgr_return_val   VARCHAR2(1);
+    /* 20090515_abe_ST669 END*/
     --
   BEGIN
     --
@@ -6807,48 +6906,69 @@ AS
         RAISE global_api_others_expt;
     END;
     --
-    /* 20090410_abe_T1_0108 END*/
-    -- ===============================================
-    -- submainの呼び出し（実際の処理はsubmainで行う）
-    -- ===============================================
-    submain(
-        iv_itemtype    => itemtype
-      , iv_itemkey     => itemkey
-      , iv_process_kbn => cv_proc_kbn_req_aprv  -- 処理区分（発注依頼承認）
-      , ov_errbuf      => lv_errbuf             -- エラー・メッセージ  --# 固定 #
-      , ov_retcode     => lv_retcode            -- リターン・コード    --# 固定 #
-    );
-    --
-    -- submainが正常終了の場合
-    IF lv_retcode = cv_status_normal THEN
-      resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_yes;
-      --
-    -- submainが異常終了の場合
-    ELSIF lv_retcode = cv_status_error THEN
-      resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
-      --
-      wf_engine.setitemattrtext(
-          itemtype => itemtype
-        , itemkey  => itemkey
-        , aname    => cv_ib_chk_errmsg
-        , avalue   => lv_errbuf
-      );
-      /* 20090410_abe_T1_0108 START*/
-      --
-      lv_errbuf_wf := lv_errbuf;
-      -- ========================================
-      -- A-21. 承認ワークフロー起動(エラー通知)
-      -- ========================================
-      start_approval_wf_proc(
-        iv_itemtype    => itemtype
-      , iv_itemkey     => itemkey
-      , iv_errmsg      => lv_errbuf_wf          -- エラーメッセージ
-      , ov_errbuf      => lv_errbuf             -- エラー・メッセージ  --# 固定 #
-      , ov_retcode     => lv_retcode            -- リターン・コード    --# 固定 #
-      );
-      /* 20090410_abe_T1_0108 END*/
-      --
+
+/* 20090515_abe_ST669 START*/
+    -- ========================================
+    -- A-22. 承認者権限（製品）チェック
+    -- ========================================
+    lv_doc_mgr_return_val := VerifyAuthority(
+                                 itemtype    => itemtype
+                               , itemkey     => itemkey
+                             );
+    -- 
+    -- 承認権限チェックが正常終了の場合
+    IF (lv_doc_mgr_return_val = cv_VerifyAuthority_y ) THEN
+      lv_proc_kbn_req_aprv := cv_proc_kbn_req_aprv;
+    -- 承認権限チェックが異常終了の場合
+    ELSE
+      lv_proc_kbn_req_aprv := cv_proc_kbn_req_dngtn;
     END IF;
+/* 20090515_abe_ST669 END*/
+    /* 20090410_abe_T1_0108 END*/
+      -- ===============================================
+      -- submainの呼び出し（実際の処理はsubmainで行う）
+      -- ===============================================
+      submain(
+          iv_itemtype    => itemtype
+        , iv_itemkey     => itemkey
+/* 20090515_abe_ST669 START*/
+        , iv_process_kbn => lv_proc_kbn_req_aprv  -- 処理区分（発注依頼承認・否認）
+--        , iv_process_kbn => cv_proc_kbn_req_aprv  -- 処理区分（発注依頼承認）
+/* 20090515_abe_ST669 END*/
+        , ov_errbuf      => lv_errbuf             -- エラー・メッセージ  --# 固定 #
+        , ov_retcode     => lv_retcode            -- リターン・コード    --# 固定 #
+      );
+      --
+      -- submainが正常終了の場合
+      IF lv_retcode = cv_status_normal THEN
+        resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_yes;
+        --
+      -- submainが異常終了の場合
+      ELSIF lv_retcode = cv_status_error THEN
+        resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
+        --
+        wf_engine.setitemattrtext(
+            itemtype => itemtype
+          , itemkey  => itemkey
+          , aname    => cv_ib_chk_errmsg
+          , avalue   => lv_errbuf
+        );
+        /* 20090410_abe_T1_0108 START*/
+        --
+        lv_errbuf_wf := lv_errbuf;
+        -- ========================================
+        -- A-21. 承認ワークフロー起動(エラー通知)
+        -- ========================================
+        start_approval_wf_proc(
+          iv_itemtype    => itemtype
+        , iv_itemkey     => itemkey
+        , iv_errmsg      => lv_errbuf_wf          -- エラーメッセージ
+        , ov_errbuf      => lv_errbuf             -- エラー・メッセージ  --# 固定 #
+        , ov_retcode     => lv_retcode            -- リターン・コード    --# 固定 #
+        );
+        /* 20090410_abe_T1_0108 END*/
+        --
+      END IF;
 --
   EXCEPTION
     WHEN global_api_others_expt THEN
