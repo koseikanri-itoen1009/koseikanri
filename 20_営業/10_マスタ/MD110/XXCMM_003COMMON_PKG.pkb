@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmm_003common_pkg(body)
  * Description            :
  * MD.110                 : MD110_CMM_顧客_共通関数
- * Version                : 1.4
+ * Version                : 1.7
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/22    1.4  Yutaka.Kuboshima 障害T1_1089の対応
  *  2009/06/19    1.5  Yutaka.Kuboshima 障害T1_1500の対応
  *  2009/07/14    1.6  Yutaka.Kuboshima 統合テスト障害0000674の対応
+ *  2009/07/15    1.7  Yutaka.Kuboshima 統合テスト障害0000648の対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -343,6 +344,9 @@ AS
     cv_msg_xxcmm_00347      CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00347';     -- 使用目的存在チェックエラー
     cv_msg_xxcmm_00348      CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00348';     -- 項目未設定エラー
     cv_msg_xxcmm_00349      CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00349';     -- 確認メッセージ
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+    cv_msg_xxcmm_00350      CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00350';     -- 支払方法未登録メッセージ
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
     --
     -- トークン
     cv_tkn_site_use         CONSTANT VARCHAR2(16) := 'SITE_USE';             -- 使用目的名
@@ -372,6 +376,10 @@ AS
     cv_token_invoice_div    CONSTANT VARCHAR2(50) := '[請求書発行区分]';     -- トークン値(請求書発行区分)
     cv_token_payment_id     CONSTANT VARCHAR2(50) := '[支払条件]';           -- トークン値(支払条件)
     cv_token_tax_rule       CONSTANT VARCHAR2(50) := '[税金端数処理]';       -- トークン値(税金端数処理)
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+    cv_token_site_use       CONSTANT VARCHAR2(50) := '使用目的';             -- トークン値(使用目的)
+    cv_token_no             CONSTANT VARCHAR2(50) := 'の';                   -- トークン値(の)
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
     -- 顧客区分
     cv_cust_kyoten_kbn      CONSTANT VARCHAR2(2)  := '1';                    -- 拠点
     cv_cust_kokyaku_kbn     CONSTANT VARCHAR2(2)  := '10';                   -- 顧客
@@ -399,6 +407,9 @@ AS
     cv_site_use_other_to    CONSTANT VARCHAR2(10) := 'OTHER_TO';             -- 使用目的コード(その他)
     -- その他
     cv_a_flag               CONSTANT VARCHAR2(1)  := 'A';                    -- 有効フラグ(A)
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+    cv_y_flag               CONSTANT VARCHAR2(1)  := 'Y';                    -- 有効フラグ(Y)
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
 --
     -- ===============================
     -- ローカル変数
@@ -408,7 +419,15 @@ AS
     lv_errmsg_00348         VARCHAR2(2000);
     lv_errmsg_00349         VARCHAR2(2000);
     lv_item_token           VARCHAR2(4000);
-    lv_site_use_token       VARCHAR2(100);
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+    lv_item_token_bill      VARCHAR2(200);   -- 使用目的[請求先]専用トークン
+    lv_item_token_ship      VARCHAR2(200);   -- 使用目的[出荷先]専用トークン
+    lv_errmsg_00348_bill    VARCHAR2(2000);  -- 使用目的[請求先]専用メッセージ
+    lv_errmsg_00348_ship    VARCHAR2(2000);  -- 使用目的[出荷先]専用メッセージ
+    lv_errmsg_00350         VARCHAR2(2000);  -- 支払方法未登録エラーメッセージ
+    lv_receipt_err          VARCHAR2(1);     -- 支払方法チェック結果
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+    lv_site_use_token       VARCHAR2(200);
     lv_retcode              VARCHAR2(1);
 --
     -- ===============================
@@ -438,6 +457,9 @@ AS
             ,cust.invoice_issue_div      invoice_issue_div       -- 請求書発行区分
             ,cust.payment_term_id        payment_term_id         -- 支払条件
             ,cust.tax_rounding_rule      tax_rounding_rule       -- 税金端数処理
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+            ,cust.primary_flag           primary_flag            -- 支払方法主フラグ
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
       FROM   hz_cust_accounts   hca
             ,hz_parties         hp
             ,(SELECT hca2.cust_account_id       cust_account_id
@@ -452,6 +474,9 @@ AS
                     ,hcsuv.invoice_issue_div    invoice_issue_div
                     ,hcsuv.payment_term_id      payment_term_id
                     ,hcsuv.tax_rounding_rule    tax_rounding_rule
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+                    ,rcrmv.primary_flag         primary_flag
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
               FROM   hz_cust_accounts   hca2
                     ,hz_parties         hp2
                     ,hz_party_sites     hps2
@@ -490,6 +515,23 @@ AS
                                                         AND    hcas31.party_site_id   = hps31.party_site_id
                                                         AND    hps31.status           = cv_a_flag)
                      ) hcsuv
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+                    ,(SELECT hca.cust_account_id customer_id
+                            ,rcrm.primary_flag   primary_flag
+                      FROM   hz_cust_accounts        hca
+                            ,ra_cust_receipt_methods rcrm
+                      WHERE  hca.cust_account_id = rcrm.customer_id
+                        AND  rcrm.cust_receipt_method_id = (SELECT rcrm2.cust_receipt_method_id
+                                                            FROM   hz_cust_accounts hca2
+                                                                  ,hz_cust_acct_sites hcas2
+                                                                  ,ra_cust_receipt_methods rcrm2
+                                                            WHERE  hca2.cust_account_id = rcrm2.customer_id
+                                                              AND  hca2.cust_account_id = hcas2.cust_account_id
+                                                              AND  hca.cust_account_id  = hca2.cust_account_id
+                                                              AND  rcrm.primary_flag    = cv_y_flag
+                                                              AND  ROWNUM = 1)
+                     ) rcrmv
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
               WHERE  hca2.party_id           = hp2.party_id(+)
                 AND  hp2.party_id            = hps2.party_id(+)
                 AND  hps2.location_id        = hl2.location_id(+)
@@ -500,6 +542,9 @@ AS
                                                 WHERE  hcas21.cust_account_id = hca2.cust_account_id
                                                 AND    hcas21.party_site_id   = hps21.party_site_id
                                                 AND    hps21.status           = cv_a_flag)
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+                AND  hca2.cust_account_id    = rcrmv.customer_id(+)
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
              ) cust
       WHERE  hca.party_id        = hp.party_id(+)
         AND  hca.cust_account_id = cust.cust_account_id(+)
@@ -515,7 +560,7 @@ AS
     -- ユーザー定義例外
     -- ===============================
     no_data_found_expt EXCEPTION;
-    
+--
   BEGIN
 --
     -- 初期処理
@@ -642,6 +687,12 @@ AS
         END IF;
       -- 顧客区分が'10'(顧客),'12'(上様顧客)の場合
       ELSIF (cust_required_check_rec.customer_class_code IN (cv_cust_kokyaku_kbn, cv_cust_uesama_kbn)) THEN
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+        -- 支払方法存在チェック
+        IF (cust_required_check_rec.primary_flag IS NULL) THEN
+          lv_receipt_err := cv_error;
+        END IF;
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
         -- 使用目的(請求先)存在チェック
         -- 使用目的がNULL(請求先、出荷先共に未設定)の場合
         IF (cust_required_check_rec.site_use_code IS NULL) THEN
@@ -651,21 +702,33 @@ AS
           lv_site_use_token := lv_site_use_token || cv_token_bill_to;
           -- 請求先事業所NULLチェック
           IF (cust_required_check_rec.bill_to_site_use_id IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_bill_to_use_id;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_bill_to_use_id;
+            lv_item_token_ship := lv_item_token_ship || cv_token_bill_to_use_id;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
         -- 使用目的(請求先)の場合
         ELSIF (cust_required_check_rec.site_use_code = cv_site_use_bill_to) THEN
           -- 請求書発行区分NULLチェック
           IF (cust_required_check_rec.invoice_issue_div IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_invoice_div;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_invoice_div;
+            lv_item_token_bill := lv_item_token_bill || cv_token_invoice_div;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
           -- 支払条件NULLチェック
           IF (cust_required_check_rec.payment_term_id IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_payment_id;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_payment_id;
+            lv_item_token_bill := lv_item_token_bill || cv_token_payment_id;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
           -- 税金端数処理NULLチェック
           IF (cust_required_check_rec.tax_rounding_rule IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_tax_rule;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_tax_rule;
+            lv_item_token_bill := lv_item_token_bill || cv_token_tax_rule;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
           -- 出荷先レコードの取得
           FETCH cust_required_check_cur INTO cust_required_check_rec;
@@ -676,12 +739,21 @@ AS
           ELSE
             -- 請求先事業所NULLチェック
             IF (cust_required_check_rec.bill_to_site_use_id IS NULL) THEN
-              lv_item_token := lv_item_token || cv_token_bill_to_use_id;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--              lv_item_token := lv_item_token || cv_token_bill_to_use_id;
+              lv_item_token_ship := lv_item_token_ship || cv_token_bill_to_use_id;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
             END IF;
           END IF;
         END IF;
       -- 顧客区分が'14'(売掛管理先)の場合
       ELSIF (cust_required_check_rec.customer_class_code = cv_cust_urikake_kbn) THEN
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+        -- 支払方法存在チェック
+        IF (cust_required_check_rec.primary_flag IS NULL) THEN
+          lv_receipt_err := cv_error;
+        END IF;
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
         -- 使用目的(請求先)存在チェック
         -- 使用目的がNULL(請求先未設定)の場合
         IF (cust_required_check_rec.site_use_code IS NULL) THEN
@@ -689,15 +761,24 @@ AS
         ELSE
           -- 請求書発行区分NULLチェック
           IF (cust_required_check_rec.invoice_issue_div IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_invoice_div;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_invoice_div;
+            lv_item_token_bill := lv_item_token_bill || cv_token_invoice_div;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
           -- 支払条件NULLチェック
           IF (cust_required_check_rec.payment_term_id IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_payment_id;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_payment_id;
+            lv_item_token_bill := lv_item_token_bill || cv_token_payment_id;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
           -- 税金端数処理NULLチェック
           IF (cust_required_check_rec.tax_rounding_rule IS NULL) THEN
-            lv_item_token := lv_item_token || cv_token_tax_rule;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--            lv_item_token := lv_item_token || cv_token_tax_rule;
+            lv_item_token_bill := lv_item_token_bill || cv_token_tax_rule;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
           END IF;
         END IF;
       -- 顧客区分が'13'(法人顧客),'15'(巡回),'16'(販売先),'17'(計画立案用),'18'(EDIチェーン),'19'(百貨店伝区)の場合
@@ -714,6 +795,9 @@ AS
                                                     cv_msg_xxcmm_00348,
                                                     cv_tkn_item,
                                                     lv_item_token) || CHR(10);
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+        lv_retcode := cv_error;
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
       END IF;
       -- 使用目的存在チェックエラーの場合
       IF (lv_site_use_token IS NOT NULL) THEN
@@ -721,13 +805,48 @@ AS
                                                     cv_msg_xxcmm_00347,
                                                     cv_tkn_site_use,
                                                     lv_site_use_token) || CHR(10);
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+        lv_retcode := cv_error;
+-- 2009/07/15 Ver1.7 add end by Yutaka.Kuboshima
       END IF;
-      -- 項目NULLチェックエラーまたは使用目的存在チェックエラーの場合
-      IF (lv_errmsg_00347 IS NOT NULL OR lv_errmsg_00348 IS NOT NULL) THEN
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+      -- 使用目的[請求先]項目NULLチェックエラーの場合
+      IF (lv_item_token_bill IS NOT NULL) THEN
+        lv_errmsg_00348_bill := cv_token_site_use || cv_token_bill_to || cv_token_no ||
+                                xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
+                                                         cv_msg_xxcmm_00348,
+                                                         cv_tkn_item,
+                                                         lv_item_token_bill) || CHR(10);
+        lv_retcode := cv_error;
+      END IF;
+      -- 使用目的[出荷先]項目NULLチェックエラーの場合
+      IF (lv_item_token_ship IS NOT NULL) THEN
+        lv_errmsg_00348_ship := cv_token_site_use || cv_token_ship_to || cv_token_no ||
+                                xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
+                                                         cv_msg_xxcmm_00348,
+                                                         cv_tkn_item,
+                                                         lv_item_token_ship) || CHR(10);
+        lv_retcode := cv_error;
+      END IF;
+      -- 支払方法未登録チェックエラーの場合
+      IF (lv_receipt_err = cv_error) THEN
+        lv_errmsg_00350 := xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
+                                                    cv_msg_xxcmm_00350) || CHR(10);
+        lv_retcode := cv_error;
+      END IF;
+-- 2009/07/15 Ver1.7 add start by Yutaka.Kuboshima
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--      IF (lv_errmsg_00347 IS NOT NULL OR lv_errmsg_00348 IS NOT NULL) THEN
+      -- リターンコードが警告の場合
+      IF (lv_retcode = cv_error) THEN
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
         lv_errmsg_00349 := xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
                                                     cv_msg_xxcmm_00349);
-        lv_errmsg  := lv_errmsg_00347 || lv_errmsg_00348 || lv_errmsg_00349;
-        lv_retcode := cv_error;
+-- 2009/07/15 Ver1.7 modify start by Yutaka.Kuboshima
+--        lv_errmsg  := lv_errmsg_00347 || lv_errmsg_00348 || lv_errmsg_00349;
+        lv_errmsg  := lv_errmsg_00347 || lv_errmsg_00348 || lv_errmsg_00348_bill ||
+                      lv_errmsg_00348_ship || lv_errmsg_00350 || lv_errmsg_00349;
+-- 2009/07/15 Ver1.7 modify end by Yutaka.Kuboshima
       END IF;
     END IF;
     -- OUTパラメータセット
