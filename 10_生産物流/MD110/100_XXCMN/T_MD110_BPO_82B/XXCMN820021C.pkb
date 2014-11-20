@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/10    1.0   Masayuki Ikeda   新規作成
  *  2008/05/20    1.1   Masayuki Ikeda   内部変更要求#113対応
+ *  2008/06/10    1.2   Kazuo Kumamoto   結合テスト障害対応(Null値によるテンプレート式エラー対応)
  *
  *****************************************************************************************/
 --
@@ -779,27 +780,42 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'r_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.r_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.r_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount.r_unit_price,0) ;
+--mod end 1.2
       -- 原価差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'd_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.d_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.d_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount.d_unit_price,0) ;
+--mod end 1.2
       -- 標準金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 's_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.s_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.s_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount.s_amount,0) ;
+--mod end 1.2
       -- 実際金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'r_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.r_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.r_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount.r_amount,0) ;
+--mod end 1.2
       -- 金額差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'd_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.d_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount.d_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount.d_amount,0) ;
+--mod end 1.2
 --
       -- ----------------------------------------------------
       -- 終了タグ
@@ -1796,63 +1812,99 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_s_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.s_unit_price,0) ;
+--mod end 1.2
       -- 原価差異合計：実際原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_r_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.r_unit_price,0) ;
+--mod end 1.2
       -- 原価差異合計：原価差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_d_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.d_unit_price,0) ;
+--mod end 1.2
       -- 原価差異合計：標準金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_s_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.s_amount,0) ;
+--mod end 1.2
       -- 原価差異合計：実際金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_r_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.r_amount,0) ;
+--mod end 1.2
       -- 原価差異合計：金額差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_d_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.d_amount,0) ;
+--mod end 1.2
 --
       -- 仮受金合計：標準原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_s_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.s_unit_price,0) ;
+--mod end 1.2
       -- 仮受金合計：実際原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_r_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.r_unit_price,0) ;
+--mod end 1.2
       -- 仮受金合計：原価差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_d_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.d_unit_price,0) ;
+--mod end 1.2
       -- 仮受金合計：標準金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_s_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.s_amount,0) ;
+--mod end 1.2
       -- 仮受金合計：実際金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_r_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.r_amount,0) ;
+--mod end 1.2
       -- 仮受金合計：金額差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_d_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.d_amount,0) ;
+--mod end 1.2
 --
       -- ====================================================
       -- 項目計出力
@@ -1919,32 +1971,50 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_s_unit_price' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_unit_price ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_unit_price ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.s_unit_price,0) ;
+--mod end 1.2
         -- 実際原価
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_r_unit_price' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_unit_price ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_unit_price ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.r_unit_price,0) ;
+--mod end 1.2
         -- 原価差異
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_d_unit_price' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_unit_price ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_unit_price ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.d_unit_price,0) ;
+--mod end 1.2
         -- 標準金額
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_s_amount' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_amount ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_amount ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.s_amount,0) ;
+--mod end 1.2
         -- 実際金額
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_r_amount' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_amount ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_amount ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.r_amount,0) ;
+--mod end 1.2
         -- 金額差異
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_d_amount' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_amount ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_amount ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.d_amount,0) ;
+--mod end 1.2
 --
         -- ヘッダを出力するのは、最初の１件のみなので、１件目登録後にクリアする。
         lv_s_dtl_sct_name := NULL ;
@@ -2406,63 +2476,99 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_s_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.s_unit_price,0) ;
+--mod end 1.2
       -- 原価差異合計：実際原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_r_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.r_unit_price,0) ;
+--mod end 1.2
       -- 原価差異合計：原価差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_d_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.d_unit_price,0) ;
+--mod end 1.2
       -- 原価差異合計：標準金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_s_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.s_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.s_amount,0) ;
+--mod end 1.2
       -- 原価差異合計：実際金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_r_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.r_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.r_amount,0) ;
+--mod end 1.2
       -- 原価差異合計：金額差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'dif_d_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dif.d_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dif.d_amount,0) ;
+--mod end 1.2
 --
       -- 仮受金合計：標準原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_s_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.s_unit_price,0) ;
+--mod end 1.2
       -- 仮受金合計：実際原価
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_r_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.r_unit_price,0) ;
+--mod end 1.2
       -- 仮受金合計：原価差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_d_unit_price' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_unit_price ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_unit_price ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.d_unit_price,0) ;
+--mod end 1.2
       -- 仮受金合計：標準金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_s_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.s_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.s_amount,0) ;
+--mod end 1.2
       -- 仮受金合計：実際金額
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_r_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.r_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.r_amount,0) ;
+--mod end 1.2
       -- 仮受金合計：金額差異
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_d_amount' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_amount ;
+--mod start 1.2
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_rcv.d_amount ;
+      gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_rcv.d_amount,0) ;
+--mod end 1.2
 --
       -- ====================================================
       -- 項目計出力
@@ -2529,32 +2635,50 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_s_unit_price' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_unit_price ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_unit_price ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.s_unit_price,0) ;
+--mod end 1.2
         -- 実際原価
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_r_unit_price' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_unit_price ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_unit_price ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.r_unit_price,0) ;
+--mod end 1.2
         -- 原価差異
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_d_unit_price' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_unit_price ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_unit_price ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.d_unit_price,0) ;
+--mod end 1.2
         -- 標準金額
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_s_amount' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_amount ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.s_amount ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.s_amount,0) ;
+--mod end 1.2
         -- 実際金額
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_r_amount' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_amount ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.r_amount ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.r_amount,0) ;
+--mod end 1.2
         -- 金額差異
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 's_dtl_d_amount' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_amount ;
+--mod start 1.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_amount_dtl.d_amount ;
+        gt_xml_data_table(gl_xml_idx).tag_value := NVL(lr_amount_dtl.d_amount,0) ;
+--mod end 1.2
 --
         -- ヘッダを出力するのは、最初の１件のみなので、１件目登録後にクリアする。
         lv_s_dtl_sct_name := NULL ;

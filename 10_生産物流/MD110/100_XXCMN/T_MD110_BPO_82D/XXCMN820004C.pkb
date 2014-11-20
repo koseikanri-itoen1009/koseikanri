@@ -7,7 +7,7 @@ AS
  * Description      : 新旧差額計算表作成
  * MD.050/070       : 標準原価マスタDraft1C (T_MD050_BPO_820)
  *                    新旧差額計算表作成    (T_MD070_BPO_82D)
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,7 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/18    1.0   Kazuo Kumamoto   新規作成
  *  2008/05/21    1.1   Masayuki Ikeda   結合テスト障害対応
-*
+ *  2008/06/09    1.2   Marushita        レビュー指摘No6対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -128,23 +129,23 @@ AS
      ,item_code                        xxpo_price_headers.item_code%TYPE
      ,item_name                        xxcmn_item_mst_b.item_name%TYPE
      ,in_case                          ic_item_mst_b.attribute11%TYPE
-     ,forecast_quantity_new            mrp_forecast_dates.original_forecast_quantity%TYPE
-     ,cost_price_new                   xxpo_price_lines.unit_price%TYPE
-     ,row_material_cost_new            xxpo_price_lines.unit_price%TYPE
-     ,remake_cost_new                  xxpo_price_lines.unit_price%TYPE
-     ,material_cost_new                xxpo_price_lines.unit_price%TYPE
-     ,wrapping_cost_new                xxpo_price_lines.unit_price%TYPE
-     ,outside_cost_new                 xxpo_price_lines.unit_price%TYPE
-     ,store_cost_new                   xxpo_price_lines.unit_price%TYPE
-     ,other_cost_new                   xxpo_price_lines.unit_price%TYPE
-     ,cost_price_old                   xxpo_price_lines.unit_price%TYPE
-     ,row_material_cost_old            xxpo_price_lines.unit_price%TYPE
-     ,remake_cost_old                  xxpo_price_lines.unit_price%TYPE
-     ,material_cost_old                xxpo_price_lines.unit_price%TYPE
-     ,wrapping_cost_old                xxpo_price_lines.unit_price%TYPE
-     ,outside_cost_old                 xxpo_price_lines.unit_price%TYPE
-     ,store_cost_old                   xxpo_price_lines.unit_price%TYPE
-     ,other_cost_old                   xxpo_price_lines.unit_price%TYPE
+     ,forecast_quantity_new            NUMBER
+     ,cost_price_new                   NUMBER
+     ,row_material_cost_new            NUMBER
+     ,remake_cost_new                  NUMBER
+     ,material_cost_new                NUMBER
+     ,wrapping_cost_new                NUMBER
+     ,outside_cost_new                 NUMBER
+     ,store_cost_new                   NUMBER
+     ,other_cost_new                   NUMBER
+     ,cost_price_old                   NUMBER
+     ,row_material_cost_old            NUMBER
+     ,remake_cost_old                  NUMBER
+     ,material_cost_old                NUMBER
+     ,wrapping_cost_old                NUMBER
+     ,outside_cost_old                 NUMBER
+     ,store_cost_old                   NUMBER
+     ,other_cost_old                   NUMBER
     );
   TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
   -- ===============================
@@ -342,65 +343,37 @@ AS
        ,NVL(op.other_cost_old,0)              AS other_cost_old --旧.その他経費
       FROM (
         SELECT
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---          mfdate.original_forecast_quantity   AS forecast_quantity_new
---         ,mfdate.forecast_date                AS forecast_date
           SUM( mfdate.original_forecast_quantity) AS forecast_quantity_new
          ,MIN(mfdate.forecast_date)               AS forecast_date
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
-         ,xph.item_id                         AS item_id
-         ,xph.item_code                       AS item_code
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---         ,SUM(xpl.quantity * xpl.unit_price)  AS cost_price_new
-         ,SUM(mfdate.original_forecast_quantity * xpl.unit_price)  AS cost_price_new
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_row_material_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,xp.item_id                         AS item_id
+         ,xp.item_code                       AS item_code
+         ,SUM(mfdate.original_forecast_quantity * xp.unit_price)  AS cost_price_new
+         ,SUM(CASE WHEN xp.cost_type = gc_row_material_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS row_material_cost_new
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_remake_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_remake_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS remake_cost_new
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_material_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_material_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS material_cost_new
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_wrapping_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_wrapping_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS wrapping_cost_new
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_outside_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_outside_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS outside_cost_new
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_store_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_store_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS store_cost_new
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_other_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_other_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS other_cost_new
         FROM
@@ -408,9 +381,27 @@ AS
          ,xxcmn_lookup_values2_v                flv_fc    --クイックコード
          ,mrp_forecast_dates                    mfdate    --フォーキャスト日付
          ,mtl_system_items_b                    msib      --品目マスタ
-         ,xxpo_price_headers                    xph       --仕入・標準単価ヘッダ
-         ,xxpo_price_lines                      xpl       --仕入・標準単価明細
-         ,xxcmn_lookup_values2_v                flv_item  --クイックコード
+         -- 原価の種類ごとに一行となるように集計を実施
+         ,(SELECT  xph.price_header_id   AS header_id
+                  ,xph.start_date_active AS start_date_active
+                  ,xph.end_date_active   AS end_date_active
+                  ,xph.item_id           AS item_id
+                  ,xph.item_code         AS item_code
+                  ,flv_item.attribute2   AS cost_type
+                  ,NVL(SUM(xpl.unit_price),0) AS unit_price
+            FROM   xxpo_price_headers       xph  --仕入・標準単価ヘッダ
+                  ,xxpo_price_lines         xpl  --仕入・標準単価明細
+                  ,xxcmn_lookup_values2_v   flv_item  --クイックコード
+            WHERE flv_item.lookup_type = gc_item_type
+            AND   flv_item.attribute1  = xpl.expense_item_type
+            AND   xph.price_header_id  = xpl.price_header_id
+            AND   xph.price_type       = gc_price_type
+            GROUP BY xph.price_header_id
+                    ,xph.start_date_active
+                    ,xph.end_date_active
+                    ,xph.item_id
+                    ,xph.item_code
+                    ,flv_item.attribute2) xp
         WHERE flv_fc.lookup_type = gc_fc_type
         AND flv_fc.description = gc_fc_description
         AND mfdesi.attribute1 = flv_fc.lookup_code
@@ -420,81 +411,47 @@ AS
         AND mfdesi.organization_id = mfdate.organization_id
         AND mfdate.inventory_item_id = msib.inventory_item_id
         AND mfdate.organization_id = msib.organization_id
-        AND xph.price_header_id = xpl.price_header_id
-        AND xph.price_type = gc_price_type
         AND mfdate.forecast_date
-          BETWEEN xph.start_date_active AND NVL(xph.end_date_active,mfdate.forecast_date)
+          BETWEEN xp.start_date_active AND NVL(xp.end_date_active,mfdate.forecast_date)
         AND mfdesi.disable_date IS NULL
         AND mfdesi.attribute6 = civ_current_year --新.年度
         AND mfdesi.attribute5 = civ_current_gene --新.世代
-        AND msib.segment1 = xph.item_code
-        AND flv_item.lookup_type = gc_item_type
-        AND flv_item.attribute1 = xpl.expense_item_type
-        AND mfdate.forecast_date
-          BETWEEN flv_item.start_date_active AND NVL(flv_item.end_date_active,mfdate.forecast_date)
+        AND msib.segment1 = xp.item_code
         GROUP BY 
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---          mfdate.original_forecast_quantity
---         ,mfdate.forecast_date
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
-          xph.item_id
-         ,xph.item_code
+          xp.item_id
+         ,xp.item_code
       ) np
      ,(
         SELECT
-          xph.item_id                         AS item_id
-         ,xph.item_code                       AS item_code
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---         ,SUM(xpl.quantity * xpl.unit_price)  AS cost_price_old
-         ,SUM(mfdate.original_forecast_quantity * xpl.unit_price)  AS cost_price_old
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_row_material_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+          xp.item_id                         AS item_id
+         ,xp.item_code                       AS item_code
+         ,SUM(mfdate.original_forecast_quantity * xp.unit_price)  AS cost_price_old
+         ,SUM(CASE WHEN xp.cost_type = gc_row_material_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS row_material_cost_old
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_remake_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_remake_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS remake_cost_old
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_material_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_material_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS material_cost_old
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_wrapping_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_wrapping_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS wrapping_cost_old
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_outside_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_outside_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS outside_cost_old
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_store_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_store_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS store_cost_old
-         ,SUM(CASE WHEN flv_item.attribute2 = gc_other_cost
--- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
---                     THEN xpl.quantity * xpl.unit_price
-                     THEN mfdate.original_forecast_quantity * xpl.unit_price
--- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
+         ,SUM(CASE WHEN xp.cost_type = gc_other_cost
+                     THEN mfdate.original_forecast_quantity * xp.unit_price
                      ELSE 0
                    END) AS other_cost_old
         FROM
@@ -502,9 +459,27 @@ AS
          ,xxcmn_lookup_values2_v                flv_fc     --クイックコード
          ,mrp_forecast_dates                    mfdate  --フォーキャスト日付
          ,mtl_system_items_b                    msib    --品目マスタ
-         ,xxpo_price_headers                    xph     --仕入・標準単価ヘッダ
-         ,xxpo_price_lines                      xpl
-         ,xxcmn_lookup_values2_v                flv_item
+         -- 原価の種類ごとに一行となるように集計を実施
+         ,(SELECT  xph.price_header_id   AS header_id
+                  ,xph.start_date_active AS start_date_active
+                  ,xph.end_date_active   AS end_date_active
+                  ,xph.item_id           AS item_id
+                  ,xph.item_code         AS item_code
+                  ,flv_item.attribute2   AS cost_type
+                  ,NVL(SUM(xpl.unit_price),0) AS unit_price
+            FROM   xxpo_price_headers       xph  --仕入・標準単価ヘッダ
+                  ,xxpo_price_lines         xpl  --仕入・標準単価明細
+                  ,xxcmn_lookup_values2_v   flv_item  --クイックコード
+            WHERE flv_item.lookup_type = gc_item_type
+            AND   flv_item.attribute1  = xpl.expense_item_type
+            AND   xph.price_header_id  = xpl.price_header_id
+            AND   xph.price_type       = gc_price_type
+            GROUP BY xph.price_header_id
+                    ,xph.start_date_active
+                    ,xph.end_date_active
+                    ,xph.item_id
+                    ,xph.item_code
+                    ,flv_item.attribute2) xp
         WHERE flv_fc.lookup_type = gc_fc_type
         AND flv_fc.description = gc_fc_description
         AND mfdesi.attribute1 = flv_fc.lookup_code
@@ -514,22 +489,15 @@ AS
         AND mfdesi.organization_id = mfdate.organization_id
         AND mfdate.inventory_item_id = msib.inventory_item_id
         AND mfdate.organization_id = msib.organization_id
-        AND xph.price_header_id = xpl.price_header_id
-        AND xph.price_type = gc_price_type
         AND mfdate.forecast_date
-          BETWEEN xph.start_date_active AND NVL(xph.end_date_active,mfdate.forecast_date)
+          BETWEEN xp.start_date_active AND NVL(xp.end_date_active,mfdate.forecast_date)
         AND mfdesi.disable_date IS NULL
         AND mfdesi.attribute6 = civ_prev_year --新.年度
         AND mfdesi.attribute5 = civ_prev_gene --新.世代
-        AND msib.segment1 = xph.item_code
-        AND flv_item.lookup_type = gc_item_type
-        AND flv_item.attribute1 = xpl.expense_item_type
-        AND mfdate.forecast_date
-          BETWEEN flv_item.start_date_active AND NVL(flv_item.end_date_active,mfdate.forecast_date)
+        AND msib.segment1 = xp.item_code
         GROUP BY 
-          mfdate.original_forecast_quantity
-         ,xph.item_id
-         ,xph.item_code
+          xp.item_id
+         ,xp.item_code
       ) op
      ,(
         SELECT
