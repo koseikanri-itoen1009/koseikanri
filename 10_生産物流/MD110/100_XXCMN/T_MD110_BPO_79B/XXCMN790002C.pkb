@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/09/05    1.5   Oracle 山根 一浩 PT 3-1_19-2指摘67_01対応
  *  2008/10/27    1.6   H.Itou           T_S_500対応
  *  2008/12/05    1.7   H.Marushita      本番435対応
+ *  2008/12/20    1.8   H.Marushita      重複データ対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -911,6 +912,17 @@ AS
     lt_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;     -- アプリケーションID
     lt_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID;  -- プログラムID
 --
+    -- =====================================
+    -- 一括削除処理
+    -- =====================================
+    FORALL ln_cnt IN 1..gt_doc_id_ins_tab.COUNT
+      DELETE 
+      FROM   xxcmn_txn_lot_cost xtlc -- 取引別ロット別原価（アドオン）
+      WHERE  xtlc.doc_type =  gv_doc_type_prod  -- 文書タイプ
+      AND    xtlc.doc_id   =  gt_doc_id_ins_tab(ln_cnt)    -- 文書ID
+      AND    xtlc.item_id  =  gt_item_id_ins_tab(ln_cnt)   -- 品目ID
+      AND    xtlc.lot_id   =  gt_lot_id_ins_tab(ln_cnt)    -- ロットID
+      ;
     -- 一括登録
     FORALL ln_cnt IN 1..gt_doc_id_ins_tab.COUNT
       INSERT INTO xxcmn_txn_lot_cost(     -- 取引別ロット別原価(アドオン)

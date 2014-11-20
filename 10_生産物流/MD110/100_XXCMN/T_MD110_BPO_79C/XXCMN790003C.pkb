@@ -7,7 +7,7 @@ AS
  * Description      : 加重平均計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 加重平均計算処理 T_MD070_BPO_79C
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/2/6      1.0   R.Matusita       新規作成
  *  2008/12/02    1.1   H.Marushita      数量ゼロの取引別ロット原価を抽出対象外とする。
  *  2008/12/05    1.2   H.Marushita      本番435対応
+ *  2008/12/19    1.3   H.Marushita      在庫調整用に更新と登録を行うように修正
  *
  *****************************************************************************************/
 --
@@ -115,6 +116,24 @@ AS
                                                                                 -- 取引数量
   TYPE unit_price_ttype IS TABLE OF xxcmn_txn_lot_cost.unit_price%TYPE INDEX BY BINARY_INTEGER;
                                                                                 -- 単価
+--
+-- 2008/12/19 ADD S
+-- ロットマスタ単価反映用
+  TYPE xlc_item_id_ttype    IS TABLE OF xxcmn_lot_cost.item_id%TYPE INDEX BY BINARY_INTEGER;
+                                                                                -- 品目ID
+  TYPE xlc_lot_id_ttype     IS TABLE OF xxcmn_lot_cost.lot_id%TYPE INDEX BY BINARY_INTEGER;
+                                                                                -- ロットID
+  TYPE xlc_trans_qty_ttype  IS TABLE OF xxcmn_lot_cost.trans_qty%TYPE INDEX BY BINARY_INTEGER;
+                                                                                -- 取引数量
+  TYPE xlc_unit_price_ttype IS TABLE OF xxcmn_lot_cost.unit_ploce%TYPE INDEX BY BINARY_INTEGER;
+                                                                                -- 単価
+-- 
+-- ロットマスタ単価反映用PL/SQL表
+  gt_xlc_item_id_tab    xlc_item_id_ttype;
+  gt_xlc_lot_id_tab     xlc_lot_id_ttype;
+  gt_xlc_trans_qty_tab  xlc_trans_qty_ttype;
+  gt_xlc_unit_price_tab xlc_unit_price_ttype;
+-- 2008/12/19 ADD E
 --
   -- 登録用PL/SQL表
   gt_item_id_ins_tab    item_id_ttype;      -- 品目ID
@@ -220,7 +239,6 @@ AS
      WHERE xtlc.item_id = ilm.item_id
      AND   xtlc.lot_id  = ilm.lot_id)  -- OPMロットマスタ
     ;
-    
 --
   EXCEPTION
 --
@@ -282,6 +300,12 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+    ln_user_id          NUMBER;            -- ログインしているユーザー
+    ln_login_id         NUMBER;            -- 最終更新ログイン
+    ln_conc_request_id  NUMBER;            -- 要求ID
+    ln_prog_appl_id     NUMBER;            -- コンカレント・プログラム・アプリケーションID
+    ln_conc_program_id  NUMBER;            -- コンカレント・プログラムID
+    ln_loop_cnt         NUMBER;            -- ループカーソル変数
 --
     -- *** ローカル・カーソル ***
 --
@@ -293,6 +317,29 @@ AS
       FOR UPDATE NOWAIT
       ;
 --      
+-- 2008/12/19 ADD S
+    -- 更新用
+    -- ロットマスタと金額差異があるロット別実際原価のデータを更新する
+    CURSOR upd_lot_cost_date_cur
+    IS
+      SELECT  ilm.item_id               item_id
+            , ilm.lot_id                lot_id
+            , ilm.trans_cnt             trans_cnt
+            , TO_NUMBER(ilm.attribute7) unit_price
+      FROM 
+            ic_lots_mst ilm
+           ,ic_item_mst_b imb
+           ,xxcmn_lot_cost xlc
+      WHERE ilm.lot_id > 0  -- デフォルトロットを除く
+        AND TO_NUMBER(NVL(ilm.attribute7,0)) <> 0 -- 実際原価が設定されているもの
+        AND ilm.item_id = imb.item_id
+        AND imb.attribute15 = '0' -- 実際原価
+        AND imb.lot_ctl     = '1' -- ロット管理品
+        AND ilm.item_id = xlc.item_id
+        AND ilm.lot_id  = xlc.lot_id
+        AND TO_NUMBER(NVL(ilm.attribute7,0)) <> NVL(xlc.UNIT_PLOCE,0)
+      ;
+-- 2008/12/19 ADD E
     -- 登録用
     -- ロット別原価（アドオン）テーブルに同一品目・同一ロットのデータが存在しないデータ
     CURSOR ins_lot_data_cur
@@ -368,6 +415,96 @@ AS
                      ),1,5000);
         RAISE global_api_expt;
     END;
+--
+    -- 共通更新情報の取得
+    ln_user_id         := FND_GLOBAL.USER_ID;        -- ログインしているユーザーのID取得
+    ln_login_id        := FND_GLOBAL.LOGIN_ID;       -- 最終更新ログイン
+    ln_conc_request_id := FND_GLOBAL.CONC_REQUEST_ID;-- 要求ID
+    ln_prog_appl_id    := FND_GLOBAL.PROG_APPL_ID;   -- コンカレント・プログラム・アプリケーションID
+    ln_conc_program_id := FND_GLOBAL.CONC_PROGRAM_ID;-- コンカレント・プログラムID
+--
+    -- ======================================
+    -- 在庫調整等作成ロット実際原価反映
+    -- ======================================
+--2008/12/19 ADD S
+    ln_loop_cnt := 0;
+    <<upd_lot_cost_date_loop>>
+    FOR loop_cnt IN upd_lot_cost_date_cur LOOP
+--
+      -- データカウント
+      ln_loop_cnt :=  ln_loop_cnt + 1;
+--
+      -- 値セット
+      gt_xlc_item_id_tab(ln_loop_cnt)     := loop_cnt.item_id;              -- 品目ID
+      gt_xlc_lot_id_tab(ln_loop_cnt)      := loop_cnt.lot_id;               -- ロットID
+      gt_xlc_trans_qty_tab(ln_loop_cnt)   := loop_cnt.trans_cnt;            -- 数量
+      gt_xlc_unit_price_tab(ln_loop_cnt)  := loop_cnt.unit_price;           -- 数量
+--
+    END LOOP upd_lot_cost_date_loop;
+--
+    -- 一括更新処理
+    FORALL ln_loop_cnt IN 1 .. gt_item_id_upd_tab.COUNT
+      -- 品目マスタ更新
+      UPDATE xxcmn_lot_cost
+      SET trans_qty               = gt_xlc_trans_qty_tab(ln_loop_cnt) -- 取引数量
+         ,unit_ploce              = gt_xlc_unit_price_tab(ln_loop_cnt)-- 単価 
+         ,last_updated_by         = ln_user_id                   -- 最終更新者
+         ,last_update_date        = SYSDATE                      -- 最終更新日
+         ,last_update_login       = ln_login_id                  -- 最終更新ログイン
+         ,request_id              = ln_conc_request_id           -- 要求ID
+         ,program_application_id  = ln_prog_appl_id              -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+         ,program_id              = ln_conc_program_id           -- コンカレント・プログラムID
+         ,program_update_date     = SYSDATE                      -- プログラム更新日
+      WHERE item_id   = gt_xlc_item_id_tab(ln_loop_cnt)          -- 品目ID
+      AND   lot_id    = gt_xlc_lot_id_tab(ln_loop_cnt);          -- ロットID
+--2008/12/19 ADD E
+--
+        INSERT INTO xxcmn_lot_cost(
+          item_id
+        , item_code
+        , lot_id
+        , lot_num
+        , trans_qty
+        , unit_ploce
+        , created_by
+        , creation_date
+        , last_updated_by
+        , last_update_date
+        , last_update_login
+        , request_id
+        , program_application_id
+        , program_id
+        , program_update_date
+        ) SELECT 
+         iim.item_id
+        ,iim.item_no
+        ,ilm.lot_id
+        ,ilm.lot_no
+        ,ilm.trans_cnt
+        ,to_number(ilm.attribute7) AS unit_price
+        ,ln_user_id                             -- 作成者
+        ,SYSDATE                                -- 作成日
+        ,ln_user_id                             -- 最終更新者
+        ,SYSDATE                                -- 最終更新日
+        ,ln_login_id                            -- 最終更新ログイン
+        ,ln_conc_request_id                     -- 要求ID
+        ,ln_prog_appl_id                        -- コンカレント・プログラム・アプリケーションID
+        ,ln_conc_program_id                     -- コンカレント・プログラムID
+        ,SYSDATE                                -- プログラム更新日
+        FROM 
+         ic_lots_mst ilm
+        ,ic_item_mst_b iim
+        WHERE ilm.lot_id > 0  -- デフォルトロットを除く
+        AND TO_NUMBER(NVL(ilm.attribute7,0)) <> 0 -- 実際原価が設定されているもの
+        AND iim.item_id = ilm.item_id
+        AND iim.attribute15 = '0'
+        AND iim.lot_ctl     = '1'
+        AND NOT EXISTS (
+          SELECT 1 
+          FROM  xxcmn_lot_cost xlc
+          WHERE xlc.item_id = ilm.item_id
+          AND   xlc.lot_id  = ilm.lot_id
+        );
 --
     -- ========================================
     -- 登録用取引別原価データをPL/SQL表にセット
@@ -562,54 +699,6 @@ AS
            ,program_update_date     = SYSDATE                      -- プログラム更新日
         WHERE item_id   = gt_item_id_upd_tab(ln_cnt)               -- 品目ID
         AND   lot_id    = gt_lot_id_upd_tab(ln_cnt);               -- ロットID
---
-    -- ======================================
-    -- 在庫調整等作成ロット実際原価反映
-    -- ======================================
-        INSERT INTO xxcmn_lot_cost(
-          item_id
-        , item_code
-        , lot_id
-        , lot_num
-        , trans_qty
-        , unit_ploce
-        , created_by
-        , creation_date
-        , last_updated_by
-        , last_update_date
-        , last_update_login
-        , request_id
-        , program_application_id
-        , program_id
-        , program_update_date
-        ) SELECT 
-         iim.item_id
-        ,iim.item_no
-        ,ilm.lot_id
-        ,ilm.lot_no
-        ,ilm.trans_cnt
-        ,to_number(ilm.attribute7) AS unit_price
-        ,ln_user_id                             -- 作成者
-        ,SYSDATE                                -- 作成日
-        ,ln_user_id                             -- 最終更新者
-        ,SYSDATE                                -- 最終更新日
-        ,ln_login_id                            -- 最終更新ログイン
-        ,ln_conc_request_id                     -- 要求ID
-        ,ln_prog_appl_id                        -- コンカレント・プログラム・アプリケーションID
-        ,ln_conc_program_id                     -- コンカレント・プログラムID
-        ,SYSDATE                                -- プログラム更新日
-        FROM 
-         ic_lots_mst ilm
-        ,ic_item_mst_b iim
-        WHERE ilm.lot_id > 0  -- デフォルトロットを除く
-        AND TO_NUMBER(NVL(ilm.attribute7,0)) <> 0 -- 実際原価が設定されているもの
-        AND iim.item_id = ilm.item_id
-        AND NOT EXISTS (
-          SELECT 1 
-          FROM  xxcmn_lot_cost xlc
-          WHERE xlc.item_id = ilm.item_id
-          AND   xlc.lot_id  = ilm.lot_id
-        );
 --
   EXCEPTION
 --
