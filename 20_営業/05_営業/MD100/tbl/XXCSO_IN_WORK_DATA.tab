@@ -1,0 +1,137 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_in_work_data
+ * Description     : 作業データテーブル
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2009/03/10    1.1  D.Abe         シーケンス番号を追加
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_in_work_data
+(
+  seq_no                          NUMBER            NOT NULL,
+  slip_no                         NUMBER(12)        NOT NULL,
+  slip_branch_no                  NUMBER(1)         NOT NULL,
+  line_number                     NUMBER(2)         NOT NULL,
+  job_kbn                         NUMBER(2),
+  install_code1                   VARCHAR2(10),
+  install_code2                   VARCHAR2(10),
+  work_hope_date                  NUMBER(8),
+  work_hope_time_kbn              NUMBER(1),
+  work_hope_time                  VARCHAR2(4),
+  current_install_name            VARCHAR2(40),
+  new_install_name                VARCHAR2(40),
+  withdrawal_process_kbn          NUMBER(1),
+  actual_work_date                NUMBER(8),
+  actual_work_time1               VARCHAR2(4),
+  actual_work_time2               VARCHAR2(4),
+  completion_kbn                  NUMBER(1),
+  delete_flag                     NUMBER(1),
+  completion_plan_date            NUMBER(8),
+  completion_date                 NUMBER(8),
+  disposal_approval_date          NUMBER(8),
+  withdrawal_date                 NUMBER(8),
+  delivery_date                   NUMBER(8),
+  last_disposal_end_date          NUMBER(8),
+  fwd_root_company_code           VARCHAR2(6),
+  fwd_root_location_code          VARCHAR2(6),
+  fwd_distination_company_code    VARCHAR2(6),
+  fwd_distination_location_code   VARCHAR2(6),
+  creation_employee_number        VARCHAR2(5),
+  creation_section_name           VARCHAR2(6),
+  creation_program_id             VARCHAR2(10),
+  update_employee_number          VARCHAR2(5),
+  update_section_name             VARCHAR2(6),
+  update_program_id               VARCHAR2(10),
+  creation_date_time              DATE,
+  update_date_time                DATE,
+  po_number                       NUMBER(10),
+  po_line_number                  NUMBER(5),
+  po_distribution_number          NUMBER(5),
+  po_req_number                   NUMBER(10),
+  line_num                        NUMBER(5),
+  account_number1                 VARCHAR2(9),
+  account_number2                 VARCHAR2(9),
+  safe_setting_standard           VARCHAR2(1),
+  install1_processed_flag         VARCHAR2(1)       NOT NULL,
+  install2_processed_flag         VARCHAR2(1)       NOT NULL,
+  suspend_processed_flag          VARCHAR2(1)       NOT NULL,
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_in_work_data_pk PRIMARY KEY ( seq_no)
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_in_work_data IS '作業データテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.seq_no                                 IS 'シーケンス番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.slip_no                                IS '伝票No.';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.slip_branch_no                         IS '伝票枝番';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.line_number                            IS '行番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.job_kbn                                IS '作業区分';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.install_code1                          IS '物件コード１（設置用）';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.install_code2                          IS '物件コード２（引揚用）';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.work_hope_date                         IS '作業希望日/引取希望日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.work_hope_time_kbn                     IS '作業希望時間区分';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.work_hope_time                         IS '作業希望時間';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.current_install_name                   IS '現設置先名';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.new_install_name                       IS '新設置先名';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.withdrawal_process_kbn                 IS '引揚機処理区分';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.actual_work_date                       IS '実作業日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.actual_work_time1                      IS '実作業時間１';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.actual_work_time2                      IS '実作業時間２';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.completion_kbn                         IS '完了区分';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.delete_flag                            IS '削除フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.completion_plan_date                   IS '完了予定日/修理完了予定日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.completion_date                        IS '完了日/修理完了日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.disposal_approval_date                 IS '廃棄決裁日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.withdrawal_date                        IS '実引取日/引取日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.delivery_date                          IS '交付日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.last_disposal_end_date                 IS '最終処分終了年月日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.fwd_root_company_code                  IS '（転送元）会社コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.fwd_root_location_code                 IS '（転送元）事業所コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.fwd_distination_company_code           IS '（転送先）会社コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.fwd_distination_location_code          IS '（転送先）事業所コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.creation_employee_number               IS '作成担当者コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.creation_section_name                  IS '作成部署コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.creation_program_id                    IS '作成プログラムＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.update_employee_number                 IS '更新担当者コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.update_section_name                    IS '更新部署コード';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.update_program_id                      IS '更新プログラムＩＤ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.creation_date_time                     IS '作成日時時分秒';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.update_date_time                       IS '更新日時時分秒';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.po_number                              IS '発注番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.po_line_number                         IS '発注明細番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.po_distribution_number                 IS '発注搬送番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.po_req_number                          IS '発注依頼番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.line_num                               IS '発注依頼明細番号';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.account_number1                        IS '顧客コード１（新設置先）';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.account_number2                        IS '顧客コード２（現設置先）';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.safe_setting_standard                  IS '安全設置基準';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.install1_processed_flag                IS '物件１処理済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.install2_processed_flag                IS '物件２処理済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.suspend_processed_flag                 IS '休止処理済フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.program_update_date                    IS 'プログラム更新日';
