@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_FOR_ADPS_MONTHLY_IF
  * Description : 人事システム向け販売実績（月次）テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS T.Kitajima   新規作成
+ *  2010/01/22    1.1   SCS S.Miyakoshi  各種件数の桁数変更 NUMBER(6)⇒NUMBER(7)
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
@@ -27,8 +28,8 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
     ,P_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 個新規貢献売上
     ,P_NEW_NORMA                NUMBER(12)                                -- 個新規ﾉﾙﾏ
     ,P_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 個新規達成率
-    ,P_NEW_COUNT_SUM            NUMBER(6)                                 -- 個新規件数合計
-    ,P_NEW_COUNT_VD             NUMBER(6)                                 -- 個新規件数ﾍﾞﾝﾀﾞｰ
+    ,P_NEW_COUNT_SUM            NUMBER(7)                                 -- 個新規件数合計
+    ,P_NEW_COUNT_VD             NUMBER(7)                                 -- 個新規件数ﾍﾞﾝﾀﾞｰ
     ,P_POSITION_POINT           NUMBER(7,2)                               -- 個資格POINT
     ,P_NEW_POINT                NUMBER(7,2)                               -- 個新規POINT
     ,G_SALE_NORMA               NUMBER(12)                                -- 小売上ﾉﾙﾏ
@@ -37,8 +38,8 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
     ,G_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 小新規貢献売上
     ,G_NEW_NORMA                NUMBER(12)                                -- 小新規ﾉﾙﾏ
     ,G_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 小新規達成率
-    ,G_NEW_COUNT_SUM            NUMBER(6)                                 -- 小新規件数合計
-    ,G_NEW_COUNT_VD             NUMBER(6)                                 -- 小新規件数ﾍﾞﾝﾀﾞｰ
+    ,G_NEW_COUNT_SUM            NUMBER(7)                                 -- 小新規件数合計
+    ,G_NEW_COUNT_VD             NUMBER(7)                                 -- 小新規件数ﾍﾞﾝﾀﾞｰ
     ,G_POSITION_POINT           NUMBER(7,2)                               -- 小資格POINT
     ,G_NEW_POINT                NUMBER(7,2)                               -- 小新規POINT
     ,B_SALE_NORMA               NUMBER(12)                                -- 拠売上ﾉﾙﾏ
@@ -47,8 +48,8 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
     ,B_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 拠新規貢献売上
     ,B_NEW_NORMA                NUMBER(12)                                -- 拠新規達成率
     ,B_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 拠新規ﾉﾙﾏ
-    ,B_NEW_COUNT_SUM            NUMBER(6)                                 -- 拠新規件数合計
-    ,B_NEW_COUNT_VD             NUMBER(6)                                 -- 拠新規件数ﾍﾞﾝﾀﾞｰ
+    ,B_NEW_COUNT_SUM            NUMBER(7)                                 -- 拠新規件数合計
+    ,B_NEW_COUNT_VD             NUMBER(7)                                 -- 拠新規件数ﾍﾞﾝﾀﾞｰ
     ,B_POSITION_POINT           NUMBER(7,2)                               -- 拠資格POINT
     ,B_NEW_POINT                NUMBER(7,2)                               -- 拠新規POINT
     ,A_SALE_NORMA               NUMBER(12)                                -- 地売上ﾉﾙﾏ
@@ -57,8 +58,8 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
     ,A_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 地新規貢献売上
     ,A_NEW_NORMA                NUMBER(12)                                -- 地新規達成率
     ,A_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 地新規ﾉﾙﾏ
-    ,A_NEW_COUNT_SUM            NUMBER(6)                                 -- 地新規件数合計
-    ,A_NEW_COUNT_VD             NUMBER(6)                                 -- 地新規件数ﾍﾞﾝﾀﾞｰ
+    ,A_NEW_COUNT_SUM            NUMBER(7)                                 -- 地新規件数合計
+    ,A_NEW_COUNT_VD             NUMBER(7)                                 -- 地新規件数ﾍﾞﾝﾀﾞｰ
     ,A_POSITION_POINT           NUMBER(7,2)                               -- 地資格POINT
     ,A_NEW_POINT                NUMBER(7,2)                               -- 地新規POINT
     ,D_SALE_NORMA               NUMBER(12)                                -- 本売上ﾉﾙﾏ
@@ -67,8 +68,8 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
     ,D_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 本新規貢献売上
     ,D_NEW_NORMA                NUMBER(12)                                -- 本新規達成率
     ,D_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 本新規ﾉﾙﾏ
-    ,D_NEW_COUNT_SUM            NUMBER(6)                                 -- 本新規件数合計
-    ,D_NEW_COUNT_VD             NUMBER(6)                                 -- 本新規件数ﾍﾞﾝﾀﾞｰ
+    ,D_NEW_COUNT_SUM            NUMBER(7)                                 -- 本新規件数合計
+    ,D_NEW_COUNT_VD             NUMBER(7)                                 -- 本新規件数ﾍﾞﾝﾀﾞｰ
     ,D_POSITION_POINT           NUMBER(7,2)                               -- 本資格POINT
     ,D_NEW_POINT                NUMBER(7,2)                               -- 本新規POINT
     ,S_SALE_NORMA               NUMBER(12)                                -- 全売上ﾉﾙﾏ
@@ -77,8 +78,8 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_MONTHLY_IF
     ,S_NEW_CONTRIBUTION_SALE    NUMBER(12)                                -- 全新規貢献売上
     ,S_NEW_NORMA                NUMBER(12)                                -- 全新規達成率
     ,S_NEW_ACHIEVEMENT_RATE     NUMBER(6,1)                               -- 全新規ﾉﾙﾏ
-    ,S_NEW_COUNT_SUM            NUMBER(6)                                 -- 全新規件数合計
-    ,S_NEW_COUNT_VD             NUMBER(6)                                 -- 全新規件数ﾍﾞﾝﾀﾞｰ
+    ,S_NEW_COUNT_SUM            NUMBER(7)                                 -- 全新規件数合計
+    ,S_NEW_COUNT_VD             NUMBER(7)                                 -- 全新規件数ﾍﾞﾝﾀﾞｰ
     ,S_POSITION_POINT           NUMBER(7,2)                               -- 全資格POINT
     ,S_NEW_POINT                NUMBER(7,2)                               -- 全新規POINT
     ,CREATED_BY                 NUMBER(15)  NOT NULL                      -- 作成者

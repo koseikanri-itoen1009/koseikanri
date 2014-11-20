@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS016A03C(body)
  * Description      : 人事システム向け、販売実績賞与データ(I/F)作成処理
  * MD.050           : A03_人事システム向け販売実績データの作成（月次・賞与） COS_016_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/02/24    1.3   T.kitajima       パラメータのログファイル出力対応
  *  2009/02/26    1.4   T.kitajima       従業員ビューの適用日条件設定
  *  2009/10/16    1.5   S.Miyakoshi      [0001397]二重計上の対応
+ *  2010/01/22    1.6   S.Miyakoshi      [E_本稼動_01234](A-15)異常終了時のログ出力内容の変更
  *
  *****************************************************************************************/
 --
@@ -254,6 +255,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+    gv_sqlerrm      VARCHAR2(5000);  --SQLERRM
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
   /**********************************************************************************
    * Procedure Name   : is_date
    * Description      : 日付チェック用(A-1)
@@ -1579,6 +1583,9 @@ AS
         );
     EXCEPTION
       WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+        gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
         XXCOS_COMMON_PKG.makeup_key_info(
                                        ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                       ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -1676,6 +1683,9 @@ AS
         );
     EXCEPTION
       WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+        gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
         XXCOS_COMMON_PKG.makeup_key_info(
                                        ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                       ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -1709,7 +1719,10 @@ AS
                      ,iv_token_value1       =>  lv_table_nm
                      ,iv_token_value2       =>  lv_key_info
                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||cv_msg_part||gv_sqlerrm,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1852,6 +1865,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
           XXCOS_COMMON_PKG.makeup_key_info(
                                          ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                         ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -1885,6 +1901,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
           XXCOS_COMMON_PKG.makeup_key_info(
                                          ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                         ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -1919,7 +1938,10 @@ AS
                      ,iv_token_value1       =>  lv_table_nm
                      ,iv_token_value2       =>  lv_key_info
                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||cv_msg_part||gv_sqlerrm,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
@@ -2075,6 +2097,9 @@ AS
 --        ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
           XXCOS_COMMON_PKG.makeup_key_info(
                                          ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                         ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -2117,6 +2142,9 @@ AS
 --        ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
           XXCOS_COMMON_PKG.makeup_key_info(
                                          ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                         ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -2149,7 +2177,10 @@ AS
                      ,iv_token_value1       =>  lv_table_nm
                      ,iv_token_value2       =>  lv_key_info
                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||cv_msg_part||gv_sqlerrm,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
@@ -2288,6 +2319,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
           XXCOS_COMMON_PKG.makeup_key_info(
                                          ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                         ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -2319,6 +2353,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
           XXCOS_COMMON_PKG.makeup_key_info(
                                          ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                         ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -2351,7 +2388,9 @@ AS
                      ,iv_token_value1       =>  lv_table_nm
                      ,iv_token_value2       =>  lv_key_info
                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||cv_msg_part||gv_sqlerrm,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ov_retcode := cv_status_error;
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2490,6 +2529,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+        gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
         XXCOS_COMMON_PKG.makeup_key_info(
                                        ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                       ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -2520,6 +2562,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+        gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD  END  ************************ --
         XXCOS_COMMON_PKG.makeup_key_info(
                                        ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
                                       ,ov_retcode     =>  lv_retcode     --リターンコード
@@ -2553,7 +2598,10 @@ AS
                      ,iv_token_value1       =>  lv_table_nm
                      ,iv_token_value2       =>  lv_key_info
                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||cv_msg_part||gv_sqlerrm,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ov_retcode := cv_status_error;
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2687,7 +2735,11 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
-          lv_table_nm :=cv_bonus_tbl;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+--          lv_table_nm :=cv_bonus_tbl;
+          gv_sqlerrm  := SQLERRM;
+          lv_table_nm := cv_month_tbl;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
           RAISE global_update_expt;
       END;
     END LOOP for_month_loop;
@@ -2704,6 +2756,9 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
+          gv_sqlerrm  := SQLERRM;
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 ADD START ************************ --
           lv_table_nm :=cv_bonus_tbl;
           RAISE global_update_expt;
       END;
@@ -2723,7 +2778,10 @@ AS
                      ,iv_token_value1       =>  lv_table_nm
                      ,iv_token_value2       =>  lv_key_info
                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD START ************************ --
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||cv_msg_part||gv_sqlerrm,1,5000);
+-- ************************ 2010/01/22 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################

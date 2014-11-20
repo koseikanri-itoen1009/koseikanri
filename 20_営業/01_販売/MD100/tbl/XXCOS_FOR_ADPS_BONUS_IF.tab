@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_FOR_ADPS_BONUS_IF
  * Description : 人事システム向け販売実績（賞与）テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS T.Kitajima   新規作成
+ *  2010/01/22    1.1   SCS S.Miyakoshi  各種件数の桁数変更 NUMBER(6)⇒NUMBER(7)
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_FOR_ADPS_BONUS_IF
@@ -23,22 +24,22 @@ CREATE TABLE XXCOS.XXCOS_FOR_ADPS_BONUS_IF
     ,DIVISION_CODE             VARCHAR2(6) NOT NULL                       -- 本部ｺｰﾄﾞ
     ,P_SALE_GROSS              NUMBER(12)                                 -- 個売上粗利
     ,P_CURRENT_PROFIT          NUMBER(12)                                 -- 個経常利益
-    ,P_VISIT_COUNT             NUMBER(6)                                  -- 個訪問件数
+    ,P_VISIT_COUNT             NUMBER(7)                                  -- 個訪問件数
     ,G_SALE_GROSS              NUMBER(12)                                 -- 小売上粗利
     ,G_CURRENT_PROFIT          NUMBER(12)                                 -- 小経常利益
-    ,G_VISIT_COUNT             NUMBER(6)                                  -- 小個訪問件数
+    ,G_VISIT_COUNT             NUMBER(7)                                  -- 小個訪問件数
     ,B_SALE_GROSS              NUMBER(12)                                 -- 拠売上粗利
     ,B_CURRENT_PROFIT          NUMBER(12)                                 -- 拠経常利益
-    ,B_VISIT_COUNT             NUMBER(6)                                  -- 拠訪問件数
+    ,B_VISIT_COUNT             NUMBER(7)                                  -- 拠訪問件数
     ,A_SALE_GROSS              NUMBER(12)                                 -- 地売上粗利
     ,A_CURRENT_PROFIT          NUMBER(12)                                 -- 地経常利益
-    ,A_VISIT_COUNT             NUMBER(6)                                  -- 地訪問件数
+    ,A_VISIT_COUNT             NUMBER(7)                                  -- 地訪問件数
     ,D_SALE_GROSS              NUMBER(12)                                 -- 本売上粗利
     ,D_CURRENT_PROFIT          NUMBER(12)                                 -- 本経常利益
-    ,D_VISIT_COUNT             NUMBER(6)                                  -- 本訪問件数
+    ,D_VISIT_COUNT             NUMBER(7)                                  -- 本訪問件数
     ,S_SALE_GROSS              NUMBER(12)                                 -- 全売上粗利
     ,S_CURRENT_PROFIT          NUMBER(12)                                 -- 全経常利益
-    ,S_VISIT_COUNT             NUMBER(6)                                  -- 全訪問件数
+    ,S_VISIT_COUNT             NUMBER(7)                                  -- 全訪問件数
     ,CREATED_BY                NUMBER(15)  NOT NULL                       -- 作成者
     ,CREATION_DATE             DATE        NOT NULL                       -- 作成日
     ,LAST_UPDATED_BY           NUMBER(15)  NOT NULL                       -- 最終更新者
