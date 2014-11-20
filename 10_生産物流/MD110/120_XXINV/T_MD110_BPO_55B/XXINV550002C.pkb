@@ -1,4 +1,5 @@
-CREATE OR REPLACE PACKAGE BODY XXINV550002C
+create or replace
+PACKAGE BODY XXINV550002C
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +8,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +51,7 @@ AS
  *  2008/11/07    1.20  Hitomi Itou      統合テスト指摘548対応
  *  2008/11/17    1.21  Takao Ohashi     指摘356対応
  *  2008/11/20    1.22  Naoki Fukuda     統合テスト障害696対応
+ *  2008/11/21    1.23  Natsuki Yoshida  統合テスト障害687対応 (大幅な修正の為、履歴を残しておりません)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -217,6 +219,8 @@ AS
   gv_item_return       CONSTANT VARCHAR2(100) := FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET');       --返品原料
   gv_item_dissolve     CONSTANT VARCHAR2(100) := FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_SEPARATE');  --解体半製品
 --mod end 1.9
+  cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+  cn_item_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
 --
   --事由コード
   gv_reason_other      CONSTANT VARCHAR2(4) := 'X977'; --相手先在庫
@@ -1268,7 +1272,7 @@ AS
     ln_main_data_cnt     NUMBER;
 --
     -- *** ローカル・カーソル ***
-    CURSOR cur_main_data(
+    /*CURSOR cur_main_data(
       civ_ymd_from VARCHAR2        --年月日_FROM
      ,civ_ymd_to VARCHAR2          --年月日_TO
      ,civ_base_date VARCHAR2       --着日基準／発日基準
@@ -2982,7 +2986,7 @@ AS
               AND NVL(xvv.end_date_active, itc.trans_date)                       --適用終了日
 -- mod end 1.17
 --del start 1.2
-/*
+
             UNION ALL
             -----------------------
             --移動実績情報
@@ -3033,7 +3037,7 @@ AS
             AND xmrih.other_id = xilv.inventory_location_id
             AND xmrih.actual_date
               BETWEEN xilv.date_from AND NVL(xilv.date_to,xmrih.actual_date)      --適用開始日・終了日
-*/
+
 --del end 1.2
             UNION ALL
             -----------------------
@@ -3265,48 +3269,4158 @@ AS
               ,slip.standard_date
               ,slip.reason_code
               ,slip.slip_no
+      ;*/
+      
+    -- *** ローカル・カーソル ***
+--
+    -- 着日基準用カーソル
+    CURSOR cur_main_data1(
+      civ_ymd_from VARCHAR2        --年月日_FROM
+     ,civ_ymd_to VARCHAR2          --年月日_TO
+     ,civ_base_date VARCHAR2       --着日基準／発日基準
+     ,civ_inout_ctl VARCHAR2       --入出庫区分
+     ,civ_prod_div VARCHAR2        --商品区分
+     ,civ_unit_ctl VARCHAR2        --単位区分
+     ,civ_wh_loc_ctl VARCHAR2      --倉庫/保管倉庫選択区分
+     ,civ_wh_code_01 VARCHAR2      --倉庫/保管倉庫コード1
+     ,civ_wh_code_02 VARCHAR2      --倉庫/保管倉庫コード2
+     ,civ_wh_code_03 VARCHAR2      --倉庫/保管倉庫コード3
+     ,civ_block_01 VARCHAR2        --ブロック1
+     ,civ_block_02 VARCHAR2        --ブロック2
+     ,civ_block_03 VARCHAR2        --ブロック3
+     ,civ_item_div VARCHAR2        --品目区分
+     ,civ_item_code_01 VARCHAR2    --品目コード1
+     ,civ_item_code_02 VARCHAR2    --品目コード2
+     ,civ_item_code_03 VARCHAR2    --品目コード3
+     ,civ_lot_no_01 VARCHAR2       --ロットNo1
+     ,civ_lot_no_02 VARCHAR2       --ロットNo2
+     ,civ_lot_no_03 VARCHAR2       --ロットNo3
+     ,civ_mnfctr_date_01 VARCHAR2  --製造年月日1
+     ,civ_mnfctr_date_02 VARCHAR2  --製造年月日2
+     ,civ_mnfctr_date_03 VARCHAR2  --製造年月日3
+     ,civ_reason_code_01 VARCHAR2  --事由コード1
+     ,civ_reason_code_02 VARCHAR2  --事由コード2
+     ,civ_reason_code_03 VARCHAR2  --事由コード3
+     ,civ_symbol VARCHAR2          --固有記号
+    )
+    IS 
+      --======================================================================================================
+      SELECT
+        slip.whse_code                                        whse_code           --倉庫コード
+       ,slip.whse_name                                        whse_name           --倉庫名称
+       ,slip.location                                         strg_wh_code        --保管倉庫コード
+       ,slip.description                                      strg_wh_name        --保管倉庫名称
+       ,iimb.item_no                                          item_code           --品目コード
+       ,ximb.item_short_name                                  item_name           --品目名称
+       ,slip.standard_date                                    standard_date       --日付
+       ,slip.reason_code                                      reason_code         --事由コード
+       ,xlvv.meaning                                          reason_name         --事由コード名称
+       ,slip.slip_no                                          slip_no             --伝票番号
+       ,slip.out_date                                         out_date            --出庫日
+       ,slip.in_date                                          in_date             --着日
+       ,slip.jrsd_code                                        jrsd_code           --管轄拠点コード
+       ,slip.jrsd_name                                        jrsd_name           --管轄拠点名称
+       ,slip.other_code                                       other_code          --相手先コード
+       ,CASE slip.territory
+          WHEN gv_trtry_ad THEN
+            NVL(slip.other_name,xlvv.meaning)
+          ELSE slip.other_name
+        END                                                   other_name          --相手先名
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,ilm.lot_no
+              ,NULL)                                          lot_no              --ロットNo
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,SUBSTRB(ilm.attribute1,1,10)
+              ,NULL)                                          mnfctr_date         --製造年月日
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,SUBSTRB(ilm.attribute3,1,10)
+              ,NULL)                                          limit_date          --賞味期限
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,SUBSTRB(ilm.attribute2,1,6)
+              ,NULL)                                          symbol              --固有記号
+--mod start 2.1
+--       ,CASE slip.territory
+--          WHEN gv_trtry_po THEN ximv.item_um                                        --発注：単位
+--          WHEN gv_trtry_mv THEN ximv.item_um                                        --移動：単位
+--          WHEN gv_trtry_sh THEN ximv.conv_unit                                      --出荷：入出庫換算単位
+--          WHEN gv_trtry_rt THEN ximv.conv_unit                                      --倉替返品：入出庫換算単位
+--          WHEN gv_trtry_mf THEN ximv.item_um                                        --生産：単位
+--          WHEN gv_trtry_ad THEN ximv.item_um                                        --在庫調整：単位
+--          ELSE NULL
+--        END                                                   unit                --単位
+       ,DECODE(civ_unit_ctl
+              ,gv_unitctl_qty ,iimb.item_um
+              ,gv_unitctl_case,iimb.attribute24
+              ,NULL)                                          unit                --単位
+--mod end 2.1
+       ,iimb.attribute11                                      num_of_cases        --ケース入り数
+       ,NVL(slip.in_qty,0)                                    in_qty              --入庫数
+-- mod start 1.18
+--mod start 1.5
+       ,NVL(slip.out_qty,0)                                   out_qty             --出庫数
+--       ,ABS(NVL(slip.out_qty,0))                                   out_qty             --出庫数
+--mod end 1.5
+-- mod end 1.18
+       ,mct2.description                                      item_div_name       --品目区分名称
+      FROM (
+      --======================================================================================================
+        ------------------------------
+        -- 1.発注実績情報
+        ------------------------------
+        SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
+          gv_trtry_po                                         territory           --領域(発注)
+         ,iimb.item_id                                        item_id             --品目ID
+         ,itp.lot_id                                          lot_id              --ロットID
+         ,pha.attribute4                                      standard_date       --日付
+         ,xrpm.new_div_invent                                 reason_code         --新区分
+         ,pha.segment1                                        slip_no             --伝票No
+         ,pha.attribute4                                      out_date            --出庫日
+         ,pha.attribute4                                      in_date             --着日
+         ,''                                                  jrsd_code           --管轄拠点コード
+         ,''                                                  jrsd_name           --管轄拠点名
+         ,pv.segment1                                         other_code          --相手先コード
+         ,pv.vendor_name                                      other_name          --相手先名称
+         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+         ,0                                                   out_qty             --出庫数
+         ,itp.whse_code                                       whse_code           --倉庫コード
+         ,iwm.whse_name                                       whse_name           --倉庫名
+         ,itp.location                                        location            --保管倉庫コード
+         ,mil.description                                     description         --保管倉庫名
+         ,mil.attribute6                                      distribution_block  --ブロック
+         ,xrpm.rcv_pay_div                                    rcv_pay_div         --受払区分
+        FROM
+        ----------------------------------------------------------------------------------------
+          po_headers_all                                      pha                 --発注ヘッダ
+         ,po_lines_all                                        pla                 --発注明細
+         ,rcv_shipment_lines                                  rsl                 --受入明細
+         ,rcv_transactions                                    rt                  --受入取引
+         ,ic_lots_mst                                         ilm                 --OPMロットマスタ(結合用)
+         ,xxpo_rcv_and_rtn_txns                               xrart               --受入返品実績
+         ,po_vendors                                          pv
+         ,xxcmn_vendors                                       xv
+         ,ic_whse_mst                                         iwm
+         ,mtl_item_locations                                  mil
+         ,ic_item_mst_b                                       iimb
+         ,ic_tran_pnd                                         itp                 --OPM保留在庫トランザクション
+         ,xxcmn_rcv_pay_mst                                   xrpm                --受入区分アドオンマスタ
+         ,mtl_categories_b                                    mcb1
+         ,gmi_item_categories                                 gic1
+         ,mtl_categories_b                                    mcb2
+         ,gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --発注ヘッダ抽出条件
+        WHERE pha.attribute1 IN (gv_po_sts_rcv, gv_po_sts_qty_deci, gv_po_sts_price_deci)--ステータス
+        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
+        --発注明細抽出条件
+        AND pha.po_header_id = pla.po_header_id                                   --発注ヘッダID
+        AND pla.attribute13 = gv_po_flg_qty                                       --数量確定フラグ
+        --受入明細抽出条件
+        AND rsl.po_header_id = pha.po_header_id                                   --発注ヘッダID
+        AND rsl.po_line_id = pla.po_line_id                                       --発注明細ID
+        --受入取引抽出条件
+        AND rsl.shipment_line_id = rt.shipment_line_id                            --受入明細ID
+        --受入返品実績抽出条件
+        AND pha.segment1 = xrart.source_document_number                           --元文書番号
+        AND pla.line_num = xrart.source_document_line_num                         --元文書明細番号
+        AND xrart.txns_type = gv_txns_type_rcv                                    --実績区分
+        --保管場所マスタVIEW抽出条件
+        AND pha.vendor_id = pv.vendor_id                                         --仕入先ID
+        AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+        AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+        AND itp.doc_type = 'PORC'                                                 --文書タイプ
+        AND rsl.shipment_header_id = itp.doc_id                                   --文書ID
+        AND rsl.line_num = itp.doc_line                                           --取引明細番号
+        AND rt.transaction_id = itp.line_id                                       --ラインID
+        AND iimb.item_id = itp.item_id                                            --品目ID
+        AND ilm.lot_id = itp.lot_id                                               --ロットID
+        AND mil.segment1 = itp.location                                          --保管倉庫コード
+        AND itp.completed_ind = gv_tran_cmp                                       --完了フラグ
+        --受払区分マスタアドオン抽出条件
+        AND xrpm.doc_type = 'PORC'                                                --文書タイプ
+        AND xrpm.source_document_code = 'PO'                                      --ソース文書
+        AND xrpm.transaction_type = rt.transaction_type                           --PO取引タイプ
+        AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
+        AND iwm.mtl_organization_id = mil.organization_id
+        AND pv.vendor_id = xv.vendor_id
+        AND iimb.inactive_ind       <> '1'
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND iimb.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND iimb.item_id = gic2.item_id
+        AND gic2.category_set_id   = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        AND ilm.item_id            = itp.item_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY
+          iimb.item_id                                                            --品目ID
+         ,itp.lot_id                                                              --ロットID
+         ,pha.attribute4                                                          --日付
+         ,xrpm.new_div_invent                                                     --新区分
+         ,pha.segment1                                                            --伝票No
+         ,pha.attribute4                                                          --出庫日/着日
+         ,pv.segment1
+         ,pv.vendor_name
+         ,itp.whse_code                                                           --倉庫コード
+         ,iwm.whse_name
+         ,itp.location                                                            --保管倉庫コード
+         ,mil.description
+         ,mil.attribute6
+         ,xrpm.rcv_pay_div                                                        --受払区分
+         ,xrpm.transaction_type                                                   --PO取引タイプ
+        UNION ALL
+        ------------------------------
+        -- 2.移動実績情報
+        ------------------------------
+        SELECT
+          gv_trtry_mv                                         territory           --領域(移動)
+         ,iimb.item_id                                        item_id             --品目ID
+         ,xm.lot_id                                           lot_id              --ロットID
+         ,TO_CHAR(xm.actual_arrival_date,gv_fmt_ymd)          standard_date       --日付
+         ,xm.new_div_invent                                   reason_code         --新区分
+         ,xm.mov_num                                          slip_no             --伝票No
+         ,TO_CHAR(xm.actual_ship_date,gv_fmt_ymd)             out_date            --出庫日
+         ,TO_CHAR(xm.actual_arrival_date,gv_fmt_ymd)          in_date             --入庫日
+         ,''                                                  jrsd_code           --管轄拠点コード
+         ,''                                                  jrsd_name           --管轄拠点名
+         ,xm.other_code                                       other_code          --相手先コード
+         ,mil2.description                                    other_name          --相手先名称
+         ,CASE xm.record_type
+            WHEN gv_rectype_in THEN
+              SUM(NVL(xm.trans_qty,0))
+            ELSE 0 END                                        in_qty              --入庫数
+         ,CASE xm.record_type
+            WHEN gv_rectype_out THEN
+              ABS(SUM(NVL(xm.trans_qty,0)) * -1)
+            ELSE 0 END                                        out_qty             --出庫数
+         ,CASE xm.mov_type --移動タイプ
+            WHEN gv_movetype_yes THEN xm.whse_code --積送あり
+            WHEN gv_movetype_no THEN xm.whse_code --積送なし
+            ELSE NULL
+          END                                                 whse_code           --倉庫コード
+         ,iwm1.whse_name                                      whse_name           --倉庫名
+         ,CASE xm.mov_type --移動タイプ
+            WHEN gv_movetype_yes THEN xm.location --積送あり
+            WHEN gv_movetype_no THEN xm.location --積送なし
+            ELSE NULL
+          END                                                 location            --保管倉庫コード
+         ,mil1.description                                    description         --保管倉庫名
+         ,mil1.attribute6                                     distribution_block  --ブロック
+         ,xm.rcv_pay_div                                      rcv_pay_div         --受払区分
+       FROM
+        (
+-------------------------------------------------------------------------------------------------------------------
+         --積送あり(出庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_out                                  record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                    segment1                --保管場所コード
+          ,itp.doc_type                                    doc_type                --文書タイプ
+          ,itp.trans_qty                                   trans_qty               --数量
+          ,itp.whse_code                                   whse_code               --倉庫コード
+          ,itp.location                                    location                --保管倉庫コード
+          ,gv_newdiv_pay                                   new_div_invent          --新区分
+          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers      xmrih               --移動依頼/指示ヘッダ(アドオン)
+          ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations               mil
+          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
+         AND xmrih.shipped_locat_id = mil.inventory_location_id                   --保管倉庫ID
+         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND itp.doc_type = 'XFER'                                                --文書タイプ
+         AND xmrih.actual_arrival_date                                            --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND gic1.item_id  = itp.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div
+         AND gic2.item_id = itp.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+         AND xmril.item_id = itp.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itp.lot_id
+         AND mil.segment1 = itp.location                                          --保管倉庫コード
+         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+             AND   itp.trans_id <> itp2.trans_id
+             AND   ROWNUM   = 1
+             )
+         UNION ALL -- 積送あり(入庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_in                                   record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_ship_date                          arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.shipped_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.shipped_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                   segment1                --保管場所コード
+          ,itp.doc_type                                    doc_type                --文書タイプ
+          ,itp.trans_qty                                   trans_qty               --数量
+          ,itp.whse_code                                   whse_code               --倉庫コード
+          ,itp.location                                    location                --保管倉庫コード
+          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers      xmrih
+          ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations               mil
+          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+         AND xmrih.actual_arrival_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND itp.doc_type = 'XFER'                                                --文書タイプ
+         AND gic1.item_id = itp.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div
+         AND gic2.item_id  = itp.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+         AND xmril.item_id = itp.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itp.lot_id
+         AND mil.segment1 = itp.location                                         --保管倉庫コード
+         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+             AND   itp.trans_id <> itp2.trans_id
+             AND   ROWNUM   = 1
+             )
+         UNION ALL
+         --積送あり(ADJI)(出庫実績)
+         SELECT
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_out                                  record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil3.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_pay                                   new_div_invent          --新区分
+          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+          ,mtl_item_locations                              mil1
+          ,ic_whse_mst                                     iwm1
+          ,mtl_item_locations                              mil2
+          ,ic_whse_mst                                     iwm2
+          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations                              mil3
+          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+          ,gmi_item_categories                             gic1
+          ,mtl_categories_b                                mcb1
+          ,gmi_item_categories                             gic2
+          ,mtl_categories_b                                mcb2
+         --移動依頼/指示明細(アドオン)抽出条件
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+          --OPM保管場所情報VIEW2(保管倉庫)抽出条件
+         AND iwm1.mtl_organization_id = mil1.organization_id
+         AND iwm2.mtl_organization_id = mil2.organization_id
+         AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+         AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+         AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+         AND xmrih.actual_arrival_date                                              --入庫実績日
+               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itc.lot_id  
+         UNION ALL
+         --積送あり(ADJI) (入庫実績)
+         SELECT 
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_in                                   record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil3.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+          ,mtl_item_locations                              mil1
+          ,ic_whse_mst                                     iwm1
+          ,mtl_item_locations                              mil2
+          ,ic_whse_mst                                     iwm2
+          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations                              mil3
+          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+          ,gmi_item_categories                             gic1
+          ,mtl_categories_b                                mcb1
+          ,gmi_item_categories                             gic2
+          ,mtl_categories_b                                mcb2
+         --移動依頼/指示明細(アドオン)抽出条件
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+         AND iwm1.mtl_organization_id = mil1.organization_id
+         AND iwm2.mtl_organization_id = mil2.organization_id
+            AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+            AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+            AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+         AND xmrih.actual_arrival_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                 --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND ( xmld.lot_id IS NOT NULL 
+           AND xmld.lot_id = itc.lot_id                                           --ロットID
+         OR    xmld.lot_id IS NULL
+         )
+-------------------------------------------------------------------------------------------------------------------
+         UNION ALL
+         --積送なし (出庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_out                                  record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_pay                                   new_div_invent          --新区分
+          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers      xmrih                   --移動依頼/指示ヘッダ(アドオン)
+          ,xxinv_mov_req_instr_lines        xmril                   --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details            xmld                    --移動ロット詳細(アドオン)
+          ,mtl_item_locations               mil
+          ,ic_jrnl_mst                      ijm                     --OPMジャーナルマスタ
+          ,ic_adjs_jnl                      iaj                     --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                      itc                     --OPM完了在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+         AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                 --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND xmrih.actual_arrival_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND xmld.lot_id (+)  = itc.lot_id
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+             AND   itc.trans_id <> itc2.trans_id
+             AND   ROWNUM = 1
+             )
+         UNION ALL
+         --積送なし (入庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_in                                   record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers                     xmrih                   --移動依頼/指示ヘッダ(アドオン)
+          ,xxinv_mov_req_instr_lines                       xmril                   --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details                           xmld                    --移動ロット詳細(アドオン)
+          ,mtl_item_locations        mil
+          ,ic_jrnl_mst                                     ijm                     --OPMジャーナルマスタ
+          ,ic_adjs_jnl                                     iaj                     --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                                     itc                     --OPM完了在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                 --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND xmrih.actual_arrival_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itc.lot_id
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+             AND   itc.trans_id <> itc2.trans_id
+             AND   ROWNUM = 1
+             )
+         )                          xm                  --移動情報
+         ,ic_item_mst_b             iimb
+         ,xxcmn_item_mst_b          ximb
+         ,mtl_item_locations        mil1
+         ,ic_whse_mst               iwm1
+         ,mtl_item_locations        mil2
+         ,xxcmn_rcv_pay_mst         xrpm                --受入区分アドオンマスタ
+       WHERE xm.comp_actual_flg = gv_cmp_actl_yes                                --実績計上フラグ
+       AND xm.delete_flg = gv_delete_no                                          --削除フラグ
+       AND xm.item_id = iimb.item_id                                             --品目ID
+       AND ximb.item_id = iimb.item_id
+       AND xm.arvl_ship_date 
+           BETWEEN ximb.start_date_active AND ximb.end_date_active                 --実績日
+       AND xm.locat_id = mil1.inventory_location_id                              --保管倉庫ID
+       AND xm.other_id = mil2.inventory_location_id                             --保管倉庫ID(相手先)
+       AND xrpm.doc_type =xm.doc_type                                            --文書タイプ
+       AND TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+       AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
+       AND xrpm.new_div_invent IN (gv_newdiv_pay,gv_newdiv_rcv)
+         AND iwm1.mtl_organization_id = mil1.organization_id
+       GROUP BY 
+         iimb.item_id                                                            --品目ID
+        ,xm.lot_id                                                               --ロットID
+        ,xm.new_div_invent                                                       --新区分
+        ,xm.mov_num                                                              --伝票No
+        ,mil1.description                                                        --保管倉庫名
+        ,xm.mov_type                                                             --移動タイプ
+        ,xm.whse_code                                                            --保留.倉庫コード
+        ,xm.location                                                             --保留.保管倉庫コード
+        ,xm.whse_code                                                            --完了.倉庫コード
+        ,xm.location                                                             --完了.保管倉庫コード
+        ,iwm1.whse_name                                                          --倉庫名
+        ,mil1.attribute6                                                 --ブロック
+        ,xm.rcv_pay_div                                                          --受払区分
+        ,TO_CHAR(xm.actual_arrival_date,gv_fmt_ymd)
+        ,TO_CHAR(xm.actual_ship_date,gv_fmt_ymd)
+        ,TO_CHAR(xm.arvl_ship_date,gv_fmt_ymd)
+        ,xm.other_code
+        ,mil2.description
+        ,iimb.lot_ctl
+        ,xm.record_type
+       UNION ALL
+       ------------------------------
+       -- 3.出荷/有償出荷実績情報
+       ------------------------------
+       SELECT
+          gv_trtry_sh                                         territory           --領域(出荷)
+         ,sh_info.item_id                                     item_id             --品目ID
+         ,sh_info.lot_id                                      lot_id              --ロットID
+         ,TO_CHAR(sh_info.arrival_date,gv_fmt_ymd)          standard_date       --日付
+         ,sh_info.new_div_invent                              reason_code         --新区分
+         ,sh_info.request_no                                  slip_no             --伝票No
+         ,TO_CHAR(sh_info.shipped_date,gv_fmt_ymd)          out_date            --出庫日
+         ,TO_CHAR(sh_info.arrival_date,gv_fmt_ymd)          in_date             --着日
+         ,sh_info.head_sales_branch                           jrsd_code           --管轄拠点コード
+         ,CASE
+            WHEN hca.customer_class_code = '10'
+              THEN xp.party_name
+              ELSE xp.party_short_name
+          END                                                 jrsd_name           --管轄拠点名
+         ,sh_info.deliver_to                                  other_code          --相手先コード
+         ,sh_info.party_site_full_name                        other_name          --相手先名称
+         ,CASE sh_info.rcv_pay_div--受払区分
+            WHEN gv_rcvdiv_rcv THEN sh_info.trans_qty_sum
+            ELSE 0
+          END                                                 in_qty              --入庫数
+         ,CASE sh_info.rcv_pay_div--受払区分
+            WHEN gv_rcvdiv_pay THEN 
+              CASE
+                WHEN (sh_info.new_div_invent = '104' AND sh_info.order_category_code = 'RETURN') THEN
+                  ABS(sh_info.trans_qty_sum) * -1
+                ELSE
+                  ABS(sh_info.trans_qty_sum)
+              END
+            ELSE 0
+          END                                                 out_qty             --出庫数
+         ,sh_info.whse_code                                   whse_code           --倉庫コード
+         ,sh_info.whse_name                                   whse_name           --倉庫名
+         ,sh_info.location                                    location            --保管倉庫コード
+         ,sh_info.description                                 description         --保管倉庫名
+         ,sh_info.distribution_block                          distribution_block  --ブロック
+         ,sh_info.rcv_pay_div                                 rcv_pay_div         --受払区分
+        ----------------------------------------------------------------------------------------
+        FROM ( --OMSO関連情報
+          SELECT
+            itp.doc_type                                  doc_type            --文書タイプ
+           ,itp.item_id                                   item_id             --品目ID
+           ,itp.whse_code                                 whse_code           --倉庫コード
+           ,iwm.whse_name                                 whse_name           --倉庫名
+           ,itp.location                                  location            --保管倉庫コード
+           ,mil.description                               description         --保管倉庫名
+           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+           ,itp.lot_id                                    lot_id              --ロットID
+           ,itp.doc_id                                    doc_id              --文書ID
+           ,itp.doc_line                                  doc_line            --取引明細番号
+           ,ooha.header_id                                header_id           --受注ヘッダID
+           ,ooha.order_type_id                            order_type_id       --受注タイプID
+           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+           ,xrpm.new_div_invent                           new_div_invent      --新区分
+           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+           ,mil.attribute6                                distribution_block  --ブロック
+           ,xoha.head_sales_branch                        head_sales_branch
+           ,xoha.deliver_to_id                            deliver_to_id
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+            ) deliver_to
+           ,xoha.arrival_date                             arrival_date
+           ,xoha.shipped_date                             shipped_date
+           ,xoha.request_no                               request_no
+           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+            ) party_site_full_name
+           ,otta.order_category_code                      order_category_code
+          FROM
+           xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+           ,hz_party_sites                                hps
+           ,xxcmn_vendor_sites_all                        xvsa
+           ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+           ,oe_transaction_types_all                      otta                --受注タイプ
+           ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+           ,ic_item_mst_b                                 iimb
+           ,xxcmn_item_mst_b                              ximb
+           ,ic_item_mst_b                                 iimb2
+           ,xxcmn_item_mst_b                              ximb2
+           ,gmi_item_categories                           gic1
+           ,mtl_categories_b                              mcb1
+           ,gmi_item_categories                           gic2
+           ,mtl_categories_b                              mcb2
+           ,gmi_item_categories                           gic3
+           ,mtl_categories_b                              mcb3
+           ,ic_whse_mst                                   iwm
+           ,mtl_item_locations                            mil
+           ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
+           ,wsh_delivery_details                          wdd                 --出荷搬送明細
+           ,oe_order_headers_all                          ooha                --受注ヘッダ
+          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          AND itp.doc_type = 'OMSO'
+          AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
+          AND itp.line_id = wdd.source_line_id                                --ソース明細ID
+          AND wdd.org_id = ooha.org_id                                        --組織ID
+          AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
+          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+          AND itp.item_id         = iimb.item_id                            --品目ID
+          AND ximb.item_id        = iimb.item_id                            --品目ID
+          AND itp.trans_date
+            BETWEEN ximb.start_date_active
+            AND ximb.end_date_active
+          --  AND NVL(ximb.end_date_active,itp.trans_date)                    --適用開始日・終了日
+          AND iimb.item_id = gic1.item_id                                     --品目ID
+          AND gic1.item_id = iimb.item_id
+          AND gic1.category_set_id = cn_item_class_id
+          AND gic1.category_id = mcb1.category_id
+          AND mcb1.segment1 = civ_item_div
+          AND iimb.item_id = gic3.item_id                                     --品目ID
+          AND gic3.item_id = iimb.item_id
+          AND gic3.category_set_id = cn_prod_class_id
+          AND gic3.category_id = mcb3.category_id
+          AND mcb3.segment1 = civ_prod_div
+          AND xola.request_item_code = iimb2.item_no                             --品目コード
+          AND ximb2.item_id = iimb2.item_id                            --品目ID
+          AND gic2.item_id = iimb2.item_id
+          AND gic2.category_set_id = cn_item_class_id
+          AND gic2.category_id = mcb2.category_id
+          AND itp.trans_date
+            BETWEEN ximb2.start_date_active
+            AND ximb2.end_date_active
+          AND gic2.item_id = iimb2.item_id                                     --品目ID
+          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+          AND xrpm.doc_type = 'OMSO'
+          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+          AND NVL(DECODE(otta.attribute4
+                        ,gv_stock_adjm
+                        ,gv_stock_adjm
+                        ,NULL),gv_dummy
+              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+                            ,gv_stock_adjm
+                            ,gv_stock_adjm
+                            ,NULL),gv_dummy
+              )
+          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+            AND ( (iimb.item_id = iimb2.item_id
+              AND xrpm.prod_div_origin IS NULL
+              AND xrpm.prod_div_ahead IS NULL)
+            OR    (iimb.item_id != iimb2.item_id
+              AND xrpm.prod_div_origin IS NOT NULL
+              AND xrpm.prod_div_ahead IS NOT NULL)
+            )
+          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+          )
+          AND itp.location = mil.segment1                                    --保管場所コード
+          AND iwm.mtl_organization_id = mil.organization_id
+          AND xoha.arrival_date                                                 --着荷日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+          GROUP BY 
+            itp.doc_type                                                      --文書タイプ
+           ,itp.item_id                                                       --品目ID
+           ,itp.whse_code                                                     --倉庫コード
+           ,iwm.whse_name                                                        --倉庫名
+           ,itp.location                                                      --保管倉庫コード
+           ,mil.description                                                      --保管倉庫名
+           ,mil.inventory_location_id                                            --保管倉庫ID
+           ,itp.lot_id                                                        --ロットID
+           ,itp.doc_id                                                        --文書ID
+           ,itp.doc_line                                                      --取引明細番号
+           ,ooha.header_id                                                     --受注ヘッダID
+           ,ooha.order_type_id                                                 --受注タイプID
+           ,xrpm.rcv_pay_div                                                      --受払区分
+           ,xrpm.new_div_invent                                                   --新区分
+           ,mil.attribute6                                               --ブロック
+           ,xoha.head_sales_branch
+           ,xoha.deliver_to_id
+           ,xoha.result_deliver_to
+           ,xoha.vendor_site_code
+           ,xoha.arrival_date
+           ,xoha.shipped_date
+           ,xoha.request_no
+           ,xoha.req_status
+           ,hps.party_site_name
+           ,xvsa.vendor_site_name
+           ,otta.order_category_code
+          UNION ALL
+           -- PORC関連
+          SELECT
+            itp.doc_type                                  doc_type            --文書タイプ
+           ,itp.item_id                                   item_id             --品目ID
+           ,itp.whse_code                                 whse_code           --倉庫コード
+           ,iwm.whse_name                                 whse_name           --倉庫名
+           ,itp.location                                  location            --保管倉庫コード
+           ,mil.description                               description         --保管倉庫名
+           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+           ,itp.lot_id                                    lot_id              --ロットID
+           ,itp.doc_id                                    doc_id              --文書ID
+           ,itp.doc_line                                  doc_line            --取引明細番号
+           ,ooha.header_id                                header_id           --受注ヘッダID
+           ,ooha.order_type_id                            order_type_id       --受注タイプID
+           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+           ,xrpm.new_div_invent                           new_div_invent      --新区分
+           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+           ,mil.attribute6                                distribution_block  --ブロック
+           ,xoha.head_sales_branch                        head_sales_branch
+           ,xoha.deliver_to_id                            deliver_to_id
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+            ) deliver_to
+           ,xoha.arrival_date                             arrival_date
+           ,xoha.shipped_date                             shipped_date
+           ,xoha.request_no                               request_no
+           --,DECODE(xoha.req_status,'04',xpsv.party_site_full_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           --                       ,'08',xvsv.vendor_site_name
+                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+            ) party_site_full_name
+           ,otta.order_category_code                      order_category_code
+          FROM
+           xxwsh_order_headers_all                            xoha                --受注ヘッダ(アドオン)
+           ,hz_party_sites                                    hps
+           ,xxcmn_vendor_sites_all                            xvsa
+           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
+           ,oe_transaction_types_all                          otta                --受注タイプ
+           ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
+           ,ic_item_mst_b                                     iimb
+           ,xxcmn_item_mst_b                                  ximb
+           ,ic_item_mst_b                                     iimb2
+           ,xxcmn_item_mst_b                                  ximb2
+           ,gmi_item_categories                               gic1
+           ,mtl_categories_b                                  mcb1
+           ,gmi_item_categories                               gic2
+           ,mtl_categories_b                                  mcb2
+           ,gmi_item_categories                               gic3
+           ,mtl_categories_b                                  mcb3
+           ,ic_whse_mst                                       iwm
+           ,mtl_item_locations                                mil
+           ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+           ,rcv_shipment_lines                                rsl             --受入明細
+           ,oe_order_headers_all                              ooha                --受注ヘッダ
+          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          AND itp.doc_type = 'PORC'
+          AND rsl.source_document_code = 'RMA'                                --ソース文書
+          AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
+          AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
+          AND itp.doc_line = rsl.line_num                                     --明細番号
+          AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
+          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+          AND itp.item_id         = iimb.item_id                            --品目ID
+          AND ximb.item_id            = iimb.item_id                            --品目ID
+          AND itp.trans_date
+            BETWEEN ximb.start_date_active
+            AND ximb.end_date_active
+          AND iimb.item_id = gic1.item_id                                     --品目ID
+          AND gic1.item_id = iimb.item_id
+          AND gic1.category_set_id = cn_item_class_id
+          AND gic1.category_id = mcb1.category_id
+          AND mcb1.segment1 = civ_item_div
+          AND iimb.item_id = gic3.item_id                                     --品目ID
+          AND gic3.item_id = iimb.item_id
+          AND gic3.category_set_id = cn_prod_class_id
+          AND gic3.category_id = mcb3.category_id
+          AND mcb3.segment1 = civ_prod_div
+          AND xola.request_item_code = iimb2.item_no                             --品目コード
+          AND ximb2.item_id = iimb2.item_id                            --品目ID
+          AND gic2.item_id = iimb2.item_id
+          AND gic2.category_set_id = cn_item_class_id
+          AND gic2.category_id = mcb2.category_id
+          AND itp.trans_date
+            BETWEEN ximb2.start_date_active
+            AND ximb2.end_date_active
+          AND gic2.item_id = iimb2.item_id                                     --品目ID
+          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+          AND xrpm.doc_type = 'PORC'
+          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+          AND NVL(DECODE(otta.attribute4
+                        ,gv_stock_adjm
+                        ,gv_stock_adjm
+                        ,NULL),gv_dummy
+              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+                            ,gv_stock_adjm
+                            ,gv_stock_adjm
+                            ,NULL),gv_dummy
+              )
+          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+            AND ( (iimb.item_id = iimb2.item_id
+              AND xrpm.prod_div_origin IS NULL
+              AND xrpm.prod_div_ahead IS NULL)
+            OR    (iimb.item_id != iimb2.item_id
+              AND xrpm.prod_div_origin IS NOT NULL
+              AND xrpm.prod_div_ahead IS NOT NULL)
+            )
+          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+          )
+          AND itp.location = mil.segment1                                    --保管場所コード
+          AND iwm.mtl_organization_id = mil.organization_id
+          AND xoha.arrival_date                                                 --着荷日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+          GROUP BY 
+            itp.doc_type                                                      --文書タイプ
+           ,itp.item_id                                                       --品目ID
+           ,itp.whse_code                                                     --倉庫コード
+           ,iwm.whse_name                                                        --倉庫名
+           ,itp.location                                                      --保管倉庫コード
+           ,mil.description                                                      --保管倉庫名
+           ,mil.inventory_location_id                                            --保管倉庫ID
+           ,itp.lot_id                                                        --ロットID
+           ,itp.doc_id                                                        --文書ID
+           ,itp.doc_line                                                      --取引明細番号
+           ,ooha.header_id                                                     --受注ヘッダID
+           ,ooha.order_type_id                                                 --受注タイプID
+           ,xrpm.rcv_pay_div                                                      --受払区分
+           ,xrpm.new_div_invent                                                   --新区分
+           ,mil.attribute6                                               --ブロック
+           ,xoha.head_sales_branch
+           ,xoha.deliver_to_id
+           ,xoha.result_deliver_to
+           ,xoha.vendor_site_code
+           ,xoha.arrival_date
+           ,xoha.shipped_date
+           ,xoha.request_no
+           ,xoha.req_status
+           ,hps.party_site_name
+           ,xvsa.vendor_site_name
+           ,otta.order_category_code
+        )                                                     sh_info             --出荷関連情報
+         ,xxcmn_parties                                       xp
+         ,hz_cust_accounts                                    hca
+        WHERE sh_info.head_sales_branch = hca.account_number(+)                          --顧客番号
+        AND hca.customer_class_code(+) = '1'                               --顧客区分(拠点)
+        AND hca.party_id = xp.party_id(+)
+        UNION ALL
+        ------------------------------
+        -- 4.倉替返品実績情報
+        ------------------------------
+        SELECT
+          gv_trtry_rt                                         territory           --領域(倉替返品)
+         ,rt_info.item_id                                     item_id             --品目ID
+         ,rt_info.lot_id                                      lot_id              --ロットID
+--         ,TO_CHAR(xoha.shipped_date,gv_fmt_ymd)               standard_date       --日付
+         ,CASE '1'                                                                --パラメータ.基準
+            WHEN '1' THEN TO_CHAR(xoha.arrival_date,gv_fmt_ymd)
+            WHEN '2' THEN TO_CHAR(xoha.shipped_date,gv_fmt_ymd)
+            ELSE NULL
+          END                                                 standard_date       --日付
+         ,rt_info.reason_code                                 reason_code         --新区分
+         ,xoha.request_no                                     slip_no             --伝票No
+         ,TO_CHAR(xoha.shipped_date,gv_fmt_ymd)               out_date            --出庫日
+         ,TO_CHAR(xoha.arrival_date,gv_fmt_ymd)               in_date             --着日
+         ,xoha.head_sales_branch                              jrsd_code           --管轄拠点コード
+         ,CASE
+            WHEN hca.customer_class_code = '10'
+              THEN xp.party_name
+              ELSE xp.party_short_name
+          END                                                 jrsd_name           --管轄拠点名
+         ,xoha.head_sales_branch                              other_code          --相手先コード
+         ,xp.party_name                                       other_name          --相手先名称
+         ,rt_info.in_qty_sum                                  in_qty              --入庫数
+         ,0                                                   out_qty             --出庫数
+         ,rt_info.whse_code                                   whse_code           --倉庫コード
+         ,rt_info.whse_name                                   whse_name           --倉庫名
+         ,rt_info.location                                    location            --保管倉庫コード
+         ,rt_info.description                                 description         --保管倉庫名
+         ,rt_info.distribution_block                          distribution_block  --ブロック
+         ,rt_info.rcv_pay_div                                 rcv_pay_div         --受払区分
+        ----------------------------------------------------------------------------------------
+        FROM (
+          SELECT /*+ leading(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) use_nl(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) */
+            xoha.header_id                                    header_id           --受注ヘッダID
+           ,itp.whse_code                                     whse_code           --倉庫コード
+           ,iwm.whse_name                                     whse_name           --倉庫名
+           ,itp.item_id                                       item_id             --品目ID
+           ,itp.lot_id                                        lot_id              --ロットID
+           ,itp.location                                      location            --保管倉庫コード
+           ,mil.description                                   description         --保管倉庫名
+           ,mil.inventory_location_id                         inventory_location_id --保管倉庫ID
+           ,xrpm.new_div_invent                               reason_code         --新区分
+           ,mil.attribute6                                    distribution_block  --ブロック
+           ,xrpm.rcv_pay_div                                  rcv_pay_div         --受払区分
+           ,SUM(NVL(itp.trans_qty,0))                         in_qty_sum          --数量合計
+          FROM
+            ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+           --------------------------------------------------------
+           ,ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+           ,mtl_item_locations                                mil
+           --------------------------------------------------------
+           ,rcv_shipment_lines                                rsl                 --受入明細
+           ,oe_order_headers_all                              ooha                --受注ヘッダ
+           ,xxwsh_order_headers_all                           xoha                --受注ヘッダ(アドオン)
+           ,oe_transaction_types_all                          otta                --受注タイプ
+           ,xxcmn_rcv_pay_mst                                 xrpm                --受払区分アドオンマスタ
+           --------------------------------------------------------
+           ,gmi_item_categories                               gic1
+           ,mtl_categories_b                                  mcb1
+           ,gmi_item_categories                               gic2
+           ,mtl_categories_b                                  mcb2
+          --OPM保留在庫トランザクション抽出
+          WHERE itp.completed_ind = gv_tran_cmp                                   --完了フラグ
+          AND itp.doc_type = 'PORC'                                               --文書タイプ
+          --保管場所情報VIEW2抽出
+          AND itp.location = mil.segment1                                         --保管倉庫コード
+          --受入明細抽出
+          AND itp.doc_id = rsl.shipment_header_id                                 --受入ヘッダID
+          AND itp.doc_line = rsl.line_num                                         --明細番号
+          AND rsl.source_document_code = 'RMA'                                    --ソース文書
+          --受注ヘッダ抽出
+          AND rsl.oe_order_header_id = ooha.header_id                             --受注ヘッダID
+          --受注ヘッダアドオン抽出
+          AND ooha.header_id = xoha.header_id                                     --受注ヘッダID
+          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)           --ステータス
+          AND xoha.actual_confirm_class = gv_confirm_yes                          --実績計上区分
+          AND xoha.latest_external_flag = gv_latest_yes                           --最新フラグ
+          AND xoha.deliver_from_id = mil.inventory_location_id                    --出荷元ID
+          AND xoha.arrival_date                                                   --着荷日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+          --受注タイプ抽出
+          AND ooha.order_type_id = otta.transaction_type_id                       --受注タイプID
+          AND otta.attribute1 = '3'                                               --出荷支給区分
+          --受払区分アドオンマスタ抽出
+          AND otta.attribute1 = xrpm.shipment_provision_div                       --出荷支給区分
+          AND otta.attribute11 = xrpm.ship_prov_rcv_pay_category                  --出荷支給受払カテゴリ
+          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+          AND xrpm.doc_type = 'PORC'                                              --文書タイプ
+          AND xrpm.source_document_code = 'RMA'                                   --ソース文書
+          AND xrpm.dealings_div IN ('201','203')
+          -----------------------------------------------------------
+          AND gic1.item_id            = itp.item_id
+          AND gic1.category_set_id    = cn_item_class_id
+          AND gic1.category_id        = mcb1.category_id
+          AND mcb1.segment1           = civ_item_div
+          AND gic2.item_id            = itp.item_id
+          AND gic2.category_set_id    = cn_prod_class_id
+          AND gic2.category_id        = mcb2.category_id
+          AND mcb2.segment1           = civ_prod_div
+          -----------------------------------------------------------
+          AND iwm.mtl_organization_id = mil.organization_id
+          GROUP BY
+            xoha.header_id                                                        --受注ヘッダID
+           ,itp.whse_code                                                         --倉庫コード
+           ,iwm.whse_name                                                         --倉庫名
+           ,itp.item_id                                                           --品目ID
+           ,itp.lot_id                                                            --ロットID
+           ,itp.location                                                          --保管倉庫コード
+           ,mil.description                                                       --保管倉庫名
+           ,mil.inventory_location_id                                             --保管倉庫ID
+           ,xrpm.new_div_invent                                                   --新区分
+           ,mil.attribute6                                                        --ブロック
+           ,xrpm.rcv_pay_div                                                      --受払区分
+        ) rt_info                                                                 --倉替返品関連情報
+        ,xxwsh_order_headers_all                              xoha                --受注ヘッダ(アドオン)
+        -----------------------------------------------
+        ,hz_parties                                           hp                  --顧客情報VIEW2
+        ,hz_cust_accounts                                     hca
+        ,xxcmn_parties                                        xp
+        ----------------------------------------------
+        --受注ヘッダ(アドオン)抽出
+        WHERE rt_info.header_id = xoha.header_id                                  --受注ヘッダID
+          AND xoha.head_sales_branch = hca.account_number                         --顧客番号
+          AND hca.customer_class_code = '1'                                       --顧客区分(拠点)
+          AND hp.party_id = hca.party_id
+          AND hp.party_id = xp.party_id
+        UNION ALL
+        ------------------------------
+        -- 5.生産実績情報
+        ------------------------------
+        -- 品目振替
+        SELECT
+           gv_trtry_mf                                         territory           -- 領域(生産)
+         , gmd.item_id                                         item_id             -- 品目ID
+         , itp.lot_id                                          lot_id              -- ロットID
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )                                   -- 品目振替
+         , xrpm.new_div_invent                                 reason_code         -- 新区分
+         , gbh.batch_no                                        slip_no             -- 伝票No
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               out_date
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               in_date
+         , ''                                                  jrsd_code           -- 管轄拠点コード
+         , ''                                                  jrsd_name           -- 管轄拠点名
+         , grb.routing_no                                      other_code          -- 相手先コード
+         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , SUM( CASE gmd.line_type --ラインタイプ
+                  WHEN -1 THEN 0
+                  ELSE NVL(itp.trans_qty,0)
+                END )                                          in_qty              -- 入庫数
+         , ABS( SUM( CASE gmd.line_type --ラインタイプ
+                       WHEN -1 THEN NVL(itp.trans_qty,0)
+                       ELSE 0
+                     END ) )                                   out_qty             --出庫数
+         , itp.whse_code                                       whse_code           -- 倉庫コード
+         , iwm.whse_name                                       whse_name           -- 倉庫名
+         , itp.location                                        location            -- 保管倉庫コード
+         , mil.description                                     description         -- 保管倉庫名
+         , mil.attribute6                                      distribution_block  -- ブロック
+         , xrpm.rcv_pay_div                                    rcv_pay_div         -- 受払区分
+        ----------------------------------------------------------------------------------------
+        FROM
+           gme_batch_header                                  gbh                 -- 生産バッチ
+         , gme_material_details                              gmd                 -- 生産原料詳細
+         , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
+         , gmd_routings_b                                    grb                 -- 工順マスタ
+         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+         , ic_whse_mst                                       iwm
+         , mtl_item_locations                                mil
+         --生産原料詳細(振替元先品目)
+         ,(
+           SELECT 
+              gbh.batch_id                                     batch_id            -- バッチID
+            , gmd.line_no                                      line_no             -- ラインNO
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_mtrl, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_origin   -- 振替元品目区分
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_prod, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_ahead    -- 振替先品目区分
+           FROM
+              gme_batch_header                                 gbh                 -- 生産バッチ
+            , gme_material_details                             gmd                 -- 生産原料詳細
+            , gmd_routings_b                                   grb                 -- 工順マスタ
+            , gmi_item_categories                              gic
+            , mtl_categories_b                                 mcb
+           --生産原料詳細抽出条件
+           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+           --工順マスタ抽出条件
+           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+           AND   grb.routing_class      = '70'
+           --カテゴリ割当抽出条件
+           AND   gmd.item_id            = gic.item_id
+           AND   gic.category_id        = mcb.category_id
+           AND   gic.category_set_id    = cn_item_class_id
+           --AND   mcb.segment1           = civ_item_div
+           GROUP BY gbh.batch_id
+                   ,gmd.line_no
+          )                                                    gmd_t                 --
+         , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
+         , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
+         , mtl_categories_b                                    mcb1
+         , gmi_item_categories                                 gic1
+         , mtl_categories_b                                    mcb2
+         , gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --生産原料詳細抽出条件
+        WHERE gbh.batch_id      = gmd.batch_id                                        -- バッチID
+        --生産原料詳細(完成品)
+        AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
+        AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
+        --生産原料詳細(振替)
+        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+        --工順マスタ抽出条件
+        AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
+        --工順マスタ日本語抽出条件
+        --工順区分マスタ日本語抽出条件
+        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+        AND   grct.language     = gv_lang                                                -- 言語
+        AND   grct.source_lang  = gv_source_lang                                                -- 言語
+        AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
+        AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
+        AND   itp.item_id             = gmd.item_id                               -- 品目ID
+        AND   itp.location            = mil.segment1                              -- 保管倉庫コード
+        AND   itp.completed_ind       = gv_tran_cmp                                       -- 完了フラグ
+        AND   itp.doc_type            = 'PROD'                                    -- 文書タイプ
+        AND   itp.reverse_id          IS NULL                                     -- リバースID
+        AND   itp.delete_mark         = gn_delete_mark_no                                         -- 削除マーク
+        --受払区分アドオンマスタ抽出条件
+        AND   xrpm.doc_type           = 'PROD'                                    -- 文書タイプ
+        AND   xrpm.line_type          = gmd.line_type                             -- ラインタイプ
+        AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
+        AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
+        AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
+        AND   grct.routing_class_desc = gv_item_transfer
+        AND   xrpm.item_div_ahead     = gmd_t.item_class_ahead                       -- 振替先品目区分
+        AND   xrpm.item_div_origin    = gmd_t.item_class_origin                      -- 振替元品目区分
+        --生産日
+        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itp.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itp.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+           gv_trtry_mf                                                                  -- 領域(生産)
+         , gmd.item_id                                                             -- 品目ID
+         , itp.lot_id                                                              -- ロットID
+         , SUBSTRB(gmd_d.attribute11, 1, 10)                                       -- 日付
+         , TO_CHAR(itp.trans_date, gv_fmt_ymd)
+         , xrpm.new_div_invent                                                     -- 新区分
+         , gbh.batch_no                                                            -- 伝票No
+         , grb.routing_no                                                          -- 相手先コード
+         , grct.routing_class_desc
+         , itp.whse_code                                                           -- 倉庫コード
+         , iwm.whse_name                                                           -- 倉庫名
+         , itp.location                                                            -- 保管倉庫コード
+         , mil.description                                                         -- 保管倉庫名
+         , mil.attribute6                                                          -- ブロック
+         , xrpm.rcv_pay_div                                                        -- 受払区分
+        UNION ALL
+        -- 返品原料、解体半製品
+        SELECT
+           gv_trtry_mf                                         territory           -- 領域(生産)
+         , gmd.item_id                                         item_id             -- 品目ID
+         , itp.lot_id                                          lot_id              -- ロットID
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )
+         , xrpm.new_div_invent                                 reason_code         -- 新区分
+         , gbh.batch_no                                        slip_no             -- 伝票No
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               out_date
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               in_date
+         , ''                                                  jrsd_code           -- 管轄拠点コード
+         , ''                                                  jrsd_name           -- 管轄拠点名
+         , grb.routing_no                                      other_code          -- 相手先コード
+         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , SUM( CASE gmd.line_type --ラインタイプ
+                  WHEN -1 THEN 0
+                  ELSE NVL(itp.trans_qty,0)
+                END )                                          in_qty              -- 入庫数
+         , ABS( SUM( CASE gmd.line_type --ラインタイプ
+                       WHEN -1 THEN NVL(itp.trans_qty,0)
+                       ELSE 0
+                     END ) )                                   out_qty             --出庫数
+         , itp.whse_code                                       whse_code           -- 倉庫コード
+         , iwm.whse_name                                       whse_name           -- 倉庫名
+         , itp.location                                        location            -- 保管倉庫コード
+         , mil.description                                     description         -- 保管倉庫名
+         , mil.attribute6                                      distribution_block  -- ブロック
+         , xrpm.rcv_pay_div                                    rcv_pay_div         -- 受払区分
+        ----------------------------------------------------------------------------------------
+        FROM
+           gme_batch_header                                  gbh                 -- 生産バッチ
+         , gme_material_details                              gmd                 -- 生産原料詳細
+         , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
+         , gmd_routings_b                                    grb                 -- 工順マスタ
+         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+         , ic_whse_mst                                       iwm
+         , mtl_item_locations                                mil
+         --生産原料詳細(振替元先品目)
+         ,(
+           SELECT 
+              gbh.batch_id                                     batch_id            -- バッチID
+            , gmd.line_no                                      line_no             -- ラインNO
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_mtrl, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_origin   -- 振替元品目区分
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_prod, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_ahead    -- 振替先品目区分
+           FROM
+              gme_batch_header                                 gbh                 -- 生産バッチ
+            , gme_material_details                             gmd                 -- 生産原料詳細
+            , gmd_routings_b                                   grb                 -- 工順マスタ
+            , gmi_item_categories                              gic
+            , mtl_categories_b                                 mcb
+           --生産原料詳細抽出条件
+           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+           --工順マスタ抽出条件
+           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+           AND   grb.routing_class      = '70'
+           --カテゴリ割当抽出条件
+           AND   gmd.item_id            = gic.item_id
+           AND   gic.category_id        = mcb.category_id
+           AND   gic.category_set_id    = cn_item_class_id
+           --AND   mcb.segment1           = civ_item_div
+           GROUP BY gbh.batch_id
+                   ,gmd.line_no
+          )                                                    gmd_t                 --
+         , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
+         , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
+         , mtl_categories_b                                    mcb1
+         , gmi_item_categories                                 gic1
+         , mtl_categories_b                                    mcb2
+         , gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --生産原料詳細抽出条件
+        WHERE gbh.batch_id      = gmd.batch_id                                        -- バッチID
+        --生産原料詳細(完成品)
+        AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
+        AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
+        --生産原料詳細(振替)
+        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+        --工順マスタ抽出条件
+        AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
+        --工順マスタ日本語抽出条件
+        --工順区分マスタ日本語抽出条件
+        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+        AND   grct.language     = gv_lang                                             -- 言語
+        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+        AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
+        AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
+        AND   itp.item_id             = gmd.item_id                               -- 品目ID
+        AND   itp.location            = mil.segment1                              -- 保管倉庫コード
+        AND   itp.completed_ind       = gv_tran_cmp                                       -- 完了フラグ
+        AND   itp.doc_type            = 'PROD'                                    -- 文書タイプ
+        AND   itp.reverse_id          IS NULL                                     -- リバースID
+        AND   itp.delete_mark         = gn_delete_mark_no                                         -- 削除マーク
+        --受払区分アドオンマスタ抽出条件
+        AND   xrpm.doc_type           = 'PROD'                                    -- 文書タイプ
+        AND   xrpm.line_type          = gmd.line_type                             -- ラインタイプ
+        AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
+        AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy) -- 打込区分
+        AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
+        AND   grct.routing_class_desc IN (gv_item_return, gv_item_dissolve)
+        --生産日
+        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itp.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itp.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+           gv_trtry_mf                                                                  -- 領域(生産)
+         , gmd.item_id                                                             -- 品目ID
+         , itp.lot_id                                                              -- ロットID
+         , SUBSTRB(gmd_d.attribute11, 1, 10)                                       -- 日付
+         , TO_CHAR(itp.trans_date, gv_fmt_ymd)
+         , xrpm.new_div_invent                                                     -- 新区分
+         , gbh.batch_no                                                            -- 伝票No
+         , grb.routing_no                                                          -- 相手先コード
+         , grct.routing_class_desc
+         , itp.whse_code                                                           -- 倉庫コード
+         , iwm.whse_name                                                           -- 倉庫名
+         , itp.location                                                            -- 保管倉庫コード
+         , mil.description                                                         -- 保管倉庫名
+         , mil.attribute6                                                          -- ブロック
+         , xrpm.rcv_pay_div                                                        -- 受払区分
+        UNION ALL
+        -- その他
+        SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
+           gv_trtry_mf                                         territory           -- 領域(生産)
+         , gmd.item_id                                         item_id             -- 品目ID
+         , itp.lot_id                                          lot_id              -- ロットID
+         , SUBSTRB( gmd_d.attribute11, 1, 10 )
+         , xrpm.new_div_invent                                 reason_code         -- 新区分
+         , gbh.batch_no                                        slip_no             -- 伝票No
+         , SUBSTRB( gmd_d.attribute11, 1, 10 )                 out_date
+         , SUBSTRB( gmd_d.attribute11, 1, 10 )                 in_date
+         , ''                                                  jrsd_code           -- 管轄拠点コード
+         , ''                                                  jrsd_name           -- 管轄拠点名
+         , grb.routing_no                                      other_code          -- 相手先コード
+         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , SUM( CASE gmd.line_type --ラインタイプ
+                  WHEN -1 THEN 0
+                  ELSE NVL(itp.trans_qty,0)
+                END )                                          in_qty              -- 入庫数
+         , ABS( SUM( CASE gmd.line_type --ラインタイプ
+                       WHEN -1 THEN NVL(itp.trans_qty,0)
+                       ELSE 0
+                     END ) )                                   out_qty             --出庫数
+         , itp.whse_code                                       whse_code           -- 倉庫コード
+         , iwm.whse_name                                       whse_name           -- 倉庫名
+         , itp.location                                        location            -- 保管倉庫コード
+         , mil.description                                     description         -- 保管倉庫名
+         , mil.attribute6                                      distribution_block  -- ブロック
+         , xrpm.rcv_pay_div                                    rcv_pay_div         -- 受払区分
+        ----------------------------------------------------------------------------------------
+        FROM
+           gme_batch_header                                  gbh                 -- 生産バッチ
+         , gme_material_details                              gmd                 -- 生産原料詳細
+         , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
+         , gmd_routings_b                                    grb                 -- 工順マスタ
+         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+         , ic_whse_mst                                       iwm
+         , mtl_item_locations                                mil
+         --生産原料詳細(振替元先品目)
+         ,(
+           SELECT /*+ leading(gbh grb gmd gic mcb) use_nl(gbh grb gmd gic mcb) */
+              gbh.batch_id                                     batch_id            -- バッチID
+            , gmd.line_no                                      line_no             -- ラインNO
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_mtrl, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_origin   -- 振替元品目区分
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_prod, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_ahead    -- 振替先品目区分
+           FROM
+              gme_batch_header                                 gbh                 -- 生産バッチ
+            , gme_material_details                             gmd                 -- 生産原料詳細
+            , gmd_routings_b                                   grb                 -- 工順マスタ
+            , gmi_item_categories                              gic
+            , mtl_categories_b                                 mcb
+           --生産原料詳細抽出条件
+           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+           --工順マスタ抽出条件
+           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+           AND   grb.routing_class      = '70'
+           --カテゴリ割当抽出条件
+           AND   gmd.item_id            = gic.item_id
+           AND   gic.category_id        = mcb.category_id
+           AND   gic.category_set_id    = cn_item_class_id
+           --AND   mcb.segment1           = civ_item_div
+           GROUP BY gbh.batch_id
+                   ,gmd.line_no
+          )                                                    gmd_t                 --
+         , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
+         , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
+         , mtl_categories_b                                    mcb1
+         , gmi_item_categories                                 gic1
+         , mtl_categories_b                                    mcb2
+         , gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --生産原料詳細抽出条件
+        WHERE gbh.batch_id      = gmd.batch_id                                        -- バッチID
+        --生産原料詳細(完成品)
+        AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
+        AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
+        --生産原料詳細(振替)
+        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+        --工順マスタ抽出条件
+        AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
+        --工順マスタ日本語抽出条件
+        --工順区分マスタ日本語抽出条件
+        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+        AND   grct.language     = gv_lang                                             -- 言語
+        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+        --OPM保管場所マスタ抽出条件
+        AND   mil.segment1 = grb.attribute9
+        AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
+        AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
+        AND   itp.item_id             = gmd.item_id                               -- 品目ID
+        AND   itp.location            = mil.segment1                              -- 保管倉庫コード
+        AND   itp.completed_ind       = gv_tran_cmp                                       -- 完了フラグ
+        AND   itp.doc_type            = 'PROD'                                    -- 文書タイプ
+        AND   itp.reverse_id          IS NULL                                     -- リバースID
+        AND   itp.delete_mark         = gn_delete_mark_no                                         -- 削除マーク
+        --受払区分アドオンマスタ抽出条件
+        AND   xrpm.doc_type           = 'PROD'                                    -- 文書タイプ
+        AND   xrpm.line_type          = gmd.line_type                             -- ラインタイプ
+        AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
+        AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
+        AND   xrpm.routing_class      = grb.routing_class(+)                        -- 工順区分
+        AND   grct.routing_class_desc NOT IN (gv_item_transfer, gv_item_return, gv_item_dissolve)
+        --生産日
+        AND   gmd_d.attribute11 >= civ_ymd_from
+        AND   gmd_d.attribute11 <= civ_ymd_to
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itp.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itp.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+           gv_trtry_mf                                                                  -- 領域(生産)
+         , gmd.item_id                                                             -- 品目ID
+         , itp.lot_id                                                              -- ロットID
+         , SUBSTRB(gmd_d.attribute11, 1, 10)                                       -- 日付
+         , TO_CHAR(itp.trans_date, gv_fmt_ymd)
+         , xrpm.new_div_invent                                                     -- 新区分
+         , gbh.batch_no                                                            -- 伝票No
+         , grb.routing_no                                                          -- 相手先コード
+         , grct.routing_class_desc
+         , itp.whse_code                                                           -- 倉庫コード
+         , iwm.whse_name                                                           -- 倉庫名
+         , itp.location                                                            -- 保管倉庫コード
+         , mil.description                                                         -- 保管倉庫名
+         , mil.attribute6                                                          -- ブロック
+         , xrpm.rcv_pay_div                                                        -- 受払区分
+        UNION ALL
+        ------------------------------
+        -- 6.在庫調整実績情報
+        ------------------------------
+        SELECT
+          gv_trtry_ad                                         territory           --領域(在庫調整)
+         ,itc.item_id                                         item_id             --品目ID
+         ,itc.lot_id                                          lot_id              --ロットID
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  standard_date       --日付
+         ,xrpm.new_div_invent                                 reason_code         --新区分
+         ,ad_info.slip_no                                     slip_no             --伝票No
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  out_date            --出庫日
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  in_date             --着日
+         ,''                                                  jrsd_code           --管轄拠点コード
+         ,''                                                  jrsd_name           --管轄拠点名
+         ,CASE ad_info.adji_type
+            WHEN gv_adji_xrart THEN ad_info.other_code
+            WHEN gv_adji_xnpt THEN xrpm.new_div_invent
+            WHEN gv_adji_xvst THEN ad_info.other_code
+            WHEN gv_adji_xmrih THEN ad_info.other_code
+            WHEN gv_adji_ijm THEN xrpm.new_div_invent
+          END                                                 other_code          --相手先コード
+         ,CASE ad_info.adji_type
+            WHEN gv_adji_xrart THEN ad_info.other_name
+            WHEN gv_adji_xnpt THEN NULL
+            WHEN gv_adji_xvst THEN ad_info.other_name
+            WHEN gv_adji_xmrih THEN ad_info.other_name
+            WHEN gv_adji_ijm THEN NULL
+          END                                                 other_name          --相手先名称
+         ,CASE xrpm.rcv_pay_div
+            WHEN '1' THEN SUM(NVL(itc.trans_qty,0))
+            ELSE 0
+          END                                                 in_qty              --入庫数
+         ,CASE xrpm.rcv_pay_div
+            WHEN '-1' THEN SUM(NVL(itc.trans_qty,0) * -1)
+            ELSE 0
+          END                                                 out_qty             --出庫数
+         ,itc.whse_code                                       whse_code           --倉庫コード
+         ,iwm.whse_name                                       whse_name           --倉庫名
+         ,itc.location                                        location            --保管倉庫コード
+         ,mil.description                                     description         --保管倉庫名
+         ,mil.attribute6                                      distribution_block  --ブロック
+         ,xrpm.rcv_pay_div                                    rcv_pay_div         --受払区分
+        FROM
+          (
+            -----------------------
+            --受入返品実績情報(仕入先返品)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xrart.rcv_rtn_number                            slip_no             --伝票No
+             ,xrart.vendor_code                               other_code          --取引先コード
+             ,pv.vendor_name                                 other_name          --取引先名称
+             ,gv_adji_xrart                                   adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
+             ,po_vendors                                      pv
+             ,xxcmn_vendors                                   xv
+            --受入返品実績(アドオン)抽出条件
+            WHERE xrart.txns_type IN ('2', '3')                             --実績区分
+            AND TRUNC(xrart.txns_date)                                            --取引日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xrart.txns_id                                    --実績ID
+            --仕入先情報view抽出条件
+            AND xrart.vendor_id = pv.vendor_id                                   --取引先ID
+            AND xrart.txns_date                                                   --取引日
+              BETWEEN xv.start_date_active                                           --適用開始日
+              AND NVL(xv.end_date_active,xrart.txns_date)                            --適用終了日
+            AND pv.vendor_id = xv.vendor_id
+            UNION ALL
+            -----------------------
+            --受入返品実績情報(相手先在庫)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xrart.source_document_number                    slip_no             --伝票No
+              ,xrart.vendor_code                              other_code          --取引先コード(相手先)
+              ,xv.vendor_name                                 other_name          --正式名(相手先名)
+             ,gv_adji_xrart                                   adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
+             ,po_vendors                                      pv
+             ,xxcmn_vendors                                   xv
+             ,po_headers_all                                  pha                 --発注ヘッダ
+            --受入返品実績(アドオン)抽出条件
+            WHERE xrart.txns_type  = gv_txns_type_rcv                             --実績区分
+            AND TRUNC(xrart.txns_date)                                            --取引日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xrart.txns_id                                    --実績ID
+            --仕入先情報view抽出条件
+            AND xrart.vendor_id = pv.vendor_id                                   --取引先ID
+            AND xrart.txns_date                                                   --取引日
+              BETWEEN xv.start_date_active                                       --適用開始日
+              AND NVL(xv.end_date_active, xrart.txns_date)                       --適用終了日
+            --発注ヘッダ
+            AND xrart.source_document_number = pha.segment1                       --発注番号
+            AND pha.attribute11 = po_type_inv                                     --発注区分(相手先在庫)
+            AND pv.vendor_id = xv.vendor_id
+            UNION ALL
+            -----------------------
+            --生葉実績情報
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xnpt.entry_number                               slip_no             --伝票No
+             ,NULL                                            other_code          --相手先コード
+             ,NULL                                            ohter_name          --相手先名
+             ,gv_adji_xnpt                                    adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_namaha_prod_txns                           xnpt                --生葉実績アドオン
+            --生葉実績アドオン抽出条件
+            WHERE TRUNC(xnpt.creation_date)                                       --作成日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xnpt.entry_number                                --伝票No
+            UNION ALL
+            -----------------------
+            --外注出来高実績(アドオン)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+              ,''                                             slip_no             --伝票No
+              ,xvst.vendor_code                               other_code          --取引先コード(相手先)
+              ,xv.vendor_name                                 other_name          --正式名(相手先名)
+              ,gv_adji_xvst                                   adji_type           --在庫タイプ
+
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_vendor_supply_txns                         xvst                --外注出来高実績(アドオン)
+             ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+             ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+             ,po_vendors                                      pv
+             ,xxcmn_vendors                                   xv
+            --外注出来高実績アドオン抽出条件
+            WHERE ijm.attribute1 = xvst.txns_id                                   --実績ID
+            --OPM在庫調整ジャーナル抽出条件
+            AND ijm.journal_id = iaj.journal_id
+            --OPM完了在庫トランザクション抽出条件
+            AND iaj.doc_id = itc.doc_id
+            AND iaj.doc_line = itc.doc_line
+            AND itc.trans_date
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+
+            --仕入先情報view抽出条件
+            AND xvst.vendor_id = pv.vendor_id                                   --取引先ID
+            AND itc.trans_date                                                   --取引日
+              BETWEEN xv.start_date_active                                      --適用開始日
+              AND NVL(xv.end_date_active, itc.trans_date)                       --適用終了日
+            AND pv.vendor_id = xv.vendor_id
+            AND iaj.trans_type = 'ADJI'                                               --文書タイプ
+            AND itc.doc_type = 'ADJI'                                                 --文書タイプ
+            AND itc.doc_id = iaj.doc_id                                               --文書ID
+            AND itc.doc_line = iaj.doc_line                                           --取引明細番号
+            UNION ALL
+            -----------------------
+            --EBS標準の在庫調整
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,ijm.journal_no                                  slip_no             --伝票No
+             ,NULL                                            other_code          --相手先コード
+             ,NULL                                            other_name          --相手先名
+             ,gv_adji_ijm                                     adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+             ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+            --OPMジャーナルマスタ抽出条件
+            WHERE ijm.attribute1 IS NULL
+            --OPM在庫調整ジャーナル抽出条件
+            AND ijm.journal_id = iaj.journal_id
+            --OPM完了在庫トランザクション抽出条件
+            AND iaj.doc_id = itc.doc_id
+            AND iaj.doc_line = itc.doc_line
+            AND itc.trans_date
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+              AND iaj.trans_type = 'ADJI'                                               --文書タイプ
+              AND itc.doc_type = 'ADJI'                                                 --文書タイプ
+              AND itc.doc_id = iaj.doc_id                                               --文書ID
+              AND itc.doc_line = iaj.doc_line                                           --取引明細番号
+         ) ad_info
+         ,ic_adjs_jnl                                         iaj                 --OPM在庫調整ジャーナル
+         ,ic_tran_cmp                                         itc                 --OPM完了在庫トランザクション
+         ,ic_whse_mst                                         iwm
+         ,hr_all_organization_units                           haou
+         ,mtl_item_locations                                  mil
+         ,xxcmn_rcv_pay_mst                                   xrpm                --受払区分アドオンマスタ
+         ,xxcmn_lookup_values2_v                              xlvv                --クイックコード
+         ,sy_reas_cds_b                                       srcb                --事由コードマスタ
+         ,mtl_categories_b                                    mcb1
+         ,gmi_item_categories                                 gic1
+         ,mtl_categories_b                                    mcb2
+         ,gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --OPM在庫調整ジャーナル抽出条件
+        WHERE iaj.journal_id = ad_info.journal_id                                 --ジャーナルID
+        AND iaj.trans_type = 'ADJI'                                               --文書タイプ
+        --OPM完了在庫トランザクション抽出条件
+        AND itc.doc_type = 'ADJI'                                                 --文書タイプ
+        AND itc.doc_id = iaj.doc_id                                               --文書ID
+        AND itc.doc_line = iaj.doc_line                                           --取引明細番号
+        --保管場所情報VIEW2抽出条件
+        AND itc.location = mil.segment1                                          --保管倉庫コード
+        AND itc.trans_date
+          BETWEEN haou.date_from AND NVL(haou.date_to,itc.trans_date)             --適用開始日・終了日
+        --受払区分アドオンマスタ抽出条件
+        AND xrpm.doc_type = 'ADJI'                                                --文書タイプ
+        AND itc.reason_code = xrpm.reason_code                                    --事由コード
+        AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
+
+        AND xrpm.reason_code = srcb.reason_code                                   --事由コード
+        AND srcb.delete_mark = 0                                                  --削除マーク(未削除)
+        --クイックコード抽出条件
+        AND xlvv.lookup_type =  gv_lookup_newdiv                                  --参照タイプ(新区分)
+        AND xrpm.new_div_invent = xlvv.lookup_code                                --参照コード
+        AND itc.trans_date
+          BETWEEN xlvv.start_date_active
+          AND NVL(xlvv.end_date_active,itc.trans_date)                            --適用開始日・終了日
+        AND iwm.mtl_organization_id = haou.organization_id
+        AND haou.organization_id    = mil.organization_id
+--
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itc.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itc.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+--
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+          itc.doc_id                                                              --文書ID
+         ,itc.item_id                                                             --品目ID
+         ,itc.lot_id                                                              --ロットID
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                                      --日付
+         ,xrpm.new_div_invent                                                     --新区分
+         ,ad_info.slip_no                                                         --伝票No
+         ,xlvv.description                                                        --相手先名称
+         ,itc.whse_code                                                           --倉庫コード
+         ,iwm.whse_name                                                          --倉庫名
+         ,itc.location                                                            --保管倉庫コード
+         ,mil.description                                                        --保管倉庫名
+         ,mil.attribute6                                                 --ブロック
+         ,xrpm.rcv_pay_div                                                        --受払区分
+         ,ad_info.adji_type                                                       --在庫タイプ
+         ,ad_info.other_name                                                      --相手先名
+         ,ad_info.other_code                                                      --相手先コード
+       ) slip
+       ,mtl_categories_b                                       mcb1
+       ,gmi_item_categories                                    gic1
+       ,mtl_categories_b                                       mcb2
+       ,gmi_item_categories                                    gic2
+       ,mtl_categories_tl                                      mct2
+       ,xxcmn_lookup_values2_v                                 xlvv                --クイックコード
+       ,ic_item_mst_b                                          iimb
+       ,xxcmn_item_mst_b                                       ximb
+       ,ic_lots_mst                                            ilm                 --OPMロットマスタ(結合用)
+      --======================================================================================================
+      --カテゴリセットが商品区分である品目
+      WHERE slip.item_id = gic1.item_id
+      AND gic1.category_set_id    = cn_prod_class_id
+      AND mcb1.category_id       = gic1.category_id
+      --カテゴリセットが品目区分である品目
+      AND slip.item_id = gic2.item_id
+      AND gic2.category_set_id    = cn_item_class_id
+      AND mcb2.category_id        = gic2.category_id
+      AND mcb2.category_id        = mct2.category_id
+      AND mct2.language           = 'JA'
+      AND mct2.source_lang        = 'JA'
+      --クイックコード抽出条件
+      AND xlvv.lookup_type =  gv_lookup_newdiv                                    --参照タイプ(新区分)
+      AND slip.reason_code = xlvv.lookup_code                                     --参照コード
+      AND TO_DATE(slip.standard_date,gv_fmt_ymd)
+        BETWEEN xlvv.start_date_active
+        AND NVL(xlvv.end_date_active,TO_DATE(slip.standard_date,gv_fmt_ymd))      --適用開始日・終了日
+      AND slip.item_id = iimb.item_id                                             --品目ID
+      AND TO_DATE(slip.standard_date,gv_fmt_ymd)
+        BETWEEN ximb.start_date_active
+        AND NVL(ximb.end_date_active,TO_DATE(slip.standard_date,gv_fmt_ymd))--適用開始日・終了日
+      AND slip.item_id = ilm.item_id
+      AND slip.lot_id = ilm.lot_id
+      AND iimb.item_id = ximb.item_id
+      --パラメータによる絞込み(商品区分)
+      AND mcb1.segment1 = civ_prod_div
+      --パラメータによる絞込み(品目区分)
+      AND mcb2.segment1 = civ_item_div
+      --パラメータによる絞込み(ロットNo)
+      AND ( civ_lot_no_01 IS NULL
+        AND civ_lot_no_02 IS NULL
+        AND civ_lot_no_03 IS NULL
+      OR civ_lot_no_01 = ilm.lot_no
+      OR civ_lot_no_02 = ilm.lot_no
+      OR civ_lot_no_03 = ilm.lot_no
+      )
+      --パラメータによる絞込み(製造年月日)
+      AND ( civ_mnfctr_date_01 IS NULL
+        AND civ_mnfctr_date_02 IS NULL
+        AND civ_mnfctr_date_03 IS NULL
+      OR civ_mnfctr_date_01 = ilm.attribute1
+      OR civ_mnfctr_date_02 = ilm.attribute1
+      OR civ_mnfctr_date_03 = ilm.attribute1
+      )
+      --パラメータによる絞込み(固有記号)
+      AND  ( civ_symbol IS NULL
+      OR  civ_symbol = ilm.attribute2
+      )
+      AND
+      (
+           NVL(civ_block_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_block_02,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_block_03,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+        --パラメータによる絞込み(物流ブロック)
+        OR  slip.distribution_block IN (civ_block_01,civ_block_02,civ_block_03)
+        --パラメータによる絞込み(保管倉庫)
+        OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_loc
+          AND slip.location IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
+        --パラメータによる絞込み(倉庫)
+        OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_wh
+          AND  slip.whse_code IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
+      )
+      --パラメータによる絞込み(品目)
+      AND ( NVL(civ_item_code_01,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_item_code_02,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_item_code_03,gv_nullvalue) = gv_nullvalue
+      OR  iimb.item_no IN (civ_item_code_01, civ_item_code_02, civ_item_code_03)
+      )
+      AND ( NVL(civ_reason_code_01,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_reason_code_02,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_reason_code_03,gv_nullvalue) = gv_nullvalue
+      OR slip.reason_code IN (civ_reason_code_01, civ_reason_code_02, civ_reason_code_03)
+      )
+      --パラメータによる絞込み(入出庫区分)
+      AND ( civ_inout_ctl = gv_inout_ctl_all --入出庫両方を指定した場合
+      OR    civ_inout_ctl = gv_inout_ctl_in  --入庫を指定した場合
+        AND slip.rcv_pay_div = gv_rcvdiv_rcv   --受払区分は受入のみ対象
+      OR    civ_inout_ctl = gv_inout_ctl_out --出庫を指定した場合
+        AND slip.rcv_pay_div = gv_rcvdiv_pay   --受払区分は払出のみ対象
+      )
+      ORDER BY slip.location
+              ,TO_NUMBER(iimb.item_no)
+              ,slip.standard_date
+              ,slip.reason_code
+              ,slip.slip_no
+      ;
+--
+    -- 発日基準用カーソル
+    CURSOR cur_main_data2(
+      civ_ymd_from VARCHAR2        --年月日_FROM
+     ,civ_ymd_to VARCHAR2          --年月日_TO
+     ,civ_base_date VARCHAR2       --着日基準／発日基準
+     ,civ_inout_ctl VARCHAR2       --入出庫区分
+     ,civ_prod_div VARCHAR2        --商品区分
+     ,civ_unit_ctl VARCHAR2        --単位区分
+     ,civ_wh_loc_ctl VARCHAR2      --倉庫/保管倉庫選択区分
+     ,civ_wh_code_01 VARCHAR2      --倉庫/保管倉庫コード1
+     ,civ_wh_code_02 VARCHAR2      --倉庫/保管倉庫コード2
+     ,civ_wh_code_03 VARCHAR2      --倉庫/保管倉庫コード3
+     ,civ_block_01 VARCHAR2        --ブロック1
+     ,civ_block_02 VARCHAR2        --ブロック2
+     ,civ_block_03 VARCHAR2        --ブロック3
+     ,civ_item_div VARCHAR2        --品目区分
+     ,civ_item_code_01 VARCHAR2    --品目コード1
+     ,civ_item_code_02 VARCHAR2    --品目コード2
+     ,civ_item_code_03 VARCHAR2    --品目コード3
+     ,civ_lot_no_01 VARCHAR2       --ロットNo1
+     ,civ_lot_no_02 VARCHAR2       --ロットNo2
+     ,civ_lot_no_03 VARCHAR2       --ロットNo3
+     ,civ_mnfctr_date_01 VARCHAR2  --製造年月日1
+     ,civ_mnfctr_date_02 VARCHAR2  --製造年月日2
+     ,civ_mnfctr_date_03 VARCHAR2  --製造年月日3
+     ,civ_reason_code_01 VARCHAR2  --事由コード1
+     ,civ_reason_code_02 VARCHAR2  --事由コード2
+     ,civ_reason_code_03 VARCHAR2  --事由コード3
+     ,civ_symbol VARCHAR2          --固有記号
+    )
+    IS 
+      --======================================================================================================
+      SELECT
+        slip.whse_code                                        whse_code           --倉庫コード
+       ,slip.whse_name                                        whse_name           --倉庫名称
+       ,slip.location                                         strg_wh_code        --保管倉庫コード
+       ,slip.description                                      strg_wh_name        --保管倉庫名称
+       ,iimb.item_no                                          item_code           --品目コード
+       ,ximb.item_short_name                                  item_name           --品目名称
+       ,slip.standard_date                                    standard_date       --日付
+       ,slip.reason_code                                      reason_code         --事由コード
+       ,xlvv.meaning                                          reason_name         --事由コード名称
+       ,slip.slip_no                                          slip_no             --伝票番号
+       ,slip.out_date                                         out_date            --出庫日
+       ,slip.in_date                                          in_date             --着日
+       ,slip.jrsd_code                                        jrsd_code           --管轄拠点コード
+       ,slip.jrsd_name                                        jrsd_name           --管轄拠点名称
+       ,slip.other_code                                       other_code          --相手先コード
+       ,CASE slip.territory
+          WHEN gv_trtry_ad THEN
+            NVL(slip.other_name,xlvv.meaning)
+          ELSE slip.other_name
+        END                                                   other_name          --相手先名
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,ilm.lot_no
+              ,NULL)                                          lot_no              --ロットNo
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,SUBSTRB(ilm.attribute1,1,10)
+              ,NULL)                                          mnfctr_date         --製造年月日
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,SUBSTRB(ilm.attribute3,1,10)
+              ,NULL)                                          limit_date          --賞味期限
+       ,DECODE(iimb.lot_ctl
+              ,gn_lotctl_yes,SUBSTRB(ilm.attribute2,1,6)
+              ,NULL)                                          symbol              --固有記号
+--mod start 2.1
+--       ,CASE slip.territory
+--          WHEN gv_trtry_po THEN ximv.item_um                                        --発注：単位
+--          WHEN gv_trtry_mv THEN ximv.item_um                                        --移動：単位
+--          WHEN gv_trtry_sh THEN ximv.conv_unit                                      --出荷：入出庫換算単位
+--          WHEN gv_trtry_rt THEN ximv.conv_unit                                      --倉替返品：入出庫換算単位
+--          WHEN gv_trtry_mf THEN ximv.item_um                                        --生産：単位
+--          WHEN gv_trtry_ad THEN ximv.item_um                                        --在庫調整：単位
+--          ELSE NULL
+--        END                                                   unit                --単位
+       ,DECODE(civ_unit_ctl
+              ,gv_unitctl_qty ,iimb.item_um
+              ,gv_unitctl_case,iimb.attribute24
+              ,NULL)                                          unit                --単位
+--mod end 2.1
+       ,iimb.attribute11                                      num_of_cases        --ケース入り数
+       ,NVL(slip.in_qty,0)                                    in_qty              --入庫数
+-- mod start 1.18
+--mod start 1.5
+       ,NVL(slip.out_qty,0)                                   out_qty             --出庫数
+--       ,ABS(NVL(slip.out_qty,0))                                   out_qty             --出庫数
+--mod end 1.5
+-- mod end 1.18
+       ,mct2.description                                      item_div_name       --品目区分名称
+      FROM (
+      --======================================================================================================
+        ------------------------------
+        -- 1.発注実績情報
+        ------------------------------
+        SELECT /*+ leading(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) use_nl(pha pla rsl itp iimb gic1 mcb1 gic2 mcb2 rt xrart xrpm pv xv mil iwm) */
+          gv_trtry_po                                         territory           --領域(発注)
+         ,iimb.item_id                                        item_id             --品目ID
+         ,itp.lot_id                                          lot_id              --ロットID
+         ,pha.attribute4                                      standard_date       --日付
+         ,xrpm.new_div_invent                                 reason_code         --新区分
+         ,pha.segment1                                        slip_no             --伝票No
+         ,pha.attribute4                                      out_date            --出庫日
+         ,pha.attribute4                                      in_date             --着日
+         ,''                                                  jrsd_code           --管轄拠点コード
+         ,''                                                  jrsd_name           --管轄拠点名
+         ,pv.segment1                                         other_code          --相手先コード
+         ,pv.vendor_name                                      other_name          --相手先名称
+         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+         ,0                                                   out_qty             --出庫数
+         ,itp.whse_code                                       whse_code           --倉庫コード
+         ,iwm.whse_name                                       whse_name           --倉庫名
+         ,itp.location                                        location            --保管倉庫コード
+         ,mil.description                                     description         --保管倉庫名
+         ,mil.attribute6                                      distribution_block  --ブロック
+         ,xrpm.rcv_pay_div                                    rcv_pay_div         --受払区分
+        FROM
+        ----------------------------------------------------------------------------------------
+          po_headers_all                                      pha                 --発注ヘッダ
+         ,po_lines_all                                        pla                 --発注明細
+         ,rcv_shipment_lines                                  rsl                 --受入明細
+         ,rcv_transactions                                    rt                  --受入取引
+         ,ic_lots_mst                                         ilm                 --OPMロットマスタ(結合用)
+         ,xxpo_rcv_and_rtn_txns                               xrart               --受入返品実績
+         ,po_vendors                                          pv
+         ,xxcmn_vendors                                       xv
+         ,ic_whse_mst                                         iwm
+         ,mtl_item_locations                                  mil
+         ,ic_item_mst_b                                       iimb
+         ,ic_tran_pnd                                         itp                 --OPM保留在庫トランザクション
+         ,xxcmn_rcv_pay_mst                                   xrpm                --受入区分アドオンマスタ
+         ,mtl_categories_b                                    mcb1
+         ,gmi_item_categories                                 gic1
+         ,mtl_categories_b                                    mcb2
+         ,gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --発注ヘッダ抽出条件
+        WHERE pha.attribute1 IN (gv_po_sts_rcv, gv_po_sts_qty_deci, gv_po_sts_price_deci)--ステータス
+        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
+        --発注明細抽出条件
+        AND pha.po_header_id = pla.po_header_id                                   --発注ヘッダID
+        AND pla.attribute13 = gv_po_flg_qty                                       --数量確定フラグ
+        --受入明細抽出条件
+        AND rsl.po_header_id = pha.po_header_id                                   --発注ヘッダID
+        AND rsl.po_line_id = pla.po_line_id                                       --発注明細ID
+        --受入取引抽出条件
+        AND rsl.shipment_line_id = rt.shipment_line_id                            --受入明細ID
+        --受入返品実績抽出条件
+        AND pha.segment1 = xrart.source_document_number                           --元文書番号
+        AND pla.line_num = xrart.source_document_line_num                         --元文書明細番号
+        AND xrart.txns_type = gv_txns_type_rcv                                    --実績区分
+        --保管場所マスタVIEW抽出条件
+        AND pha.vendor_id = pv.vendor_id                                         --仕入先ID
+        AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+        AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+        AND itp.doc_type = 'PORC'                                                 --文書タイプ
+        AND rsl.shipment_header_id = itp.doc_id                                   --文書ID
+        AND rsl.line_num = itp.doc_line                                           --取引明細番号
+        AND rt.transaction_id = itp.line_id                                       --ラインID
+        AND iimb.item_id = itp.item_id                                            --品目ID
+        AND ilm.lot_id = itp.lot_id                                               --ロットID
+        AND mil.segment1 = itp.location                                          --保管倉庫コード
+        AND itp.completed_ind = gv_tran_cmp                                       --完了フラグ
+        --受払区分マスタアドオン抽出条件
+        AND xrpm.doc_type = 'PORC'                                                --文書タイプ
+        AND xrpm.source_document_code = 'PO'                                      --ソース文書
+        AND xrpm.transaction_type = rt.transaction_type                           --PO取引タイプ
+        AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
+        AND iwm.mtl_organization_id = mil.organization_id
+        AND pv.vendor_id = xv.vendor_id
+        AND iimb.inactive_ind       <> '1'
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND iimb.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND iimb.item_id = gic2.item_id
+        AND gic2.category_set_id   = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        AND ilm.item_id            = itp.item_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY
+          iimb.item_id                                                            --品目ID
+         ,itp.lot_id                                                              --ロットID
+         ,pha.attribute4                                                          --日付
+         ,xrpm.new_div_invent                                                     --新区分
+         ,pha.segment1                                                            --伝票No
+         ,pha.attribute4                                                          --出庫日/着日
+         ,pv.segment1
+         ,pv.vendor_name
+         ,itp.whse_code                                                           --倉庫コード
+         ,iwm.whse_name
+         ,itp.location                                                            --保管倉庫コード
+         ,mil.description
+         ,mil.attribute6
+         ,xrpm.rcv_pay_div                                                        --受払区分
+         ,xrpm.transaction_type                                                   --PO取引タイプ
+        UNION ALL
+        ------------------------------
+        -- 2.移動実績情報
+        ------------------------------
+        SELECT
+          gv_trtry_mv                                         territory           --領域(移動)
+         ,iimb.item_id                                        item_id             --品目ID
+         ,xm.lot_id                                           lot_id              --ロットID
+         ,TO_CHAR(xm.actual_ship_date,gv_fmt_ymd)             standard_date       --日付
+         ,xm.new_div_invent                                   reason_code         --新区分
+         ,xm.mov_num                                          slip_no             --伝票No
+         ,TO_CHAR(xm.actual_ship_date,gv_fmt_ymd)             out_date            --出庫日
+         ,TO_CHAR(xm.actual_arrival_date,gv_fmt_ymd)          in_date             --入庫日
+         ,''                                                  jrsd_code           --管轄拠点コード
+         ,''                                                  jrsd_name           --管轄拠点名
+         ,xm.other_code                                       other_code          --相手先コード
+         ,mil2.description                                    other_name          --相手先名称
+         ,CASE xm.record_type
+            WHEN gv_rectype_in THEN
+              SUM(NVL(xm.trans_qty,0))
+            ELSE 0 END                                        in_qty              --入庫数
+         ,CASE xm.record_type
+            WHEN gv_rectype_out THEN
+              ABS(SUM(NVL(xm.trans_qty,0)) * -1)
+            ELSE 0 END                                        out_qty             --出庫数
+         ,CASE xm.mov_type --移動タイプ
+            WHEN gv_movetype_yes THEN xm.whse_code --積送あり
+            WHEN gv_movetype_no THEN xm.whse_code --積送なし
+            ELSE NULL
+          END                                                 whse_code           --倉庫コード
+         ,iwm1.whse_name                                      whse_name           --倉庫名
+         ,CASE xm.mov_type --移動タイプ
+            WHEN gv_movetype_yes THEN xm.location --積送あり
+            WHEN gv_movetype_no THEN xm.location --積送なし
+            ELSE NULL
+          END                                                 location            --保管倉庫コード
+         ,mil1.description                                    description         --保管倉庫名
+         ,mil1.attribute6                                     distribution_block  --ブロック
+         ,xm.rcv_pay_div                                      rcv_pay_div         --受払区分
+       FROM
+        (
+-------------------------------------------------------------------------------------------------------------------
+         --積送あり(出庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_out                                  record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                    segment1                --保管場所コード
+          ,itp.doc_type                                    doc_type                --文書タイプ
+          ,itp.trans_qty                                   trans_qty               --数量
+          ,itp.whse_code                                   whse_code               --倉庫コード
+          ,itp.location                                    location                --保管倉庫コード
+          ,gv_newdiv_pay                                   new_div_invent          --新区分
+          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers      xmrih               --移動依頼/指示ヘッダ(アドオン)
+          ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations               mil
+          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_out                               --レコードタイプ
+         AND xmrih.shipped_locat_id = mil.inventory_location_id                   --保管倉庫ID
+         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND itp.doc_type = 'XFER'                                                --文書タイプ
+         AND xmrih.actual_ship_date                                            --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND gic1.item_id  = itp.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div
+         AND gic2.item_id = itp.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+         AND xmril.item_id = itp.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itp.lot_id
+         AND mil.segment1 = itp.location                                          --保管倉庫コード
+         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+             AND   itp.trans_id <> itp2.trans_id
+             AND   ROWNUM   = 1
+             )
+         UNION ALL -- 積送あり(入庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itp ixm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_in                                   record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_ship_date                          arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.shipped_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.shipped_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                   segment1                --保管場所コード
+          ,itp.doc_type                                    doc_type                --文書タイプ
+          ,itp.trans_qty                                   trans_qty               --数量
+          ,itp.whse_code                                   whse_code               --倉庫コード
+          ,itp.location                                    location                --保管倉庫コード
+          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers      xmrih
+          ,xxinv_mov_req_instr_lines        xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details            xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations               mil
+          ,ic_xfer_mst                      ixm                 --OPM在庫転送マスタ
+          ,ic_tran_pnd                      itp                 --OPM保留在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+         AND xmrih.actual_ship_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ixm.attribute1                                   --文書ソースID
+         AND itp.doc_type = 'XFER'                                                --文書タイプ
+         AND gic1.item_id = itp.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div
+         AND gic2.item_id  = itp.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND ixm.transfer_id = itp.doc_id                                         --文書ID
+         AND xmril.item_id = itp.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itp.lot_id
+         AND mil.segment1 = itp.location                                         --保管倉庫コード
+         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+             AND   itp.trans_id <> itp2.trans_id
+             AND   ROWNUM   = 1
+             )
+         UNION ALL
+         --積送あり(ADJI)(出庫実績)
+         SELECT
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_out                                  record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil3.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_pay                                   new_div_invent          --新区分
+          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+          ,mtl_item_locations                              mil1
+          ,ic_whse_mst                                     iwm1
+          ,mtl_item_locations                              mil2
+          ,ic_whse_mst                                     iwm2
+          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations                              mil3
+          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+          ,gmi_item_categories                             gic1
+          ,mtl_categories_b                                mcb1
+          ,gmi_item_categories                             gic2
+          ,mtl_categories_b                                mcb2
+         --移動依頼/指示明細(アドオン)抽出条件
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+          --OPM保管場所情報VIEW2(保管倉庫)抽出条件
+         AND iwm1.mtl_organization_id = mil1.organization_id
+         AND iwm2.mtl_organization_id = mil2.organization_id
+         AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+         AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+         AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+         AND xmrih.actual_ship_date                                              --入庫実績日
+               BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+               AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND xmrih.shipped_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itc.lot_id  
+         UNION ALL
+         --積送あり(ADJI) (入庫実績)
+         SELECT 
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_in                                   record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil3.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+          ,mtl_item_locations                              mil1
+          ,ic_whse_mst                                     iwm1
+          ,mtl_item_locations                              mil2
+          ,ic_whse_mst                                     iwm2
+          ,xxinv_mov_req_instr_lines                       xmril               --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details                           xmld                --移動ロット詳細(アドオン)
+          ,mtl_item_locations                              mil3
+          ,ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+          ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+          ,gmi_item_categories                             gic1
+          ,mtl_categories_b                                mcb1
+          ,gmi_item_categories                             gic2
+          ,mtl_categories_b                                mcb2
+         --移動依頼/指示明細(アドオン)抽出条件
+         WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id                                --移動ヘッダID
+         AND xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+         AND iwm1.mtl_organization_id = mil1.organization_id
+         AND iwm2.mtl_organization_id = mil2.organization_id
+            AND xmrih.shipped_locat_id = mil1.inventory_location_id                        --保管倉庫ID
+            AND xmrih.ship_to_locat_id = mil2.inventory_location_id                        --保管倉庫ID
+            AND iwm1.whse_code <> iwm2.whse_code                      --同一倉庫内の移動情報は対象外とする
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+         AND xmrih.actual_ship_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND xmrih.ship_to_locat_id = mil3.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil3.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type = 'ADJI'                                                --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                 --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND ( xmld.lot_id IS NOT NULL 
+           AND xmld.lot_id = itc.lot_id                                           --ロットID
+         OR    xmld.lot_id IS NULL
+         )
+-------------------------------------------------------------------------------------------------------------------
+         UNION ALL
+         --積送なし (出庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_out                                  record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_ship_date                          arvl_ship_date          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          locat_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        locat_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       arvl_ship_date2         --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          other_id                --相手先ID(入庫先ID)
+          ,xmrih.ship_to_locat_code                        other_code              --相手先(入庫先保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_pay                                   new_div_invent          --新区分
+          ,gv_rcvdiv_pay                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers      xmrih                   --移動依頼/指示ヘッダ(アドオン)
+          ,xxinv_mov_req_instr_lines        xmril                   --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details            xmld                    --移動ロット詳細(アドオン)
+          ,mtl_item_locations               mil
+          ,ic_jrnl_mst                      ijm                     --OPMジャーナルマスタ
+          ,ic_adjs_jnl                      iaj                     --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                      itc                     --OPM完了在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_out                            --レコードタイプ
+         AND xmrih.shipped_locat_id = mil.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                 --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND xmrih.actual_ship_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND xmld.lot_id (+)  = itc.lot_id
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+             AND   itc.trans_id <> itc2.trans_id
+             AND   ROWNUM = 1
+             )
+         UNION ALL
+         --積送なし (入庫実績)
+         SELECT /*+ leading(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) use_nl(xmrih xmril xmld mil itc ija ijm gic1 mcb1 gic2 mcb2) */
+           xmrih.mov_hdr_id                                mov_hdr_id              --移動ヘッダID
+          ,gv_rectype_in                                   record_type             --レコードタイプ
+          ,xmrih.comp_actual_flg                           comp_actual_flg         --実績計上済フラグ
+          ,xmrih.mov_type                                  mov_type                --移動タイプ
+          ,xmrih.mov_num                                   mov_num                 --移動番号
+          ,xmrih.actual_arrival_date                       arvl_ship_date          --実績日(入庫実績日)
+          ,xmrih.ship_to_locat_id                          locat_id                --保管倉庫ID(入庫元ID)
+          ,xmrih.ship_to_locat_code                        locat_code              --保管倉庫コード(入庫元保管場所)
+          ,xmrih.actual_ship_date                          arvl_ship_date2          --実績日(出庫実績日)
+          ,xmrih.shipped_locat_id                          other_id                --保管倉庫ID(出庫元ID)
+          ,xmrih.shipped_locat_code                        other_code              --保管倉庫コード(出庫元保管場所)
+          ,xmrih.actual_arrival_date                       actual_arrival_date     --入庫実績日
+          ,xmrih.actual_ship_date                          actual_ship_date        --出庫実績日
+          ,xmril.item_id                                   item_id                 --品目ID
+          ,xmril.delete_flg                                delete_flg              --取消フラグ
+          ,xmril.ship_to_quantity                          ship_to_quantity        --入庫実績数量
+          ,xmril.shipped_quantity                          shipped_quantity        --出庫実績数量
+          ,xmld.document_type_code                         document_type_code      --文書タイプ
+          ,xmld.actual_date                                actual_date             --実績日
+          ,xmld.lot_id                                     lot_id                  --ロットID
+          ,xmld.actual_quantity                            actual_quantity         --実績数量
+          ,mil.segment1                                   segment1                --保管場所コード
+          ,itc.doc_type                                    doc_type                --文書タイプ
+          ,itc.trans_qty                                   trans_qty               --数量
+          ,itc.whse_code                                   whse_code               --倉庫コード
+          ,itc.location                                    location                --保管倉庫コード
+          ,gv_newdiv_rcv                                   new_div_invent          --新区分
+          ,gv_rcvdiv_rcv                                   rcv_pay_div             --受払区分
+         FROM
+           xxinv_mov_req_instr_headers                     xmrih                   --移動依頼/指示ヘッダ(アドオン)
+          ,xxinv_mov_req_instr_lines                       xmril                   --移動依頼/指示明細(アドオン)
+          ,xxinv_mov_lot_details                           xmld                    --移動ロット詳細(アドオン)
+          ,mtl_item_locations        mil
+          ,ic_jrnl_mst                                     ijm                     --OPMジャーナルマスタ
+          ,ic_adjs_jnl                                     iaj                     --OPM在庫調整ジャーナル
+          ,ic_tran_cmp                                     itc                     --OPM完了在庫トランザクション
+          ,gmi_item_categories              gic1
+          ,mtl_categories_b                 mcb1
+          ,gmi_item_categories              gic2
+          ,mtl_categories_b                 mcb2
+         WHERE xmrih.actual_ship_date = xmrih.actual_arrival_date                 --出荷実績日＝入庫実績日
+         AND  xmrih.mov_type = gv_movetype_no                                 --移動タイプ(積送なし)
+         AND xmrih.mov_hdr_id = xmril.mov_hdr_id                                  --移動ヘッダID
+         AND xmld.mov_line_id = xmril.mov_line_id                                 --移動明細ID
+         AND xmld.document_type_code = gv_dctype_move                             --文書タイプ
+         AND xmld.record_type_code = gv_rectype_in                            --レコードタイプ
+         AND xmrih.ship_to_locat_id = mil.inventory_location_id                          --保管倉庫ID
+         AND xmril.mov_line_id = ijm.attribute1                                   --文書ソースID
+         AND ijm.journal_id = iaj.journal_id                                      --ジャーナルID
+         AND mil.segment1 = iaj.location                                         --保管倉庫コード
+         AND itc.doc_type IN ('TRNI','ADJI')                                      --文書タイプ
+         AND gic1.item_id = itc.item_id
+         AND gic1.category_set_id = cn_item_class_id
+         AND gic1.category_id = mcb1.category_id
+         AND mcb1.segment1 = civ_item_div                                 --品目ID
+         AND gic2.item_id = itc.item_id
+         AND gic2.category_set_id = cn_prod_class_id
+         AND gic2.category_id = mcb2.category_id
+         AND mcb2.segment1 = civ_prod_div
+         AND xmrih.actual_ship_date                                              --入庫実績日
+            BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+            AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+         AND itc.doc_id = iaj.doc_id                                              --文書ID
+         AND itc.doc_line = iaj.doc_line                                          --取引明細番号
+         AND xmril.item_id = itc.item_id                                          --品目ID
+         AND xmld.lot_id (+) = itc.lot_id
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT 1
+             FROM ic_tran_cmp itc2                                                --OPM完了在庫トランザクション
+             WHERE itc.doc_id = itc2.doc_id                                       --文書ID
+             AND   itc.whse_code = itc2.whse_code                                 --倉庫コード
+             AND   itc.trans_id <> itc2.trans_id
+             AND   ROWNUM = 1
+             )
+         )                          xm                  --移動情報
+         ,ic_item_mst_b             iimb
+         ,xxcmn_item_mst_b          ximb
+         ,mtl_item_locations        mil1
+         ,ic_whse_mst               iwm1
+         ,mtl_item_locations        mil2
+         ,xxcmn_rcv_pay_mst         xrpm                --受入区分アドオンマスタ
+       WHERE xm.comp_actual_flg = gv_cmp_actl_yes                                --実績計上フラグ
+       AND xm.delete_flg = gv_delete_no                                          --削除フラグ
+       AND xm.item_id = iimb.item_id                                             --品目ID
+       AND ximb.item_id = iimb.item_id
+       AND xm.arvl_ship_date 
+           BETWEEN ximb.start_date_active AND ximb.end_date_active                 --実績日
+       AND xm.locat_id = mil1.inventory_location_id                              --保管倉庫ID
+       AND xm.other_id = mil2.inventory_location_id                             --保管倉庫ID(相手先)
+       AND xrpm.doc_type =xm.doc_type                                            --文書タイプ
+       AND TO_CHAR(SIGN(xm.trans_qty)) = xrpm.rcv_pay_div                        --受払区分
+       AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
+       AND xrpm.new_div_invent IN (gv_newdiv_pay,gv_newdiv_rcv)
+         AND iwm1.mtl_organization_id = mil1.organization_id
+       GROUP BY 
+         iimb.item_id                                                            --品目ID
+        ,xm.lot_id                                                               --ロットID
+        ,xm.new_div_invent                                                       --新区分
+        ,xm.mov_num                                                              --伝票No
+        ,mil1.description                                                        --保管倉庫名
+        ,xm.mov_type                                                             --移動タイプ
+        ,xm.whse_code                                                            --保留.倉庫コード
+        ,xm.location                                                             --保留.保管倉庫コード
+        ,xm.whse_code                                                            --完了.倉庫コード
+        ,xm.location                                                             --完了.保管倉庫コード
+        ,iwm1.whse_name                                                          --倉庫名
+        ,mil1.attribute6                                                 --ブロック
+        ,xm.rcv_pay_div                                                          --受払区分
+        ,TO_CHAR(xm.actual_arrival_date,gv_fmt_ymd)
+        ,TO_CHAR(xm.actual_ship_date,gv_fmt_ymd)
+        ,TO_CHAR(xm.arvl_ship_date,gv_fmt_ymd)
+        ,xm.other_code
+        ,mil2.description
+        ,iimb.lot_ctl
+        ,xm.record_type
+       UNION ALL
+       ------------------------------
+       -- 3.出荷/有償出荷実績情報
+       ------------------------------
+       SELECT
+          gv_trtry_sh                                         territory           --領域(出荷)
+         ,sh_info.item_id                                     item_id             --品目ID
+         ,sh_info.lot_id                                      lot_id              --ロットID
+         ,TO_CHAR(sh_info.shipped_date,gv_fmt_ymd)          standard_date       --日付
+         ,sh_info.new_div_invent                              reason_code         --新区分
+         ,sh_info.request_no                                  slip_no             --伝票No
+         ,TO_CHAR(sh_info.shipped_date,gv_fmt_ymd)          out_date            --出庫日
+         ,TO_CHAR(sh_info.arrival_date,gv_fmt_ymd)          in_date             --着日
+         ,sh_info.head_sales_branch                           jrsd_code           --管轄拠点コード
+         ,CASE
+            WHEN hca.customer_class_code = '10'
+              THEN xp.party_name
+              ELSE xp.party_short_name
+          END                                                 jrsd_name           --管轄拠点名
+         ,sh_info.deliver_to                                  other_code          --相手先コード
+         ,sh_info.party_site_full_name                        other_name          --相手先名称
+         ,CASE sh_info.rcv_pay_div--受払区分
+            WHEN gv_rcvdiv_rcv THEN sh_info.trans_qty_sum
+            ELSE 0
+          END                                                 in_qty              --入庫数
+         ,CASE sh_info.rcv_pay_div--受払区分
+            WHEN gv_rcvdiv_pay THEN 
+              CASE
+                WHEN (sh_info.new_div_invent = '104' AND sh_info.order_category_code = 'RETURN') THEN
+                  ABS(sh_info.trans_qty_sum) * -1
+                ELSE
+                  ABS(sh_info.trans_qty_sum)
+              END
+            ELSE 0
+          END                                                 out_qty             --出庫数
+         ,sh_info.whse_code                                   whse_code           --倉庫コード
+         ,sh_info.whse_name                                   whse_name           --倉庫名
+         ,sh_info.location                                    location            --保管倉庫コード
+         ,sh_info.description                                 description         --保管倉庫名
+         ,sh_info.distribution_block                          distribution_block  --ブロック
+         ,sh_info.rcv_pay_div                                 rcv_pay_div         --受払区分
+        ----------------------------------------------------------------------------------------
+        FROM ( --OMSO関連情報
+          SELECT
+            itp.doc_type                                  doc_type            --文書タイプ
+           ,itp.item_id                                   item_id             --品目ID
+           ,itp.whse_code                                 whse_code           --倉庫コード
+           ,iwm.whse_name                                 whse_name           --倉庫名
+           ,itp.location                                  location            --保管倉庫コード
+           ,mil.description                               description         --保管倉庫名
+           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+           ,itp.lot_id                                    lot_id              --ロットID
+           ,itp.doc_id                                    doc_id              --文書ID
+           ,itp.doc_line                                  doc_line            --取引明細番号
+           ,ooha.header_id                                header_id           --受注ヘッダID
+           ,ooha.order_type_id                            order_type_id       --受注タイプID
+           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+           ,xrpm.new_div_invent                           new_div_invent      --新区分
+           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+           ,mil.attribute6                                distribution_block  --ブロック
+           ,xoha.head_sales_branch                        head_sales_branch
+           ,xoha.deliver_to_id                            deliver_to_id
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+            ) deliver_to
+           ,xoha.arrival_date                             arrival_date
+           ,xoha.shipped_date                             shipped_date
+           ,xoha.request_no                               request_no
+           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+            ) party_site_full_name
+           ,otta.order_category_code                      order_category_code
+          FROM
+           xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
+           ,hz_party_sites                                hps
+           ,xxcmn_vendor_sites_all                        xvsa
+           ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
+           ,oe_transaction_types_all                      otta                --受注タイプ
+           ,xxcmn_rcv_pay_mst                             xrpm                --受入区分アドオンマスタ
+           ,ic_item_mst_b                                 iimb
+           ,xxcmn_item_mst_b                              ximb
+           ,ic_item_mst_b                                 iimb2
+           ,xxcmn_item_mst_b                              ximb2
+           ,gmi_item_categories                           gic1
+           ,mtl_categories_b                              mcb1
+           ,gmi_item_categories                           gic2
+           ,mtl_categories_b                              mcb2
+           ,gmi_item_categories                           gic3
+           ,mtl_categories_b                              mcb3
+           ,ic_whse_mst                                   iwm
+           ,mtl_item_locations                            mil
+           ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
+           ,wsh_delivery_details                          wdd                 --出荷搬送明細
+           ,oe_order_headers_all                          ooha                --受注ヘッダ
+          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          AND itp.doc_type = 'OMSO'
+          AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
+          AND itp.line_id = wdd.source_line_id                                --ソース明細ID
+          AND wdd.org_id = ooha.org_id                                        --組織ID
+          AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
+          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+          AND itp.item_id         = iimb.item_id                            --品目ID
+          AND ximb.item_id        = iimb.item_id                            --品目ID
+          AND itp.trans_date
+            BETWEEN ximb.start_date_active
+            AND ximb.end_date_active
+          --  AND NVL(ximb.end_date_active,itp.trans_date)                    --適用開始日・終了日
+          AND iimb.item_id = gic1.item_id                                     --品目ID
+          AND gic1.item_id = iimb.item_id
+          AND gic1.category_set_id = cn_item_class_id
+          AND gic1.category_id = mcb1.category_id
+          AND mcb1.segment1 = civ_item_div
+          AND iimb.item_id = gic3.item_id                                     --品目ID
+          AND gic3.item_id = iimb.item_id
+          AND gic3.category_set_id = cn_prod_class_id
+          AND gic3.category_id = mcb3.category_id
+          AND mcb3.segment1 = civ_prod_div
+          AND xola.request_item_code = iimb2.item_no                             --品目コード
+          AND ximb2.item_id = iimb2.item_id                            --品目ID
+          AND gic2.item_id = iimb2.item_id
+          AND gic2.category_set_id = cn_item_class_id
+          AND gic2.category_id = mcb2.category_id
+          AND itp.trans_date
+            BETWEEN ximb2.start_date_active
+            AND ximb2.end_date_active
+          AND gic2.item_id = iimb2.item_id                                     --品目ID
+          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+          AND xrpm.doc_type = 'OMSO'
+          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+          AND NVL(DECODE(otta.attribute4
+                        ,gv_stock_adjm
+                        ,gv_stock_adjm
+                        ,NULL),gv_dummy
+              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+                            ,gv_stock_adjm
+                            ,gv_stock_adjm
+                            ,NULL),gv_dummy
+              )
+          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+            AND ( (iimb.item_id = iimb2.item_id
+              AND xrpm.prod_div_origin IS NULL
+              AND xrpm.prod_div_ahead IS NULL)
+            OR    (iimb.item_id != iimb2.item_id
+              AND xrpm.prod_div_origin IS NOT NULL
+              AND xrpm.prod_div_ahead IS NOT NULL)
+            )
+          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+          )
+          AND itp.location = mil.segment1                                    --保管場所コード
+          AND iwm.mtl_organization_id = mil.organization_id
+          AND xoha.shipped_date                                                 --着荷日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+          GROUP BY 
+            itp.doc_type                                                      --文書タイプ
+           ,itp.item_id                                                       --品目ID
+           ,itp.whse_code                                                     --倉庫コード
+           ,iwm.whse_name                                                        --倉庫名
+           ,itp.location                                                      --保管倉庫コード
+           ,mil.description                                                      --保管倉庫名
+           ,mil.inventory_location_id                                            --保管倉庫ID
+           ,itp.lot_id                                                        --ロットID
+           ,itp.doc_id                                                        --文書ID
+           ,itp.doc_line                                                      --取引明細番号
+           ,ooha.header_id                                                     --受注ヘッダID
+           ,ooha.order_type_id                                                 --受注タイプID
+           ,xrpm.rcv_pay_div                                                      --受払区分
+           ,xrpm.new_div_invent                                                   --新区分
+           ,mil.attribute6                                               --ブロック
+           ,xoha.head_sales_branch
+           ,xoha.deliver_to_id
+           ,xoha.result_deliver_to
+           ,xoha.vendor_site_code
+           ,xoha.arrival_date
+           ,xoha.shipped_date
+           ,xoha.request_no
+           ,xoha.req_status
+           ,hps.party_site_name
+           ,xvsa.vendor_site_name
+           ,otta.order_category_code
+          UNION ALL
+           -- PORC関連
+          SELECT
+            itp.doc_type                                  doc_type            --文書タイプ
+           ,itp.item_id                                   item_id             --品目ID
+           ,itp.whse_code                                 whse_code           --倉庫コード
+           ,iwm.whse_name                                 whse_name           --倉庫名
+           ,itp.location                                  location            --保管倉庫コード
+           ,mil.description                               description         --保管倉庫名
+           ,mil.inventory_location_id                     inventory_location_id   --保管倉庫ID
+           ,itp.lot_id                                    lot_id              --ロットID
+           ,itp.doc_id                                    doc_id              --文書ID
+           ,itp.doc_line                                  doc_line            --取引明細番号
+           ,ooha.header_id                                header_id           --受注ヘッダID
+           ,ooha.order_type_id                            order_type_id       --受注タイプID
+           ,xrpm.rcv_pay_div                              rcv_pay_div         --受払区分
+           ,xrpm.new_div_invent                           new_div_invent      --新区分
+           ,SUM(itp.trans_qty)                            trans_qty_sum       --数量合計
+           ,mil.attribute6                                distribution_block  --ブロック
+           ,xoha.head_sales_branch                        head_sales_branch
+           ,xoha.deliver_to_id                            deliver_to_id
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xoha.result_deliver_to
+                                  ,gv_recsts_shipped2,xoha.vendor_site_code
+            ) deliver_to
+           ,xoha.arrival_date                             arrival_date
+           ,xoha.shipped_date                             shipped_date
+           ,xoha.request_no                               request_no
+           --,DECODE(xoha.req_status,'04',xpsv.party_site_full_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           --                       ,'08',xvsv.vendor_site_name
+                                  ,gv_recsts_shipped2,xvsa.vendor_site_name
+            ) party_site_full_name
+           ,otta.order_category_code                      order_category_code
+          FROM
+           xxwsh_order_headers_all                            xoha                --受注ヘッダ(アドオン)
+           ,hz_party_sites                                    hps
+           ,xxcmn_vendor_sites_all                            xvsa
+           ,xxwsh_order_lines_all                             xola                --受注明細(アドオン)
+           ,oe_transaction_types_all                          otta                --受注タイプ
+           ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
+           ,ic_item_mst_b                                     iimb
+           ,xxcmn_item_mst_b                                  ximb
+           ,ic_item_mst_b                                     iimb2
+           ,xxcmn_item_mst_b                                  ximb2
+           ,gmi_item_categories                               gic1
+           ,mtl_categories_b                                  mcb1
+           ,gmi_item_categories                               gic2
+           ,mtl_categories_b                                  mcb2
+           ,gmi_item_categories                               gic3
+           ,mtl_categories_b                                  mcb3
+           ,ic_whse_mst                                       iwm
+           ,mtl_item_locations                                mil
+           ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+           ,rcv_shipment_lines                                rsl             --受入明細
+           ,oe_order_headers_all                              ooha                --受注ヘッダ
+          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          AND itp.doc_type = 'PORC'
+          AND rsl.source_document_code = 'RMA'                                --ソース文書
+          AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
+          AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
+          AND itp.doc_line = rsl.line_num                                     --明細番号
+          AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
+          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
+          AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
+          AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
+          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+          AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
+          AND xola.shipping_item_code = iimb.item_no                            --品目コード
+          AND itp.item_id         = iimb.item_id                            --品目ID
+          AND ximb.item_id            = iimb.item_id                            --品目ID
+          AND itp.trans_date
+            BETWEEN ximb.start_date_active
+            AND ximb.end_date_active
+          AND iimb.item_id = gic1.item_id                                     --品目ID
+          AND gic1.item_id = iimb.item_id
+          AND gic1.category_set_id = cn_item_class_id
+          AND gic1.category_id = mcb1.category_id
+          AND mcb1.segment1 = civ_item_div
+          AND iimb.item_id = gic3.item_id                                     --品目ID
+          AND gic3.item_id = iimb.item_id
+          AND gic3.category_set_id = cn_prod_class_id
+          AND gic3.category_id = mcb3.category_id
+          AND mcb3.segment1 = civ_prod_div
+          AND xola.request_item_code = iimb2.item_no                             --品目コード
+          AND ximb2.item_id = iimb2.item_id                            --品目ID
+          AND gic2.item_id = iimb2.item_id
+          AND gic2.category_set_id = cn_item_class_id
+          AND gic2.category_id = mcb2.category_id
+          AND itp.trans_date
+            BETWEEN ximb2.start_date_active
+            AND ximb2.end_date_active
+          AND gic2.item_id = iimb2.item_id                                     --品目ID
+          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
+          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31', gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND itp.doc_type = xrpm.doc_type                                    --文書タイプ
+          AND xrpm.doc_type = 'PORC'
+          AND  otta.attribute1 = xrpm.shipment_provision_div                      --出荷支給区分
+          AND  otta.attribute1 IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND xrpm.shipment_provision_div IN (gv_spdiv_ship,gv_spdiv_prov)
+          AND (otta.attribute11 = xrpm.ship_prov_rcv_pay_category                 --出荷支給受払カテゴリ
+            OR   xrpm.ship_prov_rcv_pay_category IS NULL)
+            AND NVL(DECODE(mcb1.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_origin,gv_dummy)
+            AND NVL(DECODE(mcb2.segment1
+                          ,gv_item_class_prod,gv_item_class_prod
+                                             ,NULL),gv_dummy)
+                = NVL(xrpm.item_div_ahead,gv_dummy)
+          AND NVL(DECODE(otta.attribute4
+                        ,gv_stock_adjm
+                        ,gv_stock_adjm
+                        ,NULL),gv_dummy
+              ) = NVL(DECODE(xrpm.stock_adjustment_div                            --在庫調整区分
+                            ,gv_stock_adjm
+                            ,gv_stock_adjm
+                            ,NULL),gv_dummy
+              )
+          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+          AND (mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod
+            AND ( (iimb.item_id = iimb2.item_id
+              AND xrpm.prod_div_origin IS NULL
+              AND xrpm.prod_div_ahead IS NULL)
+            OR    (iimb.item_id != iimb2.item_id
+              AND xrpm.prod_div_origin IS NOT NULL
+              AND xrpm.prod_div_ahead IS NOT NULL)
+            )
+          OR NOT( mcb1.segment1 = gv_item_class_prod AND mcb2.segment1 = gv_item_class_prod)
+          )
+          AND itp.location = mil.segment1                                    --保管場所コード
+          AND iwm.mtl_organization_id = mil.organization_id
+          AND xoha.shipped_date                                                 --着荷日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+          GROUP BY 
+            itp.doc_type                                                      --文書タイプ
+           ,itp.item_id                                                       --品目ID
+           ,itp.whse_code                                                     --倉庫コード
+           ,iwm.whse_name                                                        --倉庫名
+           ,itp.location                                                      --保管倉庫コード
+           ,mil.description                                                      --保管倉庫名
+           ,mil.inventory_location_id                                            --保管倉庫ID
+           ,itp.lot_id                                                        --ロットID
+           ,itp.doc_id                                                        --文書ID
+           ,itp.doc_line                                                      --取引明細番号
+           ,ooha.header_id                                                     --受注ヘッダID
+           ,ooha.order_type_id                                                 --受注タイプID
+           ,xrpm.rcv_pay_div                                                      --受払区分
+           ,xrpm.new_div_invent                                                   --新区分
+           ,mil.attribute6                                               --ブロック
+           ,xoha.head_sales_branch
+           ,xoha.deliver_to_id
+           ,xoha.result_deliver_to
+           ,xoha.vendor_site_code
+           ,xoha.arrival_date
+           ,xoha.shipped_date
+           ,xoha.request_no
+           ,xoha.req_status
+           ,hps.party_site_name
+           ,xvsa.vendor_site_name
+           ,otta.order_category_code
+        )                                                     sh_info             --出荷関連情報
+         ,xxcmn_parties                                       xp
+         ,hz_cust_accounts                                    hca
+        WHERE sh_info.head_sales_branch = hca.account_number(+)                          --顧客番号
+        AND hca.customer_class_code(+) = '1'                               --顧客区分(拠点)
+        AND hca.party_id = xp.party_id(+)
+        UNION ALL
+        ------------------------------
+        -- 4.倉替返品実績情報
+        ------------------------------
+        SELECT
+          gv_trtry_rt                                         territory           --領域(倉替返品)
+         ,rt_info.item_id                                     item_id             --品目ID
+         ,rt_info.lot_id                                      lot_id              --ロットID
+         ,TO_CHAR(xoha.shipped_date,gv_fmt_ymd)               standard_date       --日付
+         ,rt_info.reason_code                                 reason_code         --新区分
+         ,xoha.request_no                                     slip_no             --伝票No
+         ,TO_CHAR(xoha.shipped_date,gv_fmt_ymd)               out_date            --出庫日
+         ,TO_CHAR(xoha.arrival_date,gv_fmt_ymd)               in_date             --着日
+         ,xoha.head_sales_branch                              jrsd_code           --管轄拠点コード
+         ,CASE
+            WHEN hca.customer_class_code = '10'
+              THEN xp.party_name
+              ELSE xp.party_short_name
+          END                                                 jrsd_name           --管轄拠点名
+         ,xoha.head_sales_branch                              other_code          --相手先コード
+         ,xp.party_name                                       other_name          --相手先名称
+         ,rt_info.in_qty_sum                                  in_qty              --入庫数
+         ,0                                                   out_qty             --出庫数
+         ,rt_info.whse_code                                   whse_code           --倉庫コード
+         ,rt_info.whse_name                                   whse_name           --倉庫名
+         ,rt_info.location                                    location            --保管倉庫コード
+         ,rt_info.description                                 description         --保管倉庫名
+         ,rt_info.distribution_block                          distribution_block  --ブロック
+         ,rt_info.rcv_pay_div                                 rcv_pay_div         --受払区分
+        ----------------------------------------------------------------------------------------
+        FROM (
+          SELECT /*+ leading(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) use_nl(xrpm otta rsl ooha xoha itp gic1 mcb1 gic2 mcb2 mil iwm) */
+            xoha.header_id                                    header_id           --受注ヘッダID
+           ,itp.whse_code                                     whse_code           --倉庫コード
+           ,iwm.whse_name                                     whse_name           --倉庫名
+           ,itp.item_id                                       item_id             --品目ID
+           ,itp.lot_id                                        lot_id              --ロットID
+           ,itp.location                                      location            --保管倉庫コード
+           ,mil.description                                   description         --保管倉庫名
+           ,mil.inventory_location_id                         inventory_location_id --保管倉庫ID
+           ,xrpm.new_div_invent                               reason_code         --新区分
+           ,mil.attribute6                                    distribution_block  --ブロック
+           ,xrpm.rcv_pay_div                                  rcv_pay_div         --受払区分
+           ,SUM(NVL(itp.trans_qty,0))                         in_qty_sum          --数量合計
+          FROM
+            ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
+           --------------------------------------------------------
+           ,ic_whse_mst                                       iwm                 --保管場所情報VIEW2
+           ,mtl_item_locations                                mil
+           --------------------------------------------------------
+           ,rcv_shipment_lines                                rsl                 --受入明細
+           ,oe_order_headers_all                              ooha                --受注ヘッダ
+           ,xxwsh_order_headers_all                           xoha                --受注ヘッダ(アドオン)
+           ,oe_transaction_types_all                          otta                --受注タイプ
+           ,xxcmn_rcv_pay_mst                                 xrpm                --受払区分アドオンマスタ
+           --------------------------------------------------------
+           ,gmi_item_categories                               gic1
+           ,mtl_categories_b                                  mcb1
+           ,gmi_item_categories                               gic2
+           ,mtl_categories_b                                  mcb2
+          --OPM保留在庫トランザクション抽出
+          WHERE itp.completed_ind = gv_tran_cmp                                   --完了フラグ
+          AND itp.doc_type = 'PORC'                                               --文書タイプ
+          --保管場所情報VIEW2抽出
+          AND itp.location = mil.segment1                                         --保管倉庫コード
+          --受入明細抽出
+          AND itp.doc_id = rsl.shipment_header_id                                 --受入ヘッダID
+          AND itp.doc_line = rsl.line_num                                         --明細番号
+          AND rsl.source_document_code = 'RMA'                                    --ソース文書
+          --受注ヘッダ抽出
+          AND rsl.oe_order_header_id = ooha.header_id                             --受注ヘッダID
+          --受注ヘッダアドオン抽出
+          AND ooha.header_id = xoha.header_id                                     --受注ヘッダID
+          AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)           --ステータス
+          AND xoha.actual_confirm_class = gv_confirm_yes                          --実績計上区分
+          AND xoha.latest_external_flag = gv_latest_yes                           --最新フラグ
+          AND xoha.deliver_from_id = mil.inventory_location_id                    --出荷元ID
+          AND xoha.shipped_date                                                   --着荷日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+          --受注タイプ抽出
+          AND ooha.order_type_id = otta.transaction_type_id                       --受注タイプID
+          AND otta.attribute1 = '3'                                               --出荷支給区分
+          --受払区分アドオンマスタ抽出
+          AND otta.attribute1 = xrpm.shipment_provision_div                       --出荷支給区分
+          AND otta.attribute11 = xrpm.ship_prov_rcv_pay_category                  --出荷支給受払カテゴリ
+          AND xrpm.use_div_invent = gv_inventory                                  --在庫使用区分
+          AND xrpm.doc_type = 'PORC'                                              --文書タイプ
+          AND xrpm.source_document_code = 'RMA'                                   --ソース文書
+          AND xrpm.dealings_div IN ('201','203')
+          -----------------------------------------------------------
+          AND gic1.item_id            = itp.item_id
+          AND gic1.category_set_id    = cn_item_class_id
+          AND gic1.category_id        = mcb1.category_id
+          AND mcb1.segment1           = civ_item_div
+          AND gic2.item_id            = itp.item_id
+          AND gic2.category_set_id    = cn_prod_class_id
+          AND gic2.category_id        = mcb2.category_id
+          AND mcb2.segment1           = civ_prod_div
+          -----------------------------------------------------------
+          AND iwm.mtl_organization_id = mil.organization_id
+          GROUP BY
+            xoha.header_id                                                        --受注ヘッダID
+           ,itp.whse_code                                                         --倉庫コード
+           ,iwm.whse_name                                                         --倉庫名
+           ,itp.item_id                                                           --品目ID
+           ,itp.lot_id                                                            --ロットID
+           ,itp.location                                                          --保管倉庫コード
+           ,mil.description                                                       --保管倉庫名
+           ,mil.inventory_location_id                                             --保管倉庫ID
+           ,xrpm.new_div_invent                                                   --新区分
+           ,mil.attribute6                                                        --ブロック
+           ,xrpm.rcv_pay_div                                                      --受払区分
+        ) rt_info                                                                 --倉替返品関連情報
+        ,xxwsh_order_headers_all                              xoha                --受注ヘッダ(アドオン)
+        -----------------------------------------------
+        ,hz_parties                                           hp                  --顧客情報VIEW2
+        ,hz_cust_accounts                                     hca
+        ,xxcmn_parties                                        xp
+        ----------------------------------------------
+        --受注ヘッダ(アドオン)抽出
+        WHERE rt_info.header_id = xoha.header_id                                  --受注ヘッダID
+          AND xoha.head_sales_branch = hca.account_number                         --顧客番号
+          AND hca.customer_class_code = '1'                                       --顧客区分(拠点)
+          AND hp.party_id = hca.party_id
+          AND hp.party_id = xp.party_id
+        UNION ALL
+        ------------------------------
+        -- 5.生産実績情報
+        ------------------------------
+        -- 品目振替
+        SELECT
+           gv_trtry_mf                                         territory           -- 領域(生産)
+         , gmd.item_id                                         item_id             -- 品目ID
+         , itp.lot_id                                          lot_id              -- ロットID
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )                                   -- 品目振替
+         , xrpm.new_div_invent                                 reason_code         -- 新区分
+         , gbh.batch_no                                        slip_no             -- 伝票No
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               out_date
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               in_date
+         , ''                                                  jrsd_code           -- 管轄拠点コード
+         , ''                                                  jrsd_name           -- 管轄拠点名
+         , grb.routing_no                                      other_code          -- 相手先コード
+         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , SUM( CASE gmd.line_type --ラインタイプ
+                  WHEN -1 THEN 0
+                  ELSE NVL(itp.trans_qty,0)
+                END )                                          in_qty              -- 入庫数
+         , ABS( SUM( CASE gmd.line_type --ラインタイプ
+                       WHEN -1 THEN NVL(itp.trans_qty,0)
+                       ELSE 0
+                     END ) )                                   out_qty             --出庫数
+         , itp.whse_code                                       whse_code           -- 倉庫コード
+         , iwm.whse_name                                       whse_name           -- 倉庫名
+         , itp.location                                        location            -- 保管倉庫コード
+         , mil.description                                     description         -- 保管倉庫名
+         , mil.attribute6                                      distribution_block  -- ブロック
+         , xrpm.rcv_pay_div                                    rcv_pay_div         -- 受払区分
+        ----------------------------------------------------------------------------------------
+        FROM
+           gme_batch_header                                  gbh                 -- 生産バッチ
+         , gme_material_details                              gmd                 -- 生産原料詳細
+         , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
+         , gmd_routings_b                                    grb                 -- 工順マスタ
+         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+         , ic_whse_mst                                       iwm
+         , mtl_item_locations                                mil
+         --生産原料詳細(振替元先品目)
+         ,(
+           SELECT 
+              gbh.batch_id                                     batch_id            -- バッチID
+            , gmd.line_no                                      line_no             -- ラインNO
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_mtrl, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_origin   -- 振替元品目区分
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_prod, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_ahead    -- 振替先品目区分
+           FROM
+              gme_batch_header                                 gbh                 -- 生産バッチ
+            , gme_material_details                             gmd                 -- 生産原料詳細
+            , gmd_routings_b                                   grb                 -- 工順マスタ
+            , gmi_item_categories                              gic
+            , mtl_categories_b                                 mcb
+           --生産原料詳細抽出条件
+           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+           --工順マスタ抽出条件
+           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+           AND   grb.routing_class      = '70'
+           --カテゴリ割当抽出条件
+           AND   gmd.item_id            = gic.item_id
+           AND   gic.category_id        = mcb.category_id
+           AND   gic.category_set_id    = cn_item_class_id
+           --AND   mcb.segment1           = civ_item_div
+           GROUP BY gbh.batch_id
+                   ,gmd.line_no
+          )                                                    gmd_t                 --
+         , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
+         , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
+         , mtl_categories_b                                    mcb1
+         , gmi_item_categories                                 gic1
+         , mtl_categories_b                                    mcb2
+         , gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --生産原料詳細抽出条件
+        WHERE gbh.batch_id      = gmd.batch_id                                        -- バッチID
+        --生産原料詳細(完成品)
+        AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
+        AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
+        --生産原料詳細(振替)
+        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+        --工順マスタ抽出条件
+        AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
+        --工順マスタ日本語抽出条件
+        --工順区分マスタ日本語抽出条件
+        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+        AND   grct.language     = gv_lang                                                -- 言語
+        AND   grct.source_lang  = gv_source_lang                                                -- 言語
+        AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
+        AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
+        AND   itp.item_id             = gmd.item_id                               -- 品目ID
+        AND   itp.location            = mil.segment1                              -- 保管倉庫コード
+        AND   itp.completed_ind       = gv_tran_cmp                                       -- 完了フラグ
+        AND   itp.doc_type            = 'PROD'                                    -- 文書タイプ
+        AND   itp.reverse_id          IS NULL                                     -- リバースID
+        AND   itp.delete_mark         = gn_delete_mark_no                                         -- 削除マーク
+        --受払区分アドオンマスタ抽出条件
+        AND   xrpm.doc_type           = 'PROD'                                    -- 文書タイプ
+        AND   xrpm.line_type          = gmd.line_type                             -- ラインタイプ
+        AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
+        AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
+        AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
+        AND   grct.routing_class_desc = gv_item_transfer
+        AND   xrpm.item_div_ahead     = gmd_t.item_class_ahead                       -- 振替先品目区分
+        AND   xrpm.item_div_origin    = gmd_t.item_class_origin                      -- 振替元品目区分
+        --生産日
+        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itp.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itp.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+           gv_trtry_mf                                                                  -- 領域(生産)
+         , gmd.item_id                                                             -- 品目ID
+         , itp.lot_id                                                              -- ロットID
+         , SUBSTRB(gmd_d.attribute11, 1, 10)                                       -- 日付
+         , TO_CHAR(itp.trans_date, gv_fmt_ymd)
+         , xrpm.new_div_invent                                                     -- 新区分
+         , gbh.batch_no                                                            -- 伝票No
+         , grb.routing_no                                                          -- 相手先コード
+         , grct.routing_class_desc
+         , itp.whse_code                                                           -- 倉庫コード
+         , iwm.whse_name                                                           -- 倉庫名
+         , itp.location                                                            -- 保管倉庫コード
+         , mil.description                                                         -- 保管倉庫名
+         , mil.attribute6                                                          -- ブロック
+         , xrpm.rcv_pay_div                                                        -- 受払区分
+        UNION ALL
+        -- 返品原料、解体半製品
+        SELECT
+           gv_trtry_mf                                         territory           -- 領域(生産)
+         , gmd.item_id                                         item_id             -- 品目ID
+         , itp.lot_id                                          lot_id              -- ロットID
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )
+         , xrpm.new_div_invent                                 reason_code         -- 新区分
+         , gbh.batch_no                                        slip_no             -- 伝票No
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               out_date
+         , TO_CHAR( itp.trans_date, gv_fmt_ymd )               in_date
+         , ''                                                  jrsd_code           -- 管轄拠点コード
+         , ''                                                  jrsd_name           -- 管轄拠点名
+         , grb.routing_no                                      other_code          -- 相手先コード
+         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , SUM( CASE gmd.line_type --ラインタイプ
+                  WHEN -1 THEN 0
+                  ELSE NVL(itp.trans_qty,0)
+                END )                                          in_qty              -- 入庫数
+         , ABS( SUM( CASE gmd.line_type --ラインタイプ
+                       WHEN -1 THEN NVL(itp.trans_qty,0)
+                       ELSE 0
+                     END ) )                                   out_qty             --出庫数
+         , itp.whse_code                                       whse_code           -- 倉庫コード
+         , iwm.whse_name                                       whse_name           -- 倉庫名
+         , itp.location                                        location            -- 保管倉庫コード
+         , mil.description                                     description         -- 保管倉庫名
+         , mil.attribute6                                      distribution_block  -- ブロック
+         , xrpm.rcv_pay_div                                    rcv_pay_div         -- 受払区分
+        ----------------------------------------------------------------------------------------
+        FROM
+           gme_batch_header                                  gbh                 -- 生産バッチ
+         , gme_material_details                              gmd                 -- 生産原料詳細
+         , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
+         , gmd_routings_b                                    grb                 -- 工順マスタ
+         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+         , ic_whse_mst                                       iwm
+         , mtl_item_locations                                mil
+         --生産原料詳細(振替元先品目)
+         ,(
+           SELECT 
+              gbh.batch_id                                     batch_id            -- バッチID
+            , gmd.line_no                                      line_no             -- ラインNO
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_mtrl, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_origin   -- 振替元品目区分
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_prod, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_ahead    -- 振替先品目区分
+           FROM
+              gme_batch_header                                 gbh                 -- 生産バッチ
+            , gme_material_details                             gmd                 -- 生産原料詳細
+            , gmd_routings_b                                   grb                 -- 工順マスタ
+            , gmi_item_categories                              gic
+            , mtl_categories_b                                 mcb
+           --生産原料詳細抽出条件
+           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+           --工順マスタ抽出条件
+           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+           AND   grb.routing_class      = '70'
+           --カテゴリ割当抽出条件
+           AND   gmd.item_id            = gic.item_id
+           AND   gic.category_id        = mcb.category_id
+           AND   gic.category_set_id    = cn_item_class_id
+           --AND   mcb.segment1           = civ_item_div
+           GROUP BY gbh.batch_id
+                   ,gmd.line_no
+          )                                                    gmd_t                 --
+         , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
+         , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
+         , mtl_categories_b                                    mcb1
+         , gmi_item_categories                                 gic1
+         , mtl_categories_b                                    mcb2
+         , gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --生産原料詳細抽出条件
+        WHERE gbh.batch_id      = gmd.batch_id                                        -- バッチID
+        --生産原料詳細(完成品)
+        AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
+        AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
+        --生産原料詳細(振替)
+        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+        --工順マスタ抽出条件
+        AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
+        --工順マスタ日本語抽出条件
+        --工順区分マスタ日本語抽出条件
+        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+        AND   grct.language     = gv_lang                                             -- 言語
+        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+        AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
+        AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
+        AND   itp.item_id             = gmd.item_id                               -- 品目ID
+        AND   itp.location            = mil.segment1                              -- 保管倉庫コード
+        AND   itp.completed_ind       = gv_tran_cmp                                       -- 完了フラグ
+        AND   itp.doc_type            = 'PROD'                                    -- 文書タイプ
+        AND   itp.reverse_id          IS NULL                                     -- リバースID
+        AND   itp.delete_mark         = gn_delete_mark_no                                         -- 削除マーク
+        --受払区分アドオンマスタ抽出条件
+        AND   xrpm.doc_type           = 'PROD'                                    -- 文書タイプ
+        AND   xrpm.line_type          = gmd.line_type                             -- ラインタイプ
+        AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
+        AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy) -- 打込区分
+        AND   xrpm.routing_class      = grb.routing_class(+)                       -- 工順区分
+        AND   grct.routing_class_desc IN (gv_item_return, gv_item_dissolve)
+        --生産日
+        AND   itp.trans_date >= TO_DATE(civ_ymd_from, gv_fmt_ymd)
+        AND   itp.trans_date <= TO_DATE(civ_ymd_to, gv_fmt_ymd)
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itp.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itp.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+           gv_trtry_mf                                                                  -- 領域(生産)
+         , gmd.item_id                                                             -- 品目ID
+         , itp.lot_id                                                              -- ロットID
+         , SUBSTRB(gmd_d.attribute11, 1, 10)                                       -- 日付
+         , TO_CHAR(itp.trans_date, gv_fmt_ymd)
+         , xrpm.new_div_invent                                                     -- 新区分
+         , gbh.batch_no                                                            -- 伝票No
+         , grb.routing_no                                                          -- 相手先コード
+         , grct.routing_class_desc
+         , itp.whse_code                                                           -- 倉庫コード
+         , iwm.whse_name                                                           -- 倉庫名
+         , itp.location                                                            -- 保管倉庫コード
+         , mil.description                                                         -- 保管倉庫名
+         , mil.attribute6                                                          -- ブロック
+         , xrpm.rcv_pay_div                                                        -- 受払区分
+        UNION ALL
+        -- その他
+        SELECT /*+ leading(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) use_nl(gmd_d gbh gmd itp gmd_t gic1 mcb1 gic2 mcb2 xrpm grb grct mil iwm) */
+           gv_trtry_mf                                         territory           -- 領域(生産)
+         , gmd.item_id                                         item_id             -- 品目ID
+         , itp.lot_id                                          lot_id              -- ロットID
+         , SUBSTRB( gmd_d.attribute11, 1, 10 )
+         , xrpm.new_div_invent                                 reason_code         -- 新区分
+         , gbh.batch_no                                        slip_no             -- 伝票No
+         , SUBSTRB( gmd_d.attribute11, 1, 10 )                 out_date
+         , SUBSTRB( gmd_d.attribute11, 1, 10 )                 in_date
+         , ''                                                  jrsd_code           -- 管轄拠点コード
+         , ''                                                  jrsd_name           -- 管轄拠点名
+         , grb.routing_no                                      other_code          -- 相手先コード
+         , grct.routing_class_desc                             other_name          -- 相手先名称
+         , SUM( CASE gmd.line_type --ラインタイプ
+                  WHEN -1 THEN 0
+                  ELSE NVL(itp.trans_qty,0)
+                END )                                          in_qty              -- 入庫数
+         , ABS( SUM( CASE gmd.line_type --ラインタイプ
+                       WHEN -1 THEN NVL(itp.trans_qty,0)
+                       ELSE 0
+                     END ) )                                   out_qty             --出庫数
+         , itp.whse_code                                       whse_code           -- 倉庫コード
+         , iwm.whse_name                                       whse_name           -- 倉庫名
+         , itp.location                                        location            -- 保管倉庫コード
+         , mil.description                                     description         -- 保管倉庫名
+         , mil.attribute6                                      distribution_block  -- ブロック
+         , xrpm.rcv_pay_div                                    rcv_pay_div         -- 受払区分
+        ----------------------------------------------------------------------------------------
+        FROM
+           gme_batch_header                                  gbh                 -- 生産バッチ
+         , gme_material_details                              gmd                 -- 生産原料詳細
+         , gme_material_details                              gmd_d               -- 生産原料詳細(完成品)
+         , gmd_routings_b                                    grb                 -- 工順マスタ
+         , gmd_routing_class_tl                              grct                -- 工順区分マスタ日本語
+         , ic_whse_mst                                       iwm
+         , mtl_item_locations                                mil
+         --生産原料詳細(振替元先品目)
+         ,(
+           SELECT /*+ leading(gbh grb gmd gic mcb) use_nl(gbh grb gmd gic mcb) */
+              gbh.batch_id                                     batch_id            -- バッチID
+            , gmd.line_no                                      line_no             -- ラインNO
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_mtrl, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_origin   -- 振替元品目区分
+            , MAX(DECODE(gmd.line_type --ラインタイプ
+                        , gn_linetype_prod, mcb.segment1
+                        , NULL
+                 )
+              )                                                item_class_ahead    -- 振替先品目区分
+           FROM
+              gme_batch_header                                 gbh                 -- 生産バッチ
+            , gme_material_details                             gmd                 -- 生産原料詳細
+            , gmd_routings_b                                   grb                 -- 工順マスタ
+            , gmi_item_categories                              gic
+            , mtl_categories_b                                 mcb
+           --生産原料詳細抽出条件
+           WHERE gbh.batch_id           = gmd.batch_id                            -- バッチID
+           --工順マスタ抽出条件
+           AND   gbh.routing_id         = grb.routing_id                          -- 工順ID
+           AND   grb.routing_class      = '70'
+           --カテゴリ割当抽出条件
+           AND   gmd.item_id            = gic.item_id
+           AND   gic.category_id        = mcb.category_id
+           AND   gic.category_set_id    = cn_item_class_id
+           --AND   mcb.segment1           = civ_item_div
+           GROUP BY gbh.batch_id
+                   ,gmd.line_no
+          )                                                    gmd_t                 --
+         , xxcmn_rcv_pay_mst                                   xrpm                  -- 受払区分アドオンマスタ
+         , ic_tran_pnd                                         itp                   -- OPM保留在庫トランザクション
+         , mtl_categories_b                                    mcb1
+         , gmi_item_categories                                 gic1
+         , mtl_categories_b                                    mcb2
+         , gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --生産原料詳細抽出条件
+        WHERE gbh.batch_id      = gmd.batch_id                                        -- バッチID
+        --生産原料詳細(完成品)
+        AND   gbh.batch_id      = gmd_d.batch_id                                      -- バッチID
+        AND   gmd_d.line_type   = 1                                                   -- ラインタイプ(完成品)
+        --生産原料詳細(振替)
+        AND   gmd.batch_id      = gmd_t.batch_id(+)                                   -- バッチID
+        AND   gmd.line_no       = gmd_t.line_no(+)                                    -- ラインNO
+        --工順マスタ抽出条件
+        AND   gbh.routing_id    = grb.routing_id                                      -- 工順ID
+        --工順マスタ日本語抽出条件
+        --工順区分マスタ日本語抽出条件
+        AND   grb.routing_class = grct.routing_class                                  -- 工順コード
+        AND   grct.language     = gv_lang                                             -- 言語
+        AND   grct.source_lang  = gv_source_lang                                      -- 言語
+        --OPM保管場所マスタ抽出条件
+        AND   mil.segment1 = grb.attribute9
+        AND   iwm.mtl_organization_id = mil.organization_id                       -- OPM保留在庫トランザクション抽出条件
+        AND   itp.line_id             = gmd.material_detail_id                    -- ラインID
+        AND   itp.item_id             = gmd.item_id                               -- 品目ID
+        AND   itp.location            = mil.segment1                              -- 保管倉庫コード
+        AND   itp.completed_ind       = gv_tran_cmp                                       -- 完了フラグ
+        AND   itp.doc_type            = 'PROD'                                    -- 文書タイプ
+        AND   itp.reverse_id          IS NULL                                     -- リバースID
+        AND   itp.delete_mark         = gn_delete_mark_no                                         -- 削除マーク
+        --受払区分アドオンマスタ抽出条件
+        AND   xrpm.doc_type           = 'PROD'                                    -- 文書タイプ
+        AND   xrpm.line_type          = gmd.line_type                             -- ラインタイプ
+        AND   xrpm.use_div_invent     = gv_inventory                                                  -- 在庫使用区分
+        AND   NVL(xrpm.hit_in_div   , gv_dummy) = NVL(gmd.attribute5   , gv_dummy)  -- 打込区分
+        AND   xrpm.routing_class      = grb.routing_class(+)                        -- 工順区分
+        AND   grct.routing_class_desc NOT IN (gv_item_transfer, gv_item_return, gv_item_dissolve)
+        --生産日
+        AND   gmd_d.attribute11 >= civ_ymd_from
+        AND   gmd_d.attribute11 <= civ_ymd_to
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itp.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itp.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+           gv_trtry_mf                                                                  -- 領域(生産)
+         , gmd.item_id                                                             -- 品目ID
+         , itp.lot_id                                                              -- ロットID
+         , SUBSTRB(gmd_d.attribute11, 1, 10)                                       -- 日付
+         , TO_CHAR(itp.trans_date, gv_fmt_ymd)
+         , xrpm.new_div_invent                                                     -- 新区分
+         , gbh.batch_no                                                            -- 伝票No
+         , grb.routing_no                                                          -- 相手先コード
+         , grct.routing_class_desc
+         , itp.whse_code                                                           -- 倉庫コード
+         , iwm.whse_name                                                           -- 倉庫名
+         , itp.location                                                            -- 保管倉庫コード
+         , mil.description                                                         -- 保管倉庫名
+         , mil.attribute6                                                          -- ブロック
+         , xrpm.rcv_pay_div                                                        -- 受払区分
+        UNION ALL
+        ------------------------------
+        -- 6.在庫調整実績情報
+        ------------------------------
+        SELECT
+          gv_trtry_ad                                         territory           --領域(在庫調整)
+         ,itc.item_id                                         item_id             --品目ID
+         ,itc.lot_id                                          lot_id              --ロットID
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  standard_date       --日付
+         ,xrpm.new_div_invent                                 reason_code         --新区分
+         ,ad_info.slip_no                                     slip_no             --伝票No
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  out_date            --出庫日
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                  in_date             --着日
+         ,''                                                  jrsd_code           --管轄拠点コード
+         ,''                                                  jrsd_name           --管轄拠点名
+         ,CASE ad_info.adji_type
+            WHEN gv_adji_xrart THEN ad_info.other_code
+            WHEN gv_adji_xnpt THEN xrpm.new_div_invent
+            WHEN gv_adji_xvst THEN ad_info.other_code
+            WHEN gv_adji_xmrih THEN ad_info.other_code
+            WHEN gv_adji_ijm THEN xrpm.new_div_invent
+          END                                                 other_code          --相手先コード
+         ,CASE ad_info.adji_type
+            WHEN gv_adji_xrart THEN ad_info.other_name
+            WHEN gv_adji_xnpt THEN NULL
+            WHEN gv_adji_xvst THEN ad_info.other_name
+            WHEN gv_adji_xmrih THEN ad_info.other_name
+            WHEN gv_adji_ijm THEN NULL
+          END                                                 other_name          --相手先名称
+         ,CASE xrpm.rcv_pay_div
+            WHEN '1' THEN SUM(NVL(itc.trans_qty,0))
+            ELSE 0
+          END                                                 in_qty              --入庫数
+         ,CASE xrpm.rcv_pay_div
+            WHEN '-1' THEN SUM(NVL(itc.trans_qty,0) * -1)
+            ELSE 0
+          END                                                 out_qty             --出庫数
+         ,itc.whse_code                                       whse_code           --倉庫コード
+         ,iwm.whse_name                                       whse_name           --倉庫名
+         ,itc.location                                        location            --保管倉庫コード
+         ,mil.description                                     description         --保管倉庫名
+         ,mil.attribute6                                      distribution_block  --ブロック
+         ,xrpm.rcv_pay_div                                    rcv_pay_div         --受払区分
+        FROM
+          (
+            -----------------------
+            --受入返品実績情報(仕入先返品)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xrart.rcv_rtn_number                            slip_no             --伝票No
+             ,xrart.vendor_code                               other_code          --取引先コード
+             ,pv.vendor_name                                 other_name          --取引先名称
+             ,gv_adji_xrart                                   adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
+             ,po_vendors                                      pv
+             ,xxcmn_vendors                                   xv
+            --受入返品実績(アドオン)抽出条件
+            WHERE xrart.txns_type IN ('2', '3')                             --実績区分
+            AND TRUNC(xrart.txns_date)                                            --取引日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xrart.txns_id                                    --実績ID
+            --仕入先情報view抽出条件
+            AND xrart.vendor_id = pv.vendor_id                                   --取引先ID
+            AND xrart.txns_date                                                   --取引日
+              BETWEEN xv.start_date_active                                           --適用開始日
+              AND NVL(xv.end_date_active,xrart.txns_date)                            --適用終了日
+            AND pv.vendor_id = xv.vendor_id
+            UNION ALL
+            -----------------------
+            --受入返品実績情報(相手先在庫)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xrart.source_document_number                    slip_no             --伝票No
+              ,xrart.vendor_code                              other_code          --取引先コード(相手先)
+              ,xv.vendor_name                                 other_name          --正式名(相手先名)
+             ,gv_adji_xrart                                   adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
+             ,po_vendors                                      pv
+             ,xxcmn_vendors                                   xv
+             ,po_headers_all                                  pha                 --発注ヘッダ
+            --受入返品実績(アドオン)抽出条件
+            WHERE xrart.txns_type  = gv_txns_type_rcv                             --実績区分
+            AND TRUNC(xrart.txns_date)                                            --取引日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xrart.txns_id                                    --実績ID
+            --仕入先情報view抽出条件
+            AND xrart.vendor_id = pv.vendor_id                                   --取引先ID
+            AND xrart.txns_date                                                   --取引日
+              BETWEEN xv.start_date_active                                       --適用開始日
+              AND NVL(xv.end_date_active, xrart.txns_date)                       --適用終了日
+            --発注ヘッダ
+            AND xrart.source_document_number = pha.segment1                       --発注番号
+            AND pha.attribute11 = po_type_inv                                     --発注区分(相手先在庫)
+            AND pv.vendor_id = xv.vendor_id
+            UNION ALL
+            -----------------------
+            --生葉実績情報
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xnpt.entry_number                               slip_no             --伝票No
+             ,NULL                                            other_code          --相手先コード
+             ,NULL                                            ohter_name          --相手先名
+             ,gv_adji_xnpt                                    adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_namaha_prod_txns                           xnpt                --生葉実績アドオン
+            --生葉実績アドオン抽出条件
+            WHERE TRUNC(xnpt.creation_date)                                       --作成日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xnpt.entry_number                                --伝票No
+            UNION ALL
+            -----------------------
+            --外注出来高実績(アドオン)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+              ,''                                             slip_no             --伝票No
+              ,xvst.vendor_code                               other_code          --取引先コード(相手先)
+              ,xv.vendor_name                                 other_name          --正式名(相手先名)
+              ,gv_adji_xvst                                   adji_type           --在庫タイプ
+
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_vendor_supply_txns                         xvst                --外注出来高実績(アドオン)
+             ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+             ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+             ,po_vendors                                      pv
+             ,xxcmn_vendors                                   xv
+            --外注出来高実績アドオン抽出条件
+            WHERE ijm.attribute1 = xvst.txns_id                                   --実績ID
+            --OPM在庫調整ジャーナル抽出条件
+            AND ijm.journal_id = iaj.journal_id
+            --OPM完了在庫トランザクション抽出条件
+            AND iaj.doc_id = itc.doc_id
+            AND iaj.doc_line = itc.doc_line
+            AND itc.trans_date
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+
+            --仕入先情報view抽出条件
+            AND xvst.vendor_id = pv.vendor_id                                   --取引先ID
+            AND itc.trans_date                                                   --取引日
+              BETWEEN xv.start_date_active                                      --適用開始日
+              AND NVL(xv.end_date_active, itc.trans_date)                       --適用終了日
+            AND pv.vendor_id = xv.vendor_id
+            AND iaj.trans_type = 'ADJI'                                               --文書タイプ
+            AND itc.doc_type = 'ADJI'                                                 --文書タイプ
+            AND itc.doc_id = iaj.doc_id                                               --文書ID
+            AND itc.doc_line = iaj.doc_line                                           --取引明細番号
+            UNION ALL
+            -----------------------
+            --EBS標準の在庫調整
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,ijm.journal_no                                  slip_no             --伝票No
+             ,NULL                                            other_code          --相手先コード
+             ,NULL                                            other_name          --相手先名
+             ,gv_adji_ijm                                     adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
+             ,ic_tran_cmp                                     itc                 --OPM完了在庫トランザクション
+            --OPMジャーナルマスタ抽出条件
+            WHERE ijm.attribute1 IS NULL
+            --OPM在庫調整ジャーナル抽出条件
+            AND ijm.journal_id = iaj.journal_id
+            --OPM完了在庫トランザクション抽出条件
+            AND iaj.doc_id = itc.doc_id
+            AND iaj.doc_line = itc.doc_line
+            AND itc.trans_date
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+              AND iaj.trans_type = 'ADJI'                                               --文書タイプ
+              AND itc.doc_type = 'ADJI'                                                 --文書タイプ
+              AND itc.doc_id = iaj.doc_id                                               --文書ID
+              AND itc.doc_line = iaj.doc_line                                           --取引明細番号
+         ) ad_info
+         ,ic_adjs_jnl                                         iaj                 --OPM在庫調整ジャーナル
+         ,ic_tran_cmp                                         itc                 --OPM完了在庫トランザクション
+         ,ic_whse_mst                                         iwm
+         ,hr_all_organization_units                           haou
+         ,mtl_item_locations                                  mil
+         ,xxcmn_rcv_pay_mst                                   xrpm                --受払区分アドオンマスタ
+         ,xxcmn_lookup_values2_v                              xlvv                --クイックコード
+         ,sy_reas_cds_b                                       srcb                --事由コードマスタ
+         ,mtl_categories_b                                    mcb1
+         ,gmi_item_categories                                 gic1
+         ,mtl_categories_b                                    mcb2
+         ,gmi_item_categories                                 gic2
+        ----------------------------------------------------------------------------------------
+        --OPM在庫調整ジャーナル抽出条件
+        WHERE iaj.journal_id = ad_info.journal_id                                 --ジャーナルID
+        AND iaj.trans_type = 'ADJI'                                               --文書タイプ
+        --OPM完了在庫トランザクション抽出条件
+        AND itc.doc_type = 'ADJI'                                                 --文書タイプ
+        AND itc.doc_id = iaj.doc_id                                               --文書ID
+        AND itc.doc_line = iaj.doc_line                                           --取引明細番号
+        --保管場所情報VIEW2抽出条件
+        AND itc.location = mil.segment1                                          --保管倉庫コード
+        AND itc.trans_date
+          BETWEEN haou.date_from AND NVL(haou.date_to,itc.trans_date)             --適用開始日・終了日
+        --受払区分アドオンマスタ抽出条件
+        AND xrpm.doc_type = 'ADJI'                                                --文書タイプ
+        AND itc.reason_code = xrpm.reason_code                                    --事由コード
+        AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
+
+        AND xrpm.reason_code = srcb.reason_code                                   --事由コード
+        AND srcb.delete_mark = 0                                                  --削除マーク(未削除)
+        --クイックコード抽出条件
+        AND xlvv.lookup_type =  gv_lookup_newdiv                                  --参照タイプ(新区分)
+        AND xrpm.new_div_invent = xlvv.lookup_code                                --参照コード
+        AND itc.trans_date
+          BETWEEN xlvv.start_date_active
+          AND NVL(xlvv.end_date_active,itc.trans_date)                            --適用開始日・終了日
+        AND iwm.mtl_organization_id = haou.organization_id
+        AND haou.organization_id    = mil.organization_id
+--
+        --パラメータによる絞込み(商品区分)
+        AND mcb1.segment1 = civ_prod_div
+        --パラメータによる絞込み(品目区分)
+        AND mcb2.segment1 = civ_item_div
+        --カテゴリセットが商品区分である品目
+        AND itc.item_id = gic1.item_id
+        AND gic1.category_set_id    = cn_prod_class_id
+        --カテゴリセットが品目区分である品目
+        AND itc.item_id = gic2.item_id
+        AND gic2.category_set_id    = cn_item_class_id
+--
+        AND mcb1.category_id       = gic1.category_id
+        AND mcb2.category_id       = gic2.category_id
+        ----------------------------------------------------------------------------------------
+        GROUP BY 
+          itc.doc_id                                                              --文書ID
+         ,itc.item_id                                                             --品目ID
+         ,itc.lot_id                                                              --ロットID
+         ,TO_CHAR(itc.trans_date,gv_fmt_ymd)                                      --日付
+         ,xrpm.new_div_invent                                                     --新区分
+         ,ad_info.slip_no                                                         --伝票No
+         ,xlvv.description                                                        --相手先名称
+         ,itc.whse_code                                                           --倉庫コード
+         ,iwm.whse_name                                                          --倉庫名
+         ,itc.location                                                            --保管倉庫コード
+         ,mil.description                                                        --保管倉庫名
+         ,mil.attribute6                                                 --ブロック
+         ,xrpm.rcv_pay_div                                                        --受払区分
+         ,ad_info.adji_type                                                       --在庫タイプ
+         ,ad_info.other_name                                                      --相手先名
+         ,ad_info.other_code                                                      --相手先コード
+       ) slip
+       ,mtl_categories_b                                       mcb1
+       ,gmi_item_categories                                    gic1
+       ,mtl_categories_b                                       mcb2
+       ,gmi_item_categories                                    gic2
+       ,mtl_categories_tl                                      mct2
+       ,xxcmn_lookup_values2_v                                 xlvv                --クイックコード
+       ,ic_item_mst_b                                          iimb
+       ,xxcmn_item_mst_b                                       ximb
+       ,ic_lots_mst                                            ilm                 --OPMロットマスタ(結合用)
+      --======================================================================================================
+      --カテゴリセットが商品区分である品目
+      WHERE slip.item_id = gic1.item_id
+      AND gic1.category_set_id    = cn_prod_class_id
+      AND mcb1.category_id       = gic1.category_id
+      --カテゴリセットが品目区分である品目
+      AND slip.item_id = gic2.item_id
+      AND gic2.category_set_id    = cn_item_class_id
+      AND mcb2.category_id        = gic2.category_id
+      AND mcb2.category_id        = mct2.category_id
+      AND mct2.language           = 'JA'
+      AND mct2.source_lang        = 'JA'
+      --クイックコード抽出条件
+      AND xlvv.lookup_type =  gv_lookup_newdiv                                    --参照タイプ(新区分)
+      AND slip.reason_code = xlvv.lookup_code                                     --参照コード
+      AND TO_DATE(slip.standard_date,gv_fmt_ymd)
+        BETWEEN xlvv.start_date_active
+        AND NVL(xlvv.end_date_active,TO_DATE(slip.standard_date,gv_fmt_ymd))      --適用開始日・終了日
+      AND slip.item_id = iimb.item_id                                             --品目ID
+      AND TO_DATE(slip.standard_date,gv_fmt_ymd)
+        BETWEEN ximb.start_date_active
+        AND NVL(ximb.end_date_active,TO_DATE(slip.standard_date,gv_fmt_ymd))--適用開始日・終了日
+      AND slip.item_id = ilm.item_id
+      AND slip.lot_id = ilm.lot_id
+      AND iimb.item_id = ximb.item_id
+      --パラメータによる絞込み(商品区分)
+      AND mcb1.segment1 = civ_prod_div
+      --パラメータによる絞込み(品目区分)
+      AND mcb2.segment1 = civ_item_div
+      --パラメータによる絞込み(ロットNo)
+      AND ( civ_lot_no_01 IS NULL
+        AND civ_lot_no_02 IS NULL
+        AND civ_lot_no_03 IS NULL
+      OR civ_lot_no_01 = ilm.lot_no
+      OR civ_lot_no_02 = ilm.lot_no
+      OR civ_lot_no_03 = ilm.lot_no
+      )
+      --パラメータによる絞込み(製造年月日)
+      AND ( civ_mnfctr_date_01 IS NULL
+        AND civ_mnfctr_date_02 IS NULL
+        AND civ_mnfctr_date_03 IS NULL
+      OR civ_mnfctr_date_01 = ilm.attribute1
+      OR civ_mnfctr_date_02 = ilm.attribute1
+      OR civ_mnfctr_date_03 = ilm.attribute1
+      )
+      --パラメータによる絞込み(固有記号)
+      AND  ( civ_symbol IS NULL
+      OR  civ_symbol = ilm.attribute2
+      )
+      AND
+      (
+           NVL(civ_block_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_block_02,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_block_03,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+        --パラメータによる絞込み(物流ブロック)
+        OR  slip.distribution_block IN (civ_block_01,civ_block_02,civ_block_03)
+        --パラメータによる絞込み(保管倉庫)
+        OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_loc
+          AND slip.location IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
+        --パラメータによる絞込み(倉庫)
+        OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_wh
+          AND  slip.whse_code IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
+      )
+      --パラメータによる絞込み(品目)
+      AND ( NVL(civ_item_code_01,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_item_code_02,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_item_code_03,gv_nullvalue) = gv_nullvalue
+      OR  iimb.item_no IN (civ_item_code_01, civ_item_code_02, civ_item_code_03)
+      )
+      AND ( NVL(civ_reason_code_01,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_reason_code_02,gv_nullvalue) = gv_nullvalue
+        AND NVL(civ_reason_code_03,gv_nullvalue) = gv_nullvalue
+      OR slip.reason_code IN (civ_reason_code_01, civ_reason_code_02, civ_reason_code_03)
+      )
+      --パラメータによる絞込み(入出庫区分)
+      AND ( civ_inout_ctl = gv_inout_ctl_all --入出庫両方を指定した場合
+      OR    civ_inout_ctl = gv_inout_ctl_in  --入庫を指定した場合
+        AND slip.rcv_pay_div = gv_rcvdiv_rcv   --受払区分は受入のみ対象
+      OR    civ_inout_ctl = gv_inout_ctl_out --出庫を指定した場合
+        AND slip.rcv_pay_div = gv_rcvdiv_pay   --受払区分は払出のみ対象
+      )
+      ORDER BY slip.location
+              ,TO_NUMBER(iimb.item_no)
+              ,slip.standard_date
+              ,slip.reason_code
+              ,slip.slip_no
       ;
 --
   BEGIN
     -- ====================================================
     -- データ抽出
     -- ====================================================
-    -- カーソルオープン
-    OPEN cur_main_data(
-      ir_prm.ymd_from
-     ,ir_prm.ymd_to
-     ,ir_prm.base_date
-     ,ir_prm.inout_ctl
-     ,ir_prm.prod_div
-     ,ir_prm.unit_ctl
-     ,ir_prm.wh_loc_ctl
-     ,ir_prm.wh_code_01
-     ,ir_prm.wh_code_02
-     ,ir_prm.wh_code_03
-     ,ir_prm.block_01
-     ,ir_prm.block_02
-     ,ir_prm.block_03
-     ,ir_prm.item_div
-     ,ir_prm.item_code_01
-     ,ir_prm.item_code_02
-     ,ir_prm.item_code_03
-     ,ir_prm.lot_no_01
-     ,ir_prm.lot_no_02
-     ,ir_prm.lot_no_03
-     ,ir_prm.mnfctr_date_01
-     ,ir_prm.mnfctr_date_02
-     ,ir_prm.mnfctr_date_03
-     ,ir_prm.reason_code_01
-     ,ir_prm.reason_code_02
-     ,ir_prm.reason_code_03
-     ,ir_prm.symbol
-    );
+    IF (ir_prm.base_date = gv_base_date_arrival) THEN
+      -- カーソルオープン
+      OPEN cur_main_data1(
+        ir_prm.ymd_from
+       ,ir_prm.ymd_to
+       ,ir_prm.base_date
+       ,ir_prm.inout_ctl
+       ,ir_prm.prod_div
+       ,ir_prm.unit_ctl
+       ,ir_prm.wh_loc_ctl
+       ,ir_prm.wh_code_01
+       ,ir_prm.wh_code_02
+       ,ir_prm.wh_code_03
+       ,ir_prm.block_01
+       ,ir_prm.block_02
+       ,ir_prm.block_03
+       ,ir_prm.item_div
+       ,ir_prm.item_code_01
+       ,ir_prm.item_code_02
+       ,ir_prm.item_code_03
+       ,ir_prm.lot_no_01
+       ,ir_prm.lot_no_02
+       ,ir_prm.lot_no_03
+       ,ir_prm.mnfctr_date_01
+       ,ir_prm.mnfctr_date_02
+       ,ir_prm.mnfctr_date_03
+       ,ir_prm.reason_code_01
+       ,ir_prm.reason_code_02
+       ,ir_prm.reason_code_03
+       ,ir_prm.symbol
+      );
 --
-    --バルクフェッチ
-    FETCH cur_main_data BULK COLLECT INTO ot_main_data;
-    ln_main_data_cnt := ot_main_data.count;
-    --クローズ
-    CLOSE cur_main_data;
+      --バルクフェッチ
+      FETCH cur_main_data1 BULK COLLECT INTO ot_main_data;
+--
+      ln_main_data_cnt := ot_main_data.count;
+      --クローズ
+      CLOSE cur_main_data1;
+--
+    ELSIF (ir_prm.base_date = gv_base_date_ship) THEN
+      -- カーソルオープン
+      OPEN cur_main_data2(
+        ir_prm.ymd_from
+       ,ir_prm.ymd_to
+       ,ir_prm.base_date
+       ,ir_prm.inout_ctl
+       ,ir_prm.prod_div
+       ,ir_prm.unit_ctl
+       ,ir_prm.wh_loc_ctl
+       ,ir_prm.wh_code_01
+       ,ir_prm.wh_code_02
+       ,ir_prm.wh_code_03
+       ,ir_prm.block_01
+       ,ir_prm.block_02
+       ,ir_prm.block_03
+       ,ir_prm.item_div
+       ,ir_prm.item_code_01
+       ,ir_prm.item_code_02
+       ,ir_prm.item_code_03
+       ,ir_prm.lot_no_01
+       ,ir_prm.lot_no_02
+       ,ir_prm.lot_no_03
+       ,ir_prm.mnfctr_date_01
+       ,ir_prm.mnfctr_date_02
+       ,ir_prm.mnfctr_date_03
+       ,ir_prm.reason_code_01
+       ,ir_prm.reason_code_02
+       ,ir_prm.reason_code_03
+       ,ir_prm.symbol
+      );
+--
+      --バルクフェッチ
+      FETCH cur_main_data2 BULK COLLECT INTO ot_main_data;
+--
+      ln_main_data_cnt := ot_main_data.count;
+      --クローズ
+      CLOSE cur_main_data2;
+--
+    END IF;
 --
     IF (ln_main_data_cnt > 0) THEN
       ov_retcode := gv_status_normal;
@@ -3329,8 +7443,14 @@ AS
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      IF cur_main_data%ISOPEN THEN
-        CLOSE cur_main_data;
+      IF (ir_prm.base_date = gv_base_date_arrival) THEN
+        IF cur_main_data1%ISOPEN THEN
+          CLOSE cur_main_data1;
+        END IF;
+      ELSIF (ir_prm.base_date = gv_base_date_ship) THEN
+        IF cur_main_data2%ISOPEN THEN
+          CLOSE cur_main_data2;
+        END IF;
       END IF;
 --
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
@@ -4065,4 +8185,3 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXINV550002C;
-/
