@@ -1,11 +1,8 @@
 ALTER TABLE xxcok.xxcok_rep_bm_pg_detail
 MODIFY (
-  START_TRAN_DATE         DATE,
   CONTACT_BASE            VARCHAR2(6),
   SELLING_BASE            VARCHAR2(6)
 )
-/
-COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.START_TRAN_DATE        IS '初回取引日'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.CONTACT_BASE           IS '本部コード(連絡先拠点)'
 /
