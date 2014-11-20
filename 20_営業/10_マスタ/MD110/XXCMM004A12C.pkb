@@ -43,6 +43,7 @@ AS
  *  2009/04/02    1.7   Y.Kuboshima      障害T1_0153,T1_0154の対応
  *  2009/05/22    1.8   H.Yoshikawa      障害T1_0317の対応 製品商品区分の条件削除し
  *                                                         品目コードの先導２桁が「00」に変更
+ *  2009/09/03    1.9   Y.Kuboshima      障害0001255の対応 メインカーソルにヒント句を追加
  *
  *****************************************************************************************/
 --
@@ -556,7 +557,11 @@ AS
     --lv_step := 'A-2.1a';
     CURSOR csv_item_cur
     IS
-      SELECT      xoiv.item_id                                               -- 品目ID
+-- 2009/09/03 Ver1.9 modify start by Yutaka.Kuboshima
+--      SELECT      xoiv.item_id                                               -- 品目ID
+      SELECT      /*+ FIRST_ROWS USE_NL(xoiv.xsib)*/
+                  xoiv.item_id                                               -- 品目ID
+-- 2009/09/03 Ver1.9 modify end by Yutaka.Kuboshima
                  ,xoiv.item_no                                               -- 品目コード
 --Ver1.3 Mod
 --                 ,TO_CHAR( FND_DATE.CANONICAL_TO_DATE( xoiv.sell_start_date ), cv_date_fmt_ymd )
