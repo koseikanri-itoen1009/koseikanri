@@ -38,6 +38,7 @@ AS
  *  2009/09/29    1.50 SCS 廣瀬 真佐人  [共通課題IE535] 請求書問題
  *  2009/11/02    1.60 SCS 廣瀬 真佐人  [共通課題IE603] EDI用に出力項目を追加(納品先チェーンコード)
  *  2009/11/16    1.70 SCS 廣瀬 真佐人  [共通課題IE678] パフォーマンス対応
+ *  2009/12/02    1.80 SCS 松尾 泰生    [障害本稼動00404] 本振顧客でのデータ取得エラー対応
  *
  *****************************************************************************************/
 --
@@ -1260,14 +1261,21 @@ AS
               UNION ALL
             --請求明細データ(販売実績) 
             SELECT /*+ FIRST_ROWS
+-- Modify 2009.12.02 Ver1.8 Start
 -- Modify 2009.09.29 Ver1.5 Start
 --                       LEADING(xih)
-                       LEADING(xih rcta hzca hp_ship xxca hc_sold hp_sold hzsa rlli xxeh xedh fdsc)
+--                       LEADING(xih rcta hzca hp_ship xxca hc_sold hp_sold hzsa rlli xxeh xedh fdsc)
+                       LEADING(xih rcta rlli xxeh hzca xxca hzsa xedh fdsc hp_ship hc_sold hp_sold)
 -- Modify 2009.09.29 Ver1.5 End
+-- Modify 2009.12.02 Ver1.8 End
                        INDEX(xih  XXCFR_INVOICE_HEADERS_N02)
                        INDEX(rcta XXCFR_RA_CUSTOMER_TRX_N02)
-                       INDEX(hzca HZ_CUST_ACCOUNTS_U1)
-                       INDEX(xxca XXCMM_CUST_ACCOUNTS_PK)
+-- Modify 2009.12.02 Ver1.8 Start
+--                       INDEX(hzca HZ_CUST_ACCOUNTS_U1)
+--                       INDEX(xxca XXCMM_CUST_ACCOUNTS_PK)
+                       INDEX(hzca HZ_CUST_ACCOUNTS_U2)
+                       INDEX(xxca XXCMM_CUST_ACCOUNTS_N06)
+-- Modify 2009.12.02 Ver1.8 End
 -- Modify 2009.09.29 Ver1.5 Start
                        INDEX(hp_ship HZ_PARTIES_U1)
                        INDEX(hc_sold HZ_CUST_ACCOUNTS_U2)
@@ -1281,10 +1289,16 @@ AS
                        INDEX(xedh XXCOS_EDI_HEADERS_N03)
                        INDEX(mtib MTL_SYSTEM_ITEMS_B_N1)
                        INDEX(xxib XXCMN_IMB_N02)
+-- Modify 2009.12.02 Ver1.8 Start
+                       USE_NL(hzca xxca)
+-- Modify 2009.12.02 Ver1.8 End
                    */
                    xih.invoice_id                                  invoice_id,             -- 一括請求書ID
                    xxel.dlv_invoice_line_number                    note_line_id,            -- 伝票明細No
-                   hzca.account_number                             ship_cust_code,          -- 納品先顧客コード
+-- Modify 2009.12.02 Ver1.8 Start
+--                   hzca.account_number                             ship_cust_code,          -- 納品先顧客コード
+                   xxeh.ship_to_customer_code                     ship_cust_code,         -- 納品先顧客コード
+-- Modify 2009.12.02 Ver1.8 End
 -- Modify 2009.09.29 Ver1.5 Start
 --                   hzca.party_id                                   ship_party_id,
                    hp_ship.party_name                              ship_cust_name,          -- 納品先顧客名
@@ -1394,14 +1408,21 @@ AS
                                        cv_inv_hold_status_r)         -- 請求書保留ステータス
             AND    rcta.set_of_books_id = gn_set_book_id             -- 会計帳簿ID
             AND    rcta.batch_source_id != gt_arinput_trx_source_id  -- 取引ソース(AR部門入力以外)
-            AND    rcta.ship_to_customer_id = hzca.cust_account_id(+)
+-- Modify 2009.12.02 Ver1.8 Start
+--            AND    rcta.ship_to_customer_id = hzca.cust_account_id(+)
+            AND    xxeh.ship_to_customer_code = hzca.account_number
+-- Modify 2009.12.02 Ver1.8 End
 -- Modify 2009.09.29 Ver1.5 Start
             AND    xxca.sale_base_code  = hc_sold.account_number(+)  -- 売上拠点コード
             AND    hc_sold.party_id     = hp_sold.party_id(+)        -- パーティーID
             AND    hzca.party_id        = hp_ship.party_id           -- パーティーID
 -- Modify 2009.09.29 Ver1.5 End
-            AND    rcta.ship_to_customer_id = xxca.customer_id(+)
-            AND    hzca.cust_account_id = hzsa.cust_account_id(+)
+-- Modify 2009.12.02 Ver1.8 Start
+--            AND    rcta.ship_to_customer_id = xxca.customer_id(+)
+--            AND    hzca.cust_account_id = hzsa.cust_account_id(+)
+            AND    xxeh.ship_to_customer_code = xxca.customer_code
+            AND    hzca.cust_account_id = hzsa.cust_account_id
+-- Modify 2009.12.02 Ver1.8 End
             AND    rcta.customer_trx_id = rlli.customer_trx_id
             AND    rlli.line_type = cv_line_type_line
             AND    rlli.interface_line_attribute7 = xxeh.sales_exp_header_id  -- 販売実績ヘッダ内部ID
