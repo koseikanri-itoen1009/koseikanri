@@ -1114,7 +1114,7 @@ AS
                   ,iv_year_month
                   ,in_day_index
                  )
-               WHEN (xsvsr.vis_num > 0)
+               WHEN (xsvsr.tgt_amt > 0)
                 AND (xcav.vist_target_div = '1')
                 AND (xcav.cnvs_date IS NULL)
                 AND (xcav.customer_status IN (
@@ -1195,7 +1195,7 @@ AS
                   ,iv_year_month
                   ,in_day_index
                  )
-               WHEN (xsvsr.vis_num > 0)
+               WHEN (xsvsr.tgt_amt > 0)
                 AND (xcav.vist_target_div = '1')
                 AND (xcav.cnvs_date IS NULL)
                 AND (xcav.customer_status IN (
