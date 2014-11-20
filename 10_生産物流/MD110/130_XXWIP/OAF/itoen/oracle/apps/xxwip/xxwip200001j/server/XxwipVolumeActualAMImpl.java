@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-07-29 1.3  二瓶大輔     ST不具合対応(#498)
 * 2008-09-10 1.4  二瓶大輔     結合テスト指摘対応No30
 * 2008-10-31 1.5  二瓶大輔     統合障害#405
+* 2008-12-24 1.6  二瓶大輔     本番障害#836
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -47,7 +48,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -193,13 +194,25 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       SlitVOImpl svo = getSlitVO1();
       svo.initQuery(row.getAttribute("RoutingId").toString());
 
+      // 業務ステータス
+      String dutyStatusCode = (String)row.getAttribute("DutyStatusCode");
+
       // 出来高実績数が未入力の場合、指図総数をコピーします。
       String actualQty    = (String)row.getAttribute("ActualQty");
       String directionQty = (String)row.getAttribute("DirectionQty");
       if (XxcmnUtility.isBlankOrNull(actualQty) 
        || XxcmnUtility.chkCompareNumeric(3, actualQty, XxcmnConstants.STRING_ZERO))
       {
-        row.setAttribute("ActualQty", directionQty);        
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+        // ステータスが「受付済」、「確認済」の場合
+        if (XxwipConstants.DUTY_STATUS_KNZ.equals(dutyStatusCode)
+         || XxwipConstants.DUTY_STATUS_UTZ.equals(dutyStatusCode)) 
+        {
+// 2008-12-24 v.1.6 D.Nihei Add End
+          row.setAttribute("ActualQty", directionQty);        
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+        }
+// 2008-12-24 v.1.6 D.Nihei Add End
       }
       // 内外区分を取得し、自社の場合、委託加工単価、その他金額を無効にします。
       String inOutType = (String)row.getAttribute("InOutType");
@@ -540,7 +553,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-09-10 v.1.4 D.Nihei Add Start
     // 出来高総数が0の場合
     if ( XxcmnUtility.chkCompareNumeric(3, actualQty, XxcmnConstants.STRING_ZERO)
-     && !XxcmnUtility.isEquals(actualQty, baseActualQty))
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+//     && !XxcmnUtility.isEquals(actualQty, baseActualQty))
+     && !XxcmnUtility.chkCompareNumeric(3, actualQty, baseActualQty))
+// 2008-12-24 v.1.6 D.Nihei Add End
     {
       // 副産物情報VO取得
       XxwipBatchCoProdVOImpl cpVo  = getXxwipBatchCoProdVO1();
@@ -1738,7 +1754,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         // ロットID、生産日、実績数量が変更された場合
         if (!XxcmnUtility.isEquals(baseLotId,     lotId)
          || !XxcmnUtility.isEquals(productDate,   baseProductDate)
-         || !XxcmnUtility.isEquals(baseActualQty, actualQty)) 
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+//         || !XxcmnUtility.isEquals(baseActualQty, actualQty)) 
+         || !XxcmnUtility.chkCompareNumeric(3, baseActualQty, actualQty)) 
+// 2008-12-24 v.1.6 D.Nihei Add End
         {
           // 引数を設定します。
           params.put("transId",   transId);
@@ -1790,7 +1809,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           } else 
           {
             if (!XxcmnUtility.isEquals(baseLotId, lotId) 
-             || !XxcmnUtility.isEquals(baseActualQty, actualQty)) 
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+//             || !XxcmnUtility.isEquals(baseActualQty, actualQty)) 
+             || !XxcmnUtility.chkCompareNumeric(3, baseActualQty, actualQty))
+// 2008-12-24 v.1.6 D.Nihei Add End
             {
               // 引数を設定します。
               params.put("transId",   transId);
@@ -1933,8 +1955,12 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       // 製造日、出来高数が変更された場合
       } else if (!XxcmnUtility.isEquals(row.getAttribute("MakerDate"), 
                                         row.getAttribute("BaseMakerDate"))
-              || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"),   
-                                        row.getAttribute("BaseActualQty"))) 
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+//              || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"),   
+//                                        row.getAttribute("BaseActualQty"))) 
+             || !XxcmnUtility.chkCompareNumeric(3, row.getAttribute("ActualQty")
+                                                 , row.getAttribute("BaseActualQty")))
+// 2008-12-24 v.1.6 D.Nihei Add End
       {
         // 更新
         retCode = XxwipUtility.doQtInspection(
@@ -1997,8 +2023,12 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
             }
           // 製造日、出来高数が変更された場合
           } else if (!XxcmnUtility.isEquals(bhMakerDate, bhBaseMakerDate)
-                  || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"), 
-                                            row.getAttribute("BaseActualQty"))) 
+// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#836
+//                  || !XxcmnUtility.isEquals(row.getAttribute("ActualQty"), 
+//                                            row.getAttribute("BaseActualQty"))) 
+             || !XxcmnUtility.chkCompareNumeric(3, row.getAttribute("ActualQty")
+                                                 , row.getAttribute("BaseActualQty")))
+// 2008-12-24 v.1.6 D.Nihei Add End
           {
             // 更新
             exeType = XxwipUtility.doQtInspection(
