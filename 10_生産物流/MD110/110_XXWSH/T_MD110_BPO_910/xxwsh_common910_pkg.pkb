@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.30
+ * Version                : 1.31
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009/01/22   1.28  SCS   伊藤ひとみ [ロット逆転防止チェック(依頼No指定あり)] 本番障害#1000対応
  *  2009/01/23   1.29  SCS   伊藤ひとみ [鮮度条件合格製造日取得] 本番障害#936対応
  *  2009/01/26   1.30  SCS   二瓶大輔   [ロット逆転防止チェック] 本番障害#936対応
+ *  2009/03/03   1.31  SCS   風間由紀   [出荷可否チェック] 本番障害#1243対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5526,14 +5527,20 @@ AS
         END;
         --
         IF ( ln_forecast_cnt = 0 ) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                                cv_xxwsh_no_data_found_err,
-                                                cv_tkn_item_id,
-                                                in_item_id,
-                                                cv_tkn_sc_ship_date,
-                                                TO_CHAR(id_date,'YYYY/MM/DD'));
-          lv_err_cd := cv_xxwsh_no_data_found_err;
-          RAISE global_api_expt;
+-- Ver1.31 Y.Kazama Start Mod 本番障害#1243
+          -- 取得件数が0件の場合はチェック対象外とする
+         -- 正常
+         on_result := cn_status_success;
+         RETURN;
+--          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+--                                                cv_xxwsh_no_data_found_err,
+--                                                cv_tkn_item_id,
+--                                                in_item_id,
+--                                                cv_tkn_sc_ship_date,
+--                                                TO_CHAR(id_date,'YYYY/MM/DD'));
+--          lv_err_cd := cv_xxwsh_no_data_found_err;
+--          RAISE global_api_expt;
+-- Ver1.31 Y.Kazama End   Mod 本番障害#1243
         END IF;
         --
 -- Ver1.26 M.Hokkanji Start

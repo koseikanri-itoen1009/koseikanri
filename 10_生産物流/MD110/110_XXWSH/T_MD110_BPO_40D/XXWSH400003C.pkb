@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.25
+ * Version                : 1.26
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/12/13    1.23  M.Hokkanji       本番障害554対応
  *  2008/12/24    1.24  M.Hokkanji       本番障害839対応
  *  2009/01/09    1.25  H.Itou           本番障害894対応
+ *  2009/03/03    1.26  Y.Kazama         本番障害#1243対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -922,27 +923,27 @@ AS
        ,request_item_id             xxwsh_order_lines_all.request_item_id%TYPE
        ,small_amount_class          xxwsh_ship_method2_v.small_amount_class %TYPE
        ,item_id                     xxcmn_item_mst2_v.item_id%TYPE
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
 --       ,parent_item_id              xxcmn_item_mst2_v.parent_item_id %TYPE
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
        ,num_of_deliver              xxcmn_item_mst2_v.num_of_deliver%TYPE
        ,num_of_cases                xxcmn_item_mst2_v.num_of_cases%TYPE
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
 --       ,ship_class                  xxcmn_item_mst2_v.ship_class%TYPE
 --       ,sales_div                   xxcmn_item_mst2_v.sales_div%TYPE
 --       ,obsolete_class              xxcmn_item_mst2_v.obsolete_class%TYPE
 --       ,rate_class                  xxcmn_item_mst2_v.rate_class%TYPE
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
        ,delivery_qty                xxcmn_item_mst2_v.delivery_qty%TYPE
        ,item_class_code             xxcmn_item_categories5_v.item_class_code%TYPE
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
        ,opm_request_item_id         xxcmn_item_mst2_v.item_id%TYPE
        ,parent_item_id              xxcmn_item_mst2_v.parent_item_id %TYPE
        ,ship_class                  xxcmn_item_mst2_v.ship_class%TYPE
        ,sales_div                   xxcmn_item_mst2_v.sales_div%TYPE
        ,obsolete_class              xxcmn_item_mst2_v.obsolete_class%TYPE
        ,rate_class                  xxcmn_item_mst2_v.rate_class%TYPE
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
        ,account_number              xxcmn_cust_accounts2_v.account_number%TYPE
        ,cust_enable_flag            xxcmn_cust_accounts2_v.cust_enable_flag%TYPE
        ,location_rel_code           xxcmn_cust_accounts2_v.location_rel_code %TYPE
@@ -1127,27 +1128,27 @@ AS
     ||      ', xola.request_item_id request_item_id      ' -- 依頼品目ID
     ||      ', xsmv.small_amount_class small_amount_class ' -- 小口区分
     ||      ', ximv.item_id item_id                      ' -- 品目ID(OPMの品目ID)
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
 --    ||      ', ximv.parent_item_id parent_item_id        ' -- 親品目ID
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
     ||      ', ximv.num_of_deliver     num_of_deliver    ' -- 出荷入数 - OPM品目マスタ.出荷入数
     ||      ', ximv.num_of_cases       num_of_cases      ' -- 入数 OPM品目マスタ.入数
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
 --    ||      ', ximv.ship_class         ship_class        ' -- 出荷区分 - OPM品目マスタ.出荷区分
 --    ||      ', ximv.sales_div          sales_div         ' -- 売上対象区分 - OPM品目マスタ. 売上対象区分
 --    ||      ', ximv.obsolete_class     obsolete_class    ' -- 廃止区分 - OPM品目マスタ. 廃止区分
 --    ||      ', ximv.rate_class         rate_class        ' -- 率区分 - OPM品目マスタ. 率区分
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
     ||      ', ximv.delivery_qty       delivery_qty      ' -- 配数 - OPM品目マスタ.配数
     ||      ', xicv.item_class_code    item_class_code   ' -- 品目区分 - 品目カテゴリ.セグメント1
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
     ||      ', ximv2.item_id opm_request_item_id         ' -- 品目ID(OPMの品目ID)
     ||      ', ximv2.parent_item_id parent_item_id        ' -- 親品目ID
     ||      ', ximv2.ship_class         ship_class        ' -- 出荷区分 - OPM品目マスタ.出荷区分
     ||      ', ximv2.sales_div          sales_div         ' -- 売上対象区分 - OPM品目マスタ. 売上対象区分
     ||      ', ximv2.obsolete_class     obsolete_class    ' -- 廃止区分 - OPM品目マスタ. 廃止区分
     ||      ', ximv2.rate_class         rate_class        ' -- 率区分 - OPM品目マスタ. 率区分
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
     ||      ', xcav.account_number     account_number    ' -- 顧客コード - 顧客マスタ. 顧客コード
     ||      ', xcav.cust_enable_flag   cust_enable_flag  ' -- 中止客申請フラグ - 顧客マスタ. 中止客申請フラグ
     ||      ', xcav.location_rel_code  location_rel_code ' -- 拠点実績有無区分 - 顧客マスタ.拠点実績有無区分
@@ -1163,9 +1164,9 @@ AS
     ||  '  ,xxcmn_cust_accounts2_v        xcav  ' --④顧客情報VIEW2
     ||  '  ,xxcmn_cust_acct_sites2_v      xcasv ' --⑤顧客サイト情報VIEW2
     ||  '  ,xxcmn_item_mst2_v             ximv  ' --⑥OPM品目情報VIEW2
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
     ||  '  ,xxcmn_item_mst2_v             ximv2 ' --OPM品目情報VIEW2(依頼品目用)
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
     ||  '  ,xxcmn_item_categories5_v      xicv  ' --OPM品目カテゴリ割当情報VIEW5
     ||  '  ,xxwsh_ship_method2_v          xsmv  ' --配送区分情報VIEW2
     ||  ' WHERE xottv.order_category_code   =  ''' || cv_order_category_code || ''''
@@ -1206,14 +1207,14 @@ AS
                                 -- OPM品目カテゴリ割当(品目区分).品目ID＝OPM品目アドオンマスタ.品目ID
     ||  ' AND   xola.delete_flag         <> ''' || cv_delete_flag || ''''
                                 -- 受注明細アドオン.削除フラグ ≠ ’Y’
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
     ||  ' AND   ximv2.item_no            =  xola.request_item_code '
                                 -- OPM品目アドオンマスタ.品目＝受注明細アドオン.依頼品目かつ
     ||  ' AND   ximv2.start_date_active   <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
                                 -- OPM品目アドオンマスタ.適用開始日≦パラメータ. 出庫日かつ
     ||  ' AND   ximv2.end_date_active     >= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
                                 -- OPM品目アドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
     ||  ' AND   xcav.account_status      =  ''' || gv_status_A || '''' --（有効）
     ||  ' AND   xottv.start_date_active  <= NVL(''' || id_schedule_ship_date || ''',NVL(xoha.shipped_date,xoha.schedule_ship_date)) '
     ||  ' AND  (xottv.end_date_active    IS NULL '
@@ -1869,10 +1870,10 @@ AS
                                                 'REQUEST_NO',
                                                 loop_cnt.request_no,
                                                 'ITEM_CODE',
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
                                                 loop_cnt.request_item_code);
 --                                                loop_cnt.shipping_item_code);
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
           RAISE global_api_expt;
 --
         -- D-2売上対象区分が「1」以外の場合
@@ -1888,10 +1889,10 @@ AS
 -- 資材出荷は売上対象区分のチェックを行わないように修正
         ELSIF (loop_cnt.order_type_id <> lt_transaction_type_id_mat) AND
               ((loop_cnt.sales_div <> cv_sales_div) AND
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
                (loop_cnt.opm_request_item_id = loop_cnt.parent_item_id)) THEN
 --               (loop_cnt.item_id = loop_cnt.parent_item_id)) THEN
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
 -- Ver1.19 M.Hokkanji End
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                 gv_cnst_msg_166,
@@ -1900,10 +1901,10 @@ AS
                                                 'REQUEST_NO',
                                                 loop_cnt.request_no,
                                                 'ITEM_CODE',
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
                                                 loop_cnt.request_item_code);
 --                                                loop_cnt.shipping_item_code);
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
           RAISE global_api_expt;
 --
         -- D-2廃止区分が「1」の場合
@@ -1915,10 +1916,10 @@ AS
                                                 'REQUEST_NO',
                                                 loop_cnt.request_no,
                                                 'ITEM_CODE',
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
                                                 loop_cnt.request_item_code);
 --                                                loop_cnt.shipping_item_code);
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
           RAISE global_api_expt;
 --
         -- D-2率区分が「0」の場合
@@ -1930,10 +1931,10 @@ AS
                                                 'REQUEST_NO',
                                                 loop_cnt.request_no,
                                                 'ITEM_CODE',
--- Ver1.26 M.Hokkanji Start
+-- Ver1.24 M.Hokkanji Start
                                                 loop_cnt.request_item_code);
 --                                                loop_cnt.shipping_item_code);
--- Ver1.26 M.Hokkanji End
+-- Ver1.24 M.Hokkanji End
           RAISE global_api_expt;
 --
 -- 2008/08/06 D.Nihei DEL START
@@ -2412,7 +2413,7 @@ AS
 --
           END IF;
 -- Ver1.20 本番指摘133暫定対応
-/*
+-- Ver1.26 Y.Kazama 本番障害#1243 本番指摘133のコメント化解除
 --
           IF ( ln_d8retcode = 0 ) THEN
             -- D-8で計画商品フラグが取得できなかった場合は、本チェックは行いません。
@@ -2505,7 +2506,6 @@ AS
             END IF;
 --
           END IF;
-*/
 --Ver1.30 M.Hokkanji End 本番障害133暫定対応
 -- Ver1.15 M.Hokkanji START
         END IF;
