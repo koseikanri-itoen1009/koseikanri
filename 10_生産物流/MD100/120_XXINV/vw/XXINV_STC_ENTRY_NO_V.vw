@@ -1,9 +1,25 @@
 CREATE OR REPLACE VIEW xxinv_stc_entry_no_v
 (
   ENTRY_NO
+--2009/01/15 Add Start #3
+ ,CLASS
+--2009/01/15 Add End   #3
 )
 AS 
+--2009/01/15 Add Start #3
+SELECT TO_CHAR(gbh.batch_no) AS ENTRY_NO
+      ,'10'                  AS CLASS
+FROM   gme_batch_header             gbh                  -- 生産バッチ
+      ,gmd_routings_b               grb                  -- 工順マスタ
+WHERE  gbh.routing_id               = grb.routing_id
+AND    gbh.batch_status        NOT IN (-1,4)
+AND    grb.routing_class            = '70'
+UNION
+--2009/01/15 Add End   #3
 SELECT DISTINCT TO_CHAR(gbh1.batch_no) AS ENTRY_NO
+--2009/01/15 Add Start #3
+      ,'20'                            AS CLASS
+--2009/01/15 Add End   #3
 FROM   xxcmn_rcv_pay_mst            xrpm1                 -- 受払区分アドオンマスタ
       ,gme_batch_header             gbh1                  -- 生産バッチ
       ,gme_material_details         gmd1                  -- 生産原料詳細
@@ -27,7 +43,10 @@ AND    xrpm1.line_type              = gmd1.line_type
 AND (( gmd1.attribute5             IS NULL )
   OR ( xrpm1.hit_in_div             = gmd1.attribute5 ))
 UNION
-SELECT DISTINCT ijm2.journal_no AS ENTRY_NO
+SELECT DISTINCT ijm2.journal_no   AS ENTRY_NO
+--2009/01/15 Add Start #3
+      ,'20'                       AS CLASS
+--2009/01/15 Add End   #3
 FROM   xxcmn_rcv_pay_mst            xrpm2                       -- 受払区分アドオンマスタ
       ,ic_adjs_jnl                  iaj2                        -- OPM在庫調整ジャーナル
       ,ic_jrnl_mst                  ijm2                        -- OPMジャーナルマスタ
@@ -43,6 +62,9 @@ AND    itc2.doc_id                  = iaj2.doc_id
 AND    itc2.doc_line                = iaj2.doc_line
 UNION
 SELECT DISTINCT xoha3.request_no AS ENTRY_NO
+--2009/01/15 Add Start #3
+      ,'20'                      AS CLASS
+--2009/01/15 Add End   #3
 FROM   xxcmn_rcv_pay_mst            xrpm3                 -- 受払区分アドオンマスタ
       ,xxwsh_order_lines_all        xola3                 -- 受注明細(アドオン)
       ,oe_transaction_types_all     otta3                 -- 受注タイプ
@@ -56,7 +78,8 @@ AND    xrpm3.STOCK_ADJUSTMENT_DIV = '2'
 AND    xrpm3.ship_prov_rcv_pay_category =  otta3.attribute11
 ;
 --
-COMMENT ON COLUMN xxinv_stc_entry_no_v.ENTRY_NO  IS '伝票No';
+COMMENT ON COLUMN xxinv_stc_entry_no_v.ENTRY_NO     IS '伝票No';
+COMMENT ON COLUMN xxinv_stc_entry_no_v.CLASS        IS '分類';
 --
 COMMENT ON TABLE  xxinv_stc_entry_no_v IS '在庫_値セット用VIEW_伝票No' ;
 /
