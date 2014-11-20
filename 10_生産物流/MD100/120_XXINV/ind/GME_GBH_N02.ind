@@ -1,0 +1,1 @@
+CREATE INDEX gme.gme_gbh_n02 ON gme.gme_batch_header(actual_cmplt_date) TABLESPACE apps_ts_tx_data;
