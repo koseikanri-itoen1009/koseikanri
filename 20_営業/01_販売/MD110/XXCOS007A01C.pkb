@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  make_sales_exp_lines   (A-7)販売実績明細作成
  *  make_sales_exp_headers (A-8)販売実績ヘッダ作成
  *  set_order_line_close_status (A-9)受注明細クローズ設定
+ *  proc_order_line_update (A-10) 受注明細更新処理
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -56,6 +57,8 @@ AS
  *                                       [0001337] PT対応(ヒント句追加)
  *  2009/09/24    1.11  M.Sano           [0001275] 売上拠点コードと成績者の所属拠点コードのチェック処理の追加
  *  2009/10/15          K.Oomata         [E_T4_00015] PT対応-メインSQLのロック削除
+ *  2009/10/16    1.12  N.Maeda          [0001381] 受注明細取得条件追加(販売実績連携フラグ)
+ *                                                 (A-10) 受注明細更新処理の追加
  *
  *****************************************************************************************/
 --
@@ -195,6 +198,10 @@ AS
   cv_msg_err_param2_note    CONSTANT fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00195';   -- 成績計上者所属拠点不整合エラー用パラメータ(対象データ)
 -- 2009/09/24 Ver.1.11 M.Sano Add End
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+  cv_update_err_msg         CONSTANT fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-00011';
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -282,7 +289,7 @@ AS
   ct_qct_edi_item_err_type      CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_EDI_ITEM_ERR_TYPE';
   -- 非在庫品目
   ct_qct_no_inv_item_code_type  CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_NO_INV_ITEM_CODE';
-  -- 消費税区分特定情報       
+  -- 消費税区分特定情報
   ct_qct_tax_class_type         CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_CONSUMPT_TAX_CLS_MST';
 --
   --クイックコード
@@ -475,6 +482,9 @@ AS
 -- 2009/09/24 Ver.1.11 M.Sano Add Start
     , results_employee_base_code  per_all_assignments_f.ass_attribute5%TYPE         -- 所属拠点コード
 -- 2009/09/24 Ver.1.11 M.Sano Add End
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+    , line_rowid                  ROWID                                             -- 受注明細行ID
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
   );
 --
 -- 2009/09/24 Ver.1.11 M.Sano Add Start
@@ -530,6 +540,9 @@ AS
   --受注データ
   TYPE g_n_order_data_ttype IS TABLE OF order_data_rtype INDEX BY BINARY_INTEGER;
   TYPE g_v_order_data_ttype IS TABLE OF order_data_rtype INDEX BY VARCHAR(100);
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+  TYPE g_line_order_rowid_ttype IS TABLE OF ROWID INDEX BY BINARY_INTEGER;
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
 --
   --販売実績ヘッダ
   TYPE g_sale_results_headers_ttype IS TABLE OF xxcos_sales_exp_headers%ROWTYPE INDEX BY BINARY_INTEGER;
@@ -583,6 +596,9 @@ AS
   g_sale_hdr_tab              g_sale_results_headers_ttype;   -- 販売実績ヘッダ
   g_sale_line_tab             g_sale_results_lines_ttype;     -- 販売実績明細
   g_tax_class_rec             tax_class_rtype;                -- 消費税区分
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+  g_line_order_rowid          g_line_order_rowid_ttype;       -- 行ID
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
 --
 --
   /**********************************************************************************
@@ -1220,6 +1236,9 @@ AS
 -- 2009/07/02 Ver.1.9 M.Sano Add End
 -- 2009/09/24 Ver.1.11 M.Sano Add Start
       , NULL                                  AS results_employee_base_code -- 成績計上者の拠点コード
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+      ,oola.ROWID                             AS line_rowid                 -- 受注明細行ID
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
 -- 2009/09/24 Ver.1.11 M.Sano Add Start
     BULK COLLECT INTO
 -- 2009/07/02 Ver.1.9 M.Sano Mod Start
@@ -1260,10 +1279,13 @@ AS
       AND ottth.language = gt_lang
       AND otttl.language = gt_lang
 -- 2009/07/02 Ver.1.9 M.Sano Mod End
-      AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス≠記帳済(BOOKED)
-      AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード＝返品(RETURN)
+      AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス＝記帳済(BOOKED)
+      AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード≠返品(RETURN)
       -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
       AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+      AND oola.global_attribute5 IS NULL                              -- 販売実績未連携
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
       AND ooha.org_id = gn_org_id                                     -- 組織ID
 /* 2009/07/24 Ver1.9 Mod Start */
 --      AND TRUNC(oola.request_date) <= TRUNC(gd_process_date)          -- 受注明細.要求日≦業務日付
@@ -3476,6 +3498,136 @@ AS
 --
   END set_order_line_close_status;
 --
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+--
+  /**********************************************************************************
+   * Procedure Name   : proc_order_line_update
+   * Description      : 受注明細更新処理(A-10)
+   ***********************************************************************************/
+--
+  PROCEDURE proc_order_line_update(
+    ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_order_line_update'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    order_line_rowid         ROWID;
+--
+    -- *** ローカル・カーソル ***
+    CURSOR line_lock_cur
+    IS
+      SELECT 'Y'
+      FROM   oe_order_lines_all oola
+      WHERE  oola.ROWID = order_line_rowid
+      FOR UPDATE OF oola.global_attribute5
+      NOWAIT
+      ;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+--
+    IF ( g_line_order_rowid.COUNT > 0 ) THEN
+    --==================================
+    -- 受注明細排他制御処理
+    --==================================
+      <<lock_loop>>
+      FOR r IN g_line_order_rowid.FIRST..g_line_order_rowid.LAST LOOP
+        order_line_rowid := g_line_order_rowid(r);
+        OPEN line_lock_cur;
+        CLOSE line_lock_cur;
+      END LOOP lock_loop;
+--
+    --==================================
+    -- 販売実績連携フラグ更新処理
+    --==================================
+      BEGIN
+        FORALL l IN g_line_order_rowid.FIRST..g_line_order_rowid.LAST
+          UPDATE oe_order_lines_all
+          SET    global_attribute5        = ct_yes_flg                 --販売実績連携済
+          WHERE  ROWID                    = g_line_order_rowid(l);
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := SUBSTRB(SQLERRM,1,5000);
+          RAISE global_update_data_expt;
+      END;
+    END IF;
+--
+  EXCEPTION
+    WHEN global_lock_err_expt THEN
+      IF ( line_lock_cur%ISOPEN ) THEN
+        CLOSE line_lock_cur;
+      END IF;
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => cv_xxcos_appl_short_nm,
+                     iv_name        => ct_msg_rowtable_lock_err,
+                     iv_token_name1 => cv_tkn_table,
+                     iv_token_value1=> xxccp_common_pkg.get_msg( cv_xxcos_appl_short_nm , cv_order_line_table )
+                    );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    WHEN global_update_data_expt THEN
+      IF ( line_lock_cur%ISOPEN ) THEN
+        CLOSE line_lock_cur;
+      END IF;
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => cv_xxcos_appl_short_nm,
+                     iv_name        => cv_update_err_msg,
+                     iv_token_name1 => cv_tkn_table_name,
+                     iv_token_value1=> xxccp_common_pkg.get_msg( cv_xxcos_appl_short_nm , cv_order_line_table ),
+                     iv_token_name2 => cv_tkn_key_data,
+                     iv_token_value2=> NULL
+                    );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_order_line_update;
+--
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3766,6 +3918,9 @@ AS
     WHILE lv_idx_key IS NOT NULL LOOP
       ln_cnt_close  := ln_cnt_close  + 1;
       g_order_line_id_rec(ln_cnt_close) := g_order_data_sort_tab(lv_idx_key).line_id;
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+      g_line_order_rowid(ln_cnt_close)  := g_order_data_sort_tab(lv_idx_key).line_rowid;       -- 行ID
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
       lv_idx_key    := g_order_data_sort_tab.next(lv_idx_key);
     END LOOP get_close_data;
 --
@@ -3782,6 +3937,22 @@ AS
       END IF;
 --
     END IF;
+--
+-- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
+    IF ( g_line_order_rowid .COUNT> 0 ) THEN
+    --================================
+    -- 受注明細更新処理(A-10)
+    --================================
+      proc_order_line_update(
+          lv_errbuf               -- エラー・メッセージ           --# 固定 #
+        , lv_retcode              -- リターン・コード             --# 固定 #
+        , lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
 --
     -- エラーデータがある場合、警告終了とする
     IF ( gn_warn_cnt > 0 ) THEN

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                       [SCS障害No.0000690対応]出力関連変数初期化不良対応
  *  2009/07/24   1.6    M.Sano           [SCS障害No.0000691対応]コラム変更、H/C区分変更時のホット警告残数変更
  *  2009/08/20   1.7    M.Sano           [SCS障害No.0000867対応]PT考慮
+ *  2009/10/14   1.8    K.Satomura       [SCS障害No.0001525対応]補充率桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -144,10 +145,18 @@ AS
   cv_tkn_mtl_second_inv   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10807';    -- 保管場所マスタ
   cv_tkn_cust_account_id  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10808';    -- 顧客ID
   cv_tkn_vd_column_mst    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10809';    -- べンダコラムマスタ
-
+-- 2009/10/14 Ver.1.8 Add Start
+  cv_msg_rep_rate_over    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13908';    -- 補充率置換メッセージ
+  cv_msg_threshold_null   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13909';    -- 閾値未設定メッセージ
+-- 2009/10/14 Ver.1.8 Add End
 
   cv_tkn_profile          CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_file_name        CONSTANT VARCHAR2(20) := 'FILE_NAME';           -- ファイル名
+-- 2009/10/14 Ver.1.8 Add Start
+  cv_tkn_max_value        CONSTANT VARCHAR2(20) := 'MAX_VALUE';           -- 最大値
+  cv_tkn_customer_code    CONSTANT VARCHAR2(20) := 'CUSTOMER_CODE';       -- 顧客コード
+  cv_tkn_col_no           CONSTANT VARCHAR2(20) := 'COLUMN_NO';           -- コラムNo
+-- 2009/10/14 Ver.1.8 Add End
 
   cv_prf_dir_path         CONSTANT VARCHAR2(50) := 'XXCOS1_OUTBOUND_HHT_DIR';      -- HHTアウトバウンド用ディレクトリパス
   cv_prf_vend_h_filename  CONSTANT VARCHAR2(50) := 'XXCOS1_VENDER_DELI_H_FILE_NAME';    -- ベンダ納品実績ヘッダファイル
@@ -159,6 +168,10 @@ AS
 --
   ct_lang                 CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');  -- 言語コード
 -- 2009/08/20 Add Ver.1.7 End
+-- 2009/10/14 Ver.1.8 Add Start
+  cn_max_length_rep_rate  CONSTANT NUMBER := 3;   -- 補充率の有効最大桁数
+  cn_max_replacement_rate CONSTANT NUMBER := 999; -- 補充率が3桁を超えた場合の固定値
+-- 2009/10/14 Ver.1.8 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -673,7 +686,39 @@ AS
     AND    mtsi.attribute7 = header_rec.base_code
     AND    mtsi.attribute6 = cv_flag_on
     ;
---
+-- 2009/10/14 Add Ver.1.8 Start
+    IF (gv_hot_stock_days IS NULL) THEN
+      -- 閾値がNULLの場合
+      xxcos_common_pkg.makeup_key_info(
+         ov_errbuf      => lv_errbuf                   -- エラー・メッセージ
+        ,ov_retcode     => lv_retcode                  -- リターン・コード
+        ,ov_errmsg      => lv_errmsg                   -- ユーザー・エラー・メッセージ
+        ,ov_key_info    => gv_key_info                 -- キー情報
+        ,iv_item_name1  => gv_msg_tkn_warehouse_cl     -- 項目名称1
+        ,iv_data_value1 => cv_warehouse                -- データの値1
+        ,iv_item_name2  => gv_msg_tkn_base_code        -- 項目名称2
+        ,iv_data_value2 => header_rec.base_code        -- データの値2
+        ,iv_item_name3  => gv_msg_tkn_main_warehouse_c -- 項目名称3
+        ,iv_data_value3 => cv_flag_on                  -- データの値3
+      );
+      --
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application
+                     ,iv_name         => cv_msg_threshold_null
+                     ,iv_token_name1  => cv_tkn_key_data
+                     ,iv_token_value1 => gv_key_info
+                   );
+      --
+      fnd_file.put_line(
+         which  => fnd_file.output
+        ,buff   => lv_errmsg
+      );
+      --
+      RAISE global_api_expt;
+      --
+    END IF;
+    --
+-- 2009/10/14 Add Ver.1.8 End
 --
   EXCEPTION
 --
@@ -1474,6 +1519,9 @@ AS
 -- 2009/07/15 Ver.1.5 Add Start
     ln_deli_l_cnt            NUMBER;
 -- 2009/07/15 Ver.1.5 Add End
+-- 2009/10/14 Ver.1.8 Add Start
+    lv_message_data          VARCHAR2(1000);
+-- 2009/10/14 Ver.1.8 Add End
 --
   BEGIN
 --
@@ -1658,6 +1706,30 @@ AS
         --補充率　＝　A-9で抽出した月販数　÷　A-9で抽出した基準在庫数　×　100(端数切捨）
               IF gn_inventory_quantity_sum > 0 THEN
                 gn_replacement_rate := TRUNC(gn_monthly_sales / gn_inventory_quantity_sum * 100);
+-- 2009/10/14 Ver.1.8 Add Start
+                IF (LENGTHB(gn_replacement_rate) > cn_max_length_rep_rate) THEN
+                  -- 補充率が３桁を超えた場合、固定値999を設定
+                  gn_replacement_rate := cn_max_replacement_rate;
+                  --
+                  lv_message_data := xxccp_common_pkg.get_msg(
+                                        iv_application  => cv_application
+                                       ,iv_name         => cv_msg_rep_rate_over
+                                       ,iv_token_name1  => cv_tkn_max_value
+                                       ,iv_token_value1 => cn_max_replacement_rate
+                                       ,iv_token_name2  => cv_tkn_customer_code
+                                       ,iv_token_value2 => main_rec_d.account_number
+                                       ,iv_token_name3  => cv_tkn_col_no
+                                       ,iv_token_value3 => column_rec_d.column_no
+                                     );
+                  --
+                  fnd_file.put_line(
+                     which => fnd_file.log
+                    ,buff  => lv_message_data
+                  );
+                  --
+                END IF;
+                --
+-- 2009/10/14 Ver.1.8 Add End
               END IF;
         
 -- 2009/07/15 Ver.1.5 Mod Start

@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  make_sales_exp_lines   (A-7)販売実績明細作成
  *  make_sales_exp_headers (A-8)販売実績ヘッダ作成
  *  set_order_line_close_status (A-9)受注明細クローズ設定
+ *  upd_sales_exp_create_flag   (A-9-1)販売実績作成済フラグ更新
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -52,6 +53,7 @@ AS
  *  2009/09/11    1.10  K.Kiriu          [0001211] 消費税関連項目取得基準日修正
  *                                       [0001345] PT対応
  *  2009/09/30    1.11  M.Sano           [0001275] 売上拠点と成績者の所属拠点の整合性チェックの追加
+ *  2009/10/20    1.12  K.Satomura       [0001381] 受注明細．販売実績作成済フラグ追加対応
  *
  *****************************************************************************************/
 --
@@ -190,6 +192,12 @@ AS
                                        :=  'APP-XXCOS1-00194';   -- 成績計上者所属拠点不整合エラー用パラメータ1
   cv_msg_err_param2_note    CONSTANT fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00195';   -- 成績計上者所属拠点不整合エラー用パラメータ2
+-- ********** 2009/10/20 1.12 K.Satomura  ADD Start ************ --
+  cv_order_line_all_name    CONSTANT fnd_new_messages.message_name%TYPE
+                                       := 'APP-XXCOS1-10254';    -- 受注明細情報
+  cv_msg_update_err         CONSTANT fnd_new_messages.message_name%TYPE
+                                       := 'APP-XXCOS1-00011';     -- 更新エラー
+-- ********** 2009/10/19 1.12 K.Satomura  ADD End   ************ --
 -- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   --トークン
@@ -217,6 +225,9 @@ AS
   cv_tkn_result_emp_code  CONSTANT  VARCHAR2(100)  :=  'RESULT_EMP_CODE';   -- 成績計上者コード
   cv_tkn_result_base_code CONSTANT  VARCHAR2(100)  :=  'RESULT_BASE_CODE';  -- 成績計上者の所属拠点コード
 -- 2009/09/30 Ver.1.11 M.Sano Add End
+-- ********** 2009/10/20 1.12 K.Satomura  ADD Start ************ --
+  cv_key_data             CONSTANT  VARCHAR2(100)  := 'KEY_DATA';           -- トークン'KEY_DATA'
+-- ********** 2009/10/20 1.12 K.Satomura  ADD End   ************ --
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
@@ -1341,6 +1352,9 @@ AS
                   AND ottth.name   = NVL(flvs.order_type, ottth.name) -- 受注タイプ
                   AND otttl.name   = NVL(flvs.line_type,  otttl.name) -- 明細タイプ
           )
+-- 2009/10/20 Ver.1.12 K.Satomura Add Start
+      AND oola.global_attribute5 IS NULL
+-- 2009/10/20 Ver.1.12 K.Satomura Add End
     ORDER BY
         ooha.header_id
       , oola.line_id
@@ -3312,6 +3326,103 @@ AS
 --
   END set_order_line_close_status;
 --
+--****************************** 2009/10/20 1.12 K.Satomura Add START  ******************************--
+  /**********************************************************************************
+   * Procedure Name   : upd_sales_exp_create_flag
+   * Description      : 販売実績作成済フラグ更新(A-9-1)
+   ***********************************************************************************/
+  PROCEDURE upd_sales_exp_create_flag(
+     ov_errbuf  OUT VARCHAR2 -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode OUT VARCHAR2 -- リターン・コード             --# 固定 #
+    ,ov_errmsg  OUT VARCHAR2 -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_sales_exp_create_flag'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    ln_now_index VARCHAR2(100);
+    lv_tkn1      VARCHAR2(1000);
+    --
+    -- *** ローカル・カーソル ***
+    -- *** ローカル・レコード ***
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    ln_now_index := g_order_cls_data_tab.FIRST;
+    --
+    <<loop_line_update>>
+    WHILE ln_now_index IS NOT NULL LOOP
+      BEGIN
+        UPDATE oe_order_lines_all ool
+        SET    ool.global_attribute5 = ct_yes_flg -- 販売実績連携済フラグ
+        WHERE  ool.line_id = g_order_cls_data_tab(ln_now_index).line_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_tkn1   := xxccp_common_pkg.get_msg(
+                          cv_xxcos_appl_short_nm
+                         ,cv_order_line_all_name
+                       );
+          --
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          cv_xxcos_appl_short_nm
+                         ,cv_msg_update_err
+                         ,cv_tkn_table_name
+                         ,lv_tkn1
+                         ,cv_key_data
+                         ,g_order_cls_data_tab(ln_now_index).line_id
+                       );
+          --
+          RAISE global_api_err_expt;
+          --
+      END;
+      --
+      ln_now_index := g_order_cls_data_tab.NEXT(ln_now_index);
+      --
+    END LOOP loop_line_update;
+    --
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_sales_exp_create_flag;
+--****************************** 2009/10/20 1.12 K.Satomura Add END  ******************************--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3617,6 +3728,22 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/10/20 Ver.1.12 K.Satomura Add Start
+      -- ===============================
+      -- A-9-1.販売実績作成済フラグ更新
+      -- ===============================
+      upd_sales_exp_create_flag(
+         lv_errbuf  -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode -- リターン・コード             --# 固定 #
+        ,lv_errmsg  -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+        --
+      END IF;
+      --
+-- 2009/10/20 Ver.1.12 K.Satomura Add End
     END IF;
 --
     -- エラーデータがある場合、警告終了とする

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2009/08/12    1.19  N.Maeda          [0001010] 従業員情報取得条件追加
  *  2009/08/21    1.20  N.Maeda          [0001141] 前月売上拠点の考慮追加
  *  2009/09/04    1.21  N.Maeda          [0001211] 消費税関連項目取得基準日修正
+ *  2009/10/13    1.22  N.Maeda          [0001381] 受注明細の販売実績連携済みフラグ追加対応
  *
  *****************************************************************************************/
 --
@@ -164,7 +165,7 @@ AS
   cv_loc_err                  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00001';     -- ロックエラー
   cv_msg_extract_err          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10001';     -- 抽出エラー
   cv_msg_pro                  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00004';     -- プロファイル取得エラー
-  cv_msg_target_no_data       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00083';     -- 入力対象データなしメッセージ
+  cv_msg_target_no_data       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00003';     -- 入力対象データなしメッセージ
   cv_msg_max_date             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00056';     -- XXCOS:MAX日付
   cv_msg_orga                 CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10024';     -- 在庫組織ID取得エラー
   cv_msg_date                 CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10025';     -- 業務処理日取得エラー
@@ -184,8 +185,8 @@ AS
   cv_msg_cus_mst              CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00049';     -- 顧客マスタ
   cv_msg_lookup_mst           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00066';     -- 参照コードマスタ
 -- ************ 2009/09/04 1.21 N.Maeda MOD START ************ --
---  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00067';         -- AR消費税マスタ
-  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00190';         -- 消費税VIEW
+--  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00067';            -- AR消費税マスタ
+  cv_ar_tax_mst      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00190';              -- 消費税VIEW
 -- ************ 2009/09/04 1.21 N.Maeda MOD  END  ************ --
   cv_inv_item_mst             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00050';     -- 品目マスタ
   cv_location_mst             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00052';     -- 保管場所マスタ
@@ -198,8 +199,8 @@ AS
   cv_msg_cus_type             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00074';     -- 顧客区分
   cv_msg_cus_code             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00053';     -- 顧客コード
 -- ************ 2009/09/04 1.21 N.Maeda MOD START ************ --
---  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00082';         -- 参照コード
-  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00189';         -- 参照コード
+--  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00082';            -- 参照コード
+  cv_msg_lookup_code CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00189';              -- 参照コード
 -- ************ 2009/09/04 1.21 N.Maeda MOD  END  ************ --
   cv_msg_lookup_type          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00075';     -- 参照タイプ
   cv_msg_lookup_tax           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00076';     -- 消費税コード（参照コードマスタDFF2)
@@ -232,14 +233,20 @@ AS
 --******************************* 2009/06/01 N.Maeda Var1.16 ADD START ***************************************
 --  cv_msg_disc_count           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00179';   -- 値引明細件
 --  cv_msg_truns_count          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00182';   -- 入出庫一時表カウント
-  cv_msg_truns_create_count   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00183';   -- 入出庫一時表ヘッダ生成カウント
+  cv_msg_truns_create_count   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00183';     -- 入出庫一時表ヘッダ生成カウント
 --******************************* 2009/05/01 N.Maeda Var1.16 ADD END   ***************************************
 -- ************* 2009/08/21 1.20 N.Maeda ADD START *************--
   cv_past_sale_base_get_err     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00188';
 -- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
+-- ************ 2009/10/13 N.Maeda ADD START *********** --
+  cv_order_line_all_name        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10254';
+  cv_order_lock_err             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10255';
+  cv_bookd_out_msg              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10256';
+  cv_bookd_err_msg              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10257';
+-- ************ 2009/10/13 N.Maeda ADD  END  *********** --
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
   ct_msg_fiscal_period_err    CONSTANT fnd_new_messages.message_name%TYPE
-                                       :=  'APP-XXCOS1-00175';   -- 会計期間取得エラー
+                                       :=  'APP-XXCOS1-00175';               -- 会計期間取得エラー
   ct_msg_dlv_by_code          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00080';  -- 納品者コード
   ct_msg_keep_in_code         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00176';  -- 預け先コード
   cv_msg_skip_h               CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00177';  -- ヘッダスキップ件数
@@ -266,6 +273,10 @@ AS
   cv_cust_code     CONSTANT VARCHAR2(20)  := 'CUST_CODE';
   cv_dlv_date      CONSTANT VARCHAR2(20)  := 'DLV_DATE';
 -- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
+-- ************ 2009/10/13 N.Maeda ADD START *********** --
+  cv_order_number_ebs       CONSTANT VARCHAR2(20) := 'ORDER_NUMBER_EBS';
+  cv_bookd_data             CONSTANT VARCHAR2(20) := 'BOOKD_DATA';
+-- ************ 2009/10/13 N.Maeda ADD  END  *********** --
   -- データ取得用固定値
 --  cn_cust_s                   CONSTANT NUMBER  := 30;                           -- 顧客
 --  cn_cust_v                   CONSTANT NUMBER  := 40;                           -- 上様
@@ -520,7 +531,6 @@ AS
      );
   TYPE g_tab_inv_transactions_data IS TABLE OF g_rec_inv_transactions_data INDEX BY PLS_INTEGER;
 --
-  --HHT入出庫一時テーブル格納用変数
   TYPE g_rec_oe_order_data IS RECORD
     (
      order_number         oe_order_headers_all.order_number%TYPE,       -- 受注番号
@@ -530,6 +540,9 @@ AS
      cust_po_number       oe_order_headers_all.cust_po_number%TYPE,     -- 顧客発注
      line_id              oe_order_lines_all.line_id%TYPE,              -- 受注明細ID
      line_flow_status_code  oe_order_lines_all.flow_status_code%TYPE    -- 明細ステータス
+-- **************** 2009/10/13 1.22 N.Maeda ADD START **************** --
+     ,row_id               ROWID                                        -- 行ID
+-- **************** 2009/10/13 1.22 N.Maeda ADD  END  **************** --
      );
   TYPE g_tab_oe_order_data IS TABLE OF g_rec_oe_order_data INDEX BY PLS_INTEGER;
 --
@@ -653,7 +666,7 @@ AS
   TYPE g_tab_head_order_no_hht      IS TABLE OF xxcos_sales_exp_headers.order_no_hht%TYPE
     INDEX BY PLS_INTEGER;   -- 受注No.(HHT)(受注No(HHT))  
   TYPE g_tab_head_hht_invoice_no    IS TABLE OF xxcos_sales_exp_headers.dlv_invoice_number%TYPE
-    INDEX BY PLS_INTEGER;   -- HHT伝票No.(HHT伝票No?、納品伝票No?)
+    INDEX BY PLS_INTEGER;   -- HHT伝票No.(HHT伝票No、納品伝票No)
   TYPE g_tab_head_input_class       IS TABLE OF xxcos_sales_exp_headers.input_class%TYPE
     INDEX BY PLS_INTEGER;   -- 入力区分
 --
@@ -734,9 +747,13 @@ AS
   INDEX BY PLS_INTEGER;   -- 受注明細ID
   TYPE g_tab_oe_li_flow_status_code   IS TABLE OF oe_order_lines_all.flow_status_code%TYPE
   INDEX BY PLS_INTEGER;   -- 明細ステータス
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+  TYPE g_tab_oe_line_row_id    IS TABLE OF ROWID
+  INDEX BY PLS_INTEGER;   -- 受注明細行ID
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
 --
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD START *************************************
-  TYPE g_tab_msg_war_data     IS TABLE OF VARCHAR2(500) INDEX BY PLS_INTEGER;
+  TYPE g_tab_msg_war_data     IS TABLE OF VARCHAR2(2000) INDEX BY PLS_INTEGER;
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
 --
   gt_dlv_hht_headers_data         g_tab_dlv_head_data;            -- 納品ヘッダ(HHT)テーブル抽出データ
@@ -851,11 +868,17 @@ AS
   gt_oe_cust_po_number            g_tab_oe_cust_po_number;           -- 顧客発注
   gt_oe_line_id                   g_tab_oe_line_id;                  -- 受注明細ID
   gt_oe_li_flow_status_code       g_tab_oe_li_flow_status_code;      -- ステータス
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+  gt_oe_line_row_id               g_tab_oe_line_row_id;              -- 受注明細行ID
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
 --
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD START *************************************
   --警告メッセージ出力用
   gt_msg_war_data                 g_tab_msg_war_data;                -- 警告情報(詳細)
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
+-- ************ 2009/10/13 1.22 N.Maeda MOD START *********** --
+  gt_msg_bookd                    g_tab_msg_war_data;                -- 記帳メッセージ
+-- ************ 2009/10/13 1.22 N.Maeda MOD  END  *********** --
 --
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
   gt_sales_head_row_id            g_tab_dlv_hht_head_row_id;              --更新対象販売実績行ID
@@ -898,6 +921,9 @@ AS
 --******************************* 2009/06/01 N.Maeda Var1.15 ADD START ***************************************
   gn_disc_count                   NUMBER := 0;                       -- 値引明細件数カウント
 --******************************* 2009/05/01 N.Maeda Var1.15 ADD END   ***************************************
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+  gn_close_warn_flag              NUMBER := 0;
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
 --
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
   /************************************************************************
@@ -1113,6 +1139,7 @@ AS
         gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
         gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
                                                 cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
+        lv_errbuf  := SUBSTRB(SQLERRM,1,5000);
         RAISE updata_err_expt;
     END;
 --
@@ -1160,7 +1187,7 @@ AS
 --               request_id = cn_request_id,                          --要求ID
 --               program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
 --               program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
---               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日                        
+--               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日
 --        WHERE  ROWID  =  gt_dlv_edi_head_row_id( i );
 ----
 --    EXCEPTION
@@ -1187,7 +1214,7 @@ AS
                request_id = cn_request_id,                          --要求ID
                program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
                program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日                        
+               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日
         WHERE  ROWID  =  gt_dlv_tran_head_row_id( i );
 --
     EXCEPTION
@@ -1195,6 +1222,7 @@ AS
         gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_transactions );
         gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
                                                 cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
+        lv_errbuf    := SUBSTRB(SQLERRM,1,5000);
         RAISE updata_err_expt;
     END;
 --
@@ -1217,15 +1245,38 @@ AS
       WHEN OTHERS THEN
         gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_xxcos_sal_exp_head );
         gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
-                                                cv_tkn_table,gv_tkn1);
+                                                cv_tkn_table_name , gv_tkn1,cv_key_data , cv_tkn_null);
+        lv_errbuf    := SUBSTRB(SQLERRM,1,5000);
         RAISE updata_err_expt;
     END;
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD  END  ***************************************
+-- **************** 2009/10/13 1.22 N.Maeda ADD START **************** --
+    IF ( gt_oe_line_row_id.COUNT > 0 ) THEN
+      BEGIN
+        FORALL o IN 1..gt_oe_line_row_id.COUNT
+--
+          UPDATE oe_order_lines_all
+          SET    global_attribute5        = cv_tkn_yes                 --販売実績連携済
+          WHERE   ROWID                   = gt_oe_line_row_id( o );
+      EXCEPTION
+        WHEN OTHERS THEN
+          gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_order_line_all_name );
+          gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
+                                                  cv_tkn_table_name , gv_tkn1, cv_key_data, cv_tkn_null);
+          lv_errbuf    := SUBSTRB(SQLERRM,1,5000);
+          RAISE updata_err_expt;
+      END;
+    END IF;
+-- **************** 2009/10/13 1.22 N.Maeda ADD  END  **************** --
+
   EXCEPTION
     WHEN updata_err_expt THEN
 --      lv_errbuf  := gv_tkn2;
       ov_errmsg  := gv_tkn2;
+-- **************** 2009/10/13 1.22 N.Maeda MOD START **************** --
+--      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
       ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+-- **************** 2009/10/13 1.22 N.Maeda MOD  END  **************** --
       ov_retcode := cv_status_error;                                       --# 任意 #
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1290,6 +1341,11 @@ AS
     lv_key_name2             VARCHAR2(500);                                   -- キーデータ名称2
     lv_key_data1             VARCHAR2(500);                                   -- キーデータ1
     lv_key_data2             VARCHAR2(500);                                   -- キーデータ2
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+    lt_br_header_id          oe_order_headers_all.header_id%TYPE;
+    lv_bookd_out_msg         VARCHAR2(2000);
+    ln_bookd_msg             NUMBER := 0;
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
 --
     -- 受注API用引数
     lv_return_status              VARCHAR2(1) ;                         -- APIの処理ステータス
@@ -1335,12 +1391,20 @@ AS
     -- データ登録件数確認
     ln_data_cnt := gt_oe_order_number.COUNT;
     -- 
-    lt_action_request_tbl(1).entity_code := OE_GLOBALS.G_ENTITY_HEADER;
-    lt_action_request_tbl(1).request_type := OE_GLOBALS.G_BOOK_ORDER;
+-- ************ 2009/10/13 1.22 N.Maeda DEL START *********** --
+--    lt_action_request_tbl(1).entity_code := OE_GLOBALS.G_ENTITY_HEADER;
+--    lt_action_request_tbl(1).request_type := OE_GLOBALS.G_BOOK_ORDER;
+-- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
 --
     <<om_close_loop>>
     FOR cnt_order IN 1..ln_data_cnt LOOP
 --
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+      OE_MSG_PUB.INITIALIZE;
+      lt_action_request_tbl(1) := OE_ORDER_PUB.G_MISS_REQUEST_REC;
+      lt_action_request_tbl(1).entity_code := OE_GLOBALS.G_ENTITY_HEADER;
+      lt_action_request_tbl(1).request_type := OE_GLOBALS.G_BOOK_ORDER;
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
       lt_order_number         := gt_oe_order_number( cnt_order );           -- 受注番号
       lt_header_id            := gt_oe_header_id( cnt_order );              -- 受注ヘッダID
       lt_he_flow_status_code  := gt_oe_he_flow_status_code( cnt_order );    -- ステータス
@@ -1349,68 +1413,95 @@ AS
       lt_line_id              := gt_oe_line_id( cnt_order );                -- 受注明細ID
       lt_li_flow_status_code  := gt_oe_li_flow_status_code( cnt_order );    -- ステータス
 --
-      -- ヘッダステータスが「記帳済み」以外の場合
-      IF ( lt_he_flow_status_code <> cv_status_booked ) THEN
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+      IF ( lt_br_header_id IS NULL) OR ( lt_header_id <> lt_br_header_id ) THEN
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
+          -- ヘッダステータスが「記帳済み」以外の場合
+        IF ( lt_he_flow_status_code <> cv_status_booked ) THEN
 --
-        -- 共通関数用変数の初期化
-        ln_msg_count     := 0;                                         -- 共通APIエラー件数
-        lv_return_status := NULL;                                      -- 共通APIステータス
-        lv_msg_data      := NULL;                                      -- 共通APIメッセージ
-        -- 記帳済み更新対象「受注ヘッダID」設定
-        lt_action_request_tbl(1).entity_id := lt_header_id;
+          -- 共通関数用変数の初期化
+          ln_msg_count     := 0;                                         -- 共通APIエラー件数
+          lv_return_status := NULL;                                      -- 共通APIステータス
+          lv_msg_data      := NULL;                                      -- 共通APIメッセージ
+          -- 記帳済み更新対象「受注ヘッダID」設定
+          lt_action_request_tbl(1).entity_id := lt_header_id;
 --
-        -- 記帳済み更新処理
-        oe_order_pub.process_order(
-          p_api_version_number      => cn_api_ver_num,
-          x_return_status           => lv_return_status,
-          x_msg_count               => ln_msg_count,
-          x_msg_data                => lv_msg_data,
-          p_header_rec              => lt_header_rec,
-          p_line_tbl                => lt_order_line_tbl,
-          p_action_request_tbl      => lt_action_request_tbl,
-          x_header_rec              => lt_header_rec,
-          x_header_val_rec          => lt_header_val_rec,
-          x_header_adj_tbl          => lt_header_adj_tbl,
-          x_header_adj_val_tbl      => lt_header_adj_val_tbl,
-          x_header_price_att_tbl    => lt_header_price_att_tbl,
-          x_header_adj_att_tbl      => lt_header_adj_att_tbl,
-          x_header_adj_assoc_tbl    => lt_header_adj_assoc_tbl,
-          x_header_scredit_tbl      => lt_header_scredit_tbl,
-          x_header_scredit_val_tbl  => lt_header_scredit_val_tbl,
-          x_line_tbl                => lt_order_line_tbl,
-          x_line_val_tbl            => lt_line_val_tbl,
-          x_line_adj_tbl            => lt_line_adj_tbl,
-          x_line_adj_val_tbl        => lt_line_adj_val_tbl,
-          x_line_price_att_tbl      => lt_line_price_att_tbl,
-          x_line_adj_att_tbl        => lt_line_adj_att_tbl,
-          x_line_adj_assoc_tbl      => lt_line_adj_assoc_tbl,
-          x_line_scredit_tbl        => lt_line_scredit_tbl,
-          x_line_scredit_val_tbl    => lt_line_scredit_val_tbl,
-          x_lot_serial_tbl          => lt_lot_serial_tbl,
-          x_lot_serial_val_tbl      => lt_lot_serial_val_tbl,
-          x_action_request_tbl      => lt_action_request_tbl
-          );
-      IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
-        IF (ln_msg_count > 0 ) THEN
-          -- メッセージ件数が0より大きい場合エラーメッセージを出力
+          -- 記帳済み更新処理
+          oe_order_pub.process_order(
+            p_api_version_number      => cn_api_ver_num,
+            x_return_status           => lv_return_status,
+            x_msg_count               => ln_msg_count,
+            x_msg_data                => lv_msg_data,
+            p_header_rec              => lt_header_rec,
+            p_line_tbl                => lt_order_line_tbl,
+            p_action_request_tbl      => lt_action_request_tbl,
+            x_header_rec              => lt_header_rec,
+            x_header_val_rec          => lt_header_val_rec,
+            x_header_adj_tbl          => lt_header_adj_tbl,
+            x_header_adj_val_tbl      => lt_header_adj_val_tbl,
+            x_header_price_att_tbl    => lt_header_price_att_tbl,
+            x_header_adj_att_tbl      => lt_header_adj_att_tbl,
+            x_header_adj_assoc_tbl    => lt_header_adj_assoc_tbl,
+            x_header_scredit_tbl      => lt_header_scredit_tbl,
+            x_header_scredit_val_tbl  => lt_header_scredit_val_tbl,
+            x_line_tbl                => lt_order_line_tbl,
+            x_line_val_tbl            => lt_line_val_tbl,
+            x_line_adj_tbl            => lt_line_adj_tbl,
+            x_line_adj_val_tbl        => lt_line_adj_val_tbl,
+            x_line_price_att_tbl      => lt_line_price_att_tbl,
+            x_line_adj_att_tbl        => lt_line_adj_att_tbl,
+            x_line_adj_assoc_tbl      => lt_line_adj_assoc_tbl,
+            x_line_scredit_tbl        => lt_line_scredit_tbl,
+            x_line_scredit_val_tbl    => lt_line_scredit_val_tbl,
+            x_lot_serial_tbl          => lt_lot_serial_tbl,
+            x_lot_serial_val_tbl      => lt_lot_serial_val_tbl,
+            x_action_request_tbl      => lt_action_request_tbl
+            );
+          IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
+            IF (ln_msg_count > 0 ) THEN
+-- ************ 2009/10/13 1.22 N.Maeda DEL START *********** --
+--              -- メッセージ件数が0より大きい場合エラーメッセージを出力
+--              <<message_loop>>
+--              FOR cnt IN 1..ln_msg_count LOOP
+--                lv_msg_buf := OE_MSG_PUB.GET(p_msg_index => cnt, 
+--                                             p_encoded   => 'F');
+--                lv_msg_data := SUBSTRB(lv_msg_data || lv_msg_buf,1,2000);
+--              END LOOP message_loop;
+-- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
+--
+            --メッセージ生成
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           cv_application, cv_msg_b_k_ping,
+                           cv_line_number, lt_order_number
+                           );
+--              lv_errbuf := lv_errmsg;
+              RAISE global_api_expt;
+            END IF;
+          END IF;
+-- ************ 2009/10/13 1.22 N.Maeda MOD START *********** --
+          lv_bookd_out_msg := NULL;
           <<message_loop>>
           FOR cnt IN 1..ln_msg_count LOOP
-            lv_msg_buf := OE_MSG_PUB.GET(p_msg_index => cnt, 
-                                         p_encoded   => 'F');
-            lv_msg_data := SUBSTRB(lv_msg_data || lv_msg_buf,1,2000);
+            lv_msg_buf := OE_MSG_PUB.GET(p_msg_index => cnt
+                                       , p_encoded => 'F');
+            lv_bookd_out_msg := SUBSTRB(lv_bookd_out_msg || lv_msg_buf,1,2000);
           END LOOP message_loop;
 --
-          --メッセージ生成
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                         cv_application, cv_msg_b_k_ping,
-                         cv_line_number, lt_order_number
-                         );
---          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
-      END IF;
+          ln_bookd_msg := ln_bookd_msg + 1;
+          gt_msg_bookd(ln_bookd_msg) := xxccp_common_pkg.get_msg(
+                                              iv_application   => cv_application,       --アプリケーション短縮名
+                                              iv_name          => cv_bookd_out_msg,     --メッセージコード
+                                              iv_token_name1   => cv_tkn_order_number,
+                                              iv_token_value1  => lt_order_number,
+                                              iv_token_name2   => cv_bookd_data,
+                                              iv_token_value2  => SUBSTRB(lv_bookd_out_msg,1,200));
+-- ************ 2009/10/13 1.22 N.Maeda MOD  END  *********** --
 --
+        END IF;
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+        lt_br_header_id := lt_header_id;
       END IF;
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
 --
       -- 明細クローズ処理
       BEGIN
@@ -1418,23 +1509,32 @@ AS
           cv_tkn_oeol , lt_line_id , cv_xxcos_r_standard_line , cv_tkn_null );
       EXCEPTION
         WHEN OTHERS THEN
+-- ************ 2009/10/13 1.22 N.Maeda MOD START *********** --
           lv_errbuf := SQLERRM;
-          RAISE no_complet_expt;
+--          RAISE no_complet_expt;
+          ln_bookd_msg := ln_bookd_msg + 1;
+          gn_close_warn_flag  := 1;
+          gt_msg_bookd(ln_bookd_msg) := xxccp_common_pkg.get_msg(
+                                          cv_application, cv_bookd_err_msg,
+                                          cv_line_number, lt_line_id );
+-- ************ 2009/10/13 1.22 N.Maeda MOD  END  *********** --
       END;
 --
     END LOOP om_close_loop;
 --
   EXCEPTION
-    WHEN no_complet_expt THEN
-      gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_close_api );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       cv_application, cv_msg_close_err,
-                       cv_tkn_api_name, gv_tkn1,
-                       cv_line_number, lt_line_id );
---      lv_errbuf  := lv_errmsg;
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                                            --# 任意 #
+-- ************ 2009/10/13 1.22 N.Maeda DEL START *********** --
+--    WHEN no_complet_expt THEN
+--      gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_close_api );
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       cv_application, cv_msg_close_err,
+--                       cv_tkn_api_name, gv_tkn1,
+--                       cv_line_number, lt_line_id );
+----      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+-- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2001,7 +2101,6 @@ AS
     <<trans_head_loop>>
     FOR trans_head_no IN 1..gn_transaction_head_cnt LOOP
 --
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_out_msg );
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
       -- 明細件数カウント(初期化)
       ln_line_data_count              := 0;
@@ -2935,6 +3034,9 @@ AS
              ooh.cust_po_number    cust_po_number,          -- 顧客発注
              ool.line_id           line_id,                 -- 受注明細ID
              ool.flow_status_code  line_flow_status_code    -- ステータス
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+             ,ool.rowid            row_id                   -- 行ID
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
       FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
              oe_order_lines_all ool,                        -- OM受注明細テーブル
              oe_order_sources oos                           -- オーダーソース
@@ -2945,7 +3047,15 @@ AS
       AND    ooh.order_number = lt_order_no_ebs
       AND    ool.flow_status_code NOT IN ( cv_status_type_can , cv_status_type_clo )
       AND    oos.name = lv_edi_order_name
-      ORDER BY ooh.order_number,ool.line_id;
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+      AND    ool.global_attribute5 IS NULL
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
+      ORDER BY ooh.order_number,ool.line_id
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+      FOR UPDATE OF  ool.global_attribute5
+      NOWAIT
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
+      ;
 --
   BEGIN
 --
@@ -3860,6 +3970,58 @@ AS
     --        END IF;
     --******************************* 2009/05/18 N.Maeda Var1.15 MOD END *****************************************
     --
+-- **************** 2009/10/13 1.22 N.Maeda ADD START **************** --
+          BEGIN
+            OPEN  get_oe_order_cur;
+            -- バルクフェッチ
+            FETCH get_oe_order_cur BULK COLLECT INTO gt_oe_order_all;
+            -- 抽出件数セット
+            gn_om_data_cnt := get_oe_order_cur%ROWCOUNT;
+            -- カーソルCLOSE
+            CLOSE get_oe_order_cur;
+          EXCEPTION
+            WHEN lock_err_expt THEN
+              IF( get_oe_order_cur%ISOPEN ) THEN
+                CLOSE get_oe_order_cur;
+              END IF;
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              gn_om_data_cnt  := 0;
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,            --アプリケーション短縮名
+                                                    iv_name          => cv_order_lock_err,         --メッセージコード
+                                                    iv_token_name1   => cv_tkn_order_number,       --トークンコード2
+                                                    iv_token_value1  => lt_order_no_hht,
+                                                    iv_token_name2   => cv_order_number_ebs,
+                                                    iv_token_value2  => lt_order_no_ebs,
+                                                    iv_token_name3   => cv_invoice_no,
+                                                    iv_token_value3  => lt_hht_invoice_no);
+            WHEN OTHERS THEN
+              IF( get_oe_order_cur%ISOPEN ) THEN
+                CLOSE get_oe_order_cur;
+              END IF;
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+              --キー編集表変数設定
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
+                iv_data_value1 => lt_order_no_ebs,         -- データの値１
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,    --アプリケーション短縮名
+                                                    iv_name          => cv_msg_no_data,    --メッセージコード
+                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                    iv_token_value1  => gv_tkn1,           --トークン値1
+                                                    iv_token_name2   => cv_key_data,       --トークンコード2
+                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
+          END;
+-- **************** 2009/10/13 1.22 N.Maeda MOD  END  **************** --
+--
           --明細データ取得
           <<line_loop>>
   --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
@@ -5199,45 +5361,47 @@ AS
               END IF;
             END IF;
     --
-            BEGIN
-              OPEN  get_oe_order_cur;
-              -- バルクフェッチ
-              FETCH get_oe_order_cur BULK COLLECT INTO gt_oe_order_all;
-              -- 抽出件数セット
-              gn_om_data_cnt := get_oe_order_cur%ROWCOUNT;
-              -- カーソルCLOSE
-              CLOSE get_oe_order_cur;
-            EXCEPTION
-              WHEN OTHERS THEN
-                IF( get_oe_order_cur%ISOPEN ) THEN
-                  CLOSE get_oe_order_cur;
-                END IF;
-                gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
-                --キー編集表変数設定
-    --******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
-    --            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_order_no );
-    --            lv_key_name2 := NULL;
-    --            lv_key_data1 := lt_order_no_ebs;
-    --            lv_key_data2 := NULL;
-    --          RAISE no_data_extract;
-              lv_state_flg    := cv_status_warn;
-              gn_wae_data_num := gn_wae_data_num + 1 ;
-              xxcos_common_pkg.makeup_key_info(
-                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
-                iv_data_value1 => lt_order_no_ebs,         -- データの値１
-                ov_key_info    => gv_tkn2,              -- キー情報
-                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-                ov_retcode     => lv_retcode,           -- リターン・コード
-                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
-              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                                    iv_application   => cv_application,    --アプリケーション短縮名
-                                                    iv_name          => cv_msg_no_data,    --メッセージコード
-                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
-                                                    iv_token_value1  => gv_tkn1,           --トークン値1
-                                                    iv_token_name2   => cv_key_data,       --トークンコード2
-                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
-    --******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
-            END;
+-- ************ 2009/10/13 1.22 N.Maeda DEL START *********** --
+--            BEGIN
+--              OPEN  get_oe_order_cur;
+--              -- バルクフェッチ
+--              FETCH get_oe_order_cur BULK COLLECT INTO gt_oe_order_all;
+--              -- 抽出件数セット
+--              gn_om_data_cnt := get_oe_order_cur%ROWCOUNT;
+--              -- カーソルCLOSE
+--              CLOSE get_oe_order_cur;
+--            EXCEPTION
+--              WHEN OTHERS THEN
+--                IF( get_oe_order_cur%ISOPEN ) THEN
+--                  CLOSE get_oe_order_cur;
+--                END IF;
+--                gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+--                --キー編集表変数設定
+--    --******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--    --            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_order_no );
+--    --            lv_key_name2 := NULL;
+--    --            lv_key_data1 := lt_order_no_ebs;
+--    --            lv_key_data2 := NULL;
+--    --          RAISE no_data_extract;
+--                lv_state_flg    := cv_status_warn;
+--                gn_wae_data_num := gn_wae_data_num + 1 ;
+--                xxcos_common_pkg.makeup_key_info(
+--                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
+--                  iv_data_value1 => lt_order_no_ebs,         -- データの値１
+--                  ov_key_info    => gv_tkn2,              -- キー情報
+--                  ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--                  ov_retcode     => lv_retcode,           -- リターン・コード
+--                  ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+--                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                                      iv_application   => cv_application,    --アプリケーション短縮名
+--                                                      iv_name          => cv_msg_no_data,    --メッセージコード
+--                                                      iv_token_name1   => cv_tkn_table_name, --トークンコード1
+--                                                      iv_token_value1  => gv_tkn1,           --トークン値1
+--                                                      iv_token_name2   => cv_key_data,       --トークンコード2
+--                                                      iv_token_value2  => gv_tkn2 );         --トークン値2
+--    --******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+--            END;
+-- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
     --
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
     --        IF ( gn_om_data_cnt > 0 ) THEN
@@ -5267,6 +5431,9 @@ AS
                 gt_oe_cust_po_number( gn_cnt_om_order )    := gt_oe_order_all( om_data_no ).cust_po_number;
                 gt_oe_line_id( gn_cnt_om_order )           := gt_oe_order_all( om_data_no ).line_id;
                 gt_oe_li_flow_status_code( gn_cnt_om_order )  := gt_oe_order_all( om_data_no ).line_flow_status_code;
+-- ************ 2009/10/13 1.22 N.Maeda DEL START *********** --
+                gt_oe_line_row_id( gn_cnt_om_order )       := gt_oe_order_all( om_data_no ).row_id;
+-- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
     --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
                 gn_cnt_om_order := gn_cnt_om_order + 1;
     --******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
@@ -5516,8 +5683,8 @@ AS
           gn_warn_cnt     := gn_warn_cnt + 1;
 --
           gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                                iv_application   => cv_application,    --アプリケーション短縮名
-                                                iv_name          => cv_data_loc,    --メッセージコード
+                                                iv_application   => cv_application,            --アプリケーション短縮名
+                                                iv_name          => cv_data_loc,               --メッセージコード
                                                 iv_token_name1   => cv_tkn_order_number,       --トークンコード2
                                                 iv_token_value1  => lt_order_no_hht,
                                                 iv_token_name2   => cv_invoice_no,
@@ -5848,6 +6015,9 @@ AS
              ooh.cust_po_number    cust_po_number,          -- 顧客発注
              ool.line_id           line_id,                 -- 受注明細ID
              ool.flow_status_code  line_flow_status_code    -- ステータス
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+             ,ool.rowid            row_id                   -- 行ID
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
       FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
              oe_order_lines_all ool,                        -- OM受注明細テーブル
              oe_order_sources oos                           -- オーダーソース
@@ -5858,7 +6028,15 @@ AS
       AND    ooh.order_number = lt_order_no_ebs
       AND    ool.flow_status_code NOT IN ( cv_status_type_can , cv_status_type_clo )
       AND    oos.name = lv_edi_order_name
-      ORDER BY ooh.order_number,ool.line_id;
+-- ************ 2009/10/13 N.Maeda ADD START *********** --
+      AND    ool.global_attribute5 IS NULL
+-- ************ 2009/10/13 N.Maeda ADD  END  *********** --
+      ORDER BY ooh.order_number,ool.line_id
+-- ************ 2009/10/13 N.Maeda ADD START *********** --
+      FOR UPDATE OF  ool.global_attribute5
+      NOWAIT
+-- ************ 2009/10/13 N.Maeda ADD  END  *********** --
+      ;
 --******************************* 2009/05/13 N.Maeda Var1.13 ADD  END  ***************************************
 --
   BEGIN
@@ -6824,6 +7002,64 @@ AS
 --    --******************************* 2009/05/18 N.Maeda Var1.15 ADD END *****************************************
 --******************************* 2009/09/04 1.21 N.Maeda DEL END *****************************************
     --
+-- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
+          IF ( NVL( lt_order_no_ebs, 0 ) <> 0 ) AND ( lt_red_black_flag = cv_black_flag)
+-- ************ 2009/10/13 N.Maeda MOD START *********** --
+--            AND ( lt_digestion_ln_number = 1 ) THEN
+            AND ( lt_digestion_ln_number = 0 ) THEN
+-- ************ 2009/10/13 N.Maeda MOD  END  *********** --
+            BEGIN
+              OPEN  get_oe_order_cur;
+              -- バルクフェッチ
+              FETCH get_oe_order_cur BULK COLLECT INTO gt_inp_oe_order_all;
+              -- 抽出件数セット
+              gn_om_data_cnt := gn_om_data_cnt + get_oe_order_cur%ROWCOUNT;
+              -- カーソルCLOSE
+              CLOSE get_oe_order_cur;
+            EXCEPTION
+              WHEN lock_err_expt THEN
+                IF( get_oe_order_cur%ISOPEN ) THEN
+                  CLOSE get_oe_order_cur;
+                END IF;
+                gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+                lv_state_flg    := cv_status_warn;
+                gn_wae_data_num := gn_wae_data_num + 1 ;
+                gn_om_data_cnt  := 0;
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,            --アプリケーション短縮名
+                                                    iv_name          => cv_order_lock_err,         --メッセージコード
+                                                    iv_token_name1   => cv_tkn_order_number,       --トークンコード2
+                                                    iv_token_value1  => lt_order_no_hht,
+                                                    iv_token_name2   => cv_order_number_ebs,
+                                                    iv_token_value2  => lt_order_no_ebs,
+                                                    iv_token_name3   => cv_invoice_no,
+                                                    iv_token_value3  => lt_hht_invoice_no);
+              WHEN OTHERS THEN
+                IF( get_oe_order_cur%ISOPEN ) THEN
+                  CLOSE get_oe_order_cur;
+                END IF;
+                gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+                --キー編集表変数設定
+                lv_state_flg    := cv_status_warn;
+                gn_wae_data_num := gn_wae_data_num + 1 ;
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
+                  iv_data_value1 => lt_order_no_ebs,         -- データの値１
+                  ov_key_info    => gv_tkn2,              -- キー情報
+                  ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                  ov_retcode     => lv_retcode,           -- リターン・コード
+                  ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                      iv_application   => cv_application,    --アプリケーション短縮名
+                                                      iv_name          => cv_msg_no_data,    --メッセージコード
+                                                      iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                      iv_token_value1  => gv_tkn1,           --トークン値1
+                                                      iv_token_name2   => cv_key_data,       --トークンコード2
+                                                      iv_token_value2  => gv_tkn2 );         --トークン値2
+            END;
+    --
+          END IF;
+-- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
           --明細データ取得
           <<line_loop>>
   --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
@@ -8212,39 +8448,44 @@ AS
     --
     --******************************* 2009/05/12 N.Maeda Var1.13 ADD START *************************************
             IF ( NVL( lt_order_no_ebs, 0 ) <> 0 ) AND ( lt_red_black_flag = cv_black_flag)
-            AND ( lt_digestion_ln_number = 1 ) THEN
-              BEGIN
-                OPEN  get_oe_order_cur;
-                -- バルクフェッチ
-                FETCH get_oe_order_cur BULK COLLECT INTO gt_inp_oe_order_all;
-                -- 抽出件数セット
-                gn_om_data_cnt := gn_om_data_cnt + get_oe_order_cur%ROWCOUNT;
-                -- カーソルCLOSE
-                CLOSE get_oe_order_cur;
-              EXCEPTION
-                WHEN OTHERS THEN
-                  IF( get_oe_order_cur%ISOPEN ) THEN
-                    CLOSE get_oe_order_cur;
-                  END IF;
-                  gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
-                  --キー編集表変数設定
-                lv_state_flg    := cv_status_warn;
-                gn_wae_data_num := gn_wae_data_num + 1 ;
-                xxcos_common_pkg.makeup_key_info(
-                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
-                  iv_data_value1 => lt_order_no_ebs,         -- データの値１
-                  ov_key_info    => gv_tkn2,              -- キー情報
-                  ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-                  ov_retcode     => lv_retcode,           -- リターン・コード
-                  ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
-                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                                      iv_application   => cv_application,    --アプリケーション短縮名
-                                                      iv_name          => cv_msg_no_data,    --メッセージコード
-                                                      iv_token_name1   => cv_tkn_table_name, --トークンコード1
-                                                      iv_token_value1  => gv_tkn1,           --トークン値1
-                                                      iv_token_name2   => cv_key_data,       --トークンコード2
-                                                      iv_token_value2  => gv_tkn2 );         --トークン値2
-              END;
+-- ************ 2009/10/13 N.Maeda MOD START *********** --
+--            AND ( lt_digestion_ln_number = 1 ) THEN
+            AND ( lt_digestion_ln_number = 0 ) THEN
+-- ************ 2009/10/13 N.Maeda MOD  END  *********** --
+-- ************ 2009/10/13 N.Maeda DEL START *********** --
+--              BEGIN
+--                OPEN  get_oe_order_cur;
+--                -- バルクフェッチ
+--                FETCH get_oe_order_cur BULK COLLECT INTO gt_inp_oe_order_all;
+--                -- 抽出件数セット
+--                gn_om_data_cnt := gn_om_data_cnt + get_oe_order_cur%ROWCOUNT;
+--                -- カーソルCLOSE
+--                CLOSE get_oe_order_cur;
+--              EXCEPTION
+--                WHEN OTHERS THEN
+--                  IF( get_oe_order_cur%ISOPEN ) THEN
+--                    CLOSE get_oe_order_cur;
+--                  END IF;
+--                  gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+--                  --キー編集表変数設定
+--                  lv_state_flg    := cv_status_warn;
+--                  gn_wae_data_num := gn_wae_data_num + 1 ;
+--                  xxcos_common_pkg.makeup_key_info(
+--                    iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
+--                    iv_data_value1 => lt_order_no_ebs,         -- データの値１
+--                    ov_key_info    => gv_tkn2,              -- キー情報
+--                    ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--                    ov_retcode     => lv_retcode,           -- リターン・コード
+--                    ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+--                  gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                                        iv_application   => cv_application,    --アプリケーション短縮名
+--                                                        iv_name          => cv_msg_no_data,    --メッセージコード
+--                                                        iv_token_name1   => cv_tkn_table_name, --トークンコード1
+--                                                        iv_token_value1  => gv_tkn1,           --トークン値1
+--                                                        iv_token_name2   => cv_key_data,       --トークンコード2
+--                                                        iv_token_value2  => gv_tkn2 );         --トークン値2
+--              END;
+-- ************ 2009/10/13 N.Maeda DEL  END  *********** --
     --
               IF ( gt_inp_oe_order_all.COUNT > 0 ) AND ( lv_state_flg <> cv_status_warn )THEN
                 <<om_order_loop>>
@@ -8259,6 +8500,9 @@ AS
                   gt_oe_cust_po_number( gn_cnt_om_order )    := gt_inp_oe_order_all( om_data_no ).cust_po_number;
                   gt_oe_line_id( gn_cnt_om_order )           := gt_inp_oe_order_all( om_data_no ).line_id;
                   gt_oe_li_flow_status_code( gn_cnt_om_order )  := gt_inp_oe_order_all( om_data_no ).line_flow_status_code;
+-- ************ 2009/10/13 1.22 N.Maeda DEL START *********** --
+                  gt_oe_line_row_id( gn_cnt_om_order )       := gt_inp_oe_order_all( om_data_no ).row_id;
+-- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
                   gn_cnt_om_order := gn_cnt_om_order + 1;
                 END LOOP om_order_loop;
               END IF;
@@ -12528,12 +12772,44 @@ AS
       END LOOP war_msg_loop;
     END IF;
 --******************************* 2009/04/16 N.Maeda Var1. ADD END   ***************************************
+-- ************ 2009/10/13 1.22 N.Maeda MOD START *********** --
+    IF ( gt_msg_bookd.COUNT > 0 ) THEN                -- 記帳メッセージ
+      <<bookd_num_loop>>
+      FOR bookd_num IN 1..gt_msg_bookd.COUNT LOOP
+        --メッセージ生成
+        lv_errmsg := gt_msg_bookd(bookd_num);
+        lv_errbuf := lv_errmsg;
+        --メッセージ出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_errmsg);
+        --ログ出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+         ,buff   => lv_errbuf);
+        --空行挿入
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+          ,buff   => ''
+          );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+          ,buff   => ''
+          );
+      END LOOP bookd_num_loop;
+    END IF;
+-- ************ 2009/10/13 1.22 N.Maeda MOD  END  *********** --
     IF ( lv_retcode <> cv_status_error ) 
     AND ( ( gn_target_cnt + gn_target_edi_cnt + gn_transaction_cnt + gn_inp_target_cnt ) = 0 ) THEN
       ov_retcode := cv_status_warn;
 --      ov_errbuf  := lv_errbuf;
       ov_errmsg  := lv_errbuf;
     END IF;
+-- ************ 2009/10/13 1.22 N.Maeda MOD START *********** --
+    IF ( gn_close_warn_flag <> 0 ) THEN
+      ov_retcode := cv_status_warn;
+    END IF;
+-- ************ 2009/10/13 1.22 N.Maeda MOD  END  *********** --
 --
   EXCEPTION
       -- *** 任意で例外処理を記述する ****

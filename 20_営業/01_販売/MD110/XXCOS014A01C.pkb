@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *                                       [0001216] 売上区分の外部結合化対応
  *  2009/09/15    1.15  M.Sano           [0001211] レビュー指摘対応
  *  2009/10/02    1.16  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
+ *  2009/10/14    1.17  M.Sano           [0001376] 納品書用データ作成済フラグの更新を明細単位へ変更
  *
  *****************************************************************************************/
 --
@@ -155,7 +156,10 @@ AS
   ct_msg_org_id                   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00063';                    --メッセージ用文字列.在庫組織ID
   ct_msg_cust_master              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00049';                    --メッセージ用文字列.顧客マスタ
   ct_msg_item_master              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00050';                    --メッセージ用文字列.品目マスタ
-  ct_msg_oe_header                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00069';                    --メッセージ用文字列.受注ヘッダ情報テーブル
+/* 2009/10/14 Ver1.17 Mod Start */
+--  ct_msg_oe_header                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00069';                    --メッセージ用文字列.受注ヘッダ情報テーブル
+  ct_msg_oe_line                  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00070';                    --メッセージ用文字列.受注明細情報テーブル
+/* 2009/10/14 Ver1.17 Mod End */
   ct_msg_get_err                  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00064';                    --取得エラー
   ct_msg_master_notfound          CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00065';                    --マスタ未登録
   ct_msg_input_parameters1        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12901';                    --パラメータ出力メッセージ1
@@ -183,6 +187,9 @@ AS
   --トークン
   cv_tkn_data                     CONSTANT VARCHAR2(4) := 'DATA';                                 --データ
   cv_tkn_table                    CONSTANT VARCHAR2(5) := 'TABLE';                                --テーブル
+/* 2009/10/14 Ver1.17 Add Start */
+  cv_tkn_table_name               CONSTANT VARCHAR2(10) := 'TABLE_NAME';                          --テーブル
+/* 2009/10/14 Ver1.17 Add End   */
   cv_tkn_prm1                     CONSTANT VARCHAR2(6) := 'PARAM1';                               --入力パラメータ1
   cv_tkn_prm2                     CONSTANT VARCHAR2(6) := 'PARAM2';                               --入力パラメータ2
   cv_tkn_prm3                     CONSTANT VARCHAR2(6) := 'PARAM3';                               --入力パラメータ3
@@ -313,6 +320,12 @@ AS
    ,line_type30              fnd_new_messages.message_text%TYPE
    ,order_source             fnd_new_messages.message_text%TYPE
   );
+/* 2009/10/14 Ver1.17 Add Start */
+  --更新対象明細ID格納レコード
+  TYPE g_order_line_id_rtype IS RECORD (
+    line_id                  oe_order_lines_all.line_id%TYPE
+  );
+/* 2009/10/14 Ver1.17 Add End   */
   --その他情報格納レコード
   TYPE g_other_rtype IS RECORD (
     proc_date                VARCHAR2(8)                                         --処理日
@@ -1264,7 +1277,10 @@ AS
    * Description      : データレコード作成処理(A-5)
    ***********************************************************************************/
   PROCEDURE proc_out_data_record(
-    it_header_id  IN  oe_order_headers_all.header_id%TYPE
+/* 2009/10/14 Ver1.17 Mod Start */
+--    it_header_id  IN  oe_order_headers_all.header_id%TYPE
+    it_line_id    IN  oe_order_lines_all.line_id%TYPE
+/* 2009/10/14 Ver1.17 Mod End */
    ,i_data_tab    IN  xxcos_common2_pkg.g_layout_ttype
    ,ov_errbuf     OUT NOCOPY VARCHAR2     --   エラー・メッセージ           --# 固定 #
    ,ov_retcode    OUT NOCOPY VARCHAR2     --   リターン・コード             --# 固定 #
@@ -1293,6 +1309,9 @@ AS
     lv_data_record         VARCHAR2(32767);
     lv_table_name  all_tables.table_name%TYPE;
     lv_key_info            VARCHAR2(100);
+/* 2009/10/14 Ver1.17 Add Start */
+    lv_tval_col_invoice_n  VARCHAR2(100);
+/* 2009/10/14 Ver1.17 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -1344,13 +1363,22 @@ AS
     BEGIN
 --
     --共通帳票様式の場合
-    UPDATE oe_order_headers_all ooha
-    SET ooha.global_attribute1 = xxcos_common2_pkg.get_deliv_slip_flag_area(
+/* 2009/10/14 Ver1.17 Mod Start */
+--    UPDATE oe_order_headers_all ooha
+--    SET ooha.global_attribute1 = xxcos_common2_pkg.get_deliv_slip_flag_area(
+--                                                   g_input_rec.publish_flag_seq
+--                                                  ,ooha.global_attribute1
+--                                                  ,cv_publish )
+--    WHERE ooha.header_id = it_header_id
+--    ;
+    UPDATE oe_order_lines_all oola
+    SET oola.global_attribute2 = xxcos_common2_pkg.get_deliv_slip_flag_area(
                                                    g_input_rec.publish_flag_seq
-                                                  ,ooha.global_attribute1
+                                                  ,oola.global_attribute2
                                                   ,cv_publish )
-    WHERE ooha.header_id = it_header_id
+    WHERE oola.line_id = it_line_id
     ;
+/* 2009/10/14 Ver1.17 Mod End   */
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1361,30 +1389,64 @@ AS
     out_line(buff => cv_prg_name || ' end');
   EXCEPTION
     WHEN update_expt THEN
-      lv_table_name := xxccp_common_pkg.get_msg(
-                         iv_application   => cv_apl_name
-                        ,iv_name          => ct_msg_oe_header
-                       );
+/* 2009/10/14 Ver1.17 Mod Start */
+--      lv_table_name := xxccp_common_pkg.get_msg(
+--                         iv_application   => cv_apl_name
+--                        ,iv_name          => ct_msg_oe_header
+--                       );
+      --バッファのセット
+      ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf,1,5000);
+      --トークンの取得
+      lv_table_name         := xxccp_common_pkg.get_msg(
+                                 iv_application   => cv_apl_name
+                                ,iv_name          => ct_msg_oe_line
+                               );
+      lv_tval_col_invoice_n := xxccp_common_pkg.get_msg(
+                                 iv_application   => cv_apl_name
+                                ,iv_name          => ct_msg_invoice_number
+                               );
+/* 2009/10/14 Ver1.17 Mod End   */
       --キー情報編集
       xxcos_common_pkg.makeup_key_info(
         ov_errbuf      => lv_errbuf                --エラー・メッセージ
        ,ov_retcode     => lv_retcode               --リターン・コード
        ,ov_errmsg      => lv_errmsg                --ユーザー・エラー・メッセージ
        ,ov_key_info    => lv_key_info              --キー情報
-       ,iv_item_name1  => ct_msg_invoice_number
-       ,iv_data_value1 => i_data_tab('invoice_number')
+/* 2009/10/14 Ver1.17 Mod Start */
+--       ,iv_item_name1  => ct_msg_invoice_number
+--       ,iv_data_value1 => i_data_tab('invoice_number')
+--      );
+----
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     cv_apl_name
+--                    ,ct_msg_update_err
+--                    ,cv_tkn_table
+--                    ,cv_tkn_table_name
+--                    ,lv_table_name
+--                    ,cv_tkn_key
+--                    ,lv_key_info
+--                   );
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf,1,5000);
+       ,iv_item_name1  => lv_tval_col_invoice_n
+       ,iv_data_value1 => i_data_tab('INVOICE_NUMBER')
       );
 --
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     cv_apl_name
-                    ,ct_msg_update_err
-                    ,cv_tkn_table
-                    ,lv_table_name
-                    ,cv_tkn_key
-                    ,lv_key_info
-                   );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf,1,5000);
+      IF ( lv_retcode = cv_status_error) THEN
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf,1,5000);
+      ELSE
+        -- メッセージを取得
+        ov_errmsg  := xxccp_common_pkg.get_msg(
+                        cv_apl_name
+                       ,ct_msg_update_err
+                       ,cv_tkn_table_name
+                       ,lv_table_name
+                       ,cv_tkn_key
+                       ,lv_key_info
+                      );
+      END IF;
+/* 2009/10/14 Ver1.17 Mod End   */
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1561,6 +1623,9 @@ AS
 /* 2009/10/02 Ver1.16 Mod Start */
     lt_last_header_id     oe_order_headers_all.header_id%TYPE;                --ヘッダID(前回ヘッダID)
 /* 2009/10/02 Ver1.16 Mod End   */
+/* 2009/10/14 Ver1.17 Add Start */
+    lt_line_id            oe_order_lines_all.line_id%TYPE;                    --受注明細ID
+/* 2009/10/14 Ver1.17 Add End   */
     lt_tkn                fnd_new_messages.message_text%TYPE;                 --メッセージ用文字列
     lv_break_key_old                   VARCHAR2(100);                         --旧ブレイクキー
     lv_break_key_new                   VARCHAR2(100);                         --新ブレイクキー
@@ -2263,13 +2328,16 @@ AS
                           ,i_other_rec    g_other_rtype
     )
     IS
-      SELECT TO_CHAR(ivoh.header_id)                                            header_id                     --ヘッダID(更新キー)
+      SELECT TO_CHAR(ivoh.header_id)                                            header_id                     --ヘッダID
             ,ivoh.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
             ,oola.line_number                                                   line_number                   --受注明細　（明細番号）
 /* 2009/08/12 Ver1.14 Del Start */
 --            ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
 /* 2009/08/12 Ver1.14 Del End   */
             ,xlvv.attribute12                                                   outbound_flag                 --OUTBOUND可否
+/* 2009/10/14 Ver1.17 Add Start */
+            ,oola.line_id                                                       line_id                       --明細ID(更新キー)
+/* 2009/10/14 Ver1.17 Add End   */
       ------------------------------------------------------ヘッダ情報--------------------------------------------------------------
             ,cv_number01                                                        medium_class                  --媒体区分
             ,i_input_rec.data_type_code                                         data_type_code                --データ種コード
@@ -3024,11 +3092,18 @@ AS
                       AND    TRUNC(oola_chk1.request_date)
                                BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
                                AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+/* 2009/10/14 Ver1.17 Add Start */
+                      AND    xxcos_common2_pkg.get_deliv_slip_flag(
+                               i_input_rec.publish_flag_seq
+                              ,oola_chk1.global_attribute2 )       = i_input_rec.publish_div                  --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Add End   */
                     )
 /* 2009/09/15 Ver1.15 Mod End   */
-             AND    xxcos_common2_pkg.get_deliv_slip_flag(
-                      i_input_rec.publish_flag_seq
-                     ,ooha.global_attribute1 )      = i_input_rec.publish_div                                 --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Del Start */
+--             AND    xxcos_common2_pkg.get_deliv_slip_flag(
+--                      i_input_rec.publish_flag_seq
+--                     ,ooha.global_attribute1 )      = i_input_rec.publish_div                                 --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Del End   */
              UNION ALL
              SELECT ooha.header_id                                              header_id                     --ヘッダID
                    ,ooha.org_id                                                 org_id                        --営業単位ID
@@ -3086,13 +3161,22 @@ AS
                       AND    TRUNC(oola_chk2.request_date)
                                BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
                                AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+/* 2009/10/14 Ver1.17 Add Start */
+                      AND    xxcos_common2_pkg.get_deliv_slip_flag(
+                               i_input_rec.publish_flag_seq
+                              ,oola_chk2.global_attribute2 )       = i_input_rec.publish_div                  --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Add End   */
                     )
 /* 2009/09/15 Ver1.15 Mod End   */
-             AND    xxcos_common2_pkg.get_deliv_slip_flag(
-                      i_input_rec.publish_flag_seq
-                    ,ooha.global_attribute1 )       = i_input_rec.publish_div                                 --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Del Start */
+--             AND    xxcos_common2_pkg.get_deliv_slip_flag(
+--                      i_input_rec.publish_flag_seq
+--                    ,ooha.global_attribute1 )       = i_input_rec.publish_div                                 --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Del End   */
            )                                                                    ivoh                          --* インラインビュー：受注ヘッダ *--
-          ,oe_order_headers_all                                                 ooha_lock                     --* 受注ヘッダ情報テーブル(ロック用) *--
+/* 2009/10/14 Ver1.17 Del Start */
+--          ,oe_order_headers_all                                                 ooha_lock                     --* 受注ヘッダ情報テーブル(ロック用) *--
+/* 2009/10/14 Ver1.17 Del End   */
           ,oe_order_lines_all                                                   oola                          --* 受注明細情報テーブル *--
           ,oe_transaction_types_tl                                              ottt_h                        --* 受注タイプヘッダ *--
           ,oe_transaction_types_tl                                              ottt_l                        --* 受注タイプ明細 *--
@@ -3180,10 +3264,14 @@ AS
 --         OR      i_input_rec.chain_code     IS NULL
 --           AND     ivoh.account_number        = i_input_rec.cust_code )                                       --顧客ID
 --       AND   
-       WHERE ooha_lock.header_id            = ivoh.header_id                                                  --受注ヘッダID
---******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
+/* 2009/10/14 Ver1.17 Mod Start */
+--       WHERE ooha_lock.header_id            = ivoh.header_id                                                  --受注ヘッダID
+----******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
+--       --受注明細
+--       AND   oola.header_id                 = ivoh.header_id                                                  --受注ヘッダID
        --受注明細
-       AND   oola.header_id                 = ivoh.header_id                                                  --受注ヘッダID
+       WHERE oola.header_id                 = ivoh.header_id                                                  --受注ヘッダID
+/* 2009/10/14 Ver1.17 Mod End   */
        --受注タイプ（ヘッダ）抽出条件
 /* 2009/08/12 Ver1.14 Mod Start */
 --       AND   ottt_h.language                = userenv( 'LANG' )                                               --言語
@@ -3209,6 +3297,11 @@ AS
                BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
                AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
 /* 2009/09/15 Ver1.15 Add End   */
+/* 2009/10/14 Ver1.17 Add Start */
+       AND    xxcos_common2_pkg.get_deliv_slip_flag(
+                i_input_rec.publish_flag_seq
+               ,oola.global_attribute2 )    = i_input_rec.publish_div                                         --納品書発行フラグ取得関数
+/* 2009/10/14 Ver1.17 Add End   */
        --パーティマスタ抽出条件
        AND   hp.party_id(+)                 = ivoh.party_id                                                   --パーティID
 /* 2009/08/12 Ver1.14 Mod Start */
@@ -3272,7 +3365,9 @@ AS
 /* 2009/08/12 Ver1.14 Del End   */
        AND   ivoh.org_id                    = i_prf_rec.org_id                                                --MO:営業単位
        AND   oola.org_id                    = ivoh.org_id                                                     --MO:営業単位
-       AND   ooha_lock.org_id               = ivoh.org_id                                                     --MO:営業単位
+/* 2009/10/14 Ver1.17 Del Start */
+--       AND   ooha_lock.org_id               = ivoh.org_id                                                     --MO:営業単位
+/* 2009/10/14 Ver1.17 Del End   */
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
        AND   cdm.account_number(+)          = ivoh.delivery_base_code                                         --顧客コード=納品拠点コード
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD  END  *******************************************************
@@ -3292,7 +3387,10 @@ AS
                ,ivoh.header_id
 /* 2009/10/02 Ver1.16 Mod End   */
                ,oola.line_number                                                                              --受注明細  （明細番号）
-       FOR UPDATE OF ooha_lock.header_id NOWAIT                                                               --ロック
+/* 2009/10/14 Ver1.17 Mod Start */
+--       FOR UPDATE OF ooha_lock.header_id NOWAIT                                                               --ロック
+       FOR UPDATE OF oola.line_id NOWAIT                                                               --ロック
+/* 2009/10/14 Ver1.17 Mod End   */
        ;
 -- 2009/02/13 T.Nakamura Ver.1.2 mod end
     -- *** ローカル・レコード ***
@@ -3300,6 +3398,12 @@ AS
     l_chain_rec                g_chain_rtype;                                               --EDIチェーン店情報
     l_cust_rec                 g_cust_rtype;                                                --顧客情報
     l_other_rec                g_other_rtype;                                               --その他情報
+/* 2009/10/14 Ver1.17 Add Start */
+    -- *** ローカル・TABLE型 ***
+    TYPE l_order_line_id_ttype IS TABLE OF g_order_line_id_rtype INDEX BY BINARY_INTEGER;   --フラグの更新対象の明細ID
+    -- *** ローカル・PL/SQL表 ***
+    l_order_line_id_tab        l_order_line_id_ttype;                                       --フラグの更新対象の明細ID
+/* 2009/10/14 Ver1.17 Add End   */
 --
   BEGIN
     out_line(buff => cv_prg_name || ' start');
@@ -3464,6 +3568,9 @@ AS
 --       ,lt_bargain_class                                                                                      --定番特売区分
 /* 2009/08/12 Ver1.14 Del End   */
        ,lt_outbound_flag                                                                                      --OUTBOUND可否
+/* 2009/10/14 Ver1.17 Add Start */
+       ,lt_line_id                                                                                            --受注明細ID
+/* 2009/10/14 Ver1.17 Add End   */
             ------------------------------------------------ヘッダ情報------------------------------------------------
        ,l_data_tab('MEDIUM_CLASS')                                                                            --媒体区分
        ,l_data_tab('DATA_TYPE_CODE')                                                                          --データ種コード
@@ -3939,7 +4046,10 @@ AS
           lt_tbl(i)('INVOICE_STOCKOUT_PRICE_AMT')   := lt_invoice_stockout_price_amt;       --売価金額（欠品）
         --データレコード作成処理
           proc_out_data_record(
-            lt_header_id
+/* 2009/10/14 Ver1.17 Mod Start */
+--            lt_header_id
+            l_order_line_id_tab(i).line_id
+/* 2009/10/14 Ver1.17 Mod End   */
            ,lt_tbl(i)
            ,lv_errbuf
            ,lv_retcode
@@ -3985,6 +4095,10 @@ AS
     --ブレイクキーの取得
         lv_break_key_old := lv_break_key_new;
 -- 2009/05/28 M.Sano Ver.1.11 add start
+/* 2009/10/14 Ver1.17 Add Start */
+    --受注明細IDテーブルの初期化
+        l_order_line_id_tab.DELETE;
+/* 2009/10/14 Ver1.17 Add End   */
       END IF;
   --親テーブルインデックスのインクリメント
       ln_cnt := ln_cnt + 1;
@@ -4033,6 +4147,10 @@ AS
                                       + NVL( TO_NUMBER( l_data_tab('STOCKOUT_PRICE_AMT') ),0 );
   --親テーブルに子テーブルをセット
       lt_tbl(ln_cnt) := l_data_tab;
+/* 2009/10/14 Ver1.17 Add Start */
+  --受注明細IDテーブルに伝票計を集計した受注明細IDをセット
+      l_order_line_id_tab(ln_cnt).line_id := lt_line_id;
+/* 2009/10/14 Ver1.17 Add End   */
 --
     END LOOP data_record_loop;
     --==============================================================
@@ -4064,7 +4182,10 @@ AS
           lt_tbl(i)('INVOICE_STOCKOUT_PRICE_AMT')   := lt_invoice_stockout_price_amt;       --売価金額（欠品）
         --データレコード作成処理
           proc_out_data_record(
-            lt_header_id
+/* 2009/10/14 Ver1.17 Mod Start */
+--            lt_header_id
+            l_order_line_id_tab(i).line_id
+/* 2009/10/14 Ver1.17 Mod Start */
            ,lt_tbl(i)
            ,lv_errbuf
            ,lv_retcode
@@ -4123,7 +4244,10 @@ AS
 --
     -- *** ロックエラーハンドラ ***
     WHEN resource_busy_expt THEN
-      lt_tkn := xxccp_common_pkg.get_msg(cv_apl_name, ct_msg_oe_header);
+/* 2009/10/14 Ver1.17 Mod Start */
+--      lt_tkn := xxccp_common_pkg.get_msg(cv_apl_name, ct_msg_oe_header);
+      lt_tkn := xxccp_common_pkg.get_msg(cv_apl_name, ct_msg_oe_line);
+/* 2009/10/14 Ver1.17 Mod End   */
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_apl_name
                     ,ct_msg_resource_busy_err
