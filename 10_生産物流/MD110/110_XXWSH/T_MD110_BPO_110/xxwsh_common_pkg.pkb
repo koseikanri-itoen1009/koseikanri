@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.21
+ * Version                : 1.22
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *                                                                    領域またいで混載した場合に正しく解除されない問題を修正
  *                                                                    配車解除時のエラーメッセージが正しく出力されない問題を修正
  *  2008/08/28   1.21  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#32対応
+ *  2008/09/02   1.22  Oracle 北寒寺正夫[配車解除関数] 統合テスト環境不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5496,9 +5497,15 @@ AS
             -- 最大配送区分、小口区分の取得に成功している場合
             IF (lv_err_chek = '0') THEN
               IF (lv_small_sum_class = cv_include) THEN
-                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight;
+-- Ver1.22 M.Hokkanji START
+--                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight;
+                ln_sum_weight := gt_chk_move_tbl(i).sum_weight;
+-- Ver1.22 M.Hokkanji END
               ELSE
-                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight + NVL(gt_chk_ship_tbl(i).sum_pallet_weight,0);
+-- Ver1.22 M.Hokkanji START
+--                ln_sum_weight := gt_chk_ship_tbl(i).sum_weight + NVL(gt_chk_ship_tbl(i).sum_pallet_weight,0);
+                ln_sum_weight := gt_chk_move_tbl(i).sum_weight + NVL(gt_chk_move_tbl(i).sum_pallet_weight,0);
+-- Ver1.22 M.Hokkanji END
               END IF;
               --積載効率(重量)を取得
               xxwsh_common910_pkg.calc_load_efficiency(
@@ -6201,17 +6208,27 @@ AS
 --
       END IF;
 --
-      -- 配車配送計画(アドオン)ロック処理
-      SELECT xcs.transaction_id
-      INTO   ln_dummy
-      FROM   xxwsh_carriers_schedule        xcs              -- 配車配送計画(アドオン)
-      WHERE  xcs.delivery_no                = lv_delivery_no
-      FOR UPDATE NOWAIT;
+-- Ver1.22 M.Hokkanji START
+      BEGIN
+-- Ver1.22 M.Hokkanji END
+        -- 配車配送計画(アドオン)ロック処理
+        SELECT xcs.transaction_id
+        INTO   ln_dummy
+        FROM   xxwsh_carriers_schedule        xcs              -- 配車配送計画(アドオン)
+        WHERE  xcs.delivery_no                = lv_delivery_no
+        FOR UPDATE NOWAIT;
 --
-      -- 配車配送計画(アドオン)削除処理
-      DELETE
-      FROM   xxwsh_carriers_schedule        xcs              -- 配車配送計画(アドオン)
-      WHERE  xcs.delivery_no                = lv_delivery_no;
+        -- 配車配送計画(アドオン)削除処理
+        DELETE
+        FROM   xxwsh_carriers_schedule        xcs              -- 配車配送計画(アドオン)
+        WHERE  xcs.delivery_no                = lv_delivery_no;
+-- Ver1.22 M.Hokkanji START
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL; -- 対象データがない場合はエラーとしない
+      END;
+-- Ver1.22 M.Hokkanji END
+--
 --
     -- 配送Noが設定されていない場合
     ELSE
