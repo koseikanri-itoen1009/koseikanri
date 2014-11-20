@@ -374,7 +374,10 @@ SELECT  SMMR.year                          year               --年度
                               -- 投入     --
                               --------------
                              ,CASE WHEN NVL( GMD.attribute5, 'N' ) <> 'Y' THEN           --投入･打込区分『投入』
-                                CASE WHEN NVL( ITEMC.item_class_code, '1' ) <> '2' THEN  --品目区分『資材』以外
+-- 2009/10/15 H.Itou Mod Start 本番障害#1667
+--                                CASE WHEN NVL( ITEMC.item_class_code, '1' ) <> '2' THEN  --品目区分『資材』以外
+                                CASE WHEN NVL( MCB.segment1, '1' ) <> '2' THEN  --品目区分『資材』以外
+-- 2009/10/15 H.Itou Mod End
                                   XMD.invested_qty - XMD.return_qty
                               END END                  invest_qty    --投入数量
                               -- 投入 END --
@@ -391,7 +394,10 @@ SELECT  SMMR.year                          year               --年度
                               -- 資材     --
                               --------------
                              ,CASE WHEN NVL( GMD.attribute5, 'N' ) <> 'Y' THEN           --投入･打込区分『投入』
-                                CASE WHEN NVL( ITEMC.item_class_code, '1' ) = '2' THEN   --品目区分『資材』
+-- 2009/10/15 H.Itou Mod Start 本番障害#1667
+--                                CASE WHEN NVL( ITEMC.item_class_code, '1' ) = '2' THEN   --品目区分『資材』
+                                CASE WHEN NVL( MCB.segment1, '1' ) = '2' THEN   --品目区分『資材』
+-- 2009/10/15 H.Itou Mod End
                                   XMD.invested_qty - XMD.return_qty - ( XMD.mtl_prod_qty + XMD.mtl_mfg_qty )
                               END END                  mtrl_qty      --資材数量（数量 - 不良数量）
                               -- 資材 END --
@@ -405,7 +411,11 @@ SELECT  SMMR.year                          year               --年度
                              ,gmd_routings_b           GRB           --工順マスタ
                              ,gme_material_details     GMD           --原料詳細
                              ,xxwip_material_detail    XMD           --原料詳細アドオン
-                             ,xxsky_item_class_v       ITEMC         --品目区分取得用
+-- 2009/10/15 H.Itou Mod Start 本番障害#1667
+--                             ,xxsky_item_class_v       ITEMC         --品目区分取得用
+                             ,gmi_item_categories      GIC           -- 品目カテゴリ割当
+                             ,mtl_categories_b         MCB           -- 品目カテゴリ
+-- 2009/10/15 H.Itou Mod End
                              ,gme_material_details     GMDF          --原料詳細(完成品情報取得用)
                              ,ic_tran_pnd              ITPF          --保留在庫トランザクション(完成品情報取得用)
                        WHERE  GBH.batch_type           = 0
@@ -417,7 +427,13 @@ SELECT  SMMR.year                          year               --年度
                          AND  GMD.line_type            = '-1'        --【原料】
                          AND  GBH.batch_id             = GMD.batch_id
                          --品目区分取得
-                         AND  GMD.item_id              = ITEMC.item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1667
+--                         AND  GMD.item_id              = ITEMC.item_id
+                         AND  GMD.item_id              = GIC.item_id
+                         AND  GIC.category_set_id      = TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'))
+                         AND  GIC.category_id          = MCB.category_id
+                         AND  XMD.item_id              = GIC.item_id
+-- 2009/10/15 H.Itou Mod End
                          --原料詳細アドオンとの結合
                          AND  XMD.plan_type            = '4'         --実績
                          AND  (    XMD.invested_qty   <> 0
