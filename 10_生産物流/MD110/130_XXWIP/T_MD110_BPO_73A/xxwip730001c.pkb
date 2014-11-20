@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -99,6 +99,7 @@ AS
  *  2008/07/16    1.4  Oracle 野村       ST障害#455対応
  *  2008/07/17    1.5  Oracle 野村       変更要求#96、#98対応
  *  2008/08/04    1.6  Oracle 山根       内部課題#187対応
+ *  2008/08/25    1.7  Oracle 野村       ST事前確認障害
  *
  *****************************************************************************************/
 --
@@ -5776,7 +5777,22 @@ AS
           ELSE
             u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_yes;
           END IF;
-          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+--
+-- ##### 20080805 Ver.1.5 ST事前確認障害 START #####
+--          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+          -- 元の支払確定区分＝Y 且つ、差額 <> 0 の場合
+          IF ((lv_defined_flag = gv_ktg_yes) AND (u_head_balance_tab(ln_update_cnt) <> 0)) THEN
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_yes ;  -- 支払確定戻
+--
+          -- 元の支払確定区分＝Y 且つ、差額 = 0 の場合
+          ELSIF ((lv_defined_flag = gv_ktg_yes) AND (u_head_balance_tab(ln_update_cnt) = 0)) THEN
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_no ;  -- 支払確定戻
+--
+          -- 上記以外の場合
+          ELSE
+            u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+          END IF;
+-- ##### 20080805 Ver.1.5 ST事前確認障害 END   #####
 --
           -- **************************************************
           -- ** 差額が0以外の配送Noの請求情報は全て削除対象
@@ -6031,7 +6047,18 @@ AS
           u_head_trans_lcton_tab(ln_update_cnt)    := NULL ; -- 振替先
           u_head_output_flag_tab(ln_update_cnt)    := gv_ktg_yes;       -- 差異区分
           u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;        -- 支払確定区分
-          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+--
+-- ##### 20080805 Ver.1.5 ST事前確認障害 START #####
+--          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+          -- 元の支払確定区分 ＝ Y の場合
+          IF (lv_defined_flag = gv_ktg_yes) THEN
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_yes ;  -- 支払確定戻
+--
+          -- 上記以外の場合
+          ELSE
+            u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+          END IF;
+-- ##### 20080805 Ver.1.5 ST事前確認障害 END   #####
 --
           -- **************************************************
           -- ** 更新対象となった配送Noはの請求情報は全て削除対象
