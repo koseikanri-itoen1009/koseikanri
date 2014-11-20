@@ -66,6 +66,9 @@ AS
  *                                       get_current_rs_base_code 新規作成(T1_0593対応)
  *  2009/05/20    1.4   K.Satomura       T1_1082対応
  *  2009/12/14    1.5   T.Maruyama       conv_ng_char_vdms新規作成（E_本稼動_00469）
+ *  2010/04/19    1.6   T.Maruyama       get_working_daysで使用するカレンダ名をXXCSOのプロファイル
+ *                                       から取得するよう変更。（各業務で必要に応じて変更できるようにする。）
+ *                                      （E_本稼動_02251）
  *****************************************************************************************/
 --
   -- ===============================
@@ -1334,6 +1337,8 @@ AS
    /**********************************************************************************
    * Function Name    : get_working_days
    * Description      : 営業日数取得関数
+   *                    （E_本稼動_02251）使用するカレンダを必要に応じて変更できるよう
+   *                    プロファイルで管理。
    ***********************************************************************************/
   FUNCTION get_working_days(
     id_from_date             IN  DATE                    -- 基点日付
@@ -1345,7 +1350,11 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_working_days';
-    cv_profile_name              CONSTANT VARCHAR2(100)   := 'XXCCP1_WORKING_CALENDAR';
+    /* 2010/04/19 T.Maruyama E_本稼動_02251 START */
+    --cv_profile_name              CONSTANT VARCHAR2(100)   := 'XXCCP1_WORKING_CALENDAR';
+    --プロファイル「XXCSO:売上訪問計画稼働日カレンダ名」
+    cv_profile_name              CONSTANT VARCHAR2(100)   := 'XXCSO1_SALESVISIT_PLN_WORK_CAL';
+    /* 2010/04/19 T.Maruyama E_本稼動_02251 END */
     -- ===============================
     -- ローカル変数
     -- ===============================

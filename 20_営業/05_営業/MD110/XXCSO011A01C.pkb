@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -98,6 +98,7 @@ AS
  *                                        ・業態小分類と機種のチェックの際、旧台作業の場合はiProで機種CDを入力しないため
  *                                          設置物件CDからIBの機種CDを取得して使用するよう変更。
  *                                        ・作業希望日チェックの際に、チェックしている日付を出力するようログ追加。
+ *  2010-04-19    1.29  T.Maruyama       【E_本稼動_02251】作業希望日チェックで使用するカレンダをプロファイル管理する用変更。
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1290,6 +1291,9 @@ AS
     cv_maker_prefix2             CONSTANT VARCHAR2(2)   := '10'; -- 作業会社CDの頭2桁メーカーを表す
     cv_base_prefix               CONSTANT VARCHAR2(2)   := '02'; -- 作業会社CDの頭2桁拠点を表す
     /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+    /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
+    cv_prfl_hoped_chck_cal       CONSTANT VARCHAR2(100) := 'XXCSO1_HOPEDATE_CHECK_CAL'; -- プロファイル「XXCSO:作業希望日チェック時カレンダ名」
+    /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
     --
     -- トークン用定数
     cv_tkn_val_un_number         CONSTANT VARCHAR2(100) := '機種コード';
@@ -1558,7 +1562,12 @@ AS
           END IF;
           --
           -- 業務処理日＋３営業日を取得
-          ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
+          --ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          ld_working_day := xxccp_common_pkg2.get_working_day(id_date          => id_process_date
+                                                             ,in_working_day   => TO_NUMBER(lv_working_day)
+                                                             ,iv_calendar_code => FND_PROFILE.VALUE(cv_prfl_hoped_chck_cal));
+          /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
           -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
           IF (ld_wk_date <= ld_working_day) THEN
             --
@@ -1980,7 +1989,12 @@ AS
           END IF;
           --
           -- 業務処理日＋３営業日を取得
-          ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
+          --ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          ld_working_day := xxccp_common_pkg2.get_working_day(id_date          => id_process_date
+                                                             ,in_working_day   => TO_NUMBER(lv_working_day)
+                                                             ,iv_calendar_code => FND_PROFILE.VALUE(cv_prfl_hoped_chck_cal));
+          /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
           -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
           IF (ld_wk_date <= ld_working_day) THEN
             --
