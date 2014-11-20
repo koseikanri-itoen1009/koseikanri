@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.13
+ * Version                : 1.16
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *                                      扱うように修正。
  *                                      ST#320不具合対応
  *  2008/07/09   1.14  Oracle 熊本和郎  [重量容積小口個数更新関数] ST障害#430対応
+ *  2008/07/11   1.15  Oracle 福田直樹  [最大配送区分算出関数]変更要求対応#95
+ *  2008/07/11   1.16  Oracle 福田直樹  [最大パレット枚数算出関数]変更要求対応#95
  *
  *****************************************************************************************/
 --
@@ -299,6 +301,8 @@ AS
     cv_capacity               CONSTANT VARCHAR2(1)   := '2';                      --容積
     cv_deliver_to             CONSTANT VARCHAR2(1)   := '9';                      --配送先
     cv_base                   CONSTANT VARCHAR2(1)   := '1';                      --拠点
+    cv_all_4                  CONSTANT VARCHAR2(4)   := 'ZZZZ';                   --2008/07/11 変更要求対応#95
+    cv_all_9                  CONSTANT VARCHAR2(9)   := 'ZZZZZZZZZ';              --2008/07/11 変更要求対応#95
 --
     -- ===============================
     -- ユーザー宣言部
@@ -335,11 +339,12 @@ AS
 --
     -- 「基準日(適用日基準日)」が指定されない場合はシステム日付
     IF ( id_standard_date IS NULL) THEN
-      ld_standard_date := SYSDATE;
+      ld_standard_date := TRUNC(SYSDATE);
     ELSE
-      ld_standard_date := id_standard_date;
+      ld_standard_date := TRUNC(id_standard_date);
     END IF;
 --
+    -------- 1. 倉庫(個別コード)－配送先(個別コード) -------------------
     BEGIN
       SELECT xdlv2.ship_method,
              xdlv2.drink_deadweight,
@@ -384,11 +389,11 @@ AS
              -- コード区分１
              AND     xdlv2.code_class1                  =  iv_code_class1
              -- 入出庫場所コード１
-             AND     xdlv2.entering_despatching_code1   =  iv_entering_despatching_code1
+             AND     xdlv2.entering_despatching_code1   =  iv_entering_despatching_code1  --個別
              -- コード区分２
              AND     xdlv2.code_class2                  =  iv_code_class2
              -- 入出庫場所コード２
-             AND     xdlv2.entering_despatching_code2   =  iv_entering_despatching_code2
+             AND     xdlv2.entering_despatching_code2   =  iv_entering_despatching_code2  --個別
              -- 適用開始日(配送L/T)
              AND     ((xdlv2.lt_start_date_active       <= ld_standard_date) OR
                        (xdlv2.lt_start_date_active      IS NULL))
@@ -431,7 +436,305 @@ AS
       AND    max_ship_method.ship_methods_id            =  xdlv2.ship_methods_id
       AND    max_ship_method.max_ship                   =  xdlv2.ship_method;
 --
+    ------------- 2008/07/11 変更要求対応#95 ADD START --------------------------------------
     EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        IF (iv_code_class2 <> cv_deliver_to) THEN  -- コード区分２<>「9:配送」の場合は再検索しない
+          RAISE no_data;
+        END IF;
+--
+        ---------- 2. 倉庫(ALL値)－配送先(個別コード) -------------------------------
+        BEGIN
+          SELECT xdlv2.ship_method,
+                 xdlv2.drink_deadweight,
+                 xdlv2.leaf_deadweight,
+                 xdlv2.drink_loading_capacity,
+                 xdlv2.leaf_loading_capacity,
+                 xdlv2.palette_max_qty
+          INTO   ov_max_ship_methods,
+                 on_drink_deadweight,
+                 on_leaf_deadweight,
+                 on_drink_loading_capacity,
+                 on_leaf_loading_capacity,
+                 on_palette_max_qty
+          FROM   (SELECT xdlv2.ship_methods_id,
+                         MAX(xdlv2.ship_method)
+                           OVER(PARTITION BY
+                             xdlv2.code_class1,
+                             xdlv2.entering_despatching_code1,
+                             xdlv2.code_class2,
+                             xdlv2.entering_despatching_code2
+                           ) max_ship
+                 FROM    xxcmn_delivery_lt2_v xdlv2,
+                         xxwsh_ship_method2_v xsmv2
+                 WHERE   (CASE
+                           -- ドリンク積載重量
+                           WHEN ((iv_prod_class             =  cv_drink) AND
+                                  (iv_weight_capacity_class =  cv_weight)) THEN
+                             xdlv2.drink_deadweight
+                           -- リーフ積載重量
+                           WHEN ((iv_prod_class             =  cv_leaf) AND
+                                  (iv_weight_capacity_class =  cv_weight)) THEN
+                             xdlv2.leaf_deadweight
+                           -- ドリンク積載容積
+                           WHEN ((iv_prod_class             =  cv_drink) AND
+                                  (iv_weight_capacity_class =  cv_capacity)) THEN
+                             xdlv2.drink_loading_capacity
+                           -- リーフ積載容積
+                           WHEN ((iv_prod_class             =  cv_leaf) AND
+                                  (iv_weight_capacity_class =  cv_capacity)) THEN
+                             xdlv2.leaf_loading_capacity
+                         END) > 0
+                 -- コード区分１
+                 AND     xdlv2.code_class1                  =  iv_code_class1
+                 -- 入出庫場所コード１
+                 AND     xdlv2.entering_despatching_code1   =  cv_all_4     --ALL'Z'
+                 -- コード区分２
+                 AND     xdlv2.code_class2                  =  iv_code_class2
+                 -- 入出庫場所コード２
+                 AND     xdlv2.entering_despatching_code2   =  iv_entering_despatching_code2  --個別
+                 -- 適用開始日(配送L/T)
+                 AND     ((xdlv2.lt_start_date_active       <= ld_standard_date) OR
+                           (xdlv2.lt_start_date_active      IS NULL))
+                 -- 適用終了日(配送L/T)
+                 AND     ((xdlv2.lt_end_date_active         >= ld_standard_date) OR
+                           (xdlv2.lt_end_date_active        IS NULL))
+                 -- 適用開始日(出荷方法)
+                 AND     ((xdlv2.sm_start_date_active       <= ld_standard_date) OR
+                           (xdlv2.sm_start_date_active      IS NULL))
+                 -- 適用終了日(出荷方法)
+                 AND     ((xdlv2.sm_end_date_active         >= ld_standard_date) OR
+                           (xdlv2.sm_end_date_active        IS NULL))
+                 -- 混載区分
+                 AND     ((xsmv2.mixed_class                <> cv_object) OR
+                           (xsmv2.mixed_class               IS NULL))
+                 -- 自動配車対象区分
+                 AND     ((iv_auto_process_type             IS NULL) OR
+                           (xsmv2.auto_process_type         =  cv_object))
+                 -- 有効開始日
+                 AND     ((xsmv2.start_date_active          <= ld_standard_date) OR
+                           (xsmv2.start_date_active         IS NULL))
+                 -- 有効終了日
+                 AND     ((xsmv2.end_date_active            >= ld_standard_date) OR
+                           (xsmv2.end_date_active           IS NULL))
+                 AND     xdlv2.ship_method                  =  xsmv2.ship_method_code
+                 ) max_ship_method,
+                 xxcmn_delivery_lt2_v xdlv2
+          -- 適用開始日(配送L/T)
+          WHERE  ((xdlv2.lt_start_date_active               <= ld_standard_date) OR
+                   (xdlv2.lt_start_date_active              IS NULL))
+          -- 適用終了日(配送L/T)
+          AND    ((xdlv2.lt_end_date_active                 >= ld_standard_date) OR
+                   (xdlv2.lt_end_date_active                IS NULL))
+          -- 適用開始日(出荷方法)
+          AND    ((xdlv2.sm_start_date_active               <= ld_standard_date) OR
+                   (xdlv2.sm_start_date_active              IS NULL))
+          -- 適用終了日(出荷方法)
+          AND    ((xdlv2.sm_end_date_active                 >= ld_standard_date) OR
+                   (xdlv2.sm_end_date_active                IS NULL))
+          AND    max_ship_method.ship_methods_id            =  xdlv2.ship_methods_id
+          AND    max_ship_method.max_ship                   =  xdlv2.ship_method;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ------------- 3. 倉庫(個別コード)－配送先(ALL値) -----------------------------
+            BEGIN
+              SELECT xdlv2.ship_method,
+                     xdlv2.drink_deadweight,
+                     xdlv2.leaf_deadweight,
+                     xdlv2.drink_loading_capacity,
+                     xdlv2.leaf_loading_capacity,
+                     xdlv2.palette_max_qty
+              INTO   ov_max_ship_methods,
+                     on_drink_deadweight,
+                     on_leaf_deadweight,
+                     on_drink_loading_capacity,
+                     on_leaf_loading_capacity,
+                     on_palette_max_qty
+              FROM   (SELECT xdlv2.ship_methods_id,
+                             MAX(xdlv2.ship_method)
+                               OVER(PARTITION BY
+                                 xdlv2.code_class1,
+                                 xdlv2.entering_despatching_code1,
+                                 xdlv2.code_class2,
+                                 xdlv2.entering_despatching_code2
+                               ) max_ship
+                     FROM    xxcmn_delivery_lt2_v xdlv2,
+                             xxwsh_ship_method2_v xsmv2
+                     WHERE   (CASE
+                               -- ドリンク積載重量
+                               WHEN ((iv_prod_class             =  cv_drink) AND
+                                      (iv_weight_capacity_class =  cv_weight)) THEN
+                                 xdlv2.drink_deadweight
+                               -- リーフ積載重量
+                               WHEN ((iv_prod_class             =  cv_leaf) AND
+                                      (iv_weight_capacity_class =  cv_weight)) THEN
+                                 xdlv2.leaf_deadweight
+                               -- ドリンク積載容積
+                               WHEN ((iv_prod_class             =  cv_drink) AND
+                                      (iv_weight_capacity_class =  cv_capacity)) THEN
+                                 xdlv2.drink_loading_capacity
+                               -- リーフ積載容積
+                               WHEN ((iv_prod_class             =  cv_leaf) AND
+                                      (iv_weight_capacity_class =  cv_capacity)) THEN
+                                 xdlv2.leaf_loading_capacity
+                             END) > 0
+                     -- コード区分１
+                     AND     xdlv2.code_class1                  =  iv_code_class1
+                     -- 入出庫場所コード１
+                     AND     xdlv2.entering_despatching_code1   =  iv_entering_despatching_code1    --個別
+                     -- コード区分２
+                     AND     xdlv2.code_class2                  =  iv_code_class2
+                     -- 入出庫場所コード２
+                     AND     xdlv2.entering_despatching_code2   =  cv_all_9          --ALL'Z'
+                     -- 適用開始日(配送L/T)
+                     AND     ((xdlv2.lt_start_date_active       <= ld_standard_date) OR
+                               (xdlv2.lt_start_date_active      IS NULL))
+                     -- 適用終了日(配送L/T)
+                     AND     ((xdlv2.lt_end_date_active         >= ld_standard_date) OR
+                               (xdlv2.lt_end_date_active        IS NULL))
+                     -- 適用開始日(出荷方法)
+                     AND     ((xdlv2.sm_start_date_active       <= ld_standard_date) OR
+                               (xdlv2.sm_start_date_active      IS NULL))
+                     -- 適用終了日(出荷方法)
+                     AND     ((xdlv2.sm_end_date_active         >= ld_standard_date) OR
+                               (xdlv2.sm_end_date_active        IS NULL))
+                     -- 混載区分
+                     AND     ((xsmv2.mixed_class                <> cv_object) OR
+                               (xsmv2.mixed_class               IS NULL))
+                     -- 自動配車対象区分
+                     AND     ((iv_auto_process_type             IS NULL) OR
+                               (xsmv2.auto_process_type         =  cv_object))
+                     -- 有効開始日
+                     AND     ((xsmv2.start_date_active          <= ld_standard_date) OR
+                               (xsmv2.start_date_active         IS NULL))
+                     -- 有効終了日
+                     AND     ((xsmv2.end_date_active            >= ld_standard_date) OR
+                               (xsmv2.end_date_active           IS NULL))
+                     AND     xdlv2.ship_method                  =  xsmv2.ship_method_code
+                     ) max_ship_method,
+                     xxcmn_delivery_lt2_v xdlv2
+              -- 適用開始日(配送L/T)
+              WHERE  ((xdlv2.lt_start_date_active               <= ld_standard_date) OR
+                       (xdlv2.lt_start_date_active              IS NULL))
+              -- 適用終了日(配送L/T)
+              AND    ((xdlv2.lt_end_date_active                 >= ld_standard_date) OR
+                       (xdlv2.lt_end_date_active                IS NULL))
+              -- 適用開始日(出荷方法)
+              AND    ((xdlv2.sm_start_date_active               <= ld_standard_date) OR
+                       (xdlv2.sm_start_date_active              IS NULL))
+              -- 適用終了日(出荷方法)
+              AND    ((xdlv2.sm_end_date_active                 >= ld_standard_date) OR
+                       (xdlv2.sm_end_date_active                IS NULL))
+              AND    max_ship_method.ship_methods_id            =  xdlv2.ship_methods_id
+              AND    max_ship_method.max_ship                   =  xdlv2.ship_method;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ----------- 4. 倉庫(ALL値)－配送先(ALL値) -------------------------------
+                BEGIN
+                  SELECT xdlv2.ship_method,
+                         xdlv2.drink_deadweight,
+                         xdlv2.leaf_deadweight,
+                         xdlv2.drink_loading_capacity,
+                         xdlv2.leaf_loading_capacity,
+                         xdlv2.palette_max_qty
+                  INTO   ov_max_ship_methods,
+                         on_drink_deadweight,
+                         on_leaf_deadweight,
+                         on_drink_loading_capacity,
+                         on_leaf_loading_capacity,
+                         on_palette_max_qty
+                  FROM   (SELECT xdlv2.ship_methods_id,
+                                 MAX(xdlv2.ship_method)
+                                   OVER(PARTITION BY
+                                     xdlv2.code_class1,
+                                     xdlv2.entering_despatching_code1,
+                                     xdlv2.code_class2,
+                                     xdlv2.entering_despatching_code2
+                                   ) max_ship
+                         FROM    xxcmn_delivery_lt2_v xdlv2,
+                                 xxwsh_ship_method2_v xsmv2
+                         WHERE   (CASE
+                                   -- ドリンク積載重量
+                                   WHEN ((iv_prod_class             =  cv_drink) AND
+                                          (iv_weight_capacity_class =  cv_weight)) THEN
+                                     xdlv2.drink_deadweight
+                                   -- リーフ積載重量
+                                   WHEN ((iv_prod_class             =  cv_leaf) AND
+                                          (iv_weight_capacity_class =  cv_weight)) THEN
+                                     xdlv2.leaf_deadweight
+                                   -- ドリンク積載容積
+                                   WHEN ((iv_prod_class             =  cv_drink) AND
+                                          (iv_weight_capacity_class =  cv_capacity)) THEN
+                                     xdlv2.drink_loading_capacity
+                                   -- リーフ積載容積
+                                   WHEN ((iv_prod_class             =  cv_leaf) AND
+                                          (iv_weight_capacity_class =  cv_capacity)) THEN
+                                     xdlv2.leaf_loading_capacity
+                                 END) > 0
+                         -- コード区分１
+                         AND     xdlv2.code_class1                  =  iv_code_class1
+                         -- 入出庫場所コード１
+                         AND     xdlv2.entering_despatching_code1   =  cv_all_4          --ALL'Z'
+                         -- コード区分２
+                         AND     xdlv2.code_class2                  =  iv_code_class2
+                         -- 入出庫場所コード２
+                         AND     xdlv2.entering_despatching_code2   =  cv_all_9          --ALL'Z'
+                         -- 適用開始日(配送L/T)
+                         AND     ((xdlv2.lt_start_date_active       <= ld_standard_date) OR
+                                   (xdlv2.lt_start_date_active      IS NULL))
+                         -- 適用終了日(配送L/T)
+                         AND     ((xdlv2.lt_end_date_active         >= ld_standard_date) OR
+                                   (xdlv2.lt_end_date_active        IS NULL))
+                         -- 適用開始日(出荷方法)
+                         AND     ((xdlv2.sm_start_date_active       <= ld_standard_date) OR
+                                   (xdlv2.sm_start_date_active      IS NULL))
+                         -- 適用終了日(出荷方法)
+                         AND     ((xdlv2.sm_end_date_active         >= ld_standard_date) OR
+                                   (xdlv2.sm_end_date_active        IS NULL))
+                         -- 混載区分
+                         AND     ((xsmv2.mixed_class                <> cv_object) OR
+                                   (xsmv2.mixed_class               IS NULL))
+                         -- 自動配車対象区分
+                         AND     ((iv_auto_process_type             IS NULL) OR
+                                   (xsmv2.auto_process_type         =  cv_object))
+                         -- 有効開始日
+                         AND     ((xsmv2.start_date_active          <= ld_standard_date) OR
+                                   (xsmv2.start_date_active         IS NULL))
+                         -- 有効終了日
+                         AND     ((xsmv2.end_date_active            >= ld_standard_date) OR
+                                   (xsmv2.end_date_active           IS NULL))
+                         AND     xdlv2.ship_method                  =  xsmv2.ship_method_code
+                         ) max_ship_method,
+                         xxcmn_delivery_lt2_v xdlv2
+                  -- 適用開始日(配送L/T)
+                  WHERE  ((xdlv2.lt_start_date_active               <= ld_standard_date) OR
+                           (xdlv2.lt_start_date_active              IS NULL))
+                  -- 適用終了日(配送L/T)
+                  AND    ((xdlv2.lt_end_date_active                 >= ld_standard_date) OR
+                           (xdlv2.lt_end_date_active                IS NULL))
+                  -- 適用開始日(出荷方法)
+                  AND    ((xdlv2.sm_start_date_active               <= ld_standard_date) OR
+                           (xdlv2.sm_start_date_active              IS NULL))
+                  -- 適用終了日(出荷方法)
+                  AND    ((xdlv2.sm_end_date_active                 >= ld_standard_date) OR
+                           (xdlv2.sm_end_date_active                IS NULL))
+                  AND    max_ship_method.ship_methods_id            =  xdlv2.ship_methods_id
+                  AND    max_ship_method.max_ship                   =  xdlv2.ship_method;
+--
+                --------- 上記1.から4.で参照して該当なしの場合 -------------------
+                EXCEPTION
+                  WHEN NO_DATA_FOUND THEN
+                    RAISE no_data;
+--
+                END;  -- 4.
+            END;  -- 3.
+        END;  -- 2.
+    ----------- 2008/07/11 変更要求対応#95 ADD END ------------------------------------
+--
+    /*----- 2008/07/11 変更要求対応#95 DEL START -------------------------------------
+    EXCEPTION 
       WHEN NO_DATA_FOUND THEN
 --
       -- ｢コード区分2｣が配送先の場合
@@ -544,8 +847,9 @@ AS
         RAISE no_data;
 --
       END IF;
+      ---------- 2008/07/11 変更要求対応#95 DEL END ---------------------------------*/
 --
-    END;
+    END;  -- 1.
 --
     RETURN gn_status_normal;
 --
@@ -961,6 +1265,8 @@ AS
     -- *** ローカル定数 ***
     cv_deliver_to CONSTANT VARCHAR2(1)   := '9';                  --配送先
     cv_base       CONSTANT VARCHAR2(1)   := '1';                  --拠点
+    cv_all_4      CONSTANT VARCHAR2(4)   := 'ZZZZ';               --2008/07/11 変更要求対応#95
+    cv_all_9      CONSTANT VARCHAR2(9)   := 'ZZZZZZZZZ';          --2008/07/11 変更要求対応#95
 --
     -- *** ローカル変数 ***
     ld_standard_date DATE;                                        --基準日
@@ -994,6 +1300,7 @@ AS
       ld_standard_date := TRUNC(id_standard_date);
     END IF;
 --
+    ------------ 1. 倉庫(個別コード)－配送先(個別コード) --------------------------
     BEGIN
       SELECT
         xdlv2.drink_deadweight,                                             -- ドリンク積載重量
@@ -1012,11 +1319,11 @@ AS
       WHERE
         xdlv2.code_class1                 =  iv_code_class1                 -- コード区分１
         AND
-        xdlv2.entering_despatching_code1  =  iv_entering_despatching_code1  -- 入出庫場所コード１
+        xdlv2.entering_despatching_code1  =  iv_entering_despatching_code1  -- 入出庫場所コード１（個別）
         AND
         xdlv2.code_class2                 =  iv_code_class2                 -- コード区分２
         AND
-        xdlv2.entering_despatching_code2  =  iv_entering_despatching_code2  -- 入出庫場所コード２
+        xdlv2.entering_despatching_code2  =  iv_entering_despatching_code2  -- 入出庫場所コード２（個別）
         AND
         xdlv2.lt_start_date_active       <=  ld_standard_date               -- 適用開始日(配送L/T)
         AND
@@ -1028,6 +1335,133 @@ AS
         AND
         xdlv2.sm_end_date_active         >=  ld_standard_date ;             -- 適用終了日(出荷方法)
 --
+    ------------- 2008/07/11 変更要求対応#95 ADD START --------------------------------------
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        IF (iv_code_class2 <> cv_deliver_to) THEN  -- コード区分２<>「9:配送」の場合は再検索しない
+          RAISE no_data;
+        END IF;
+--
+        --------------- 2. 倉庫(ALL値)－配送先(個別コード) --------------------------
+        BEGIN
+          SELECT
+            xdlv2.drink_deadweight,                                             -- ドリンク積載重量
+            xdlv2.leaf_deadweight,                                              -- リーフ積載重量
+            xdlv2.drink_loading_capacity,                                       -- ドリンク積載容積
+            xdlv2.leaf_loading_capacity,                                        -- リーフ積載容積
+            xdlv2.palette_max_qty                                               -- パレット最大枚数
+          INTO
+            on_drink_deadweight,
+            on_leaf_deadweight,
+            on_drink_loading_capacity,
+            on_leaf_loading_capacity,
+            on_palette_max_qty
+          FROM
+            xxcmn_delivery_lt2_v  xdlv2
+          WHERE
+            xdlv2.code_class1                 =  iv_code_class1                 -- コード区分１
+            AND
+            xdlv2.entering_despatching_code1  =  cv_all_4                       -- 入出庫場所コード１（ALL'Z'）
+            AND
+            xdlv2.code_class2                 =  iv_code_class2                 -- コード区分２
+            AND
+            xdlv2.entering_despatching_code2  =  iv_entering_despatching_code2  -- 入出庫場所コード２（個別）
+            AND
+            xdlv2.lt_start_date_active       <=  ld_standard_date               -- 適用開始日(配送L/T)
+            AND
+            xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
+            AND
+            xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+            AND
+            xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
+            AND
+            xdlv2.sm_end_date_active         >=  ld_standard_date ;             -- 適用終了日(出荷方法)
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -------------- 3. 倉庫(個別コード)－配送先(ALL値) ------------------------
+            BEGIN
+              SELECT
+                xdlv2.drink_deadweight,                                             -- ドリンク積載重量
+                xdlv2.leaf_deadweight,                                              -- リーフ積載重量
+                xdlv2.drink_loading_capacity,                                       -- ドリンク積載容積
+                xdlv2.leaf_loading_capacity,                                        -- リーフ積載容積
+                xdlv2.palette_max_qty                                               -- パレット最大枚数
+              INTO
+                on_drink_deadweight,
+                on_leaf_deadweight,
+                on_drink_loading_capacity,
+                on_leaf_loading_capacity,
+                on_palette_max_qty
+              FROM
+                xxcmn_delivery_lt2_v  xdlv2
+              WHERE
+                xdlv2.code_class1                 =  iv_code_class1                 -- コード区分１
+                AND
+                xdlv2.entering_despatching_code1  =  iv_entering_despatching_code1  -- 入出庫場所コード１（個別）
+                AND
+                xdlv2.code_class2                 =  iv_code_class2                 -- コード区分２
+                AND
+                xdlv2.entering_despatching_code2  =  cv_all_9                       -- 入出庫場所コード２（ALL'Z'）
+                AND
+                xdlv2.lt_start_date_active       <=  ld_standard_date               -- 適用開始日(配送L/T)
+                AND
+                xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
+                AND
+                xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+                AND
+                xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
+                AND
+                xdlv2.sm_end_date_active         >=  ld_standard_date ;             -- 適用終了日(出荷方法)
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                -------------- 4. 倉庫(ALL値)－配送先(ALL値) ---------------------------
+                BEGIN
+                  SELECT
+                    xdlv2.drink_deadweight,                                             -- ドリンク積載重量
+                    xdlv2.leaf_deadweight,                                              -- リーフ積載重量
+                    xdlv2.drink_loading_capacity,                                       -- ドリンク積載容積
+                    xdlv2.leaf_loading_capacity,                                        -- リーフ積載容積
+                    xdlv2.palette_max_qty                                               -- パレット最大枚数
+                  INTO
+                    on_drink_deadweight,
+                    on_leaf_deadweight,
+                    on_drink_loading_capacity,
+                    on_leaf_loading_capacity,
+                    on_palette_max_qty
+                  FROM
+                    xxcmn_delivery_lt2_v  xdlv2
+                  WHERE
+                    xdlv2.code_class1                 =  iv_code_class1                 -- コード区分１
+                    AND
+                    xdlv2.entering_despatching_code1  =  cv_all_4                       -- 入出庫場所コード１（ALL'Z'）
+                    AND
+                    xdlv2.code_class2                 =  iv_code_class2                 -- コード区分２
+                    AND
+                    xdlv2.entering_despatching_code2  =  cv_all_9                       -- 入出庫場所コード２（ALL'Z'）
+                    AND
+                    xdlv2.lt_start_date_active       <=  ld_standard_date               -- 適用開始日(配送L/T)
+                    AND
+                    xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
+                    AND
+                    xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+                    AND
+                    xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
+                    AND
+                    xdlv2.sm_end_date_active         >=  ld_standard_date ;             -- 適用終了日(出荷方法)
+--
+                -------------- 上記1.から4.で参照して該当なしの場合 ---------------------
+                EXCEPTION
+                  WHEN NO_DATA_FOUND THEN
+                    RAISE no_data;
+--
+                END;  -- 4.
+            END;  -- 3.
+        END;  -- 2.
+    ----------- 2008/07/11 変更要求対応#95 ADD END ------------------------------------
+--
+    /*----- 2008/07/11 変更要求対応#95 DEL START -------------------------------------
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
 --
@@ -1081,8 +1515,9 @@ AS
         RAISE no_data;
 --
       END IF;
+      ---------- 2008/07/11 変更要求対応#95 DEL END ---------------------------------*/
 --
-    END;
+    END;  --1.
 --
     RETURN gn_status_normal;
 --

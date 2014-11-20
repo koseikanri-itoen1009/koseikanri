@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.10
+ * Version                : 1.12
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2008/06/19   1.8   ORACLE山根一浩   [出荷可否チェック] 内部変更要求No143対応
  *  2008/06/26   1.9   ORACLE石渡賢和   [出荷可否チェック] 移動指示の着日条件を変更
  *  2008/07/08   1.10  ORACLE椎名昭圭   [出荷可否チェック] ST不具合#405対応
+ *  2008/07/14   1.11  ORACLE福田直樹   [積載効率チェック(積載効率算出)] 変更要求対応#95
+ *  2008/07/17   1.12  ORACLE福田直樹   [積載効率チェック(積載効率算出)] 変更要求対応#95のバグ対応
  *
  *****************************************************************************************/
 --
@@ -452,6 +454,9 @@ AS
     cv_not_loading_over            CONSTANT VARCHAR2(1) := '0';  -- 正常
     cv_loading_over                CONSTANT VARCHAR2(1) := '1';  -- 積載オーバー
 --
+    cv_all_4                       CONSTANT VARCHAR2(4) := 'ZZZZ';      -- 2008/07/14 変更要求対応#95
+    cv_all_9                       CONSTANT VARCHAR2(9) := 'ZZZZZZZZZ'; -- 2008/07/14 変更要求対応#95
+--
     -- 動的SQL文
     -- メインSQL
     cv_main_sql1                   CONSTANT VARCHAR2(32000)
@@ -542,18 +547,32 @@ AS
     ln_load_efficiency         NUMBER;                                            -- 積載効率
     ln_ship_method             xxcmn_delivery_lt2_v.ship_method%TYPE;             -- 出荷方法
     ln_mixed_ship_method_code  xxwsh_ship_method2_v.mixed_ship_method_code%TYPE;  -- 混載配送区分
-    lv_auto_process_type       xxwsh_ship_method2_v.auto_process_type%TYPE;   -- 自動配車対象区分
+    lv_auto_process_type       xxwsh_ship_method2_v.auto_process_type%TYPE;       -- 自動配車対象区分
     -- 退避用
-    ln_load_efficiency_tmp     NUMBER;                                            -- 積載効率
+    ln_load_efficiency_tmp     NUMBER;                                              -- 積載効率
     ln_ship_method_tmp           xxcmn_delivery_lt2_v.ship_method%TYPE;             -- 出荷方法
     ln_mixed_ship_method_cd_tmp  xxwsh_ship_method2_v.mixed_ship_method_code%TYPE;  -- 混載配送区分
+    --
+    lv_entering_despatching_code1  xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE; -- 2008/07/14 変更要求対応#95
+    lv_entering_despatching_code2  xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE; -- 2008/07/14 変更要求対応#95
 --
     -- *** ローカル・カーソル ***
-    TYPE ref_cursor   IS REF CURSOR ;           -- REF_CURSOR用
+    TYPE ref_cursor   IS REF CURSOR ;           -- 1. 倉庫(個別コード)－配送先(個別コード)の検索チェック用カーソル
     lc_ref     ref_cursor ;
     --
-    TYPE ref_cursor2  IS REF CURSOR ;           -- REF_CURSOR用(拠点検索用)
+    TYPE ref_cursor2  IS REF CURSOR ;           -- 1.でNOTFOUNDで、2.3.4.のいずれかでFOUNDした場合に使用するカーソル
     lc_ref2    ref_cursor2 ;
+--
+    -- 2008/07/14 変更要求対応#95 Start ------------------------
+    TYPE fnd_chk_cursor2   IS REF CURSOR ;      -- 2. 倉庫(ALL値)－配送先(個別コード)の検索チェック用カーソル
+    lc_fnd_chk2     fnd_chk_cursor2 ;
+    --
+    TYPE fnd_chk_cursor3   IS REF CURSOR ;      -- 3. 倉庫(個別コード)－配送先(ALL値)の検索チェック用カーソル
+    lc_fnd_chk3     fnd_chk_cursor3 ;
+    --
+    TYPE fnd_chk_cursor4   IS REF CURSOR ;      -- 4. 倉庫(ALL値)－配送先(ALL値)の検索チェック用カーソル
+    lc_fnd_chk4     fnd_chk_cursor4 ;
+    -- 2008/07/14 変更要求対応#95 End ---------------------------
 --
     -- *** ローカル・レコード ***
     TYPE ret_value  IS RECORD
@@ -563,8 +582,11 @@ AS
        ,loading_capacity           NUMBER                                       -- 積載容積
        ,mixed_ship_method_code     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE -- 混載配送区分
       );
-    lr_ref    ret_value ;
-    lr_ref2   ret_value ;
+    lr_ref        ret_value ;
+    lr_ref2       ret_value ;
+    lr_fnd_chk2   ret_value ;      -- 2008/07/14 変更要求対応#95
+    lr_fnd_chk3   ret_value ;      -- 2008/07/14 変更要求対応#95
+    lr_fnd_chk4   ret_value ;      -- 2008/07/14 変更要求対応#95
 --
     -- ===============================
     -- ユーザー定義例外
@@ -806,39 +828,132 @@ AS
     ELSE
       -- 検索できなかった場合
       -- コード区分2が「配送先」かチェック
-      IF ( iv_code_class2 = cv_cust_class_deliver ) THEN
-        -- コード区分2を「拠点」で検索する
-        BEGIN
-          SELECT  xcasv.base_code                                            -- 拠点コード
-          INTO    lv_base_code
-          FROM    xxcmn_cust_acct_sites2_v  xcasv                            -- 顧客サイト情報View2
-          WHERE   xcasv.ship_to_no         =  iv_entering_despatching_code2  -- 配送先番号
-            AND   xcasv.start_date_active <=  trunc(id_standard_date)        -- 適用日
-            AND   xcasv.end_date_active   >=  trunc(id_standard_date);
-        EXCEPTION
-          WHEN  NO_DATA_FOUND  THEN
-            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
-                                                  cv_xxwsh_wt_cap_set_err);
-            lv_err_cd := cv_xxwsh_in_param_set_err;
-            -- カーソルクローズ
-            CLOSE lc_ref;
-            --
-            RAISE global_api_expt;
+      IF ( iv_code_class2 = cv_cust_class_deliver ) THEN  -- コード区分2=「9:配送」の場合は以下2.3.4.で再検索する
+        --
+        -- 2008/07/14 変更要求対応#95 Add Start ----------------------------------------------
+        -- 1.で見つからなかったので、2. 倉庫(ALL値)－配送先(個別コード)で再検索
+        OPEN lc_fnd_chk2 FOR lv_sql
+          USING
+            iv_code_class1,                      -- コード区分From
+            cv_all_4,                            -- 入出庫場所From  (=ALL'Z'で検索)
+            iv_code_class2,                      -- コード区分To
+            iv_entering_despatching_code2,       -- 入出庫場所To
+            id_standard_date,
+            id_standard_date,
+            id_standard_date,
+            id_standard_date,
+            id_standard_date,
+            id_standard_date,
+            iv_ship_method,                      -- 出荷方法
+            lv_auto_process_type;                -- 自動配車対象区分
+        --
+        FETCH lc_fnd_chk2 INTO lr_fnd_chk2;
+        --
+        IF ( lc_fnd_chk2%NOTFOUND ) THEN         -- 2.で該当データなしの場合
+          CLOSE lc_fnd_chk2;                     -- カーソルクローズ
           --
-          WHEN  OTHERS THEN
-            -- カーソルクローズ
-            CLOSE lc_ref;
+          -- 2.で見つからなかったので、3. 倉庫(個別コード)－配送先(ALL値)で再検索
+          OPEN lc_fnd_chk3 FOR lv_sql
+            USING
+              iv_code_class1,                      -- コード区分From
+              iv_entering_despatching_code1,       -- 入出庫場所From
+              iv_code_class2,                      -- コード区分To
+              cv_all_9,                            -- 入出庫場所To  (=ALL'Z'で検索)
+              id_standard_date,
+              id_standard_date,
+              id_standard_date,
+              id_standard_date,
+              id_standard_date,
+              id_standard_date,
+              iv_ship_method,                      -- 出荷方法
+              lv_auto_process_type;                -- 自動配車対象区分
+          --
+          FETCH lc_fnd_chk3 INTO lr_fnd_chk3;
+          --
+          IF ( lc_fnd_chk3%NOTFOUND ) THEN         -- 3.で該当データなしの場合
+            CLOSE lc_fnd_chk3;                     -- カーソルクローズ
             --
-            RAISE global_api_others_expt;
-        END;
+            -- 3.で見つからなかったので、4. 倉庫(ALL値)－配送先(ALL値)で再検索
+            OPEN lc_fnd_chk4 FOR lv_sql
+              USING
+                iv_code_class1,                      -- コード区分From
+                cv_all_4,                            -- 入出庫場所From (=ALL'Z'で検索)
+                iv_code_class2,                      -- コード区分To
+                cv_all_9,                            -- 入出庫場所To   (=ALL'Z'で検索)
+                id_standard_date,
+                id_standard_date,
+                id_standard_date,
+                id_standard_date,
+                id_standard_date,
+                id_standard_date,
+                iv_ship_method,                      -- 出荷方法
+                lv_auto_process_type;                -- 自動配車対象区分
+            --
+            FETCH lc_fnd_chk4 INTO lr_fnd_chk4;
+            --
+            IF ( lc_fnd_chk4%NOTFOUND ) THEN         -- 4.で該当データなしの場合
+              CLOSE lc_fnd_chk4;                     -- カーソルクローズ
+              --1.から4.すべて該当データなので、対象データなしで処理する
+              lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,cv_xxwsh_wt_cap_set_err);
+              lv_err_cd := cv_xxwsh_wt_cap_set_err;
+              RAISE global_api_expt;
+            --
+            ELSE  -- 4.で該当データありの場合
+              CLOSE lc_fnd_chk4;                     -- カーソルクローズ
+              lv_entering_despatching_code1 := cv_all_4;  -- (=ALL'Z'で検索)
+              lv_entering_despatching_code2 := cv_all_9;  -- (=ALL'Z'で検索)
+            END IF;
+          --
+          ELSE  -- 3.で該当データありの場合
+              CLOSE lc_fnd_chk3;                     -- カーソルクローズ
+              lv_entering_despatching_code1 := iv_entering_despatching_code1;  -- 個別コードで検索
+              lv_entering_despatching_code2 := cv_all_9;                       -- (=ALL'Z'で検索)
+          END IF;
+        --
+        ELSE  -- 2.で該当データありの場合
+            CLOSE lc_fnd_chk2;                     -- カーソルクローズ
+            lv_entering_despatching_code1 := cv_all_4;                       -- (=ALL'Z'で検索)
+            lv_entering_despatching_code2 := iv_entering_despatching_code2;  -- 個別コードで検索
+        END IF;
+        -- 2008/07/14 変更要求対応#95 Add End ----------------------------------------------
+        --
+        -- 2008/07/14 変更要求対応#95 Del Start --------------------------------------------
+        ---- コード区分2を「拠点」で検索する
+        --BEGIN
+        --  SELECT  xcasv.base_code                                            -- 拠点コード
+        --  INTO    lv_base_code
+        --  FROM    xxcmn_cust_acct_sites2_v  xcasv                            -- 顧客サイト情報View2
+        --  WHERE   xcasv.ship_to_no         =  iv_entering_despatching_code2  -- 配送先番号
+        --    AND   xcasv.start_date_active <=  trunc(id_standard_date)        -- 適用日
+        --    AND   xcasv.end_date_active   >=  trunc(id_standard_date);
+        --EXCEPTION
+        --  WHEN  NO_DATA_FOUND  THEN
+        --    lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+        --                                          cv_xxwsh_wt_cap_set_err);
+        --    lv_err_cd := cv_xxwsh_in_param_set_err;
+        --    -- カーソルクローズ
+        --    CLOSE lc_ref;
+        --    --
+        --    RAISE global_api_expt;
+        --  --
+        --  WHEN  OTHERS THEN
+        --    -- カーソルクローズ
+        --    CLOSE lc_ref;
+        --    --
+        --    RAISE global_api_others_expt;
+        --END;
+        -- 2008/07/14 変更要求対応#95 Del End -------------------------------------------
         --
         -- SQLの実行
         OPEN lc_ref2 FOR lv_sql
           USING
             iv_code_class1,                      -- コード区分From
-            iv_entering_despatching_code1,       -- 入出庫場所From
-            cv_cust_class_base,                  -- コード区分To(拠点)
-            lv_base_code,                        -- 入出庫場所To(管轄拠点)
+            --iv_entering_despatching_code1,       -- 入出庫場所From   -- 2008/07/14 変更要求対応#95
+            lv_entering_despatching_code1,       -- 入出庫場所From     -- 2008/07/14 変更要求対応#95
+            --cv_cust_class_base,                  -- コード区分To(拠点)  -- 2008/07/17 変更要求対応#95のバグ対応
+            cv_cust_class_deliver,               -- コード区分To(配送先)  -- 2008/07/17 変更要求対応#95のバグ対応
+            --lv_base_code,                        -- 入出庫場所To(管轄拠点)  -- 2008/07/14 変更要求対応#95
+            lv_entering_despatching_code2,       -- 入出庫場所From            -- 2008/07/14 変更要求対応#95
             id_standard_date,
             id_standard_date,
             id_standard_date,
