@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.13
+ * Version                : 1.14
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/03/03   1.11  D.Nihei          本番障害#@@@@対応（手配コピー時の条件追加) 
  *  2009/03/19   1.12  H.Itou           本番障害#1332対応（他倉庫ロットの元指示総数が0になる不具合修正）
  *  2009/03/25   1.13  H.Itou           本番障害#1312対応（相手先在庫管理倉庫は対象外とする）
+ *  2009/03/30   1.14  H.Itou           本番障害#1346対応（営業単位対応）
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -54,6 +55,9 @@ AS
   )
   IS
 --
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+    cv_prf_org_id            CONSTANT VARCHAR2(100) := 'ORG_ID';                  -- プロファイル：ORG_ID
+-- 2009/03/30 H.Itou ADD END
     -- 変数宣言
     lt_item_class_code       xxcmn_item_categories5_v.item_class_code%TYPE;       -- 品目区分
     lt_prod_class_code       xxcmn_item_categories5_v.prod_class_code%TYPE;       -- 商品区分
@@ -90,9 +94,18 @@ AS
     lt_prod_item_id          ic_lots_mst.item_id%TYPE;                            -- 品目ID(完成品)
     lt_prod_lot_id           ic_lots_mst.lot_id%TYPE;                             -- ロットID(完成品)
 -- 2008/12/24 D.Nihei ADD END
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+    lv_org_id                VARCHAR2(1000);                                      -- ORG_ID
+-- 2009/03/30 H.Itou ADD END
 --
   BEGIN
 --
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+    --==========================
+    -- ORG_ID取得
+    --==========================
+    lv_org_id := FND_PROFILE.VALUE(cv_prf_org_id);
+-- 2009/03/30 H.Itou ADD END
     BEGIN
       --==========================
       -- 対象倉庫情報取得
@@ -258,6 +271,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id            = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id            = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     otta.attribute1                IN (''1'',''3'') ';
         wk_sql1 := wk_sql1 || '       AND     oha.req_status                 = ''04'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.actual_confirm_class       = ''N'' ';
@@ -291,6 +307,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id       = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id       = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id  = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.req_status            = ''08'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -339,6 +358,9 @@ AS
         wk_sql1 := wk_sql1 || '       WHERE   pla.item_id       = ' || lt_inv_item_id ;
         wk_sql1 := wk_sql1 || '       AND     pla.po_header_id  = pha.po_header_id ';
         wk_sql1 := wk_sql1 || '       AND     pha.attribute5    = enable_lot.storehouse_code ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     pha.org_id        = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     pha.attribute1    IN (''20'',''25'') ';
         wk_sql1 := wk_sql1 || '       AND     pha.attribute4   <= TO_CHAR(TO_DATE(''' || id_material_date || '''), ''YYYY/MM/DD'') ';
         wk_sql1 := wk_sql1 || '       AND     pla.attribute13   = ''N'') ';
@@ -385,6 +407,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id            = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id            = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.schedule_ship_date        <= TO_DATE(''' || id_material_date || ''') ';
         wk_sql1 := wk_sql1 || '       AND     oha.req_status                 = ''03'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.actual_confirm_class       = ''N'' ';
@@ -400,6 +425,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id            = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id            = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.schedule_ship_date        <= TO_DATE(''' || id_material_date || ''') ';
         wk_sql1 := wk_sql1 || '       AND     oha.req_status                 = ''07'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.actual_confirm_class       = ''N'' ';
@@ -432,6 +460,9 @@ AS
         wk_sql1 := wk_sql1 || '       WHERE   pla.item_id       = ' || lt_inv_item_id ;
         wk_sql1 := wk_sql1 || '       AND     pla.po_header_id  = pha.po_header_id ';
         wk_sql1 := wk_sql1 || '       AND     pha.attribute5    = enable_lot.storehouse_code ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     pha.org_id        = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     pha.attribute1    IN (''20'',''25'') ';
         wk_sql1 := wk_sql1 || '       AND     pha.attribute4   <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'') ';
         wk_sql1 := wk_sql1 || '       AND     pla.attribute13   = ''N'') ';
@@ -478,6 +509,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id            = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id            = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.schedule_ship_date        <= TO_DATE(''' || ld_max_date || ''') ';
         wk_sql1 := wk_sql1 || '       AND     oha.req_status                 = ''03'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.actual_confirm_class       = ''N'' ';
@@ -493,6 +527,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.deliver_from_id            = enable_lot.inventory_location_id ';
         wk_sql1 := wk_sql1 || '       AND     oha.order_header_id            = ola.order_header_id ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql1 := wk_sql1 || '       AND     otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql1 := wk_sql1 || '       AND     oha.schedule_ship_date        <= TO_DATE(''' || ld_max_date || ''') ';
         wk_sql1 := wk_sql1 || '       AND     oha.req_status                 = ''07'' ';
         wk_sql1 := wk_sql1 || '       AND     oha.actual_confirm_class       = ''N'' ';
@@ -579,6 +616,9 @@ AS
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details      mld ';
         wk_sql2 := wk_sql2 || '              ,oe_transaction_types_all   otta ';
         wk_sql2 := wk_sql2 || '       WHERE   oha.deliver_from_id       = enable_lot.inventory_location_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     oha.req_status            = ''04'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -609,6 +649,9 @@ AS
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details      mld ';
         wk_sql2 := wk_sql2 || '              ,oe_transaction_types_all   otta ';
         wk_sql2 := wk_sql2 || '       WHERE   oha.deliver_from_id       = enable_lot.inventory_location_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     oha.req_status            = ''08'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -666,6 +709,9 @@ AS
         wk_sql2 := wk_sql2 || '       AND     pla.attribute13  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     pla.cancel_flag  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     pla.po_header_id = pha.po_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     pha.org_id       = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     pha.attribute1   IN (''20'', ''25'') ';
         wk_sql2 := wk_sql2 || '       AND     pha.attribute5   = enable_lot.storehouse_code ';
         wk_sql2 := wk_sql2 || '       AND     pha.attribute4  <= TO_CHAR(TO_DATE(''' || id_material_date || '''), ''YYYY/MM/DD'')) ';
@@ -769,6 +815,9 @@ AS
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details      mld ';
         wk_sql2 := wk_sql2 || '              ,oe_transaction_types_all   otta ';
         wk_sql2 := wk_sql2 || '       WHERE   oha.deliver_from_id       = enable_lot.inventory_location_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     oha.req_status            = ''03'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -789,6 +838,9 @@ AS
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details      mld ';
         wk_sql2 := wk_sql2 || '              ,oe_transaction_types_all  otta ';
         wk_sql2 := wk_sql2 || '       WHERE   oha.deliver_from_id       = enable_lot.inventory_location_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     oha.req_status            = ''07'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -840,6 +892,9 @@ AS
         wk_sql2 := wk_sql2 || '       AND     pla.cancel_flag        = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     pla.attribute12        = enable_lot.storehouse_code ';
         wk_sql2 := wk_sql2 || '       AND     pla.po_header_id       = pha.po_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     pha.org_id             = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     pha.attribute1         IN (''20'', ''25'') ';
         wk_sql2 := wk_sql2 || '       AND     pha.attribute4        <= TO_CHAR(TO_DATE(''' || id_material_date || '''), ''YYYY/MM/DD'') ';
         wk_sql2 := wk_sql2 || '       AND     pla.po_line_id         = mld.mov_line_id ';
@@ -858,6 +913,9 @@ AS
         wk_sql2 := wk_sql2 || '       AND     pla.attribute13  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     pla.cancel_flag  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     pla.po_header_id = pha.po_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     pha.org_id       = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     pha.attribute1   IN (''20'', ''25'') ';
         wk_sql2 := wk_sql2 || '       AND     pha.attribute5   = enable_lot.storehouse_code ';
         wk_sql2 := wk_sql2 || '       AND     pha.attribute4  <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'')) ';
@@ -956,6 +1014,9 @@ AS
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details      mld ';
         wk_sql2 := wk_sql2 || '              ,oe_transaction_types_all   otta ';
         wk_sql2 := wk_sql2 || '       WHERE   oha.deliver_from_id       = enable_lot.inventory_location_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     oha.req_status            = ''03'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -976,6 +1037,9 @@ AS
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details      mld ';
         wk_sql2 := wk_sql2 || '              ,oe_transaction_types_all  otta ';
         wk_sql2 := wk_sql2 || '       WHERE   oha.deliver_from_id       = enable_lot.inventory_location_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     otta.org_id               = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     oha.req_status            = ''07'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.actual_confirm_class  = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     oha.latest_external_flag  = ''Y'' ';
@@ -1023,6 +1087,9 @@ AS
         wk_sql2 := wk_sql2 || '       AND     pla.cancel_flag        = ''N'' ';
         wk_sql2 := wk_sql2 || '       AND     pla.attribute12        = enable_lot.storehouse_code ';
         wk_sql2 := wk_sql2 || '       AND     pla.po_header_id       = pha.po_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql2 := wk_sql2 || '       AND     pha.org_id             = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql2 := wk_sql2 || '       AND     pha.attribute1         IN (''20'', ''25'') ';
         wk_sql2 := wk_sql2 || '       AND     pha.attribute4        <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'') ';
         wk_sql2 := wk_sql2 || '       AND     pla.po_line_id         = mld.mov_line_id ';
@@ -1175,6 +1242,9 @@ AS
         wk_sql3 := wk_sql3 || '                      , oe_transaction_types_all   otta ';
         wk_sql3 := wk_sql3 || '                 WHERE  oha.order_header_id            = ola.order_header_id ';
         wk_sql3 := wk_sql3 || '                 AND    otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql3 := wk_sql3 || '                 AND    otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql3 := wk_sql3 || '                 AND    ola.shipping_inventory_item_id = ' || lt_inv_item_id;
         wk_sql3 := wk_sql3 || '                 AND    otta.attribute1                IN (''1'',''3'') ';
         wk_sql3 := wk_sql3 || '                 AND    oha.req_status                 = ''04'' ';
@@ -1190,6 +1260,9 @@ AS
         wk_sql3 := wk_sql3 || '                      , oe_transaction_types_all   otta ';
         wk_sql3 := wk_sql3 || '                 WHERE  oha.order_header_id            = ola.order_header_id ';
         wk_sql3 := wk_sql3 || '                 AND    otta.transaction_type_id       = oha.order_type_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql3 := wk_sql3 || '                 AND    otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql3 := wk_sql3 || '                 AND    ola.shipping_inventory_item_id = ' || lt_inv_item_id;
         wk_sql3 := wk_sql3 || '                 AND    oha.req_status                 = ''08'' ';
         wk_sql3 := wk_sql3 || '                 AND    oha.actual_confirm_class       = ''N'' ';
@@ -1205,6 +1278,9 @@ AS
         wk_sql3 := wk_sql3 || '                      , mtl_item_locations mil ';
         wk_sql3 := wk_sql3 || '                 WHERE  pla.po_header_id = pha.po_header_id ';
         wk_sql3 := wk_sql3 || '                 AND    pha.attribute5   = mil.segment1 ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql3 := wk_sql3 || '                 AND    pha.org_id       = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql3 := wk_sql3 || '                 AND    pla.item_id      = ' || lt_inv_item_id;
         wk_sql3 := wk_sql3 || '                 AND    pla.attribute13  = ''N'' ';
         wk_sql3 := wk_sql3 || '                 AND    pha.attribute1   IN (''20'',''25'') ';
@@ -1243,6 +1319,9 @@ AS
         wk_sql3 := wk_sql3 || '                 WHERE  ola.shipping_inventory_item_id = ' || lt_inv_item_id;
         wk_sql3 := wk_sql3 || '                 AND    otta.transaction_type_id       = oha.order_type_id ';
         wk_sql3 := wk_sql3 || '                 AND    oha.order_header_id            = ola.order_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql3 := wk_sql3 || '                 AND    otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql3 := wk_sql3 || '                 AND    oha.schedule_ship_date        <= TO_DATE(''' || ld_max_date || ''') ';
         wk_sql3 := wk_sql3 || '                 AND    oha.req_status                 = ''03'' ';
         wk_sql3 := wk_sql3 || '                 AND    oha.actual_confirm_class       = ''N'' ';
@@ -1259,6 +1338,9 @@ AS
         wk_sql4 := wk_sql4 || '                 WHERE  ola.shipping_inventory_item_id = ' || lt_inv_item_id;
         wk_sql4 := wk_sql4 || '                 AND    otta.transaction_type_id       = oha.order_type_id ';
         wk_sql4 := wk_sql4 || '                 AND    oha.order_header_id            = ola.order_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND    otta.org_id                    = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND    oha.schedule_ship_date        <= TO_DATE(''' || ld_max_date || ''') ';
         wk_sql4 := wk_sql4 || '                 AND    oha.req_status                 = ''07'' ';
         wk_sql4 := wk_sql4 || '                 AND    oha.actual_confirm_class       = ''N'' ';
@@ -1340,6 +1422,9 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     oha.actual_confirm_class = ''N''  ';
         wk_sql4 := wk_sql4 || '                 AND     oha.latest_external_flag = ''Y''  ';
         wk_sql4 := wk_sql4 || '                 AND     oha.order_header_id      = ola.order_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND     otta.org_id              = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND     ola.delete_flag          = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     ola.order_line_id        = mld.mov_line_id ';
         wk_sql4 := wk_sql4 || '                 AND     mld.item_id              = ' || lt_item_id;
@@ -1359,6 +1444,9 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     oha.actual_confirm_class = ''N''  ';
         wk_sql4 := wk_sql4 || '                 AND     oha.latest_external_flag = ''Y''  ';
         wk_sql4 := wk_sql4 || '                 AND     oha.order_header_id      = ola.order_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND     otta.org_id              = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND     ola.delete_flag          = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     ola.order_line_id        = mld.mov_line_id ';
         wk_sql4 := wk_sql4 || '                 AND     mld.item_id              = ' || lt_item_id;
@@ -1380,6 +1468,9 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     pla.attribute13   = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     pla.cancel_flag   = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     pla.po_header_id  = pha.po_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND     pha.org_id        = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute1    IN (''20'', ''25'') ';
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute5    = mil.segment1 ';
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute4   <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'') ';
@@ -1490,6 +1581,9 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     oha.latest_external_flag = ''Y'' ';
         wk_sql4 := wk_sql4 || '                 AND     oha.schedule_ship_date  <= TO_DATE(''' || ld_max_date || ''') ';
         wk_sql4 := wk_sql4 || '                 AND     oha.order_header_id      = ola.order_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND     otta.org_id              = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND     ola.delete_flag          = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     ola.order_line_id        = mld.mov_line_id ';
         wk_sql4 := wk_sql4 || '                 AND     mld.item_id              = ' || lt_item_id;
@@ -1510,6 +1604,9 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     oha.latest_external_flag  = ''Y'' ';
         wk_sql4 := wk_sql4 || '                 AND     oha.schedule_ship_date   <= TO_DATE(''' || ld_max_date || ''') ';
         wk_sql4 := wk_sql4 || '                 AND     oha.order_header_id       = ola.order_header_id ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND     otta.org_id              = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND     ola.delete_flag           = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     ola.order_line_id         = mld.mov_line_id ';
         wk_sql4 := wk_sql4 || '                 AND     mld.item_id               = ' || lt_item_id;
@@ -1560,6 +1657,9 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     pla.cancel_flag        = ''N'' ';
         wk_sql4 := wk_sql4 || '                 AND     pla.attribute12        = mil.segment1      ';
         wk_sql4 := wk_sql4 || '                 AND     pla.po_header_id       = pha.po_header_id  ';
+-- 2009/03/30 H.Itou ADD START 本番障害#1346
+        wk_sql4 := wk_sql4 || '                 AND     pha.org_id              = TO_NUMBER('''|| lv_org_id || ''')';
+-- 2009/03/30 H.Itou ADD END
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute1         IN (''20'', ''25'') ';
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute4        <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'') ';
         wk_sql4 := wk_sql4 || '                 AND     pla.po_line_id         = mld.mov_line_id ';

@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫差異表
  * MD.050/070       : 仕入（帳票）Issue2.0 (T_MD050_BPO_360)
  *                    仕入（帳票）Issue2.0 (T_MD070_BPO_36H)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                       されない現象への対応
  *  2008/07/04    1.8   Y.Ishikawa       xxcmn_item_categories4_vを使用しないようにする
  *  2008/11/21    1.9   T.Yoshimoto      統合指摘#703
+ *  2009/03/30    1.10  A.Shiina         本番#1346対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -653,6 +654,9 @@ AS
              || ' AND poh.attribute1           < ''' || cv_poh_cancel  || ''''
              || ' AND pln.cancel_flag         <> ''' || cv_pln_cancel_flag   || ''''
              || ' AND poh.attribute4          >= ''' || ir_param.dlv_from    || ''''
+-- 2009/03/30 v1.11 ADD START
+             || ' AND poh.org_id               = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.11 ADD END
              ;
 --
     -- 入庫倉庫が入力されている場合

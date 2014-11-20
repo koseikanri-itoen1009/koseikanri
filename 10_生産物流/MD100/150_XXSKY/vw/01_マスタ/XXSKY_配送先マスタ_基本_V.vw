@@ -286,6 +286,9 @@ SELECT
    AND  XP.party_id = HP.party_id
    --顧客マスタ（顧客･拠点情報取得）との結合
    AND  HCA.status = 'A'                                   --ステータス：有効
+-- 2009/03/30 H.Iida Add Start 本番障害#1346
+   AND  HCA.customer_class_code IN ('1', '10')
+-- 2009/03/30 H.Iida Add End
    AND  XP.party_id = HCA.party_id
    --パーティサイトアドオンマスタ（顧客･拠点情報取得）との結合
    AND  XP.party_id = XPS.party_id

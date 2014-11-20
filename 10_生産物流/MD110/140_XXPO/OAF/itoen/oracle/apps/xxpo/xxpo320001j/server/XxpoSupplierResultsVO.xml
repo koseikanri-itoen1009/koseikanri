@@ -43,6 +43,9 @@ WHERE pha.vendor_id        = cvv1.vendor_id
   AND pha.attribute3       = cvv2.vendor_id(+)
   AND pha.attribute5       = cilv.segment1
   AND pha.segment1         = xpha.po_header_number
+-- 2009/03/30 H.Itou Add Start –{”ÔáŠQ#1346
+  AND pha.org_id           = FND_PROFILE.VALUE('ORG_ID')
+-- 2009/03/30 H.Itou Add End
   AND clvv1.lookup_type    = 'XXPO_PO_ADD_STATUS'
   AND pha.attribute1       = clvv1.lookup_code
   AND clvv1.lookup_code   >= '20'

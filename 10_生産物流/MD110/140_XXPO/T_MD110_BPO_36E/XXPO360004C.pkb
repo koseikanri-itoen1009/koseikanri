@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2008/12/08    1.18  H.Itou           本番障害#551
  *  2008/12/09    1.19  T.Yoshimoto      本番障害#579
  *  2008/12/24    1.20  A.Shiina         本番障害#827
+ *  2009/03/30    1.21  A.Shiina         本番障害#1346
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -836,6 +837,9 @@ AS
              || ' AND pha.authorization_status  = ''' || cv_sts_athrtn_sts || ''''
              || ' AND pha.attribute1 >= ''' || cv_money_fix || ''''     -- 発注ステータス(DFF)
              || ' AND pha.attribute1 <  ''' || cv_cancel    || ''''
+-- 2009/03/30 v1.11 ADD START
+             || ' AND pha.org_id      = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.11 ADD END
              || ' AND rcrt.txns_date BETWEEN ''' || ir_param.deliver_from || ''' AND '''
              || ir_param.deliver_to || '''';
 --

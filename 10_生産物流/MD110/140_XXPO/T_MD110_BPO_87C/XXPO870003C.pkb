@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/12/25    1.11  T.Yoshimoto      発注EBS標準ステータス:未承認対応
  *  2009/02/16    1.12  A.Shiina         本番#1135対応
  *  2009/03/09    1.13  A.Shiina         本番#1135再対応
+ *  2009/04/09    1.14  H.Marushita      本番障害#1346対応
  *
  *****************************************************************************************/
 --
@@ -662,8 +663,12 @@ AS
       ||     ' ,xxcmn_item_mst_v      ximv'                   -- OPM品目情報VIEW
 -- 2009/02/16 v1.12 ADD START
       ||     ' ,xxcmn_item_categories5_v xicv'
--- 2009/02/16 v1.12 ADD END
-      ||     ' WHERE  pha.attribute4 > ' || '''' || lv_close_date || ''''; -- 納入日
+---- 2009/02/16 v1.12 ADD END
+--      ||     ' WHERE  pha.attribute4 > ' || '''' || lv_close_date || ''''; -- 納入日
+-- 2009/04/09 ADD START
+      ||     ' WHERE  pha.attribute4 > ' || '''' || lv_close_date || '''' -- 納入日
+      ||     ' AND  pha.org_id = FND_PROFILE.VALUE(''ORG_ID'')'; -- 納入日
+-- 2009/04/09 ADD END
 --
     -- 取引先がパラメータに入力されていた場合条件追加
     IF (lv_and_sql4 IS NOT NULL) THEN
@@ -1252,6 +1257,9 @@ AS
     INTO   lv_revision_num
     FROM   po_headers_all  pha
     WHERE  pha.segment1 = ir_po_data.po_no
+-- 2009/04/09 ADD START
+    AND    pha.org_id = FND_PROFILE.VALUE('ORG_ID')
+-- 2009/04/09 ADD END
     ;
 --
 -- 2009/02/16 v1.12 ADD END

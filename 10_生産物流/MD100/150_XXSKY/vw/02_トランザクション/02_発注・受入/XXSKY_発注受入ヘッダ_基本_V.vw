@@ -458,6 +458,9 @@ SELECT
    AND  POH.pa_agent_id                           = PAPF1.person_id(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF1.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF1.effective_end_date(+)
+-- 2009/03/30 H.Iida Add Start –{”ÔáŠQ#1346
+   AND  NVL( PAPF1.attribute3, '1' )             IN ('1', '2')
+-- 2009/03/30 H.Iida Add End
    --Žd“üæî•ñŽæ“¾
    AND  POH.vendor_id                             = VNDR1.vendor_id(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= VNDR1.start_date_active(+)
@@ -491,6 +494,9 @@ SELECT
    AND  POH.requested_by_code                     = PAPF2.employee_number(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF2.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF2.effective_end_date(+)
+-- 2009/03/30 H.Iida Add Start –{”ÔáŠQ#1346
+   AND  PAPF2.attribute3                          IN ('1', '2')
+-- 2009/03/30 H.Iida Add End
    --ˆË—ŠŽÒ•”î•ñŽæ“¾
    AND  POH.requested_dept_code                   = LOCT4.location_code(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= LOCT4.start_date_active(+)
@@ -503,10 +509,16 @@ SELECT
    AND  POH.order_approved_by                     = PAPF3.person_id(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF3.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF3.effective_end_date(+)
+-- 2009/03/30 H.Iida Add Start –{”ÔáŠQ#1346
+   AND  PAPF3.attribute3                          IN ('1', '2')
+-- 2009/03/30 H.Iida Add End
    --”­’³‘øŽÒî•ñŽæ“¾
    AND  POH.purchase_approved_by                  = PAPF4.person_id(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF4.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF4.effective_end_date(+)
+-- 2009/03/30 H.Iida Add Start –{”ÔáŠQ#1346
+   AND  PAPF4.attribute3                          IN ('1', '2')
+-- 2009/03/30 H.Iida Add End
    --”­’ƒwƒbƒ_‚ÌWHOƒJƒ‰ƒ€î•ñŽæ“¾
    AND  POH.h_created_by                          = FU_CB_H.user_id(+)
    AND  POH.h_last_updated_by                     = FU_LU_H.user_id(+)

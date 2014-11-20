@@ -6,7 +6,7 @@ AS
  * Package Name     : xxpo_common925_pkg(body)
  * Description      : 共通関数
  * MD.050/070       : 支給指示からの発注自動作成 Issue1.0  (T_MD050_BPO_925)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/12/02    1.7   T.Yoshimoto      本番障害#377対応
  *  2009/01/05    1.8   D.Nihei          本番障害#861対応
  *  2009/02/25    1.9   D.Nihei          本番障害#1131対応
+ *  2009/03/30    1.10  H.Iida           本番障害#1346対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1284,7 +1285,11 @@ AS
       SELECT  xpav.employee_number
         INTO  cn_emp_num
         FROM  xxpo_per_all_people_f_v  xpav
-       WHERE  person_id = gn_emp_id;
+       WHERE  xpav.person_id = gn_emp_id
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
+       -- 従業員区分'1', '2'のみ抽出
+       AND    xpav.attribute3 IN ('1', '2');
+-- 2009/03/30 H.Iida Add End
     EXCEPTION
       WHEN OTHERS THEN
         RAISE;

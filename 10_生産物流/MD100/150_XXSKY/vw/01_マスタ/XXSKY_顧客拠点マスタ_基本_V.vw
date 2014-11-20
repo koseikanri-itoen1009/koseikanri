@@ -153,6 +153,9 @@ SELECT
  WHERE  HP.status = 'A'                                    --ステータス：有効
    AND  XP.party_id = HP.party_id
    AND  HCA.status = 'A'                                   --ステータス：有効
+-- 2009/03/30 H.Iida Add Start 本番障害#1346
+   AND  HCA.customer_class_code IN ('1', '10')
+-- 2009/03/30 H.Iida Add End
    AND  XP.party_id = HCA.party_id
    AND  HCA.attribute17 = XCAV01.party_number(+)
    AND  HCA.attribute18 = XCAV02.party_number(+)
