@@ -5,19 +5,18 @@
 ## Program Name     : AZZZEXECONCSUB                                            ##
 ## Description      : EBSコンカレント用汎用スクリプト                           ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.0                                                       ##
+## Version          : 1.2                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
 ##  No.     Description                                                         ##
 ## -------- ----------------------------------------------------------          ##
 ##  $1       職責アプリケーション短縮名                                         ##
-##  $2       職責アプリケーション短縮名                                         ##
-##  $3       職責名                                                             ##
-##  $4       APPSユーザ名                                                       ##
-##  $5       コンカレントアプリケーション短縮名                                 ##
-##  $6       コンカレントプログラム名                                           ##
-##  $7～$41  コンカレントパラメータ ※最大35個                                  ##
+##  $2       職責名                                                             ##
+##  $3       APPSユーザ名                                                       ##
+##  $4       コンカレントアプリケーション短縮名                                 ##
+##  $5       コンカレントプログラム名                                           ##
+##  $6～$40  コンカレントパラメータ ※最大35個                                  ##
 ##                                                                              ##
 ## Change Record                                                                ##
 ## ------------- ----- ---------------- ----------------------------------------##
@@ -27,6 +26,9 @@
 ##  2009/03/19    1.1   Masayuki.Sano    ・ENVファイル名変更対応                ##
 ##                                       ・ファイル名変更                       ##
 ##                                        (AZBZZEXECONCSUB⇒AZZZEXECONCSUB)     ##
+##  2009/04/15    1.2   Masayuki.Sano    障害番号[T1-0522]                      ##
+##                                       ・要求IDの取得方法変更                 ##
+##                                       ・要求IDの取得失敗時、異常処理を追加   ##
 ##                                                                              ##
 ##################################################################################
 
@@ -35,7 +37,7 @@
 ################################################################################
 
 ## 変数定義
-L_shellpath="/uspg/jp1/zb/shl/TEBS02"
+L_shellpath="/uspg/jp1/zb/shl/T1"
 L_logpath="/var/tmp/jp1/log"
 
 L_cmd=${0}
@@ -49,11 +51,16 @@ L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_ex
 L_envfile=${L_cmddir}/AZZZAPPS.env
 #2009/03/19 UPDATE END
 
+#2009/04/15 UPDATE Ver.1.2 by Masayuki.Sano START
+#L_exit_norm=0
+#L_exit_warn=3
+#L_exit_eror=7
 L_exit_norm=0
-L_exit_warn=3
-L_exit_eror=7
+L_exit_warn=4
+L_exit_eror=8
+#2009/04/15 UPDATE Ver.1.2 by Masayuki.Sano END
 
-L_tmpbase=/tmp/${L_cmdname}.$$
+L_tmpbase=/var/tmp/${L_cmdname}.$$
 L_std_out=${L_tmpbase}.stdout
 L_err_out=${L_tmpbase}.errout
 
@@ -194,115 +201,125 @@ EOF
   shell_end ${L_exit_eror}
 fi
 
-if [ $L_paracount = 5 ]
+#2009/04/15 UPDATE Ver.1.2 BY Masayuki.Sano START
+#if [ $L_paracount = 5 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $5}' ${L_std_out}`
+#elif [ $L_paracount = 6 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`
+#elif [ $L_paracount = 7 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`
+#elif [ $L_paracount = 8 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $8}' ${L_std_out}`
+#elif [ $L_paracount = 9 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`
+#elif [ $L_paracount = 10 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $10}' ${L_std_out}`
+#elif [ $L_paracount = 11 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $11}' ${L_std_out}`
+#elif [ $L_paracount = 12 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $12}' ${L_std_out}`
+#elif [ $L_paracount = 13 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $13}' ${L_std_out}`
+#elif [ $L_paracount = 14 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $14}' ${L_std_out}`
+#elif [ $L_paracount = 15 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $15}' ${L_std_out}`
+#elif [ $L_paracount = 16 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $16}' ${L_std_out}`
+#elif [ $L_paracount = 17 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $17}' ${L_std_out}`
+#elif [ $L_paracount = 18 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`
+#elif [ $L_paracount = 19 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $19}' ${L_std_out}`
+#elif [ $L_paracount = 20 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $20}' ${L_std_out}`
+#elif [ $L_paracount = 21 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $21}' ${L_std_out}`
+#elif [ $L_paracount = 22 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $22}' ${L_std_out}`
+#elif [ $L_paracount = 23 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $23}' ${L_std_out}`
+#elif [ $L_paracount = 24 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $24}' ${L_std_out}`
+#elif [ $L_paracount = 25 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $25}' ${L_std_out}`
+#elif [ $L_paracount = 26 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $26}' ${L_std_out}`
+#elif [ $L_paracount = 27 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $27}' ${L_std_out}`
+#elif [ $L_paracount = 28 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $28}' ${L_std_out}`
+#elif [ $L_paracount = 29 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $29}' ${L_std_out}`
+#elif [ $L_paracount = 30 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $30}' ${L_std_out}`
+#elif [ $L_paracount = 31 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $31}' ${L_std_out}`
+#elif [ $L_paracount = 32 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $32}' ${L_std_out}`
+#elif [ $L_paracount = 33 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $33}' ${L_std_out}`
+#elif [ $L_paracount = 34 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $34}' ${L_std_out}`
+#elif [ $L_paracount = 35 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $35}' ${L_std_out}`
+#elif [ $L_paracount = 36 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $36}' ${L_std_out}`
+#elif [ $L_paracount = 37 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $37}' ${L_std_out}`
+#elif [ $L_paracount = 38 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $38}' ${L_std_out}`
+#elif [ $L_paracount = 39 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $39}' ${L_std_out}`
+#elif [ $L_paracount = 40 ]
+#then
+#  L_reqid=`/usr/bin/awk 'NR==1 {print $40}' ${L_std_out}`
+#fi
+# 要求IDの取得
+L_reqid=`/usr/bin/awk 'NR==1 {print $3}' ${L_std_out}`
+# 取得できたか確認を行なう。
+if [ "$(echo ${L_reqid} | egrep '^[0-9]+$')" = "" ]
 then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $5}' ${L_std_out}`
-elif [ $L_paracount = 6 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`
-elif [ $L_paracount = 7 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`
-elif [ $L_paracount = 8 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $8}' ${L_std_out}`
-elif [ $L_paracount = 9 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`
-elif [ $L_paracount = 10 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $10}' ${L_std_out}`
-elif [ $L_paracount = 11 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $11}' ${L_std_out}`
-elif [ $L_paracount = 12 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $12}' ${L_std_out}`
-elif [ $L_paracount = 13 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $13}' ${L_std_out}`
-elif [ $L_paracount = 14 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $14}' ${L_std_out}`
-elif [ $L_paracount = 15 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $15}' ${L_std_out}`
-elif [ $L_paracount = 16 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $16}' ${L_std_out}`
-elif [ $L_paracount = 17 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $17}' ${L_std_out}`
-elif [ $L_paracount = 18 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`
-elif [ $L_paracount = 19 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $19}' ${L_std_out}`
-elif [ $L_paracount = 20 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $20}' ${L_std_out}`
-elif [ $L_paracount = 21 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $21}' ${L_std_out}`
-elif [ $L_paracount = 22 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $22}' ${L_std_out}`
-elif [ $L_paracount = 23 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $23}' ${L_std_out}`
-elif [ $L_paracount = 24 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $24}' ${L_std_out}`
-elif [ $L_paracount = 25 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $25}' ${L_std_out}`
-elif [ $L_paracount = 26 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $26}' ${L_std_out}`
-elif [ $L_paracount = 27 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $27}' ${L_std_out}`
-elif [ $L_paracount = 28 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $28}' ${L_std_out}`
-elif [ $L_paracount = 29 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $29}' ${L_std_out}`
-elif [ $L_paracount = 30 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $30}' ${L_std_out}`
-elif [ $L_paracount = 31 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $31}' ${L_std_out}`
-elif [ $L_paracount = 32 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $32}' ${L_std_out}`
-elif [ $L_paracount = 33 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $33}' ${L_std_out}`
-elif [ $L_paracount = 34 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $34}' ${L_std_out}`
-elif [ $L_paracount = 35 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $35}' ${L_std_out}`
-elif [ $L_paracount = 36 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $36}' ${L_std_out}`
-elif [ $L_paracount = 37 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $37}' ${L_std_out}`
-elif [ $L_paracount = 38 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $38}' ${L_std_out}`
-elif [ $L_paracount = 39 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $39}' ${L_std_out}`
-elif [ $L_paracount = 40 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $40}' ${L_std_out}`
+  output_log "Getting RequestID was Failed(RequestID : ${L_reqid} )"
+  shell_end ${L_exit_eror}
 fi
+#2009/04/15 UPDATE Ver.1.2 BY Masayuki.Sano END
 
 L_out_all=`/usr/bin/awk '{print $0}' ${L_std_out}`
 output_log "RequestID : ${L_reqid}"

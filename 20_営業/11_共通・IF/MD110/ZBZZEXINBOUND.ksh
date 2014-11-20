@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIƒVƒXƒeƒ€—pI/F˜AŒg‹@”\iINBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_ƒVƒFƒ‹                                      ##
-## Version          : 1.5                                                       ##
+## Version          : 1.7                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -38,6 +38,9 @@
 ##                                       EŒxI—¹‚ğ"4"AˆÙíI—¹‚ğ"8"‚É•ÏX   ##
 ##  2009/04/07    1.6   Masayuki.Sano    áŠQ”Ô†[T1-0377]                      ##
 ##                                       E‹N“®‘ÎÛƒRƒ“ƒJƒŒƒ“ƒg‚Ìˆø”‚ğ•ÏX     ##
+##  2009/04/15    1.7   Masayuki.Sano    áŠQ”Ô†[T1-0522]                      ##
+##                                       E—v‹ID‚Ìæ“¾•û–@•ÏX                 ##
+##                                       E—v‹ID‚Ìæ“¾¸”sAˆÙíˆ—‚ğ’Ç‰Á   ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -50,6 +53,9 @@
 C_appl_name="XXCCP"           #ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
 C_program_id="ZBZZEXINBOUND"  #ƒvƒƒOƒ‰ƒ€ID
 L_logpath="/var/tmp/jp1/log"  #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+L_tmppath="/var/tmp"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
 
 # –ß‚è’l
 #2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 Start
@@ -71,17 +77,51 @@ L_cmddir=`/bin/dirname ${L_cmd}`
 L_hostname=`/bin/hostname`
 
 #ŠO•”ƒVƒFƒ‹(İ’èŠÖ˜A)ƒpƒX
-L_envfile=${L_cmddir}/AZBZZAPPS.env
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#L_envfile=${L_cmddir}/AZBZZAPPS.env
+L_envfile=${L_cmddir}/ZBZZAPPS2.env
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
 
 #ƒƒOƒtƒ@ƒCƒ‹ŠÖ˜A
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
 
 #ˆêƒtƒ@ƒCƒ‹
-L_tmpbase=/var/tmp/${L_cmdname}.$$
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#L_tmpbase=/var/tmp/${L_cmdname}.$$
+L_tmpbase="${L_tmppath}/${L_cmdname}.$$"
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
 L_std_out=${L_tmpbase}.stdout
 L_err_out=${L_tmpbase}.errout
 L_path_ou_sldr="${L_tmpbase}.${C_date}.ctl"
 L_path_sql_log="${L_tmpbase}.${C_date}.log"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+#SQL-LoaderƒƒOƒtƒ@ƒCƒ‹ƒpƒX
+L_path_log_sldr="/var/tmp/`/bin/basename ${L_cmdname} .ksh`_$$_${C_date}.log"
+#ƒGƒ‰[ƒƒbƒZ[ƒWˆê——
+C_log_msg_00001="Parameter Error"
+C_log_msg_00002="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼(EÓ)j"
+C_log_msg_00003="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiEÓ–¼j"
+C_log_msg_00004="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·Biƒ†[ƒU–¼j"
+C_log_msg_00005="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼(ƒRƒ“ƒJƒŒƒ“ƒg)j"
+C_log_msg_00006="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiƒRƒ“ƒJƒŒƒ“ƒg’Zk–¼j"
+C_log_msg_00007="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiƒIƒuƒWƒFƒNƒgƒfƒBƒŒƒNƒgƒŠ–¼(NASƒT[ƒo)j"
+C_log_msg_00008="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·Biƒ[ƒJƒ‹ƒT[ƒoƒfƒBƒŒƒNƒgƒŠƒpƒXj"
+C_log_msg_00009="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·Bi‘Ş”ğæƒfƒBƒŒƒNƒgƒŠƒpƒXj"
+C_log_msg_00010="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·Bi¢‘ã”j"
+C_log_msg_00011="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiSQLÀsƒtƒ‰ƒOj"
+C_log_msg_00012="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiSQL-Loader§Œäƒtƒ@ƒCƒ‹ƒpƒXj"
+C_log_msg_00013="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·Biƒ[ƒNƒe[ƒuƒ‹–¼j"
+C_log_msg_00014="İ’èî•ñ‚Ì’l‚ª•s³‚Å‚·BiíœSQLˆ—‹æ•ªj"
+C_log_msg_00015="NASƒT[ƒoƒfƒBƒŠƒŒƒNƒgƒŠƒpƒX‚ªæ“¾‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B"
+C_log_msg_00016="NASƒT[ƒo‚ÉÀs‘ÎÛ‚Ìƒtƒ@ƒCƒ‹‚ª‘¶İ‚µ‚Ü‚·B"
+C_log_msg_00017="NASƒT[ƒo‚Ö‚ÌI/Fƒtƒ@ƒCƒ‹‚ÌƒRƒs[‚É¸”s‚µ‚Ü‚µ‚½B"
+C_log_msg_00018="ƒ[ƒJƒ‹ƒT[ƒo“à‚ÌI/Fƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½B"
+C_log_msg_00019="SQL-Loader‚ÌÀs‚É¸”s‚µ‚Ü‚µ‚½B"
+C_log_msg_00020="NASƒT[ƒo“à‚ÌI/Fƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½B"
+C_log_msg_00021="ƒ[ƒNƒe[ƒuƒ‹‚Ìƒf[ƒ^íœ‚É¸”s‚µ‚Ü‚µ‚½B"
+C_log_msg_00022="IFƒtƒ@ƒCƒ‹‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ‚Ö‚ÌˆÚ“®‚É¸”s‚µ‚Ü‚µ‚½B"
+C_log_msg_00023="‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ“à‚ÌƒoƒbƒNƒAƒbƒvƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½B"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
 
 ################################################################################
 ##                                 ŠÖ”’è‹`                                   ##
@@ -197,8 +237,11 @@ AZBZZEXECONCSUB()
     Concurrent_Program_Name
     [Concurrent_Program_Arguments]
 EOF
-  shell_end ${C_ret_code_eror}
-  return ${?}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#    shell_end ${C_ret_code_eror}
+#    return ${?}
+    return ${C_ret_code_eror}
+#2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano END
   fi
 
   #“ü—Íƒpƒ‰ƒ[ƒ^‚©‚çƒRƒ“ƒJƒŒƒ“ƒgî•ñ‚ğæ“¾
@@ -260,124 +303,137 @@ EOF
     Return Code: ${L_return_code}
 EOF
     /usr/bin/cat ${L_std_out} ${L_err_out} 1>&2
-    shell_end ${C_ret_code_eror}
-    return ${?}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#    shell_end ${C_ret_code_eror}
+#    return ${?}
+    return ${C_ret_code_eror}
+#2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano END
   fi
 
   #----------------------------------------------------------------------------
   #SUBCONC‚Ì•W€o—Í‚©‚çA—v‹ID‚ğæ“¾
   #----------------------------------------------------------------------------
-  if [ $L_paracount = 5 ]
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#  if [ $L_paracount = 5 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $5}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F0
+#  elif [ $L_paracount = 6 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F1
+#  elif [ $L_paracount = 7 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F2
+#  elif [ $L_paracount = 8 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $8}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F3
+#  elif [ $L_paracount = 9 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F4
+#  elif [ $L_paracount = 10 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $10}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F5
+#  elif [ $L_paracount = 11 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $11}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F6
+#  elif [ $L_paracount = 12 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $12}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F7
+#  elif [ $L_paracount = 13 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $13}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F8
+#  elif [ $L_paracount = 14 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $14}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F9
+#  elif [ $L_paracount = 15 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $15}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F10
+#  elif [ $L_paracount = 16 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $16}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F11
+#  elif [ $L_paracount = 17 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $17}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F12
+#  elif [ $L_paracount = 18 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F13
+#  elif [ $L_paracount = 19 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $19}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F14
+#  elif [ $L_paracount = 20 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $20}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F15
+#  elif [ $L_paracount = 21 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $21}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F16
+#  elif [ $L_paracount = 22 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $22}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F17
+#  elif [ $L_paracount = 23 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $23}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F18
+#  elif [ $L_paracount = 24 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $24}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F19
+#  elif [ $L_paracount = 25 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $25}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F20
+#  elif [ $L_paracount = 26 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $26}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F21
+#  elif [ $L_paracount = 27 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $27}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F22
+#  elif [ $L_paracount = 28 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $28}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F23
+#  elif [ $L_paracount = 29 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $29}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F24
+#  elif [ $L_paracount = 30 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $30}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F25
+#  elif [ $L_paracount = 31 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $31}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F26
+#  elif [ $L_paracount = 32 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $32}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F27
+#  elif [ $L_paracount = 33 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $33}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F28
+#  elif [ $L_paracount = 34 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $34}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F29
+#  elif [ $L_paracount = 35 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $35}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F30
+#  elif [ $L_paracount = 36 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $36}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F31
+#  elif [ $L_paracount = 37 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $37}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F32
+#  elif [ $L_paracount = 38 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $38}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F33
+#  elif [ $L_paracount = 39 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $39}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F34
+#  elif [ $L_paracount = 40 ]
+#  then
+#    L_reqid=`/usr/bin/awk 'NR==1 {print $40}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F35
+#  else
+#    L_reqid=""
+#  fi
+  # —v‹ID‚Ìæ“¾
+  L_reqid=`/usr/bin/awk 'NR==1 {print $3}' ${L_std_out}`
+  # —v‹ID‚Ìƒ`ƒFƒbƒN
+  if [ "$(echo ${L_reqid} | egrep '^[0-9]+$')" = "" ]
   then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $5}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F0
-  elif [ $L_paracount = 6 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F1
-  elif [ $L_paracount = 7 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F2
-  elif [ $L_paracount = 8 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $8}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F3
-  elif [ $L_paracount = 9 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`   # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F4
-  elif [ $L_paracount = 10 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $10}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F5
-  elif [ $L_paracount = 11 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $11}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F6
-  elif [ $L_paracount = 12 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $12}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F7
-  elif [ $L_paracount = 13 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $13}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F8
-  elif [ $L_paracount = 14 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $14}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F9
-  elif [ $L_paracount = 15 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $15}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F10
-  elif [ $L_paracount = 16 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $16}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F11
-  elif [ $L_paracount = 17 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $17}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F12
-  elif [ $L_paracount = 18 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F13
-  elif [ $L_paracount = 19 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $19}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F14
-  elif [ $L_paracount = 20 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $20}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F15
-  elif [ $L_paracount = 21 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $21}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F16
-  elif [ $L_paracount = 22 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $22}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F17
-  elif [ $L_paracount = 23 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $23}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F18
-  elif [ $L_paracount = 24 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $24}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F19
-  elif [ $L_paracount = 25 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $25}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F20
-  elif [ $L_paracount = 26 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $26}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F21
-  elif [ $L_paracount = 27 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $27}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F22
-  elif [ $L_paracount = 28 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $28}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F23
-  elif [ $L_paracount = 29 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $29}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F24
-  elif [ $L_paracount = 30 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $30}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F25
-  elif [ $L_paracount = 31 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $31}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F26
-  elif [ $L_paracount = 32 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $32}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F27
-  elif [ $L_paracount = 33 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $33}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F28
-  elif [ $L_paracount = 34 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $34}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F29
-  elif [ $L_paracount = 35 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $35}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F30
-  elif [ $L_paracount = 36 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $36}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F31
-  elif [ $L_paracount = 37 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $37}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F32
-  elif [ $L_paracount = 38 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $38}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F33
-  elif [ $L_paracount = 39 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $39}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F34
-  elif [ $L_paracount = 40 ]
-  then
-    L_reqid=`/usr/bin/awk 'NR==1 {print $40}' ${L_std_out}`  # ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^”F35
-  else
-    L_reqid=""
+    output_log "Getting RequestID was Failed(RequestID : ${L_reqid} )"
+    return ${C_ret_code_eror}
   fi
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
 
   L_out_all=`/usr/bin/awk '{print $0}' ${L_std_out}`
   output_log "RequestID : ${L_reqid}"
@@ -429,8 +485,11 @@ SQLEND
   esac
 
   ### Shell end ###
-  shell_end $L_exit_status
-  return ${?}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#  shell_end $L_exit_status
+#  return ${?}
+  return ${L_exit_status}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
 
 }
 #===============================================================================
@@ -500,26 +559,41 @@ GETSQL
   #EÓƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN)
   if [ "${G_resp_app_name}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00002}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #EÓ–¼‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN)
   if [ "${G_resp_name}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00003}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #APPSƒ†[ƒU–¼‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN)
   if [ "${G_user_name}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00004}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #ƒRƒ“ƒJƒŒƒ“ƒgƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN)
   if [ "${G_con_app_name}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00005}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #ƒRƒ“ƒJƒŒƒ“ƒg–¼‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN)
   if [ "${G_con_name}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00006}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 #2009/02/18 UPDATE BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ START
@@ -531,6 +605,9 @@ GETSQL
   #ƒIƒuƒWƒFƒNƒgƒfƒBƒŒƒNƒgƒŠ–¼(NASƒT[ƒo)‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN)
   if [ "${G_dir_name_nas}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00007}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 #2009/02/18 ADD BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ END
@@ -538,21 +615,33 @@ GETSQL
   #SANƒT[ƒoƒfƒBƒŒƒNƒgƒŠ‚Ìƒ`ƒFƒbƒN(ƒfƒBƒŒƒNƒgƒŠ‘¶İƒ`ƒFƒbƒN)
   if [ ! -d "${G_dire_san}" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00008}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #‘Ş”ğ—pƒfƒBƒŒƒNƒgƒŠ‚Ìƒ`ƒFƒbƒN(ƒfƒBƒŒƒNƒgƒŠ‘¶İƒ`ƒFƒbƒN)
   if [ ! -d "${G_drie_esc}" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00009}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #¢‘ã”‚Ìƒ`ƒFƒbƒN(”’l—L–³ƒ`ƒFƒbƒN)
   if [ "$(echo ${G_gene_num} | egrep '^[0-9]+$')" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00010}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #¢‘ã”‚Ìƒ`ƒFƒbƒN(”ÍˆÍƒ`ƒFƒbƒN)
   if [ ${G_gene_num} -lt 1 ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00010}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
   #SQLÀsƒtƒ‰ƒO‚Ìƒ`ƒFƒbƒN("0"‚Ü‚½‚Í"1")
@@ -560,18 +649,27 @@ GETSQL
   then
   :
   else
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00011}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 
   #SQL-Loader§Œäƒtƒ@ƒCƒ‹ƒpƒX‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN ¦SQLÀsƒtƒ‰ƒO="1"‚Ìê‡‚Ì‚İ)
   if [ "${G_flag_sldr}" = "1" ] && [ ! -f "${G_path_sldr}" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00012}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 
   #ƒ[ƒNƒe[ƒuƒ‹–¼‚Ìƒ`ƒFƒbƒN(•K{ƒ`ƒFƒbƒN ¦SQLÀsƒtƒ‰ƒO="1"‚Ìê‡‚Ì‚İ)
   if [ "${G_flag_sldr}" = "1" ] && [ "${G_del_tbl_name}" = "" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00013}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 
@@ -580,6 +678,9 @@ GETSQL
   then
     if [ "${G_del_sql_type}" != "1" ] && [ "${G_del_sql_type}" != "0" ]
     then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+      output_log "${C_log_msg_00014}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
       return ${C_ret_code_eror}
     fi
   fi
@@ -609,6 +710,9 @@ GETSQL
   #----------------------------------------------------------------------------
   if [ ! -d "${G_dire_nas}" ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.SanoSTART
+    output_log "${C_log_msg_00015}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 
@@ -662,8 +766,26 @@ SQL_LOADER_EXECUTE()
   sed -e 's/\?\?\?\?\?\?\?\?\?\?\?/'"${G_path_nas_tmp}"'/g' "${G_path_sldr}" > "${L_path_ou_sldr}"
 
   #SQL-LoaderÀs
-  sqlldr userid=apps/apps control="${L_path_ou_sldr}" errors=0 > "${L_path_sql_log}"
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#  sqlldr userid=apps/apps control="${L_path_ou_sldr}" errors=0 > "${L_path_sql_log}"
+#  L_ret_code=${?}
+  #(SQL-LoaderÀsƒƒO‚ÌƒpƒX‚ğæ“¾)
+  L_path_log_sldr="${L_tmppath}/${G_base_if}_${C_date}.log"
+  sqlldr userid=apps/apps control="${L_path_ou_sldr}" log="${L_path_log_sldr}" errors=0 > ${L_path_sql_log} 2>${L_err_out}
   L_ret_code=${?}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
+
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+  #SQL-Loader‚ª¬Œ÷‚µ‚½‚©‚Ç‚¤‚©ƒ`ƒFƒbƒN‚ğs‚È‚¤B
+  #¬Œ÷ Ë SQL-LoaderƒƒOƒtƒ@ƒCƒ‹‚ğíœ
+  #¸”s Ë ƒƒOƒtƒ@ƒCƒ‹‚ÉƒGƒ‰[ƒƒbƒZ[ƒW‚ğo—ÍB
+  if [ ${L_ret_code} -eq 0 ]
+  then
+    rm -f "${L_path_log_sldr}"
+  else
+    output_log "${C_log_msg_00019}"
+  fi
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
 
   #ˆêƒtƒ@ƒCƒ‹‚ğíœ
   rm -f "${L_path_ou_sldr}"
@@ -763,6 +885,9 @@ DELSQL2
 #  return ${L_ret_code}
   if [ ${L_ret_code} -ne 0 ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00021}(${G_del_tbl_name})"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 
@@ -783,6 +908,9 @@ FILE_ESCAPE()
   L_ret_code=${?}
   if [ ${L_ret_code} -ne 0 ]
   then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    output_log "${C_log_msg_00022}"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     return ${C_ret_code_eror}
   fi
 
@@ -793,11 +921,16 @@ FILE_ESCAPE()
     if [ ${G_gene_num} -lt ${L_cnt} ]
     then
       rm -f "${G_drie_esc}/${L_file}"
-      L_ret_code=${?}
-      if [ ${L_ret_code} -ne 0 ]
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#      L_ret_code=${?}
+#      if [ ${L_ret_code} -ne 0 ]
+#      then
+      if [ -f "${G_drie_esc}/${L_file}" ]
       then
+        output_log "${C_log_msg_00023}"
         return ${C_ret_code_eror}
       fi
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
     fi
   done
   return ${C_ret_code_norm}
@@ -807,21 +940,42 @@ FILE_ESCAPE()
 ##                                   Main                                     ##
 ################################################################################
 
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+touch ${L_logfile}
+output_log "`/bin/basename ${0}` START"
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
 #===============================================================================
 #1.“ü—Íƒpƒ‰ƒ[ƒ^”‚Ìƒ`ƒFƒbƒN
 #===============================================================================
+# 1) “ü—Íƒpƒ‰ƒ[ƒ^”ƒ`ƒFƒbƒN
 if [ ${#} -lt 2 ]
 then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+  output_log "${C_log_msg_00001}"
+  shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
   exit ${C_ret_code_eror}
 fi
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+# 2) “ü—Íƒpƒ‰ƒ[ƒ^‚ğƒƒOƒtƒ@ƒCƒ‹‚Öo—Í
+output_log "Input Parameter"
+let L_cnt=0
+for L_para in ${@}
+do
+  let L_cnt=${L_cnt}+1
+  output_log '$'"${L_cnt} : ${L_para}"
+done
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
 
 #2009/04/03 ADD BY Masayuki.Sano Ver.1.4 Start
 #===============================================================================
 #1-1.ŠO•”İ’èƒtƒ@ƒCƒ‹(AZBZZAPPS.env)“Çˆ—
 #===============================================================================
-#ƒƒOƒtƒ@ƒCƒ‹‚ÌÅIƒAƒNƒZƒX“ú‚ÆÅIXV“ú‚ğˆ—“ú‚ÉXV
-touch ${L_logfile}
-output_log "`/bin/basename ${0}` START"
+#2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano START
+##ƒƒOƒtƒ@ƒCƒ‹‚ÌÅIƒAƒNƒZƒX“ú‚ÆÅIXV“ú‚ğˆ—“ú‚ÉXV
+#touch ${L_logfile}
+#output_log "`/bin/basename ${0}` START"
+#2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano END
 #"AZBZZAPPS.env"‚ğÀs
 #E"AZBZZAPPS.env"‚ª‚È‚¢Ë–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
 output_log "Reading Shell Env File START"
@@ -860,6 +1014,9 @@ FLEX_VALUES_GET "${1}"
 L_ret_code=${?}
 if [ ${L_ret_code} -ne 0 ]
 then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+  shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
   exit ${C_ret_code_eror}
 fi
 
@@ -881,6 +1038,10 @@ G_path_esc="${G_drie_esc}/${G_base_if}_${C_date}.${G_exte_if}"  #I/Fƒtƒ@ƒCƒ‹(‘Ş”
 #E‘¶İ‚·‚éË–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
 if [ -f "${G_path_nas}" ]
 then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+  output_log "${C_log_msg_00016}"
+  shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
   exit ${C_ret_code_eror}
 fi
 
@@ -893,6 +1054,10 @@ cp -pf "${G_path_san}" "${G_path_nas}"
 L_ret_code=${?}
 if [ ${L_ret_code} -ne 0 ]
 then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+  output_log "${C_log_msg_00017}"
+  shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
   exit ${C_ret_code_eror}
 fi
 
@@ -902,9 +1067,15 @@ fi
 #SANƒT[ƒo“à‚ÌI/Fƒtƒ@ƒCƒ‹‚ğíœ
 #EˆÙíI—¹Ë–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
 rm -f "${G_path_san}"
-L_ret_code=${?}
-if [ ${L_ret_code} -ne 0 ]
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+#L_ret_code=${?}
+#if [ ${L_ret_code} -ne 0 ]
+#then
+if [ -f "${G_path_san}" ]
 then
+  output_log "${C_log_msg_00018}"
+  shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
   exit ${C_ret_code_eror}
 fi
 
@@ -921,6 +1092,9 @@ L_exit_code=${?}
 #2009/02/18 UPDATE BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ END
 if [ ${L_exit_code} -ne 0 ]
 then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+  shell_end ${L_exit_code}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
   exit ${L_exit_code}
 fi
 
@@ -944,9 +1118,15 @@ then
     #NASƒT[ƒoƒfƒBƒŒƒNƒgƒŠ“à‚Ìƒtƒ@ƒCƒ‹íœ
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
     rm -f "${G_path_nas}"
-    L_ret_code=${?}
-    if [ ${L_ret_code} -ne 0 ]
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#    L_ret_code=${?}
+#    if [ ${L_ret_code} -ne 0 ]
+#    then
+    if [ -f "${G_path_nas}" ]
     then
+      output_log "${C_log_msg_00020}"
+      shell_end ${C_ret_code_eror}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
       exit ${C_ret_code_eror}
     fi
 
@@ -999,6 +1179,9 @@ then
     L_exit_code=${?}
     if [ ${L_exit_code} -ne 0 ]
     then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+      shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
       exit ${L_exit_code}
     fi
 #2009/02/27 UPDATE BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ END
@@ -1011,10 +1194,12 @@ then
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
     SQL_LOADER_DELETE "${2}"
     L_ret_code=${?}
-    if [ ${L_ret_code} -ne 0 ]
-    then
-      exit ${C_ret_code_eror}
-    fi
+#2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano START
+#    if [ ${L_ret_code} -ne 0 ]
+#    then
+#      exit ${C_ret_code_eror}
+#    fi
+#2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano START
 
     #ƒtƒ@ƒCƒ‹‚ğ‘Ş”ğ‚·‚éB(NASƒT[ƒoƒfƒBƒŒƒNƒgƒŠË‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ)
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
@@ -1022,10 +1207,16 @@ then
     L_ret_code=${?}
     if [ ${L_ret_code} -ne 0 ]
     then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+      shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
       exit ${C_ret_code_eror}
     fi
 
     #ˆ—‚ÌI—¹(ˆÙíI—¹)
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     exit ${C_ret_code_eror}
   fi
 fi
@@ -1086,9 +1277,15 @@ then
     #NASƒT[ƒoƒfƒBƒŒƒNƒgƒŠ“à‚Ìƒtƒ@ƒCƒ‹íœi‡@j
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
     rm -f "${G_path_nas}"
-    L_ret_code=${?}
-    if [ ${L_ret_code} -ne 0 ]
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano START
+#    L_ret_code=${?}
+#    if [ ${L_ret_code} -ne 0 ]
+#    then
+    if [ -f "${G_path_nas}" ]
     then
+      output_log "${C_log_msg_00020}"
+      shell_end ${C_ret_code_eror}
+#2009/04/15 UPDATE Ver.1.7 BY Masayuki.Sano END
       exit ${C_ret_code_eror}
     fi
 
@@ -1102,12 +1299,21 @@ then
     L_ret_code=${?}
     if [ ${L_ret_code} -ne 0 ]
     then
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+      shell_end ${C_ret_code_eror}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
       exit ${C_ret_code_eror}
     fi
 
     #ˆ—‚ÌI—¹(‹Æ–±ƒRƒ“ƒJƒŒƒ“ƒgÀsŒ‹‰Ê)
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+    shell_end ${L_exit_code}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
     exit ${L_exit_code}
   fi
 fi
 
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+shell_end ${C_ret_code_norm}
+#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
 exit ${C_ret_code_norm}
