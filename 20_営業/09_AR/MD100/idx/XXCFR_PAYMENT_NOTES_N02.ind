@@ -1,0 +1,4 @@
+CREATE INDEX xxcfr.xxcfr_payment_notes_n02 ON xxcfr.xxcfr_payment_notes(
+  ebs_cust_account_number
+ ,request_id
+) TABLESPACE xxidx2;

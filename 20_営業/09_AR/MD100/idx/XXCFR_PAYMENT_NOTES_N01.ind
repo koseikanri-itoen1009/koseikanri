@@ -1,0 +1,3 @@
+CREATE INDEX xxcfr.xxcfr_payment_notes_n01 ON xxcfr.xxcfr_payment_notes(
+  ebs_posted_date
+) TABLESPACE xxidx2;
