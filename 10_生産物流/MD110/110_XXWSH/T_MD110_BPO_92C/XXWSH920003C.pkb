@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXWSH920003C
+create or replace PACKAGE BODY XXWSH920003C
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 移動指示発注依頼自動作成
  * MD.050           : 生産物流共通（出荷・移動仮引当） T_MD050_BPO921
  * MD.070           : 移動指示発注依頼自動作成 T_MD070_BPO92C
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,9 @@ AS
  *  2008/07/31   1.3   Oracle 中田 準   ST不具合No522対応
  *                                      SUBMAINのリターンコード変数の定義誤りによる
  *                                      エラーハンドリング不備の修正。
+ *  2008/10/03   1.4   Oracle 中田 準   内部課題#32、内部課題#58/内部変更#166、
+ *                                      内部課題#66/内部変更#173、内部変更#183
+ *                                      内部変更#233
  *
  *****************************************************************************************/
 --
@@ -120,6 +123,9 @@ AS
   gv_msg_wsh_13172     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13172';    -- 積載効率算出関数エラー
   gv_msg_wsh_13001     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13001';    -- 積載オーバーメッセージ
   gv_msg_wsh_11653     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11653';    -- 在庫会計期間クローズエラー
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+  gv_msg_wsh_13173     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13173';    -- 対象データなしメッセージ
+-- Add End   2008/10/03 Nakada  Ver.1.4
   --トークン
   gv_tkn_item          CONSTANT VARCHAR2(15)  := 'ITEM';               -- 入力パラメータ
   gv_tkn_item_from     CONSTANT VARCHAR2(15)  := 'ITEM_FROM';          -- 期間From
@@ -140,6 +146,10 @@ AS
   gv_tkn_param9        CONSTANT VARCHAR2(15)  := 'PARAM9';             -- パラメータ9
   gv_tkn_param10       CONSTANT VARCHAR2(15)  := 'PARAM10';            -- パラメータ10
   gv_tkn_date          CONSTANT VARCHAR2(15)  := 'DATE';               -- 在庫会計期間チェック
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+  gv_tkn_item_code     CONSTANT VARCHAR2(15)  := 'ITEM_NO';            -- 品目コード
+  gv_tkn_mov_num       CONSTANT VARCHAR2(15)  := 'MOV_NUM';            -- 移動番号
+-- Add End   2008/10/03 Nakada  Ver.1.4
   --定数
   gv_cons_input_param  CONSTANT VARCHAR2(100) := '入力パラメータ値';   -- '入力パラメータ値'
   gv_cons_m_org_id     CONSTANT VARCHAR2(50)  := 'XXCMN_MASTER_ORG_ID';-- マスタ組織ID
@@ -168,8 +178,10 @@ AS
   gv_cons_status_shime CONSTANT VARCHAR2(2)   := '03';                 -- 「締め済み」
   gv_cons_flg_y        CONSTANT VARCHAR2(1)   := 'Y';                  -- フラグ 'Y'
   gv_cons_flg_n        CONSTANT VARCHAR2(1)   := 'N';                  -- フラグ 'N'
-  gv_cons_flg_on       CONSTANT VARCHAR2(1)   := '1';                  -- フラグ '1'=ON
-  gv_cons_flg_off      CONSTANT VARCHAR2(1)   := '0';                  -- フラグ '0'=OFF
+-- Del Start 2008/10/03 Nakada  Ver.1.4
+--  gv_cons_flg_on       CONSTANT VARCHAR2(1)   := '1';                  -- フラグ '1'=ON
+--  gv_cons_flg_off      CONSTANT VARCHAR2(1)   := '0';                  -- フラグ '0'=OFF
+-- Del End   2008/10/03 Nakada  Ver.1.4
   gv_cons_id_drink     CONSTANT VARCHAR2(1)   := '2';                  -- 商品区分・ドリンク
   gv_cons_id_leaf      CONSTANT VARCHAR2(1)   := '1';                  -- 商品区分・リーフ
   gv_cons_item_product CONSTANT VARCHAR2(1)   := '5';                  -- 「製品」
@@ -618,10 +630,12 @@ AS
     -- コンカレントプログラムアプリケーションID
     program_id                  xxinv_mov_req_instr_headers.program_id%TYPE,
     -- コンカレントプログラムID
-    program_update_date         xxinv_mov_req_instr_headers.program_update_date%TYPE,
+    program_update_date         xxinv_mov_req_instr_headers.program_update_date%TYPE
     -- プログラム更新日
-    not_insert_flg              VARCHAR2(1)
-    -- エラー発生による登録除外レコード判別フラグ
+-- Del Start 2008/10/03 Nakada  Ver.1.4
+--    not_insert_flg              VARCHAR2(1)
+--    -- エラー発生による登録除外レコード判別フラグ
+-- Del Start 2008/10/03 Nakada  Ver.1.4
   );
   TYPE move_header_tbl IS TABLE OF move_header_rec INDEX BY PLS_INTEGER;
   gr_move_header_tbl  move_header_tbl;
@@ -1040,8 +1054,17 @@ AS
     -- コンカレントプログラムID
     program_update_date        xxinv_mov_req_instr_lines.program_update_date%TYPE,
     -- プログラム更新日
-    not_insert_flg              VARCHAR2(1)
-    -- エラー発生による登録除外レコード判別フラグ
+-- Del Start 2008/10/03 Nakada  Ver.1.4
+--    not_insert_flg              VARCHAR2(1),
+--    -- エラー発生によって登録除外にするレコードを判別するフラグ
+-- Del End   2008/10/03 Nakada  Ver.1.4
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+    num_of_cases               xxcmn_item_mst2_v.num_of_cases%TYPE,
+    -- ケース入数
+    num_of_deliver             xxcmn_item_mst2_v.num_of_deliver%TYPE,
+    -- 出荷入数
+    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE
+-- Add End   2008/10/03 Nakada  Ver.1.4
   );
   TYPE move_lines_tbl IS TABLE OF move_lines_rec INDEX BY PLS_INTEGER;
   gr_move_lines_tbl  move_lines_tbl;
@@ -2423,7 +2446,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         xxwsh_order_headers_all        xoha,   -- 受注ヘッダアドオン
         xxwsh_order_lines_all          xola,   -- 受注明細アドオン
         xxwsh_oe_transaction_types2_v  xottv,  -- 受注タイプ情報View2
-        xxcmn_item_categories4_v       xicv,   -- カテゴリ情報View4
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        xxcmn_item_categories4_v       xicv,   -- カテゴリ情報View4
+        xxcmn_item_categories5_v       xicv,   -- カテゴリ情報View5
+-- Mod End   2008/10/03 Nakada  Ver.1.4
         xxcmn_item_locations2_v        xilv,   -- 保管場所情報View2
         xxcmn_item_mst2_v              ximv    -- 品目情報View2
       WHERE
@@ -2445,7 +2471,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND xoha.schedule_ship_date    >= TO_DATE(iv_object_date_from,'YYYY/MM/DD')-- 出荷予定日
         AND xicv.item_id                = ximv.item_id               -- 品目ID
         AND xicv.item_id           NOT IN ( SELECT xicv.item_id
-                                            FROM   xxcmn_item_categories4_v xicv
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--                                            FROM   xxcmn_item_categories4_v xicv
+                                            FROM   xxcmn_item_categories5_v xicv
+-- Mod End   2008/10/03 Nakada  Ver.1.4
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
         AND ximv.start_date_active     <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
@@ -2488,7 +2517,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         xxwsh_order_headers_all        xoha,   -- 受注ヘッダアドオン
         xxwsh_order_lines_all          xola,   -- 受注明細アドオン
         xxwsh_oe_transaction_types2_v  xottv,   -- 受注タイプ情報View2
-        xxcmn_item_categories4_v       xicv,   -- カテゴリ情報View4
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        xxcmn_item_categories4_v       xicv,   -- カテゴリ情報View4
+        xxcmn_item_categories5_v       xicv,   -- カテゴリ情報View5
+-- Mod End   2008/10/03 Nakada  Ver.1.4
         xxcmn_item_locations2_v        xilv,   -- 保管場所情報View2
         xxcmn_item_mst2_v              ximv    -- 品目情報View2
       WHERE
@@ -2511,7 +2543,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND xoha.schedule_ship_date    <= TO_DATE(iv_object_date_to,'YYYY/MM/DD')-- 出荷予定日
         AND xicv.item_id                = ximv.item_id               -- 品目ID
         AND xicv.item_id           NOT IN ( SELECT xicv.item_id
-                                            FROM   xxcmn_item_categories4_v xicv
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--                                            FROM   xxcmn_item_categories4_v xicv
+                                            FROM   xxcmn_item_categories5_v xicv
+-- Mod End   2008/10/03 Nakada  Ver.1.4
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
         AND ximv.start_date_active     <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
@@ -2550,7 +2585,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
       FROM
         xxinv_mov_req_instr_headers    xmrih,  -- 移動依頼/指示ヘッダ
         xxinv_mov_req_instr_lines      xmril,  -- 移動依頼/指示明細
-        xxcmn_item_categories4_v       xicv,   -- カテゴリ情報View4
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        xxcmn_item_categories4_v       xicv,   -- カテゴリ情報View4
+        xxcmn_item_categories5_v       xicv,   -- カテゴリ情報View5
+-- Mod End   2008/10/03 Nakada  Ver.1.4
         xxcmn_item_mst2_v              ximv    -- 品目情報View2
       WHERE
             xmrih.status          IN (gv_cons_mov_sts_e,gv_cons_mov_sts_c) --「依頼済み」「調整中」
@@ -2566,7 +2604,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND xmrih.schedule_ship_date   >= TO_DATE(iv_object_date_from,'YYYY/MM/DD') -- 出荷予定日
         AND xicv.item_id                = ximv.item_id        -- 品目ID
         AND xicv.item_id           NOT IN ( SELECT xicv.item_id
-                                            FROM   xxcmn_item_categories4_v xicv
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--                                            FROM   xxcmn_item_categories4_v xicv
+                                            FROM   xxcmn_item_categories5_v xicv
+-- Mod End   2008/10/03 Nakada  Ver.1.4
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
         AND ximv.start_date_active     <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
@@ -2605,7 +2646,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
       FROM
         xxinv_mov_req_instr_headers    xmrih,   -- 移動依頼/指示ヘッダ
         xxinv_mov_req_instr_lines      xmril,   -- 移動依頼/指示明細
-        xxcmn_item_categories4_v       xicv,    -- カテゴリ情報View4
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        xxcmn_item_categories4_v       xicv,    -- カテゴリ情報View4
+        xxcmn_item_categories5_v       xicv,    -- カテゴリ情報View5
+-- Mod End   2008/10/03 Nakada  Ver.1.4
         xxcmn_item_mst2_v              ximv     -- 品目情報View2
       WHERE
             xmrih.status             IN (gv_cons_mov_sts_e,gv_cons_mov_sts_c)
@@ -2623,7 +2667,10 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND xmrih.schedule_ship_date <= TO_DATE(iv_object_date_to,'YYYY/MM/DD') --(NULLの場合あり)
         AND xicv.item_id                = ximv.item_id               -- 品目ID
         AND xicv.item_id           NOT IN ( SELECT xicv.item_id
-                                            FROM   xxcmn_item_categories4_v xicv
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--                                            FROM   xxcmn_item_categories4_v xicv
+                                            FROM   xxcmn_item_categories5_v xicv
+-- Mod End   2008/10/03 Nakada  Ver.1.4
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
         AND ximv.start_date_active   <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
@@ -2671,9 +2718,9 @@ debug_log(FND_FILE.LOG,'  処理種別が「出荷」で対象期間TOが入力されていない場合の
       FETCH lc_deliv_data_cur_from BULK COLLECT INTO gr_deliv_data_tbl;
 --
       -- 処理件数のセット
-      gn_target_cnt := gr_deliv_data_tbl.COUNT;
+      gn_target_cnt_deliv := gr_deliv_data_tbl.COUNT;
 --
-debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt);
+debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt_deliv);
 --
       -- カーソルクローズ
       CLOSE lc_deliv_data_cur_from;
@@ -2690,9 +2737,9 @@ debug_log(FND_FILE.LOG,'  処理種別が「出荷」で対象期間TOが入力されている場合のデ
       FETCH lc_deliv_data_cur_fromto BULK COLLECT INTO gr_deliv_data_tbl;
 --
       -- 処理件数のセット
-      gn_target_cnt := gr_deliv_data_tbl.COUNT;
+      gn_target_cnt_deliv := gr_deliv_data_tbl.COUNT;
 --
-debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt);
+debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt_deliv);
 --
       -- カーソルクローズ
       CLOSE lc_deliv_data_cur_fromto;
@@ -2709,9 +2756,9 @@ debug_log(FND_FILE.LOG,'  処理種別が「移動」で対象期間TOが入力されていない場合の
       FETCH lc_move_data_cur_from BULK COLLECT INTO gr_move_data_tbl;
 --
       -- 処理件数のセット
-      gn_target_cnt := gr_move_data_tbl.COUNT;
+      gn_target_cnt_move := gr_move_data_tbl.COUNT;
 --
-debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt);
+debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt_move);
 --
       -- カーソルクローズ
       CLOSE lc_move_data_cur_from;
@@ -2728,9 +2775,9 @@ debug_log(FND_FILE.LOG,'  処理種別が「移動」で対象期間TOが入力されている場合のデ
       FETCH lc_move_data_cur_fromto BULK COLLECT INTO gr_move_data_tbl;
 --
       -- 処理件数のセット
-      gn_target_cnt := gr_move_data_tbl.COUNT;
+      gn_target_cnt_move := gr_move_data_tbl.COUNT;
 --
-debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt);
+debug_log(FND_FILE.LOG,'  抽出件数 = ' || gn_target_cnt_move);
 --
 --
       -- カーソルクローズ
@@ -3405,9 +3452,10 @@ debug_log(FND_FILE.LOG,'  lc_rule_cur3_1_z NotFound...');
     WHEN common_warn_expt THEN
 debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End with Warnning･････');
 --
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+-- Add Start 2008/10/03 Nakada  Ver.1.4
       ov_retcode := gv_status_warn;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,SUBSTRB(lv_errmsg,1,5000));
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -3510,7 +3558,7 @@ debug_log(FND_FILE.LOG,'  依頼No = ' || gr_deliv_data_tbl(ln_loop_cnt).request_n
         gt_s_deliver_to_id(ln_cnt) :=
           gr_deliv_data_tbl(ln_loop_cnt).deliver_to_id;              -- 出荷先ID
 --
--- 2008/07/02 MOD START NAKADA  ST不具合No368対応
+-- 2008/07/02 Mod Start Nakada  ST不具合No368対応
         -- 在庫補充ルールが発注で、かつ、直送倉庫区分が'直送'の場合は出荷先をセットする。
         IF (gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_order
             AND gr_deliv_data_tbl(ln_loop_cnt).drop_ship_wsh_div = gv_cons_ds_type_d) THEN
@@ -3525,7 +3573,7 @@ debug_log(FND_FILE.LOG,'  依頼No = ' || gr_deliv_data_tbl(ln_loop_cnt).request_n
 --
         END IF;
 --
--- 2008/07/02 MOD END   NAKADA
+-- 2008/07/02 Mod End   Nakada
 --
         gt_s_request_no(ln_cnt) :=
           gr_deliv_data_tbl(ln_loop_cnt).request_no;                 -- 依頼No
@@ -3630,6 +3678,10 @@ debug_log(FND_FILE.LOG,'  依頼No = ' || gr_deliv_data_tbl(ln_loop_cnt).request_n
 debug_log(FND_FILE.LOG,'  中間テーブル(出荷)格納件数 = ' || ln_cnt);
 debug_log(FND_FILE.LOG,'  読み飛ばしレコード件数 = ' || ln_not_cnt);
 debug_log(FND_FILE.LOG,'(C-6)' || cv_prg_name || ' End･････');
+--
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+    gn_target_cnt_deliv := ln_cnt;
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
   EXCEPTION
 --
@@ -3823,6 +3875,10 @@ debug_log(FND_FILE.LOG,'  中間テーブル(移動)格納件数 = ' || ln_cnt);
 debug_log(FND_FILE.LOG,'  読み飛ばしレコード件数 = ' || ln_not_cnt);
 debug_log(FND_FILE.LOG,'(C-7)' || cv_prg_name || ' End･････');
 --
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+    gn_target_cnt_move := ln_cnt;
+-- Add End   2008/10/03 Nakada  Ver.1.4
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -3909,9 +3965,9 @@ debug_log(FND_FILE.LOG,'(C-7)' || cv_prg_name || ' End･････');
         xssrt.stock_rep_rule,                -- 在庫補充ルール
         xssrt.stock_rep_origin,              -- 在庫補充元
         xssrt.deliver_from,                  -- 出荷元コード
--- 2008/07/02 MOD START NAKADA  ST不具合No368対応
+-- 2008/07/02 MOD Start NAKADA  ST不具合No368対応
         NVL(xssrt.drop_ship_wsh_div,gv_cons_ds_type_n),  -- 直送区分
--- 2008/07/02 MOD START NAKADA
+-- 2008/07/02 MOD Start NAKADA
         xssrt.deliver_to,                    -- 出荷先コード
         xssrt.prod_class_code,               -- 商品区分
         xssrt.weight_capacity_class,         -- 重量容積区分
@@ -4198,6 +4254,12 @@ debug_log(FND_FILE.LOG,'(C-9)' || cv_prg_name || ' End･････');
     ln_num_of_deliver         xxwsh_mov_stock_rep_tmp.num_of_deliver%TYPE;                -- 出荷入数
     lv_conv_unit              xxwsh_mov_stock_rep_tmp.conv_unit%TYPE;               -- 入出庫換算単位
     ln_num_of_cases           xxwsh_mov_stock_rep_tmp.num_of_cases%TYPE;                -- ケース入数
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+    lt_product_flg            xxinv_mov_req_instr_headers.product_flg%TYPE;
+                                                                      -- 製品識別区分(明細チェック用)
+    lt_prod_class_code        xxinv_mov_req_instr_headers.item_class%TYPE;
+                                                                          -- 商品区分(明細チェック用)
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
     lv_header_create_flg      VARCHAR2(1) := gv_cons_flg_n;  -- ヘッダ作成フラグ
     lv_line_create_flg        VARCHAR2(1) := gv_cons_flg_n;  -- 明細作成フラグ
@@ -4369,8 +4431,13 @@ debug_log(FND_FILE.LOG,'  移動番号 = ' || lv_seq_no);
                                                       ,1
                                                       ,5000);
 --
-        gn_warn_cnt := gn_warn_cnt + 1;
-        RAISE common_warn_expt;
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        gn_warn_cnt := gn_warn_cnt + 1;
+--        RAISE common_warn_expt;
+--
+        RAISE global_api_expt;
+--
+-- Mod End   2008/10/03 Nakada  Ver.1.4
 --
       END IF;
 --
@@ -4467,8 +4534,13 @@ debug_log(FND_FILE.LOG,'    ln_palette_max_qty = ' || TO_CHAR(ln_palette_max_qty
                                                     ,1
                                                     ,5000);
 --
-        gn_warn_cnt := gn_warn_cnt + 1;
-        RAISE common_warn_expt;
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        gn_warn_cnt := gn_warn_cnt + 1;
+--        RAISE common_warn_expt;
+--
+        RAISE global_api_expt;
+--
+-- Mod End   2008/10/03 Nakada  Ver.1.4
 --
       END IF;
 --
@@ -4647,6 +4719,10 @@ debug_log(FND_FILE.LOG,'  ヘッダ変数格納 gn_ins_data_cnt_mh =' || TO_CHAR(gn_ins
       ln_num_of_deliver := gr_deliv_data_tbl(in_shori_cnt).num_of_deliver; -- 出荷入数
       lv_conv_unit := gr_deliv_data_tbl(in_shori_cnt).conv_unit;           -- 入出庫換算単位
       ln_num_of_cases := gr_deliv_data_tbl(in_shori_cnt).num_of_cases;     -- ケース入数
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+      lt_prod_class_code := gr_deliv_data_tbl(in_shori_cnt).prod_class_code;   --商品区分
+      lt_product_flg := gr_deliv_data_tbl(in_shori_cnt).product_flg;           --製品識別区分
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
       -- 指示数量算出のため出荷依頼数量の足しこみ(ヘッダ)
       gn_sum_inst_quantity := gn_sum_inst_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
@@ -4661,6 +4737,10 @@ debug_log(FND_FILE.LOG,'  ヘッダ変数格納 gn_ins_data_cnt_mh =' || TO_CHAR(gn_ins
       ln_num_of_deliver := gr_move_data_tbl(in_shori_cnt).num_of_deliver;  -- 出荷入数
       lv_conv_unit := gr_move_data_tbl(in_shori_cnt).conv_unit;            -- 入出庫換算単位
       ln_num_of_cases := gr_move_data_tbl(in_shori_cnt).num_of_cases;      -- ケース入数
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+      lt_prod_class_code := gr_move_data_tbl(in_shori_cnt).prod_class_code;    --商品区分
+      lt_product_flg := gr_move_data_tbl(in_shori_cnt).product_flg;            --製品識別区分
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
       -- 指示数量算出のため移動指示数量の足しこみ(ヘッダ)
       gn_sum_inst_quantity := gn_sum_inst_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
@@ -4749,6 +4829,12 @@ debug_log(FND_FILE.LOG,'    ヘッダ数量合計(加算経過) = ' || TO_CHAR(gn_sum_inst_
       gr_move_lines_tbl(gn_ins_data_cnt_ml).program_id := gn_conc_program_id;
       -- プログラム更新日
       gr_move_lines_tbl(gn_ins_data_cnt_ml).program_update_date := SYSDATE;
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+      -- 小口個数、ラベル枚数の算出を明細単位で行うため値をセット
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).num_of_cases   := ln_num_of_cases;     -- ケース入数
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).num_of_deliver := ln_num_of_deliver;   -- 出荷入数
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).conv_unit      := lv_conv_unit;        -- 入出庫換算単位
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
       -- 明細作成単位の項目保持
       gv_item_code_ml := lv_item_code;
@@ -4773,28 +4859,31 @@ debug_log(FND_FILE.LOG,'    ヘッダ数量合計(加算経過) = ' || TO_CHAR(gn_sum_inst_
     -- ヘッダ合計指示数量の更新
     gr_move_header_tbl(gn_ins_data_cnt_mh).sum_quantity := gn_sum_inst_quantity; -- 合計指示数量
 --
+-- Del Start 2008/10/03 Nakada  Ver.1.4
+    -- 小口個数、ラベル枚数は明細ごとに積み上げを行うため C-15 重量容積計算/積載効率算出に移動
     -- 小口個数、ラベル枚数の算出
     -- 出荷入数に値がセットされていたら
-    IF (ln_num_of_deliver > 0) THEN
-      gn_sum_quantity := gn_sum_inst_quantity / ln_num_of_deliver;  -- 合計数量 / 出荷入数
+--    IF (ln_num_of_deliver > 0) THEN
+--      gn_sum_quantity := gn_sum_inst_quantity / ln_num_of_deliver;  -- 合計数量 / 出荷入数
 --
     -- 入出庫換算単位に値がセットされていたら
-    ELSE
-      IF (lv_conv_unit IS NOT NULL) THEN
-        gn_sum_quantity := gn_sum_inst_quantity / NVL(ln_num_of_cases, 1); -- 合計数量 / ケース入数
-      ELSE
-        gn_sum_quantity := gn_sum_inst_quantity;
-      END IF;
-    END IF;
+--    ELSE
+--      IF (lv_conv_unit IS NOT NULL) THEN
+--        gn_sum_quantity := gn_sum_inst_quantity / NVL(ln_num_of_cases, 1); -- 合計数量 / ケース入数
+--      ELSE
+--        gn_sum_quantity := gn_sum_inst_quantity;
+--      END IF;
+--    END IF;
 --
     -- 小口個数の更新
-    gr_move_header_tbl(gn_ins_data_cnt_mh).small_quantity := gn_sum_quantity;
+--    gr_move_header_tbl(gn_ins_data_cnt_mh).small_quantity := gn_sum_quantity;
 --
     -- ラベル枚数の更新
-    gr_move_header_tbl(gn_ins_data_cnt_mh).label_quantity := gn_sum_quantity;
+--    gr_move_header_tbl(gn_ins_data_cnt_mh).label_quantity := gn_sum_quantity;
 --
 --
-debug_log(FND_FILE.LOG,'    小口個数(計算経過) = ' || gn_sum_quantity);
+--debug_log(FND_FILE.LOG,'    小口個数(計算経過) = ' || gn_sum_quantity);
+-- Del End   2008/10/03 Nakada  Ver.1.4
 debug_log(FND_FILE.LOG,'(C-10)' || cv_prg_name || ' End･････');
 --
 --
@@ -4811,9 +4900,10 @@ debug_log(FND_FILE.LOG,'(C-10)' || cv_prg_name || ' End with Warnning･････');
         CLOSE lc_carrier_id_cur;
       END IF;
 --
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+-- Add Start 2008/10/03 Nakada  Ver.1.4
       ov_retcode := gv_status_warn;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,SUBSTRB(lv_errmsg,1,5000));
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -5144,8 +5234,13 @@ debug_log(FND_FILE.LOG,'    発注依頼番号 = ' || lv_seq_no);
                                                       ,1
                                                       ,5000);
 --
-        gn_warn_cnt := gn_warn_cnt + 1;
-        RAISE common_warn_expt;
+-- Mod Start 2008/10/03 Nakada  Ver.1.4
+--        gn_warn_cnt := gn_warn_cnt + 1;
+--        RAISE common_warn_expt;
+--
+        RAISE global_api_expt;
+--
+-- Mod End   2008/10/03 Nakada  Ver.1.4
 --
       END IF;
 --
@@ -5452,9 +5547,10 @@ debug_log(FND_FILE.LOG,'(C-11)' || cv_prg_name || ' End with Warnning･････');
         CLOSE lc_user_cur;
       END IF;
 --
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+-- Add Start 2008/10/03 Nakada  Ver.1.4
       ov_retcode := gv_status_warn;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,SUBSTRB(lv_errmsg,1,5000));
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -5759,6 +5855,10 @@ debug_log(FND_FILE.LOG,'(C-13)' || cv_prg_name || ' End･････');
     ln_load_efficiency_weight      NUMBER;      -- 重量積載効率
     ln_load_efficiency_capacity    NUMBER;      -- 容積積載効率
     lv_mixed_ship_method     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE; -- 混載配送区分
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+    lt_small_quantity    xxinv_mov_req_instr_headers.small_quantity%TYPE := 0; -- 小口個数セット用
+    lt_label_quantity    xxinv_mov_req_instr_headers.label_quantity%TYPE := 0; -- ラベル枚数セット用
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
     -- *** ローカル・カーソル ***
 --
@@ -5812,9 +5912,9 @@ debug_log(FND_FILE.LOG,'    エラーメッセージコード = ' || lv_errbuf);
 debug_log(FND_FILE.LOG,'    エラーメッセージ = ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'    合計重量 = ' || ln_weight);
 debug_log(FND_FILE.LOG,'    合計容積 = ' || ln_capacity);
-debug_log(FND_FILE.LOG,'    合計パレット重量t = ' || ln_p_weight);
+debug_log(FND_FILE.LOG,'    合計パレット重量 = ' || ln_p_weight);
 --
-      -- エラーの場合  ただし処理は継続し、警告終了となる #######################3
+      -- 関数エラー処理
       IF (lv_retcode <> gv_status_normal) THEN
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                    ,gv_msg_wsh_13124     -- 積載効率関数エラー
@@ -5832,18 +5932,24 @@ debug_log(FND_FILE.LOG,'    合計パレット重量t = ' || ln_p_weight);
                                                    ,1
                                                    ,5000);
 --
-        -- 警告の出力
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+        RAISE global_api_expt;
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
-        -- 警告件数のカウント
-        gn_warn_cnt := gn_warn_cnt + 1;
-        ov_retcode := gv_status_warn;
+-- Del Start 2008/10/03 Nakada  Ver.1.4
+--        -- 警告の出力
+--        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+----
+--        -- 警告件数のカウント
+--        gn_warn_cnt := gn_warn_cnt + 1;
+--        ov_retcode := gv_status_warn;
 --
-        -- インサート対象から除外するフラグをONにする。
-        gr_move_lines_tbl(ln_line_cnt).not_insert_flg := gv_cons_flg_on;
+--        -- インサート対象から除外するフラグをONにする。
+--        gr_move_lines_tbl(ln_line_cnt).not_insert_flg := gv_cons_flg_on;
 --
-      ELSE
-        gr_move_lines_tbl(ln_line_cnt).not_insert_flg := gv_cons_flg_off;
+--      ELSE
+--        gr_move_lines_tbl(ln_line_cnt).not_insert_flg := gv_cons_flg_off;
+-- Del End   2008/10/03 Nakada  Ver.1.4
 --
       END IF;
 --
@@ -5872,16 +5978,52 @@ debug_log(FND_FILE.LOG,'    合計容積 = ' || ln_capacity);
       ln_sum_weight := 0;
       ln_sum_p_weight := 0;
       ln_sum_capacity := 0;
+      lt_small_quantity := 0;
+      lt_label_quantity := 0;
 --
       FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
 --
-        -- 同じヘッダIDならば合算する
+        -- 同じヘッダIDの場合に小口個数、ラベル枚数をカウントする。
         IF (gr_move_header_tbl(ln_hdr_cnt).mov_hdr_id =
             gr_move_lines_tbl(ln_line_cnt).mov_hdr_id)
         THEN
           ln_sum_weight := ln_sum_weight + NVL(gr_move_lines_tbl(ln_line_cnt).weight, 0);
           ln_sum_p_weight := ln_sum_p_weight + NVL(gr_move_lines_tbl(ln_line_cnt).pallet_weight, 0);
           ln_sum_capacity := ln_sum_capacity + NVL(gr_move_lines_tbl(ln_line_cnt).capacity, 0);
+--
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+          -- 小口個数ラベル枚数の算出
+          -- 出荷入数が0より大きい場合
+          IF (gr_move_lines_tbl(ln_line_cnt).num_of_deliver > 0 ) THEN
+            -- 指示数量を出荷入数で割リ端数切り上げした値を小口個数、ラベル枚数に加算
+            lt_small_quantity := lt_small_quantity +
+                                   CEIL(gr_move_lines_tbl(ln_line_cnt).instruct_qty /
+                                     gr_move_lines_tbl(ln_line_cnt).num_of_deliver);
+            lt_label_quantity := lt_label_quantity +
+                                   CEIL(gr_move_lines_tbl(ln_line_cnt).instruct_qty /
+                                     gr_move_lines_tbl(ln_line_cnt).num_of_deliver);
+--
+          -- 入出庫換算単位が設定有無にかかわらず、ケース入数が0より大きい場合
+          ELSIF gr_move_lines_tbl(ln_line_cnt).num_of_cases > 0 THEN
+            -- 指示数量をケース入数で割リ端数切り上げした値を小口個数、ラベル枚数に加算
+            lt_small_quantity := lt_small_quantity +
+                                   CEIL(gr_move_lines_tbl(ln_line_cnt).instruct_qty /
+                                     gr_move_lines_tbl(ln_line_cnt).num_of_cases);
+            lt_label_quantity := lt_label_quantity +
+                                   CEIL(gr_move_lines_tbl(ln_line_cnt).instruct_qty /
+                                     gr_move_lines_tbl(ln_line_cnt).num_of_cases);
+--
+          -- 上記以外の場合
+          ELSE
+            -- 指示数量を端数切り上げした値を小口個数ラベル枚数に加算
+            lt_small_quantity := lt_small_quantity +
+                                   CEIL(gr_move_lines_tbl(ln_line_cnt).instruct_qty);
+            lt_label_quantity := lt_label_quantity +
+                                   CEIL(gr_move_lines_tbl(ln_line_cnt).instruct_qty);
+--
+          END IF;
+--
+-- Add End   2008/10/03 Nakada  Ver.1.4
         END IF;
 --
       END LOOP;
@@ -5893,6 +6035,11 @@ debug_log(FND_FILE.LOG,'    合計容積 = ' || ln_sum_capacity);
       gr_move_header_tbl(ln_hdr_cnt).sum_weight := ln_sum_weight;
       gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight := ln_sum_p_weight;
       gr_move_header_tbl(ln_hdr_cnt).sum_capacity := ln_sum_capacity;
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+      -- ヘッダ変数に小口個数ラベル枚数をセット
+      gr_move_header_tbl(ln_hdr_cnt).small_quantity := lt_small_quantity;
+      gr_move_header_tbl(ln_hdr_cnt).label_quantity := lt_label_quantity;
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
     END LOOP move_hdr_weight_capacity_loop;
 --
@@ -5911,34 +6058,36 @@ debug_log(FND_FILE.LOG,'    合計容積 = ' || ln_sum_capacity);
       ln_load_efficiency_weight := 0;
       ln_load_efficiency_capacity := 0;
 --
-      -- 重量容積区分=重量の場合に、重量積載効率を算出する
-      IF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_weight THEN
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      -- 重量容積区分=重量の場合に、重量積載効率を算出する
+--      IF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_weight THEN
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
-        --重量算出のため、合計重量にパレット重量を加算する
-        ln_sum_weight := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_weight,0) +
-                         NVL(gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight,0);
+      --重量算出のため、合計重量にパレット重量を加算する
+      ln_sum_weight := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_weight,0) +
+                       NVL(gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight,0);
 --
-        -- １ヘッダあたりの積載効率を算出してヘッダにセットする
-        -- 積載効率チェック(積載効率算出)
-        xxwsh_common910_pkg.calc_load_efficiency(
-             ln_sum_weight,                                       -- 1.合計重量 I
-             NULL,                                                -- 2.合計容積 I
-             gv_cons_wh,                                          -- 3.コード区分１ I '4'
-             gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.入出庫場所コード１ I
-               gv_cons_wh,                                          -- 5.コード区分２ I '4'
-             gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.入出庫場所コード２ I
-             gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.出荷方法 I
-             gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.商品区分 I
-             NULL,                                                -- 9.自動配車対象区分 I
-             TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.基準日(適用日基準日) I
-             lv_retcode,                                          -- 11.リターンコード O
-             lv_errbuf,                                           -- 12.エラーメッセージコード O
-             lv_errmsg,                                           -- 13.エラーメッセージ O
-             lv_loading_over_class,                               -- 14.積載オーバー区分 O
-             lv_ship_methods,                                     -- 15.出荷方法 O
-             ln_load_efficiency_weight,                           -- 16.重量積載効率 O
-             ln_load_efficiency_capacity,                         -- 17.容積積載効率 O
-             lv_mixed_ship_method);                               -- 18.混載配送区分 O
+      -- １ヘッダあたりの積載効率を算出してヘッダにセットする
+      -- 積載効率チェック(積載効率算出)
+      xxwsh_common910_pkg.calc_load_efficiency(
+           ln_sum_weight,                                       -- 1.合計重量 I
+           NULL,                                                -- 2.合計容積 I
+           gv_cons_wh,                                          -- 3.コード区分１ I '4'
+           gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.入出庫場所コード１ I
+             gv_cons_wh,                                          -- 5.コード区分２ I '4'
+           gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.入出庫場所コード２ I
+           gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.出荷方法 I
+           gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.商品区分 I
+           NULL,                                                -- 9.自動配車対象区分 I
+           TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.基準日(適用日基準日) I
+           lv_retcode,                                          -- 11.リターンコード O
+           lv_errbuf,                                           -- 12.エラーメッセージコード O
+           lv_errmsg,                                           -- 13.エラーメッセージ O
+           lv_loading_over_class,                               -- 14.積載オーバー区分 O
+           lv_ship_methods,                                     -- 15.出荷方法 O
+           ln_load_efficiency_weight,                           -- 16.重量積載効率 O
+           ln_load_efficiency_capacity,                         -- 17.容積積載効率 O
+           lv_mixed_ship_method);                               -- 18.混載配送区分 O
 --
 debug_log(FND_FILE.LOG,'  移動ヘッダ積載効率(重量)-----------------');
 debug_log(FND_FILE.LOG,'    合計重量 = ' || gr_move_header_tbl(ln_hdr_cnt).sum_weight);
@@ -5956,14 +6105,141 @@ debug_log(FND_FILE.LOG,'    重量積載効率 = ' || ln_load_efficiency_weight);
 debug_log(FND_FILE.LOG,'    容積積載効率 = ' || ln_load_efficiency_capacity);
 debug_log(FND_FILE.LOG,'    混載配送区分 = ' || lv_mixed_ship_method);
 --
-        -- エラーの場合  ただし処理は継続し、警告終了となる #######################3
-        IF (lv_retcode <> gv_status_normal) THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+      -- エラーの場合  ただし処理は継続し、警告終了となる #######################3
+      IF (lv_retcode <> gv_status_normal) THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                      ,gv_msg_wsh_13172                                   -- 積載効率関数エラー
+                      ,gv_tkn_table_name                                  -- トークン'TABLE_NAME'
+                      ,gv_cons_mov_hdr_tbl                                -- 移動依頼/指示ヘッダ
+                      ,gv_tkn_param1                                      -- トークン'PARAM1'
+                      ,gr_move_header_tbl(ln_hdr_cnt).sum_weight          -- 合計重量
+                      ,gv_tkn_param2                                      -- トークン'PARAM2'
+                      ,gv_cons_wh                                         -- コード区分
+                      ,gv_tkn_param3                                      -- トークン'PARAM3'
+                      ,gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code  -- 入出庫場所コード
+                      ,gv_tkn_param4                                      -- トークン'PARAM4'
+                      ,gv_cons_wh                                         -- コード区分
+                      ,gv_tkn_param5                                      -- トークン'PARAM5'
+                      ,gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code  -- 入出庫場所コード
+                      ,gv_tkn_param6                                      -- トークン'PARAM6'
+                      ,gr_move_header_tbl(ln_hdr_cnt).shipping_method_code -- 出荷方法
+                      ,gv_tkn_param7                                      -- トークン'PARAM7'
+                      ,gr_move_header_tbl(ln_hdr_cnt).item_class          -- 商品区分
+                      ,gv_tkn_param8                                      -- トークン'PARAM8'
+                      ,lv_errbuf                                    -- エラーメッセージコード
+                      ,gv_tkn_param9                                      -- トークン'PARAM9'
+                      ,lv_errmsg                                          -- エラーメッセージ
+                      )
+                      ,1
+                      ,5000);
+--
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+        RAISE global_api_expt;
+-- Add End   2008/10/03 Nakada  Ver.1.4
+--
+-- Del Start 2008/10/03 Nakada  Ver.1.4
+--          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+----
+--        -- 警告件数のカウント
+--          gn_warn_cnt := gn_warn_cnt + 1;
+--          ov_retcode := gv_status_warn;
+----
+--          -- インサート対象から除外するフラグをONにする。
+--          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
+----
+--        ELSE
+--          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
+-- Del End   2008/10/03 Nakada  Ver.1.4
+--
+      END IF;
+--
+-- Mod Start 2008/10/03 Nakada Ver.1.4
+--        -- 積載オーバー区分が'1'だったら
+--        IF (lv_loading_over_class = gv_cons_over_1y) THEN
+--
+      -- 重量容積区分=重量の場合に、積載オーバー区分が'1'ならば警告とする。
+      IF (gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_weight
+          AND lv_loading_over_class = gv_cons_over_1y) THEN
+-- Mod End   2008/10/03 Nakada Ver.1.4
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                             gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                            ,gv_msg_wsh_13001     -- 積載オーバーエラー
+                                            ,gv_tkn_mov_num       -- トークン:MOV_NUM
+                                            ,gr_move_header_tbl(ln_hdr_cnt).mov_num -- 移動番号
+                                            ,lv_errmsg)           -- メッセージ
+                                            ,1
+                                            ,5000);
+--
+-- Add Start 2008/10/03 Nakada Ver.1.4
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
+        gn_warn_cnt := gn_warn_cnt + 1;
+        ov_retcode := gv_status_warn;
+--
+      END IF;
+--
+-- Add Start 2008/10/03 Nakada Ver.1.4
+        -- ヘッダに重量積載効率をセット
+        gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_weight := ln_load_efficiency_weight;
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
+--
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      -- 重量容積区分=容積の場合に、容積積載効率を算出する
+--      ELSIF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_capacity THEN
+-- Del End   2008/10/03 Nakada Ver.1.4
+--
+      --容積の取得
+      ln_sum_capacity := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_capacity,0);
+--
+      -- １ヘッダあたりの積載効率を算出してヘッダにセットする
+      -- 積載効率チェック(積載効率算出)
+      xxwsh_common910_pkg.calc_load_efficiency(
+           NULL,                                                -- 1.合計重量 I
+           ln_sum_capacity,                                     -- 2.合計容積 I
+           gv_cons_wh,                                          -- 3.コード区分１ I '4'
+           gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.入出庫場所コード１ I
+           gv_cons_wh,                                          -- 5.コード区分２ I '4'
+           gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.入出庫場所コード２ I
+           gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.出荷方法 I
+           gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.商品区分 I
+           NULL,                                                -- 9.自動配車対象区分 I
+           TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.基準日(適用日基準日) I
+           lv_retcode,                                          -- 11.リターンコード O
+           lv_errbuf,                                           -- 12.エラーメッセージコード O
+           lv_errmsg,                                           -- 13.エラーメッセージ O
+           lv_loading_over_class,                               -- 14.積載オーバー区分 O
+           lv_ship_methods,                                     -- 15.出荷方法 O
+           ln_load_efficiency_weight,                           -- 16.重量積載効率 O
+           ln_load_efficiency_capacity,                         -- 17.容積積載効率 O
+           lv_mixed_ship_method);                               -- 18.混載配送区分 O
+--
+debug_log(FND_FILE.LOG,'  移動ヘッダ積載効率(容積)-----------------');
+debug_log(FND_FILE.LOG,'    合計重量 = ' || gr_move_header_tbl(ln_hdr_cnt).sum_capacity);
+debug_log(FND_FILE.LOG,'    入出庫場所コード１ = ' || gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code);
+debug_log(FND_FILE.LOG,'    入出庫場所コード２ = ' || gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code);
+debug_log(FND_FILE.LOG,'    出荷方法 = ' || gr_move_header_tbl(ln_hdr_cnt).shipping_method_code);
+debug_log(FND_FILE.LOG,'    商品区分 = ' ||  gr_move_header_tbl(ln_hdr_cnt).item_class);
+debug_log(FND_FILE.LOG,'    基準日(適用日基準日) = ' ||  iv_arrival_date);
+debug_log(FND_FILE.LOG,'    リターンコード = ' || lv_retcode);
+debug_log(FND_FILE.LOG,'    エラーメッセージコード = ' || lv_errbuf);
+debug_log(FND_FILE.LOG,'    エラーメッセージ = ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'    積載オーバー区分 = ' || lv_loading_over_class);
+debug_log(FND_FILE.LOG,'    出荷方法 = ' || lv_ship_methods);
+debug_log(FND_FILE.LOG,'    重量積載効率 = ' || ln_load_efficiency_weight);
+debug_log(FND_FILE.LOG,'    容積積載効率 = ' || ln_load_efficiency_capacity);
+debug_log(FND_FILE.LOG,'    混載配送区分 = ' || lv_mixed_ship_method);
+--
+      -- エラーの場合  ただし処理は継続し、警告終了となる #######################3
+      IF (lv_retcode <> gv_status_normal) THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                         ,gv_msg_wsh_13172                                   -- 積載効率関数エラー
                         ,gv_tkn_table_name                                  -- トークン'TABLE_NAME'
                         ,gv_cons_mov_hdr_tbl                                -- 移動依頼/指示ヘッダ
                         ,gv_tkn_param1                                      -- トークン'PARAM1'
-                        ,gr_move_header_tbl(ln_hdr_cnt).sum_weight          -- 合計重量
+                        ,gr_move_header_tbl(ln_hdr_cnt).sum_capacity        -- 合計容積
                         ,gv_tkn_param2                                      -- トークン'PARAM2'
                         ,gv_cons_wh                                         -- コード区分
                         ,gv_tkn_param3                                      -- トークン'PARAM3'
@@ -5984,138 +6260,63 @@ debug_log(FND_FILE.LOG,'    混載配送区分 = ' || lv_mixed_ship_method);
                         ,1
                         ,5000);
 --
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- Add Start 2008/10/03 Nakada Ver.1.4
+        RAISE global_api_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
 --
-        -- 警告件数のカウント
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
-          -- インサート対象から除外するフラグをONにする。
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
---
-        ELSE
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
-        END IF;
---
-        -- 積載オーバー区分が'1'だったら
-        IF (lv_loading_over_class = gv_cons_over_1y) THEN
---
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                               gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                              ,gv_msg_wsh_13001     -- 積載オーバーエラー
-                                              ,gr_move_header_tbl(ln_hdr_cnt).mov_num -- 移動番号
-                                              ,lv_errmsg)           -- メッセージ
-                                              ,1
-                                              ,5000);
---
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
---
-        END IF;
---
-      -- 重量容積区分=容積の場合に、容積積載効率を算出する
-      ELSIF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_capacity THEN
---
-        --容積の取得
-        ln_sum_capacity := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_capacity,0);
---
-        -- １ヘッダあたりの積載効率を算出してヘッダにセットする
-        -- 積載効率チェック(積載効率算出)
-        xxwsh_common910_pkg.calc_load_efficiency(
-             NULL,                                                -- 1.合計重量 I
-             ln_sum_capacity,                                     -- 2.合計容積 I
-             gv_cons_wh,                                          -- 3.コード区分１ I '4'
-             gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.入出庫場所コード１ I
-             gv_cons_wh,                                          -- 5.コード区分２ I '4'
-             gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.入出庫場所コード２ I
-             gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.出荷方法 I
-             gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.商品区分 I
-             NULL,                                                -- 9.自動配車対象区分 I
-             TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.基準日(適用日基準日) I
-             lv_retcode,                                          -- 11.リターンコード O
-             lv_errbuf,                                           -- 12.エラーメッセージコード O
-             lv_errmsg,                                           -- 13.エラーメッセージ O
-             lv_loading_over_class,                               -- 14.積載オーバー区分 O
-             lv_ship_methods,                                     -- 15.出荷方法 O
-             ln_load_efficiency_weight,                           -- 16.重量積載効率 O
-             ln_load_efficiency_capacity,                         -- 17.容積積載効率 O
-             lv_mixed_ship_method);                               -- 18.混載配送区分 O
---
-debug_log(FND_FILE.LOG,'  移動ヘッダ積載効率(容積)-----------------');
-debug_log(FND_FILE.LOG,'    合計重量 = ' || gr_move_header_tbl(ln_hdr_cnt).sum_capacity);
-debug_log(FND_FILE.LOG,'    入出庫場所コード１ = ' || gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code);
-debug_log(FND_FILE.LOG,'    入出庫場所コード２ = ' || gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code);
-debug_log(FND_FILE.LOG,'    出荷方法 = ' || gr_move_header_tbl(ln_hdr_cnt).shipping_method_code);
-debug_log(FND_FILE.LOG,'    商品区分 = ' ||  gr_move_header_tbl(ln_hdr_cnt).item_class);
-debug_log(FND_FILE.LOG,'    基準日(適用日基準日) = ' ||  iv_arrival_date);
-debug_log(FND_FILE.LOG,'    リターンコード = ' || lv_retcode);
-debug_log(FND_FILE.LOG,'    エラーメッセージコード = ' || lv_errbuf);
-debug_log(FND_FILE.LOG,'    エラーメッセージ = ' || lv_errmsg);
-debug_log(FND_FILE.LOG,'    積載オーバー区分 = ' || lv_loading_over_class);
-debug_log(FND_FILE.LOG,'    出荷方法 = ' || lv_ship_methods);
-debug_log(FND_FILE.LOG,'    重量積載効率 = ' || ln_load_efficiency_weight);
-debug_log(FND_FILE.LOG,'    容積積載効率 = ' || ln_load_efficiency_capacity);
-debug_log(FND_FILE.LOG,'    混載配送区分 = ' || lv_mixed_ship_method);
---
-        -- エラーの場合  ただし処理は継続し、警告終了となる #######################3
-        IF (lv_retcode <> gv_status_normal) THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                          ,gv_msg_wsh_13172                                   -- 積載効率関数エラー
-                          ,gv_tkn_table_name                                  -- トークン'TABLE_NAME'
-                          ,gv_cons_mov_hdr_tbl                                -- 移動依頼/指示ヘッダ
-                          ,gv_tkn_param1                                      -- トークン'PARAM1'
-                          ,gr_move_header_tbl(ln_hdr_cnt).sum_capacity        -- 合計容積
-                          ,gv_tkn_param2                                      -- トークン'PARAM2'
-                          ,gv_cons_wh                                         -- コード区分
-                          ,gv_tkn_param3                                      -- トークン'PARAM3'
-                          ,gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code  -- 入出庫場所コード
-                          ,gv_tkn_param4                                      -- トークン'PARAM4'
-                          ,gv_cons_wh                                         -- コード区分
-                          ,gv_tkn_param5                                      -- トークン'PARAM5'
-                          ,gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code  -- 入出庫場所コード
-                          ,gv_tkn_param6                                      -- トークン'PARAM6'
-                          ,gr_move_header_tbl(ln_hdr_cnt).shipping_method_code -- 出荷方法
-                          ,gv_tkn_param7                                      -- トークン'PARAM7'
-                          ,gr_move_header_tbl(ln_hdr_cnt).item_class          -- 商品区分
-                          ,gv_tkn_param8                                      -- トークン'PARAM8'
-                          ,lv_errbuf                                    -- エラーメッセージコード
-                          ,gv_tkn_param9                                      -- トークン'PARAM9'
-                          ,lv_errmsg                                          -- エラーメッセージ
-                          )
-                          ,1
-                          ,5000);
---
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
---
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
-          -- インサート対象から除外するフラグをONにする。
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
---
-        ELSE
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
-        END IF;
---
-        -- 積載オーバー区分が'1'だったら
-        IF (lv_loading_over_class = gv_cons_over_1y) THEN
---
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                               gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                              ,gv_msg_wsh_13001     -- 積載オーバーエラー
-                                              ,gr_move_header_tbl(ln_hdr_cnt).mov_num -- 移動番号
-                                              ,lv_errmsg)           -- メッセージ
-                                              ,1
-                                              ,5000);
---
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
---
-        END IF;
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+----
+--          gn_warn_cnt := gn_warn_cnt + 1;
+--          ov_retcode := gv_status_warn;
+--          -- インサート対象から除外するフラグをONにする。
+--          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
+----
+--        ELSE
+--          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
+-- Del Start 2008/10/03 Nakada Ver.1.4
 --
       END IF;
 --
-      -- ヘッダにセット
-      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_weight := ln_load_efficiency_weight;
-      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_capacity := ln_load_efficiency_capacity;
+-- Mod Start 2008/10/03 Nakada Ver.1.4
+--        -- 積載オーバー区分が'1'だったら
+--        IF (lv_loading_over_class = gv_cons_over_1y) THEN
+--
+      -- 重量容積区分=容積の場合に、積載オーバー区分が'1'ならば警告とする。
+      IF (gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_capacity
+          AND lv_loading_over_class = gv_cons_over_1y) THEN
+-- Mod End   2008/10/03 Nakada Ver.1.4
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                             gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                            ,gv_msg_wsh_13001     -- 積載オーバーエラー
+                                            ,gv_tkn_mov_num       -- トークン:MOV_NUM
+                                            ,gr_move_header_tbl(ln_hdr_cnt).mov_num -- 移動番号
+                                            ,lv_errmsg)           -- メッセージ
+                                            ,1
+                                            ,5000);
+--
+-- Add Start 2008/10/03 Nakada Ver.1.4
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
+        gn_warn_cnt := gn_warn_cnt + 1;
+        ov_retcode := gv_status_warn;
+--
+      END IF;
+--
+-- Add Start 2008/10/03 Nakada Ver.1.4
+        -- ヘッダに容積積載効率をセット
+        gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_capacity := ln_load_efficiency_capacity;
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      END IF;
+--
+--      -- ヘッダにセット
+--      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_weight := ln_load_efficiency_weight;
+--      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_capacity := ln_load_efficiency_capacity;
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
     END LOOP;
 --
@@ -6175,12 +6376,14 @@ debug_log(FND_FILE.LOG,'(C-15)' || cv_prg_name || ' End･････');
     -- *** ローカル変数 ***
     ln_data_cnt           NUMBER;         -- INSERTループ用カウンタ(共有)
 --
-    ln_mh_data_cnt        NUMBER;         -- 除外対象を含む移動ヘッダ登録対象検索用のカウンタ
-    ln_ml_data_cnt        NUMBER;         -- 除外対象を含む移動明細登録対象検索用のカウンタ
+    ln_mh_data_cnt        NUMBER;         -- 移動ヘッダ登録対象検索用のカウンタ
+    ln_ml_data_cnt        NUMBER;         -- 移動明細登録対象検索用のカウンタ
     ln_mh_ins_data_cnt    NUMBER := 0;    -- 移動ヘッダ登録用のカウンタ
     ln_ml_ins_data_cnt    NUMBER := 0;    -- 移動明細登録用のカウンタ
-    ln_search_cnt         NUMBER;
-    lv_line_ins_flg       VARCHAR2(1);
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--    ln_search_cnt         NUMBER;
+--    lv_line_ins_flg       VARCHAR2(1);
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
     ln_ph_data_cnt        NUMBER;         -- 発注依頼ヘッダ登録対象検索用のカウンタ
     ln_pl_data_cnt        NUMBER;         -- 発注依頼明細登録対象検索用のカウンタ
@@ -6205,163 +6408,167 @@ debug_log(FND_FILE.LOG,'(C-15)' || cv_prg_name || ' End･････');
     -- ***************************************
 --
 debug_log(FND_FILE.LOG,'(C-14)' || cv_prg_name || ' Start･･･');
-debug_log(FND_FILE.LOG,'  移動ヘッダ登録件数(警告による除外対象含む) = ' || TO_CHAR(gn_ins_data_cnt_mh));
-debug_log(FND_FILE.LOG,'  移動明細登録件数(警告による除外対象含む) = ' || TO_CHAR(gn_ins_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  移動ヘッダ登録件数 = ' || TO_CHAR(gn_ins_data_cnt_mh));
+debug_log(FND_FILE.LOG,'  移動明細登録件数 = ' || TO_CHAR(gn_ins_data_cnt_ml));
 debug_log(FND_FILE.LOG,'  発注依頼ヘッダ登録件数 = ' || TO_CHAR(gn_ins_data_cnt_ph));
 debug_log(FND_FILE.LOG,'  発注依頼明細登録件数 = ' || TO_CHAR(gn_ins_data_cnt_pl));
-debug_log(FND_FILE.LOG,'  移動明細更新件数(警告による除外対象含む) = ' || TO_CHAR(gn_upd_data_cnt_ml));
-debug_log(FND_FILE.LOG,'  受注明細更新件数(警告による除外対象含む) = ' || TO_CHAR(gn_upd_data_cnt_ol));
+debug_log(FND_FILE.LOG,'  移動明細更新件数 = ' || TO_CHAR(gn_upd_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  受注明細更新件数 = ' || TO_CHAR(gn_upd_data_cnt_ol));
 --
     -- FORALLで使用できるようにレコード変数を分割格納する 移動ヘッダ
     <<ln_mh_ins_cnt_loop>>
     FOR ln_mh_data_cnt IN 1..gn_ins_data_cnt_mh LOOP
 --
-debug_log(FND_FILE.LOG,'  登録除外フラグ = '|| gr_move_header_tbl(ln_mh_data_cnt).not_insert_flg);
 debug_log(FND_FILE.LOG,'  移動ヘッダID = ' || gr_move_header_tbl(ln_mh_data_cnt).mov_hdr_id);
 debug_log(FND_FILE.LOG,'  移動番号 = ' || gr_move_header_tbl(ln_mh_data_cnt).mov_num);
 --
-      IF (gr_move_header_tbl(ln_mh_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      IF (gr_move_header_tbl(ln_mh_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
 --
-        -- ヘッダインサート用変数のインクリメント
-        ln_mh_ins_data_cnt := ln_mh_ins_data_cnt + 1;
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
-        gt_h_mov_hdr_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).mov_hdr_id;                  -- 移動ヘッダID
-        gt_h_mov_num(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).mov_num;                     -- 移動番号
-        gt_h_mov_type(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).mov_type;                    -- 移動タイプ
-        gt_h_entered_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).entered_date;                -- 入力日
-        gt_h_instruction_post_code(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).instruction_post_code;       -- 指示部署
-        gt_h_status(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).status;                      -- ステータス
-        gt_h_notif_status(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).notif_status;                -- 通知ステータス
-        gt_h_shipped_locat_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).shipped_locat_id;            -- 出庫元ID
-        gt_h_shipped_locat_code(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).shipped_locat_code;          -- 出庫元保管場所
-        gt_h_ship_to_locat_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).ship_to_locat_id;            -- 入庫先ID
-        gt_h_ship_to_locat_code(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).ship_to_locat_code;          -- 入庫先保管場所
-        gt_h_schedule_ship_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).schedule_ship_date;          -- 出庫予定日
-        gt_h_schedule_arrival_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).schedule_arrival_date;       -- 入庫予定日
-        gt_h_freight_charge_class(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).freight_charge_class;        -- 運賃区分
-        gt_h_collected_pallet_qty(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).collected_pallet_qty;        -- パレット回収枚数
-        gt_h_out_pallet_qty(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).out_pallet_qty;              -- パレット枚数(出)
-        gt_h_in_pallet_qty(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).in_pallet_qty;               -- パレット枚数(入)
-        gt_h_no_cont_freight_class(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).no_cont_freight_class;       -- 契約外運賃区分
-        gt_h_delivery_no(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).delivery_no;                 -- 配送No
-        gt_h_description(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).description;                 -- 摘要
-        gt_h_loading_efficiency_weight(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).loading_efficiency_weight;   -- 積載率(重量)
-        gt_h_loading_efficiency_capa(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).loading_efficiency_capacity; -- 積載率(容積)
-        gt_h_organization_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).organization_id;             -- 組織ID
-        gt_h_career_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).career_id;                   -- 運送業者ID
-        gt_h_freight_carrier_code(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).freight_carrier_code;        -- 運送業者
-        gt_h_shipping_method_code(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).shipping_method_code;        -- 配送区分
-        gt_h_actual_career_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).actual_career_id;            -- 運送業者ID_実績
-        gt_h_actual_freight_carrier_cd(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).actual_freight_carrier_code; -- 運送業者_実績
-        gt_h_actual_shipping_method_cd(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).actual_shipping_method_code; -- 配送区分_実績
-        gt_h_arrival_time_from(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).arrival_time_from;           -- 着荷時間FROM
-        gt_h_arrival_time_to(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).arrival_time_to;             -- 着荷時間TO
-        gt_h_slip_number(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).slip_number;                 -- 送り状No
-        gt_h_sum_quantity(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).sum_quantity;                -- 合計数量
-        gt_h_small_quantity(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).small_quantity;              -- 小口個数
-        gt_h_label_quantity(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).label_quantity;              -- ラベル枚数
-        gt_h_based_weight(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).based_weight;                -- 基本重量
-        gt_h_based_capacity(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).based_capacity;              -- 基本容積
-        gt_h_sum_weight(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).sum_weight;                  -- 混載重量合計
-        gt_h_sum_capacity(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).sum_capacity;                -- 混載容積合計
-        gt_h_sum_pallet_weight(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).sum_pallet_weight;           -- 合計パレット重量
-        gt_h_pallet_sum_quantity(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).pallet_sum_quantity;         -- パレット合計枚数
-        gt_h_mixed_ratio(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).mixed_ratio;                 -- 混載率
-        gt_h_weight_capacity_class(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).weight_capacity_class;       -- 重量容積区分
-        gt_h_actual_ship_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).actual_ship_date;            -- 出庫実績日
-        gt_h_actual_arrival_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).actual_arrival_date;         -- 入庫実績日
-        gt_h_mixed_sign(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).mixed_sign;                  -- 混載記号
-        gt_h_batch_no(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).batch_no;                    -- 手配No
-        gt_h_item_class(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).item_class;                  -- 商品区分
-        gt_h_product_flg(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).product_flg;                 -- 製品識別区分
-        gt_h_no_instr_actual_class(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).no_instr_actual_class;       -- 指示なし実績区分
-        gt_h_comp_actual_flg(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).comp_actual_flg;             -- 実績計上済フラグ
-        gt_h_correct_actual_flg(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).correct_actual_flg;          -- 実績訂正フラグ
-        gt_h_prev_notif_status(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).prev_notif_status;           -- 前回通知ステータス
-        gt_h_notif_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).notif_date;                  -- 確定通知実績日時
-        gt_h_prev_delivery_no(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).prev_delivery_no;            -- 前回配送No
-        gt_h_new_modify_flg(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).new_modify_flg;              -- 新規修正フラグ
-        gt_h_screen_update_by(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).screen_update_by;            -- 画面更新者
-        gt_h_screen_update_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).screen_update_date;          -- 画面更新日時
-        gt_h_created_by(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).created_by;                  -- 作成者
-        gt_h_creation_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).creation_date;               -- 作成日
-        gt_h_last_updated_by(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).last_updated_by;             -- 最終更新者
-        gt_h_last_update_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).last_update_date;            -- 最終更新日
-        gt_h_last_update_login(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).last_update_login;           -- 最終更新ログイン
-        gt_h_request_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).request_id;                  -- 要求ID
-        gt_h_program_application_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).program_application_id;
-                                                         -- コンカレントプログラムアプリケーションID
-        gt_h_program_id(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).program_id;                  -- コンカレントプログラムID
-        gt_h_program_update_date(ln_mh_ins_data_cnt) :=
-            gr_move_header_tbl(ln_mh_data_cnt).program_update_date;         -- プログラム更新日
+      -- ヘッダインサート用変数のインクリメント
+      ln_mh_ins_data_cnt := ln_mh_ins_data_cnt + 1;
 --
-      END IF;
+      gt_h_mov_hdr_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).mov_hdr_id;                  -- 移動ヘッダID
+      gt_h_mov_num(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).mov_num;                     -- 移動番号
+      gt_h_mov_type(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).mov_type;                    -- 移動タイプ
+      gt_h_entered_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).entered_date;                -- 入力日
+      gt_h_instruction_post_code(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).instruction_post_code;       -- 指示部署
+      gt_h_status(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).status;                      -- ステータス
+      gt_h_notif_status(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).notif_status;                -- 通知ステータス
+      gt_h_shipped_locat_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).shipped_locat_id;            -- 出庫元ID
+      gt_h_shipped_locat_code(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).shipped_locat_code;          -- 出庫元保管場所
+      gt_h_ship_to_locat_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).ship_to_locat_id;            -- 入庫先ID
+      gt_h_ship_to_locat_code(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).ship_to_locat_code;          -- 入庫先保管場所
+      gt_h_schedule_ship_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).schedule_ship_date;          -- 出庫予定日
+      gt_h_schedule_arrival_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).schedule_arrival_date;       -- 入庫予定日
+      gt_h_freight_charge_class(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).freight_charge_class;        -- 運賃区分
+      gt_h_collected_pallet_qty(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).collected_pallet_qty;        -- パレット回収枚数
+      gt_h_out_pallet_qty(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).out_pallet_qty;              -- パレット枚数(出)
+      gt_h_in_pallet_qty(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).in_pallet_qty;               -- パレット枚数(入)
+      gt_h_no_cont_freight_class(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).no_cont_freight_class;       -- 契約外運賃区分
+      gt_h_delivery_no(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).delivery_no;                 -- 配送No
+      gt_h_description(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).description;                 -- 摘要
+      gt_h_loading_efficiency_weight(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).loading_efficiency_weight;   -- 積載率(重量)
+      gt_h_loading_efficiency_capa(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).loading_efficiency_capacity; -- 積載率(容積)
+      gt_h_organization_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).organization_id;             -- 組織ID
+      gt_h_career_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).career_id;                   -- 運送業者ID
+      gt_h_freight_carrier_code(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).freight_carrier_code;        -- 運送業者
+      gt_h_shipping_method_code(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).shipping_method_code;        -- 配送区分
+      gt_h_actual_career_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).actual_career_id;            -- 運送業者ID_実績
+      gt_h_actual_freight_carrier_cd(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).actual_freight_carrier_code; -- 運送業者_実績
+      gt_h_actual_shipping_method_cd(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).actual_shipping_method_code; -- 配送区分_実績
+      gt_h_arrival_time_from(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).arrival_time_from;           -- 着荷時間FROM
+      gt_h_arrival_time_to(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).arrival_time_to;             -- 着荷時間TO
+      gt_h_slip_number(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).slip_number;                 -- 送り状No
+      gt_h_sum_quantity(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).sum_quantity;                -- 合計数量
+      gt_h_small_quantity(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).small_quantity;              -- 小口個数
+      gt_h_label_quantity(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).label_quantity;              -- ラベル枚数
+      gt_h_based_weight(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).based_weight;                -- 基本重量
+      gt_h_based_capacity(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).based_capacity;              -- 基本容積
+      gt_h_sum_weight(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).sum_weight;                  -- 混載重量合計
+      gt_h_sum_capacity(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).sum_capacity;                -- 混載容積合計
+      gt_h_sum_pallet_weight(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).sum_pallet_weight;           -- 合計パレット重量
+      gt_h_pallet_sum_quantity(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).pallet_sum_quantity;         -- パレット合計枚数
+      gt_h_mixed_ratio(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).mixed_ratio;                 -- 混載率
+      gt_h_weight_capacity_class(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).weight_capacity_class;       -- 重量容積区分
+      gt_h_actual_ship_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).actual_ship_date;            -- 出庫実績日
+      gt_h_actual_arrival_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).actual_arrival_date;         -- 入庫実績日
+      gt_h_mixed_sign(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).mixed_sign;                  -- 混載記号
+      gt_h_batch_no(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).batch_no;                    -- 手配No
+      gt_h_item_class(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).item_class;                  -- 商品区分
+      gt_h_product_flg(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).product_flg;                 -- 製品識別区分
+      gt_h_no_instr_actual_class(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).no_instr_actual_class;       -- 指示なし実績区分
+      gt_h_comp_actual_flg(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).comp_actual_flg;             -- 実績計上済フラグ
+      gt_h_correct_actual_flg(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).correct_actual_flg;          -- 実績訂正フラグ
+      gt_h_prev_notif_status(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).prev_notif_status;           -- 前回通知ステータス
+      gt_h_notif_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).notif_date;                  -- 確定通知実績日時
+      gt_h_prev_delivery_no(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).prev_delivery_no;            -- 前回配送No
+      gt_h_new_modify_flg(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).new_modify_flg;              -- 新規修正フラグ
+      gt_h_screen_update_by(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).screen_update_by;            -- 画面更新者
+      gt_h_screen_update_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).screen_update_date;          -- 画面更新日時
+      gt_h_created_by(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).created_by;                  -- 作成者
+      gt_h_creation_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).creation_date;               -- 作成日
+      gt_h_last_updated_by(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).last_updated_by;             -- 最終更新者
+      gt_h_last_update_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).last_update_date;            -- 最終更新日
+      gt_h_last_update_login(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).last_update_login;           -- 最終更新ログイン
+      gt_h_request_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).request_id;                  -- 要求ID
+      gt_h_program_application_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).program_application_id;
+                                                       -- コンカレントプログラムアプリケーションID
+      gt_h_program_id(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).program_id;               -- コンカレントプログラムID
+      gt_h_program_update_date(ln_mh_ins_data_cnt) :=
+          gr_move_header_tbl(ln_mh_data_cnt).program_update_date;         -- プログラム更新日
+--
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      END IF;
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
     END LOOP ln_mh_ins_cnt_loop;
 --
@@ -6514,106 +6721,109 @@ debug_log(FND_FILE.LOG,'  移動ヘッダ登録件数 = ' || TO_CHAR(ln_mh_ins_data_cnt))
     <<ln_ml_ins_cnt_loop>>
     FOR ln_ml_data_cnt IN 1..gn_ins_data_cnt_ml LOOP
 --
-      -- ヘッダ用変数にあるかどうか検索＝あればそのまま、なければ作成しない明細とする
-      <<search_loop>>
-      FOR ln_search_cnt IN 1..ln_mh_ins_data_cnt LOOP
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      -- ヘッダ用変数にあるかどうか検索＝あればそのまま、なければ作成しない明細とする
+--      <<search_loop>>
+--      FOR ln_search_cnt IN 1..ln_mh_ins_data_cnt LOOP
+----
+--        IF (gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id = gt_h_mov_hdr_id(ln_search_cnt)) THEN
+--          lv_line_ins_flg := gv_cons_flg_on;
+--          EXIT;
+--        END IF;
+----
+--      END LOOP search_loop;
 --
-        IF (gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id = gt_h_mov_hdr_id(ln_search_cnt)) THEN
-          lv_line_ins_flg := gv_cons_flg_on;
-          EXIT;
-        END IF;
---
-      END LOOP search_loop;
---
-debug_log(FND_FILE.LOG,'  登録除外フラグ(明細) = ' || gr_move_lines_tbl(ln_ml_data_cnt).not_insert_flg);
-debug_log(FND_FILE.LOG,'  登録除外フラグ(ヘッダ) = ' || lv_line_ins_flg);
 debug_log(FND_FILE.LOG,'  移動ヘッダID = ' || gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id);
 debug_log(FND_FILE.LOG,'  移動明細ID = ' || gr_move_lines_tbl(ln_ml_data_cnt).mov_line_id);
 debug_log(FND_FILE.LOG,'  品目コード = ' || gr_move_lines_tbl(ln_ml_data_cnt).item_code);
 --
-      IF (lv_line_ins_flg = gv_cons_flg_on )
-         OR (gr_move_lines_tbl(ln_ml_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      IF (lv_line_ins_flg = gv_cons_flg_on )
+--         OR (gr_move_lines_tbl(ln_ml_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
-        -- 明細インサート用変数のインクリメント
-        ln_ml_ins_data_cnt := ln_ml_ins_data_cnt + 1;
+      -- 明細インサート用変数のインクリメント
+      ln_ml_ins_data_cnt := ln_ml_ins_data_cnt + 1;
 --
-        gt_m_mov_line_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).mov_line_id;                -- 移動明細ID
-        gt_m_mov_hdr_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id;                 -- 移動ヘッダID
-        gt_m_line_number(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).line_number;                -- 明細番号
-        gt_m_organization_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).organization_id;            -- 組織ID
-        gt_m_item_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).item_id;                    -- OPM品目ID
-        gt_m_item_code(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).item_code;                  -- 品目
-        gt_m_request_qty(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).request_qty;                -- 依頼数量
-        gt_m_pallet_quantity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).pallet_quantity;            -- パレット数
-        gt_m_layer_quantity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).layer_quantity;             -- 段数
-        gt_m_case_quantity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).case_quantity;              -- ケース数
-        gt_m_instruct_qty(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).instruct_qty;               -- 指示数量
-        gt_m_reserved_quantity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).reserved_quantity;          -- 引当数
-        gt_m_uom_code(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).uom_code;                   -- 単位
-        gt_m_designated_pdt_date(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).designated_production_date; -- 指定製造日
-        gt_m_pallet_qty(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).pallet_qty;                 -- パレット枚数
-        gt_m_move_num(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).move_num;                   -- 参照移動番号
-        gt_m_po_num(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).po_num;                     -- 参照発注番号
-        gt_m_first_instruct_qty(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).first_instruct_qty;         -- 初回指示数量
-        gt_m_shipped_quantity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).shipped_quantity;           -- 出庫実績数量
-        gt_m_ship_to_quantity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).ship_to_quantity;           -- 入庫実績数量
-        gt_m_weight(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).weight;                     -- 重量
-        gt_m_capacity(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).capacity;                   -- 容積
-        gt_m_pallet_weight(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).pallet_weight;              -- パレット重量
-        gt_m_automanual_reserve_class(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).automanual_reserve_class;   -- 自動手動引当区分
-        gt_m_delete_flg(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).delete_flg;                 -- 取消フラグ
-        gt_m_warning_date(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).warning_date;               -- 警告日付
-        gt_m_warning_class(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).warning_class;              -- 警告区分
-        gt_m_created_by(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).created_by;                 -- 作成者
-        gt_m_creation_date(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).creation_date;              -- 作成日
-        gt_m_last_updated_by(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).last_updated_by;            -- 最終更新者
-        gt_m_last_update_date(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).last_update_date;           -- 最終更新日
-        gt_m_last_update_login(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).last_update_login;          -- 最終更新ログイン
-        gt_m_request_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).request_id;                 -- 要求ID
-        gt_m_program_application_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).program_application_id;
-                                                       -- コンカレントプログラムアプリケーションID
-        gt_m_program_id(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).program_id;                -- コンカレントプログラムID
-        gt_m_program_update_date(ln_ml_ins_data_cnt) :=
-                gr_move_lines_tbl(ln_ml_data_cnt).program_update_date;       -- プログラム更新日
+      gt_m_mov_line_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).mov_line_id;                -- 移動明細ID
+      gt_m_mov_hdr_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id;                 -- 移動ヘッダID
+      gt_m_line_number(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).line_number;                -- 明細番号
+      gt_m_organization_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).organization_id;            -- 組織ID
+      gt_m_item_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).item_id;                    -- OPM品目ID
+      gt_m_item_code(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).item_code;                  -- 品目
+      gt_m_request_qty(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).request_qty;                -- 依頼数量
+      gt_m_pallet_quantity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).pallet_quantity;            -- パレット数
+      gt_m_layer_quantity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).layer_quantity;             -- 段数
+      gt_m_case_quantity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).case_quantity;              -- ケース数
+      gt_m_instruct_qty(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).instruct_qty;               -- 指示数量
+      gt_m_reserved_quantity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).reserved_quantity;          -- 引当数
+      gt_m_uom_code(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).uom_code;                   -- 単位
+      gt_m_designated_pdt_date(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).designated_production_date; -- 指定製造日
+      gt_m_pallet_qty(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).pallet_qty;                 -- パレット枚数
+      gt_m_move_num(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).move_num;                   -- 参照移動番号
+      gt_m_po_num(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).po_num;                     -- 参照発注番号
+      gt_m_first_instruct_qty(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).first_instruct_qty;         -- 初回指示数量
+      gt_m_shipped_quantity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).shipped_quantity;           -- 出庫実績数量
+      gt_m_ship_to_quantity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).ship_to_quantity;           -- 入庫実績数量
+      gt_m_weight(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).weight;                     -- 重量
+      gt_m_capacity(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).capacity;                   -- 容積
+      gt_m_pallet_weight(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).pallet_weight;              -- パレット重量
+      gt_m_automanual_reserve_class(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).automanual_reserve_class;   -- 自動手動引当区分
+      gt_m_delete_flg(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).delete_flg;                 -- 取消フラグ
+      gt_m_warning_date(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).warning_date;               -- 警告日付
+      gt_m_warning_class(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).warning_class;              -- 警告区分
+      gt_m_created_by(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).created_by;                 -- 作成者
+      gt_m_creation_date(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).creation_date;              -- 作成日
+      gt_m_last_updated_by(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).last_updated_by;            -- 最終更新者
+      gt_m_last_update_date(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).last_update_date;           -- 最終更新日
+      gt_m_last_update_login(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).last_update_login;          -- 最終更新ログイン
+      gt_m_request_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).request_id;                 -- 要求ID
+      gt_m_program_application_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).program_application_id;
+                                                     -- コンカレントプログラムアプリケーションID
+      gt_m_program_id(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).program_id;              -- コンカレントプログラムID
+      gt_m_program_update_date(ln_ml_ins_data_cnt) :=
+              gr_move_lines_tbl(ln_ml_data_cnt).program_update_date;       -- プログラム更新日
 --
-      END IF;
+-- Del Start 2008/10/03 Nakada Ver.1.4
+--      END IF;
 --
-      lv_line_ins_flg := gv_cons_flg_off;
+--      lv_line_ins_flg := gv_cons_flg_off;
+-- Del End   2008/10/03 Nakada Ver.1.4
 --
     END LOOP ln_ml_ins_cnt_loop;
 --
@@ -7162,13 +7372,33 @@ debug_log(FND_FILE.LOG,'(Submain)' || cv_prg_name || ' Start･･･');
               lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
     -- エラー処理
     IF (lv_retcode = gv_status_error) THEN
-        RAISE global_process_expt;
+      RAISE global_process_expt;
 --
     -- ワーニング処理
     ELSIF (lv_retcode = gv_status_warn) THEN
 --
       ov_retcode := gv_status_warn;
 --
+-- Add Start 2008/10/03 Nakada Ver.1.4
+    -- 処理対象件数が0件の場合に、後続処理を実施せず、警告終了する。
+    ELSIF ((iv_action_type = gv_cons_t_deliv AND gn_target_cnt_deliv = 0)
+           OR (iv_action_type = gv_cons_t_move AND gn_target_cnt_move = 0)) THEN
+--
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                    ,gv_msg_wsh_13173)    -- 対象データ無しエラー
+                                                    ,1
+                                                    ,5000);
+      RAISE common_warn_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
+    END IF;
+--
+--
+    -- 出荷、移動の共通ループ処理のため、件数を共通件数変数にセット
+    IF iv_action_type = gv_cons_t_deliv THEN
+      gn_target_cnt := gn_target_cnt_deliv;
+    ELSE
+      gn_target_cnt := gn_target_cnt_move;
     END IF;
 --
 --
@@ -7201,8 +7431,6 @@ debug_log(FND_FILE.LOG,'(submain)get_data_loop_out' || to_char(ln_get_data_loop_
 debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errbuf);
           ov_retcode := gv_status_warn;
 --
       END IF;
@@ -7227,7 +7455,17 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
 --
         ov_retcode := gv_status_warn;
 --
-        END IF;
+-- Add Start 2008/10/03 Nakada Ver.1.4
+      -- 処理対象件数が0件の場合に、後続処理を実施せず、警告終了する。
+      ELSIF gn_target_cnt_deliv = 0 THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                      ,gv_msg_wsh_13173)    -- 対象データ無しエラー
+                                                      ,1
+                                                      ,5000);
+        RAISE common_warn_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
+      END IF;
 --
     -- 処理種別が「移動」の場合
     ELSIF (iv_action_type = gv_cons_t_move) THEN
@@ -7245,6 +7483,16 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
       ELSIF (lv_retcode = gv_status_warn) THEN
 --
         ov_retcode := gv_status_warn;
+--
+-- Add Start 2008/10/03 Nakada Ver.1.4
+      -- 処理対象件数が0件の場合に、後続処理を実施せず、警告終了する。
+      ELSIF gn_target_cnt_move = 0 THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                      ,gv_msg_wsh_13173)    -- 対象データ無しエラー
+                                                      ,1
+                                                      ,5000);
+        RAISE common_warn_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
 --
       END IF;
 --
@@ -7268,6 +7516,16 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
 --
         ov_retcode := gv_status_warn;
 --
+-- Add Start 2008/10/03 Nakada Ver.1.4
+      -- 処理対象件数が0件の場合に、後続処理を実施せず、警告終了する。
+      ELSIF gn_target_cnt_deliv = 0 THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                      ,gv_msg_wsh_13173)    -- 対象データ無しエラー
+                                                      ,1
+                                                      ,5000);
+        RAISE common_warn_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
       END IF;
 --
       ln_max_cnt := gn_target_cnt_deliv;
@@ -7288,6 +7546,16 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
       ELSIF (lv_retcode = gv_status_warn) THEN
 --
         ov_retcode := gv_status_warn;
+--
+-- Add Start 2008/10/03 Nakada Ver.1.4
+      -- 処理対象件数が0件の場合に、後続処理を実施せず、警告終了する。
+      ELSIF gn_target_cnt_move = 0 THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                      ,gv_msg_wsh_13173)    -- 対象データ無しエラー
+                                                      ,1
+                                                      ,5000);
+        RAISE common_warn_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
 --
       END IF;
 --
@@ -7322,6 +7590,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
                        iv_instruction_post_code,  -- 指示部署指定
                        lv_errbuf,                 -- エラー・メッセージ           --# 固定 #
 -- 2008/07/31 Mod Strat Ver1.3 システムテスト不具合#522対応
+--                       lv_ret_code,                -- リターン・コード             --# 固定 #
                        lv_retcode,                -- リターン・コード             --# 固定 #
 -- 2008/07/31 Mod End   Ver1.3 システムテスト不具合#522対応
                        lv_errmsg);                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -7346,7 +7615,6 @@ debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errbuf);
 --
         ELSE
 --
@@ -7389,7 +7657,6 @@ debug_log(FND_FILE.LOG,'  ' || lv_retcode);
 debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
 debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errbuf);
 --
         ELSE
 --
@@ -7475,6 +7742,7 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
     insert_tables(lv_errbuf,             -- エラー・メッセージ           --# 固定 #
                   lv_retcode,            -- リターン・コード             --# 固定 #
                   lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
+--
     -- エラー処理
     IF (lv_retcode = gv_status_error) THEN
 --
@@ -7485,14 +7753,32 @@ debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
 --
       ov_retcode := gv_status_warn;
 --
+-- Add Start 2008/10/03 Nakada Ver.1.4
+    -- 処理対象件数が0件の場合に、後続処理を実施せず、警告終了する。
+    ELSIF ((iv_action_type = gv_cons_t_deliv AND gn_target_cnt_deliv = 0)
+           OR (iv_action_type = gv_cons_t_move AND gn_target_cnt_move = 0)) THEN
+--
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                    ,gv_msg_wsh_13173)    -- 対象データ無しエラー
+                                                    ,1
+                                                    ,5000);
+      RAISE common_warn_expt;
+-- Add End   2008/10/03 Nakada Ver.1.4
+--
     END IF;
 --
 --
 debug_log(FND_FILE.LOG,'(Submain)' || cv_prg_name || ' End･････');
 --
   EXCEPTION
-      -- *** 任意で例外処理を記述する ****
-      -- カーソルのクローズをここに記述する
+    -- *** 共通関数エラーハンドラ (警告を返す)***
+    WHEN common_warn_expt THEN
+debug_log(FND_FILE.LOG,'(Submain)' || cv_prg_name || ' End with Warnning･････');
+--
+-- Add Start 2008/10/03 Nakada  Ver.1.4
+      ov_retcode := gv_status_warn;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,SUBSTRB(lv_errmsg,1,5000));
+-- Add End   2008/10/03 Nakada  Ver.1.4
 --
 --#################################  固定例外処理部 START   ###################################
 --
