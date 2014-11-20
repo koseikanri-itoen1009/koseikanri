@@ -7,7 +7,7 @@ AS
  * Description      : 支払通知データ抽出
  * MD.050           : MD050_CFR_004_A01_支払通知データ抽出
  * MD.070           : MD050_CFR_004_A01_支払通知データ抽出
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/10/24    1.00 SCS 中村 博      初回作成
  *  2009/02/24    1.1  SCS T.KANEDA     [障害COK_016] 顧客コード読替不具合対応
  *  2009/04/10    1.2  SCS S.KAYAHARA   T1_0129対応
+ *  2009/04/24    1.3  SCS S.KAYAHARA   T1_0128対応
  *
  *****************************************************************************************/
 --
@@ -274,7 +275,9 @@ AS
 --
   TYPE c_payment_note_len_ttype IS TABLE OF NUMBER;
   gt_payment_note_len_data  c_payment_note_len_ttype := c_payment_note_len_ttype ( 
-    1,    -- レコード区分
+-- Modify 2009.04.22 Ver1.3 Start
+--    1,    -- レコード区分
+-- Modify 2009.04.22 Ver1.3 End
     7,    -- レコード通番
     4,    -- チェーン店コード
     8,    -- データ作成日／データ処理日付／データ日付／伝送日付
@@ -297,13 +300,21 @@ AS
     2,    -- 支払区分
     2,    -- 支払方法区分
     2,    -- 発行区分
-    8,    -- 店コード
-    80,   -- 店舗名称（漢字）
-    80,   -- 店舗名称（カナ）
+-- Modify 2009.04.22 Ver1.3 Start
+--    8,    -- 店コード
+--    80,   -- 店舗名称（漢字）
+--    80,   -- 店舗名称（カナ）
+    10,   -- 店コード
+    100,  -- 店舗名称（漢字）
+    50,   -- 店舗名称（カナ）
+-- Modify 2009.04.22 Ver1.3 End
     1,    -- 請求金額符号／請求消費税額符号
     15,   -- 請求金額／支払金額
     1,    -- 消費税区分
-    2,    -- 消費税率
+-- Modify 2009.04.22 Ver1.3 Start
+--    2,    -- 消費税率
+    4,    --消費税率
+-- Modify 2009.04.22 Ver1.3 End
     15,   -- 請求消費税額／支払消費税額
     1,    -- 消費税差額フラグ
     2,    -- 違算区分
@@ -312,8 +323,12 @@ AS
     2,    -- ダブリ区分
     8,    -- 検収日
     8,    -- 月限
-    20,   -- 伝票番号
-    15,   -- 行№
+-- Modify 2009.04.22 Ver1.3 Start
+--    20,   -- 伝票番号
+--    15,   -- 行№
+    12,   -- 伝票番号
+    3,    -- 行No.
+-- Modify 2009.04.22 Ver1.3 End
     2,    -- 伝票区分／伝票種別
     4,    -- 分類コード
     6,    -- 部門コード
@@ -321,15 +336,22 @@ AS
     2,    -- 売上返品区分
     2,    -- ニチリウ経由区分
     2,    -- 特売区分
-    6,    -- 便
+-- Modify 2009.04.22 Ver1.3 Start
+--    6,    -- 便
+    3,    -- 便
+-- Modify 2009.04.22 Ver1.3 End
     8,    -- 発注日
     8,    -- 納品日/返品日
     7,    -- 商品コード
     60,   -- 商品名（漢字）
     30,   -- 商品名（カナ）
     15,   -- 納品数量
-    15,   -- 原価単価
-    15,   -- 原価金額
+-- Modify 2009.04.22 Ver1.3 Start
+--    15,   -- 原価単価
+--    15,   -- 原価金額
+    12,   -- 原価単価
+    10,   -- 原価金額
+-- Modify 2009.04.22 Ver1.3 End
     4,    -- 備考コード
     300,  -- チェーン固有エリア
     15,   -- 請求合計金額/支払合計金額
@@ -337,7 +359,7 @@ AS
     15    -- 返品合計金額
   )
   ;
---
+
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -895,127 +917,307 @@ AS
 --
           -- テーブル型変数への格納
           CASE ln_loop_cnt
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 1 THEN
+--            gt_pn_record_type(ln_target_cnt)             := lv_col_value;
+--          WHEN 2 THEN
           WHEN 1 THEN
-            gt_pn_record_type(ln_target_cnt)             := lv_col_value;
-          WHEN 2 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_record_number(ln_target_cnt)           := TO_NUMBER(lv_col_value);
-          WHEN 3 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 3 THEN
+          WHEN 2 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_chain_shop_code(ln_target_cnt)         := lv_col_value;
-          WHEN 4 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 4 THEN
+          WHEN 3 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_process_date(ln_target_cnt)            := lv_col_value;
-          WHEN 5 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 5 THEN
+          WHEN 4 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_process_time(ln_target_cnt)            := lv_col_value;
-          WHEN 6 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 6 THEN
+          WHEN 5 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_vendor_code(ln_target_cnt)             := lv_col_value;
-          WHEN 7 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 7 THEN
+          WHEN 6 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_vendor_name(ln_target_cnt)             := lv_col_value;
-          WHEN 8 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 8 THEN
+          WHEN 7 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_vendor_name_alt(ln_target_cnt)         := lv_col_value;
-          WHEN 9 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 9 THEN
+          WHEN 8 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_company_code(ln_target_cnt)            := lv_col_value;
-          WHEN 10 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 10 THEN
+          WHEN 9 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_period_from(ln_target_cnt)             := lv_col_value;
-          WHEN 11 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 11 THEN
+          WHEN 10 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_period_to(ln_target_cnt)               := lv_col_value;
-          WHEN 12 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 12 THEN
+          WHEN 11 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_invoice_close_date(ln_target_cnt)      := lv_col_value;
-          WHEN 13 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 13 THEN
+          WHEN 12 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_payment_date(ln_target_cnt)            := lv_col_value;
-          WHEN 14 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 14 THEN
+          WHEN 13 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_site_month(ln_target_cnt)              := TO_NUMBER(lv_col_value);
-          WHEN 15 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 15 THEN
+          WHEN 14 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_note_count(ln_target_cnt)              := TO_NUMBER(lv_col_value);
-          WHEN 16 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 16 THEN
+          WHEN 15 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_credit_note_count(ln_target_cnt)       := TO_NUMBER(lv_col_value);
-          WHEN 17 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 17 THEN
+          WHEN 16 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_rem_acceptance_count(ln_target_cnt)    := TO_NUMBER(lv_col_value);
-          WHEN 18 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 18 THEN
+          WHEN 17 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_vendor_record_count(ln_target_cnt)     := TO_NUMBER(lv_col_value);
-          WHEN 19 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 19 THEN
+          WHEN 18 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_invoice_number(ln_target_cnt)          := TO_NUMBER(lv_col_value);
-          WHEN 20 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 20 THEN
+          WHEN 19 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_invoice_type(ln_target_cnt)            := lv_col_value;
-          WHEN 21 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 21 THEN
+          WHEN 20 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_payment_type(ln_target_cnt)            := lv_col_value;
-          WHEN 22 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 22 THEN
+          WHEN 21 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_payment_method_type(ln_target_cnt)     := lv_col_value;
-          WHEN 23 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 23 THEN
+          WHEN 22 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_due_type(ln_target_cnt)                := lv_col_value;
-          WHEN 24 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 24 THEN
+          WHEN 23 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_shop_code(ln_target_cnt)               := lv_col_value;
-          WHEN 25 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 25 THEN
+          WHEN 24 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_shop_name(ln_target_cnt)               := lv_col_value;
-          WHEN 26 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 26 THEN
+          WHEN 25 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_shop_name_alt(ln_target_cnt)           := lv_col_value;
-          WHEN 27 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 27 THEN
+          WHEN 26 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_amount_sign(ln_target_cnt)             := lv_col_value;
-          WHEN 28 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 28 THEN
+          WHEN 27 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_amount(ln_target_cnt)                  := TO_NUMBER(lv_col_value);
-          WHEN 29 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 29 THEN
+          WHEN 28 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_tax_type(ln_target_cnt)                := lv_col_value;
-          WHEN 30 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 30 THEN
+          WHEN 29 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_tax_rate(ln_target_cnt)                := TO_NUMBER(lv_col_value);
-          WHEN 31 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 31 THEN
+          WHEN 30 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_tax_amount(ln_target_cnt)              := TO_NUMBER(lv_col_value);
-          WHEN 32 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 32 THEN
+          WHEN 31 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_tax_diff_flag(ln_target_cnt)           := lv_col_value;
-          WHEN 33 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 33 THEN
+          WHEN 32 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_diff_calc_flag(ln_target_cnt)          := lv_col_value;
-          WHEN 34 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 34 THEN
+          WHEN 33 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_match_type(ln_target_cnt)              := lv_col_value;
-          WHEN 35 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 35 THEN
+          WHEN 34 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_unmatch_accoumt_amount(ln_target_cnt)  := TO_NUMBER(lv_col_value);
-          WHEN 36 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 36 THEN
+          WHEN 35 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_double_type(ln_target_cnt)             := lv_col_value;
-          WHEN 37 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 37 THEN
+          WHEN 36 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_acceptance_date(ln_target_cnt)         := lv_col_value;
-          WHEN 38 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 38 THEN
+          WHEN 37 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_max_month(ln_target_cnt)               := lv_col_value;
-          WHEN 39 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 39 THEN
+          WHEN 38 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_note_number(ln_target_cnt)             := lv_col_value;
-          WHEN 40 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 40 THEN
+          WHEN 39 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_line_number(ln_target_cnt)             := TO_NUMBER(lv_col_value);
-          WHEN 41 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 41 THEN
+          WHEN 40 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_note_type(ln_target_cnt)               := lv_col_value;
-          WHEN 42 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 42 THEN
+          WHEN 41 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_class_code(ln_target_cnt)              := lv_col_value;
-          WHEN 43 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 43 THEN
+          WHEN 42 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_div_code(ln_target_cnt)                := lv_col_value;
-          WHEN 44 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 44 THEN
+          WHEN 43 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_sec_code(ln_target_cnt)                := lv_col_value;
-          WHEN 45 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 45 THEN
+          WHEN 44 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_return_type(ln_target_cnt)             := TO_NUMBER(lv_col_value);
-          WHEN 46 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 46 THEN
+          WHEN 45 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_nitiriu_type(ln_target_cnt)            := lv_col_value;
-          WHEN 47 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 47 THEN
+          WHEN 46 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_sp_sale_type(ln_target_cnt)            := lv_col_value;
-          WHEN 48 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 48 THEN
+          WHEN 47 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_shipment(ln_target_cnt)                := lv_col_value;
-          WHEN 49 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 49 THEN
+          WHEN 48 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_order_date(ln_target_cnt)              := lv_col_value;
-          WHEN 50 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 50 THEN
+          WHEN 49 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_delivery_date(ln_target_cnt)           := lv_col_value;
-          WHEN 51 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 51 THEN
+          WHEN 50 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_product_code(ln_target_cnt)            := lv_col_value;
-          WHEN 52 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 52 THEN
+          WHEN 51 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_product_name(ln_target_cnt)            := lv_col_value;
-          WHEN 53 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 53 THEN
+          WHEN 52 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_product_name_alt(ln_target_cnt)        := lv_col_value;
-          WHEN 54 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 54 THEN
+          WHEN 53 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_delivery_quantity(ln_target_cnt)       := TO_NUMBER(lv_col_value);
-          WHEN 55 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 55 THEN
+          WHEN 54 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_cost_unit_price(ln_target_cnt)         := TO_NUMBER(lv_col_value);
-          WHEN 56 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 56 THEN
+          WHEN 55 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_cost_price(ln_target_cnt)              := TO_NUMBER(lv_col_value);
-          WHEN 57 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 57 THEN
+          WHEN 56 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_desc_code(ln_target_cnt)               := lv_col_value;
-          WHEN 58 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 58 THEN
+          WHEN 57 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_chain_orig_desc(ln_target_cnt)         := lv_col_value;
-          WHEN 59 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 59 THEN
+          WHEN 58 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_sum_amount(ln_target_cnt)              := TO_NUMBER(lv_col_value);
-          WHEN 60 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 60 THEN
+          WHEN 59 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_discount_sum_amount(ln_target_cnt)     := TO_NUMBER(lv_col_value);
-          WHEN 61 THEN
+-- Modify 2009.04.22 Ver1.3 Start
+--          WHEN 61 THEN
+          WHEN 60 THEN
+-- Modify 2009.04.22 Ver1.3 End
             gt_pn_return_sum_amount(ln_target_cnt)       := TO_NUMBER(lv_col_value);
           ELSE NULL;
           END CASE;
@@ -1182,14 +1384,6 @@ AS
 -- Modify 2009.04.10 ver1.2 End
 -- Modify 2009.02.24 Ver1.1 End	
         ;
-      fnd_file.put_line(
-       which  => FND_FILE.log
-      ,buff   => RTRIM(gt_pn_shop_code(ln_loop_cnt))
-    );
-      fnd_file.put_line(
-       which  => FND_FILE.log
-      ,buff   => RTRIM(gt_pn_chain_shop_code(ln_loop_cnt))
-    );
       EXCEPTION
         WHEN OTHERS THEN
           fnd_file.put_line(
@@ -1360,7 +1554,10 @@ AS
            xxcfr_payment_notes_s1.NEXTVAL
           ,gd_process_date
           ,gt_pn_ebs_cust_account_number(ln_loop_cnt)
-          ,gt_pn_record_type(ln_loop_cnt)
+-- Modify 2009.04.22 Ver1.3 Start
+--          ,gt_pn_record_type(ln_loop_cnt)
+          ,NULL
+-- Modify 2009.04.22 Ver1.3 End
           ,gt_pn_record_number(ln_loop_cnt)
           ,gt_pn_chain_shop_code(ln_loop_cnt)
           ,gt_pn_process_date(ln_loop_cnt)
@@ -1389,7 +1586,10 @@ AS
           ,gt_pn_amount_sign(ln_loop_cnt)
           ,gt_pn_amount(ln_loop_cnt)
           ,gt_pn_tax_type(ln_loop_cnt)
-          ,gt_pn_tax_rate(ln_loop_cnt)
+-- Modify 2009.04.22 Ver1.3 Start          
+--          ,gt_pn_tax_rate(ln_loop_cnt)
+          ,gt_pn_tax_rate(ln_loop_cnt) / 100 -- 消費税率は小数点２桁あり
+-- Modify 2009.04.22 Ver1.3 End
           ,gt_pn_tax_amount(ln_loop_cnt)
           ,gt_pn_tax_diff_flag(ln_loop_cnt)
           ,gt_pn_diff_calc_flag(ln_loop_cnt)

@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
  * Description     : 支払通知情報テーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -14,6 +14,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
  *  2008/10/23    1.0  SCS 中村 博    初回作成
  *  2008/11/26    1.0  SCS 中村 博    チェーン店コードの型をVARCHAR2(4)に変更
  *  2009/01/23    1.0  SCS 中村 博    EBS取込日を論理データモデルに合わせNOT NULLに
+ *  2009/04/22    1.1  SCS 萱原 伸哉  障害番号T1_0128対応 桁数修正
  ************************************************************************/
 ( 
   payment_note_id             NUMBER      NOT NULL  ,     -- 支払通知情報ID
@@ -42,9 +43,9 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
   payment_type                VARCHAR2(2)           ,     -- 支払区分
   payment_method_type         VARCHAR2(2)           ,     -- 支払方法区分
   due_type                    VARCHAR2(2)           ,     -- 発行区分
-  shop_code                   VARCHAR2(8)           ,     -- 店コード
-  shop_name                   VARCHAR2(80)          ,     -- 店舗名称（漢字）
-  shop_name_alt               VARCHAR2(80)          ,     -- 店舗名称（カナ）
+  shop_code                   VARCHAR2(10)           ,     -- 店コード
+  shop_name                   VARCHAR2(100)          ,     -- 店舗名称（漢字）
+  shop_name_alt               VARCHAR2(50)          ,     -- 店舗名称（カナ）
   amount_sign                 VARCHAR2(1)           ,     -- 金額符号
   amount                      NUMBER                ,     -- 金額
   tax_type                    VARCHAR2(1)           ,     -- 消費税区分
@@ -57,7 +58,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
   double_type                 VARCHAR2(2)           ,     -- ダブリ区分
   acceptance_date             VARCHAR2(8)           ,     -- 検収日
   max_month                   VARCHAR2(8)           ,     -- 月限
-  note_number                 VARCHAR2(20)          ,     -- 伝票番号
+  note_number                 VARCHAR2(12)          ,     -- 伝票番号 
   line_number                 NUMBER                ,     -- 行№
   note_type                   VARCHAR2(2)           ,     -- 伝票区分
   class_code                  VARCHAR2(4)           ,     -- 分類コード
@@ -66,7 +67,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
   return_type                 NUMBER                ,     -- 売上返品区分
   nitiriu_type                VARCHAR2(2)           ,     -- ニチリウ経由区分
   sp_sale_type                VARCHAR2(2)           ,     -- 特売区分
-  shipment                    VARCHAR2(6)           ,     -- 便
+  shipment                    VARCHAR2(3)           ,     -- 便
   order_date                  VARCHAR2(8)           ,     -- 発注日
   delivery_date               VARCHAR2(8)           ,     -- 納品日_返品日
   product_code                VARCHAR2(7)           ,     -- 商品コード
@@ -184,4 +185,5 @@ COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_id								IS 'コンカレント・
 COMMENT ON COLUMN xxcfr.xxcfr_payment_notes.program_update_date				IS 'プログラム更新日';
 --
 COMMENT ON TABLE  xxcfr.xxcfr_payment_notes IS '支払通知情報テーブル';
+/
 
