@@ -31,6 +31,7 @@ SELECT  '1'  range_type
                                   )
         ) work_base_short_name
        ,xev.full_name  return_full_name
+       ,xev.user_id    user_id
 FROM    xxcso_tmp_sp_dec_request   xtsdr
        ,xxcso_sp_decision_wf_orgs  xsdwo
        ,xxcso_employees_v2         xev
@@ -71,6 +72,7 @@ SELECT  '1'               range_type
        ,NULL              work_base_code
        ,NULL              work_base_short_name
        ,NULL              return_full_name
+       ,-1                user_id
 FROM    fnd_lookup_values_vl  flvv
 WHERE   flvv.lookup_type                            = 'XXCSO1_SP_DECISION_LEVEL'
 AND     flvv.enabled_flag                           = 'Y'
@@ -97,6 +99,7 @@ SELECT  '2'  range_type
                                   )
         ) work_base_short_name
        ,xev.full_name  return_full_name
+       ,xev.user_id    user_id
 FROM    xxcso_employees_v2         xev
        ,fnd_lookup_values_vl       flvv
 WHERE   flvv.lookup_code = xxcso_util_common_pkg.get_emp_parameter(
@@ -116,6 +119,7 @@ SELECT  '2'               range_type
        ,NULL              work_base_code
        ,NULL              work_base_short_name
        ,NULL              return_full_name
+       ,-2                user_id
 FROM    fnd_lookup_values_vl  flvv
 WHERE   flvv.lookup_type                            = 'XXCSO1_SP_DECISION_LEVEL'
 AND     flvv.enabled_flag                           = 'Y'
@@ -216,6 +220,18 @@ AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UserId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="USER_ID"
+      Expression="USER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

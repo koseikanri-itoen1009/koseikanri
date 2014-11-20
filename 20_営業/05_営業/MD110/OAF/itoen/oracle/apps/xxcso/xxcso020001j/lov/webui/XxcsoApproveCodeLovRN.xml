@@ -11,7 +11,8 @@ Search employee information LOV region by shared for regist SP-DECISION informat
 @see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.java
 
 HISTORY
-2009/01/05  H.Ogawa        new-->
+2009/01/05  H.Ogawa        new
+2009/05/15  N.Yanagitaira  T1_0230-->
 <oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM" scope="/" advancedSearchAllowed="true">
    <ui:contents>
       <oa:table name="XxcsoApproveCodeLovRN" id="ApproveCodeTblRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/ApproveCodeTblRN">
@@ -23,6 +24,7 @@ HISTORY
             <oa:messageStyledText id="WorkBaseCode" dataType="VARCHAR2" viewName="XxcsoApproveCodeLovVO1" viewAttr="WorkBaseCode" maximumLength="4000" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BaseCode"/>
             <oa:messageStyledText id="WorkBaseShortName" dataType="VARCHAR2" viewName="XxcsoApproveCodeLovVO1" viewAttr="WorkBaseShortName" maximumLength="240" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BaseShortName"/>
             <oa:formValue id="ReturnFullName" viewName="XxcsoApproveCodeLovVO1" viewAttr="ReturnFullName"/>
+            <oa:formValue id="UserId" viewName="XxcsoApproveCodeLovVO1" viewAttr="UserId" dataType="NUMBER"/>
          </ui:contents>
       </oa:table>
    </ui:contents>

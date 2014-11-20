@@ -12,6 +12,7 @@
 package itoen.oracle.apps.xxcso.xxcso020001j.lov.server;
 import oracle.apps.fnd.framework.server.OAViewRowImpl;
 import oracle.jbo.server.AttributeDefImpl;
+import oracle.jbo.domain.Number;
 
 /*******************************************************************************
  * 機種コードのLOVのビュー行クラスです。
@@ -21,13 +22,14 @@ import oracle.jbo.server.AttributeDefImpl;
  */
 public class XxcsoVendorModelLovVORowImpl extends OAViewRowImpl 
 {
+
+
   protected static final int MAKERCODE = 0;
-
-
   protected static final int UNNUMBER = 1;
   protected static final int VENDORTYPE = 2;
   protected static final int VENDORFORM = 3;
   protected static final int SELENUMBER = 4;
+  protected static final int UNNUMBERID = 5;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -141,6 +143,8 @@ public class XxcsoVendorModelLovVORowImpl extends OAViewRowImpl
         return getVendorForm();
       case SELENUMBER:
         return getSeleNumber();
+      case UNNUMBERID:
+        return getUnNumberId();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -166,9 +170,30 @@ public class XxcsoVendorModelLovVORowImpl extends OAViewRowImpl
       case SELENUMBER:
         setSeleNumber((String)value);
         return;
+      case UNNUMBERID:
+        setUnNumberId((Number)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute UnNumberId
+   */
+  public Number getUnNumberId()
+  {
+    return (Number)getAttributeInternal(UNNUMBERID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute UnNumberId
+   */
+  public void setUnNumberId(Number value)
+  {
+    setAttributeInternal(UNNUMBERID, value);
   }
 }

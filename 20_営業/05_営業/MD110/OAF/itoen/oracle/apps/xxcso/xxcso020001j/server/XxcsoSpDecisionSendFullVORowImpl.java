@@ -53,6 +53,7 @@ public class XxcsoSpDecisionSendFullVORowImpl extends OAViewRowImpl
   protected static final int RANGETYPEREADONLY = 25;
   protected static final int APPROVECODEREADONLY = 26;
   protected static final int APPROVALCOMMENTREADONLY = 27;
+  protected static final int USERID = 28;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -473,6 +474,8 @@ public class XxcsoSpDecisionSendFullVORowImpl extends OAViewRowImpl
         return getApproveCodeReadOnly();
       case APPROVALCOMMENTREADONLY:
         return getApprovalCommentReadOnly();
+      case USERID:
+        return getUserId();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -566,6 +569,9 @@ public class XxcsoSpDecisionSendFullVORowImpl extends OAViewRowImpl
         return;
       case APPROVALCOMMENTREADONLY:
         setApprovalCommentReadOnly((Boolean)value);
+        return;
+      case USERID:
+        setUserId((Number)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -733,6 +739,24 @@ public class XxcsoSpDecisionSendFullVORowImpl extends OAViewRowImpl
   public void setApprAuthLevelNumber(Number value)
   {
     setAttributeInternal(APPRAUTHLEVELNUMBER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute UserId
+   */
+  public Number getUserId()
+  {
+    return (Number)getAttributeInternal(USERID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute UserId
+   */
+  public void setUserId(Number value)
+  {
+    setAttributeInternal(USERID, value);
   }
 
 

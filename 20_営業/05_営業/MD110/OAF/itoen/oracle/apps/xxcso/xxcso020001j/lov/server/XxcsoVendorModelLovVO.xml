@@ -15,6 +15,7 @@ SELECT  punv.attribute2 maker_code
        ,punv.attribute1 vendor_type
        ,punv.attribute3 vendor_form
        ,punv.attribute7 sele_number
+       ,punv.un_number_id
 FROM    fnd_lookup_values_vl    flvv
        ,po_hazard_classes_vl    phcv
        ,po_un_numbers_vl        punv
@@ -95,6 +96,19 @@ WHERE   punv.inactive_date IS NULL
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnNumberId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="UN_NUMBER_ID"
+      Expression="UN_NUMBER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

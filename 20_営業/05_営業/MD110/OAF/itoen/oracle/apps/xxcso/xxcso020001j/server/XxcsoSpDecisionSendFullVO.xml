@@ -314,4 +314,12 @@ AND   NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="UserId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="$none$"
+      AliasName="USER_ID"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
 </ViewObject>

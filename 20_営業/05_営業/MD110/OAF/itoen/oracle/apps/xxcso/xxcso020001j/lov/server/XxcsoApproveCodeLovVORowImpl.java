@@ -12,6 +12,7 @@
 package itoen.oracle.apps.xxcso.xxcso020001j.lov.server;
 import oracle.apps.fnd.framework.server.OAViewRowImpl;
 import oracle.jbo.server.AttributeDefImpl;
+import oracle.jbo.domain.Number;
 
 /*******************************************************************************
  * 回送先社員番号のLOVのビュー行クラスです。
@@ -30,6 +31,7 @@ public class XxcsoApproveCodeLovVORowImpl extends OAViewRowImpl
   protected static final int WORKBASECODE = 4;
   protected static final int WORKBASESHORTNAME = 5;
   protected static final int RETURNFULLNAME = 6;
+  protected static final int USERID = 7;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -165,6 +167,8 @@ public class XxcsoApproveCodeLovVORowImpl extends OAViewRowImpl
         return getWorkBaseShortName();
       case RETURNFULLNAME:
         return getReturnFullName();
+      case USERID:
+        return getUserId();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -196,6 +200,9 @@ public class XxcsoApproveCodeLovVORowImpl extends OAViewRowImpl
       case RETURNFULLNAME:
         setReturnFullName((String)value);
         return;
+      case USERID:
+        setUserId((Number)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -218,5 +225,23 @@ public class XxcsoApproveCodeLovVORowImpl extends OAViewRowImpl
   public void setReturnFullName(String value)
   {
     setAttributeInternal(RETURNFULLNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute UserId
+   */
+  public Number getUserId()
+  {
+    return (Number)getAttributeInternal(USERID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute UserId
+   */
+  public void setUserId(Number value)
+  {
+    setAttributeInternal(USERID, value);
   }
 }

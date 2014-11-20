@@ -21,7 +21,8 @@ Regist SP-DECISION information page.
 HISTORY
 2009/01/05  H.Ogawa        new
 2009/03/23  N.Yanagitaira  assignment No.112 corrective action
-2009/03/23  N.Yanagitaira  assignment No.115 corrective action-->
+2009/03/23  N.Yanagitaira  assignment No.115 corrective action
+2009/05/15  N.Yanagitaira  T1_0230-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionRegistCO" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -391,16 +392,31 @@ HISTORY
                                              <lovMappings>
                                                 <lovMap id="MakerCodeMap" lovItem="MakerCode" resultTo="MakerCode" criteriaFrom="MakerCode"/>
                                                 <lovMap id="UnNumberMap" lovItem="UnNumber" resultTo="UnNumber" criteriaFrom="UnNumber"/>
-                                                <lovMap id="SeleNumberMap" lovItem="SeleNumber" resultTo="SeleNumber" useForValidation="no"/>
+                                                <lovMap id="SeleNumberMap" lovItem="SeleNumber" resultTo="SeleNumber"/>
+                                                <lovMap id="UnNumberIdMap" lovItem="UnNumberId" resultTo="UnNumberId"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
+                                          <oa:formValue id="UnNumberId" dataType="NUMBER"/>
                                        </ui:contents>
                                     </oa:rowLayout>
                                  </ui:contents>
                               </oa:messageLayout>
                               <oa:messageLayout id="VdInfo3Layout" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/VdInfo3Layout" rendered="${oa.XxcsoSpDecisionInitVO1.VdInfo3LayoutRender}">
                                  <ui:contents>
-                                    <oa:rowLayout id="VdInfo3RlRN" extends="/itoen/oracle/apps/xxcso/xxcso020001j/webui/XxcsoSpDecisionRegistPG.VdInfo3RequiredRlRN"/>
+                                    <oa:rowLayout id="VdInfo3RlRN">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="UnNumberView2" columns="15" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/UnNumber" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="UnNumber" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.UnNumberViewRender}"/>
+                                          <oa:messageLovInput id="UnNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoVendorModelLovRN" columns="15" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/UnNumber" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="UnNumber" rendered="${oa.XxcsoSpDecisionInitVO1.UnNumberRender}" maximumLength="25">
+                                             <lovMappings>
+                                                <lovMap id="MakerCodeMap2" lovItem="MakerCode" resultTo="MakerCode" criteriaFrom="MakerCode"/>
+                                                <lovMap id="UnNumberMap2" lovItem="UnNumber" resultTo="UnNumber2" criteriaFrom="UnNumber2"/>
+                                                <lovMap id="SeleNumberMap2" lovItem="SeleNumber" resultTo="SeleNumber"/>
+                                                <lovMap id="UnNumberIdMap2" lovItem="UnNumberId" resultTo="UnNumberId2"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="UnNumberId2" dataType="NUMBER"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
                                  </ui:contents>
                               </oa:messageLayout>
                            </ui:contents>
@@ -1907,11 +1923,13 @@ HISTORY
                                           <lovMap id="ApproveBaseShortNameMap" lovItem="WorkBaseShortName" resultTo="ApproveBaseShortNameValue" useForValidation="no"/>
                                           <lovMap id="ApprovalTypeCodeMap" lovItem="ApprovalTypeCode" criteriaFrom="ApprovalTypeCode"/>
                                           <lovMap id="RangeTypeMap" lovItem="RangeType" criteriaFrom="RangeType"/>
+                                          <lovMap id="UserIdMap" lovItem="UserId" useForValidation="default" resultTo="UserId"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:formValue id="ApproveUserNameValue" viewAttr="ApproveUserName"/>
                                     <oa:formValue id="ApproveBaseShortNameValue" viewAttr="ApproveBaseShortName"/>
                                     <oa:formValue id="ApprovalTypeCode" viewAttr="ApprovalTypeCode"/>
+                                    <oa:formValue id="UserId" dataType="NUMBER" viewAttr="UserId"/>
                                  </ui:contents>
                               </oa:column>
                               <oa:column id="ApproveUserNameCol">
