@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK022A02C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：販手販協予算データファイル作成 販売物流 MD050_COK_022_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/20    1.0   K.Suenaga        新規作成
  *  2009/02/05    1.1   K.Suenaga        [障害COK_010]ディレクトリパスの出力方法を変更
+ *  2009/07/13    1.2   K.Yamaguchi      [障害0000294]パフォーマンス改善
  *
  *****************************************************************************************/
   -- ===============================
@@ -131,8 +132,10 @@ AS
     WHERE  xbsb.budget_year           = gn_target_account_year
     AND    xbsb.info_interface_status = cv_unsettled_status;
 --
-  TYPE g_bm_support_budget_ttype IS TABLE OF g_bm_support_budget_cur%ROWTYPE;
-  g_bm_support_budget_tab g_bm_support_budget_ttype;
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi DELETE START
+--  TYPE g_bm_support_budget_ttype IS TABLE OF g_bm_support_budget_cur%ROWTYPE;
+--  g_bm_support_budget_tab g_bm_support_budget_ttype;
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi DELETE END
   -- ===============================
   -- グローバル例外
   -- ===============================
@@ -485,51 +488,53 @@ AS
       ov_retcode := cv_status_error;
   END open_file_p;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_budget_info_p
-   * Description      : 連携対象販手販協予算情報取得(A-4)
-   ***********************************************************************************/
-  PROCEDURE get_budget_info_p(
-    ov_errbuf  OUT VARCHAR2                                      -- エラー・メッセージ
-  , ov_retcode OUT VARCHAR2                                      -- リターン・コード
-  , ov_errmsg  OUT VARCHAR2                                      -- ユーザー・エラー・メッセージ
-  )
-  IS
-    -- ===============================
-    -- ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_budget_info_p'; -- プログラム名
-    -- ===============================
-    -- ローカル変数
-    -- ===============================
-    lv_errbuf  VARCHAR2(5000) DEFAULT NULL;                      -- エラー・メッセージ
-    lv_retcode VARCHAR2(1)    DEFAULT NULL;                      -- リターン・コード
-    lv_errmsg  VARCHAR2(5000) DEFAULT NULL;                      -- ユーザー・エラー・メッセージ
-    lv_out_msg VARCHAR2(5000) DEFAULT NULL;                      -- メッセージ出力変数
-    lb_retcode BOOLEAN        DEFAULT NULL;                      -- メッセージ出力関数の戻り値
---
-  BEGIN
-    ov_retcode := cv_status_normal;
---
-    OPEN  g_bm_support_budget_cur;
-    FETCH g_bm_support_budget_cur BULK COLLECT INTO g_bm_support_budget_tab;
-    CLOSE g_bm_support_budget_cur;
-    --==============================================================
-    --対象件数カウント
-    --==============================================================
-    gn_target_cnt := g_bm_support_budget_tab.COUNT;
---
-  EXCEPTION
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
-      ov_retcode := cv_status_error;
-  END get_budget_info_p;
---
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi DELETE START
+--  /**********************************************************************************
+--   * Procedure Name   : get_budget_info_p
+--   * Description      : 連携対象販手販協予算情報取得(A-4)
+--   ***********************************************************************************/
+--  PROCEDURE get_budget_info_p(
+--    ov_errbuf  OUT VARCHAR2                                      -- エラー・メッセージ
+--  , ov_retcode OUT VARCHAR2                                      -- リターン・コード
+--  , ov_errmsg  OUT VARCHAR2                                      -- ユーザー・エラー・メッセージ
+--  )
+--  IS
+--    -- ===============================
+--    -- ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_budget_info_p'; -- プログラム名
+--    -- ===============================
+--    -- ローカル変数
+--    -- ===============================
+--    lv_errbuf  VARCHAR2(5000) DEFAULT NULL;                      -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1)    DEFAULT NULL;                      -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000) DEFAULT NULL;                      -- ユーザー・エラー・メッセージ
+--    lv_out_msg VARCHAR2(5000) DEFAULT NULL;                      -- メッセージ出力変数
+--    lb_retcode BOOLEAN        DEFAULT NULL;                      -- メッセージ出力関数の戻り値
+----
+--  BEGIN
+--    ov_retcode := cv_status_normal;
+----
+--    OPEN  g_bm_support_budget_cur;
+--    FETCH g_bm_support_budget_cur BULK COLLECT INTO g_bm_support_budget_tab;
+--    CLOSE g_bm_support_budget_cur;
+--    --==============================================================
+--    --対象件数カウント
+--    --==============================================================
+--    gn_target_cnt := g_bm_support_budget_tab.COUNT;
+----
+--  EXCEPTION
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--  END get_budget_info_p;
+----
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi DELETE END
   /**********************************************************************************
    * Procedure Name   : create_flat_file_p
    * Description      : フラットファイル作成(A-5)/連携済データステータス更新(A-6)
@@ -581,32 +586,121 @@ AS
 --
   BEGIN
     ov_retcode := cv_status_normal;
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi REPAIR START
+--    --===============================================================
+--    --ループ開始
+--    --===============================================================
+--    <<file_loop>>
+--    FOR i IN 1 .. g_bm_support_budget_tab.COUNT LOOP
+--      lv_company_code       := g_bm_support_budget_tab(i).company_code;
+--      lv_budget_year        := g_bm_support_budget_tab(i).budget_year;
+--      lv_base_code          := g_bm_support_budget_tab(i).base_code;
+--      lv_corp_code          := g_bm_support_budget_tab(i).corp_code;
+--      lv_sales_outlets_code := g_bm_support_budget_tab(i).sales_outlets_code;
+--      lv_acct_code          := g_bm_support_budget_tab(i).acct_code;
+--      lv_sub_acct_code      := g_bm_support_budget_tab(i).sub_acct_code;
+--      lv_target_month       := g_bm_support_budget_tab(i).target_month;
+--      lv_budget_amt         := g_bm_support_budget_tab(i).budget_amt;
+--      lv_system_date        := TO_CHAR( gd_system_date, 'YYYYMMDDHH24MISS' );
+----
+--      lv_flat := (
+--        cv_msg_double || lv_company_code       || cv_msg_double || cv_msg_comma ||     -- 会社コード
+--                         lv_budget_year        || cv_msg_comma  ||                     -- 予算年度
+--        cv_msg_double || lv_base_code          || cv_msg_double || cv_msg_comma ||     -- 拠点コード
+--        cv_msg_double || lv_corp_code          || cv_msg_double || cv_msg_comma ||     -- 企業コード
+--        cv_msg_double || lv_sales_outlets_code || cv_msg_double || cv_msg_comma ||     -- 問屋帳合先コード
+--        cv_msg_double || lv_acct_code          || cv_msg_double || cv_msg_comma ||     -- 勘定科目コード
+--        cv_msg_double || lv_sub_acct_code      || cv_msg_double || cv_msg_comma ||     -- 補助科目コード
+--                         lv_target_month       || cv_msg_comma  ||                     -- 月度
+--                         lv_budget_amt         || cv_msg_comma  ||                     -- 予算金額
+--                         lv_system_date                                                -- システム日付
+--      );
+--      --==============================================================
+--      --フラットファイルを作成
+--      --==============================================================
+--      UTL_FILE.PUT_LINE(
+--        file   => g_open_file           -- ファイルハンドル
+--      , buffer => lv_flat               -- テキストバッファ
+--      );
+--      --==============================================================
+--      --連携済データステータス更新
+--      --==============================================================
+--    OPEN  l_upd_cur(
+--            g_bm_support_budget_tab(i).bm_support_budget_id
+--          );
+--    CLOSE l_upd_cur;
+--    BEGIN
+--      UPDATE xxcok_bm_support_budget       xbsb
+--      SET    xbsb.info_interface_status  = cv_settled_status         -- 情報系連携ステータス
+--           , xbsb.last_updated_by        = cn_last_updated_by        -- ログインユーザーID
+--           , xbsb.last_update_date       = SYSDATE                   -- システム日付
+--           , xbsb.last_update_login      = cn_last_update_login      -- ログインID
+--           , xbsb.request_id             = cn_request_id             -- コンカレント要求ID
+--           , xbsb.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+--           , xbsb.program_id             = cn_program_id             -- コンカレント・プログラムID
+--           , xbsb.program_update_date    = SYSDATE                   -- システム日付
+--      WHERE  xbsb.bm_support_budget_id   = g_bm_support_budget_tab(i).bm_support_budget_id;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        -- *** 連携済データステータス更新エラー ***
+--        lv_out_msg := xxccp_common_pkg.get_msg(
+--                        cv_appli_xxcok_name
+--                      , cv_status_err_msg
+--                      , cv_company_token
+--                      , lv_company_code          -- 会社コード
+--                      , cv_budget_token
+--                      , lv_budget_year           -- 予算年度
+--                      , cv_location_token
+--                      , lv_base_code             -- 拠点コード
+--                      , cv_corporate_token
+--                      , lv_corp_code             -- 企業コード
+--                      , cv_store_token
+--                      , lv_sales_outlets_code    -- 問屋帳合先コード
+--                      , cv_account_token
+--                      , lv_acct_code             -- 勘定科目コード
+--                      , cv_sub_token
+--                      , lv_sub_acct_code         -- 補助科目コード
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f( 
+--                        FND_FILE.OUTPUT    -- 出力区分
+--                      , lv_out_msg         -- メッセージ
+--                      , 0                  -- 改行
+--                      );
+--        ov_errmsg  := NULL;
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--      RAISE upd_expt;
+--    END;
+--    --==============================================================
+--    --成功件数カウント
+--    --==============================================================
+--    gn_normal_cnt := gn_normal_cnt + 1;
+----
+--    END LOOP file_loop;
     --===============================================================
-    --ループ開始
+    --連携対象販手販協予算情報取得(A-4)
     --===============================================================
-    <<file_loop>>
-    FOR i IN 1 .. g_bm_support_budget_tab.COUNT LOOP
-      lv_company_code       := g_bm_support_budget_tab(i).company_code;
-      lv_budget_year        := g_bm_support_budget_tab(i).budget_year;
-      lv_base_code          := g_bm_support_budget_tab(i).base_code;
-      lv_corp_code          := g_bm_support_budget_tab(i).corp_code;
-      lv_sales_outlets_code := g_bm_support_budget_tab(i).sales_outlets_code;
-      lv_acct_code          := g_bm_support_budget_tab(i).acct_code;
-      lv_sub_acct_code      := g_bm_support_budget_tab(i).sub_acct_code;
-      lv_target_month       := g_bm_support_budget_tab(i).target_month;
-      lv_budget_amt         := g_bm_support_budget_tab(i).budget_amt;
+    << file_loop >>
+    FOR g_bm_support_budget_rec IN g_bm_support_budget_cur LOOP
+      lv_company_code       := g_bm_support_budget_rec.company_code;
+      lv_budget_year        := g_bm_support_budget_rec.budget_year;
+      lv_base_code          := g_bm_support_budget_rec.base_code;
+      lv_corp_code          := g_bm_support_budget_rec.corp_code;
+      lv_sales_outlets_code := g_bm_support_budget_rec.sales_outlets_code;
+      lv_acct_code          := g_bm_support_budget_rec.acct_code;
+      lv_sub_acct_code      := g_bm_support_budget_rec.sub_acct_code;
+      lv_target_month       := g_bm_support_budget_rec.target_month;
+      lv_budget_amt         := g_bm_support_budget_rec.budget_amt;
       lv_system_date        := TO_CHAR( gd_system_date, 'YYYYMMDDHH24MISS' );
---
       lv_flat := (
         cv_msg_double || lv_company_code       || cv_msg_double || cv_msg_comma ||     -- 会社コード
-                         lv_budget_year        || cv_msg_comma  ||                     -- 予算年度
+                         lv_budget_year                         || cv_msg_comma ||     -- 予算年度
         cv_msg_double || lv_base_code          || cv_msg_double || cv_msg_comma ||     -- 拠点コード
         cv_msg_double || lv_corp_code          || cv_msg_double || cv_msg_comma ||     -- 企業コード
         cv_msg_double || lv_sales_outlets_code || cv_msg_double || cv_msg_comma ||     -- 問屋帳合先コード
         cv_msg_double || lv_acct_code          || cv_msg_double || cv_msg_comma ||     -- 勘定科目コード
         cv_msg_double || lv_sub_acct_code      || cv_msg_double || cv_msg_comma ||     -- 補助科目コード
-                         lv_target_month       || cv_msg_comma  ||                     -- 月度
-                         lv_budget_amt         || cv_msg_comma  ||                     -- 予算金額
+                         lv_target_month                        || cv_msg_comma ||     -- 月度
+                         lv_budget_amt                          || cv_msg_comma ||     -- 予算金額
                          lv_system_date                                                -- システム日付
       );
       --==============================================================
@@ -619,57 +713,61 @@ AS
       --==============================================================
       --連携済データステータス更新
       --==============================================================
-    OPEN  l_upd_cur(
-            g_bm_support_budget_tab(i).bm_support_budget_id
-          );
-    CLOSE l_upd_cur;
-    BEGIN
-      UPDATE xxcok_bm_support_budget       xbsb
-      SET    xbsb.info_interface_status  = cv_settled_status         -- 情報系連携ステータス
-           , xbsb.last_updated_by        = cn_last_updated_by        -- ログインユーザーID
-           , xbsb.last_update_date       = SYSDATE                   -- システム日付
-           , xbsb.last_update_login      = cn_last_update_login      -- ログインID
-           , xbsb.request_id             = cn_request_id             -- コンカレント要求ID
-           , xbsb.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
-           , xbsb.program_id             = cn_program_id             -- コンカレント・プログラムID
-           , xbsb.program_update_date    = SYSDATE                   -- システム日付
-      WHERE  xbsb.bm_support_budget_id   = g_bm_support_budget_tab(i).bm_support_budget_id;
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- *** 連携済データステータス更新エラー ***
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                        cv_appli_xxcok_name
-                      , cv_status_err_msg
-                      , cv_company_token
-                      , lv_company_code          -- 会社コード
-                      , cv_budget_token
-                      , lv_budget_year           -- 予算年度
-                      , cv_location_token
-                      , lv_base_code             -- 拠点コード
-                      , cv_corporate_token
-                      , lv_corp_code             -- 企業コード
-                      , cv_store_token
-                      , lv_sales_outlets_code    -- 問屋帳合先コード
-                      , cv_account_token
-                      , lv_acct_code             -- 勘定科目コード
-                      , cv_sub_token
-                      , lv_sub_acct_code         -- 補助科目コード
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f( 
-                        FND_FILE.OUTPUT    -- 出力区分
-                      , lv_out_msg         -- メッセージ
-                      , 0                  -- 改行
-                      );
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
-      RAISE upd_expt;
-    END;
-    --==============================================================
-    --成功件数カウント
-    --==============================================================
-    gn_normal_cnt := gn_normal_cnt + 1;
---
+      OPEN  l_upd_cur(
+              g_bm_support_budget_rec.bm_support_budget_id
+            );
+      CLOSE l_upd_cur;
+      BEGIN
+        UPDATE xxcok_bm_support_budget       xbsb
+        SET    xbsb.info_interface_status  = cv_settled_status         -- 情報系連携ステータス
+             , xbsb.last_updated_by        = cn_last_updated_by        -- ログインユーザーID
+             , xbsb.last_update_date       = SYSDATE                   -- システム日付
+             , xbsb.last_update_login      = cn_last_update_login      -- ログインID
+             , xbsb.request_id             = cn_request_id             -- コンカレント要求ID
+             , xbsb.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+             , xbsb.program_id             = cn_program_id             -- コンカレント・プログラムID
+             , xbsb.program_update_date    = SYSDATE                   -- システム日付
+        WHERE  xbsb.bm_support_budget_id   = g_bm_support_budget_rec.bm_support_budget_id;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- *** 連携済データステータス更新エラー ***
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                          cv_appli_xxcok_name
+                        , cv_status_err_msg
+                        , cv_company_token
+                        , lv_company_code          -- 会社コード
+                        , cv_budget_token
+                        , lv_budget_year           -- 予算年度
+                        , cv_location_token
+                        , lv_base_code             -- 拠点コード
+                        , cv_corporate_token
+                        , lv_corp_code             -- 企業コード
+                        , cv_store_token
+                        , lv_sales_outlets_code    -- 問屋帳合先コード
+                        , cv_account_token
+                        , lv_acct_code             -- 勘定科目コード
+                        , cv_sub_token
+                        , lv_sub_acct_code         -- 補助科目コード
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f( 
+                          FND_FILE.OUTPUT    -- 出力区分
+                        , lv_out_msg         -- メッセージ
+                        , 0                  -- 改行
+                        );
+          ov_errmsg  := NULL;
+          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+        RAISE upd_expt;
+      END;
+      --==============================================================
+      --対象件数カウント
+      --==============================================================
+      gn_target_cnt := gn_target_cnt + 1;
+      --==============================================================
+      --成功件数カウント
+      --==============================================================
+      gn_normal_cnt := gn_normal_cnt + 1;
     END LOOP file_loop;
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi REPAIR END
 --
   EXCEPTION
     -- *** ロックエラーメッセージ ***
@@ -830,30 +928,43 @@ AS
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi REPAIR START
+--    --===============================================================
+--    --get_budget_info_pの呼び出し(連携対象販手販協予算情報取得(A-4))
+--    --===============================================================
+--    get_budget_info_p(
+--      ov_errbuf  => lv_errbuf                          -- エラー・メッセージ
+--    , ov_retcode => lv_retcode                         -- リターン・コード
+--    , ov_errmsg  => lv_errmsg                          -- ユーザー・エラー・メッセージ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+--    IF( gn_target_cnt > 0 ) THEN
+--      --===============================================================
+--      --create_flat_file_pの呼び出し(フラットファイル作成(A-5))
+--      --===============================================================
+--      create_flat_file_p(
+--        ov_errbuf  => lv_errbuf                        -- エラー・メッセージ
+--      , ov_retcode => lv_retcode                       -- リターン・コード
+--      , ov_errmsg  => lv_errmsg                        -- ユーザー・エラー・メッセージ
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--    END IF;
     --===============================================================
-    --get_budget_info_pの呼び出し(連携対象販手販協予算情報取得(A-4))
+    --create_flat_file_pの呼び出し(フラットファイル作成(A-5))
     --===============================================================
-    get_budget_info_p(
-      ov_errbuf  => lv_errbuf                          -- エラー・メッセージ
-    , ov_retcode => lv_retcode                         -- リターン・コード
-    , ov_errmsg  => lv_errmsg                          -- ユーザー・エラー・メッセージ
+    create_flat_file_p(
+      ov_errbuf  => lv_errbuf                        -- エラー・メッセージ
+    , ov_retcode => lv_retcode                       -- リターン・コード
+    , ov_errmsg  => lv_errmsg                        -- ユーザー・エラー・メッセージ
     );
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
-    IF( gn_target_cnt > 0 ) THEN
-      --===============================================================
-      --create_flat_file_pの呼び出し(フラットファイル作成(A-5))
-      --===============================================================
-      create_flat_file_p(
-        ov_errbuf  => lv_errbuf                        -- エラー・メッセージ
-      , ov_retcode => lv_retcode                       -- リターン・コード
-      , ov_errmsg  => lv_errmsg                        -- ユーザー・エラー・メッセージ
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-    END IF;
+-- 2009/07/13 Ver.1.2 [障害0000294] SCS K.Yamaguchi REPAIR END
     --===============================================================
     --close_file_pの呼び出し(ファイルクローズ(A-7))
     --===============================================================
