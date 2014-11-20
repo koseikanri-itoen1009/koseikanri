@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-01-16 1.9  吉元強樹     本番障害#1006対応
 * 2009-01-27 1.10 吉元強樹     本番障害#1092対応
 * 2009-03-11 1.11 飯田  甫     本番障害#1270対応
+* 2009-05-12 1.12 吉元強樹     本番障害#1458対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -4157,7 +4158,7 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
       } else
       {
 
-        // 取引IDを基に、受入OIFに登録済みであるか確認
+        // 取引IDを基に、EBS標準.受入に登録済みであるか確認
         String inputFlag = XxpoUtility.chkRcvOifInput(
                              getOADBTransaction(),
                              txnsId);
@@ -4275,9 +4276,37 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
                             
             }
 
-          // 受入OIFに登録済みでない場合
+          // EBS標準.受入に登録済みでない場合
           } else
           {
+
+// 2009-05-12 v1.12 T.Yoshimoto Add Start 本番#1458
+            // 訂正前受入数量
+            Number nQuantity    = (Number)receiptDetailsVORow.getAttribute("Quantity");
+
+            if (XxcmnUtility.chkCompareNumeric(1, nQuantity, "0"))
+            {
+              // ロールバック
+              XxpoUtility.rollBack(getOADBTransaction());
+
+              // 発注受入入力:発注受入入力PVO取得
+              OAViewObject orderReceiptMakePVO = getXxpoOrderReceiptMakePVO1();
+              // 1行目を取得
+              OARow readOnlyRow = (OARow)orderReceiptMakePVO.first();
+
+              // 適用/行挿入ボタンを無効に変更
+              readOnlyRow.setAttribute("ApplyReadOnly", Boolean.TRUE);
+
+              //トークン生成
+              MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN,
+                                                         "受入取引処理中") };
+                               
+              // 処理起動エラー
+              throw new OAException(XxcmnConstants.APPL_XXPO,
+                                     XxpoConstants.XXPO10291,
+                                     tokens);
+            }
+// 2009-05-12 v1.12 T.Yoshimoto Add End 本番#1458
 
             // 受入数量が0より多い場合
             if (XxcmnUtility.chkCompareNumeric(1, rcvRtnQuantity, "0"))
