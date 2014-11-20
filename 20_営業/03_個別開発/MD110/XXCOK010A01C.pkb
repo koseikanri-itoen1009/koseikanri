@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績振替情報テーブルのデータから、
                       情報系システムへI/Fする「実績振替」を作成します。
  * MD.050           : 売上実績振替情報のI/Fファイル作成 (MD050_COK_010_A01)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -28,6 +28,12 @@ AS
  *  2009/02/06    1.1   M.Hiruta         [障害COK_013]ディレクトリパスの出力方法を変更
  *  2009/03/04    1.2   M.Hiruta         [障害COK_072]出力ファイル(CSV)末尾のカンマ削除
  *  2009/03/19    1.3   M.Hiruta         [障害T1_0087]行Noのダブルクォーテーションを削除
+ *  2010/01/17    1.4   Y.Kuboshima      [障害E_本稼動_00555,障害E_本稼動_00900]
+ *                                       出力項目内容の変更
+ *                                       【売上金額】売上金額(税込)                            -> 売上金額(税抜)
+ *                                       【消費税額】売上金額(税込) - 売上金額(税抜)           -> 「0」固定
+ *                                       【売上数量】数量                                      -> 基準単位数量
+ *                                       【納品単価】納品単価÷納品単位１あたりの基準単位数量  -> 基準単位単価
  *
  *****************************************************************************************/
 --
@@ -164,6 +170,10 @@ AS
          , xsti.selling_amt_no_tax    AS xsti_selling_amt_notax    -- 売上金額(税抜き)
          , xsti.tax_code              AS xsti_tax_code             -- 消費税コード
          , xsti.delivery_base_code    AS xsti_delivery_base_code   -- 納品拠点コード
+-- Start 2010/01/07 Ver1.4 Y.Kuboshima
+-- 単位の追加
+         , xsti.unit_type             AS xsit_unit_type            -- 単位
+-- End   2010/01/07 Ver1.4 Y.Kuboshima
     FROM xxcok_selling_trns_info      xsti                         -- 売上実績振替情報テーブル
     WHERE xsti.info_interface_flag = cv_info_if_flag_yet;
 --
@@ -350,6 +360,14 @@ AS
 --
     lv_csvfile  VARCHAR2(3000)                            DEFAULT NULL;  -- CSVファイル
     lt_tax_amt  xxcok_selling_trns_info.selling_amt%TYPE  DEFAULT NULL;  -- 消費税額
+-- Start 2010/01/07 Ver1.4 Y.Kuboshima
+    ln_sale_qty NUMBER                                    DEFAULT NULL;  -- 売上数量
+-- End   2010/01/07 Ver1.4 Y.Kuboshima
+-- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi ADD START
+    ln_item_uom_qty   NUMBER       DEFAULT NULL;
+    ln_item_uom_price NUMBER       DEFAULT NULL;
+    lv_item_uom_price VARCHAR2(15) DEFAULT NULL;
+-- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi ADD END
 --
   BEGIN
     -- ============
@@ -360,7 +378,49 @@ AS
     -- ==============
     -- 消費税額の算出
     -- ==============
-    lt_tax_amt := g_xsti_tab( in_idx ).xsti_selling_amt - g_xsti_tab( in_idx ).xsti_selling_amt_notax;
+-- Start 2010/01/07 Ver1.4 Y.Kuboshima
+-- 0固定とするよう修正
+--    lt_tax_amt := g_xsti_tab( in_idx ).xsti_selling_amt - g_xsti_tab( in_idx ).xsti_selling_amt_notax;
+    lt_tax_amt := cn_number_0;
+-- End   2010/01/07 Ver1.4 Y.Kuboshima
+    --
+-- Start 2010/01/07 Ver1.4 Y.Kuboshima
+    -- ==============
+    -- 売上数量の算出
+    -- ==============
+    -- 基準単位数量の取得
+    ln_sale_qty := TRUNC( xxcok_common_pkg.get_uom_conversion_qty_f(
+                            iv_item_code => g_xsti_tab( in_idx ).xsti_item_code -- 品目コード
+                          , iv_uom_code  => g_xsti_tab( in_idx ).xsit_unit_type -- 単位
+                          , in_quantity  => g_xsti_tab( in_idx ).xsti_qty       -- 数量
+                          )
+                        , 2
+                   )
+    ;
+-- End   2010/01/07 Ver1.4 Y.Kuboshima
+-- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi ADD START
+    -- 基準単位数量の取得
+    ln_item_uom_qty := TRUNC( xxcok_common_pkg.get_uom_conversion_qty_f(
+                                iv_item_code => g_xsti_tab( in_idx ).xsti_item_code -- 品目コード
+                              , iv_uom_code  => g_xsti_tab( in_idx ).xsit_unit_type -- 単位
+                              , in_quantity  => 1                                   -- 数量
+                              )
+                            , 2
+                       )
+    ;
+    ln_item_uom_price := ROUND(   g_xsti_tab( in_idx ).xsti_delivery_unit_price -- 納品単価
+                                / ln_item_uom_qty                               -- 基準単位数量
+                              , 2
+                         )
+    ;
+    IF( ln_item_uom_price IS NULL ) THEN
+      lv_item_uom_price := NULL;
+    ELSIF( ln_item_uom_price = TRUNC( ln_item_uom_price ) ) THEN
+      lv_item_uom_price := TO_CHAR( ln_item_uom_price );
+    ELSE
+      lv_item_uom_price := TO_CHAR( ln_item_uom_price, 'FM999999990.99' );
+    END IF;
+-- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi ADD END
     --
     -- ================
     -- ファイル書き込み
@@ -393,9 +453,17 @@ AS
       || cv_msg_c
       || cv_msg_wq || g_xsti_tab( in_idx ).xsti_delivery_base_code                   || cv_msg_wq  -- 納品拠点コード
       || cv_msg_c
-                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_selling_amt )                             -- 売上金額
+-- Start 2010/01/07 Ver1.4 Y.Kuboshima
+-- 売上金額(税抜)を設定するよう修正
+--                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_selling_amt )                             -- 売上金額
+                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_selling_amt_notax )                       -- 売上金額
+-- End   2010/01/07 Ver1.4 Y.Kuboshima
       || cv_msg_c
-                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_qty )                                     -- 売上数量
+-- Start 2010/01/07 Ver1.4 Y.Kuboshima
+-- 基準単位数量を設定するよう修正
+--                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_qty )                                     -- 売上数量
+                   || TO_CHAR( ln_sale_qty )                                                       -- 売上数量
+-- End   2010/01/07 Ver1.4 Y.Kuboshima
       || cv_msg_c
                    || TO_CHAR( lt_tax_amt )                                                        -- 消費税額
       || cv_msg_c
@@ -409,7 +477,10 @@ AS
       || cv_msg_c
                    || TO_CHAR( g_xsti_tab( in_idx ).xsti_checking_date, 'YYYYMMDD' )               -- 検収日
       || cv_msg_c
-                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_delivery_unit_price )                     -- 納品単価
+-- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi REPAIR START
+--                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_delivery_unit_price )                     -- 納品単価
+                   || lv_item_uom_price                                                            -- 納品単価
+-- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi REPAIR END
       || cv_msg_c
       || cv_msg_wq || g_xsti_tab( in_idx ).xsti_tax_code                             || cv_msg_wq  -- 消費税コード
       || cv_msg_c
