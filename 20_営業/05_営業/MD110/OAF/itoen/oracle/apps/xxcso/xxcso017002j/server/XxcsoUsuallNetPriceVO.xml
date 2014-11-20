@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoUsuallNetPriceVO"
+   OrderBy="last_update_date desc"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoUsuallNetPriceVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoUsuallNetPriceVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xqlsv.usuall_net_price usuall_net_price
+      ,xqlsv.last_update_date
+FROM   xxcso_quote_headers         xqh
+      ,xxcso_quote_lines_sales_v   xqlsv
+WHERE  xqh.status              = '2'
+AND    xqh.quote_type          = '2'
+AND    xqh.account_number      = :1
+AND    xqlsv.quote_header_id   = xqh.quote_header_id
+AND    xqlsv.quote_div         = '1'
+AND    xqlsv.inventory_item_id = :2
+AND    xqlsv.usually_deliv_price = :3
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="UsuallNetPrice"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="String"
+      AliasName="USUALL_NET_PRICE"
+      Expression="USUALL_NET_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="LAST_UPDATE_DATE"
+      Expression="LAST_UPDATE_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

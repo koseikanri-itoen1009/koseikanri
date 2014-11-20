@@ -82,6 +82,10 @@
       Name="XxcsoReferenceQuotationPriceVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoReferenceQuotationPriceVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxcsoUsuallNetPriceVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoUsuallNetPriceVO" >
+   </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoQuoteHeaderLineStoreVL1"
       ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderLineStoreVL"

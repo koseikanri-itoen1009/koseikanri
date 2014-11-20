@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistCO
 * 概要説明   : 帳合問屋用見積入力画面コントローラクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-07 1.0  SCS及川領    新規作成
 * 2009-07-23 1.1  SCS阿部大輔 【0000806】マージン額／マージン率の計算対象変更
 * 2009-09-10 1.2  SCS阿部大輔  【0001331】マージン額の計算時にページ遷移を指定
+* 2011-04-18 1.3  SCS吉元強樹  【E_本稼動_01373】通常NET価格自動導出対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.webui;
@@ -475,6 +476,17 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
       /* 20090723_abe_0000806 END*/
 
     }
+
+// 2010-04-18 v1.3 T.Yoshimoto Add Start E_本稼動_01373
+    // 「通常NET価格取得」ボタン押下時
+    if ( pageContext.getParameter("UsuallNetPriceButton" ) != null )
+    {
+      // 通常NET価格の取得を行う
+      am.invokeMethod("handleUsuallNetPriceButton");
+
+    }
+// 2010-04-18 v1.3 T.Yoshimoto Add End E_本稼動_01373
+
     /* 20090910_abe_0001331 END*/
       String event = pageContext.getParameter(OAWebBeanConstants.EVENT_PARAM);
       XxcsoUtils.debug(pageContext, "event = " + event);

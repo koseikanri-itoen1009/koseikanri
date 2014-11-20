@@ -34,6 +34,20 @@ AND     EXISTS (SELECT 1
                 FROM xxcso_resource_custs_V2 xrcv
                 WHERE xcav.account_number  = xrcv.account_number
         )
+UNION
+SELECT  xcav2.account_number
+       ,xcav2.party_name
+       ,NVL(xcav2.customer_class_name, 'ŒÚ‹q') AS customer_class_name
+FROM    xxcso_employees_v2     xev2
+       ,xxcso_cust_accounts_v  xcav2
+WHERE   xev2.user_id   = fnd_global.user_id
+AND     xcav2.sale_base_code = xxcso_util_common_pkg.get_emp_parameter(
+                                 xev2.work_base_code_new,
+                                 xev2.work_base_code_old,
+                                 xev2.issue_date,
+                                 TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+AND     xcav2.customer_status IN ('20','25','30','40','50')
+AND     NVL(xcav2.customer_class_code, '10') = '10'
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />

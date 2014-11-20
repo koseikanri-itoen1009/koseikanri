@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistAMImpl
 * 概要説明   : 帳合問屋用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2009-07-23 1.7  SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
 * 2009-09-10 1.8  SCS阿部大輔  【0001331】マージン額の計算時にページ遷移を指定
 * 2009-12-21 1.9  SCS阿部大輔  【E_本稼動_00535】営業原価対応
+* 2011-04-18 1.10 SCS吉元強樹  【E_本稼動_01373】通常NET価格自動導出対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -3306,6 +3307,91 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
 /* 20090723_abe_0000806 END*/
 
+// 2011-04-18 v1.10 T.Yoshimoto Add Start E_本稼動_01373
+  /*****************************************************************************
+   * 通常NET価格取得処理
+   *****************************************************************************
+   */
+  public void handleUsuallNetPriceButton()
+  {
+
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+
+    // 見積ヘッダVOインスタンス取得
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    // 見積明細VOインスタンス取得
+    XxcsoQuoteLinesStoreFullVOImpl lineVo = getXxcsoQuoteLinesStoreFullVO1();
+    if ( lineVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesStoreFullVO1");
+    }
+
+    // 通常NET価格VOインスタンス取得
+    XxcsoUsuallNetPriceVOImpl usuallNetPriceVo = getXxcsoUsuallNetPriceVO1();
+    if ( lineVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoUsuallNetPriceVO1");
+    }
+
+    // 見積ヘッダVOの1行目を取得
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+    
+    // 見積明細VOの1行目を取得
+    XxcsoQuoteLinesStoreFullVORowImpl lineRow
+      = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.first();
+
+    while ( lineRow != null )
+    {
+
+      if ( "Y".equals(lineRow.getSelectFlag()) )
+      {
+
+        // 通常NET価格の検索実行
+        usuallNetPriceVo.initQuery(
+          headerRow.getAccountNumber(),    // 顧客コード
+          lineRow.getInventoryItemId(),    // 品目ID
+          lineRow.getUsuallyDelivPrice()   // 通常店納価格
+        );
+
+        // 通常NET価格取得
+        XxcsoUsuallNetPriceVORowImpl usuallNetPriceRow
+          = (XxcsoUsuallNetPriceVORowImpl)usuallNetPriceVo.first();
+
+        //通常NET価格が取得できた場合
+        if ( usuallNetPriceRow != null )
+        {
+
+          // 取得した通常店納価格を設定
+          lineRow.setUsuallNetPrice(usuallNetPriceRow.getUsuallNetPrice());
+        }
+      }
+
+      // 次行を取得
+      lineRow = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.next();
+    }
+
+    // カーソルを先頭にする
+    lineVo.first();
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+// 2011-04-18 v1.10 T.Yoshimoto Add End E_本稼動_01373
+
   /*****************************************************************************
    * ボタンレンダリング処理
    *****************************************************************************
@@ -3653,4 +3739,15 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoReferenceQuotationPriceVOImpl)findViewObject("XxcsoReferenceQuotationPriceVO1");
   }
+
+// 2011-04-18 v1.10 T.Yoshimoto Add Start E_本稼動_01373
+  /**
+   * 
+   * Container's getter for XxcsoUsuallNetPriceVO1
+   */
+  public XxcsoUsuallNetPriceVOImpl getXxcsoUsuallNetPriceVO1()
+  {
+    return (XxcsoUsuallNetPriceVOImpl)findViewObject("XxcsoUsuallNetPriceVO1");
+  }
+// 2011-04-18 v1.10 T.Yoshimoto Add End E_本稼動_01373
 }
