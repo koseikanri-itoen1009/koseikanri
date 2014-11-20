@@ -9,7 +9,7 @@ CREATE TABLE xxpo.xxpo_price_lines
   maker_code                  VARCHAR2(30),
   expense_item_type           VARCHAR2(30)    NOT NULL,
   expense_item_detail_type    VARCHAR2(30)    NOT NULL,
-  quantity                    NUMBER(12,3),
+  quantity                    NUMBER(13,4),
   quantity_uom                VARCHAR2(3),
   unit_price                  NUMBER(9,2)     NOT NULL,
   unit_price_uom              VARCHAR2(3),
