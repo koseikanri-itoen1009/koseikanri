@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                                        更新の条件にEDIチェーン店コードを追加
  *  2010/04/16    1.9  M.Sano           [E_本稼動_02322]・顧客品目の抽出条件を訂正
  *  2011/10/07    1.10 K.Kiriu          [E_本稼動_07906]・流通ＢＭＳ対応
+ *  2013/07/11    1.11 T.Shimoji        [E_本稼動_10904]・消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -1164,52 +1165,54 @@ AS
                    );
       RAISE global_data_check_expt;
     END IF;
-    -- 税率
-    BEGIN
-      SELECT  xtrv.tax_rate             --税率
-      INTO    gt_tax_rate
-      FROM    hz_cust_accounts    hca   --顧客
-             ,hz_parties          hp    --パーティ
-             ,xxcmm_cust_accounts xca   --顧客追加情報
-             ,xxcos_tax_rate_v    xtrv  --消費税率ビュー
-      WHERE   xtrv.set_of_books_id    =  gn_bks_id           --会計帳簿ID
-      AND     (
-                ( xtrv.start_date_active IS NULL )
-                OR
-                ( xtrv.start_date_active <= cd_process_date )
-              )
-      AND     (
-                ( xtrv.end_date_active IS NULL )
-                OR
-                ( xtrv.end_date_active >= cd_process_date )
-              )                                              --業務日付がFROM-TO内
-      AND     xtrv.tax_start_date <= cd_process_date         --税開始日が業務開始日以前
-      AND     (
-                ( xtrv.tax_end_date IS NULL )
-                OR
-                ( xtrv.tax_end_date >= cd_process_date )
-              )                                              --税終了日がNULLもしくは業務開始日以降
-      AND     xtrv.account_number     =  hca.account_number
-      AND     hp.duns_number_c        <> cv_cust_status      --顧客ステータス(中止決裁済以外)
-      AND     hca.party_id            =  hp.party_id
-      AND     hca.status              =  cv_status_a         --ステータス(有効)
-      AND     hca.customer_class_code =  cv_cust_code_cust   --顧客区分(顧客)
-      AND     hca.cust_account_id     =  xca.customer_id
-      AND     xca.chain_store_code    =  it_edi_c_code       --EDIチェーン店
-      AND     xca.ship_storage_code   =  it_to_s_code        --搬送先保管場所
-      AND     rownum                  =  cn_1
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        ov_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_tax_err  --税率取得エラー
-                      ,iv_token_name1  => cv_tkn_chain_s  --トークンコード１
-                      ,iv_token_value1 => it_edi_c_code   --パラメータ名
-                     );
-        lv_errbuf  := SQLERRM;
-        RAISE global_data_check_expt;
-    END;
+-- 2013/07/11 Ver.1.11 Del Start
+--    -- 税率
+--    BEGIN
+--      SELECT  xtrv.tax_rate             --税率
+--      INTO    gt_tax_rate
+--      FROM    hz_cust_accounts    hca   --顧客
+--             ,hz_parties          hp    --パーティ
+--             ,xxcmm_cust_accounts xca   --顧客追加情報
+--             ,xxcos_tax_rate_v    xtrv  --消費税率ビュー
+--      WHERE   xtrv.set_of_books_id    =  gn_bks_id           --会計帳簿ID
+--      AND     (
+--                ( xtrv.start_date_active IS NULL )
+--                OR
+--                ( xtrv.start_date_active <= cd_process_date )
+--              )
+--      AND     (
+--                ( xtrv.end_date_active IS NULL )
+--                OR
+--                ( xtrv.end_date_active >= cd_process_date )
+--              )                                              --業務日付がFROM-TO内
+--      AND     xtrv.tax_start_date <= cd_process_date         --税開始日が業務開始日以前
+--      AND     (
+--                ( xtrv.tax_end_date IS NULL )
+--                OR
+--                ( xtrv.tax_end_date >= cd_process_date )
+--              )                                              --税終了日がNULLもしくは業務開始日以降
+--      AND     xtrv.account_number     =  hca.account_number
+--      AND     hp.duns_number_c        <> cv_cust_status      --顧客ステータス(中止決裁済以外)
+--      AND     hca.party_id            =  hp.party_id
+--      AND     hca.status              =  cv_status_a         --ステータス(有効)
+--      AND     hca.customer_class_code =  cv_cust_code_cust   --顧客区分(顧客)
+--      AND     hca.cust_account_id     =  xca.customer_id
+--      AND     xca.chain_store_code    =  it_edi_c_code       --EDIチェーン店
+--      AND     xca.ship_storage_code   =  it_to_s_code        --搬送先保管場所
+--      AND     rownum                  =  cn_1
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        ov_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_application  --アプリケーション
+--                      ,iv_name         => cv_msg_tax_err  --税率取得エラー
+--                      ,iv_token_name1  => cv_tkn_chain_s  --トークンコード１
+--                      ,iv_token_value1 => it_edi_c_code   --パラメータ名
+--                     );
+--        lv_errbuf  := SQLERRM;
+--        RAISE global_data_check_expt;
+--    END;
+-- 2013/07/11 Ver.1.11 Del End
     -- EDI媒体区分
     BEGIN
       --メッセージより内容を取得
@@ -2432,9 +2435,56 @@ AS
     ln_invc_ball_stkout_qty    NUMBER;                                --(伝票計)欠品数量(ボール)
     ln_invc_sum_stkout_qty     NUMBER;                                --(伝票計)欠品数量(合計・バラ)
 -- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD  end  ********************* --
+-- 2013/07/11 Ver.1.11 Add Start
+    ld_serch_date         DATE;
+-- 2013/07/11 Ver.1.11 Add END
 --
     -- *** ローカル・カーソル ***
 --
+-- 2013/07/11 Ver.1.11 Add Start
+    -- 税率取得
+    CURSOR tax_rate_cur(
+                         id_tax_serch_date         DATE       -- 税率検索日
+                        ,iv_edi_chain_code         VARCHAR2   -- EDIチェーン店コード
+                        ,iv_to_subinventory_code   VARCHAR2   -- 搬送先保管場所
+                        ,iv_shop_code              VARCHAR2   -- 店コード
+                       )
+    IS
+      SELECT  xtrv.tax_rate   tax_rate  --税率
+      FROM    hz_cust_accounts    hca   --顧客
+             ,hz_parties          hp    --パーティ
+             ,xxcmm_cust_accounts xca   --顧客追加情報
+             ,xxcos_tax_rate_v    xtrv  --消費税率ビュー
+      WHERE   xtrv.set_of_books_id    =  gn_bks_id             --会計帳簿ID
+      AND     (
+                ( xtrv.start_date_active IS NULL )
+                OR
+                ( xtrv.start_date_active <= id_tax_serch_date )
+              )
+      AND     (
+                ( xtrv.end_date_active IS NULL )
+                OR
+                ( xtrv.end_date_active >= id_tax_serch_date )
+              )                                                --税率検索日がFROM-TO内
+      AND     xtrv.tax_start_date <= id_tax_serch_date         --税開始日が税率検索日以前
+      AND     (
+                ( xtrv.tax_end_date IS NULL )
+                OR
+                ( xtrv.tax_end_date >= id_tax_serch_date )
+              )                                                --税終了日がNULLもしくは税率検索日以降
+      AND     xtrv.account_number     =  hca.account_number
+      AND     hp.duns_number_c        <> cv_cust_status                    --顧客ステータス(中止決裁済以外)
+      AND     hca.party_id            =  hp.party_id
+      AND     hca.status              =  cv_status_a                       --ステータス(有効)
+      AND     hca.customer_class_code =  cv_cust_code_cust                 --顧客区分(顧客)
+      AND     hca.cust_account_id     =  xca.customer_id
+      AND     xca.chain_store_code    =  iv_edi_chain_code                 --EDIチェーン店
+      AND     xca.ship_storage_code   =  iv_to_subinventory_code           --搬送先保管場所
+      AND     xca.store_code          =  NVL(iv_shop_code,xca.store_code)  --店舗コード
+      ORDER BY xca.store_code      -- 顧客追加情報.店舗コード
+              ,hca.account_number  -- 顧客.顧客コード
+      ;
+-- 2013/07/11 Ver.1.11 Add End
     -- *** ローカル・レコード ***
 --
     -- *** ローカル・テーブル ***
@@ -2883,6 +2933,67 @@ AS
       l_data_tab(cv_gen_suc_item8)            := TO_CHAR(NULL);
       l_data_tab(cv_gen_suc_item9)            := TO_CHAR(NULL);
       l_data_tab(cv_gen_suc_item10)           := TO_CHAR(NULL);
+-- 2013/07/11 Ver.1.11 Add Start
+      -- ========================
+      -- 税率検索用の基準日付取得
+      -- ========================
+      ld_serch_date := NULL;
+      --検品予定日
+      IF ( gt_edi_stc_date(i).inspect_schedule_date IS NOT NULL ) THEN
+        ld_serch_date := gt_edi_stc_date(i).inspect_schedule_date;
+      --入庫予定日
+      ELSIF ( gt_edi_stc_date(i).schedule_arrival_date IS NOT NULL ) THEN
+        ld_serch_date := gt_edi_stc_date(i).schedule_arrival_date;
+      --出荷予定日
+      ELSIF ( gt_edi_stc_date(i).schedule_shipping_date IS NOT NULL ) THEN
+        ld_serch_date := gt_edi_stc_date(i).schedule_shipping_date;
+      --業務日付
+      ELSE
+        ld_serch_date := cd_process_date;
+      END IF;
+      -- ========================
+      -- 消費税率取得
+      -- ========================
+      BEGIN
+        gt_tax_rate := NULL;
+        -- カーソルOPEN
+        OPEN  tax_rate_cur(ld_serch_date                            -- 税率検索日
+                          ,gt_edi_stc_date(i).edi_chain_code        -- EDIチェーン店コード
+                          ,gt_edi_stc_date(i).to_subinventory_code  -- 搬送先保管場所
+                          ,gt_edi_stc_date(i).shop_code             -- 店コード
+                           );
+        -- フェッチ
+        FETCH tax_rate_cur INTO gt_tax_rate;
+        -- 消費税率取得判定
+        IF tax_rate_cur%ROWCOUNT = 0 THEN
+          -- カーソルCLOSE
+          CLOSE tax_rate_cur;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application                     --アプリケーション
+                        ,iv_name         => cv_msg_tax_err                      --税率取得エラー
+                        ,iv_token_name1  => cv_tkn_chain_s                      --トークンコード１
+                        ,iv_token_value1 => gt_edi_stc_date(i).edi_chain_code   --パラメータ名
+                       );
+          RAISE global_api_expt;
+        END IF;
+        -- カーソルCLOSE
+        CLOSE tax_rate_cur;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- カーソルCLOSE
+          IF ( tax_rate_cur%ISOPEN ) THEN
+            CLOSE tax_rate_cur;
+          END IF;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_tax_err  --税率取得エラー
+                        ,iv_token_name1  => cv_tkn_chain_s  --トークンコード１
+                        ,iv_token_value1 => gt_edi_stc_date(i).edi_chain_code   --パラメータ名
+                       );
+          lv_errbuf := SQLERRM;
+          RAISE global_api_expt;
+      END;
+-- 2013/07/11 Ver.1.11 Add End
       l_data_tab(cv_gen_add_item1)            := TO_CHAR( gt_tax_rate );
       l_data_tab(cv_gen_add_item2)            := SUBSTRB( gt_header_data.delivery_base_l_phonetic, 1, 10 );
       l_data_tab(cv_gen_add_item3)            := SUBSTRB( gt_header_data.delivery_base_l_phonetic, 11, 10 );

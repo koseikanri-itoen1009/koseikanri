@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_tax_rate_v
  * Description     : Á”ïÅ—¦view
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   T.Kumamoto       V‹Kì¬
  *  2009/02/25    1.1   S.Nakamura       [COS_135]ar_vat_tax_all_b‚Ì—LŒøğŒ’Ç‰Á
+ *  2013/07/10    1.2   T.Shimoji        [E_–{‰Ò“®_10904]Á”ïÅ‘Å‘Î‰
  *
  ************************************************************************************/
 CREATE OR REPLACE VIEW xxcos_tax_rate_v (
@@ -40,8 +41,12 @@ AS
          ,avtab.tax_rate              tax_rate
          ,flv.start_date_active       start_date_active
          ,flv.end_date_active         end_date_active
-         ,avtab.start_date            tax_start_date
-         ,avtab.end_date              tax_end_date  
+-- 2013/07/10 Ver.1.2 Mod Start
+--         ,avtab.start_date            tax_start_date
+--         ,avtab.end_date              tax_end_date  
+         ,TO_DATE(avtab.attribute1,'YYYYMMDD')   tax_start_date
+         ,TO_DATE(avtab.attribute2,'YYYYMMDD')   tax_end_date
+-- 2013/07/10 Ver.1.2 Mod End
   FROM    hz_cust_accounts            hca
          ,xxcmm_cust_accounts         xca
          ,fnd_lookup_values           flv
