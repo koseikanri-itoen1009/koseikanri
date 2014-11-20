@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxccp_svfcommon_pkg
+CREATE OR REPLACE PACKAGE BODY apps.xxccp_svfcommon_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_svfcommon_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009-03-06    1.3  Masayuki.Sano    ソート処理動作不正対応
  *  2009-03-23    1.4  Shinya.Kayahara  最終行にスラッシュ追加
  *  2009-04-08    1.5  Masayuki.Sano    ソート処理動作不正対応
+ *  2009-05-01    1.6  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --

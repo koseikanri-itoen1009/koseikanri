@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCCP005A01C
+CREATE OR REPLACE PACKAGE APPS.XXCCP005A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP005A01C(spec)
  * Description      : 他システムからのIFファイルにおける、ヘッダ・フッタ削除します。
  * MD.050           : MD050_CCP_005_A01_IFファイルヘッダ・フッタ削除処理
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-xx-xx    1.0   Yutaka.Kuboshima main新規作成
+ *  2009-05-01    1.1   Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --

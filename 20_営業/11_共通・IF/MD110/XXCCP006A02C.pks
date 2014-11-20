@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCCP006A02C
+CREATE OR REPLACE PACKAGE APPS.XXCCP006A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP006A02C(spec)
  * Description      : 動的パラメータコンカレント対応
  * MD.050           : 動的パラメータコンカレント対応 MD050_CCP_006_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor              Description
  * ------------- ----- ------------------- -------------------------------------------------
  *  2009/01/13     1.0  Masakazu Yamashita  main新規作成
+ *  2009/05/01     1.1  Masayuki.Sano       障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCCP006A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCCP006A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP006A01C(body)
  * Description      : 親子コンカレント終了ステータス監視
  * MD.050           : MD050_CCP_006_A01_親子コンカレント終了ステータス監視
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/03/11    1.1   Masayuki Sano    メッセージ表示不正対応
  *  2009/04/20    1.2   Masayuki Sano    障害対応T1_0443
  *                                       ・2階層目⇒3階層目まで参照可能となるように修正。
+ *  2009/05/01    1.3   Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --

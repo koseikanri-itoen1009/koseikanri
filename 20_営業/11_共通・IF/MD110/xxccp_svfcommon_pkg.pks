@@ -1,4 +1,4 @@
-create or replace PACKAGE xxccp_svfcommon_pkg
+create or replace PACKAGE apps.xxccp_svfcommon_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_svfcommon_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.0
+ * Version                : 1.2
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -21,6 +21,8 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008-11-11    1.0  Yuuki.Nakamura   新規作成
  *  2009-03-23    1.1  Shinya.Kayahara  最終行にスラッシュ追加
+ *  2009-05-01    1.2  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *
  *****************************************************************************************/
 --
   -- ===============================

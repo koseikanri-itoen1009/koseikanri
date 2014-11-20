@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCCP009A02C
+CREATE OR REPLACE PACKAGE APPS.XXCCP009A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP009A02C(spec)
  * Description      : 対向システムジョブ状況テーブル(アドオン)の更新を行います。
  * MD.050           : MD050_CCP_009_A02_対向システムジョブ状況更新処理
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-05    1.0  Koji.Oomata       main新規作成
+ *  2009-05-01    1.1   Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --

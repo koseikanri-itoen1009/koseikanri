@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCCP006A01C--←<package_name>は大文字で記述して下さい。
+CREATE OR REPLACE PACKAGE APPS.XXCCP006A01C--←<package_name>は大文字で記述して下さい。
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP006A01C(spec)
  * Description      : 親子コンカレント終了ステータス監視
  * MD.050           : MD050_CCP_006_A01_親子コンカレント終了ステータス監視
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/15    1.0   Yohei Takayama   main新規作成
+ *  2009/05/01    1.1   Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --

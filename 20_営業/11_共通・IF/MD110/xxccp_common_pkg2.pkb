@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY xxccp_common_pkg2
+create or replace PACKAGE BODY apps.xxccp_common_pkg2
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_common_pkg2(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *                                      禁則文字から除外
  *  2009-02-11    1.3  K.Kanada         [業務処理日取得関数]テスト実施用にプロファイル値で
  *                                      業務日付を指定可能なように変更
+ *  2009-05-01    1.4  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *****************************************************************************************/
 --
   -- ===============================

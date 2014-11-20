@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCCP001A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCCP001A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP001A01C(spec)
  * Description      : 業務日付照会更新
  * MD.050           : MD050_CCP_001_A01_業務日付更新照会
- * Version          : 1.00
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/10    1.00  渡辺直樹         新規作成
+ *  2009/05/01    1.01  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *
  *****************************************************************************************/
 --
