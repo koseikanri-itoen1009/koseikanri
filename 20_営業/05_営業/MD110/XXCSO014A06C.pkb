@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,7 +36,8 @@ AS
  *                                        売上実績ビューから、営業員用売上実績VIEWへ修正
  *  2009-03-18    1.1   M.Maruyama        DEBUGLOGメッセージ修正
  *  2009-05-01    1.2   Tomoko.Mori       T1_0897対応
- *  2009-05-01    1.3   K.Satomura        T1_1082対応
+ *  2009-05-20    1.3   K.Satomura        T1_1082対応
+ *  2009-05-28    1.4   K.Satomura        T1_1236対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -109,6 +110,9 @@ AS
   cv_tkn_number_07    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00144';  -- CSVファイル出力エラー
   cv_tkn_number_08    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00152';  -- インタファースファイル名
   cv_tkn_number_09    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00224';  -- CSVファイル出力0件エラー
+  /* 2009.05.28 K.Satomura T1_1236対応 START */
+  cv_tkn_number_10    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00572';  -- リソースグループ有効エラー
+  /* 2009.05.28 K.Satomura T1_1236対応 END */
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';
@@ -122,6 +126,11 @@ AS
   cv_tkn_ymd              CONSTANT VARCHAR2(20) := 'YEAR_MONTH_DAY';
   cv_tkn_tbl              CONSTANT VARCHAR2(20) := 'TABLE';
   cv_tkn_cnt              CONSTANT VARCHAR2(20) := 'COUNT';
+  /* 2009.05.28 K.Satomura T1_1236対応 START */
+  cv_tkn_emp_num          CONSTANT VARCHAR2(20) := 'EMPLOYEE_NUMBER';
+  cv_tkn_emp_name         CONSTANT VARCHAR2(20) := 'EMPLOYEE__NAME';
+  /* 2009.05.28 K.Satomura T1_1236対応 END */
+
 --
   cb_true                 CONSTANT BOOLEAN := TRUE;
   cb_false                CONSTANT BOOLEAN := FALSE;
@@ -1561,6 +1570,24 @@ AS
             buff   => lv_err_rec_info
           );
 --
+        /* 2009.05.28 K.Satomura T1_1236対応 START */
+        IF (l_prsncd_data_rec.base_code IS NULL) THEN
+          -- 拠点コードがNULLの場合（リソースグループが設定されていない場合）
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                       -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_10                  -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_emp_num                    -- トークンコード1
+                         ,iv_token_value1 => l_prsncd_data_rec.employee_number -- トークン値1
+                         ,iv_token_name2  => cv_tkn_emp_name                   -- トークンコード2
+                         ,iv_token_value2 => l_prsncd_data_rec.full_name       -- トークン値2
+                       );
+          --
+          lv_errbuf := lv_errmsg;
+          RAISE error_skip_data_expt;
+          --
+        END IF;
+        --
+        /* 2009.05.28 K.Satomura T1_1236対応 END */
         -- =================================================
         -- A-5.CSVファイルに出力する関連情報取得
         -- =================================================
