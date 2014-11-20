@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2010/08/20    1.18  M.Watanabe       [E_本稼動_01763] 販売実績の日中連携化対応
  *                                       [E_本稼動_02635] 夜間起動時のエラーログを各拠点にて確認可能とする
  *  2010/10/12    1.19  K.Kiriu          [E_本稼動_01763] 販売実績の日中連携化再対応
+ *  2010/12/17    1.20  H.Sekine         [E_本稼動_05950] 随時実行の場合の受注データの抽出条件の変更(A-4)
  *
  *****************************************************************************************/
 --
@@ -2127,10 +2128,15 @@ AS
 --
           SELECT
             /*+
-              LEADING(ooha oola msi)
-              INDEX(oola xxcos_oe_order_lines_all_n23)
-              INDEX(ooha xxcos_oe_order_headers_all_n11)
-              USE_NL(ooha oola xca ottth otttl ottth ottal msi)
+-- ************ 2010/12/17 1.20 H.Sekine MOD START *********** --
+              LEADING(XCA)
+              INDEX(xca XXCMM_CUST_ACCOUNTS_N21)
+--              LEADING(ooha oola msi)
+              INDEX(oola xxcos_oe_order_lines_all_n22)
+--              INDEX(ooha xxcos_oe_order_headers_all_n11)
+--              USE_NL(ooha oola xca ottth otttl ottth ottal msi)
+-- ************ 2010/12/17 1.20 H.Sekine MOD END   *********** --
+              USE_NL(oola ooha)
               LEADING(xchv.cust_hier.ship_hzca_2 xchv.cust_hier.bill_hcar_2 xchv.cust_hier.bill_hzca_2 )
               USE_NL(xchv.cust_hier.ship_hasa_2)
               USE_NL(ooha xchv)
@@ -2259,7 +2265,10 @@ AS
             -- 受注ヘッダー.情報区分 = NULL, 01, 02
             AND (   ooha.global_attribute3 IS NULL
                  OR ooha.global_attribute3 IN (cv_info_class_01, cv_info_class_02) )
-            AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
+-- ************ 2010/12/17 1.20 H.Sekine MOD START *********** --
+--            AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
+            AND oola.sold_to_org_id = xca.customer_id                       -- 受注明細.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
+-- ************ 2010/12/17 1.20 H.Sekine MOD END   *********** --
             AND xca.customer_id = xchv.ship_account_id                      -- ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID = 顧客階層VIEW.出荷先顧客ID
             AND NOT EXISTS (                                                -- 受注明細.受注品目≠エラー品目
                                           SELECT
@@ -2336,10 +2345,13 @@ AS
                                          AND msi.attribute13             = flv.attribute1
                                        )
             --入力パラメータ 納品拠点コード (必須)
-            AND DECODE(msi.attribute1
-                     , cv_subinventory_class
-                     , xca.delivery_base_code
-                     , msi.attribute7)        =  gt_dlv_code
+-- ************ 2010/12/17 1.20 H.Sekine MOD START *********** --
+--            AND DECODE(msi.attribute1
+--                     , cv_subinventory_class
+--                     , xca.delivery_base_code
+--                     , msi.attribute7)        =  gt_dlv_code
+            AND xca.delivery_base_code = gt_dlv_code
+-- ************ 2010/12/17 1.20 H.Sekine MOD END   *********** --
             --入力パラメータ EDIチェーン店コード
 -- ************ 2010/10/12 1.19 K.Kiriu MOD START ************ --
 --            AND xca.chain_store_code          =  NVL( gt_edi_chain_code , xca.chain_store_code )
