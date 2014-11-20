@@ -61,8 +61,14 @@ AS
  *  2009/07/24    1.13  Y.Kuboshima      障害0000842 OPM品目アドオンマスタの適用開始日にセットする値を変更
  *                                                   (業務日付 -> プロファイル:XXCMM:適用開始日初期値)
  *  2009/08/07    1.14  Y.Kuboshima      障害0000862 資材品目の場合、標準原価合計値が小数点二桁まで許容するように修正
- *                                       障害0000948 基準単位のチェックを変更
- *                                                   (本,kg以外はエラー -> sy_uoms_mst_vに存在しない場合はエラー)
+ *  2009/09/07    1.15  Y.Kuboshima      障害0000948 基準単位のチェックを変更
+ *                                                   (本,kg以外はエラー -> LOOKUP(XXCMM_UNITS_OF_MEASURE)に存在しない場合はエラー)
+ *                                       障害0001258 品目カテゴリ割当(品目区分,内外区分,商品区分,品質区分,工場群コード,経理用群コード)追加
+ *                                                   OPM品目,OPM品目アドオンに設定する値を追加
+ *                                                   OPM品目 検査L/T,原価管理区分,代表入数,仕入単価導出日タイプ,判定回数,仕向区分,発注可能判定回数
+ *                                                   OPM品目アドオン 工場群,賞味期間区分,賞味期間,消費期間,納入期間,ケース重量容積,
+ *                                                                   原料使用量,標準歩留,型種別,商品分類,商品種別,パレ配数,
+ *                                                                   パレ段数,容器区分,単位区分,棚卸区分,トレース区分
  *
  *****************************************************************************************/
 --
@@ -233,6 +239,20 @@ AS
   cv_baracha_div_def     CONSTANT VARCHAR2(60)  := 'XXCMM:バラ茶区分初期値';                        -- XXCMM:バラ茶区分初期値
   cv_mark_pg_def         CONSTANT VARCHAR2(60)  := 'XXCMM:マーケ用群コード初期値';                  -- XXCMM:マーケ用群コード初期値
 --Ver1.11 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+  cv_prof_item_div       CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_ITEM_DIV';                       -- XXCMM:品目区分初期値
+  cv_prof_inout_div      CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_INOUT_DIV';                      -- XXCMM:内外区分初期値
+  cv_prof_product_div    CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_PRODUCT_DIV';                    -- XXCMM:商品区分初期値
+  cv_prof_quality_div    CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_QUALITY_DIV';                    -- XXCMM:品質区分初期値
+  cv_prof_fact_pg        CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_FACT_GUN_CODE';                  -- XXCMM:工場群コード初期値
+  cv_prof_acnt_pg        CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_ACNT_GUN_CODE';                  -- XXCMM:経理部用群コード初期値
+  cv_item_div_def        CONSTANT VARCHAR2(60)  := 'XXCMM:品目区分初期値';                          -- XXCMM:品目区分初期値
+  cv_inout_div_def       CONSTANT VARCHAR2(60)  := 'XXCMM:内外区分初期値';                          -- XXCMM:内外区分初期値
+  cv_product_div_def     CONSTANT VARCHAR2(60)  := 'XXCMM:商品区分初期値';                          -- XXCMM:商品区分初期値
+  cv_quality_div_def     CONSTANT VARCHAR2(60)  := 'XXCMM:品質区分初期値';                          -- XXCMM:品質区分初期値
+  cv_fact_pg_def         CONSTANT VARCHAR2(60)  := 'XXCMM:工場群コード初期値';                      -- XXCMM:工場群コード初期値
+  cv_acnt_pg_def         CONSTANT VARCHAR2(60)  := 'XXCMM:経理部用群コード初期値';                  -- XXCMM:経理部用群コード初期値
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
 -- Ver.1.5 20090224 Add START
   cv_process_date        CONSTANT VARCHAR2(30)  := '業務日付';                                      -- 業務日付
 -- Ver.1.5 20090224 Add END
@@ -259,6 +279,10 @@ AS
                          CONSTANT VARCHAR2(30)  := 'XXCMM_ITM_KERIYOKIGUN';                         -- 経理容器群
   cv_lookup_brand_group  CONSTANT VARCHAR2(30)  := 'XXCMM_ITM_BRANDGUN';                            -- ブランド群
   cv_lookup_senmonten    CONSTANT VARCHAR2(30)  := 'XXCMM_ITM_SENMONTEN_SHIIRESAKI';                -- 専門店仕入先
+-- 2009/09/07 Ver1.15 障害0000948 add start by Y.Kuboshima
+  cv_lookup_units_of_measure
+                         CONSTANT VARCHAR2(30)  := 'XXCMM_UNITS_OF_MEASURE';                        -- 基準単位
+-- 2009/09/07 Ver1.15 障害0000948 add end by Y.Kuboshima
 --
   -- TABLE NAME
   cv_table_flv           CONSTANT VARCHAR2(30)  := 'LOOKUP表';                                      -- FND_LOOKUP_VALUES_VL
@@ -273,6 +297,14 @@ AS
   cv_table_gic_mgc       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(マーケ用群コード)';         -- GMI_ITEM_CATEGORIES
   cv_table_gic_pg        CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(群コード)';                 -- GMI_ITEM_CATEGORIES
 --Ver1.11  2009/06/11 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+  cv_table_gic_itd       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(品目区分)';                 -- GMI_ITEM_CATEGORIES
+  cv_table_gic_ind       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(内外区分)';                 -- GMI_ITEM_CATEGORIES
+  cv_table_gic_pd        CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(商品区分)';                 -- GMI_ITEM_CATEGORIES
+  cv_table_gic_qd        CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(品質区分)';                 -- GMI_ITEM_CATEGORIES
+  cv_table_gic_fpg       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(工場群コード)';             -- GMI_ITEM_CATEGORIES
+  cv_table_gic_apg       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(経理部用群コード)';         -- GMI_ITEM_CATEGORIES
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
 --
   cv_table_ccd           CONSTANT VARCHAR2(30)  := 'OPM標準原価';                                   -- CM_CMPT_DTL
   cv_table_xsib          CONSTANT VARCHAR2(30)  := 'Disc品目アドオン';                              -- XXCMM_SYSTEM_ITEMS_B
@@ -355,6 +387,16 @@ AS
   cv_categ_set_mark_pg   CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_mark_pg;        -- マーケ用群コード
   cv_categ_set_gun_code  CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_gun_code;       -- 群コード
 --Ver1.11  2009/06/11 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+  cv_categ_set_item_div  CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_item_div;       -- 品目区分
+  cv_categ_set_inout_div CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_inout_div;      -- 内外区分
+  cv_categ_set_product_div
+                         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_product_div;    -- 商品区分
+  cv_categ_set_quality_div
+                         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_quality_div;    -- 品質区分
+  cv_categ_set_fact_pg   CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_fact_pg;        -- 工場群コード
+  cv_categ_set_acnt_pg   CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_acnt_pg;        -- 経理部用群コード
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
 --
   cv_prog_opmitem_trigger
                          CONSTANT VARCHAR2(20)  := 'XXCMN810003C';                                  -- 「OPM品目トリガー起動コンカレント」
@@ -363,8 +405,10 @@ AS
   cv_sales_target_0      CONSTANT VARCHAR2(1)   := '0';                                             -- 売上対象外
   cv_sales_target_1      CONSTANT VARCHAR2(1)   := '1';                                             -- 売上対象
   -- 基準単位
-  cn_item_um_hon         CONSTANT VARCHAR2(2)   := '本';                                            -- 本
-  cn_item_um_kg          CONSTANT VARCHAR2(2)   := 'kg';                                            -- kg
+-- 2009/09/07 Ver1.15 障害0000948 delete start by Y.Kuboshima
+--  cn_item_um_hon         CONSTANT VARCHAR2(2)   := '本';                                            -- 本
+--  cn_item_um_kg          CONSTANT VARCHAR2(2)   := 'kg';                                            -- kg
+-- 2009/09/07 Ver1.15 障害0000948 delete end by Y.Kuboshima
   -- 商品製品区分
   cn_item_prod_item      CONSTANT NUMBER        := 1;                                               -- 商品
   cn_item_prod_prod      CONSTANT NUMBER        := 2;                                               -- 製品
@@ -471,6 +515,20 @@ AS
       ,pg_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(群コード)
       ,pg_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(群コード)
 --Ver1.11 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+      ,itd_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(品目区分)
+      ,itd_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(品目区分)
+      ,ind_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(内外区分)
+      ,ind_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(内外区分)
+      ,pd_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(商品区分)
+      ,pd_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(商品区分)
+      ,qd_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(品質区分)
+      ,qd_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(品質区分)
+      ,fpg_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(工場群コード)
+      ,fpg_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(工場群コード)
+      ,apg_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(経理部用群コード)
+      ,apg_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(経理部用群コード)
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
       );
   -- LOOKUP情報(親品目時に使用)
   TYPE g_lookup_rtype    IS RECORD                                                                  -- レコード型を宣言
@@ -508,6 +566,14 @@ AS
 --Ver1.13 2009/07/26 Add Start
   gd_opm_apply_date         DATE;                                                                   -- XXCMM:適用開始日初期値
 --Ver1.13 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+  gv_item_div               VARCHAR2(1);                                                            -- XXCMM:品目区分初期値
+  gv_inout_div              VARCHAR2(1);                                                            -- XXCMM:内外区分初期値
+  gv_product_div            VARCHAR2(1);                                                            -- XXCMM:商品区分初期値
+  gv_quality_div            VARCHAR2(1);                                                            -- XXCMM:品質区分初期値
+  gv_fact_pg                VARCHAR2(4);                                                            -- XXCMM:工場群コード初期値
+  gv_acnt_pg                VARCHAR2(4);                                                            -- XXCMM:経理部用群コード初期値
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
   --
   -- ===============================
   -- ユーザー定義例外
@@ -631,6 +697,38 @@ AS
                                      ,io_item_ctg_rec.pg_category_set_id
                                      ;
 --Ver1.11  2009/06/11 End
+-- 2009/09/07 障害0001258 add start by Y.Kuboshima
+      -- 品目区分の場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_item_div ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.itd_category_id
+                                     ,io_item_ctg_rec.itd_category_set_id
+                                     ;
+      -- 内外区分の場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_inout_div ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.ind_category_id
+                                     ,io_item_ctg_rec.ind_category_set_id
+                                     ;
+      -- 商品区分の場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_product_div ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.pd_category_id
+                                     ,io_item_ctg_rec.pd_category_set_id
+                                     ;
+      -- 品質区分の場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_quality_div ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.qd_category_id
+                                     ,io_item_ctg_rec.qd_category_set_id
+                                     ;
+      -- 工場群コードの場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_fact_pg ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.fpg_category_id
+                                     ,io_item_ctg_rec.fpg_category_set_id
+                                     ;
+      -- 経理部用群コードの場合
+      ELSIF ( io_item_ctg_rec.category_set_name = cv_categ_set_acnt_pg ) THEN
+        EXECUTE IMMEDIATE lv_sql INTO io_item_ctg_rec.apg_category_id
+                                     ,io_item_ctg_rec.apg_category_set_id
+                                     ;
+-- 2009/09/07 障害0001258 add end by Y.Kuboshima
       END IF;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1060,6 +1158,10 @@ AS
 --
     ln_parent_item_id         xxcmn_item_mst_b.parent_item_id%TYPE;
 --
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+    l_xxcmn_item_rec          xxcmn_item_mst_b%ROWTYPE;
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
+--
     -- *** ローカル・カーソル ***
     --
     -- 親品目情報取得カーソル
@@ -1443,8 +1545,12 @@ AS
     l_opm_item_rec.attribute11              := l_set_parent_item_rec.case_number;                   -- ケース入数(子品目の場合、親値継承項目)
     l_opm_item_rec.attribute12              := l_set_parent_item_rec.net;                           -- NET(子品目の場合、親値継承項目)
     l_opm_item_rec.attribute13              := i_wk_item_rec.sale_start_date;                         -- 発売（製造）開始日
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
 --    l_opm_item_rec.attribute14              := NULL;                                                -- 検査L/T
 --    l_opm_item_rec.attribute15              := NULL;                                                -- 原価管理区分
+    l_opm_item_rec.attribute14              := '0';                                                 -- 検査L/T
+    l_opm_item_rec.attribute15              := '1';                                                 -- 原価管理区分
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
 --    l_opm_item_rec.attribute16              := NULL;                                                -- 容積
 --
 --↓2009/03/13 Add Start
@@ -1454,24 +1560,30 @@ AS
       ELSE
 -- 2009/06/04 Ver1.10 障害T1_1319 Add start
       --l_opm_item_rec.attribute16              := NULL;
-        l_opm_item_rec.attribute16              := 0;
+        l_opm_item_rec.attribute16              := '0';
       END IF;
     ELSE
       IF ( l_set_parent_item_rec.weight_volume_class = cv_volume ) THEN
         l_opm_item_rec.attribute16              :=l_set_parent_item_rec.weight_volume;
       ELSE
-        l_opm_item_rec.attribute16              := 0;
+        l_opm_item_rec.attribute16              := '0';
       END IF;
 -- 2009/06/04 Ver1.10 障害T1_1319 End
     END IF;                                                                                          -- 容積
 --↑Add End
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
 --    l_opm_item_rec.attribute17              := NULL;                                                -- 代表入数
+    l_opm_item_rec.attribute17              := '1';                                                 -- 代表入数
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
 -- Ver1.8  2009/05/18 Mod  T1_0318 出荷区分に 1:出荷可 を設定
 --    l_opm_item_rec.attribute18              := NULL;                                                -- 出荷区分
     l_opm_item_rec.attribute18              := '1';                                                 -- 出荷区分
 -- End
 --    l_opm_item_rec.attribute19              := NULL;                                                -- －
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
 --    l_opm_item_rec.attribute20              := NULL;                                                -- 仕入単価導出日タイプ
+    l_opm_item_rec.attribute20              := '2';                                                 -- 仕入単価導出日タイプ
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
     l_opm_item_rec.attribute21              := l_set_parent_item_rec.jan_code;                      -- JANコード(子品目の場合、親値継承項目)
     l_opm_item_rec.attribute22              := l_set_parent_item_rec.itf_code;                      -- ITFコード(子品目の場合、親値継承項目)
 --    l_opm_item_rec.attribute23              := NULL;                                                -- 試験有無区分
@@ -1501,21 +1613,26 @@ AS
       ELSE
 -- 2009/06/04 Ver1.10 障害T1_1319 Add start
       --l_opm_item_rec.attribute25              := NULL;
-        l_opm_item_rec.attribute25              := 0;
+        l_opm_item_rec.attribute25              := '0';
       END IF;
     ELSE
       IF ( l_set_parent_item_rec.weight_volume_class = cv_weight ) THEN
         l_opm_item_rec.attribute25              :=l_set_parent_item_rec.weight_volume;
       ELSE
-        l_opm_item_rec.attribute25              := 0;
+        l_opm_item_rec.attribute25              := '0';
       END IF;
 -- 2009/06/04 Ver1.10 障害T1_1319 End
     END IF;                                                                                           -- 重量(子品目の場合、親値継承項目)
 --↑Add End
     l_opm_item_rec.attribute26              := l_set_parent_item_rec.sales_target;                  -- 売上対象区分(子品目の場合、親値継承項目)
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
 --    l_opm_item_rec.attribute27              := NULL;                                                -- 判定回数
 --    l_opm_item_rec.attribute28              := NULL;                                                -- 仕向区分
 --    l_opm_item_rec.attribute29              := NULL;                                                -- 発注可能判定回数
+    l_opm_item_rec.attribute27              := '0';                                                   -- 判定回数
+    l_opm_item_rec.attribute28              := '1';                                                   -- 仕向区分
+    l_opm_item_rec.attribute29              := '0';                                                   -- 発注可能判定回数
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
 --    l_opm_item_rec.attribute30              := NULL;                                                -- マスタ受信日時
 --↓2009/03/17 Add Start
     l_opm_item_rec.attribute30              := TO_CHAR( SYSDATE, cv_date_fmt_std );                   -- マスタ受信日時
@@ -1563,6 +1680,23 @@ AS
     -- A-5.3 OPM品目アドオン登録処理
     --==============================================================
     lv_step := 'A-5.3';
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+    -- OPM品目アドオンに設定する項目の追加
+    l_xxcmn_item_rec.model_type               := 50;                                                -- 型種別
+    l_xxcmn_item_rec.product_type             := 1;                                                 -- 商品種別
+    l_xxcmn_item_rec.expiration_day           := 0;                                                 -- 賞味期間
+    l_xxcmn_item_rec.delivery_lead_time       := 0;                                                 -- 納入期間
+    l_xxcmn_item_rec.whse_county_code         := gv_fact_pg;                                        -- 工場群コード
+    l_xxcmn_item_rec.standard_yield           := 0;                                                 -- 標準歩留
+    l_xxcmn_item_rec.shelf_life               := 0;                                                 -- 消費期間
+    l_xxcmn_item_rec.shelf_life_class         := '10';                                              -- 賞味期間区分
+    l_xxcmn_item_rec.bottle_class             := '10';                                              -- 容器区分
+    l_xxcmn_item_rec.uom_class                := '10';                                              -- 単位区分
+    l_xxcmn_item_rec.inventory_chk_class      := '10';                                              -- 棚卸区分
+    l_xxcmn_item_rec.trace_class              := '10';                                              -- トレース区分
+    l_xxcmn_item_rec.cs_weigth_or_capacity    := 1;                                                 -- ケース重量容積
+    l_xxcmn_item_rec.raw_material_consumption := 1;                                                 -- 原料使用量
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
     BEGIN
       INSERT INTO xxcmn_item_mst_b(
         item_id
@@ -1629,27 +1763,49 @@ AS
        ,ln_parent_item_id                                   -- 親品目ID
        ,NULL                                                -- 廃止区分
        ,NULL                                                -- 廃止日（製造中止日）
-       ,NULL                                                -- 型種別
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
+--       ,NULL                                                -- 型種別
+       ,l_xxcmn_item_rec.model_type                         -- 型種別
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
        ,l_set_parent_item_rec.product_class                 -- 商品分類(子品目の場合、親値継承項目)
-       ,NULL                                                -- 商品種別
-       ,NULL                                                -- 賞味期間
-       ,NULL                                                -- 納入期間
-       ,NULL                                                -- 工場群コード
-       ,NULL                                                -- 標準歩留
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
+--       ,NULL                                                -- 商品種別
+--       ,NULL                                                -- 賞味期間
+--       ,NULL                                                -- 納入期間
+--       ,NULL                                                -- 工場群コード
+--       ,NULL                                                -- 標準歩留
+       ,l_xxcmn_item_rec.product_type                       -- 商品種別
+       ,l_xxcmn_item_rec.expiration_day                     -- 賞味期間
+       ,l_xxcmn_item_rec.delivery_lead_time                 -- 納入期間
+       ,l_xxcmn_item_rec.whse_county_code                   -- 工場群コード
+       ,l_xxcmn_item_rec.standard_yield                     -- 標準歩留
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
        ,NULL                                                -- 出荷停止日
        ,l_set_parent_item_rec.rate_class                    -- 率区分(子品目の場合、親値継承項目)
-       ,NULL                                                -- 消費期間
-       ,NULL                                                -- 賞味期間区分
-       ,NULL                                                -- 容器区分
-       ,NULL                                                -- 単位区分
-       ,NULL                                                -- 棚卸区分
-       ,NULL                                                -- トレース区分
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
+--       ,NULL                                                -- 消費期間
+--       ,NULL                                                -- 賞味期間区分
+--       ,NULL                                                -- 容器区分
+--       ,NULL                                                -- 単位区分
+--       ,NULL                                                -- 棚卸区分
+--       ,NULL                                                -- トレース区分
+       ,l_xxcmn_item_rec.shelf_life                         -- 消費期間
+       ,l_xxcmn_item_rec.shelf_life_class                   -- 賞味期間区分
+       ,l_xxcmn_item_rec.bottle_class                       -- 容器区分
+       ,l_xxcmn_item_rec.uom_class                          -- 単位区分
+       ,l_xxcmn_item_rec.inventory_chk_class                -- 棚卸区分
+       ,l_xxcmn_item_rec.trace_class                        -- トレース区分
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
        ,NULL                                                -- 出荷入数
        ,l_set_parent_item_rec.palette_max_cs_qty            -- 配数(子品目の場合、親値継承項目)
        ,l_set_parent_item_rec.palette_max_step_qty          -- パレット当り最大段数(子品目の場合、親値継承項目)
        ,NULL                                                -- パレット段
-       ,NULL                                                -- ケース重量容積
-       ,NULL                                                -- 原料使用量
+-- 2009/09/07 Ver1.15 障害0001258 modify start by Y.Kuboshima
+--       ,NULL                                                -- ケース重量容積
+--       ,NULL                                                -- 原料使用量
+       ,l_xxcmn_item_rec.cs_weigth_or_capacity              -- ケース重量容積
+       ,l_xxcmn_item_rec.raw_material_consumption           -- 原料使用量
+-- 2009/09/07 Ver1.15 障害0001258 modify end by Y.Kuboshima
        ,NULL                                                -- 予備１
        ,NULL                                                -- 予備２
        ,NULL                                                -- 予備３
@@ -1798,6 +1954,128 @@ AS
     END IF;
 --Ver1.11  2009/06/11 End
 --
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+    --
+    --==============================================================
+    -- A-5.6-4 OPM品目カテゴリ割当(品目区分)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-4';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.itd_category_set_id;
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.itd_category_id;
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_itd;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-5 OPM品目カテゴリ割当(内外区分)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-5';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.ind_category_set_id;
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.ind_category_id;
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_ind;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-6 OPM品目カテゴリ割当(商品区分)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-6';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.pd_category_set_id;
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.pd_category_id;
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_pd;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-7 OPM品目カテゴリ割当(品質区分)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-7';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.qd_category_set_id;
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.qd_category_id;
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_qd;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-8 OPM品目カテゴリ割当(工場群コード)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-8';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.fpg_category_set_id;
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.fpg_category_id;
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_fpg;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+    --
+    --==============================================================
+    -- A-5.6-9 OPM品目カテゴリ割当(経理部用群コード)登録処理
+    --==============================================================
+    lv_step := 'A-5.6-9';
+    l_ctg_hon_prod_rec.item_id         := ln_item_id;
+    l_ctg_hon_prod_rec.category_set_id := i_item_ctg_rec.apg_category_set_id;
+    l_ctg_hon_prod_rec.category_id     := i_item_ctg_rec.apg_category_id;
+    --
+    xxcmm_004common_pkg.proc_opmitem_categ_ref(
+      i_item_category_rec => l_ctg_hon_prod_rec
+     ,ov_errbuf           => lv_errbuf
+     ,ov_retcode          => lv_retcode
+     ,ov_errmsg           => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_tkn_table := cv_table_gic_apg;
+      RAISE ins_err_expt;   -- データ登録例外
+    END IF;
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
     --==============================================================
     -- A-5.7 OPM標準原価登録処理
     -- 子品目は変更予約適用で行います。
@@ -2886,8 +3164,20 @@ AS
         --==============================================================
         lv_step := 'A-4.11';
         IF ( i_wk_item_rec.item_um IS NOT NULL ) THEN
-          -- 本、kg以外はエラー
-          IF ( i_wk_item_rec.item_um NOT IN ( cn_item_um_hon, cn_item_um_kg ) ) THEN
+-- 2009/09/07 Ver1.15 障害0000948 modify start by Y.Kuboshima
+--          -- 本、kg以外はエラー
+--          IF ( i_wk_item_rec.item_um NOT IN ( cn_item_um_hon, cn_item_um_kg ) ) THEN
+          -- 基準単位追加のため、LOOKUP(XXCMM_UNITS_OF_MEASURE)に存在しない場合エラーとするように修正
+          -- 基準単位存在チェック
+          SELECT COUNT(1)
+          INTO   ln_chk_stand_unit
+          FROM   fnd_lookup_values_vl flvv
+          WHERE  flvv.lookup_type  = cv_lookup_units_of_measure
+            AND  flvv.enabled_flag = cv_yes
+            AND  flvv.meaning      = i_wk_item_rec.item_um;
+          -- 基準単位が存在しない場合
+          IF ( ln_chk_stand_unit = 0 ) THEN
+-- 2009/09/07 Ver1.15 障害0000948 modify end by Y.Kuboshima
             -- 基準単位エラー
             lv_errmsg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_appl_name_xxcmm                -- アプリケーション短縮名
@@ -3725,6 +4015,122 @@ AS
       );
     END IF;
 --Ver1.11  2009/06/11 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+    --
+    --==============================================================
+    -- A-4.30.4 品目区分
+    --==============================================================
+    lv_step := 'A-4.30.4';
+    l_item_ctg_rec.category_set_name := cv_categ_set_item_div;
+    l_item_ctg_rec.category_val      := gv_item_div;
+    --
+    -- カテゴリ存在チェック
+    chk_exists_category(
+      io_item_ctg_rec => l_item_ctg_rec
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_check_flag := cv_status_error;
+    END IF;
+    --
+    --==============================================================
+    -- A-4.30.5 内外区分
+    --==============================================================
+    lv_step := 'A-4.30.5';
+    l_item_ctg_rec.category_set_name := cv_categ_set_inout_div;
+    l_item_ctg_rec.category_val      := gv_inout_div;
+    --
+    -- カテゴリ存在チェック
+    chk_exists_category(
+      io_item_ctg_rec => l_item_ctg_rec
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_check_flag := cv_status_error;
+    END IF;
+    --
+    --==============================================================
+    -- A-4.30.6 商品区分
+    --==============================================================
+    lv_step := 'A-4.30.6';
+    l_item_ctg_rec.category_set_name := cv_categ_set_product_div;
+    l_item_ctg_rec.category_val      := gv_product_div;
+    --
+    -- カテゴリ存在チェック
+    chk_exists_category(
+      io_item_ctg_rec => l_item_ctg_rec
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_check_flag := cv_status_error;
+    END IF;
+    --
+    --==============================================================
+    -- A-4.30.7 品質区分
+    --==============================================================
+    lv_step := 'A-4.30.7';
+    l_item_ctg_rec.category_set_name := cv_categ_set_quality_div;
+    l_item_ctg_rec.category_val      := gv_quality_div;
+    --
+    -- カテゴリ存在チェック
+    chk_exists_category(
+      io_item_ctg_rec => l_item_ctg_rec
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_check_flag := cv_status_error;
+    END IF;
+    --
+    --==============================================================
+    -- A-4.30.8 工場群コード
+    --==============================================================
+    lv_step := 'A-4.30.8';
+    l_item_ctg_rec.category_set_name := cv_categ_set_fact_pg;
+    l_item_ctg_rec.category_val      := gv_fact_pg;
+    --
+    -- カテゴリ存在チェック
+    chk_exists_category(
+      io_item_ctg_rec => l_item_ctg_rec
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_check_flag := cv_status_error;
+    END IF;
+    --
+    --==============================================================
+    -- A-4.30.9 経理部用群コード
+    --==============================================================
+    lv_step := 'A-4.30.9';
+    l_item_ctg_rec.category_set_name := cv_categ_set_acnt_pg;
+    l_item_ctg_rec.category_val      := gv_acnt_pg;
+    --
+    -- カテゴリ存在チェック
+    chk_exists_category(
+      io_item_ctg_rec => l_item_ctg_rec
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_check_flag := cv_status_error;
+    END IF;
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
     --
     --==============================================================
     -- A-4.31 処理件数加算
@@ -4569,6 +4975,55 @@ AS
       RAISE get_profile_expt;
     END IF;
 -- Ver1.13 End
+-- 2009/09/07 Ver1.15 障害0001258 add start by Y.Kuboshima
+    -- XXCMM:品目区分初期値
+    gv_item_div := FND_PROFILE.VALUE(cv_prof_item_div);
+    -- 取得エラー時
+    IF ( gv_item_div IS NULL ) THEN
+      lv_tkn_value := cv_item_div_def;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:内外区分初期値
+    gv_inout_div := FND_PROFILE.VALUE(cv_prof_inout_div);
+    -- 取得エラー時
+    IF ( gv_inout_div IS NULL ) THEN
+      lv_tkn_value := cv_inout_div_def;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:商品区分初期値
+    gv_product_div := FND_PROFILE.VALUE(cv_prof_product_div);
+    -- 取得エラー時
+    IF ( gv_product_div IS NULL ) THEN
+      lv_tkn_value := cv_product_div_def;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:品質区分初期値
+    gv_quality_div := FND_PROFILE.VALUE(cv_prof_quality_div);
+    -- 取得エラー時
+    IF ( gv_quality_div IS NULL ) THEN
+      lv_tkn_value := cv_quality_div_def;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:工場群コード初期値
+    gv_fact_pg := FND_PROFILE.VALUE(cv_prof_fact_pg);
+    -- 取得エラー時
+    IF ( gv_fact_pg IS NULL ) THEN
+      lv_tkn_value := cv_fact_pg_def;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:経理部用群コード初期値
+    gv_acnt_pg := FND_PROFILE.VALUE(cv_prof_acnt_pg);
+    -- 取得エラー時
+    IF ( gv_acnt_pg IS NULL ) THEN
+      lv_tkn_value := cv_acnt_pg_def;
+      RAISE get_profile_expt;
+    END IF;
+-- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
     --
     --==============================================================
     -- A-1.4 ファイルアップロード名称取得

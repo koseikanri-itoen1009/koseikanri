@@ -59,6 +59,11 @@ AS
  *  2009/07/15    1.10  H.Yoshikawa      障害対応(0000463) 保管棚管理の設定値に『管理なし』を設定
  *  2009/08/10    1.11  Y.Kuboshima      障害対応(0000862) 標準原価チェック処理を追加
  *                                       障害対応(0000894) 日付項目の修正(SYSDATE -> 業務日付)
+ *  2009/09/11    1.12  Y.Kuboshima      障害対応(0000948) 単位換算を作成するタイミングを変更
+ *                                                         (基準単位が本でケース入数が設定されている場合 -> 本登録時)
+ *                                       障害対応(0001130) 在庫組織の修正(S01 -> Z99)
+ *                                       障害対応(0001258) 品目カテゴリ割当(Disc)の対象カテゴリを追加
+ *                                                         (品目区分,内外区分,商品区分,品質区分,工場群コード,経理部用群コード)
  *
  *****************************************************************************************/
 --
@@ -155,6 +160,9 @@ AS
                                                                                -- 原価方法
   cv_cost_analysis_code        CONSTANT VARCHAR2(4)   := xxcmm_004common_pkg.cv_cost_analysis_code;
                                                                                -- 分析コード
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+  cv_pro_org_code              CONSTANT VARCHAR2(30)  := 'XXCOI1_ORGANIZATION_CODE';   -- 在庫組織コード
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
   --
   -- メッセージ関連
   -- メッセージ
@@ -184,6 +192,9 @@ AS
 -- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
   cv_msg_xxcmm_00491           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00491';   -- 標準原価小数エラー
 -- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+  cv_msg_xxcmm_00002           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00002';   -- プロファイル取得エラー
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
   --
   -- トークン
   cv_tkn_param_name            CONSTANT VARCHAR2(100) := 'PARAM_NAME';
@@ -199,6 +210,9 @@ AS
   cv_tkn_disc_cost             CONSTANT VARCHAR2(20)  := 'DISC_COST';          -- 営業原価
   cv_tkn_opm_cost              CONSTANT VARCHAR2(20)  := 'OPM_COST';           -- 標準原価
 -- End1.9
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+  cv_tkn_ng_profile            CONSTANT VARCHAR2(20)  := 'NG_PROFILE';         -- プロファイル名
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
   --
   cv_tkn_val_categ_policy_cd   CONSTANT VARCHAR2(30)  := '政策群カテゴリ情報';
 -- Ver1.8  2009/06/11  Add  政策群コードが変更された場合、群コードにも反映
@@ -224,6 +238,9 @@ AS
   cv_tkn_val_opmitem           CONSTANT VARCHAR2(30)  := 'ＯＰＭ品目';
   cv_tkn_val_opmcost           CONSTANT VARCHAR2(30)  := 'ＯＰＭ標準原価';
   cv_tkn_val_opm_item_categ    CONSTANT VARCHAR2(30)  := 'ＯＰＭ品目カテゴリ割当';
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+  cv_tkn_val_org_code          CONSTANT VARCHAR2(20)  := '在庫組織コード';     -- 在庫組織コード
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
   --
   -- 品目カテゴリセット名
   cv_categ_set_seisakugun      CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_seisakugun;
@@ -240,10 +257,27 @@ AS
   cv_categ_set_gun_code        CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_gun_code;
                                                                                -- 群コード
 -- End1.8
+-- 2009/09/11 Ver1.12 障害0001258 add start by Y.Kuboshima
+  cv_categ_set_item_div        CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_item_div;
+                                                                               -- 品目区分
+  cv_categ_set_inout_div       CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_inout_div;
+                                                                               -- 内外区分
+  cv_categ_set_product_div     CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_product_div;
+                                                                               -- 商品区分
+  cv_categ_set_quality_div     CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_quality_div;
+                                                                               -- 品質区分
+  cv_categ_set_fact_pg         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_fact_pg;
+                                                                               -- 工場群コード
+  cv_categ_set_acnt_pg         CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_acnt_pg;
+                                                                               -- 経理部用群コード
+-- 2009/09/11 Ver1.12 障害0001258 add end by Y.Kuboshima
   --
   -- ルックアップ
   cv_lookup_item_status        CONSTANT VARCHAR2(20)  := 'XXCMM_ITM_STATUS';   -- 品目ステータス
   cv_lookup_cost_cmpt          CONSTANT VARCHAR2(20)  := 'XXCMM1_COST_CMPT';   -- 標準原価コンポーネント
+-- 2009/09/11 Ver1.12 障害0000948 add start by Y.Kuboshima
+  cv_lookup_item_um            CONSTANT VARCHAR2(30)  := 'XXCMM_UNITS_OF_MEASURE';   -- 基準単位
+-- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
   --
 -- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
   -- 資材品目
@@ -367,7 +401,7 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gv_boot_flag                 VARCHAR2(1);                                    -- 起動種別
-  gn_bus_org_id                mtl_parameters.organization_id%TYPE;            -- 営業組織ID[S01]
+  gn_bus_org_id                mtl_parameters.organization_id%TYPE;            -- 営業組織ID[Z99]
   gn_cost_org_id               mtl_parameters.cost_organization_id%TYPE;       -- 原価組織ID[ZZZ]
   gn_master_org_id             mtl_parameters.master_organization_id%TYPE;     -- マスター在庫組織ID[ZZZ]
   --
@@ -381,6 +415,9 @@ AS
   gn_policy_group_cnt          NUMBER;                                         -- 政策群更新件数  （変更履歴ベース）
   gn_fixed_price_cnt           NUMBER;                                         -- 定価更新件数    （変更履歴ベース）
   gn_discrete_cost_cnt         NUMBER;                                         -- 営業原価更新件数（変更履歴ベース）
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+  gv_bus_org_code              VARCHAR2(3);                                    -- 在庫組織コード
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -403,6 +440,7 @@ AS
    ,reservable_type                mtl_system_items_b.reservable_type%TYPE                -- 予約可能
   );
   --
+-- 2009/08/10 Ver1.11 move start by Y.Kuboshima
   -- 変更適用品目抽出カーソル
   CURSOR update_item_cur(
     pd_apply_date        DATE )
@@ -3194,6 +3232,9 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100) := 'PROC_ITEM_STATUS_UPDATE'; -- プログラム名
+-- 2009/09/11 Ver1.12 障害0000948 add start by Y.Kuboshima
+    cv_uom_class_conv_to         CONSTANT VARCHAR2(10) := 'CS';
+-- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
     -- ===============================
     -- 固定ローカル変数
     -- ===============================
@@ -3305,6 +3346,21 @@ AS
                 )
       ORDER BY  ccmv.cost_cmpntcls_code;
     --
+-- 2009/09/11 Ver1.12 障害0000948 add start by Y.Kuboshima
+    -- 基準単位抽出カーソル
+    CURSOR units_of_measure_cur(
+      pv_item_um IN VARCHAR2 )
+    IS
+      SELECT     flvv.attribute1              -- 単位換算作成フラグ
+      FROM       fnd_lookup_values_vl flvv
+      WHERE      flvv.lookup_type  = cv_lookup_item_um
+      AND        flvv.enabled_flag = cv_yes
+      AND        flvv.meaning      = pv_item_um;
+    --
+    -- 基準単位抽出レコード型
+    l_units_of_measure_rec       units_of_measure_cur%ROWTYPE;
+-- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
+    --
 -- END1.9
     -- <カーソル名>レコード型
     l_item_status_info_rec       item_status_info_cur%ROWTYPE;
@@ -3314,6 +3370,11 @@ AS
     l_opm_cost_header_rec        xxcmm_004common_pkg.opm_cost_header_rtype;
     l_opm_cost_dist_tab          xxcmm_004common_pkg.opm_cost_dist_ttype;
 -- END1.9
+    --
+-- 2009/09/11 Ver1.12 障害0000948 add start by Y.Kuboshima
+    -- 単位換算用
+    l_uom_class_conv_rec         xxcmm_004common_pkg.uom_class_conv_rtype;
+-- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
     --
     -- ===============================
     -- ユーザー定義例外
@@ -3474,11 +3535,11 @@ AS
       END;
       --
       --==============================================================
-      --A-5.3 営業組織：S01への品目割当確認
+      --A-5.3 営業組織：Z99への品目割当確認
       --==============================================================
-      -- 20:仮登録の場合、[S01]に組織割当
+      -- 20:仮登録の場合、[Z99]に組織割当
       -- 30:本登録 40:廃 50:Ｄ’60:Ｄの場合、Disc品目を更新
-      -- 営業組織[S01]に品目が未割当の場合、品目割当も実施
+      -- 営業組織[Z99]に品目が未割当の場合、品目割当も実施
       IF ( i_update_item_rec.item_status IN ( cn_itm_status_pre_reg         -- 20:仮登録
                                              ,cn_itm_status_regist          -- 30:本登録
                                              ,cn_itm_status_no_sch          -- 40:廃
@@ -3486,9 +3547,9 @@ AS
                                              ,cn_itm_status_no_use ) )      -- 60:Ｄ
       THEN
         -- Disc品目マスタに対する更新項目はすべて組織レベル。
-        -- 更新はS01のみでOKなのか？
+        -- 更新はZ99のみでOKなのか？
         --==============================================================
-        --A-5.3 営業組織：S01への品目割当確認
+        --A-5.3 営業組織：Z99への品目割当確認
         --==============================================================
         lv_step := 'STEP-06080';
         -- 営業組織に品目が割り当たっているか取得
@@ -3517,7 +3578,7 @@ AS
           -- 品目I/Fへ登録
           INSERT INTO  mtl_system_items_interface(
             inventory_item_id                -- Disc品目ID
-           ,organization_id                  -- 組織（S01）
+           ,organization_id                  -- 組織（Z99）
            ,purchasing_item_flag             -- 購買品目
            ,shippable_item_flag              -- 出荷可能
            ,customer_order_flag              -- 顧客受注
@@ -3634,6 +3695,43 @@ AS
         END LOOP cnp_cost_hd_par_loop;
       END IF;
 -- End1.9
+      --
+-- 2009/09/11 Ver1.12 障害0000948 add start by Y.Kuboshima
+      -- 単位換算を作るタイミングを品目ステータス変更時に変更
+      -- 単位換算作成フラグ取得
+      OPEN units_of_measure_cur(i_update_item_rec.item_um);
+      FETCH units_of_measure_cur INTO l_units_of_measure_rec;
+      CLOSE units_of_measure_cur;
+      -- 区分間換算登録判定
+      -- 単位換算作成フラグが'Y'の場合かつ、品目ステータスが'30'(本登録)の場合、単位換算を作成する
+      IF  ( l_units_of_measure_rec.attribute1 = cv_yes ) 
+        AND ( i_update_item_rec.item_status = cn_itm_status_regist)
+      THEN
+        --==============================================================
+        --A-5.6 区分間換算の登録
+        --==============================================================
+        lv_step := 'STEP-05060';
+        l_uom_class_conv_rec.inventory_item_id := i_update_item_rec.inventory_item_id;
+        l_uom_class_conv_rec.from_uom_code     := i_update_item_rec.item_um;
+        l_uom_class_conv_rec.to_uom_code       := cv_uom_class_conv_to;                   -- CS
+        l_uom_class_conv_rec.conversion_rate   := i_update_item_rec.num_of_cases;
+        --
+        -- 区分間換算登録API
+        lv_step := 'STEP-04030';
+        xxcmm_004common_pkg.proc_uom_class_ref(
+          i_uom_class_conv_rec  =>  l_uom_class_conv_rec  -- 区分間換算反映用レコードタイプ
+         ,ov_errbuf             =>  lv_errbuf             -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode            =>  lv_retcode            -- リターン・コード             --# 固定 #
+         ,ov_errmsg             =>  lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF ( lv_retcode = cv_status_error ) THEN
+          --
+          lv_msg_token := cv_tkn_val_uon_conv;
+          RAISE data_insert_err_expt;
+        END IF;
+      END IF;
+-- 2009/09/11 Ver1.12 障害0000948 add end by Y.Kuboshima
       --
     END IF;
     --
@@ -3857,8 +3955,10 @@ AS
     -- ===============================
     -- ローカル定数
     -- ===============================
-    cv_uom_class_conv_from       CONSTANT VARCHAR2(10) := 'kg';
-    cv_uom_class_conv_to         CONSTANT VARCHAR2(10) := 'CS';
+-- 2009/09/11 Ver1.12 障害0000948 delete start by Y.Kuboshima
+--    cv_uom_class_conv_from       CONSTANT VARCHAR2(10) := 'kg';
+--    cv_uom_class_conv_to         CONSTANT VARCHAR2(10) := 'CS';
+-- 2009/09/11 Ver1.12 障害0000948 delete end by Y.Kuboshima
     --
     -- ===============================
     -- ローカル変数
@@ -3890,7 +3990,16 @@ AS
                                             ,cv_categ_set_item_prod        -- 製品商品区分
                                             ,cv_categ_set_hon_prod         -- 本社商品区分
                                             ,cv_categ_set_baracha_div      -- バラ茶区分
-                                            ,cv_categ_set_mark_pg )        -- マーケ用群コード
+                                            ,cv_categ_set_mark_pg          -- マーケ用群コード
+-- 2009/09/11 Ver1.12 障害0001258 add start by Y.Kuboshima
+                                            ,cv_categ_set_item_div         -- 品目区分
+                                            ,cv_categ_set_inout_div        -- 内外区分
+                                            ,cv_categ_set_product_div      -- 商品区分
+                                            ,cv_categ_set_quality_div      -- 品質区分
+                                            ,cv_categ_set_fact_pg          -- 工場群コード
+                                            ,cv_categ_set_acnt_pg )        -- 経理部用群コード
+-- 2009/09/11 Ver1.12 障害0001258 add end by Y.Kuboshima
+--
 -- End1.8
       AND         gic.category_set_id = mcs.category_set_id;
     --
@@ -3911,13 +4020,24 @@ AS
       AND         mcs.category_set_name IN ( cv_categ_set_item_prod        -- 製品商品区分
                                             ,cv_categ_set_hon_prod         -- 本社商品区分
                                             ,cv_categ_set_baracha_div      -- バラ茶区分
-                                            ,cv_categ_set_mark_pg )        -- マーケ用群コード
+                                            ,cv_categ_set_mark_pg          -- マーケ用群コード
+-- 2009/09/11 Ver1.12 障害0001258 add start by Y.Kuboshima
+                                            ,cv_categ_set_item_div         -- 品目区分
+                                            ,cv_categ_set_inout_div        -- 内外区分
+                                            ,cv_categ_set_product_div      -- 商品区分
+                                            ,cv_categ_set_quality_div      -- 品質区分
+                                            ,cv_categ_set_fact_pg          -- 工場群コード
+                                            ,cv_categ_set_acnt_pg )        -- 経理部用群コード
+-- 2009/09/11 Ver1.12 障害0001258 add end by Y.Kuboshima
+--
 -- End1.8
       AND         gic.category_set_id = mcs.category_set_id;
     --
     -- レコード型
-    -- 単位換算用
-    l_uom_class_conv_rec         xxcmm_004common_pkg.uom_class_conv_rtype;
+-- 2009/09/11 Ver1.12 障害0000948 delete start by Y.Kuboshima
+--    -- 単位換算用
+--    l_uom_class_conv_rec         xxcmm_004common_pkg.uom_class_conv_rtype;
+-- 2009/09/11 Ver1.12 障害0000948 delete end by Y.Kuboshima
     -- Disc品目カテゴリ用
     l_discitem_category_rec      xxcmm_004common_pkg.discitem_category_rtype;
     -- 品目カテゴリ割当抽出カーソルのレコードタイプ
@@ -3941,34 +4061,38 @@ AS
     --A-4 初回登録データ処理
     --==============================================================
     lv_step := 'STEP-04010';
-    -- 区分間換算登録判定
--- 基準単位が「本」以外の場合、単位換算を行う
-    IF  ( i_update_item_rec.item_um = cv_uom_class_conv_from )
-    AND ( NVL( i_update_item_rec.num_of_cases, 0 ) > 0 ) THEN
-      --==============================================================
-      --A-4.1 区分間換算の登録
-      --==============================================================
-      lv_step := 'STEP-04020';
-      l_uom_class_conv_rec.inventory_item_id := i_update_item_rec.inventory_item_id;
-      l_uom_class_conv_rec.from_uom_code     := i_update_item_rec.item_um;
-      l_uom_class_conv_rec.to_uom_code       := cv_uom_class_conv_to;                   -- CS
-      l_uom_class_conv_rec.conversion_rate   := i_update_item_rec.num_of_cases;
-      --
-      -- 区分間換算登録API
-      lv_step := 'STEP-04030';
-      xxcmm_004common_pkg.proc_uom_class_ref(
-        i_uom_class_conv_rec  =>  l_uom_class_conv_rec  -- 区分間換算反映用レコードタイプ
-       ,ov_errbuf             =>  lv_errbuf             -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode            =>  lv_retcode            -- リターン・コード             --# 固定 #
-       ,ov_errmsg             =>  lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      --
-      IF ( lv_retcode = cv_status_error ) THEN
-        --
-        lv_msg_token := cv_tkn_val_uon_conv;
-        RAISE item_common_ins_expt;
-      END IF;
-    END IF;
+-- 2009/09/11 Ver1.12 障害0000948 delete start by Y.Kuboshima
+-- ※単位換算を作るタイミングを品目ステータス変更時に行う
+--
+--    -- 区分間換算登録判定
+---- 基準単位が「本」の場合、単位換算を行う
+--    IF  ( i_update_item_rec.item_um = cv_uom_class_conv_from )
+--    AND ( NVL( i_update_item_rec.num_of_cases, 0 ) > 0 ) THEN
+--      --==============================================================
+--      --A-4.1 区分間換算の登録
+--      --==============================================================
+--      lv_step := 'STEP-04020';
+--      l_uom_class_conv_rec.inventory_item_id := i_update_item_rec.inventory_item_id;
+--      l_uom_class_conv_rec.from_uom_code     := i_update_item_rec.item_um;
+--      l_uom_class_conv_rec.to_uom_code       := cv_uom_class_conv_to;                   -- CS
+--      l_uom_class_conv_rec.conversion_rate   := i_update_item_rec.num_of_cases;
+--      --
+--      -- 区分間換算登録API
+--      lv_step := 'STEP-04030';
+--      xxcmm_004common_pkg.proc_uom_class_ref(
+--        i_uom_class_conv_rec  =>  l_uom_class_conv_rec  -- 区分間換算反映用レコードタイプ
+--       ,ov_errbuf             =>  lv_errbuf             -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode            =>  lv_retcode            -- リターン・コード             --# 固定 #
+--       ,ov_errmsg             =>  lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      --
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        --
+--        lv_msg_token := cv_tkn_val_uon_conv;
+--        RAISE item_common_ins_expt;
+--      END IF;
+--    END IF;
+-- 2009/09/11 Ver1.12 障害0000948 delete end by Y.Kuboshima
     --
     --==============================================================
     --A-4.3 ＯＰＭ品目カテゴリ割当情報取得
@@ -4493,7 +4617,9 @@ AS
     cv_process_date_next         CONSTANT VARCHAR2(10) := '翌営業日';            -- 翌営業日取得失敗時
     cv_organization_info         CONSTANT VARCHAR2(20) := '営業組織情報';        -- 営業組織情報失敗時
     --
-    cv_bus_org_code              CONSTANT VARCHAR2(3)  := 'S01';                 -- 営業組織 組織コード
+-- 2009/09/11 Ver1.12 障害0001130 delete start by Y.Kuboshima
+--    cv_bus_org_code              CONSTANT VARCHAR2(3)  := 'S01';                 -- 営業組織 組織コード
+-- 2009/09/11 Ver1.12 障害0001130 delete end by Y.Kuboshima
     cv_bom_calendar_name         CONSTANT VARCHAR2(30) := 'システム稼働日カレンダ';
 --    cv_bom_calendar_name         CONSTANT VARCHAR2(30) := '伊藤園稼働日カレンダ';  -- こっちが正しい？
                                                                                  -- 稼働日カレンダ名称
@@ -4514,6 +4640,9 @@ AS
     -- ===============================
     get_param_expt               EXCEPTION;
     get_info_err_expt            EXCEPTION;                                      -- データ抽出エラー(データ特定トークンなし)
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+    get_profile_expt             EXCEPTION;                                      -- プロファイル取得エラー
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
     --
   BEGIN
 --
@@ -4609,11 +4738,25 @@ AS
     --
     lv_step := 'STEP-01080';
     gd_apply_date := ld_apply_date;
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
     --
     --==============================================================
-    --A-2.3 営業組織情報の取得
+    --A-2.3 プロファイルの取得
     --==============================================================
-    lv_step := 'STEP-01090';
+    lv_step := 'STEP-1090';
+    -- 在庫組織コードの取得
+    gv_bus_org_code := fnd_profile.value(cv_pro_org_code);
+    IF (gv_bus_org_code IS NULL) THEN
+      lv_msg_token := cv_tkn_val_org_code;
+      RAISE get_profile_expt;
+    END IF;
+    --
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
+    --
+    --==============================================================
+    --A-2.4 営業組織情報の取得
+    --==============================================================
+    lv_step := 'STEP-01100';
     BEGIN
       -- 営業組織ID,原価組織ID,マスター在庫組織IDの取得
       SELECT      mp.organization_id           -- 営業組織ID
@@ -4623,7 +4766,10 @@ AS
                  ,gn_cost_org_id
                  ,gn_master_org_id
       FROM        mtl_parameters    mp
-      WHERE       mp.organization_code = cv_bus_org_code;
+-- 2009/09/11 Ver1.12 障害0001130 modify start by Y.Kuboshima
+--      WHERE       mp.organization_code = cv_bus_org_code;
+      WHERE       mp.organization_code = gv_bus_org_code;
+-- 2009/09/11 Ver1.12 障害0001130 modify end by Y.Kuboshima
       --
     EXCEPTION
       WHEN OTHERS THEN
@@ -4657,6 +4803,21 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
     --
+-- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
+    -- *** プロファイル取得エラーハンドラ ***
+    WHEN get_profile_expt THEN
+      -- エラーメッセージ取得
+      lv_errmsg  := SUBSTRB( xxcmn_common_pkg.get_msg( cv_appl_name_xxcmm    -- モジュール名略称:XXCMN
+                                                      ,cv_msg_xxcmm_00002    -- メッセージ:APP-XXCMM1-00002
+                                                      ,cv_tkn_ng_profile     -- トークンコード1
+                                                      ,lv_msg_token )        -- トークン値1
+                            ,1, 5000 );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    --
+-- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
+--
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
