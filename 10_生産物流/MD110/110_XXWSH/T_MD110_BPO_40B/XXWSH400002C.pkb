@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,10 @@ AS
  *                                       T_S_476,変更要求#178 品目廃止区分 「廃止」を「1」に変更
  *                                       内部課題#32 出荷単位換算数の換算ロジック変更
  *                                       変更要求#166 出荷単位換算数を明細単位で切り上げるように変更
+ *  2008/08/20    1.18  伊藤  ひとみ     結合テスト指摘#87 出荷停止日エラー時 エラー項目：出荷予定日を「YYYY/MM/DD」形式で出力
+ *                                       結合テスト指摘#89 配数整数倍チェックを警告に変更
+ *                                       結合テスト指摘#91 エラーリスト出力項目から「摘要」「顧客発注番号」を削除
+ *                                       出荷追加_1 積載効率チェックをヘッダ単位で行い、明細分エラーリストを出力する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -105,6 +109,11 @@ AS
      ,ord_i_code   xxwsh_shipping_lines_if.orderd_item_code%TYPE        -- 品目
      ,ord_quant    xxwsh_shipping_lines_if.orderd_quantity%TYPE         -- 数量
      ,in_sales_br  xxwsh_shipping_headers_if.input_sales_branch%TYPE    -- 入力拠点
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+     ,we_loading_msg_seq NUMBER                                         -- 積載効率(重量)メッセージ格納SEQ
+     ,ca_loading_msg_seq NUMBER                                         -- 積載効率(容積)メッセージ格納SEQ
+     ,prt_max_msg_seq    NUMBER                                         -- パレット最大枚数メッセージ格納SEQ
+-- 2008/08/20 H.Itou Add End
     );
   TYPE tab_data_head_line IS TABLE OF rec_head_line INDEX BY PLS_INTEGER;
 --
@@ -434,6 +443,9 @@ AS
      ,in_qty           IN NUMBER       --   数量
      ,iv_err_msg       IN VARCHAR2     --   エラーメッセージ
      ,iv_err_clm       IN VARCHAR2     --   エラー項目
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+     ,in_msg_seq       IN NUMBER DEFAULT NULL-- -- メッセージ格納SEQ
+-- 2008/08/20 H.Itou Add End
      ,ov_errbuf       OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
      ,ov_retcode      OUT VARCHAR2     --   リターン・コード             --# 固定 #
      ,ov_errmsg       OUT VARCHAR2     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -477,17 +489,37 @@ AS
     ---------------------------------
     -- 共通エラーメッセージの作成  --
     ---------------------------------
-    -- テーブルカウント
-    gn_cut := gn_cut + 1;
+-- 2008/08/20 H.Itou Del Start 出荷追加_1
+--    -- テーブルカウント
+--    gn_cut := gn_cut + 1;
+-- 2008/08/20 H.Itou Del End
 --
     lv_err_msg := iv_kind      || CHR(9) || iv_dec       || CHR(9) || iv_req_no       || CHR(9) ||
-                  iv_kyoten    || CHR(9) || iv_ship_to   || CHR(9) || iv_description  || CHR(9) ||
-                  iv_cust_pono || CHR(9) || iv_ship_date || CHR(9) || iv_arrival_date || CHR(9) ||
+-- 2008/08/20 H.Itou Mod Start 結合テスト指摘#91
+--                  iv_kyoten    || CHR(9) || iv_ship_to   || CHR(9) || iv_description  || CHR(9) ||
+--                  iv_cust_pono || CHR(9) || iv_ship_date || CHR(9) || iv_arrival_date || CHR(9) ||
+                  iv_kyoten    || CHR(9) || iv_ship_to   || CHR(9) || 
+                  iv_ship_date || CHR(9) || iv_arrival_date || CHR(9) ||
+-- 2008/08/20 H.Itou Mod End
                   iv_ship_from || CHR(9) || iv_item      || CHR(9) ||
                   TO_CHAR(ln_qty,'FM999,999,990.000')    || CHR(9) ||
                   iv_err_msg   || CHR(9) || iv_err_clm;
-    -- 共通エラーメッセージ格納
-    gt_err_msg(gn_cut).err_msg  := lv_err_msg;
+--
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+    -- 積載効率メッセージ格納SEQに値がある場合、積載効率エラーなので、指定箇所にセット
+    IF (in_msg_seq IS NOT NULL) THEN
+      gt_err_msg(in_msg_seq).err_msg  := lv_err_msg;
+--
+    -- それ以外は、テーブルカウントを進めてセット
+    ELSE
+      -- テーブルカウント
+      gn_cut := gn_cut + 1;
+-- 2008/08/20 H.Itou Add End
+      -- 共通エラーメッセージ格納
+      gt_err_msg(gn_cut).err_msg  := lv_err_msg;
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+    END IF;
+-- 2008/08/20 H.Itou Add End
 --
   EXCEPTION
 --
@@ -885,6 +917,11 @@ AS
             ,xsli.orderd_item_code       AS ord_i_code  -- 受注品目
             ,xsli.orderd_quantity        AS ord_quant   -- 数量
             ,xshi.input_sales_branch     AS in_sales_br -- 入力拠点
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+            ,NULL                                       -- 積載効率(重量)メッセージ格納SEQ
+            ,NULL                                       -- 積載効率(容積)メッセージ格納SEQ
+            ,NULL                                       -- パレット最大枚数メッセージ格納SEQ
+-- 2008/08/20 H.Itou Add End
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -918,6 +955,11 @@ AS
             ,xsli.orderd_item_code       AS ord_i_code  -- 受注品目
             ,xsli.orderd_quantity        AS ord_quant   -- 数量
             ,xshi.input_sales_branch     AS in_sales_br -- 入力拠点
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+            ,NULL                                       -- 積載効率(重量)メッセージ格納SEQ
+            ,NULL                                       -- 積載効率(容積)メッセージ格納SEQ
+            ,NULL                                       -- パレット最大枚数メッセージ格納SEQ
+-- 2008/08/20 H.Itou Add End
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -2044,7 +2086,11 @@ AS
          ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
          ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
          ,iv_err_msg      => gv_msg_21                      --  in エラーメッセージ
-         ,iv_err_clm      => gt_head_line(gn_i).ship_date   --  in エラー項目  出荷予定日
+-- 2008/08/20 H.Itou Mod Start 結合テスト指摘#87
+--         ,iv_err_clm      => gt_head_line(gn_i).ship_date   --  in エラー項目  出荷予定日
+         ,iv_err_clm      => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in エラー項目  出荷予定日
+-- 2008/08/20 H.Itou Mod End
          ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
          ,ov_retcode      => lv_retcode                     -- out リターン・コード
          ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
@@ -2974,7 +3020,11 @@ AS
          ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
          ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
          ,iv_err_msg      => gv_msg_33                      --  in エラーメッセージ
-         ,iv_err_clm      => gt_head_line(gn_i).ship_date   --  in エラー項目  出荷予定日
+-- 2008/08/20 H.Itou Mod Start 結合テスト指摘#87
+--         ,iv_err_clm      => gt_head_line(gn_i).ship_date   --  in エラー項目  出荷予定日
+         ,iv_err_clm      => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in エラー項目  出荷予定日
+-- 2008/08/20 H.Itou Mod End
          ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
          ,ov_retcode      => lv_retcode                     -- out リターン・コード
          ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
@@ -3293,7 +3343,10 @@ AS
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
-         ,iv_dec          => gv_msg_err                     --  in 種別   'エラー'
+-- 2008/08/20 H.Itou Mod Start 結合テスト指摘#89
+--         ,iv_dec          => gv_msg_err                     --  in 種別   'エラー'
+         ,iv_dec          => gv_msg_war                     --  in 種別   '警告'
+-- 2008/08/20 H.Itou Mod End
          ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
          ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
          ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
@@ -3503,6 +3556,9 @@ AS
       ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
      ,ov_retcode    OUT VARCHAR2     -- リターン・コード             --# 固定 #
      ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+     ,iv_line_if_cnt IN NUMBER       -- ヘッダ毎明細IFカウント
+-- 2008/08/20 H.Itou Add End
     )
   IS
 --
@@ -3541,28 +3597,60 @@ AS
       -- 「パレット最大枚数」と「パレット合計枚数」の比較
       --  出荷方法(アドオン)のパレット最大枚数を超えた場合エラーとする
       IF (gn_prt_max < gn_pallet_t_c_am) THEN
-        pro_err_list_make
-          (
-            iv_kind         => gv_msg_war                     --  in 種別   '警告'
-           ,iv_dec          => gv_msg_err                     --  in 種別   'エラー'
-           ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
-           ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
-           ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
-           ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
-           ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
-           ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
-                                                              --  in 出庫日
-           ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
-                                                              --  in 着日
-           ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
-           ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
-           ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
-           ,iv_err_msg      => gv_msg_38                      --  in エラーメッセージ
-           ,iv_err_clm      => gn_pallet_t_c_am               --  in エラー項目  パレット合計枚数
-           ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
-           ,ov_retcode      => lv_retcode                     -- out リターン・コード
-           ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
-          );
+-- 2008/08/20 H.Itou ADD START 出荷追加_1 積載効率エラーのワーニングは明細ごとに出力
+        <<warn_loop>>
+        FOR i IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+-- 2008/08/20 H.Itou ADD END
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--        pro_err_list_make
+--          (
+--            iv_kind         => gv_msg_war                     --  in 種別   '警告'
+--           ,iv_dec          => gv_msg_err                     --  in 種別   'エラー'
+--           ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
+--           ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+--           ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+--           ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+--           ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+--           ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+--                                                              --  in 出庫日
+--           ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+--                                                              --  in 着日
+--           ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+--           ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+--           ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+--           ,iv_err_msg      => gv_msg_38                      --  in エラーメッセージ
+--           ,iv_err_clm      => gn_pallet_t_c_am               --  in エラー項目  パレット合計枚数
+--           ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+--           ,ov_retcode      => lv_retcode                     -- out リターン・コード
+--           ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+--          );
+          pro_err_list_make
+            (
+              iv_kind         => gv_msg_war                      --  in 種別   '警告'
+             ,iv_dec          => gv_msg_err                      --  in 種別   'エラー'
+             ,iv_req_no       => gv_new_order_no                 --  in 依頼No(12桁)
+             ,iv_kyoten       => gt_head_line(i).h_s_branch      --  in 管轄拠点
+             ,iv_ship_to      => gt_head_line(i).p_s_code        --  in 出荷先
+             ,iv_description  => gt_head_line(i).ship_ins        --  in 摘要
+             ,iv_cust_pono    => gt_head_line(i).c_po_num        --  in 顧客発注番号
+             ,iv_ship_date    => TO_CHAR(gt_head_line(i).ship_date,'YYYY/MM/DD')
+                                                                 --  in 出庫日
+             ,iv_arrival_date => TO_CHAR(gt_head_line(i).arr_date,'YYYY/MM/DD')
+                                                                 --  in 着日
+             ,iv_ship_from    => gt_head_line(i).lo_code         --  in 出荷元
+             ,iv_item         => gt_head_line(i).ord_i_code      --  in 品目
+             ,in_qty          => gt_head_line(i).ord_quant       --  in 数量
+             ,iv_err_msg      => gv_msg_38                       --  in エラーメッセージ
+             ,iv_err_clm      => gn_pallet_t_c_am                --  in エラー項目  パレット合計枚数
+             ,in_msg_seq      => gt_head_line(i).prt_max_msg_seq -- in メッセージ格納SEQ
+             ,ov_errbuf       => lv_errbuf                       -- out エラー・メッセージ
+             ,ov_retcode      => lv_retcode                      -- out リターン・コード
+             ,ov_errmsg       => lv_errmsg                       -- out ユーザー・エラー・メッセージ
+            );
+-- 2008/08/20 H.Itou MOD END
+-- 2008/08/20 H.Itou ADD START
+        END LOOP warn_loop;
+-- 2008/08/20 H.Itou ADD END
         -- 共通エラーメッセージ 終了STの判定
         IF (gv_err_sts <> gv_status_error) THEN
           gv_err_sts := gv_status_warn;
@@ -3602,58 +3690,126 @@ AS
 --
     -- リターンコードがエラー時。エラー
     IF (lv_retcode = gv_1) THEN
-      pro_err_list_make
-        (
-          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
-         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
-         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
-         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
-         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
-         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
-         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
-         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
-                                                            --  in 出庫日
-         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
-                                                            --  in 着日
-         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
-         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
-         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
-         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
-         ,iv_err_clm      => lv_errmsg                      --  in エラー項目   品目
-         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                     -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
-        );
+-- 2008/08/20 H.Itou ADD START 出荷追加_1 積載効率エラーのワーニングは明細ごとに出力
+      <<err_loop>>
+      FOR i IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+-- 2008/08/20 H.Itou ADD END
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--      pro_err_list_make
+--        (
+--          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+--         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+--         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+--         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+--         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+--         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+--         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+--         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+--                                                            --  in 出庫日
+--         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+--                                                            --  in 着日
+--         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+--         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+--         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+--         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
+--         ,iv_err_clm      => lv_errmsg                      --  in エラー項目   品目
+--         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+--         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+--         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+--        );
+        pro_err_list_make
+          (
+            iv_kind         => gv_msg_err                         --  in 種別   'エラー'
+           ,iv_dec          => gv_msg_hfn                         --  in 確定   '－'
+           ,iv_req_no       => gt_head_line(i).o_r_ref            --  in 依頼No
+           ,iv_kyoten       => gt_head_line(i).h_s_branch         --  in 管轄拠点
+           ,iv_ship_to      => gt_head_line(i).p_s_code           --  in 出荷先
+           ,iv_description  => gt_head_line(i).ship_ins           --  in 摘要
+           ,iv_cust_pono    => gt_head_line(i).c_po_num           --  in 顧客発注番号
+           ,iv_ship_date    => TO_CHAR(gt_head_line(i).ship_date,'YYYY/MM/DD')
+                                                                  --  in 出庫日
+           ,iv_arrival_date => TO_CHAR(gt_head_line(i).arr_date,'YYYY/MM/DD')
+                                                                  --  in 着日
+           ,iv_ship_from    => gt_head_line(i).lo_code            --  in 出荷元
+           ,iv_item         => gt_head_line(i).ord_i_code         --  in 品目
+           ,in_qty          => gt_head_line(i).ord_quant          --  in 数量
+           ,iv_err_msg      => lv_errmsg                          --  in エラーメッセージ
+           ,iv_err_clm      => lv_errmsg                          --  in エラー項目   品目
+           ,in_msg_seq      => gt_head_line(i).we_loading_msg_seq --  in メッセージ格納SEQ
+           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                         -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+          );
+-- 2008/08/20 H.Itou MOD END
+-- 2008/08/20 H.Itou ADD START
+      END LOOP err_loop;
+-- 2008/08/20 H.Itou ADD END
       -- 共通エラーメッセージ 終了ST エラー登録
       gv_err_sts := gv_status_error;
 --
       RAISE err_header_expt;
     END IF;
 --
-    -- 積載オーバー時、ワーニング
-    IF (gv_over_kbn = gv_1) THEN
-      pro_err_list_make
-        (
-          iv_kind         => gv_msg_war                     --  in 種別   '警告'
-         ,iv_dec          => gv_msg_err                     --  in 確定   'エラー'
-         ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
-         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
-         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
-         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
-         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
-         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
-                                                            --  in 出庫日
-         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
-                                                            --  in 着日
-         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
-         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
-         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
-         ,iv_err_msg      => gv_msg_39                      --  in エラーメッセージ
-         ,iv_err_clm      => gt_head_line(gn_i).ord_quant   --  in エラー項目   数量
-         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                     -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
-        );
+-- 2008/08/20 H.Itou Mod Start 出荷追加_1
+--    -- 積載オーバー時、ワーニング
+--    IF (gv_over_kbn = gv_1) THEN
+    -- 重量容積区分が重量で積載オーバー時、ワーニング
+    IF ((gv_over_kbn = gv_1) AND (gr_wei_kbn = gv_1)) THEN
+-- 2008/08/20 H.Itou Mod End
+-- 2008/08/20 H.Itou ADD START 出荷追加_1 積載効率エラーのワーニングは明細ごとに出力
+      <<warn_loop>>
+      FOR i IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+-- 2008/08/20 H.Itou ADD END
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--      pro_err_list_make
+--        (
+--          iv_kind         => gv_msg_war                     --  in 種別   '警告'
+--         ,iv_dec          => gv_msg_err                     --  in 確定   'エラー'
+--         ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
+--         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+--         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+--         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+--         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+--         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+--                                                            --  in 出庫日
+--         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+--                                                            --  in 着日
+--         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+--         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+--         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+--         ,iv_err_msg      => gv_msg_39                      --  in エラーメッセージ
+--         ,iv_err_clm      => gt_head_line(gn_i).ord_quant   --  in エラー項目   数量
+--         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+--         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+--         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+--        );
+        pro_err_list_make
+          (
+            iv_kind         => gv_msg_war                         --  in 種別   '警告'
+           ,iv_dec          => gv_msg_err                         --  in 確定   'エラー'
+           ,iv_req_no       => gv_new_order_no                    --  in 依頼No(12桁)
+           ,iv_kyoten       => gt_head_line(i).h_s_branch         --  in 管轄拠点
+           ,iv_ship_to      => gt_head_line(i).p_s_code           --  in 出荷先
+           ,iv_description  => gt_head_line(i).ship_ins           --  in 摘要
+           ,iv_cust_pono    => gt_head_line(i).c_po_num           --  in 顧客発注番号
+           ,iv_ship_date    => TO_CHAR(gt_head_line(i).ship_date,'YYYY/MM/DD')
+                                                                  --  in 出庫日
+           ,iv_arrival_date => TO_CHAR(gt_head_line(i).arr_date,'YYYY/MM/DD')
+                                                                  --  in 着日
+           ,iv_ship_from    => gt_head_line(i).lo_code            --  in 出荷元
+           ,iv_item         => gt_head_line(i).ord_i_code         --  in 品目
+           ,in_qty          => gt_head_line(i).ord_quant          --  in 数量
+           ,iv_err_msg      => gv_msg_39                          --  in エラーメッセージ
+           ,iv_err_clm      => gt_head_line(i).ord_quant          --  in エラー項目   数量
+           ,in_msg_seq      => gt_head_line(i).we_loading_msg_seq --  in メッセージ格納SEQ
+           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                         -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+          );
+-- 2008/08/20 H.Itou MOD END
+-- 2008/08/20 H.Itou ADD START
+      END LOOP warn_loop;
+-- 2008/08/20 H.Itou ADD END
       -- 共通エラーメッセージ 終了STの判定
       IF (gv_err_sts <> gv_status_error) THEN
         gv_err_sts := gv_status_warn;
@@ -3685,58 +3841,126 @@ AS
 --
     -- リターンコードがエラー時。エラー
     IF (lv_retcode = gv_1) THEN
-      pro_err_list_make
-        (
-          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
-         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
-         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
-         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
-         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
-         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
-         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
-         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
-                                                            --  in 出庫日
-         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
-                                                            --  in 着日
-         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
-         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
-         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
-         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
-         ,iv_err_clm      => lv_errmsg                      --  in エラー項目   品目
-         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                     -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
-        );
+-- 2008/08/20 H.Itou ADD START 出荷追加_1 積載効率エラーのワーニングは明細ごとに出力
+      <<err_loop>>
+      FOR i IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+-- 2008/08/20 H.Itou ADD END
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--      pro_err_list_make
+--        (
+--          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+--         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+--         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+--         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+--         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+--         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+--         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+--         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+--                                                            --  in 出庫日
+--         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+--                                                            --  in 着日
+--         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+--         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+--         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+--         ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
+--         ,iv_err_clm      => lv_errmsg                      --  in エラー項目   品目
+--         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+--         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+--         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+--        );
+        pro_err_list_make
+          (
+            iv_kind         => gv_msg_err                         --  in 種別   'エラー'
+           ,iv_dec          => gv_msg_hfn                         --  in 確定   '－'
+           ,iv_req_no       => gt_head_line(i).o_r_ref            --  in 依頼No
+           ,iv_kyoten       => gt_head_line(i).h_s_branch         --  in 管轄拠点
+           ,iv_ship_to      => gt_head_line(i).p_s_code           --  in 出荷先
+           ,iv_description  => gt_head_line(i).ship_ins           --  in 摘要
+           ,iv_cust_pono    => gt_head_line(i).c_po_num           --  in 顧客発注番号
+           ,iv_ship_date    => TO_CHAR(gt_head_line(i).ship_date,'YYYY/MM/DD')
+                                                                  --  in 出庫日
+           ,iv_arrival_date => TO_CHAR(gt_head_line(i).arr_date,'YYYY/MM/DD')
+                                                                  --  in 着日
+           ,iv_ship_from    => gt_head_line(i).lo_code            --  in 出荷元
+           ,iv_item         => gt_head_line(i).ord_i_code         --  in 品目
+           ,in_qty          => gt_head_line(i).ord_quant          --  in 数量
+           ,iv_err_msg      => lv_errmsg                          --  in エラーメッセージ
+           ,iv_err_clm      => lv_errmsg                          --  in エラー項目   品目
+           ,in_msg_seq      => gt_head_line(i).ca_loading_msg_seq -- in メッセージ格納SEQ
+           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                         -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+          );
+-- 2008/08/20 H.Itou MOD END
+-- 2008/08/20 H.Itou ADD START
+      END LOOP err_loop;
+-- 2008/08/20 H.Itou ADD END
       -- 共通エラーメッセージ 終了ST エラー登録
       gv_err_sts := gv_status_error;
 --
       RAISE err_header_expt;
     END IF;
 --
-    -- 積載オーバー時、ワーニング
-    IF (gv_over_kbn = gv_1) THEN
-      pro_err_list_make
-        (
-          iv_kind         => gv_msg_war                     --  in 種別   '警告'
-         ,iv_dec          => gv_msg_err                     --  in 確定   'エラー'
-         ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
-         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
-         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
-         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
-         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
-         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
-                                                            --  in 出庫日
-         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
-                                                            --  in 着日
-         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
-         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
-         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
-         ,iv_err_msg      => gv_msg_39                      --  in エラーメッセージ
-         ,iv_err_clm      => gt_head_line(gn_i).ord_quant   --  in エラー項目   数量
-         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                     -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
-        );
+-- 2008/08/20 H.Itou Mod Start 出荷追加_1
+--    -- 積載オーバー時、ワーニング
+--    IF (gv_over_kbn = gv_1) THEN
+    -- 重量容積区分が容積で積載オーバー時、ワーニング
+    IF ((gv_over_kbn = gv_1) AND (gr_wei_kbn = gv_2)) THEN
+-- 2008/08/20 H.Itou Mod End
+-- 2008/08/20 H.Itou ADD START 出荷追加_1 積載効率エラーのワーニングは明細ごとに出力
+      <<warn_loop>>
+      FOR i IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+-- 2008/08/20 H.Itou ADD END
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--      pro_err_list_make
+--        (
+--          iv_kind         => gv_msg_war                     --  in 種別   '警告'
+--         ,iv_dec          => gv_msg_err                     --  in 確定   'エラー'
+--         ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
+--         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+--         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+--         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+--         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+--         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+--                                                            --  in 出庫日
+--         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+--                                                            --  in 着日
+--         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+--         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+--         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+--         ,iv_err_msg      => gv_msg_39                      --  in エラーメッセージ
+--         ,iv_err_clm      => gt_head_line(gn_i).ord_quant   --  in エラー項目   数量
+--         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+--         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+--         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+--        );
+        pro_err_list_make
+          (
+            iv_kind         => gv_msg_war                         --  in 種別   '警告'
+           ,iv_dec          => gv_msg_err                         --  in 確定   'エラー'
+           ,iv_req_no       => gv_new_order_no                    --  in 依頼No(12桁)
+           ,iv_kyoten       => gt_head_line(i).h_s_branch         --  in 管轄拠点
+           ,iv_ship_to      => gt_head_line(i).p_s_code           --  in 出荷先
+           ,iv_description  => gt_head_line(i).ship_ins           --  in 摘要
+           ,iv_cust_pono    => gt_head_line(i).c_po_num           --  in 顧客発注番号
+           ,iv_ship_date    => TO_CHAR(gt_head_line(i).ship_date,'YYYY/MM/DD')
+                                                                  --  in 出庫日
+           ,iv_arrival_date => TO_CHAR(gt_head_line(i).arr_date,'YYYY/MM/DD')
+                                                                  --  in 着日
+           ,iv_ship_from    => gt_head_line(i).lo_code            --  in 出荷元
+           ,iv_item         => gt_head_line(i).ord_i_code         --  in 品目
+           ,in_qty          => gt_head_line(i).ord_quant          --  in 数量
+           ,iv_err_msg      => gv_msg_39                          --  in エラーメッセージ
+           ,iv_err_clm      => gt_head_line(i).ord_quant          --  in エラー項目   数量
+           ,in_msg_seq      => gt_head_line(i).ca_loading_msg_seq --  in メッセージ格納SEQ
+           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                         -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+          );
+-- 2008/08/20 H.Itou MOD END
+-- 2008/08/20 H.Itou ADD START
+      END LOOP warn_loop;
+-- 2008/08/20 H.Itou ADD END
       -- 共通エラーメッセージ 終了STの判定
       IF (gv_err_sts <> gv_status_error) THEN
         gv_err_sts := gv_status_warn;
@@ -4389,6 +4613,10 @@ AS
     ln_j       NUMBER;          -- カウンタ変数(明細)
     ln_k       NUMBER;          -- カウンタ変数(ヘッダ)
 --
+-- 2008/08/20 H.Itou Add Start 出荷追加_1 積載効率チェックはヘッダ単位で実施。B-4でエラーの場合は実施しない。
+    lv_load_eff_chk_flag  VARCHAR2(1);  -- 積載効率チェック実施フラグ
+    ln_line_if_cnt        NUMBER;       -- ヘッダ毎明細IF件数カウント
+-- 2008/08/20 H.Itou Add End
 --###########################  固定部 END   ####################################
 --
   BEGIN
@@ -4487,7 +4715,15 @@ AS
         -- 出荷依頼インターフェイスヘッダ件数カウント
         gn_sh_h_cnt := gn_sh_h_cnt + 1;
 --
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+        lv_load_eff_chk_flag := gv_0;   -- 積載効率チェック実施フラグ ON
+        ln_line_if_cnt := 0;            -- ヘッダ毎明細IF件数カウント
+-- 2008/08/20 H.Itou Add End
       END IF;
+--
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+      ln_line_if_cnt := ln_line_if_cnt + 1; -- ヘッダ毎明細IF件数カウント
+-- 2008/08/20 H.Itou Add End
 --
       -- =====================================================
       --  インターフェイス情報チェック   (B-4)
@@ -4503,7 +4739,7 @@ AS
       END IF;
 --
       -- エラー確認用フラグ (B-4にてエラーの場合は、下記処理実施しない)
-     IF (gv_err_flg <> gv_1) THEN
+      IF (gv_err_flg <> gv_1) THEN
         -- =====================================================
         --  稼働日/リードタイムチェック   (B-5)
         -- =====================================================
@@ -4516,6 +4752,10 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
         END IF;
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+      ELSE
+        lv_load_eff_chk_flag := gv_1;  -- 積載効率チェック実施フラグ OFF
+-- 2008/08/20 H.Itou Add End
       END IF;
 --
       -- エラー確認用フラグ (B-5にてエラーの場合は、下記処理実施しない)
@@ -4607,8 +4847,40 @@ AS
         END IF;
       END IF;
 --
-      -- エラー確認用フラグ (B-5にてエラーの場合は、下記処理実施しない)
-      IF (gv_err_flg <> gv_1) THEN
+-- 2008/08/20 H.Itou Add Start 積載効率(重量)・積載効率(容積)・パレット最大枚数エラーメッセージ用にダミーエラーメッセージ作成。
+      gn_cut := gn_cut + 1; -- テーブルカウント
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_head_line(gn_i).we_loading_msg_seq := gn_cut; -- 積載効率(重量)メッセージ格納SEQ
+--
+      gn_cut := gn_cut + 1; -- テーブルカウント
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_head_line(gn_i).ca_loading_msg_seq := gn_cut; -- 積載効率(容積)メッセージ格納SEQ
+--
+      gn_cut := gn_cut + 1; -- テーブルカウント
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_head_line(gn_i).prt_max_msg_seq := gn_cut; -- パレット最大枚数メッセージ格納SEQ
+-- 2008/08/20 H.Itou Add End
+--
+-- 2008/08/20 H.Itou Mod Start 出荷追加_1
+--      -- エラー確認用フラグ (B-5にてエラーの場合は、下記処理実施しない)
+--      IF (gv_err_flg <> gv_1) THEN
+--        -- =====================================================
+--        --  積載効率チェック (B-11)
+--        -- =====================================================
+--        pro_load_eff_chk
+--          (
+--            ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+--           ,ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
+--           ,ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--        IF (lv_retcode = gv_status_error) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--      END IF;
+--
+      -- 最終レコードで、ヘッダに紐付く明細すべてにB-4エラーがない場合
+      IF ((lv_load_eff_chk_flag = gv_0)
+      AND (gn_i = gt_head_line.COUNT)) THEN
         -- =====================================================
         --  積載効率チェック (B-11)
         -- =====================================================
@@ -4617,11 +4889,30 @@ AS
             ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
            ,ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
            ,ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+           ,iv_line_if_cnt  => ln_line_if_cnt   -- ヘッダ毎明細IFカウント
+          );
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+      -- 次レコードが現在レコードのヘッダIDと異なる場合で、ヘッダに紐付く明細すべてにB-4エラーがない場合
+      ELSIF ((lv_load_eff_chk_flag = gv_0)
+      AND    (gt_head_line(gn_i).h_id <> gt_head_line(gn_i + 1).h_id)) THEN
+        -- =====================================================
+        --  積載効率チェック (B-11)
+        -- =====================================================
+        pro_load_eff_chk
+          (
+            ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
+           ,ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+           ,iv_line_if_cnt  => ln_line_if_cnt   -- ヘッダ毎明細IFカウント
           );
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
         END IF;
       END IF;
+-- 2008/08/20 H.Itou Mod End
 --
       -- エラー確認用フラグ (B-11まででエラーの場合は、下記処理実施しない)
       IF (gv_err_flg <> gv_1) THEN
@@ -4693,11 +4984,21 @@ AS
 --
     -- 取得したデータのステータスが拠点確定以上のレコードをIFから消去する。
     IF (gt_del_if.COUNT > 0) THEN
-      FORALL ln_j IN 1 .. gt_del_if.COUNT
+-- 2008/08/20 H.Itou Add Start
+      -- 拠点確定がある場合はエラー終了なのでROLLBACK
+      ROLLBACK;
+-- 2008/08/20 H.Itou Add End
+-- 2008/08/20 H.Itou Mod Start レコードカウントは1から順番の値ではない
+--      FORALL ln_j IN 1 .. gt_del_if.COUNT
+      FORALL ln_j IN INDICES OF gt_del_if
+-- 2008/08/20 H.Itou Mod End
         DELETE xxwsh_shipping_lines_if    xsli -- 出荷依頼インタフェース明細（アドオン）
         WHERE  xsli.header_id = gt_del_if(ln_j);
 --
-      FORALL ln_k IN 1 .. gt_del_if.COUNT
+-- 2008/08/20 H.Itou Mod Start レコードカウントは1から順番の値ではない
+--      FORALL ln_k IN 1 .. gt_del_if.COUNT
+      FORALL ln_k IN INDICES OF gt_del_if
+-- 2008/08/20 H.Itou Mod End
         DELETE xxwsh_shipping_headers_if  xshi -- 出荷依頼インタフェースヘッダ（アドオン）
         WHERE  xshi.header_id = gt_del_if(ln_k);
 --
@@ -4819,8 +5120,11 @@ AS
       -- 項目名出力
       gv_err_report := gv_name_kind      || CHR(9) || gv_name_dec       || CHR(9) ||
                        gv_name_req_no    || CHR(9) || gv_tkn_msg_ju_b   || CHR(9) ||
-                       gv_name_ship_to   || CHR(9) || gv_name_descrip   || CHR(9) ||
-                       gv_name_cust_pono || CHR(9) || gv_name_ship_date || CHR(9) ||
+-- 2008/08/20 H.Itou Mod Start 結合テスト指摘#91
+--                       gv_name_ship_to   || CHR(9) || gv_name_descrip   || CHR(9) ||
+--                       gv_name_cust_pono || CHR(9) || gv_name_ship_date || CHR(9) ||
+                       gv_name_ship_to   || CHR(9) || gv_name_ship_date || CHR(9) ||
+-- 2008/08/20 H.Itou Mod End
                        gv_name_arr_date  || CHR(9) || gv_name_ship_from || CHR(9) ||
                        gv_name_item_a    || CHR(9) || gv_name_qty       || CHR(9) ||
                        gv_name_err_msg   || CHR(9) || gv_name_err_clm;
@@ -4833,7 +5137,16 @@ AS
       -- エラーリスト内容出力
       <<err_report_loop>>
       FOR i IN 1..gt_err_msg.COUNT LOOP
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gt_err_msg(i).err_msg);
+-- 2008/08/20 H.Itou Add Start 出荷追加_1
+        -- ダミーエラーメッセージ（NULL）は出力しない
+        IF (gt_err_msg(i).err_msg IS NOT NULL) THEN
+-- 2008/08/20 H.Itou Add End
+-- 2008/08/20 H.Itou Mod Start
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gt_err_msg(i).err_msg);
+-- 2008/08/20 H.Itou Mod End
+-- 2008/08/20 H.Itou Add Start
+        END IF;
+-- 2008/08/20 H.Itou Add End
       END LOOP err_report_loop;
 --
       --区切り文字列出力
