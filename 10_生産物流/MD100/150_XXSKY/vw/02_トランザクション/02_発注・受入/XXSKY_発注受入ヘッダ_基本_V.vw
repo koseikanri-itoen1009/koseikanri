@@ -74,7 +74,11 @@ SELECT
        ,POH.status                                          status                        --ステータス
        ,POH.status_name                                     status_name                   --ステータス名
        ,PAPF1.employee_number                               po_charge                     --購買担当者番号
-       ,REPLACE( PAPF1.per_information18, CHR(9) )          po_charge_name                --購買担当者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod Start 本番#1572
+--       ,REPLACE( PAPF1.per_information18, CHR(9) )          po_charge_name                --購買担当者名(タブ文字対応)
+       ,REPLACE( PAPF1.per_information18 || PAPF1.per_information19, CHR(9) )
+                                                            po_charge_name                --購買担当者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod End 本番#1572
        ,VNDR1.segment1                                      vendor_code                   --仕入先コード
        ,VNDR1.vendor_name                                   vendor_name                   --仕入先名
        ,VDST1.vendor_site_code                              vendor_site_code              --仕入先サイトコード
@@ -104,7 +108,11 @@ SELECT
        ,POH.h_header_desc                                   h_header_desc                 --ヘッダ摘要
        ,HAOUT.name                                          org_name                      --組織名
        ,POH.requested_by_code                               requested_by_code             --依頼者コード
-       ,REPLACE( PAPF2.per_information18, CHR(9) )          requested_by_name             --依頼者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod Start 本番#1572
+--       ,REPLACE( PAPF2.per_information18, CHR(9) )          requested_by_name             --依頼者名(タブ文字対応)
+       ,REPLACE( PAPF2.per_information18 || PAPF2.per_information19, CHR(9) )
+                                                            requested_by_name             --依頼者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod End 本番#1572
        ,POH.requested_dept_code                             requested_dept_code           --依頼者部署コード
        ,LOCT4.location_name                                 requested_dept_name           --依頼者部署名
        ,POH.requested_to_dept_code                          requested_to_dept_code        --依頼先部署コード
@@ -115,14 +123,22 @@ SELECT
              WHEN POH.order_approved_flg = 'N' THEN '未承認'
         END                                                 order_approved_flg_name       --発注承諾フラグ名
        ,PAPF3.employee_number                               order_approved_code           --発注承諾者番号
-       ,REPLACE( PAPF3.per_information18, CHR(9) )          order_approved_name           --発注承諾者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod Start 本番#1572
+--       ,REPLACE( PAPF3.per_information18, CHR(9) )          order_approved_name           --発注承諾者名(タブ文字対応)
+       ,REPLACE( PAPF3.per_information18 || PAPF3.per_information19, CHR(9) )
+                                                            order_approved_name           --発注承諾者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod End 本番#1572
        ,POH.order_approved_date                             order_approved_date           --発注承諾日付
        ,POH.purchase_approved_flg                           purchase_approved_flg         --仕入承諾フラグ
        ,CASE WHEN POH.purchase_approved_flg = 'Y' THEN '承認済'
              WHEN POH.purchase_approved_flg = 'N' THEN '未承認'
         END                                                 purchase_approved_flg_name    --仕入承諾フラグ名
        ,PAPF4.employee_number                               purchase_approved_code        --仕入承諾者番号
-       ,REPLACE( PAPF4.per_information18, CHR(9) )          purchase_approved_name        --仕入承諾者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod Start 本番#1572
+--       ,REPLACE( PAPF4.per_information18, CHR(9) )          purchase_approved_name        --仕入承諾者名(タブ文字対応)
+       ,REPLACE( PAPF4.per_information18 || PAPF4.per_information19, CHR(9) )
+                                                            purchase_approved_name        --仕入承諾者名(タブ文字対応)
+-- 2009/07/10 T.Yoshimoto Mod End 本番#1572
        ,POH.purchase_approved_date                          purchase_approved_date        --仕入承諾日付
        ,POH.change_flag                                     change_flg                    --変更フラグ
        ,CASE WHEN POH.change_flag = 'Y' THEN '変更あり'
@@ -495,7 +511,10 @@ SELECT
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF2.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF2.effective_end_date(+)
 -- 2009/03/30 H.Iida Add Start 本番障害#1346
-   AND  PAPF2.attribute3                          IN ('1', '2')
+-- 2009/07/10 T.Yoshimoto Mod Start 内部気付き
+   --AND  PAPF2.attribute3                          IN ('1', '2')
+   AND  NVL( PAPF2.attribute3, '1' )              IN ('1', '2')
+-- 2009/07/10 T.Yoshimoto Mod End 内部気付き
 -- 2009/03/30 H.Iida Add End
    --依頼者部署情報取得
    AND  POH.requested_dept_code                   = LOCT4.location_code(+)
@@ -510,14 +529,20 @@ SELECT
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF3.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF3.effective_end_date(+)
 -- 2009/03/30 H.Iida Add Start 本番障害#1346
-   AND  PAPF3.attribute3                          IN ('1', '2')
+-- 2009/07/10 T.Yoshimoto Mod Start 内部気付き
+   --AND  PAPF3.attribute3                          IN ('1', '2')
+   AND  NVL( PAPF3.attribute3, '1' )              IN ('1', '2')
+-- 2009/07/10 T.Yoshimoto Mod End 内部気付き
 -- 2009/03/30 H.Iida Add End
    --発注承諾者情報取得
    AND  POH.purchase_approved_by                  = PAPF4.person_id(+)
    AND  NVL( POH.deliver_date, SYSDATE )         >= PAPF4.effective_start_date(+)
    AND  NVL( POH.deliver_date, SYSDATE )         <= PAPF4.effective_end_date(+)
 -- 2009/03/30 H.Iida Add Start 本番障害#1346
-   AND  PAPF4.attribute3                          IN ('1', '2')
+-- 2009/07/10 T.Yoshimoto Mod Start 内部気付き
+   --AND  PAPF4.attribute3                          IN ('1', '2')
+   AND  NVL( PAPF4.attribute3, '1' )              IN ('1', '2')
+-- 2009/07/10 T.Yoshimoto Mod End 内部気付き
 -- 2009/03/30 H.Iida Add End
    --発注ヘッダのWHOカラム情報取得
    AND  POH.h_created_by                          = FU_CB_H.user_id(+)
