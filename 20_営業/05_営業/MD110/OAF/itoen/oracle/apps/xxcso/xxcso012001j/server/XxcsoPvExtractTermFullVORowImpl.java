@@ -125,6 +125,7 @@ public class XxcsoPvExtractTermFullVORowImpl extends OAViewRowImpl
   protected static final int EXTRACTRENDER770 = 96;
   protected static final int EXTRACTRENDER780 = 97;
   protected static final int EXTRACTRENDER790 = 98;
+  protected static final int EXTRACTRENDER800 = 99;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -653,6 +654,8 @@ public class XxcsoPvExtractTermFullVORowImpl extends OAViewRowImpl
         return getExtractRender780();
       case EXTRACTRENDER790:
         return getExtractRender790();
+      case EXTRACTRENDER800:
+        return getExtractRender800();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -956,6 +959,9 @@ public class XxcsoPvExtractTermFullVORowImpl extends OAViewRowImpl
         return;
       case EXTRACTRENDER790:
         setExtractRender790((Boolean)value);
+        return;
+      case EXTRACTRENDER800:
+        setExtractRender800((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -2441,6 +2447,24 @@ public class XxcsoPvExtractTermFullVORowImpl extends OAViewRowImpl
   public void setExtractRender790(Boolean value)
   {
     setAttributeInternal(EXTRACTRENDER790, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ExtractRender800
+   */
+  public Boolean getExtractRender800()
+  {
+    return (Boolean)getAttributeInternal(EXTRACTRENDER800);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ExtractRender800
+   */
+  public void setExtractRender800(Boolean value)
+  {
+    setAttributeInternal(EXTRACTRENDER800, value);
   }
 
 

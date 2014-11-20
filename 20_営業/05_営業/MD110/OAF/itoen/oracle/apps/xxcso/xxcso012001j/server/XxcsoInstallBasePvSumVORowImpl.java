@@ -106,11 +106,12 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
   protected static final int MAKERNAME = 76;
   protected static final int SAFETYLEVEL = 77;
   protected static final int OPREQUESTFLAG = 78;
-  protected static final int INSTANCEID = 79;
-  protected static final int INSTALLCODE = 80;
-  protected static final int INSTANCETYPECODE = 81;
-  protected static final int INSTALLACCOUNTID = 82;
-  protected static final int INSTALLPARTYID = 83;
+  protected static final int OPREQNUMBERACCOUNTNUMBER = 79;
+  protected static final int INSTANCEID = 80;
+  protected static final int INSTALLCODE = 81;
+  protected static final int INSTANCETYPECODE = 82;
+  protected static final int INSTALLACCOUNTID = 83;
+  protected static final int INSTALLPARTYID = 84;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -284,6 +285,8 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
         return getSafetyLevel();
       case OPREQUESTFLAG:
         return getOpRequestFlag();
+      case OPREQNUMBERACCOUNTNUMBER:
+        return getOpReqNumberAccountNumber();
       case INSTANCEID:
         return getInstanceId();
       case INSTALLCODE:
@@ -2075,5 +2078,23 @@ public class XxcsoInstallBasePvSumVORowImpl extends OAViewRowImpl
   public void setInstallPartyId(Number value)
   {
     setAttributeInternal(INSTALLPARTYID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute OpReqNumberAccountNumber
+   */
+  public String getOpReqNumberAccountNumber()
+  {
+    return (String)getAttributeInternal(OPREQNUMBERACCOUNTNUMBER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute OpReqNumberAccountNumber
+   */
+  public void setOpReqNumberAccountNumber(String value)
+  {
+    setAttributeInternal(OPREQNUMBERACCOUNTNUMBER, value);
   }
 }

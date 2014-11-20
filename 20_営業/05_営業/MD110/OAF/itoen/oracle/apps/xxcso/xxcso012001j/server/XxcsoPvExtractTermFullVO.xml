@@ -998,4 +998,14 @@ WHERE   flvv.lookup_type = 'XXCSO1_IB_PV_COLUMN_DEF'
       Passivate="true"
       SQLType="BIT" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="ExtractRender800"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="EXTRACT_RENDER800"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
 </ViewObject>

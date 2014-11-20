@@ -202,6 +202,7 @@ HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
                                                                   <oa:formattedText id="ExtractColumnName770" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender770}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName770"/>
                                                                   <oa:formattedText id="ExtractColumnName780" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender780}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName780"/>
                                                                   <oa:formattedText id="ExtractColumnName790" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender790}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName790"/>
+                                                                  <oa:formattedText id="ExtractColumnName800" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender800}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName800"/>
                                                                </ui:contents>
                                                             </oa:column>
                                                             <oa:column id="ExtractModeCol">
@@ -288,6 +289,7 @@ HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
                                                                   <oa:messageChoice id="Method770" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender770}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
                                                                   <oa:messageChoice id="Method780" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender780}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
                                                                   <oa:messageChoice id="Method790" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender790}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method800" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender800}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
                                                                </ui:contents>
                                                             </oa:column>
                                                             <oa:column id="ExtractConditionCol">
@@ -386,6 +388,7 @@ HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
                                                                   <oa:messageChoice id="Where770" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender770}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere770LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
                                                                   <oa:messageChoice id="Where780" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender780}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere780LookupVO" pickListValAttr="LookupCode" pickListDispAttr="Description"/>
                                                                   <oa:messageChoice id="Where790" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender790}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere790LookupVO" pickListValAttr="LookupCode" pickListDispAttr="Description"/>
+                                                                  <oa:messageTextInput id="Where800" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender800}" viewAttr="ExtractTermText" maximumLength="1000"/>
                                                                </ui:contents>
                                                             </oa:column>
                                                          </ui:contents>

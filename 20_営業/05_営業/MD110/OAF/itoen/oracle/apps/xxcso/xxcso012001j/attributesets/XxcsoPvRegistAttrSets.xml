@@ -113,6 +113,7 @@
    <attributeSet docName="ExtractColumnName770" text="メーカー名"/>
    <attributeSet docName="ExtractColumnName780" text="安全設置基準"/>
    <attributeSet docName="ExtractColumnName790" text="作業依頼中フラグ"/>
+   <attributeSet docName="ExtractColumnName800" text="作業依頼中購買依頼No/顧客CD"/>
    <attributeSet docName="ExtractModeColHdr" prompt="抽出方法"/>
    <attributeSet docName="ExtractConditionColHdr" prompt="抽出条件"/>
 </package>

@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoPvCommonConstants
 * 概要説明   : 物件汎用検索／パーソナライズビュー共通固定値クラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-09 1.0  SCS柳平直人  新規作成
 * 2009-04-24 1.1  SCS柳平直人  [ST障害T1_634]作業依頼中フラグ追加対応
+* 2009-12-24 1.2  SCS阿部大輔  [E_本稼動_00533]作業依頼中購買依頼No/顧客CD追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso012001j.util;
@@ -74,7 +75,10 @@ public class XxcsoPvCommonConstants
 
 // 2009/04/24 [ST障害T1_634] Mod Start
 //  public static final int    EXTRACT_SIZE             = 78;
-  public static final int    EXTRACT_SIZE             = 79;
+// 2009/12/24 [E_本稼動_00533] Mod Start
+//  public static final int    EXTRACT_SIZE             = 79;
+  public static final int    EXTRACT_SIZE             = 80;
+// 2009/12/24 [E_本稼動_00533] Mod End
 // 2009/04/24 [ST障害T1_634] Mod End
   public static final String EXTRACT_RENDER           = "ExtractRender";
   public static final String EXTRACT_AND              = "1";

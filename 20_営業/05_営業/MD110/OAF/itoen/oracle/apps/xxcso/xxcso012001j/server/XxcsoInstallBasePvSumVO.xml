@@ -151,6 +151,7 @@ SELECT   xxcso_012001j_pkg.get_dept_code(xibv.install_party_id)                 
           ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
          )                                                                      AS safty_level                -- 78:安全設置基準
         ,xibv.op_request_flag                                                   AS op_request_flag            -- 79:作業依頼中フラグ
+        ,xibv.op_req_number_account_number                                      AS op_req_number_account_number -- 80:作業依頼中購買依頼No/顧客CD
         ,xibv.instance_id         AS instance_id                 -- インスタンスID
         ,xibv.install_code        AS install_code                -- 物件コード
         ,xibv.instance_type_code  AS instance_type_code          -- 機器区分
@@ -1035,9 +1036,21 @@ WHERE   punv.un_number(+) = xibv.vendor_model
       SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewAttribute
+      Name="OpReqNumberAccountNumber"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="OP_REQ_NUMBER_ACCOUNT_NUMBER"
+      Expression="OP_REQ_NUMBER_ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="InstanceId"
       IsPersistent="false"
       IsNotNull="true"
+      Precision="240"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="INSTANCE_ID"

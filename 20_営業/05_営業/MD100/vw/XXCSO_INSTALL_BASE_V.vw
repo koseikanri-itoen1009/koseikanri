@@ -3,7 +3,7 @@
  * VIEW Name       : XXCSO_INSTALL_BASE_V
  * Description     : 共通用：物件マスタビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,7 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/11    1.1  N.Yabuki      先月末項目（３項目）を追加
  *  2009/03/25    1.2  S.Kayahara    86行目改行削除
+ *  2009/12/24    1.3  D.Abe         E_本稼動_00533対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_INSTALL_BASE_V
 (
@@ -26,6 +27,9 @@ CREATE OR REPLACE VIEW APPS.XXCSO_INSTALL_BASE_V
 ,VENDOR_NUMBER
 ,FIRST_INSTALL_DATE
 ,OP_REQUEST_FLAG
+/* 2009.12.24 D.Abe E_本稼動_00533対応 START */
+,OP_REQ_NUMBER_ACCOUNT_NUMBER
+/* 2009.12.24 D.Abe E_本稼動_00533対応 END */
 ,NEW_OLD_FLAG
 ,INSTALL_PARTY_ID
 ,INSTALL_ACCOUNT_ID
@@ -97,6 +101,9 @@ SELECT
 ,cii.ATTRIBUTE2
 ,cii.ATTRIBUTE3
 ,cii.ATTRIBUTE4
+/* 2009.12.24 D.Abe E_本稼動_00533対応 START */
+,cii.ATTRIBUTE8
+/* 2009.12.24 D.Abe E_本稼動_00533対応 END */
 ,cii.ATTRIBUTE5
 ,cii.OWNER_PARTY_ID
 ,cii.OWNER_PARTY_ACCOUNT_ID
@@ -169,6 +176,9 @@ COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.VENDOR_MODEL IS '機種';
 COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.VENDOR_NUMBER IS '機番';
 COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.FIRST_INSTALL_DATE IS '初回設置日';
 COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.OP_REQUEST_FLAG IS '作業依頼中フラグ';
+/* 2009.12.24 D.Abe E_本稼動_00533対応 START */
+COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.OP_REQ_NUMBER_ACCOUNT_NUMBER IS '作業依頼中購買依頼No/顧客CD';
+/* 2009.12.24 D.Abe E_本稼動_00533対応 END */
 COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.NEW_OLD_FLAG IS '新古台フラグ';
 COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.INSTALL_PARTY_ID IS '設置先パーティID';
 COMMENT ON COLUMN XXCSO_INSTALL_BASE_V.INSTALL_ACCOUNT_ID IS '設置先アカウントID';

@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *                                       を作成するよう変更。（後で自社リースに変更するケースを考慮）
  *  2010-01-13    1.24  K.Hosoi          E_本稼動_00443対応
  *  2010-01-19    1.25  K.Hosoi          E_本稼動_00818,01177対応
+ *  2010-01-26    1.26  K.Hosoi          E_本稼動_00533,00319対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5932,6 +5933,9 @@ AS
           ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR
           ln_job_kbn = cn_jon_kbn_5 OR ln_job_kbn = cn_job_kbn_6) THEN
         l_instance_rec.attribute4               := cv_flg_no;                    -- 作業依頼中フラグ
+        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+        l_instance_rec.attribute8               := NULL;                         -- 作業依頼中購買依頼番号/顧客CD
+        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       END IF;
       /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END*/
       l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
@@ -5942,6 +5946,9 @@ AS
     /* 2009.06.15 K.Satomura T1_1239対応 SATRT */
     ELSE
       l_instance_rec.attribute4 := cv_flg_no; -- 作業依頼中フラグ
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8 := NULL;      -- 作業依頼中購買依頼番号/顧客CD
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       --
     END IF;
     /* 2009.06.15 K.Satomura T1_1239対応 END */
@@ -6172,6 +6179,9 @@ AS
     -- ================================
     l_instance_rec.instance_id            := io_inst_base_data_rec.instance_id;     -- インスタンスID
     l_instance_rec.attribute4             := cv_flg_no;                             -- 作業依頼中フラグ
+    /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+    l_instance_rec.attribute8             := NULL;                                  -- 作業依頼中購買依頼番号/顧客CD
+    /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
     l_instance_rec.object_version_number  := io_inst_base_data_rec.object_version1; -- オブジェクトバージョン番号
     l_instance_rec.request_id             := cn_request_id;                         -- REQUEST_ID
     l_instance_rec.program_application_id := cn_program_application_id;             -- PROGRAM_APPLICATION_ID

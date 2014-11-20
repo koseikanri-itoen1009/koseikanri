@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  verifyauthority           承認者権限（製品）チェック(A-22)
  *  update_po_req_line        発注依頼明細更新処理(A-23)
  *  check_maker_code          メーカーコードチェック処理(A-24)
+ *  check_business_low_type   業態(小分類)チェック処理(A-25)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
@@ -83,6 +84,10 @@ AS
  *                                        設置先住所１、設置先住所２、設置先電話番号、設置先担当者名が入力されている場合
  *                                        書式等のチェックを行うよう処理を追加。
  *                                        発注可能チェックの追加。
+ *  2010-01-25    1.26  K.Hosoi          【E_本稼動_00533,00319】作業依頼中フラグをYにする際、合わせて購買依頼番号/顧客CD
+ *                                        をATTRIBUTE8に設定する処理を追加。また、顧客の業態小分類が24～27以外且つ、顧客の
+ *                                        顧客区分が10で且つ、機種の機器区分が自販機の場合には購買依頼が実施できないように
+ *                                        修正。
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -233,6 +238,10 @@ AS
   /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
   cv_tkn_number_60  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00588';  -- 物件未依頼エラーメッセージ
   /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+  /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+  cv_tkn_number_61  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00243';  -- データ抽出エラーメッセージ
+  cv_tkn_number_62  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00592';  -- 業態(小分類)チェックエラーメッセージ
+  /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -274,6 +283,10 @@ AS
   /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
   cv_tkn_sagyo          CONSTANT VARCHAR(20)  := 'SAGYO';
   /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+  /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+  cv_tkn_base_val       CONSTANT VARCHAR2(20) := 'BASE_VALUE';
+  cv_tkn_kisyucd        CONSTANT VARCHAR2(20) := 'KISYUCD';
+  /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
   --
   cv_machinery_status       CONSTANT VARCHAR2(100) := '物件データワークテーブルの機器状態'; 
 /* 20090511_abe_ST965 END*/
@@ -297,6 +310,10 @@ AS
   -- 区切り文字
   cv_msg_part_only  CONSTANT VARCHAR2(1) := ':';
   --
+  /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+  -- 区切り記号
+  cv_slash          CONSTANT VARCHAR2(1) := '/';
+  /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
   -- 処理区分
   cv_proc_kbn_req_appl  CONSTANT VARCHAR2(1) := '1';  -- 発注依頼申請
   cv_proc_kbn_req_aprv  CONSTANT VARCHAR2(1) := '2';  -- 発注依頼承認
@@ -473,6 +490,9 @@ AS
     ,delete_flag   xxcso_install_base_v.sakujo_flg%TYPE             -- 削除フラグ
     ,install_code  xxcso_install_base_v.install_code%TYPE           -- 物件コード
 /* 20090511_abe_ST965 END*/
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+    ,op_req_number_account_number xxcso_install_base_v.op_req_number_account_number%TYPE  -- 作業依頼中購買依頼番号/顧客CD
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
   );
   --
   -- ===============================
@@ -2519,6 +2539,9 @@ AS
            , xibv.sakujo_flg                   sakujo_flg             -- 削除フラグ
            , xibv.install_code                 install_code           -- 物件コード
            /* 20090511_abe_ST965 END*/
+           /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+           , xibv.op_req_number_account_number op_req_number_account_number -- 作業依頼中購買依頼番号/顧客CD
+           /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       INTO   o_instance_rec.instance_id  -- インスタンスID
            , o_instance_rec.op_req_flag  -- 作業依頼中フラグ
            , o_instance_rec.jotai_kbn1   -- 機器状態１（稼動状態）
@@ -2535,6 +2558,9 @@ AS
            , o_instance_rec.delete_flag  -- 削除フラグ
            , o_instance_rec.install_code -- 物件コード
            /* 20090511_abe_ST965 END*/
+           /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+           , o_instance_rec.op_req_number_account_number -- 作業依頼中購買依頼番号/顧客CD
+           /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       FROM   xxcso_install_base_v  xibv
       WHERE  xibv.install_code = iv_install_code
       ;
@@ -2647,6 +2673,14 @@ AS
                         , iv_name         => cv_tkn_number_17          -- メッセージコード
                         , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
                         , iv_token_value1 => iv_install_code           -- トークン値1
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
                       );
         --
         lv_errbuf  := lv_errbuf2;
@@ -2806,6 +2840,14 @@ AS
                         , iv_name         => cv_tkn_number_20          -- メッセージコード
                         , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
                         , iv_token_value1 => iv_install_code           -- トークン値1
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
                       );
         --
         lv_errbuf  := lv_errbuf2;
@@ -2939,6 +2981,14 @@ AS
                         , iv_name         => cv_tkn_number_22          -- メッセージコード
                         , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
                         , iv_token_value1 => iv_install_code           -- トークン値1
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
                       );
         --
         lv_errbuf  := lv_errbuf2;
@@ -3109,7 +3159,55 @@ AS
     ov_retcode := cv_status_normal;
     --
     --###########################  固定部 END   ############################
+--    
+--    
+    /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+    --廃棄決裁時にも作業依頼中フラグの排他チェックを追加
+    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+      -- 処理区分が「発注依頼申請」の場合
+      -- 作業依頼中フラグがＯＮの場合
+      IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_22          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                        , iv_token_value1 => iv_install_code           -- トークン値1
+                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+    END IF;
     --
+    IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+      -- 処理区分が「発注依頼承認」の場合
+      IF (i_instance_rec.op_req_flag = cv_op_req_flag_off) THEN
+        -- 作業依頼中フラグ_設置用がＯＦＦの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_60         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_sagyo             -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_ablsh             -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken            -- トークンコード2
+                        ,iv_token_value2 => iv_install_code          -- トークン値2
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+      --
+    END IF;
+    /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+--    
+    
     -- 機器状態１（稼動状態）がNULLまたは「滞留」以外の場合
     IF ( i_instance_rec.jotai_kbn1 IS NULL )
       OR ( i_instance_rec.jotai_kbn1 <> cv_jotai_kbn1_hold )
@@ -3231,6 +3329,14 @@ AS
                        , iv_name         => cv_tkn_number_17          -- メッセージコード
                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
                        , iv_token_value1 => iv_install_code           -- トークン値1
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+                        , iv_token_name2  => cv_tkn_req_num                                -- トークンコード2
+                        , iv_token_value2 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,1,( INSTRB(i_instance_rec.op_req_number_account_number,'/')-1 ) ) -- トークン値2
+                        , iv_token_name3  => cv_tkn_kokyaku                                -- トークンコード3
+                        , iv_token_value3 => SUBSTRB( i_instance_rec.op_req_number_account_number
+                                                     ,( INSTRB(i_instance_rec.op_req_number_account_number,'/')+1) ) -- トークン値3
+                        /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
                      );
         --
         ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
@@ -4161,6 +4267,10 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_on;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := i_requisition_rec.requisition_number
+                                               || cv_slash || i_requisition_rec.install_at_customer_code;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -4176,6 +4286,9 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_off;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := NULL;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -4385,6 +4498,10 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_on;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := i_requisition_rec.requisition_number
+                                               || cv_slash || i_requisition_rec.install_at_customer_code;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -4400,6 +4517,9 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_off;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := NULL;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -4646,6 +4766,10 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_on;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := i_requisition_rec.requisition_number
+                                               || cv_slash || i_requisition_rec.install_at_customer_code;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -4745,6 +4869,9 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_off;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := NULL;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -4803,6 +4930,9 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_off;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := NULL;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -5021,6 +5151,10 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_on;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := i_requisition_rec.requisition_number
+                                               || cv_slash || i_requisition_rec.install_at_customer_code;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -5037,6 +5171,9 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_off;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := NULL;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -5111,6 +5248,9 @@ AS
       ------------------------------
       l_instance_rec.instance_id            := i_instance_rec.instance_id;
       l_instance_rec.attribute4             := cv_op_req_flag_off;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+      l_instance_rec.attribute8             := NULL;
+      /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
       l_instance_rec.request_id             := fnd_global.conc_request_id;
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
@@ -6034,6 +6174,200 @@ AS
   END check_maker_code;
   --
 /* 20090708_abe_0000464 END*/
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+  --
+  /**********************************************************************************
+   * Procedure Name   : check_business_low_type
+   * Description      : 業態(小分類)チェック処理(A-25)
+   ***********************************************************************************/
+  PROCEDURE check_business_low_type(
+      i_requisition_rec   IN         g_requisition_rtype   -- 発注依頼情報
+    , ov_errbuf           OUT NOCOPY VARCHAR2              -- エラー・メッセージ --# 固定 #
+    , ov_retcode          OUT NOCOPY VARCHAR2              -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'check_business_low_type';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_party_sts_active       CONSTANT VARCHAR2(1) := 'A';   -- パーティステータス「有効」
+    cv_account_sts_active     CONSTANT VARCHAR2(1) := 'A';   -- アカウントステータス「有効」
+    cv_acct_site_sts_active   CONSTANT VARCHAR2(1) := 'A';   -- 顧客所在地ステータス「有効」
+    cv_party_site_sts_active  CONSTANT VARCHAR2(1) := 'A';   -- パーティサイトステータス「有効」
+    --
+    ct_cust_cl_cd_cust        CONSTANT xxcso_cust_acct_sites_v.customer_class_code%TYPE := '10'; -- 顧客区分=顧客
+    --
+    ct_bsns_lwtp_fll_s_sk     CONSTANT xxcso_cust_acct_sites_v.business_low_type%TYPE := '24';   -- 24：フルサービス（消化）VD
+    ct_bsns_lwtp_fll_s        CONSTANT xxcso_cust_acct_sites_v.business_low_type%TYPE := '25';   -- 25：フルサービスVD
+    ct_bsns_lwtp_nouhin       CONSTANT xxcso_cust_acct_sites_v.business_low_type%TYPE := '26';   -- 26：納品VD
+    ct_bsns_lwtp_sk           CONSTANT xxcso_cust_acct_sites_v.business_low_type%TYPE := '27';   -- 27：消化VD
+    --
+    cv_hzrd_cls_jihanki       CONSTANT VARCHAR2(1) := '1';   -- 機器区分（危険度区分） "1:販売機"
+    --
+    cv_po_un_num              CONSTANT VARCHAR2(100) := '機種マスタの';
+    cv_un_num                 CONSTANT VARCHAR2(100) := '機種コード';
+    cv_hzrd_cls               CONSTANT VARCHAR2(100) := '機器区分';
+    -- *** ローカル変数 ***
+    lt_business_low_type      xxcso_cust_acct_sites_v.business_low_type%TYPE;   -- 業態（小分類）
+    lt_customer_class_code    xxcso_cust_acct_sites_v.customer_class_code%TYPE; -- 顧客区分
+    lv_hazard_class           VARCHAR2(1);                                      -- 機器区分（危険度区分）
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- ========================================
+    -- 顧客マスタ抽出
+    -- ========================================
+    BEGIN
+      SELECT casv.business_low_type    business_low_type      -- 業態（小分類）
+            ,casv.customer_class_code  customer_class_code    -- 顧客区分コード
+      INTO   lt_business_low_type
+            ,lt_customer_class_code
+      FROM   xxcso_cust_acct_sites_v  casv    -- 顧客マスタサイトビュー
+      WHERE casv.account_number    = i_requisition_rec.install_at_customer_code
+      AND   casv.account_status    = cv_account_sts_active
+      AND   casv.acct_site_status  = cv_acct_site_sts_active
+      AND   casv.party_status      = cv_party_sts_active
+      AND   casv.party_site_status = cv_party_site_sts_active
+      ;
+      --
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- 該当データが存在しない場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_32                            -- メッセージコード
+                       , iv_token_name1  => cv_tkn_kokyaku                              -- トークンコード1
+                       , iv_token_value1 => i_requisition_rec.install_at_customer_code  -- トークン値1
+                     );
+        --
+        RAISE sql_expt;
+        --
+      WHEN OTHERS THEN
+        -- その他の例外の場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_33                            -- メッセージコード
+                       , iv_token_name1  => cv_tkn_kokyaku                              -- トークンコード1
+                       , iv_token_value1 => i_requisition_rec.install_at_customer_code  -- トークン値1
+                       , iv_token_name2  => cv_tkn_err_msg                              -- トークンコード2
+                       , iv_token_value2 => SQLERRM                                     -- トークン値2
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    -- ========================================
+    -- 機種マスタ抽出
+    -- ========================================
+    BEGIN
+      SELECT SUBSTRB(phcv.hazard_class,1,1)         -- 機器区分（危険度区分）
+      INTO   lv_hazard_class
+      FROM   po_un_numbers_vl     punv              -- 国連番号マスタビュー
+            ,po_hazard_classes_vl phcv              -- 危険度区分マスタビュー
+      WHERE  punv.un_number        = i_requisition_rec.un_number
+      AND    punv.hazard_class_id  = phcv.hazard_class_id
+      ;
+      --
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- 該当データが存在しない場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name             -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_48                     -- メッセージコード
+                       , iv_token_name1  => cv_tkn_task_nm                       -- トークンコード1
+                       , iv_token_value1 => cv_hzrd_cls                          -- トークン値1
+                       , iv_token_name2  => cv_tkn_item                          -- トークンコード2
+                       , iv_token_value2 => cv_un_num                            -- トークン値2
+                       , iv_token_name3  => cv_tkn_value                         -- トークンコード3
+                       , iv_token_value3 => TO_CHAR(i_requisition_rec.un_number) -- トークン値3
+                     );
+        --
+        RAISE sql_expt;
+        --
+      WHEN OTHERS THEN
+        -- その他の例外の場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name             -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_61                     -- メッセージコード
+                       , iv_token_name1  => cv_tkn_task_nm                       -- トークンコード1
+                       , iv_token_value1 => cv_po_un_num                         -- トークン値1
+                       , iv_token_name2  => cv_tkn_item                          -- トークンコード2
+                       , iv_token_value2 => cv_un_num                            -- トークン値2
+                       , iv_token_name3  => cv_tkn_base_val                      -- トークンコード3
+                       , iv_token_value3 => TO_CHAR(i_requisition_rec.un_number) -- トークン値3
+                       , iv_token_name4  => cv_tkn_err_msg                       -- トークンコード4
+                       , iv_token_value4 => SQLERRM                              -- トークン値4
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+    -- 顧客の業態小分類が「24：フルサービス（消化）VD」「25：フルサービスVD」「26：納品VD」「27：消化VD 」以外で且つ、
+    -- 顧客の顧客区分が「10：顧客」且つ、機器区分（危険度区分）が"1:販売機"の場合はエラー
+    IF (  ( lt_business_low_type   NOT IN ( ct_bsns_lwtp_fll_s_sk
+                                           ,ct_bsns_lwtp_fll_s
+                                           ,ct_bsns_lwtp_nouhin
+                                           ,ct_bsns_lwtp_sk ))
+      AND ( lt_customer_class_code = ct_cust_cl_cd_cust )
+      AND ( lv_hazard_class        = cv_hzrd_cls_jihanki )  ) THEN
+      --
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_sales_appl_short_name             -- アプリケーション短縮名
+                     , iv_name         => cv_tkn_number_62                     -- メッセージコード
+                     , iv_token_name1  => cv_tkn_kisyucd                       -- トークンコード1
+                     , iv_token_value1 => TO_CHAR(i_requisition_rec.un_number) -- トークン値1
+                   );
+      --
+      RAISE sql_expt;
+    END IF;
+    --
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQLデータ抽出例外＆チェックエラーハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END check_business_low_type;
+  --
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -6411,6 +6745,22 @@ AS
         END IF;
         --
 /* 20090708_abe_0000464 END*/
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+        -- ========================================
+        -- A-25. 業態(小分類)チェック処理
+        -- ========================================
+        check_business_low_type(
+            i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
       --------------------------------------------------
       -- カテゴリ区分が「新台代替」の場合
       --------------------------------------------------
@@ -6673,7 +7023,22 @@ AS
         END IF;
         --
 /* 20090708_abe_0000464 END*/
-
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 START */
+        -- ========================================
+        -- A-25. 業態(小分類)チェック処理
+        -- ========================================
+        check_business_low_type(
+            i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+/* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
         --
         -- ========================================
         -- A-15. 引揚用物件更新処理
