@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -110,6 +110,8 @@ AS
  *  2008/10/30    1.23 Oracle 福田 直樹  統合指摘#390対応(顧客発注番号の9桁以内チェック・数字チェックを追加)
  *  2008/11/11    1.24 Oracle 福田 直樹  統合指摘#589対応(ヒント句追加対応)
  *  2008/11/21    1.25 Oracle 福田 直樹  統合指摘#702対応(ロットが存在しない場合エラーでなく保留にする)
+ *  2008/11/27    1.26 Oracle 福田 直樹  本番障害#179対応(実績訂正時に実績計上済区分に'Y'ではなく'N'をセットする)
+ *  2008/11/27    1.26 Oracle 福田 直樹  本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -9556,7 +9558,7 @@ AS
                         ,1
                         ,5000);
 --
-          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+          --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -9605,7 +9607,7 @@ AS
                       ,1
                       ,5000);
 --
-        RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+        --RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -10042,7 +10044,7 @@ AS
                         ,1
                         ,5000);
 --
-          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+          --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -10091,7 +10093,7 @@ AS
                       ,1
                       ,5000);
 --
-        RAISE global_api_expt;    -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+        --RAISE global_api_expt;    -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -10558,7 +10560,8 @@ AS
     gr_order_h_rec.shipped_date                := gr_interface_info_rec(in_index).shipped_date;
     gr_order_h_rec.arrival_date                := gr_interface_info_rec(in_index).arrival_date;
     gr_order_h_rec.weight_capacity_class       := lr_order_h_rec_ins.weight_capacity_class;
-    gr_order_h_rec.actual_confirm_class        := lr_order_h_rec_ins.actual_confirm_class; --2008/09/22 TE080_400指摘#76 Add
+    --gr_order_h_rec.actual_confirm_class        := lr_order_h_rec_ins.actual_confirm_class; --2008/09/22 TE080_400指摘#76 Add --2008/11/27 本番障害#179 Del
+    gr_order_h_rec.actual_confirm_class        := gv_yesno_n;                                --2008/09/22 TE080_400指摘#76 Add --2008/11/27 本番障害#179 Add
     gr_order_h_rec.notif_status                := lr_order_h_rec_ins.notif_status;
     gr_order_h_rec.prev_notif_status           := lr_order_h_rec_ins.prev_notif_status;    --2008/09/22 TE080_400指摘#76 Add
     gr_order_h_rec.notif_date                  := lr_order_h_rec_ins.notif_date;           --2008/09/22 TE080_400指摘#76 Add
@@ -12104,7 +12107,7 @@ AS
                         ,1
                         ,5000);
 --
-          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+          --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -12153,7 +12156,7 @@ AS
                       ,1
                       ,5000);
 --
-        RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+        --RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -12560,7 +12563,7 @@ AS
                         ,1
                         ,5000);
 --
-          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+          --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -12609,7 +12612,7 @@ AS
                       ,1
                       ,5000);
 --
-        RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+        --RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -12899,7 +12902,7 @@ AS
                         ,1
                         ,5000);
 --
-          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+          --RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
         END IF;
 --
@@ -12946,7 +12949,7 @@ AS
                       ,1
                       ,5000);
 --
-        RAISE global_api_expt;  -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+        --RAISE global_api_expt;  -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする --2008/11/27 Del 本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
 --
       ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
       THEN
@@ -12975,6 +12978,7 @@ AS
        ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
        ,xmrih.based_weight                = gr_mov_req_instr_h_rec.based_weight
        ,xmrih.based_capacity              = gr_mov_req_instr_h_rec.based_capacity
+       ,xmrih.comp_actual_flg             = gv_yesno_n  -- 2008/11/27 本番障害#179 Add
        ,xmrih.correct_actual_flg          = gr_mov_req_instr_h_rec.correct_actual_flg
        ,xmrih.last_updated_by             = gt_user_id
        ,xmrih.last_update_date            = gt_sysdate
