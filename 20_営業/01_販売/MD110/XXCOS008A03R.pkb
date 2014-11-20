@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/02/16    1.1   SCS K.NAKAMURA   [COS_002] g,mgからkgへの単位換算の不具合対応
  *  2009/02/19    1.2   K.Atsushiba      get_msgのパッケージ名修正
  *  2009/04/10    1.3   T.Kitajima       [T1_0381]出荷依頼情報の数量0データ除外
+ *  2009/05/26    1.4   T.Kitajima       [T1_1183]受注数量のマイナス化
  *
  *****************************************************************************************/
 --
@@ -1003,7 +1004,12 @@ AS
         ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
         ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
         ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+--****************************** 2009/05/26 1.4 T.Kitajima MOD START ******************************--
+--        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+        ,oola.ordered_quantity * 
+          DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                                    order_quantity           -- 受注明細.受注数量           ：受注数
+--****************************** 2009/05/26 1.4 T.Kitajima MOD  END  ******************************--
         ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
         ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
         ,oola.ordered_quantity      output_quantity          -- 差異数
@@ -1017,9 +1023,18 @@ AS
         ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
         ,ic_item_mst_b              iimb  -- OPM品目
         ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+        ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
+        ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
+--****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       WHERE
            ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
       AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+      AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+      AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
       AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
       AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
@@ -1320,7 +1335,12 @@ AS
         ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
         ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
         ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+--****************************** 2009/05/26 1.4 T.Kitajima MOD START ******************************--
+--        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+        ,oola.ordered_quantity * 
+          DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                                    order_quantity           -- 受注明細.受注数量           ：受注数
+--****************************** 2009/05/26 1.4 T.Kitajima MOD  END  ******************************--
         ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
         ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
         ,oola.ordered_quantity      output_quantity          -- 差異数
@@ -1334,10 +1354,19 @@ AS
         ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
         ,ic_item_mst_b              iimb  -- OPM品目
         ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+        ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
+        ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
+--****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       WHERE
            ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
       AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
       AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+      AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+      AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
       AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
       AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
