@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A10C(body)
  * Description      : 電子帳簿リース取引の情報系システム連携
  * MD.050           : MD050_CFO_019_A10_電子帳簿リース取引の情報系システム連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012-09-20    1.0   K.Nakamura       新規作成
  *  2012-11-26    1.1   K.Nakamura       [E_本稼動_10112対応]T4検証パフォーマンス障害対応
+ *  2012-12-19    1.2   T.Osawa          [E_本稼動_10112対応]抽出条件変更
  *
  *****************************************************************************************/
 --
@@ -1928,7 +1929,12 @@ AS
       AND    fab.attribute10(+)      = TO_CHAR(xcl.contract_line_id)
       AND    xpp.contract_line_id    = xft1.contract_line_id(+)
       AND    xpp.period_name         = xft1.period_name(+)
-      AND    xpp.accounting_if_flag <> cv_accounting_if_flag_0
+-- 2012-12-19 1.2 T.Osawa MOD START
+--    AND    xpp.accounting_if_flag <> cv_accounting_if_flag_0
+      AND (( xpp.accounting_if_flag <> cv_accounting_if_flag_0 )
+      OR   ( xpp.accounting_if_flag = cv_accounting_if_flag_0 
+      AND    xft1.transaction_type  = cv_transaction_type_3 ))
+-- 2012-12-19 1.2 T.Osawa MOD END
       AND    xpp.period_name         = lv_period_name
     ;
     --
@@ -2062,7 +2068,12 @@ AS
       AND    fab.attribute10(+)      = TO_CHAR(xcl.contract_line_id)
       AND    xpp.contract_line_id    = xft1.contract_line_id(+)
       AND    xpp.period_name         = xft1.period_name(+)
-      AND    xpp.accounting_if_flag <> cv_accounting_if_flag_0
+-- 2012-12-19 1.2 T.Osawa MOD START
+--      AND    xpp.accounting_if_flag <> cv_accounting_if_flag_0
+      AND (( xpp.accounting_if_flag <> cv_accounting_if_flag_0 )
+      OR   ( xpp.accounting_if_flag = cv_accounting_if_flag_0 
+      AND    xft1.transaction_type  = cv_transaction_type_3 ))
+-- 2012-12-19 1.2 T.Osawa MOD END
       AND    EXISTS ( SELECT 'X'
                       FROM   xxcfo_lease_wait_coop xlwc -- リース取引未連携テーブル
                       WHERE  xlwc.period_name = xpp.period_name
@@ -2191,7 +2202,12 @@ AS
       AND    fab.attribute10(+)      = TO_CHAR(xcl.contract_line_id)
       AND    xpp.contract_line_id    = xft1.contract_line_id(+)
       AND    xpp.period_name         = xft1.period_name(+)
-      AND    xpp.accounting_if_flag <> cv_accounting_if_flag_0
+-- 2012-12-19 1.2 T.Osawa MOD START
+--    AND    xpp.accounting_if_flag <> cv_accounting_if_flag_0
+      AND (( xpp.accounting_if_flag <> cv_accounting_if_flag_0 )
+      OR   ( xpp.accounting_if_flag = cv_accounting_if_flag_0 
+      AND    xft1.transaction_type  = cv_transaction_type_3 ))
+-- 2012-12-19 1.2 T.Osawa MOD END
       AND    xpp.period_name         = lv_period_name
     ;
 --
