@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.9
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,7 +16,8 @@
 * 2008-10-07 1.7  伊藤ひとみ   統合テスト指摘240対応
 * 2008-10-24 1.8  二瓶大輔     TE080_BPO_600 No22
 * 2008-12-05 1.9  伊藤ひとみ   本番障害#452対応
-* 2008-12-06 2.0  宮田         本番障害#484対応
+* 2008-12-06 1.10 宮田         本番障害#484対応
+* 2008-12-15 1.11 二瓶大輔     本番障害#648対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -38,7 +39,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.9
+ * @version 1.11
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -2166,104 +2167,106 @@ public class XxwshUtility
   {
     String apiName      = "doShipRequestAndResultEntry";
 
-    //PL/SQLの作成を行います
-    StringBuffer sb = new StringBuffer(1000);
-    sb.append("DECLARE "   );
-    sb.append("  ln_request_id NUMBER; "                                             );
-    sb.append("BEGIN "                                                               );
-                 // 出荷依頼/出荷実績作成処理(コンカレント)呼び出し
-    sb.append("  ln_request_id := fnd_request.submit_request( "                      );
-    sb.append("     application  => 'XXWSH' "                                        ); // アプリケーション名
-    sb.append("    ,program      => 'XXWSH420001C' "                                 ); // プログラム短縮名
-    sb.append("    ,argument1    => NULL "                                           ); // ブロック
-    sb.append("    ,argument2    => NULL "                                           ); // 出荷元
-    sb.append("    ,argument3    => :1 );"                                           ); // 依頼No
-                 // 要求IDがある場合、正常
-    sb.append("  IF ln_request_id > 0 THEN "                                         );
-    sb.append("    :2 := '1'; "                                                      ); // 1:正常終了
-    sb.append("    :3 := ln_request_id; "                                            ); // 要求ID
-// 2008-08-01 H.Itou Del Start
-//    sb.append("    COMMIT; "                                                         );
-// 2008-08-01 H.Itou Del End
-                 // 要求IDがない場合、異常
-    sb.append("  ELSE "                                                              );
-    sb.append("    :2 := '0'; "                                                      ); // 0:異常終了
-    sb.append("    :3 := ln_request_id; "                                            ); // 要求ID
-    sb.append("    ROLLBACK; "                                                       );
-    sb.append("  END IF; "                                                           );
-    sb.append("END; "                                                                );
-    
-    //PL/SQLの設定
-    CallableStatement cstmt = trans.createCallableStatement(
-                                sb.toString(),
-                                OADBTransaction.DEFAULT);
-    try
-    {
-      // パラメータ設定(INパラメータ)
-      cstmt.setString(1, requestNo);                  // 依頼No
-      
-      // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(2, Types.VARCHAR);   // リターンコード
-      cstmt.registerOutParameter(3, Types.INTEGER);   // 要求ID
-      
-      //PL/SQL実行
-      cstmt.execute();
-
-      // 戻り値取得
-      String retFlag  = cstmt.getString(2); // リターンコード
-      int requestId  = cstmt.getInt(3); // 要求ID
-
-      // コンカレント登録失敗の場合
-      if (XxcmnConstants.RETURN_NOT_EXE.equals(retFlag)) 
-      {
-        //トークン生成
-        MessageToken[] tokens = { new MessageToken(XxwshConstants.TOKEN_PRG_NAME,
-                                                   XxwshConstants.TOKEN_NAME_PGM_NAME_420001C) };
-        // コンカレント登録エラーメッセージ出力
-        throw new OAException(
-          XxcmnConstants.APPL_XXWSH, 
-          XxwshConstants.XXWSH13314, 
-          tokens);
-      }
-
-    // PL/SQL実行時例外の場合
-    } catch(SQLException s)
-    {
-      // ロールバック
-      rollBack(trans);
-      // ログ出力
-      XxcmnUtility.writeLog(
-        trans,
-        XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
-        s.toString(),
-        6);
-      // エラーメッセージ出力
-      throw new OAException(
-        XxcmnConstants.APPL_XXCMN, 
-        XxcmnConstants.XXCMN10123);
-
-    } finally
-    {
-      try
-      {
-        //処理中にエラーが発生した場合を想定する
-        cstmt.close();
-      } catch(SQLException s)
-      {
-        // ロールバック
-        rollBack(trans);
-        // ログ出力
-        XxcmnUtility.writeLog(
-          trans,
-          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
-          s.toString(),
-          6);
-        // エラーメッセージ出力
-        throw new OAException(
-          XxcmnConstants.APPL_XXCMN, 
-          XxcmnConstants.XXCMN10123);
-      }
-    }
+// 2008-12-15 D.Nihei Del Start 本番障害#648対応 コメント化
+//    //PL/SQLの作成を行います
+//    StringBuffer sb = new StringBuffer(1000);
+//    sb.append("DECLARE "   );
+//    sb.append("  ln_request_id NUMBER; "                                             );
+//    sb.append("BEGIN "                                                               );
+//                 // 出荷依頼/出荷実績作成処理(コンカレント)呼び出し
+//    sb.append("  ln_request_id := fnd_request.submit_request( "                      );
+//    sb.append("     application  => 'XXWSH' "                                        ); // アプリケーション名
+//    sb.append("    ,program      => 'XXWSH420001C' "                                 ); // プログラム短縮名
+//    sb.append("    ,argument1    => NULL "                                           ); // ブロック
+//    sb.append("    ,argument2    => NULL "                                           ); // 出荷元
+//    sb.append("    ,argument3    => :1 );"                                           ); // 依頼No
+//                 // 要求IDがある場合、正常
+//    sb.append("  IF ln_request_id > 0 THEN "                                         );
+//    sb.append("    :2 := '1'; "                                                      ); // 1:正常終了
+//    sb.append("    :3 := ln_request_id; "                                            ); // 要求ID
+//// 2008-08-01 H.Itou Del Start
+////    sb.append("    COMMIT; "                                                         );
+//// 2008-08-01 H.Itou Del End
+//                 // 要求IDがない場合、異常
+//    sb.append("  ELSE "                                                              );
+//    sb.append("    :2 := '0'; "                                                      ); // 0:異常終了
+//    sb.append("    :3 := ln_request_id; "                                            ); // 要求ID
+//    sb.append("    ROLLBACK; "                                                       );
+//    sb.append("  END IF; "                                                           );
+//    sb.append("END; "                                                                );
+//    
+//    //PL/SQLの設定
+//    CallableStatement cstmt = trans.createCallableStatement(
+//                                sb.toString(),
+//                                OADBTransaction.DEFAULT);
+//    try
+//    {
+//      // パラメータ設定(INパラメータ)
+//      cstmt.setString(1, requestNo);                  // 依頼No
+//      
+//      // パラメータ設定(OUTパラメータ)
+//      cstmt.registerOutParameter(2, Types.VARCHAR);   // リターンコード
+//      cstmt.registerOutParameter(3, Types.INTEGER);   // 要求ID
+//      
+//      //PL/SQL実行
+//      cstmt.execute();
+//
+//      // 戻り値取得
+//      String retFlag  = cstmt.getString(2); // リターンコード
+//      int requestId  = cstmt.getInt(3); // 要求ID
+//
+//      // コンカレント登録失敗の場合
+//      if (XxcmnConstants.RETURN_NOT_EXE.equals(retFlag)) 
+//      {
+//        //トークン生成
+//        MessageToken[] tokens = { new MessageToken(XxwshConstants.TOKEN_PRG_NAME,
+//                                                   XxwshConstants.TOKEN_NAME_PGM_NAME_420001C) };
+//        // コンカレント登録エラーメッセージ出力
+//        throw new OAException(
+//          XxcmnConstants.APPL_XXWSH, 
+//          XxwshConstants.XXWSH13314, 
+//          tokens);
+//      }
+//
+//    // PL/SQL実行時例外の場合
+//    } catch(SQLException s)
+//    {
+//      // ロールバック
+//      rollBack(trans);
+//      // ログ出力
+//      XxcmnUtility.writeLog(
+//        trans,
+//        XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+//        s.toString(),
+//        6);
+//      // エラーメッセージ出力
+//      throw new OAException(
+//        XxcmnConstants.APPL_XXCMN, 
+//        XxcmnConstants.XXCMN10123);
+//
+//    } finally
+//    {
+//      try
+//      {
+//        //処理中にエラーが発生した場合を想定する
+//        cstmt.close();
+//      } catch(SQLException s)
+//      {
+//        // ロールバック
+//        rollBack(trans);
+//        // ログ出力
+//        XxcmnUtility.writeLog(
+//          trans,
+//          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+//          s.toString(),
+//          6);
+//        // エラーメッセージ出力
+//        throw new OAException(
+//          XxcmnConstants.APPL_XXCMN, 
+//          XxcmnConstants.XXCMN10123);
+//      }
+//    }
+// 2008-12-15 D.Nihei Del End
   } // doShipRequestAndResultEntry 
 
   /*****************************************************************************
