@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_mrih_n16 ON xxinv.xxinv_mov_req_instr_headers( notif_status ) TABLESPACE xxidx;

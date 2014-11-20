@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2008/12/18    1.27  N.Yoshida        本番障害773対応
  *  2008/12/22    1.28  N.Yoshida        本番障害838対応
  *  2008/12/25    1.29  A.Shiina         本番障害674対応
+ *  2009/01/07    1.30  N.Yoshida        本番障害954対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -13799,6 +13800,11 @@ NULL;
           prc_xml_add('quantity', 'D',      TO_CHAR((NVL(ln_end_stock_qty, 0)  - NVL(ln_stock_qty, 0))));--差異数量
           prc_xml_add('amount', 'D',        TO_CHAR((NVL(ln_end_stock_amt, 0)  - NVL(ln_stock_amt, 0))));--差異金額
 -- 2008/12/22 v1.28 UPDATE END
+-- 2009/01/07 v1.30 UPDATE START
+        ELSE
+          prc_xml_add('quantity', 'D',      TO_CHAR((NVL(ln_end_stock_qty, 0)  - NVL(ln_stock_qty, 0))));--差異数量
+          prc_xml_add('amount', 'D',        TO_CHAR((NVL(ln_end_stock_amt, 0)  - NVL(ln_stock_amt, 0))));--差異金額
+-- 2009/01/07 v1.30 UPDATE END
         END IF;
       ELSE
         IF  (ib_print = TRUE) THEN

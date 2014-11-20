@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/11/13    1.4   Tsuyoki Yoshimoto  内部変更#168
  *  2008/12/10    1.5   T.Miyata           本番#637 パフォーマンス対応
  *  2008/12/10    1.6   Hitomi Itou        本番障害#650
+ *  2009/01/07    1.7   Akiyoshi Shiina    本番障害#873
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -111,6 +112,10 @@ AS
   -- 出荷依頼ステータス
   gc_ship_status_close       CONSTANT  VARCHAR2(2)  := '03' ;       -- 締め済み
   gc_ship_status_delete      CONSTANT  VARCHAR2(2)  := '99' ;       -- 取消
+-- 2009/01/07 v1.7 ADD START
+  gc_ship_status_confirm     CONSTANT  VARCHAR2(2)  := '04' ;       -- 出荷実績計上済
+-- 2009/01/07 v1.7 ADD END
+
   ------------------------------
   -- 移動関連
   ------------------------------
@@ -125,6 +130,10 @@ AS
 -- 2008/12/10 v1.5 H.Itou Add Start
   -- 通知ステータス
   gc_notif_status_ktz        CONSTANT  VARCHAR2(2)  := '40' ;       -- 確定通知済
+-- 2009/01/07 v1.7 ADD START
+  gc_notif_status_mt         CONSTANT  VARCHAR2(2)  := '10' ;       -- 未通知
+  gc_notif_status_sty        CONSTANT  VARCHAR2(2)  := '20' ;       -- 再通知要
+-- 2009/01/07 v1.7 ADD END
 -- 2008/12/10 v1.5 H.Itou Add End
   ------------------------------
   -- クイックコード関連
@@ -1460,9 +1469,14 @@ AS
            -- 01:移動依頼/指示ヘッダ（アドオン）
     || '        xmrih.schedule_ship_date >= TO_DATE(:shipped_date_from) '
     || '   AND  xmrih.schedule_ship_date <= TO_DATE(:shipped_date_to) '
+-- 2009/01/07 v1.7 UPDATE START
+/*
 -- 2008/12/10 H.Itou Add Start
     || '   AND  xmrih.notif_status  <> ''' || gc_notif_status_ktz || ''' '   -- 通知ステータスが確定通知済でないもの
 -- 2008/12/10 H.Itou Add End
+*/
+    || '   AND  xmrih.notif_status IN ( ''' || gc_notif_status_mt || ''',''' || gc_notif_status_sty || ''') '   -- 通知ステータスが確定通知済でないもの
+-- 2009/01/07 v1.7 UPDATE END
            -- 03:OPM保管場所情報(出庫元)
     || '   AND  xilv.inventory_location_id = xmrih.shipped_locat_id '
            ----------------------------------------------------------------------------------
@@ -1586,8 +1600,11 @@ AS
     || ' AND  xottv.order_category_code   <>  ''' || gc_order_cate_ret || ''' ' -- 受注カテゴリ:返品
          -- 01:受注ヘッダアドオン
     || ' AND  xoha.order_type_id           =  xottv.transaction_type_id '
-    || ' AND  xoha.req_status             >=  ''' || gc_ship_status_close  || ''' '      -- ステータス:締め済み
-    || ' AND  xoha.req_status             <>  ''' || gc_ship_status_delete || ''' '      -- ステータス:取消
+-- 2009/01/07 v1.7 UPDATE START
+--    || ' AND  xoha.req_status             >=  ''' || gc_ship_status_close  || ''' '      -- ステータス:締め済み
+--    || ' AND  xoha.req_status             <>  ''' || gc_ship_status_delete || ''' '      -- ステータス:取消
+    || ' AND  xoha.req_status IN ( ''' || gc_ship_status_close || ''',''' || gc_ship_status_confirm || ''') ' -- ステータス:締め済み
+-- 2009/01/07 v1.7 UPDATE END
     || ' AND  xoha.latest_external_flag    =  ''' || gc_new_flg  || ''' '                -- 最新フラグ
     || ' AND  xoha.prod_class              =  ''' || gv_prod_kbn || ''' '
     || ' AND  xoha.schedule_ship_date     >=  :shipped_date_from '
@@ -1756,8 +1773,11 @@ AS
     || ' AND  xottv.order_category_code   <> ''' || gc_order_cate_ret || ''' '  -- 受注カテゴリ:返品
          -- 01:受注ヘッダアドオン
     || ' AND  xoha.order_type_id           =  xottv.transaction_type_id '
-    || ' AND  xoha.req_status             >= ''' || gc_ship_status_close || ''' '     -- ステータス:締め済み
-    || ' AND  xoha.req_status             <> ''' || gc_ship_status_delete || ''' '    -- ステータス:取消
+-- 2009/01/07 v1.7 UPDATE START
+--    || ' AND  xoha.req_status             >= ''' || gc_ship_status_close || ''' '     -- ステータス:締め済み
+--    || ' AND  xoha.req_status             <> ''' || gc_ship_status_delete || ''' '    -- ステータス:取消
+    || ' AND  xoha.req_status IN ( ''' || gc_ship_status_close || ''',''' || gc_ship_status_confirm || ''') ' -- ステータス:締め済み
+-- 2009/01/07 v1.7 UPDATE END
     || ' AND  xoha.latest_external_flag    = ''' || gc_new_flg || ''' '               -- 最新フラグ
 -- 2008/12/10 H.Itou Add Start
     || ' AND  xoha.notif_status  <> ''' || gc_notif_status_ktz || ''' '   -- 通知ステータスが確定通知済でないもの
@@ -1928,9 +1948,14 @@ AS
     || ' AND  xmrih.item_class            =  ''' || gv_prod_kbn            || ''' '
     || ' AND  xmrih.schedule_ship_date   >=  :shipped_date_from '
     || ' AND  xmrih.schedule_ship_date   <=  :shipped_date_to '
+-- 2009/01/07 v1.7 UPDATE START
+/*
 -- 2008/12/10 H.Itou Add Start
     || ' AND  xmrih.notif_status  <> ''' || gc_notif_status_ktz || ''' '   -- 通知ステータスが確定通知済でないもの
 -- 2008/12/10 H.Itou Add End
+*/
+    || '   AND  xmrih.notif_status IN ( ''' || gc_notif_status_mt || ''',''' || gc_notif_status_sty || ''') '   -- 通知ステータスが確定通知済でないもの
+-- 2009/01/07 v1.7 UPDATE START
         -- 03:OPM保管場所情報(出庫元)
     || ' AND  xilv.inventory_location_id = xmrih.shipped_locat_id '
          -- 04:OPM保管場所情報(入庫先)
@@ -2067,9 +2092,14 @@ AS
          -- 01:移動依頼/指示ヘッダ（アドオン）
     || ' AND  xmrih.status    >=  ''' || gc_move_status_ordered || ''' ' -- ステータス:依頼済
     || ' AND  xmrih.mov_type  <>  ''' || gc_mov_type_not_ship   || ''' ' -- 移動タイプ:積送なし
+-- 2009/01/07 v1.7 UPDATE START
+/*
 -- 2008/12/10 H.Itou Add Start
     || ' AND  xmrih.notif_status  <> ''' || gc_notif_status_ktz || ''' '   -- 通知ステータスが確定通知済でないもの
 -- 2008/12/10 H.Itou Add End
+*/
+    || ' AND  xmrih.notif_status IN ( ''' || gc_notif_status_mt || ''',''' || gc_notif_status_sty || ''') '   -- 通知ステータスが確定通知済でないもの
+-- 2009/01/07 v1.7 UPDATE END
          -- 03:OPM保管場所情報(出庫元)
     || ' AND  xilv1.inventory_location_id = xmrih.shipped_locat_id '
          -- 04:OPM保管場所情報(入庫先)

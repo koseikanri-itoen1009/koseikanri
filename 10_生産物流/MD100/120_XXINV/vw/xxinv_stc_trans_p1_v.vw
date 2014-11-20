@@ -104,8 +104,12 @@ AS
         ,ilm_in_xf.attribute1                          AS manufacture_date
         ,ilm_in_xf.attribute2                          AS uniqe_sign
         ,ilm_in_xf.attribute3                          AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_in_xf.schedule_arrival_date             AS arrival_date
-        ,xmrih_in_xf.schedule_ship_date                AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_in_xf.schedule_arrival_date             AS arrival_date
+--        ,xmrih_in_xf.schedule_ship_date                AS leaving_date
+        ,TRUNC(xmrih_in_xf.schedule_arrival_date)      AS arrival_date
+        ,TRUNC(xmrih_in_xf.schedule_ship_date)         AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status         -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -162,8 +166,12 @@ AS
         ,ilm_in_tr.attribute1                          AS manufacture_date
         ,ilm_in_tr.attribute2                          AS uniqe_sign
         ,ilm_in_tr.attribute3                          AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_in_tr.schedule_arrival_date             AS arrival_date
-        ,xmrih_in_tr.schedule_ship_date                AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_in_tr.schedule_arrival_date             AS arrival_date
+--        ,xmrih_in_tr.schedule_ship_date                AS leaving_date
+        ,TRUNC(xmrih_in_tr.schedule_arrival_date)      AS arrival_date
+        ,TRUNC(xmrih_in_tr.schedule_ship_date)         AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status      -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -220,8 +228,12 @@ AS
         ,ilm_in_xf20.attribute1                        AS manufacture_date
         ,ilm_in_xf20.attribute2                        AS uniqe_sign
         ,ilm_in_xf20.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_in_xf20.schedule_arrival_date           AS arrival_date
-        ,xmrih_in_xf20.schedule_ship_date              AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_in_xf20.schedule_arrival_date             AS arrival_date
+--        ,xmrih_in_xf20.schedule_ship_date                AS leaving_date
+        ,TRUNC(xmrih_in_xf20.schedule_arrival_date)    AS arrival_date
+        ,TRUNC(xmrih_in_xf20.schedule_ship_date)       AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status         -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -275,8 +287,12 @@ AS
         ,ilm_in_tr20.attribute1                        AS manufacture_date
         ,ilm_in_tr20.attribute2                        AS uniqe_sign
         ,ilm_in_tr20.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_in_tr20.schedule_arrival_date           AS arrival_date
-        ,xmrih_in_tr20.schedule_ship_date              AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_in_tr20.schedule_arrival_date             AS arrival_date
+--        ,xmrih_in_tr20.schedule_ship_date                AS leaving_date
+        ,TRUNC(xmrih_in_tr20.schedule_arrival_date)    AS arrival_date
+        ,TRUNC(xmrih_in_tr20.schedule_ship_date)       AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status         -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -330,8 +346,12 @@ AS
         ,ilm_in_pr.attribute1                          AS manufacture_date
         ,ilm_in_pr.attribute2                          AS uniqe_sign
         ,ilm_in_pr.attribute3                          AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,gbh_in_pr.plan_start_date                     AS arrival_date
-        ,gbh_in_pr.plan_start_date                     AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,gbh_in_pr.plan_start_date                     AS arrival_date
+--        ,gbh_in_pr.plan_start_date                     AS leaving_date
+        ,TRUNC(gbh_in_pr.plan_start_date)              AS arrival_date
+        ,TRUNC(gbh_in_pr.plan_start_date)              AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status       -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -433,8 +453,12 @@ AS
         ,ilm_out_xf.attribute1                         AS manufacture_date
         ,ilm_out_xf.attribute2                         AS uniqe_sign
         ,ilm_out_xf.attribute3                         AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_out_xf.schedule_arrival_date            AS arrival_date
-        ,xmrih_out_xf.schedule_ship_date               AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_out_xf.schedule_arrival_date            AS arrival_date
+--        ,xmrih_out_xf.schedule_ship_date               AS leaving_date
+        ,TRUNC(xmrih_out_xf.schedule_arrival_date)     AS arrival_date
+        ,TRUNC(xmrih_out_xf.schedule_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status         -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -491,8 +515,12 @@ AS
         ,ilm_out_tr.attribute1                         AS manufacture_date
         ,ilm_out_tr.attribute2                         AS uniqe_sign
         ,ilm_out_tr.attribute3                         AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_out_tr.schedule_arrival_date            AS arrival_date
-        ,xmrih_out_tr.schedule_ship_date               AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_out_tr.schedule_arrival_date            AS arrival_date
+--        ,xmrih_out_tr.schedule_ship_date               AS leaving_date
+        ,TRUNC(xmrih_out_tr.schedule_arrival_date)     AS arrival_date
+        ,TRUNC(xmrih_out_tr.schedule_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status       -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -549,8 +577,12 @@ AS
         ,ilm_out_xf20.attribute1                       AS manufacture_date
         ,ilm_out_xf20.attribute2                       AS uniqe_sign
         ,ilm_out_xf20.attribute3                       AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_out_xf20.schedule_arrival_date          AS arrival_date
-        ,xmrih_out_xf20.schedule_ship_date             AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_out_xf20.schedule_arrival_date          AS arrival_date
+--        ,xmrih_out_xf20.schedule_ship_date             AS leaving_date
+        ,TRUNC(xmrih_out_xf20.schedule_arrival_date)   AS arrival_date
+        ,TRUNC(xmrih_out_xf20.schedule_ship_date)      AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status         -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -604,8 +636,12 @@ AS
         ,ilm_out_tr20.attribute1                       AS manufacture_date
         ,ilm_out_tr20.attribute2                       AS uniqe_sign
         ,ilm_out_tr20.attribute3                       AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_out_tr20.schedule_arrival_date          AS arrival_date
-        ,xmrih_out_tr20.schedule_ship_date             AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_out_tr20.schedule_arrival_date          AS arrival_date
+--        ,xmrih_out_tr20.schedule_ship_date             AS leaving_date
+        ,TRUNC(xmrih_out_tr20.schedule_arrival_date)   AS arrival_date
+        ,TRUNC(xmrih_out_tr20.schedule_ship_date)      AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status         -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -659,8 +695,12 @@ AS
         ,ilm_out_om.attribute1                         AS manufacture_date
         ,ilm_out_om.attribute2                         AS uniqe_sign
         ,ilm_out_om.attribute3                         AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xoha_out_om.schedule_arrival_date             AS arrival_date
-        ,xoha_out_om.schedule_ship_date                AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xoha_out_om.schedule_arrival_date             AS arrival_date
+--        ,xoha_out_om.schedule_ship_date                AS leaving_date
+        ,TRUNC(xoha_out_om.schedule_arrival_date)      AS arrival_date
+        ,TRUNC(xoha_out_om.schedule_ship_date)         AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status        -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -764,12 +804,17 @@ AS
         ,ilm_out_om2.attribute1                        AS manufacture_date
         ,ilm_out_om2.attribute2                        AS uniqe_sign
         ,ilm_out_om2.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
+--2009/01/07 Y.Kawano Mod Start
 -- 2008/10/23 Y.Yamamoto v1.1 update start
 --        ,xoha_out_om2.schedule_arrival_date            AS arrival_date
-        ,NVL(xoha_out_om2.schedule_arrival_date
-            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
+--        ,NVL(xoha_out_om2.schedule_arrival_date
+--            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
 -- 2008/10/23 Y.Yamamoto v1.1 update end
-        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+--        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2.schedule_arrival_date)
+            ,TRUNC(xoha_out_om2.schedule_ship_date))   AS arrival_date
+        ,TRUNC(xoha_out_om2.schedule_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status        -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -877,12 +922,17 @@ AS
         ,ilm_out_om2.attribute1                        AS manufacture_date
         ,ilm_out_om2.attribute2                        AS uniqe_sign
         ,ilm_out_om2.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
+--2009/01/07 Y.Kawano Mod Start
 -- 2008/10/23 Y.Yamamoto v1.1 update start
 --        ,xoha_out_om2.schedule_arrival_date            AS arrival_date
-        ,NVL(xoha_out_om2.schedule_arrival_date
-            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
+--        ,NVL(xoha_out_om2.schedule_arrival_date
+--            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
 -- 2008/10/23 Y.Yamamoto v1.1 update end
-        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+--        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2.schedule_arrival_date)
+            ,TRUNC(xoha_out_om2.schedule_ship_date))   AS arrival_date
+        ,TRUNC(xoha_out_om2.schedule_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status        -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -992,9 +1042,14 @@ AS
         ,ilm_out_om2.attribute1                        AS manufacture_date
         ,ilm_out_om2.attribute2                        AS uniqe_sign
         ,ilm_out_om2.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,NVL(xoha_out_om2.schedule_arrival_date
-            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
-        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,NVL(xoha_out_om2.schedule_arrival_date
+--            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
+--        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2.schedule_arrival_date)
+            ,TRUNC(xoha_out_om2.schedule_ship_date))   AS arrival_date
+        ,TRUNC(xoha_out_om2.schedule_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status        -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1098,8 +1153,12 @@ AS
         ,ilm_out_pr.attribute1                         AS manufacture_date
         ,ilm_out_pr.attribute2                         AS uniqe_sign
         ,ilm_out_pr.attribute3                         AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,gbh_out_pr.plan_start_date                    AS arrival_date
-        ,gbh_out_pr.plan_start_date                    AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,gbh_out_pr.plan_start_date                    AS arrival_date
+--        ,gbh_out_pr.plan_start_date                    AS leaving_date
+        ,TRUNC(gbh_out_pr.plan_start_date)             AS arrival_date
+        ,TRUNC(gbh_out_pr.plan_start_date)             AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'1'                                           AS status       -- —\’è
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1264,8 +1323,12 @@ AS
         ,ilm_in_po_e.attribute1                        AS manufacture_date
         ,ilm_in_po_e.attribute2                        AS uniqe_sign
         ,ilm_in_po_e.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xrart_in_po_e.txns_date                       AS arrival_date
-        ,xrart_in_po_e.txns_date                       AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xrart_in_po_e.txns_date                       AS arrival_date
+--        ,xrart_in_po_e.txns_date                       AS leaving_date
+        ,TRUNC(xrart_in_po_e.txns_date)                AS arrival_date
+        ,TRUNC(xrart_in_po_e.txns_date)                AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1344,8 +1407,12 @@ AS
         ,ilm_in_xf_e.attribute1                        AS manufacture_date
         ,ilm_in_xf_e.attribute2                        AS uniqe_sign
         ,ilm_in_xf_e.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_in_xf_e.actual_arrival_date             AS arrival_date
-        ,xmrih_in_xf_e.actual_ship_date                AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_in_xf_e.actual_arrival_date             AS arrival_date
+--        ,xmrih_in_xf_e.actual_ship_date                AS leaving_date
+        ,TRUNC(xmrih_in_xf_e.actual_arrival_date)      AS arrival_date
+        ,TRUNC(xmrih_in_xf_e.actual_ship_date)         AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1399,8 +1466,12 @@ AS
         ,ilm_in_tr_e.attribute1                        AS manufacture_date
         ,ilm_in_tr_e.attribute2                        AS uniqe_sign
         ,ilm_in_tr_e.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_in_tr_e.actual_arrival_date             AS arrival_date
-        ,xmrih_in_tr_e.actual_ship_date                AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_in_tr_e.actual_arrival_date             AS arrival_date
+--        ,xmrih_in_tr_e.actual_ship_date                AS leaving_date
+        ,TRUNC(xmrih_in_tr_e.actual_arrival_date)      AS arrival_date
+        ,TRUNC(xmrih_in_tr_e.actual_ship_date)         AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1456,8 +1527,12 @@ AS
         ,ilm_in_pr_e.attribute1                        AS manufacture_date
         ,ilm_in_pr_e.attribute2                        AS uniqe_sign
         ,ilm_in_pr_e.attribute3                        AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itp_in_pr_e.trans_date                        AS arrival_date
-        ,itp_in_pr_e.trans_date                        AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itp_in_pr_e.trans_date                        AS arrival_date
+--        ,itp_in_pr_e.trans_date                        AS leaving_date
+        ,TRUNC(itp_in_pr_e.trans_date)                 AS arrival_date
+        ,TRUNC(itp_in_pr_e.trans_date)                 AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status         -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1538,8 +1613,12 @@ AS
         ,ilm_in_pr_e70.attribute1                      AS manufacture_date
         ,ilm_in_pr_e70.attribute2                      AS uniqe_sign
         ,ilm_in_pr_e70.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itp_in_pr_e70.trans_date                      AS arrival_date
-        ,itp_in_pr_e70.trans_date                      AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itp_in_pr_e70.trans_date                      AS arrival_date
+--        ,itp_in_pr_e70.trans_date                      AS leaving_date
+        ,TRUNC(itp_in_pr_e70.trans_date)               AS arrival_date
+        ,TRUNC(itp_in_pr_e70.trans_date)               AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status         -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1627,8 +1706,12 @@ AS
         ,ilm_in_pr_e70.attribute1                      AS manufacture_date
         ,ilm_in_pr_e70.attribute2                      AS uniqe_sign
         ,ilm_in_pr_e70.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itp_in_pr_e70.trans_date                      AS arrival_date
-        ,itp_in_pr_e70.trans_date                      AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itp_in_pr_e70.trans_date                      AS arrival_date
+--        ,itp_in_pr_e70.trans_date                      AS leaving_date
+        ,TRUNC(itp_in_pr_e70.trans_date)               AS arrival_date
+        ,TRUNC(itp_in_pr_e70.trans_date)               AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status         -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1696,8 +1779,12 @@ AS
         ,ilm_in_po_e_rma.attribute1                    AS manufacture_date
         ,ilm_in_po_e_rma.attribute2                    AS uniqe_sign
         ,ilm_in_po_e_rma.attribute3                    AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xoha_in_po_e_rma.arrival_date                 AS arrival_date
-        ,xoha_in_po_e_rma.shipped_date                 AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xoha_in_po_e_rma.arrival_date                 AS arrival_date
+--        ,xoha_in_po_e_rma.shipped_date                 AS leaving_date
+        ,TRUNC(xoha_in_po_e_rma.arrival_date)          AS arrival_date
+        ,TRUNC(xoha_in_po_e_rma.shipped_date)          AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status              -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1788,8 +1875,12 @@ AS
         ,ilm_in_ad_e_x97.attribute1                    AS manufacture_date
         ,ilm_in_ad_e_x97.attribute2                    AS uniqe_sign
         ,ilm_in_ad_e_x97.attribute3                    AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_in_ad_e_x97.trans_date                    AS arrival_date
-        ,itc_in_ad_e_x97.trans_date                    AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_in_ad_e_x97.trans_date                    AS arrival_date
+--        ,itc_in_ad_e_x97.trans_date                    AS leaving_date
+        ,TRUNC(itc_in_ad_e_x97.trans_date)             AS arrival_date
+        ,TRUNC(itc_in_ad_e_x97.trans_date)             AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1849,8 +1940,12 @@ AS
         ,ilm_in_ad_e_x97.attribute1                    AS manufacture_date
         ,ilm_in_ad_e_x97.attribute2                    AS uniqe_sign
         ,ilm_in_ad_e_x97.attribute3                    AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_in_ad_e_x97.trans_date                    AS arrival_date
-        ,itc_in_ad_e_x97.trans_date                    AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_in_ad_e_x97.trans_date                    AS arrival_date
+--        ,itc_in_ad_e_x97.trans_date                    AS leaving_date
+        ,TRUNC(itc_in_ad_e_x97.trans_date)             AS arrival_date
+        ,TRUNC(itc_in_ad_e_x97.trans_date)             AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -1921,8 +2016,12 @@ AS
         ,ilm_in_ad_e_x9.attribute1                     AS manufacture_date
         ,ilm_in_ad_e_x9.attribute2                     AS uniqe_sign
         ,ilm_in_ad_e_x9.attribute3                     AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_in_ad_e_x9.trans_date                     AS arrival_date
-        ,itc_in_ad_e_x9.trans_date                     AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_in_ad_e_x9.trans_date                     AS arrival_date
+--        ,itc_in_ad_e_x9.trans_date                     AS leaving_date
+        ,TRUNC(itc_in_ad_e_x9.trans_date)              AS arrival_date
+        ,TRUNC(itc_in_ad_e_x9.trans_date)              AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status      -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2057,8 +2156,12 @@ AS
         ,ilm_in_ad_e_xx.attribute1                     AS manufacture_date
         ,ilm_in_ad_e_xx.attribute2                     AS uniqe_sign
         ,ilm_in_ad_e_xx.attribute3                     AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_in_ad_e_xx.trans_date                     AS arrival_date
-        ,itc_in_ad_e_xx.trans_date                     AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_in_ad_e_xx.trans_date                     AS arrival_date
+--        ,itc_in_ad_e_xx.trans_date                     AS leaving_date
+        ,TRUNC(itc_in_ad_e_xx.trans_date)              AS arrival_date
+        ,TRUNC(itc_in_ad_e_xx.trans_date)              AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status   -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2127,8 +2230,12 @@ AS
         ,ilm_out_xf_e.attribute1                       AS manufacture_date
         ,ilm_out_xf_e.attribute2                       AS uniqe_sign
         ,ilm_out_xf_e.attribute3                       AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_out_xf_e.actual_arrival_date            AS arrival_date
-        ,xmrih_out_xf_e.actual_ship_date               AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_out_xf_e.actual_arrival_date            AS arrival_date
+--        ,xmrih_out_xf_e.actual_ship_date               AS leaving_date
+        ,TRUNC(xmrih_out_xf_e.actual_arrival_date)     AS arrival_date
+        ,TRUNC(xmrih_out_xf_e.actual_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2182,8 +2289,12 @@ AS
         ,ilm_out_tr_e.attribute1                       AS manufacture_date
         ,ilm_out_tr_e.attribute2                       AS uniqe_sign
         ,ilm_out_tr_e.attribute3                       AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xmrih_out_tr_e.actual_arrival_date            AS arrival_date
-        ,xmrih_out_tr_e.actual_ship_date               AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xmrih_out_tr_e.actual_arrival_date            AS arrival_date
+--        ,xmrih_out_tr_e.actual_ship_date               AS leaving_date
+        ,TRUNC(xmrih_out_tr_e.actual_arrival_date)     AS arrival_date
+        ,TRUNC(xmrih_out_tr_e.actual_ship_date)        AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2239,8 +2350,12 @@ AS
         ,ilm_out_pr_e.attribute1                       AS manufacture_date
         ,ilm_out_pr_e.attribute2                       AS uniqe_sign
         ,ilm_out_pr_e.attribute3                       AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itp_out_pr_e.trans_date                       AS arrival_date
-        ,itp_out_pr_e.trans_date                       AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itp_out_pr_e.trans_date                       AS arrival_date
+--        ,itp_out_pr_e.trans_date                       AS leaving_date
+        ,TRUNC(itp_out_pr_e.trans_date)                AS arrival_date
+        ,TRUNC(itp_out_pr_e.trans_date)                AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status         -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2319,8 +2434,12 @@ AS
         ,ilm_out_pr_e70.attribute1                     AS manufacture_date
         ,ilm_out_pr_e70.attribute2                     AS uniqe_sign
         ,ilm_out_pr_e70.attribute3                     AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itp_out_pr_e70.trans_date                     AS arrival_date
-        ,itp_out_pr_e70.trans_date                     AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itp_out_pr_e70.trans_date                     AS arrival_date
+--        ,itp_out_pr_e70.trans_date                     AS leaving_date
+        ,TRUNC(itp_out_pr_e70.trans_date)              AS arrival_date
+        ,TRUNC(itp_out_pr_e70.trans_date)              AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status            -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2420,8 +2539,12 @@ AS
         ,ilm_out_pr_e70.attribute1                     AS manufacture_date
         ,ilm_out_pr_e70.attribute2                     AS uniqe_sign
         ,ilm_out_pr_e70.attribute3                     AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itp_out_pr_e70.trans_date                     AS arrival_date
-        ,itp_out_pr_e70.trans_date                     AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itp_out_pr_e70.trans_date                     AS arrival_date
+--        ,itp_out_pr_e70.trans_date                     AS leaving_date
+        ,TRUNC(itp_out_pr_e70.trans_date)              AS arrival_date
+        ,TRUNC(itp_out_pr_e70.trans_date)              AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status            -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2492,8 +2615,12 @@ AS
         ,ilm_out_om_e.attribute1                       AS manufacture_date
         ,ilm_out_om_e.attribute2                       AS uniqe_sign
         ,ilm_out_om_e.attribute3                       AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xoha_out_om_e.arrival_date                    AS arrival_date
-        ,xoha_out_om_e.shipped_date                    AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xoha_out_om_e.arrival_date                    AS arrival_date
+--        ,xoha_out_om_e.shipped_date                    AS leaving_date
+        ,TRUNC(xoha_out_om_e.arrival_date)             AS arrival_date
+        ,TRUNC(xoha_out_om_e.shipped_date)             AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status          -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2598,12 +2725,17 @@ AS
         ,ilm_out_om2_e.attribute1                      AS manufacture_date
         ,ilm_out_om2_e.attribute2                      AS uniqe_sign
         ,ilm_out_om2_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
+--2009/01/07 Y.Kawano Mod Start
 -- 2008/10/23 Y.Yamamoto v1.1 update start
 --        ,xoha_out_om2_e.arrival_date                   AS arrival_date
-        ,NVL(xoha_out_om2_e.arrival_date
-            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+--        ,NVL(xoha_out_om2_e.arrival_date
+--            ,xoha_out_om2_e.shipped_date)              AS arrival_date
 -- 2008/10/23 Y.Yamamoto v1.1 update end
-        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+--        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2_e.arrival_date)
+            ,TRUNC(xoha_out_om2_e.shipped_date))       AS arrival_date
+        ,TRUNC(xoha_out_om2_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2709,12 +2841,17 @@ AS
         ,ilm_out_om2_e.attribute1                      AS manufacture_date
         ,ilm_out_om2_e.attribute2                      AS uniqe_sign
         ,ilm_out_om2_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
+--2009/01/07 Y.Kawano Mod Start
 -- 2008/10/23 Y.Yamamoto v1.1 update start
 --        ,xoha_out_om2_e.arrival_date                   AS arrival_date
-        ,NVL(xoha_out_om2_e.arrival_date
-            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+--        ,NVL(xoha_out_om2_e.arrival_date
+--            ,xoha_out_om2_e.shipped_date)              AS arrival_date
 -- 2008/10/23 Y.Yamamoto v1.1 update end
-        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+--        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2_e.arrival_date)
+            ,TRUNC(xoha_out_om2_e.shipped_date))       AS arrival_date
+        ,TRUNC(xoha_out_om2_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2821,12 +2958,17 @@ AS
         ,ilm_out_om2_e.attribute1                      AS manufacture_date
         ,ilm_out_om2_e.attribute2                      AS uniqe_sign
         ,ilm_out_om2_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
+--2009/01/07 Y.Kawano Mod Start
 -- 2008/10/23 Y.Yamamoto v1.1 update start
 --        ,xoha_out_om2_e.arrival_date                   AS arrival_date
-        ,NVL(xoha_out_om2_e.arrival_date
-            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+--        ,NVL(xoha_out_om2_e.arrival_date
+--            ,xoha_out_om2_e.shipped_date)              AS arrival_date
 -- 2008/10/23 Y.Yamamoto v1.1 update end
-        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+--        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2_e.arrival_date)
+            ,TRUNC(xoha_out_om2_e.shipped_date))       AS arrival_date
+        ,TRUNC(xoha_out_om2_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -2933,12 +3075,17 @@ AS
         ,ilm_out_om2_e.attribute1                      AS manufacture_date
         ,ilm_out_om2_e.attribute2                      AS uniqe_sign
         ,ilm_out_om2_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
+--2009/01/07 Y.Kawano Mod Start
 -- 2008/10/23 Y.Yamamoto v1.1 update start
 --        ,xoha_out_om2_e.arrival_date                   AS arrival_date
-        ,NVL(xoha_out_om2_e.arrival_date
-            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+--        ,NVL(xoha_out_om2_e.arrival_date
+--            ,xoha_out_om2_e.shipped_date)              AS arrival_date
 -- 2008/10/23 Y.Yamamoto v1.1 update end
-        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+--        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2_e.arrival_date)
+            ,TRUNC(xoha_out_om2_e.shipped_date))       AS arrival_date
+        ,TRUNC(xoha_out_om2_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3047,9 +3194,14 @@ AS
         ,ilm_out_om2_e.attribute1                      AS manufacture_date
         ,ilm_out_om2_e.attribute2                      AS uniqe_sign
         ,ilm_out_om2_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,NVL(xoha_out_om2_e.arrival_date
-            ,xoha_out_om2_e.shipped_date)              AS arrival_date
-        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,NVL(xoha_out_om2_e.arrival_date
+--            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+--        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2_e.arrival_date)
+            ,TRUNC(xoha_out_om2_e.shipped_date))       AS arrival_date
+        ,TRUNC(xoha_out_om2_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3149,9 +3301,14 @@ AS
         ,ilm_out_om2_e.attribute1                      AS manufacture_date
         ,ilm_out_om2_e.attribute2                      AS uniqe_sign
         ,ilm_out_om2_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,NVL(xoha_out_om2_e.arrival_date
-            ,xoha_out_om2_e.shipped_date)              AS arrival_date
-        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,NVL(xoha_out_om2_e.arrival_date
+--            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+--        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,NVL(TRUNC(xoha_out_om2_e.arrival_date)
+            ,TRUNC(xoha_out_om2_e.shipped_date))       AS arrival_date
+        ,TRUNC(xoha_out_om2_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status           -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3254,8 +3411,12 @@ AS
         ,ilm_out_om3_e.attribute1                      AS manufacture_date
         ,ilm_out_om3_e.attribute2                      AS uniqe_sign
         ,ilm_out_om3_e.attribute3                      AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,xoha_out_om3_e.shipped_date                   AS arrival_date
-        ,xoha_out_om3_e.shipped_date                   AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,xoha_out_om3_e.shipped_date                   AS arrival_date
+--        ,xoha_out_om3_e.shipped_date                   AS leaving_date
+        ,TRUNC(xoha_out_om3_e.shipped_date)            AS arrival_date
+        ,TRUNC(xoha_out_om3_e.shipped_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status          -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3349,8 +3510,12 @@ AS
         ,ilm_out_ad_e_x97.attribute1                   AS manufacture_date
         ,ilm_out_ad_e_x97.attribute2                   AS uniqe_sign
         ,ilm_out_ad_e_x97.attribute3                   AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_out_ad_e_x97.trans_date                   AS arrival_date
-        ,itc_out_ad_e_x97.trans_date                   AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_out_ad_e_x97.trans_date                   AS arrival_date
+--        ,itc_out_ad_e_x97.trans_date                   AS leaving_date
+        ,TRUNC(itc_out_ad_e_x97.trans_date)            AS arrival_date
+        ,TRUNC(itc_out_ad_e_x97.trans_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3411,8 +3576,12 @@ AS
         ,ilm_out_ad_e_x97.attribute1                   AS manufacture_date
         ,ilm_out_ad_e_x97.attribute2                   AS uniqe_sign
         ,ilm_out_ad_e_x97.attribute3                   AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_out_ad_e_x97.trans_date                   AS arrival_date
-        ,itc_out_ad_e_x97.trans_date                   AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_out_ad_e_x97.trans_date                   AS arrival_date
+--        ,itc_out_ad_e_x97.trans_date                   AS leaving_date
+        ,TRUNC(itc_out_ad_e_x97.trans_date)            AS arrival_date
+        ,TRUNC(itc_out_ad_e_x97.trans_date)            AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status        -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3484,8 +3653,12 @@ AS
         ,ilm_out_ad_e_x2.attribute1                    AS manufacture_date
         ,ilm_out_ad_e_x2.attribute2                    AS uniqe_sign
         ,ilm_out_ad_e_x2.attribute3                    AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_out_ad_e_x2.trans_date                    AS arrival_date
-        ,itc_out_ad_e_x2.trans_date                    AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_out_ad_e_x2.trans_date                    AS arrival_date
+--        ,itc_out_ad_e_x2.trans_date                    AS leaving_date
+        ,TRUNC(itc_out_ad_e_x2.trans_date)             AS arrival_date
+        ,TRUNC(itc_out_ad_e_x2.trans_date)             AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status      -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
@@ -3637,8 +3810,12 @@ AS
         ,ilm_out_ad_e_xx.attribute1                    AS manufacture_date
         ,ilm_out_ad_e_xx.attribute2                    AS uniqe_sign
         ,ilm_out_ad_e_xx.attribute3                    AS expiration_date -- <---- ‚±‚±‚Ü‚Å‹¤’Ê
-        ,itc_out_ad_e_xx.trans_date                    AS arrival_date
-        ,itc_out_ad_e_xx.trans_date                    AS leaving_date
+--2009/01/07 Y.Kawano Mod Start
+--        ,itc_out_ad_e_xx.trans_date                    AS arrival_date
+--        ,itc_out_ad_e_xx.trans_date                    AS leaving_date
+        ,TRUNC(itc_out_ad_e_xx.trans_date)             AS arrival_date
+        ,TRUNC(itc_out_ad_e_xx.trans_date)             AS leaving_date
+--2009/01/07 Y.Kawano Mod End
         ,'2'                                           AS status   -- ŽÀÑ
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
