@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -98,6 +98,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/06/12    1.9  Oracle 大橋 孝郎 結合テスト障害対応(400_不具合ログ#115)
  *  2008/08/01    1.10 Oracle 山根 一浩 ST障害No10,変更要求No184対応
  *  2008/09/01    1.11 Oracle 大橋 孝郎 PT 2-2_13 指摘56,PT 2-2_14 指摘58,メッセージ出力不具合対応
+ *  2008/09/16    1.12 Oracle 大橋 孝郎 PT 2-2_14指摘75,76,77対応
  *
  *****************************************************************************************/
 --
@@ -4772,6 +4773,9 @@ PACKAGE BODY XXINV100001C AS
 -- add start 1.11
     iv_item_code            IN  VARCHAR2,        -- 品目
 -- add end 1.11
+-- add start 1.12
+    id_start_date           IN  DATE,            -- 開始日付
+-- add end 1.12
     ov_errbuf               OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4802,17 +4806,23 @@ PACKAGE BODY XXINV100001C AS
     -- インターフェーステーブル重複データ抽出
     CURSOR forecast_if_cur
     IS
-      SELECT mfi.location_code,              -- 出荷倉庫
+-- mod start 1.12
+--      SELECT mfi.location_code,              -- 出荷倉庫
+      SELECT /*+ INDEX(xxinv_mrp_forecast_interface,xxinv_mfi_n02) */
+            mfi.location_code,              -- 出荷倉庫
             mfi.base_code,                   -- 拠点
             mfi.item_code,                   -- 品目
             mfi.forecast_date,               -- 開始日付
             mfi.forecast_end_date            -- 終了日付
       FROM  xxinv_mrp_forecast_interface  mfi
       WHERE mfi.created_by          = gn_created_by   -- ログインユーザ
-        AND mfi.forecast_designator = iv_forecast_designator
+--        AND mfi.forecast_designator = iv_forecast_designator
 -- add start 1.11
         AND mfi.item_code           = iv_item_code
 -- add end 1.11
+        AND mfi.forecast_date       = id_start_date
+        AND mfi.forecast_designator = iv_forecast_designator
+-- mod end 1.12
       GROUP BY mfi.location_code,
             mfi.base_code,
             mfi.item_code,
@@ -5534,6 +5544,9 @@ PACKAGE BODY XXINV100001C AS
 -- add start 1.11
                           in_if_data_tbl(in_if_data_cnt).item_code,
 -- add end 1.11
+-- add start 1.12
+                          in_if_data_tbl(in_if_data_cnt).start_date_active,
+-- add end 1.12
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg
@@ -6321,6 +6334,9 @@ PACKAGE BODY XXINV100001C AS
 -- add start 1.11
                           in_if_data_tbl(in_if_data_cnt).item_code,
 -- add end 1.11
+-- add start 1.12
+                          in_if_data_tbl(in_if_data_cnt).start_date_active,
+-- add end 1.12
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg
@@ -7149,6 +7165,9 @@ PACKAGE BODY XXINV100001C AS
 -- add start 1.11
                           in_if_data_tbl(in_if_data_cnt).item_code,
 -- add end 1.11
+-- add start 1.12
+                          in_if_data_tbl(in_if_data_cnt).start_date_active,
+-- add end 1.12
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg
@@ -10293,22 +10312,35 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                           t_forecast_interface_tab_del);
 --
-    <<del_serch_error_loop>>
-    FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
-      -- エラーだった場合
-      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
-                                                      ,gv_msg_10a_045  -- APIエラー
-                                                      ,gv_tkn_api_name
-                                                      ,gv_cons_api) -- 予測API
-                                                      ,1
-                                                      ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
-        gn_error_cnt := gn_error_cnt + 1;
-        ln_error_flg := 1;
-        EXIT;
-      END IF;
-    END LOOP del_serch_error_loop;
+-- mod start 1.12
+--    <<del_serch_error_loop>>
+--    FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
+--      -- エラーだった場合
+--      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+--        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
+--                                                      ,gv_msg_10a_045  -- APIエラー
+--                                                      ,gv_tkn_api_name
+--                                                      ,gv_cons_api) -- 予測API
+--                                                      ,1
+--                                                      ,5000);
+--        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+--        gn_error_cnt := gn_error_cnt + 1;
+--        ln_error_flg := 1;
+--        EXIT;
+--      END IF;
+--    END LOOP del_serch_error_loop;
+    -- エラーだった場合
+    IF (lb_retcode = FALSE )THEN
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                    ,gv_msg_10a_045  -- APIエラー
+                                                    ,gv_tkn_api_name
+                                                    ,gv_cons_api)    -- 予測API
+                                                    ,1
+                                                    ,5000);
+      gn_error_cnt := gn_error_cnt + 1;
+      ln_error_flg := 1;
+    END IF;
+-- mod end 1.12
     -- あらいがえ対象データの処理カウンタの初期化
     gn_del_data_cnt := 0;
 -- mod end 1.11
