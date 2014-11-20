@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/01/30    1.19  SCS    伊藤ひとみ  本番障害#994対応
  *  2009/06/25    1.20  SCS    伊藤ひとみ  本番障害#1436対応
  *  2009/07/08    1.21  SCS    伊藤ひとみ  本番障害#1525対応
+ *  2009/07/13    1.22  SCS    伊藤ひとみ  本番障害#1525対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3911,8 +3912,10 @@ AS
    -- *** レコード型宣言 ***
     TYPE rec_item_data IS RECORD(
       item_code       xxcmn_item_mst_v.item_no                %TYPE -- 品目コード
-     ,item_class_code xxcmn_item_categories5_v.item_class_code%TYPE -- 品目区分
-     ,prod_class_code xxcmn_item_categories5_v.prod_class_code%TYPE -- 商品区分
+-- 2009/07/13 H.Itou Del Start 本番障害#1525 PT対応
+--     ,item_class_code xxcmn_item_categories5_v.item_class_code%TYPE -- 品目区分
+--     ,prod_class_code xxcmn_item_categories5_v.prod_class_code%TYPE -- 商品区分
+-- 2009/07/13 H.Itou Del End
     );
 --
    -- *** 配列型宣言 ***
@@ -3938,19 +3941,57 @@ AS
     -- SQL文生成
     -- ==========================
     lv_sql := '
-      SELECT ximv.item_no               item_code                -- 品目コード
-            ,xicv.item_class_code       item_class_code          -- 品目区分
-            ,xicv.prod_class_code       prod_class_code          -- 商品区分
+-- 2009/07/13 H.Itou Mod Start 本番障害#1525 PT対応
+--      SELECT ximv.item_no               item_code                -- 品目コード
+      SELECT /*+ index(mfds MRP_MFD_N02) index(mfd MRP_FORECAST_DATES_N1) */
+             ximv.item_no               item_code                -- 品目コード
+-- 2009/07/13 H.Itou Mod End
+-- 2009/07/13 H.Itou Del Start 本番障害#1525 PT対応
+--            ,xicv.item_class_code       item_class_code          -- 品目区分
+--            ,xicv.prod_class_code       prod_class_code          -- 商品区分
+-- 2009/07/13 H.Itou Del End
       FROM   mrp_forecast_designators   mfds                     -- フォーキャスト名
             ,mrp_forecast_dates         mfd                      -- フォーキャスト日付
             ,xxcmn_item_mst_v           ximv                     -- OPM品目情報VIEW
             ,xxcmn_item_categories5_v   xicv                     -- OPM品目カテゴリ割当情報VIEW
+      ';
+-- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
+    -- 入力Ｐ[管轄拠点]に入力なしの場合、顧客情報を結合し、絞込みをする。
+    IF (gr_param.base IS NULL) THEN
+      lv_sql := lv_sql || '
+-- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
+            ,xxcmn_cust_accounts_v      xcav                     -- 顧客情報VIEW
+-- 2009/07/13 H.Itou Add End
+      ';
+    END IF;
+-- 2009/07/13 H.Itou Add End
+    lv_sql := lv_sql || '
       WHERE  mfds.forecast_designator = mfd.forecast_designator  -- フォーキャスト名
       AND    mfds.organization_id     = mfd.organization_id      -- 組織ID
       AND    mfd.inventory_item_id    = ximv.inventory_item_id   -- 品目
       AND    ximv.item_id             = xicv.item_id(+)          -- 品目
+      ';
+-- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
+    -- 入力Ｐ[管轄拠点]に入力なしの場合、顧客情報を結合条件を追加
+    IF (gr_param.base IS NULL) THEN
+      lv_sql := lv_sql || '
+-- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
+      AND    xcav.account_number      = mfds.attribute3          -- 拠点
+-- 2009/07/13 H.Itou Add End
+      ';
+    END IF;
+-- 2009/07/13 H.Itou Add End
+    lv_sql := lv_sql || '
       AND    mfds.attribute1          = ''' || gv_h_plan || '''  -- 引取計画 01
-      AND    TO_CHAR(mfd.forecast_date,''YYYYMM'') = :yyyymm     -- 入力Ｐ[対象年月]
+-- 2009/07/13 H.Itou Mod Start 本番障害#1525 PT対応
+--      AND    TO_CHAR(mfd.forecast_date,''YYYYMM'') = :yyyymm     -- 入力Ｐ[対象年月]
+      AND    mfd.forecast_date  BETWEEN  TO_DATE(:yyyymm,''YYYYMM'')           -- 入力Ｐ[対象年月]
+                                AND      LAST_DAY(TO_DATE(:yyyymm,''YYYYMM'')) -- 入力Ｐ[対象年月]
+-- 2009/07/13 H.Itou Mod End
+-- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
+      AND  ((xicv.item_class_code    IS NULL)                    -- 商品区分か品目区分に値のないもの
+        OR  (xicv.prod_class_code    IS NULL))
+-- 2009/07/13 H.Itou Add End
       ';
 --
     IF (gr_param.base IS NOT NULL) THEN -- 入力Ｐ[管轄拠点]に入力ありの場合、条件に追加
@@ -3960,6 +4001,10 @@ AS
 --
     ELSE
       lv_sql := lv_sql || '
+-- 2009/07/13 H.Itou Add Start 本番障害#1525
+      AND    xcav.customer_class_code = ''' || gv_1 || '''       -- 顧客区分
+      AND    xcav.order_auto_code     = ''' || gv_1 || '''       -- 出荷依頼自動作成区分
+-- 2009/07/13 H.Itou Add End
       AND    :base                   IS NULL                     -- 入力Ｐ[管轄拠点]の条件なし
       ';
     END IF;
@@ -3967,8 +4012,10 @@ AS
     lv_sql := lv_sql || '
       GROUP BY
             ximv.item_no
-           ,xicv.item_class_code
-           ,xicv.prod_class_code
+-- 2009/07/13 H.Itou Del Start 本番障害#1525 PT対応
+--           ,xicv.item_class_code
+--           ,xicv.prod_class_code
+-- 2009/07/13 H.Itou Del End
      ';
 --
     FND_FILE.PUT_LINE(FND_FILE.LOG, '*** (A-13) SQL ***');
@@ -3978,6 +4025,9 @@ AS
     -- ======================================
     OPEN  cur_item_data FOR lv_sql
     USING gr_param.yyyymm
+-- 2009/07/13 H.Itou Add Start 本番障害#1525
+         ,gr_param.yyyymm
+-- 2009/07/13 H.Itou Add End
          ,gr_param.base
     ;
 --
@@ -3997,8 +4047,10 @@ AS
     <<item_loop>>
     FOR ln_loop_cnt IN 1..lr_item_data.COUNT LOOP
       -- 商品区分か品目区分が設定されていない場合、エラー
-      IF ( ( lr_item_data(ln_loop_cnt).item_class_code IS NULL )
-        OR ( lr_item_data(ln_loop_cnt).prod_class_code IS NULL ) ) THEN
+-- 2009/07/13 H.Itou Del Start 本番障害#1525 PT対応
+--      IF ( ( lr_item_data(ln_loop_cnt).item_class_code IS NULL )
+--        OR ( lr_item_data(ln_loop_cnt).prod_class_code IS NULL ) ) THEN
+-- 2009/07/13 H.Itou Del End
         -- メッセージ取得
         lv_errmsg := xxcmn_common_pkg.get_msg(
                        gv_application
@@ -4013,7 +4065,9 @@ AS
         -- エラー終了
         ov_retcode := gv_status_error;
         ov_errbuf  := '商品区分か品目区分が設定されていない品目があります。出力の表示を参照して下さい。';
-      END IF;
+-- 2009/07/13 H.Itou Del Start 本番障害#1525 PT対応
+--      END IF;
+-- 2009/07/13 H.Itou Del End
     END LOOP item_loop;
   EXCEPTION
 --
