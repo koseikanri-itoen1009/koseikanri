@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,7 +53,8 @@ AS
  *  2008/12/13    1.16  A.Shiina         本番#428対応
  *  2008/12/13    1.17  N.Yoshida        本番#428対応(再対応)
  *  2008/12/16    1.18  A.Shiina         本番#749対応
- *  2008/12/16    1.19  A.Shiina         本番#754対応
+ *  2008/12/16    1.19  A.Shiina         本番#754対応 -- 対応削除
+ *  2008/12/17    1.20  A.Shiina         本番#428対応(PT対応)
  *
  *****************************************************************************************/
 --
@@ -444,10 +445,10 @@ AS
 --
     -- 個人選択の場合、名称を取得する
     ELSIF ( ir_param.party_code IS NOT NULL ) THEN
--- 2008/12/16 ADD START
+-- 2008/12/16 v1.18 ADD START
      -- 出荷の場合
      IF (ir_param.rcv_pay_div IN ('102', '101', '112')) THEN
--- 2008/12/16 ADD END
+-- 2008/12/16 v1.18 ADD END
       BEGIN
         SELECT SUBSTRB( xpv.party_short_name, 1, 20)
         INTO   ir_param.party_name
@@ -459,7 +460,7 @@ AS
         WHEN NO_DATA_FOUND THEN
           NULL;
       END;
--- 2008/12/16 ADD START
+-- 2008/12/16 v1.18 ADD START
      -- 有償の場合
      ELSIF (ir_param.rcv_pay_div IN ('103', '105', '108')) THEN
       BEGIN
@@ -476,7 +477,7 @@ AS
 --
      END IF;
 --
--- 2008/12/16 ADD END
+-- 2008/12/16 v1.18 ADD END
     END IF;
 --
     -- ====================================================
@@ -845,7 +846,10 @@ AS
 --    || ' ,mct.description         AS group2_name' -- 品目区分名称
     || ' ,NULL                    AS group2_name' -- 品目区分名称
     || ' ,NULL                    AS group3_name' -- 倉庫名称
-    || ' ,xpv.party_short_name    AS group4_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE START
+--    || ' ,xpv.party_short_name    AS group4_name' -- 出荷先名称
+    || ' ,xp.party_short_name    AS group4_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE END
 -- 2008/12/13 v1.16 ADD END
     ;
 --
@@ -896,7 +900,10 @@ AS
     || ' ,NULL                    AS group1_name' -- 成績部署名称
 --    || ' ,mct.description         AS group2_name' -- 品目区分名称
     || ' ,NULL                    AS group2_name' -- 品目区分名称
-    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE START
+--    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
+    || ' ,xp.party_short_name    AS group3_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,NULL                    AS group4_name' -- NULL
 -- 2008/12/13 v1.16 ADD END
     ;
@@ -947,7 +954,10 @@ AS
 --    || ' ,mct.description         AS group1_name' -- 品目区分名称
     || ' ,NULL                    AS group1_name' -- 品目区分名称
     || ' ,NULL                    AS group2_name' -- 倉庫名称
-    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE START
+--    || ' ,xpv.party_short_name    AS group3_name' -- 出荷先名称
+    || ' ,xp.party_short_name    AS group3_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,NULL                    AS group4_name' -- NULL
 -- 2008/12/13 v1.16 ADD END
     ;
@@ -995,7 +1005,10 @@ AS
 -- 2008/12/13 v1.16 ADD START
 --    || ' ,mct.description         AS group1_name' -- 品目区分名称
     || ' ,NULL                    AS group1_name' -- 品目区分名称
-    || ' ,xpv.party_short_name    AS group2_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE START
+--    || ' ,xpv.party_short_name    AS group2_name' -- 出荷先名称
+    || ' ,xp.party_short_name    AS group2_name' -- 出荷先名称
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,NULL                    AS group3_name' -- NULL
     || ' ,NULL                    AS group4_name' -- NULL
 -- 2008/12/13 v1.16 ADD END
@@ -1087,11 +1100,17 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
 -- 2008/12/13 v1.17 N.Yoshida mod start
 --    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
 --    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
     || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+*/
+    || ' ,hz_party_sites hps'
+    || ' ,xxcmn_parties xp'
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
@@ -1108,9 +1127,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1153,12 +1169,21 @@ AS
     || ' AND xsupv.item_id = itp.item_id' 
     || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND xpsv.party_id = xpv.party_id' 
     || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+*/
+    || ' AND hps.party_site_id     = xoha.result_deliver_to_id' 
+    || ' AND xp.party_id           = hps.party_id' 
+    || ' AND xp.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xp.end_date_active   >= TRUNC(itp.trans_date)' 
+    || ' AND hca.party_id          = hps.party_id' 
+-- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1172,7 +1197,9 @@ AS
 --    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
 --    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
 --    || ' AND mct.category_id   = mcb2.category_id'
-    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE START
+--    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE END
 --    || ' AND xl.start_date_active  <= TRUNC(SYSDATE)'
 --    || ' AND xl.end_date_active    >= TRUNC(SYSDATE)'
 --    || ' AND mct.source_lang   = ''JA'''
@@ -1205,11 +1232,17 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
 -- 2008/12/13 v1.17 N.Yoshida mod start
 --    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
 --    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
     || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+*/
+    || ' ,hz_party_sites hps'
+    || ' ,xxcmn_parties xp'
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
@@ -1226,9 +1259,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1269,12 +1299,21 @@ AS
     || ' AND xsupv.item_id = itp.item_id' 
     || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND xpsv.party_id = xpv.party_id' 
     || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+*/
+    || ' AND hps.party_site_id     = xoha.result_deliver_to_id' 
+    || ' AND xp.party_id           = hps.party_id' 
+    || ' AND xp.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xp.end_date_active   >= TRUNC(itp.trans_date)' 
+    || ' AND hca.party_id          = hps.party_id' 
+-- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1288,7 +1327,9 @@ AS
 --    || ' AND hla.inactive_date  IS NULL'
 --    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
 --    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
-    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE START
+--    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE END
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
@@ -1321,11 +1362,17 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
 -- 2008/12/13 v1.17 N.Yoshida mod start
 --    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
 --    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
     || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+*/
+    || ' ,hz_party_sites hps'
+    || ' ,xxcmn_parties xp'
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
@@ -1342,9 +1389,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1390,12 +1434,21 @@ AS
     || ' AND xsupv.item_id = iimb2.item_id' 
     || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND xpsv.party_id = xpv.party_id' 
     || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+*/
+    || ' AND hps.party_site_id     = xoha.result_deliver_to_id' 
+    || ' AND xp.party_id           = hps.party_id' 
+    || ' AND xp.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xp.end_date_active   >= TRUNC(itp.trans_date)' 
+    || ' AND hca.party_id          = hps.party_id' 
+-- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''PORC'''
     || ' AND xrpm.source_document_code = ''RMA'''
@@ -1409,7 +1462,9 @@ AS
 --    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
 --    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
 --    || ' AND mct.category_id   = mcb2.category_id'
-    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETe START
+--    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETe END
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
@@ -1458,9 +1513,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1576,9 +1628,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1697,9 +1746,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1822,9 +1868,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1927,11 +1970,17 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
 -- 2008/12/13 v1.17 N.Yoshida mod start
 --    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
 --    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
     || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+*/
+    || ' ,hz_party_sites hps'
+    || ' ,xxcmn_parties xp'
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
@@ -1948,9 +1997,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1993,12 +2039,20 @@ AS
     || ' AND xsupv.item_id = itp.item_id' 
     || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND xpsv.party_id = xpv.party_id' 
     || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+*/
+    || ' AND hps.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xp.party_id       = hps.party_id' 
+    || ' AND hca.party_id      = hps.party_id' 
+
+-- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''102''' 
@@ -2011,7 +2065,9 @@ AS
 --    || ' AND hla.inactive_date  IS NULL'
 --    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
 --    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
-    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE START
+--    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE END
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
@@ -2041,11 +2097,18 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
 -- 2008/12/13 v1.17 N.Yoshida mod start
 --    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
 --    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
     || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+*/
+    || ' ,hz_party_sites hps'
+    || ' ,xxcmn_parties xp'
+
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
@@ -2062,9 +2125,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2105,12 +2165,21 @@ AS
     || ' AND xsupv.item_id = itp.item_id' 
     || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND xpsv.party_id = xpv.party_id' 
     || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+*/
+    || ' AND hps.party_site_id     = xoha.result_deliver_to_id' 
+    || ' AND xp.party_id           = hps.party_id' 
+    || ' AND xp.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xp.end_date_active   >= TRUNC(itp.trans_date)' 
+    || ' AND hca.party_id          = hps.party_id' 
+-- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''101''' 
@@ -2123,7 +2192,9 @@ AS
 --    || ' AND hla.inactive_date  IS NULL'
 --    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
 --    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
-    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE START
+--    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 v1.20 DELETE END
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
@@ -2156,11 +2227,17 @@ AS
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
     || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
 -- 2008/12/13 v1.17 N.Yoshida mod start
 --    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
 --    || ' ,xxcmn_cust_accounts2_v xpv' -- 顧客情報View2 
     || ' ,xxcmn_parties xpv' -- 顧客情報View2 
+*/
+    || ' ,hz_party_sites hps'
+    || ' ,xxcmn_parties xp'
+-- 2008/12/17 v1.20 UPDATE END
     || ' ,hz_cust_accounts hca'
 -- 2008/12/13 v1.17 N.Yoshida mod start
     || ' ,xxcmn_rcv_pay_mst xrpm'
@@ -2177,9 +2254,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2224,12 +2298,21 @@ AS
     || ' AND xsupv.item_id = iimb2.item_id' 
     || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2008/12/17 v1.20 UPDATE START
+/*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
     || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
     || ' AND xpsv.party_id = xpv.party_id' 
     || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+*/
+    || ' AND hps.party_site_id     = xoha.result_deliver_to_id' 
+    || ' AND xp.party_id           = hps.party_id' 
+    || ' AND xp.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xp.end_date_active   >= TRUNC(itp.trans_date)' 
+    || ' AND hca.party_id          = hps.party_id' 
+-- 2008/12/17 v1.20 UPDATE END
     || ' AND xrpm.doc_type = itp.doc_type' 
     || ' AND xrpm.doc_type = ''OMSO'''
     || ' AND xrpm.dealings_div = ''112''' 
@@ -2242,7 +2325,9 @@ AS
 --    || ' AND hla.inactive_date  IS NULL'
 --    || ' AND xla.start_date_active <= TRUNC(SYSDATE)'
 --    || ' AND xla.end_date_active   >= TRUNC(SYSDATE)'
-    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 DELETE START
+--    || ' AND hca.party_id =  xpv.party_id'
+-- 2008/12/17 DELETE END
 --    || ' AND mct.source_lang   = ''JA'''
 --    || ' AND mct.language      = ''JA'''
 -- 2008/12/13 v1.16 ADD END
@@ -2291,9 +2376,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2408,9 +2490,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2528,9 +2607,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2651,9 +2727,6 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
--- 2008/12/16 v1.19 ADD START
-    || ' AND xoha.amount_fix_class = ''1''' 
--- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2740,7 +2813,10 @@ AS
  -- PORC_102
     lv_select_g1_po102_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 rsl ooha otta) */'; 
+-- 2008/12/17 v1.20 UPDTE START
+--       ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
        ' SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */'; 
+-- 2008/12/17 v1.20 UPDTE END
 --
  -- PORC_101
     lv_select_g1_po101_1_hint :=
@@ -2751,7 +2827,10 @@ AS
     lv_select_g1_po112_1_hint :=
        --' SELECT /*+ leading(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) use_nl(itp rsl xola iimb3 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
        --' SELECT /*+ leading (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (itp rsl xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */'; 
-       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */';
+-- 2008/12/17 v1.20 UPDATE START
+--       ' SELECT /*+ leading (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) use_nl (xoha xola iimb2 gic2 mcb2 gic1 mcb1 ooha otta) */';
+       ' SELECT /*+ leading (xoha ooha otta xola iimb2 gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola iimb2 gic1 mcb1 gic2 mcb2) */';
+-- 2008/12/17 v1.20 UPDATE END
 --
  -- PORC_103_5
     lv_select_g1_po103x5_1_hint :=
@@ -2778,7 +2857,10 @@ AS
  -- OMSO_102
     lv_select_g1_om102_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+-- 2008/12/17 v1.20 UPDATE START
+--       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */';
+-- 2008/12/17 v1.20 UPDATE END
 -- 
  -- OMSO_101
     lv_select_g1_om101_1_hint :=
@@ -2793,7 +2875,10 @@ AS
  -- OMSO_103_5
     lv_select_g1_om103x5_1_hint :=
        --' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd ooha otta)*/';
-       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+-- 2008/12/17 v1.20 UPDATE START
+--       ' SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */';
+       ' SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */';
+-- 2008/12/17 v1.20 UPDATE END
 -- 
  -- OMSO_103_124
     lv_select_g1_om103x124_1_hint :=
