@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.8
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,11 @@ AS
  *  2008/05/26    1.8   Y.Majikina       発注あり仕入先返品時、粉引率、粉引後単価、単価、
  *                                       口銭区分、口銭、預り口銭金額、賦課金区分、賦課金、
  *                                       賦課金額は、受入返品実績アドオンより取得する
+ *  2008/05/28    1.9   Y.Majikina       リッチテキストの改ページセクションの変更による
+ *                                       XML構造の修正
+ *  2008/05/29    1.10  T.Endou          納入日の範囲指定は、すべて受入返品アドオンを使用する
+ *                                       修正はしてあったが、帳票に表示する部分も修正する。
+ *  2008/06/03    1.11  T.Endou          担当部署または担当者名が未取得時は正常終了に修正
  *
  *****************************************************************************************/
 --
@@ -674,11 +679,6 @@ AS
         ov_retcode := gv_status_warn ;
     END;
 --
-    IF (   (gr_header_rec.user_dept IS NULL)
-        OR (gr_header_rec.user_name IS NULL)) THEN
-      ov_retcode := gv_status_warn ;
-    END IF;
---
     -- ====================================================
     -- ログインユーザーの取引先取得
     -- ====================================================
@@ -855,7 +855,7 @@ AS
         ||                                  ' , xrart.kobki_converted_unit_price'
         ||                                  ' , ' || cv_type_hen
         ||                                  ' , xrart.kobki_converted_unit_price'
-        ||                                  ' , 0), 0)) kobikigo'
+        ||                                  ' , pll.attribute2), 0)) kobikigo'
         || ' , SUM(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.kousen_price * -1'
         ||                                  ' , ' || cv_type_hen  ||' ,xrart.kousen_price * -1'
         ||                                  ' , pll.attribute5) , 0)) kousen_price '
@@ -874,7 +874,7 @@ AS
         || ' , NULL fukakin_type '
         || ' , NULL fukakin_name '
         || ' , NULL fukakin '
-        || ' , SUM(NVL(DECODE( xrart.txns_type ,' || cv_type_nasi || ', flv_u_tax.lookup_code '
+        || ' , MAX(NVL(DECODE( xrart.txns_type ,' || cv_type_nasi || ', NVL(flv_u_tax.lookup_code , 0) '
         ||                               ' , flv_p_tax.lookup_code) , 0))  zeiritu '
         || ' , NULL  order1 '
         ;
@@ -916,9 +916,7 @@ AS
       --明細
       lv_select := lv_select
         || ',ph.po_header_id po_header_id '                  --発注ID
-        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi
-        ||       ' , TO_CHAR( xrart.txns_date ,''' || gc_char_md_format || ''')'
-        ||       ' , SUBSTR(ph.attribute4, 6)) txns_date'    --取引日'
+        || ',TO_CHAR( xrart.txns_date ,''' || gc_char_md_format || ''') txns_date' --取引日
         || ',xrart.txns_type                   txns_type'    --取引タイプ
         || ',CASE '
         || ' WHEN xrart.txns_type = '|| cv_type_uke ||' THEN '
@@ -971,8 +969,8 @@ AS
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.fukakin_rate_or_unit_price '
         ||                          ','|| cv_type_hen  || ', xrart.fukakin_rate_or_unit_price '
         ||       ' , pll.attribute7)          fukakin '      --賦課金'
-        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', flv_u_tax.lookup_code '
-        ||       ' , flv_p_tax.lookup_code)   zeiritu '      --税率'
+        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+        ||       ' , NVL(flv_p_tax.lookup_code, 0))   zeiritu '      --税率'
         || ',DECODE( xic3.item_class_code '
         ||       ' , '|| cv_item_class || ', ilm.attribute1||ilm.attribute2 '
         ||       ' ,ilm.lot_no )              order1 '       --表示順'
@@ -1331,6 +1329,8 @@ AS
     lc_out_assen             CONSTANT VARCHAR2(1)  :='1';
     lc_out_torihiki          CONSTANT VARCHAR2(1)  :='2';
     lc_out_syukei            CONSTANT VARCHAR2(1)  :='3';
+    lc_flg_y                 CONSTANT VARCHAR2(1)  := 'Y';
+    lc_flg_n                 CONSTANT VARCHAR2(1)  := 'N';
 --
     lc_depth_g_lot           CONSTANT NUMBER :=  1;  -- ロット
     lc_depth_g_hutai         CONSTANT NUMBER :=  3;  -- 付帯
@@ -1339,6 +1339,7 @@ AS
     lc_depth_g_detail        CONSTANT NUMBER :=  9;  -- 斡旋者・取引先
     lc_depth_g_middle        CONSTANT NUMBER := 11;  -- 斡旋者か取引先
     lc_depth_g_dept          CONSTANT NUMBER := 13;  -- 部署
+    lc_zero                  CONSTANT NUMBER := 0;
 --
     -- *** ローカル変数 ***
     -- キーブレイク判断用
@@ -1356,6 +1357,18 @@ AS
     ln_jun_siire            NUMBER DEFAULT 0;         -- 純仕入金額
     ln_jun_kosen            NUMBER DEFAULT 0;         -- 純口銭金額
     ln_jun_sasihiki         NUMBER DEFAULT 0;         -- 純差引金額
+    -- 部署小計用
+    ln_sum_post_qty              NUMBER DEFAULT 0;         -- 入庫総数
+    ln_sum_post_siire            NUMBER DEFAULT 0;         -- 仕入金額
+    ln_sum_post_kosen            NUMBER DEFAULT 0;         -- 口銭金額
+    ln_sum_post_huka             NUMBER DEFAULT 0;         -- 賦課金額
+    ln_sum_post_sasihiki         NUMBER DEFAULT 0;         -- 差引金額
+    ln_sum_post_tax_siire        NUMBER DEFAULT 0;         -- 消費税(仕入金額)
+    ln_sum_post_tax_kousen       NUMBER DEFAULT 0;         -- 消費税(口銭金額)
+    ln_sum_post_tax_sasihiki     NUMBER DEFAULT 0;         -- 消費税(差引金額)
+    ln_sum_post_jun_siire        NUMBER DEFAULT 0;         -- 純仕入金額
+    ln_sum_post_jun_kosen        NUMBER DEFAULT 0;         -- 純口銭金額
+    ln_sum_post_jun_sasihiki     NUMBER DEFAULT 0;         -- 純差引金額
     --総合計用
     ln_sum_qty              NUMBER DEFAULT 0;         -- 入庫総数
     ln_sum_siire            NUMBER DEFAULT 0;         -- 仕入金額
@@ -1502,6 +1515,54 @@ AS
                   -- 中合計(斡旋者 or 取引先
                   IF ( NVL(lr_now_key.middle, lc_break_null ) <> lr_pre_key.middle ) THEN
                     lb_ret := fnc_set_xml('T', '/lg_detail');
+                    IF (NVL(lr_now_key.dept, lc_break_null ) <> lr_pre_key.dept ) THEN
+                      -- 集計別の場合は出力しない
+                      IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
+                        -- 部署小計出力する場合
+                        lb_ret := fnc_set_xml('Z', 'whse_subtotal', ln_sum_post_qty);
+                                                                                        --入庫総数
+                        lb_ret := fnc_set_xml('Z', 'purchs_amnt_subtotal', ln_sum_post_siire);
+                                                                                        --仕入金額
+                        lb_ret := fnc_set_xml('Z', 'commi_unt_price_rate_subtotal',
+                                                              ln_sum_post_kosen);       --口銭金額
+                        lb_ret := fnc_set_xml('Z', 'levy_unt_price_rate1_subtotal',
+                                                              ln_sum_post_huka);        --賦課金額
+                        lb_ret := fnc_set_xml('Z', 'deduction_amnt_subtotal',
+                                                              ln_sum_post_sasihiki);
+                                                                                        --差引金額
+                        lb_ret := fnc_set_xml('Z', 'purchs_amnt_tax_subtotal',
+                                                              ln_sum_post_tax_siire);   --税仕入
+                        lb_ret := fnc_set_xml('Z', 'commi_unt_price_rate_tax_subtotal',
+                                                              ln_sum_post_tax_kousen);  --税口銭
+                        lb_ret := fnc_set_xml('Z', 'deduction_amnt_tax_subtotal',
+                                                              ln_sum_post_tax_sasihiki);--税差引
+                        lb_ret := fnc_set_xml('Z', 'pure_purchs_amnt_subtotal',
+                                                               ln_sum_post_jun_siire);  --純仕入
+                        lb_ret := fnc_set_xml('Z', 'pure_commi_unt_price_rate_subtotal',
+                                                              ln_sum_post_jun_kosen);   --純口銭
+                        lb_ret := fnc_set_xml('Z', 'pure_deduction_amnt_subtotal',
+                                                              ln_sum_post_jun_sasihiki);--純差引
+                        lb_ret := fnc_set_xml('Z', 'levy_unt_price_rate3_subtotal',
+                                                              ln_sum_post_huka);        --賦課金額
+                        lb_ret := fnc_set_xml('D', 'flg' , lc_flg_y);     -- 出力フラグ
+                        -- 部署小計用変数初期化
+                        ln_sum_post_qty           := lc_zero;
+                        ln_sum_post_siire         := lc_zero;
+                        ln_sum_post_kosen         := lc_zero;
+                        ln_sum_post_huka          := lc_zero;
+                        ln_sum_post_sasihiki      := lc_zero;
+                        ln_sum_post_tax_siire     := lc_zero;
+                        ln_sum_post_tax_kousen    := lc_zero;
+                        ln_sum_post_tax_sasihiki  := lc_zero;
+                        ln_sum_post_jun_siire     := lc_zero;
+                        ln_sum_post_jun_kosen     := lc_zero;
+                        ln_sum_post_jun_sasihiki  := lc_zero;
+                        ln_sum_post_huka          := lc_zero;
+                      END IF;
+                    ELSE
+                      lb_ret := fnc_set_xml('D', 'flg' , lc_flg_n);     -- 出力フラグ
+                    END IF;
+                    lb_ret := fnc_set_xml('D', 'total_flg' , lc_flg_n); -- 総計出力フラグ
                     lb_ret := fnc_set_xml('T', '/g_middle');
                     ln_group_depth := lc_depth_g_middle;
 --
@@ -1660,12 +1721,12 @@ AS
       lb_ret := fnc_set_xml('N', 'commission', gt_main_data(ln_loop_index).kousen);
 --
       --消費税(仕入金額)
-      ln_tax_siire := ln_siire * gt_main_data(ln_loop_index).zeiritu / 100;
+      ln_tax_siire := ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
       lb_ret := fnc_set_xml('Z', 'purchase_amount_tax', ln_tax_siire);
 --
       --消費税(口銭金額)
       ln_tax_kousen :=  gt_main_data(ln_loop_index).kousen_price
-                      * gt_main_data(ln_loop_index).zeiritu / 100;
+                      * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
       lb_ret := fnc_set_xml('Z', 'commission_unit_price_rate_tax', ln_tax_kousen);
 --
       --消費税(差引金額)
@@ -1707,7 +1768,34 @@ AS
       --事後処理
       lr_pre_key := lr_now_key;
 --
-      --合計加算
+      -- 集計別の場合は出力しない
+      IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
+        -- 部署合計加算
+        ln_sum_post_qty          := ln_sum_post_qty
+                                          + NVL(gt_main_data(ln_loop_index).quantity, 0);
+        ln_sum_post_siire        := ln_sum_post_siire
+                                          + NVL(ln_siire, 0);
+        ln_sum_post_kosen        := ln_sum_post_kosen
+                                          + NVL(gt_main_data(ln_loop_index).kousen_price, 0);
+        ln_sum_post_huka         := ln_sum_post_huka
+                                          + NVL(gt_main_data(ln_loop_index).fukakin_price, 0);
+        ln_sum_post_sasihiki     := ln_sum_post_sasihiki
+                                          + NVL(ln_sasihiki, 0);
+        ln_sum_post_tax_siire    := ln_sum_post_tax_siire
+                                          + NVL(ln_tax_siire, 0);
+        ln_sum_post_tax_kousen   := ln_sum_post_tax_kousen
+                                          + NVL(ln_tax_kousen, 0);
+        ln_sum_post_tax_sasihiki := ln_sum_post_tax_sasihiki
+                                          + NVL(ln_tax_sasihiki, 0);
+        ln_sum_post_jun_siire    := ln_sum_post_jun_siire
+                                          + NVL(ln_jun_siire, 0);
+        ln_sum_post_jun_kosen    := ln_sum_post_jun_kosen
+                                          + NVL(ln_jun_kosen, 0);
+        ln_sum_post_jun_sasihiki := ln_sum_post_jun_sasihiki
+                                          + NVL(ln_jun_sasihiki, 0);
+      END IF;
+--
+      --総合計加算
       ln_sum_qty          := ln_sum_qty        + NVL(gt_main_data(ln_loop_index).quantity, 0);
       ln_sum_siire        := ln_sum_siire      + NVL(ln_siire, 0);
       ln_sum_kosen        := ln_sum_kosen      + NVL(gt_main_data(ln_loop_index).kousen_price, 0);
@@ -1746,12 +1834,41 @@ AS
     lb_ret := fnc_set_xml('T', '/lg_detail');
 --
     -- 中合計(斡旋者 or 取引先
+    -- 部署小計出力
+    IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
+      lb_ret := fnc_set_xml('Z', 'whse_subtotal', ln_sum_post_qty);     --入庫総数
+      lb_ret := fnc_set_xml('Z', 'purchs_amnt_subtotal', ln_sum_post_siire);
+                                                                        --仕入金額
+      lb_ret := fnc_set_xml('Z', 'commi_unt_price_rate_subtotal',
+                                              ln_sum_post_kosen);       --口銭金額
+      lb_ret := fnc_set_xml('Z', 'levy_unt_price_rate1_subtotal',
+                                              ln_sum_post_huka);        --賦課金額
+      lb_ret := fnc_set_xml('Z', 'deduction_amnt_subtotal', ln_sum_post_sasihiki);
+                                                                        --差引金額
+      lb_ret := fnc_set_xml('Z', 'purchs_amnt_tax_subtotal',
+                                              ln_sum_post_tax_siire);   --税仕入
+      lb_ret := fnc_set_xml('Z', 'commi_unt_price_rate_tax_subtotal',
+                                              ln_sum_post_tax_kousen);  --税口銭
+      lb_ret := fnc_set_xml('Z', 'deduction_amnt_tax_subtotal',
+                                              ln_sum_post_tax_sasihiki);--税差引
+      lb_ret := fnc_set_xml('Z', 'pure_purchs_amnt_subtotal',
+                                              ln_sum_post_jun_siire);   --純仕入
+      lb_ret := fnc_set_xml('Z', 'pure_commi_unt_price_rate_subtotal',
+                                              ln_sum_post_jun_kosen);   --純口銭
+      lb_ret := fnc_set_xml('Z', 'pure_deduction_amnt_subtotal',
+                                              ln_sum_post_jun_sasihiki);--純差引
+      lb_ret := fnc_set_xml('Z', 'levy_unt_price_rate3_subtotal',
+                                              ln_sum_post_huka);        --賦課金額
+    END IF;
+    IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
+      lb_ret := fnc_set_xml('D', 'flg');
+    END IF;
+    lb_ret := fnc_set_xml('D', 'total_flg' ,lc_flg_y);
+--
     lb_ret := fnc_set_xml('T', '/g_middle');
     lb_ret := fnc_set_xml('T', '/lg_middle');
 --
-    -- 部署
-    --部署グループ内に合計を表示
-    lb_ret := fnc_set_xml('D', 'sum_switch', 1);
+    -- 総合計表示
     lb_ret := fnc_set_xml('Z', 'sum_Warehousing_total', ln_sum_qty);                    --入庫総数
     lb_ret := fnc_set_xml('Z', 'sum_purchase_amount', ln_sum_siire);                    --仕入金額
     lb_ret := fnc_set_xml('Z', 'sum_commission_unit_price_rate', ln_sum_kosen);         --口銭金額
