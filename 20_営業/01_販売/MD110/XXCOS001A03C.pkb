@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD”[•iƒf[ƒ^ì¬
  * MD.050           : VD”[•iƒf[ƒ^ì¬(MD050_COS_001_A03)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009/09/03    1.18    N.Maeda          [0001211] Á”ïÅŠÖ˜A€–ÚŽæ“¾Šî€“ú•t‚ÌC³
  *  2009/10/30    1.19    M.Sano           [0001373] ŽQÆView•ÏX[xxcos_rs_info_v Ë xxcos_rs_info2_v]
  *  2010/02/01    1.20    M.Hokkanji       [E_T4_00195] ‰ïŒvŠúŠÔî•ñŽæ“¾ŠÖ”ƒpƒ‰ƒ[ƒ^C³[AR ¨ INV]
+ *  2010/05/10    1.21    Y.Kuboshima      [E_–{‰Ò“®_02625] ‰c‹ÆŒ´‰¿‚ÌŽæ“¾Šî€“úC³[‹Æ–±“ú•t ¨ ”[•i“ú]
  *
  *****************************************************************************************/
 --
@@ -2415,7 +2416,10 @@ AS
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD END   ***************************************
 --
           -- ‰c‹ÆŒ´‰¿”»’f
-          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > gd_process_date ) THEN
+-- ****************************** 2010/05/10 1.21 Y.Kuboshima MOD START **************************************
+--          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > gd_process_date ) THEN
+          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
+-- ****************************** 2010/05/10 1.21 Y.Kuboshima MOD END   **************************************
             lt_sales_cost := lt_old_sales_cost;
           ELSE
             lt_sales_cost := lt_new_sales_cost;
