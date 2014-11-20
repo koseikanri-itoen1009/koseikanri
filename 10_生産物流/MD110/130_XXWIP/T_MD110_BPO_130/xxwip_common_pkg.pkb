@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/05/28   1.1   Oracle 二瓶 大輔 結合テスト不具合対応(委託加工費更新関数修正)
  *  2008/06/02   1.2   Oracle 二瓶 大輔 内部変更要求#130(委託加工費更新関数修正)
  *  2008/06/12   1.3   Oracle 二瓶 大輔 システムテスト不具合対応#78(委託加工費更新関数修正)
+ *  2008/06/25   1.4   Oracle 二瓶 大輔 システムテスト不具合対応#75
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4236,6 +4237,9 @@ AS
       AND    itp.completed_ind = 0
       AND    itp.reverse_id    IS NULL
       AND    xilv.inventory_location_id = in_whse_id
+-- 2008/06/25 D.Nihei ADD START
+      AND    itp.line_type    = gn_material
+-- 2008/06/25 D.Nihei ADD END
       ;
     EXCEPTION
       WHEN OTHERS THEN
