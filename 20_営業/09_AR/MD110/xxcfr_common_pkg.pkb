@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(body)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008-11-13   1.0    SCS 松尾 泰生    日付パラメータ変換関数追加
  *  2008-11-18   1.0    SCS 吉村 憲司    OUTファイル出力処理追加
  *  2008-12-22   1.0    SCS 松尾 泰生    請求拠点担当電話番号取得関数追加
+ *  2009-03-31   1.1    SCS 大川 恵      [障害T1_0210] 請求拠点担当電話番号取得関数 複数組織対応
  *
  *****************************************************************************************/
 --
@@ -1064,7 +1065,10 @@ AS
       FROM   hz_cust_accounts                  bill_hzca,      --顧客マスタ(請求先)
              xxcmm_cust_accounts               bill_hzad,      --顧客追加情報(請求先)
              hz_cust_accounts                  base_hzca,      --顧客マスタ(請求拠点)
-             hz_cust_acct_sites_all            base_hasa,      --顧客所在地(請求拠点)
+-- Modify 2009.03.31 Ver1.1 Start
+             hz_cust_acct_sites                base_hasa,      --顧客所在地ビュー(請求拠点)
+--             hz_cust_acct_sites_all            base_hasa,      --顧客所在地(請求拠点)
+-- Modify 2009.03.31 Ver1.1 End
              hz_locations                      base_hzlo,      --顧客事業所(請求拠点)
              hz_party_sites                    base_hzps       --パーティサイト(請求拠点)
       WHERE  bill_hzca.account_number = iv_bill_acct_code      --請求先顧客コード
