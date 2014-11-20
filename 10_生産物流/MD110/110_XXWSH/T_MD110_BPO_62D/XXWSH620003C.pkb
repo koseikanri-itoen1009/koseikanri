@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/11/20    1.11  Y.Yamamoto       統合指摘#463、#686対応
  *  2009/01/27    1.12  H.Sakuma         本番#1079対応
  *  2009/01/29    1.13  Akiyoshi Shiina  本番#30対応
+ *  2009/09/14    1.14  Hitomi Itou      本番#1632対応
  *
  *****************************************************************************************/
 --
@@ -848,6 +849,10 @@ AS
         -- ユーザー情報の抽出
         AND  fu.user_id                  =  FND_GLOBAL.USER_ID
         AND  papf.person_id            =  fu.employee_id
+-- 2009/09/14 H.Itou v1.14 add start 本番障害#1632
+        AND  xmrih.schedule_ship_date BETWEEN papf.effective_start_date 
+                                      AND     NVL(papf.effective_end_date,xmrih.schedule_ship_date)
+-- 2009/09/14 H.Itou v1.14 add end
         AND  (
               -- 内部ユーザーの場合
 -- 2008/11/20 Y.Yamamoto v1.11 update start
