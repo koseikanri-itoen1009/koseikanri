@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcsm_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CSM_共通関数
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008-11-27    1.0  T.Tsukino       新規作成
  *  2009-04-09    1.1  M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
  *  2009-05-07    1.2  M.Ohtsuki      ［障害T1_0858］拠点コードリスト取得条件不備
+ *  2009-07-01    1.3  M.Ohtsuki      ［SCS障害管理番号0000253］対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -253,8 +254,20 @@ AS
             ,ppf.attribute21      old_shokusyu_code      -- 職種コード(旧)
       FROM  per_people_f  ppf            -- 従業員マスタ
            ,per_all_assignments_f  paas  -- 従業員アサインメントマスタ
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+           ,(SELECT   ippf.person_id                  person_id                                     -- 従業員ID
+                     ,MAX(ippf.effective_start_date)  effective_start_date                          -- 最新(有効開始日)
+             FROM     per_people_f      ippf                                                        -- 従業員マスタ
+             WHERE    ippf.current_emp_or_apl_flag = 'Y'                                            -- 有効フラグ
+             GROUP BY ippf.person_id)   ippf                                                        -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
       WHERE ppf.employee_number  =  iv_employee_code   --従業員コードで紐付け
       AND   ppf.person_id = paas.person_id
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+      AND   ippf.person_id = ppf.person_id                                                          -- 従業員ID紐付↓
+      AND   ippf.effective_start_date = ppf.effective_start_date                                    -- 最新(有効開始日)紐付け
+      AND   paas.effective_start_date = ppf.effective_start_date                                    -- 最新(有効開始日)紐付け
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
       ;
     -- <カーソル名>レコード型
     get_employee_info_rec get_employee_info_cur%ROWTYPE;
@@ -389,8 +402,20 @@ AS
           ,paaf.ass_attribute6  old_kyoten_code     -- 拠点コード（旧）
     FROM  per_people_f  ppf            -- 従業員マスタ
          ,per_all_assignments_f  paaf  -- 従業員アサインメントマスタ
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+         ,(SELECT   ippf.person_id                  person_id                                       -- 従業員ID
+                   ,MAX(ippf.effective_start_date)  effective_start_date                            -- 最新(有効開始日)
+           FROM     per_people_f      ippf                                                          -- 従業員マスタ
+           WHERE    ippf.current_emp_or_apl_flag = 'Y'                                              -- 有効フラグ
+           GROUP BY ippf.person_id)   ippf                                                          -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
     WHERE ppf.employee_number  =  iv_employee_code  -- 従業員コードで紐付け
     AND   ppf.person_id = paaf.person_id
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+    AND   ippf.person_id = ppf.person_id                                                            -- 従業員ID紐付↓
+    AND   ippf.effective_start_date = ppf.effective_start_date                                      -- 最新(有効開始日)紐付け
+    AND   paaf.effective_start_date = ppf.effective_start_date                                      -- 最新(有効開始日)紐付け
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
     ;
     -- <カーソル名>レコード型
     get_employee_foothold_rec get_employee_foothold_cur%ROWTYPE;
@@ -530,8 +555,19 @@ AS
     INTO    lt_employee_number
     FROM    fnd_user  fu                 -- ユーザマスタ
            ,per_people_f  ppf            -- 従業員マスタ
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+           ,(SELECT   ippf.person_id                  person_id                                     -- 従業員ID
+                     ,MAX(ippf.effective_start_date)  effective_start_date                          -- 最新(有効開始日)
+             FROM     per_people_f      ippf                                                        -- 従業員マスタ
+             WHERE    ippf.current_emp_or_apl_flag = 'Y'                                            -- 有効フラグ
+             GROUP BY ippf.person_id)   ippf                                                        -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
     WHERE   fu.user_id     =  in_user_id
     AND     fu.employee_id = ppf.person_id
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+    AND     ppf.person_id = ippf.person_id                                                          -- 従業員ID紐付け
+    AND     ppf.effective_start_date = ippf.effective_start_date                                    -- 最新(有効開始日)紐付け
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
     ;
     ov_employee_code := lt_employee_number;
     -- 取得が0件の場合
@@ -661,8 +697,18 @@ AS
             ,paaf.ass_attribute6  old_kyoten_code --拠点コード（旧）
       FROM   fnd_user  fu
             ,per_all_assignments_f  paaf
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+           ,(SELECT   ipaf.person_id                  person_id                                     -- 従業員ID
+                     ,MAX(ipaf.effective_start_date)  effective_start_date                          -- 最新(有効開始日)
+             FROM     per_all_assignments_f      ipaf                                               -- 従業員アサイメントマスタ
+             GROUP BY ipaf.person_id)   ipaf                                                        -- 従業員ID
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
       WHERE fu.user_id  =  in_user_id
       AND   fu.employee_id = paaf.person_id
+--//+ADD START 2009/07/01 0000253 M.Ohtsuki
+      AND   paaf.person_id = ipaf.person_id                                                         -- 従業員ID紐付↓
+      AND   paaf.effective_start_date = ipaf.effective_start_date                                   -- 最新(有効開始日)紐付け
+--//+ADD END   2009/07/01 0000253 M.Ohtsuki
       ;
     -- <カーソル名>レコード型
     get_year_item_rec get_year_item_cur%ROWTYPE;
