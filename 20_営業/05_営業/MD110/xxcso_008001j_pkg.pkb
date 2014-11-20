@@ -13,6 +13,9 @@ AS
  *   Name                     Type  Ret   Description
  *  ------------------------- ---- ----- --------------------------------------------------
  *  get_baseline_base_code    F    V      検索基準拠点コード取得関数
+ *  get_plan_or_result        F    V      予定実績出力文言取得関数
+ *  get_init_base_code        F    V      初期表示拠点コード取得関数
+ *  get_init_base_name        F    V      初期表示拠点名称取得関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -20,6 +23,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/13    1.0   N.Yanagitaira    新規作成
  *  2009/04/10    1.1   N.Yanagitaira    [ST障害T1_0422,T1_0477]get_plan_or_result追加
+ *  2009/05/21    1.2   N.Yanagitaira    [ST障害T1_1104]get_baseline_base_code修正
+ *                                                      get_init_base_code追加
+ *                                                      get_init_base_name追加
  *
  *****************************************************************************************/
 --
@@ -40,10 +46,16 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_baseline_base_code';
+-- 20090521_N.Yanagitaira T1_1104 Add START
+    cv_manage_base_code          CONSTANT VARCHAR2(30)    := 'XXCSO1_MANAGE_BASE_CODE';
+-- 20090521_N.Yanagitaira T1_1104 Add END
     -- ===============================
     -- ローカル変数
     -- ===============================
     lv_baseline_base_code        fnd_flex_value_norm_hierarchy.parent_flex_value%TYPE;
+-- 20090521_N.Yanagitaira T1_1104 Add START
+    lv_manage_base_code          fnd_flex_value_norm_hierarchy.parent_flex_value%TYPE;
+-- 20090521_N.Yanagitaira T1_1104 Add END
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -54,14 +66,15 @@ AS
     FROM    xxcso_aff_base_level_v2 xablv
     START WITH
             xablv.child_base_code = 
-              (SELECT xxcso_util_common_pkg.get_emp_parameter(
+              (
+                SELECT xxcso_util_common_pkg.get_emp_parameter(
                         xev.work_base_code_new
                        ,xev.work_base_code_old
                        ,xev.issue_date
                        ,xxcso_util_common_pkg.get_online_sysdate
                       ) base_code
-               FROM   xxcso_employees_v2 xev
-               WHERE  xev.user_id = fnd_global.user_id
+                FROM   xxcso_employees_v2 xev
+                WHERE  xev.user_id = fnd_global.user_id
               )
     CONNECT BY NOCYCLE PRIOR
             xablv.base_code = xablv.child_base_code
@@ -72,16 +85,38 @@ AS
   BEGIN
 --
     lv_baseline_base_code := NULL;
+-- 20090521_N.Yanagitaira T1_1104 Add START
+    lv_manage_base_code   := FND_PROFILE.VALUE(cv_manage_base_code);
+-- 20090521_N.Yanagitaira T1_1104 Add END
 --
-    <<root_base_data_rec>>
-    FOR root_base_data_rec IN root_base_data_cur
-    LOOP
-      -- child_base_codeの2番目が常にL3の第3階層
-      IF (root_base_data_cur%ROWCOUNT = 2) THEN
-        lv_baseline_base_code := root_base_data_rec.child_base_code;
-        EXIT;
-      END IF;
-    END LOOP root_base_data_rec;
+-- 20090521_N.Yanagitaira T1_1104 Mod START
+--    <<root_base_data_rec>>
+--    FOR root_base_data_rec IN root_base_data_cur
+--    LOOP
+--      -- child_base_codeの2番目が常にL3の第3階層
+--      IF (root_base_data_cur%ROWCOUNT = 2) THEN
+--        lv_baseline_base_code := root_base_data_rec.child_base_code;
+--        EXIT;
+--      END IF;
+--    END LOOP root_base_data_rec;
+    IF ( lv_manage_base_code IS NOT NULL ) THEN
+--
+      lv_baseline_base_code := lv_manage_base_code;
+--
+    ELSE
+--
+      <<root_base_data_rec>>
+      FOR root_base_data_rec IN root_base_data_cur
+      LOOP
+        -- child_base_codeの2番目が常にL3の第3階層
+        IF (root_base_data_cur%ROWCOUNT = 2) THEN
+          lv_baseline_base_code := root_base_data_rec.child_base_code;
+          EXIT;
+        END IF;
+      END LOOP root_base_data_rec;
+--
+    END IF;
+-- 20090521_N.Yanagitaira T1_1104 Mod START
 --
     RETURN lv_baseline_base_code;
 --
@@ -97,8 +132,8 @@ AS
 --
 -- 20090410_N.Yanagitaira T1_0422,T1_0477 Add START
    /**********************************************************************************
-   * Function Name    : get_baseline_base_code
-   * Description      : 検索基準拠点コード取得関数
+   * Function Name    : get_plan_or_result
+   * Description      : 予定実績出力文言取得関数
    ***********************************************************************************/
   FUNCTION get_plan_or_result(
     in_task_status_id           NUMBER
@@ -247,8 +282,152 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_plan_or_result;
-
 -- 20090410_N.Yanagitaira T1_0422,T1_0477 Add END
+--
+-- 20090521_N.Yanagitaira T1_1104 Add START
+   /**********************************************************************************
+   * Function Name    : get_init_base_code
+   * Description      : 初期表示拠点コード取得関数
+   ***********************************************************************************/
+  FUNCTION get_init_base_code
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_init_base_code';
+    cv_manage_base_code          CONSTANT VARCHAR2(30)    := 'XXCSO1_MANAGE_BASE_CODE';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_init_base_code            fnd_flex_values.flex_value%TYPE;
+    lv_manage_base_code          fnd_flex_values.flex_value%TYPE;
+    lv_login_base_code           fnd_flex_values.flex_value%TYPE;
+--
+  BEGIN
+--
+    lv_init_base_code   := NULL;
+    lv_manage_base_code := FND_PROFILE.VALUE(cv_manage_base_code);
+    lv_login_base_code  := NULL;
+--
+    IF ( lv_manage_base_code IS NOT NULL ) THEN
+--
+      lv_init_base_code := lv_manage_base_code;
+--
+    ELSE
+--
+      BEGIN
+        SELECT  XXCSO_UTIL_COMMON_PKG.get_emp_parameter(
+                  xev.work_base_code_new
+                 ,xev.work_base_code_old
+                 ,xev.issue_date
+                 ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+                )
+        INTO    lv_login_base_code
+        FROM    xxcso_employees_v2 xev
+        WHERE   xev.user_id = FND_GLOBAL.user_id
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_login_base_code := NULL;
+      END;
+--
+      lv_init_base_code := lv_login_base_code;
+--
+    END IF;
+
+    RETURN lv_init_base_code;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_init_base_code;
+--
+   /**********************************************************************************
+   * Function Name    : get_init_base_name
+   * Description      : 初期表示拠点名称取得関数
+   ***********************************************************************************/
+  FUNCTION get_init_base_name
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_init_base_name';
+    cv_manage_base_code          CONSTANT VARCHAR2(30)    := 'XXCSO1_MANAGE_BASE_CODE';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_init_base_name            fnd_flex_values.attribute4%TYPE;
+    lv_manage_base_code          fnd_flex_values.flex_value%TYPE;
+    lv_manage_base_name          fnd_flex_values.attribute4%TYPE;
+    lv_login_base_name           fnd_flex_values.attribute4%TYPE;
+--
+  BEGIN
+--
+    lv_init_base_name   := NULL;
+    lv_manage_base_code := FND_PROFILE.VALUE(cv_manage_base_code);
+    lv_manage_base_name := NULL;
+    lv_login_base_name  := NULL;
+--
+    IF ( lv_manage_base_code IS NOT NULL ) THEN
+--
+      BEGIN
+        SELECT  xabv.base_name
+        INTO    lv_manage_base_name
+        FROM    xxcso_aff_base_v2 xabv
+        WHERE   xabv.base_code = lv_manage_base_code
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_manage_base_name := NULL;
+        WHEN TOO_MANY_ROWS THEN
+          lv_manage_base_name := NULL;
+      END;
+--
+      lv_init_base_name := lv_manage_base_name;
+--
+    ELSE
+--
+      BEGIN
+        SELECT  XXCSO_UTIL_COMMON_PKG.get_emp_parameter(
+                  xev.work_base_name_new
+                 ,xev.work_base_name_old
+                 ,xev.issue_date
+                 ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+                )
+        INTO    lv_login_base_name
+        FROM    xxcso_employees_v2 xev
+        WHERE   xev.user_id = FND_GLOBAL.user_id
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_login_base_name := NULL;
+      END;
+--
+      lv_init_base_name := lv_login_base_name;
+--
+    END IF;
+
+    RETURN lv_init_base_name;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_init_base_name;
+-- 20090521_N.Yanagitaira T1_1104 Add END
 --
 END xxcso_008001j_pkg;
 /

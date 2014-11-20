@@ -12,18 +12,8 @@
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT  XXCSO_UTIL_COMMON_PKG.get_online_sysdate AS date_sch
-       ,XXCSO_UTIL_COMMON_PKG.get_emp_parameter(
-         xev.work_base_code_new
-        ,xev.work_base_code_old
-        ,xev.issue_date
-        ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
-       )                                         AS base_code
-       ,XXCSO_UTIL_COMMON_PKG.get_emp_parameter(
-         xev.work_base_name_new
-        ,xev.work_base_name_old
-        ,xev.issue_date
-        ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
-       )                                         AS base_name
+       ,XXCSO_008001J_PKG.get_init_base_code     AS base_code
+       ,XXCSO_008001J_PKG.get_init_base_name     AS base_name
        ,XXCSO_008001J_PKG.get_baseline_base_code AS baseline_base_code
        ,xrv.resource_id                          AS login_resource_id
 FROM    xxcso_employees_v2 xev
