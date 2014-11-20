@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/04/27    1.7   H.Sasaki         [T1_0553]年月日の設定値変更
  *  2009/05/11    1.8   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
  *  2009/05/14    1.9   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
+ *  2009/05/21    1.10  H.Sasaki         [T1_1123]棚卸情報検索時に日付条件を追加
  *
  *****************************************************************************************/
 --
@@ -296,6 +297,10 @@ AS
              AND      sub_xic.inventory_status  =   cv_invsts_1
              AND      sub_xic.subinventory_code =   sub_msi.secondary_inventory_name
              AND      sub_msi.attribute7        =   iv_base_code
+-- == 2009/05/21 V1.10 Added START ===============================================================
+             AND      sub_xic.inventory_date   >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+             AND      sub_xic.inventory_date   <=   gd_f_process_date
+-- == 2009/05/21 V1.10 Added END   ===============================================================
              GROUP BY sub_msi.attribute7
                      ,sub_xic.subinventory_code
             )                           xic
@@ -383,6 +388,10 @@ AS
                        OR
                        (iv_base_code IS NULL)
                       )
+-- == 2009/05/21 V1.10 Added START ===============================================================
+             AND      sub_xic.inventory_date   >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+             AND      sub_xic.inventory_date   <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+-- == 2009/05/21 V1.10 Added END   ===============================================================
              GROUP BY  sub_msi.attribute7
                       ,sub_xic.subinventory_code
             )                           xic
@@ -498,7 +507,7 @@ AS
                     ,mtl_secondary_inventories     msi
              WHERE   xir.inventory_seq       =   xic.inventory_seq
              AND     xir.inventory_date     >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
-             AND     xir.inventory_date     <=   gd_f_process_date
+             AND     xir.inventory_date     <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
              AND     xir.inventory_kbn       =   gv_param_inventory_kbn
              AND     xic.subinventory_code   =   msi.secondary_inventory_name
              AND     msi.organization_id     =   gn_f_organization_id
@@ -2342,7 +2351,7 @@ AS
       -- 棚卸SEQが取得された場合
       lt_inventory_seq  :=  ir_invrcp_daily.inventory_seq;
 -- == 2009/04/27 V1.7 Added START ===============================================================
-      IF (gv_param_exec_flag = cv_exec_1) THEN
+      IF (gv_param_inventory_kbn = cv_inv_kbn_1) THEN
         -- コンカレント起動時
         ld_practice_date  :=  ir_invrcp_daily.inventory_date;
       ELSE
@@ -2362,7 +2371,7 @@ AS
       INTO    lt_inventory_seq
       FROM    dual;
 -- == 2009/04/27 V1.7 Added START ===============================================================
-      IF (gv_param_exec_flag = cv_exec_1) THEN
+      IF (gv_param_inventory_kbn = cv_inv_kbn_1) THEN
         -- コンカレント起動時
         ld_practice_date  :=  ir_invrcp_daily.practice_date;
       ELSE
@@ -2373,7 +2382,7 @@ AS
       -- 上記以外の場合
       lt_inventory_seq  :=  gt_save_1_inv_seq;
 -- == 2009/04/27 V1.7 Added START ===============================================================
-      IF (gv_param_exec_flag = cv_exec_1) THEN
+      IF (gv_param_inventory_kbn = cv_inv_kbn_1) THEN
         -- コンカレント起動時
         ld_practice_date  :=  ir_invrcp_daily.practice_date;
       ELSE
