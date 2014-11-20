@@ -30,6 +30,7 @@ AS
  *  2009/03/05    1.2  SCS M.OKAWA      共通関数リリースに伴うSVF起動処理変更対応
  *                                      中間テーブルデータ削除処理コメントアウト削除対応
  *  2009/04/14    1.3  SCS M.OKAWA      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
+ *  2009/04/24    1.4  SCS S.KAYAHARA   [障害T1_0633] 組織プロファイル結合条件対応
  *
  *****************************************************************************************/
 --
@@ -793,6 +794,9 @@ AS
       WHERE pay_sch.bill_to_customer_id = ca.bill_cust_account_id
         AND ca.cr_party_id              = hp.party_id
         AND hp.party_id                 = hop.party_id(+)
+-- Modify 2009.04.24 Ver1.4 Start
+        AND hop.effective_end_date(+) is NULL
+-- Modify 2009.04.24 Ver1.4 End
         AND hop.organization_profile_id = hopeb.organization_profile_id(+)
         AND hopeb.attr_group_id         = eagv.attr_group_id(+)
         AND eagv.attr_group_name        = cv_sales_rep_attr    -- 担当営業員属性
