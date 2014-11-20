@@ -3,7 +3,7 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2007. All rights reserved.
  *
- * Package Name           : xxwip_common_pkg(BODY)
+ * Package Name           : xxwip_common3_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
  * Version                : 1.0
@@ -24,7 +24,8 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
- *  2007/11/13   1.0   H.Itou           新規作成
+ *  2008/04/18   1.0   M.Nomura         新規作成
+ *  2008/07/02   1.1   M.Nomura         メッセージ出力不具合
  *
  *****************************************************************************************/
 --
@@ -1054,9 +1055,16 @@ AS
     ELSIF (lv_conv_unit IS NOT NULL ) THEN
       -- 入出庫換算単位 が取得できない場合
       IF (ln_num_of_cases IS NULL) THEN
+-- ##### 20080702 Ver.1.1 メッセージ出力不具合 START #####
+/***
         lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10133',
                                               'NUM_OF_CASES',
                                               TO_CHAR(ln_num_of_cases));
+***/
+        lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10133',
+                                              'CONV_UNIT',
+                                              TO_CHAR(ln_num_of_cases));
+-- ##### 20080702 Ver.1.1 メッセージ出力不具合 END   #####
         RAISE invalid_conv_unit_expt;
       END IF;
 --
