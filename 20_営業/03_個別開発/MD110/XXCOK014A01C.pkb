@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : ”Ì”„ÀÑî•ñEè”—¿ŒvZğŒ‚©‚ç‚Ì”Ì”„è”—¿ŒvZˆ—
  * MD.050           : ğŒ•Ê”Ìè”Ì‹¦ŒvZˆ— MD050_COK_014_A01
- * Version          : 2.2
+ * Version          : 2.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/06/26    2.1   M.Hiruta         [áŠQ0000269] ƒpƒtƒH[ƒ}ƒ“ƒX‚ğŒüã‚³‚¹‚é‚½‚ßSQL‚ğC³
  *  2009/07/08    2.2   M.Hiruta         [áŠQ0000009] ğŒ•Ê”Ìè”Ì‹¦ŒvZ‘ÎÛŠO‚Ì”Ì”„ÀÑ‚ğœŠO‚·‚é‚æ‚¤‚ÉC³
  *                                                     Œ…”’´‰ß‚ğ–h‚®‚½‚ßA“d‹C—¿iŒÅ’è/•Ï“®j‚ÌŠ„–ßŠz‚ğC³
+ *  2009/07/16    2.3   K.Yamaguchi      [áŠQ0000756] ƒpƒtƒH[ƒ}ƒ“ƒX‚ğŒüã‚³‚¹‚é‚½‚ßSQL‚ğC³
  *
  *****************************************************************************************/
   --==================================================
@@ -76,6 +77,10 @@ AS
   cn_request_id                    CONSTANT NUMBER          := fnd_global.conc_request_id;  -- REQUEST_ID
   cn_program_application_id        CONSTANT NUMBER          := fnd_global.prog_appl_id;     -- PROGRAM_APPLICATION_ID
   cn_program_id                    CONSTANT NUMBER          := fnd_global.conc_program_id;  -- PROGRAM_ID
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi ADD START
+  -- Œ¾Œê
+  cv_lang                          CONSTANT VARCHAR2(50)    := USERENV( 'LANG' );
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi ADD END
   -- ƒƒbƒZ[ƒWƒR[ƒh
   cv_msg_ccp_90000                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90000';        -- ‘ÎÛŒ”
   cv_msg_ccp_90001                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90001';        -- ¬Œ÷Œ”
@@ -420,7 +425,10 @@ AS
              AND flv_sho.lookup_type = cv_lookup_type_03   -- ‹Æ‘Ôi¬•ª—Şj
              AND gd_process_date BETWEEN NVL( flv_chu.start_date_active, gd_process_date )
                                      AND NVL( flv_chu.end_date_active,   gd_process_date )
-             AND flv_chu.language            = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--             AND flv_chu.language            = USERENV( 'LANG' )
+             AND flv_chu.language            = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
              AND (    ( flv_sho.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
                    OR ( flv_chu.lookup_code <>  cv_gyotai_tyu_vd                      )
                  )
@@ -428,7 +436,10 @@ AS
              AND flv_sho.enabled_flag        = cv_enable
              AND gd_process_date BETWEEN NVL( flv_sho.start_date_active, gd_process_date )
                                      AND NVL( flv_sho.end_date_active,   gd_process_date )
-             AND flv_sho.language            = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--             AND flv_sho.language            = USERENV( 'LANG' )
+             AND flv_sho.language            = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
              AND flv_sho.attribute1          = flv_chu.lookup_code
          )                             ship_flv1           -- ‹Æ‘Ôi¬•ª—Şj
 -- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
@@ -455,7 +466,11 @@ AS
                   END                     AS term_name          -- x•¥ğŒ
            FROM xxcso_contract_managements  xcm -- Œ_–ñŠÇ—
            WHERE xcm.status =  cv_xcm_status_result
-             AND EXISTS ( SELECT    'X'
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--             AND EXISTS ( SELECT    'X'
+             AND EXISTS ( SELECT /*+ index(xcm2 XXCSO_CONTRACT_MANAGEMENTS_N06) */
+                                 'X'
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
                           FROM xxcso_contract_managements  xcm2  -- Œ_–ñŠÇ—
                           WHERE xcm2.status                    =  '1'                -- ƒXƒe[ƒ^ƒXFŠm’èÏ
                             AND xcm2.install_account_id        = xcm.install_account_id
@@ -509,14 +524,26 @@ AS
       AND ship_hca.account_number      = ship_xcbs.delivery_cust_code(+)
       AND ship_xcbs.closing_date(+)   <= gd_process_date
       AND bill_rtt1.term_id(+)         = bill_hcsua.payment_term_id
-      AND bill_rtt1.language(+)        = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND bill_rtt1.language(+)        = USERENV( 'LANG' )
+      AND bill_rtt1.language(+)        = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
       AND bill_rtt2.term_id(+)         = bill_hcsua.attribute2
-      AND bill_rtt2.language(+)        = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND bill_rtt2.language(+)        = USERENV( 'LANG' )
+      AND bill_rtt2.language(+)        = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
       AND bill_rtt3.term_id(+)         = bill_hcsua.attribute3
-      AND bill_rtt3.language(+)        = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND bill_rtt3.language(+)        = USERENV( 'LANG' )
+      AND bill_rtt3.language(+)        = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
       AND bill_flv1.lookup_code        = bill_xca.tax_div
       AND bill_flv1.lookup_type        = cv_lookup_type_02      -- QÆƒ^ƒCƒvFÁ”ïÅ‹æ•ª
-      AND bill_flv1.language           = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND bill_flv1.language           = USERENV( 'LANG' )
+      AND bill_flv1.language           = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
       AND bill_flv1.enabled_flag       = cv_enable
       AND gd_process_date        BETWEEN NVL( bill_flv1.start_date_active, gd_process_date )
                                      AND NVL( bill_flv1.end_date_active,   gd_process_date )
@@ -537,341 +564,1882 @@ AS
 --            OR ( ship_flv1.attribute1  <> cv_gyotai_tyu_vd                       )
 --          )
 -- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-      AND ship_flv2.lookup_code        = gv_param_proc_type
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND ship_flv2.lookup_code        = gv_param_proc_type
+      AND ship_flv2.attribute1         = gv_param_proc_type
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
       AND ship_flv2.lookup_type        = cv_lookup_type_01      -- QÆƒ^ƒCƒvF”Ìè”Ì‹¦ŒvZÀs‹æ•ª
-      AND ship_flv2.language           = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND ship_flv2.language           = USERENV( 'LANG' )
+      AND ship_flv2.language           = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
       AND ship_flv2.enabled_flag       = cv_enable
       AND gd_process_date        BETWEEN NVL( ship_flv2.start_date_active, gd_process_date )
                                      AND NVL( ship_flv2.end_date_active,   gd_process_date )
-      AND (    ( ship_flv2.attribute1  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute1  || '%' )
-            OR ( ship_flv2.attribute2  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute2  || '%' )
-            OR ( ship_flv2.attribute3  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute3  || '%' )
-            OR ( ship_flv2.attribute4  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute4  || '%' )
-            OR ( ship_flv2.attribute5  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute5  || '%' )
-            OR ( ship_flv2.attribute6  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute6  || '%' )
-            OR ( ship_flv2.attribute7  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute7  || '%' )
-            OR ( ship_flv2.attribute8  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute8  || '%' )
-            OR ( ship_flv2.attribute9  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute9  || '%' )
-            OR ( ship_flv2.attribute10 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute10 || '%' )
-            OR ( ship_flv2.attribute11 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute11 || '%' )
-            OR ( ship_flv2.attribute12 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute12 || '%' )
-            OR ( ship_flv2.attribute13 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute13 || '%' )
-            OR ( ship_flv2.attribute14 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute14 || '%' )
-            OR ( ship_flv2.attribute15 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute15 || '%' )
-          )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--      AND (    ( ship_flv2.attribute1  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute1  || '%' )
+--            OR ( ship_flv2.attribute2  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute2  || '%' )
+--            OR ( ship_flv2.attribute3  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute3  || '%' )
+--            OR ( ship_flv2.attribute4  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute4  || '%' )
+--            OR ( ship_flv2.attribute5  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute5  || '%' )
+--            OR ( ship_flv2.attribute6  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute6  || '%' )
+--            OR ( ship_flv2.attribute7  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute7  || '%' )
+--            OR ( ship_flv2.attribute8  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute8  || '%' )
+--            OR ( ship_flv2.attribute9  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute9  || '%' )
+--            OR ( ship_flv2.attribute10 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute10 || '%' )
+--            OR ( ship_flv2.attribute11 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute11 || '%' )
+--            OR ( ship_flv2.attribute12 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute12 || '%' )
+--            OR ( ship_flv2.attribute13 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute13 || '%' )
+--            OR ( ship_flv2.attribute14 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute14 || '%' )
+--            OR ( ship_flv2.attribute15 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute15 || '%' )
+--          )
+      AND ship_hl.address3          LIKE ship_flv2.lookup_code || '%'
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--    GROUP BY ship_hca.account_number
+--           , ship_flv1.attribute1
+--           , ship_xca.business_low_type
+--           , ship_xca.delivery_chain_code           , bill_hca.account_number
+--           , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--                 ship_xcm.term_name
+--               ELSE
+--                 bill_rtt1.name
+--             END
+--           , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--                 NULL
+--               ELSE
+--                 bill_rtt2.name
+--             END
+--           , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--                 NULL
+--               ELSE
+--                 bill_rtt3.name
+--             END
+--           , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--                 gn_bm_support_period_to
+--               ELSE
+--                 TO_NUMBER( bill_hcsua.attribute8 )
+--             END
+--           , bill_xca.tax_div
+--           , bill_avtab.tax_code
+--           , bill_avtab.tax_rate
+--           , bill_hcsua.tax_rounding_rule
+---- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+----           , CASE
+----               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+----                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+----                    )
+----               THEN
+----                 gv_vendor_dummy_code
+----               ELSE
+----                 ship_xca.contractor_supplier_code
+----             END
+----           , bm1_pvsa.vendor_site_code
+----           , bm1_pvsa.attribute4
+----           , ship_xca.bm_pay_supplier_code1
+----           , bm2_pvsa.vendor_site_code
+----           , bm2_pvsa.attribute4
+----           , ship_xca.bm_pay_supplier_code2
+----           , bm3_pvsa.vendor_site_code
+----           , bm3_pvsa.attribute4
+--         , CASE
+--             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+--               ship_xca.contractor_supplier_code
+--             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+--                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+--                  )
+--             THEN
+--               gv_vendor_dummy_code
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               bm1_pvsa.vendor_site_code
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               bm1_pvsa.attribute4
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+--               ship_xca.bm_pay_supplier_code1
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               bm2_pvsa.vendor_site_code
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               bm2_pvsa.attribute4
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+--               ship_xca.bm_pay_supplier_code2
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               bm3_pvsa.vendor_site_code
+--             ELSE
+--               NULL
+--           END
+--         , CASE
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+--               bm3_pvsa.attribute4
+--             ELSE
+--               NULL
+--           END
+---- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+--           , ship_xca.receiv_discount_rate
     GROUP BY ship_hca.account_number
            , ship_flv1.attribute1
            , ship_xca.business_low_type
-           , ship_xca.delivery_chain_code           , bill_hca.account_number
-           , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
-                 ship_xcm.term_name
-               ELSE
-                 bill_rtt1.name
-             END
-           , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
-                 NULL
-               ELSE
-                 bill_rtt2.name
-             END
-           , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
-                 NULL
-               ELSE
-                 bill_rtt3.name
-             END
-           , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-                 gn_bm_support_period_to
-               ELSE
-                 TO_NUMBER( bill_hcsua.attribute8 )
-             END
+           , ship_xca.delivery_chain_code
+           , bill_hca.account_number
+           , ship_xcm.term_name
+           , bill_rtt1.name
+           , bill_rtt2.name
+           , bill_rtt3.name
+           , bill_hcsua.attribute8
            , bill_xca.tax_div
            , bill_avtab.tax_code
            , bill_avtab.tax_rate
            , bill_hcsua.tax_rounding_rule
--- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
---           , CASE
---               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
---                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
---                    )
---               THEN
---                 gv_vendor_dummy_code
---               ELSE
---                 ship_xca.contractor_supplier_code
---             END
---           , bm1_pvsa.vendor_site_code
---           , bm1_pvsa.attribute4
---           , ship_xca.bm_pay_supplier_code1
---           , bm2_pvsa.vendor_site_code
---           , bm2_pvsa.attribute4
---           , ship_xca.bm_pay_supplier_code2
---           , bm3_pvsa.vendor_site_code
---           , bm3_pvsa.attribute4
-         , CASE
-             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
-               ship_xca.contractor_supplier_code
-             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
-                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
-                  )
-             THEN
-               gv_vendor_dummy_code
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm1_pvsa.vendor_site_code
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm1_pvsa.attribute4
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
-               ship_xca.bm_pay_supplier_code1
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm2_pvsa.vendor_site_code
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm2_pvsa.attribute4
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
-               ship_xca.bm_pay_supplier_code2
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm3_pvsa.vendor_site_code
-             ELSE
-               NULL
-           END
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm3_pvsa.attribute4
-             ELSE
-               NULL
-           END
--- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+           , ship_xca.contractor_supplier_code
+           , bm1_pvsa.vendor_site_code
+           , bm1_pvsa.attribute4
+           , ship_xca.bm_pay_supplier_code1
+           , bm2_pvsa.vendor_site_code
+           , bm2_pvsa.attribute4
+           , ship_xca.bm_pay_supplier_code2
+           , bm3_pvsa.vendor_site_code
+           , bm3_pvsa.attribute4
            , ship_xca.receiv_discount_rate
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
     ORDER BY bill_hca.account_number
            , ship_flv1.attribute1
            , ship_xca.business_low_type
            , ship_hca.account_number
   ;
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--  -- ”Ì”„ÀÑî•ñE”„‰¿•ÊğŒ
+--  CURSOR get_sales_data_cur1 IS
+--    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
+--         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
+--         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- ”[•i”—Ê
+--         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- ”„ã‹àŠziÅj
+--         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
+--         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
+--         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+--         , ROUND( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
+--         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+--         , ROUND( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
+--         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+--         , ROUND( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
+--         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- ‹’“_ƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xse.ship_to_customer_code                                       AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- ‰ïŒv”N“x
+--                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- ”[•i“ú”NŒ
+--                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- ”[•i”—Ê
+--                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , xse.amount_inc_tax                                              AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , NVL2( xmbc.calc_type, NULL, xse.container_code )                AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , xse.dlv_unit_price                                              AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- Å‹àƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- Á”ïÅ—¦
+--                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- x•¥ğŒ
+--                , xse.closing_date                                                AS closing_date               -- ’÷‚ß“ú
+--                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- x•¥—\’è“ú
+--                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xse.amount_fix_date                                             AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , xsel.dlv_qty                               AS dlv_qty                       -- ”[•i”—Ê
+--                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NVL( flv1.attribute1
+--                            , cv_container_code_others )            AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NVL2( flv2.lookup_code
+--                             , NULL
+--                             , xsel.item_code )                     AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , flv2.lookup_code                           AS item_code_no_inv              -- ”ñİŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                     , fnd_lookup_values             flv1       -- —eŠíŒQ
+--                     , fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+--                    AND flv1.lookup_code(+)         = xsim.vessel_group
+--                    AND flv1.lookup_type(+)         = cv_lookup_type_04
+--                    AND flv1.language(+)            = USERENV( 'LANG' )
+--                    AND flv1.enabled_flag(+)        = cv_enable
+--                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+--                                                  AND NVL( flv1.end_date_active,   gd_process_date )
+--                    AND flv2.lookup_code(+)         = xsel.item_code
+--                    AND flv2.lookup_type(+)         = cv_lookup_type_05
+--                    AND flv2.language(+)            = USERENV( 'LANG' )
+--                    AND flv2.enabled_flag(+)        = cv_enable
+--                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+--                                                  AND NVL( flv2.end_date_active,   gd_process_date )
+--                )                           xse       -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñ
+--              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
+--           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
+--             AND xse.item_code_no_inv             IS NULL
+--             AND xmbc.calc_type(+)                 = cv_calc_type_sales_price
+--             AND xmbc.cust_code(+)                 = xse.ship_to_customer_code
+--             AND xmbc.selling_price(+)             = xse.dlv_unit_price
+--             AND xmbc.calc_target_flag(+)          = cv_enable
+--             AND EXISTS ( SELECT 'X'
+--                          FROM xxcok_mst_bm_contract xmbc2 -- ”ÌèğŒƒ}ƒXƒ^
+--                          WHERE xmbc2.calc_type        = cv_calc_type_sales_price
+--                            AND xmbc2.cust_code        = xse.ship_to_customer_code
+--                            AND xmbc2.calc_target_flag = cv_enable
+--                 )
+--         )                        xbc
+--    GROUP BY xbc.base_code
+--           , xbc.emp_code
+--           , xbc.ship_cust_code
+--           , xbc.ship_gyotai_sho
+--           , xbc.ship_gyotai_tyu
+--           , xbc.bill_cust_code
+--           , xbc.period_year
+--           , xbc.ship_delivery_chain_code
+--           , xbc.delivery_ym
+--           , xbc.dlv_uom_code
+--           , xbc.container_code
+--           , xbc.dlv_unit_price
+--           , xbc.tax_div
+--           , xbc.tax_code
+--           , xbc.tax_rate
+--           , xbc.tax_rounding_rule
+--           , xbc.term_name
+--           , xbc.closing_date
+--           , xbc.expect_payment_date
+--           , xbc.calc_target_period_from
+--           , xbc.calc_target_period_to
+--           , xbc.calc_type
+--           , xbc.bm1_vendor_code
+--           , xbc.bm1_vendor_site_code
+--           , xbc.bm1_bm_payment_type
+--           , xbc.bm1_pct
+--           , xbc.bm1_amt
+--           , xbc.bm2_vendor_code
+--           , xbc.bm2_vendor_site_code
+--           , xbc.bm2_bm_payment_type
+--           , xbc.bm2_pct
+--           , xbc.bm2_amt
+--           , xbc.bm3_vendor_code
+--           , xbc.bm3_vendor_site_code
+--           , xbc.bm3_bm_payment_type
+--           , xbc.bm3_pct
+--           , xbc.bm3_amt
+--           , xbc.item_code
+--           , xbc.amount_fix_date
+--  ;
+--  -- ”Ì”„ÀÑî•ñE—eŠí‹æ•ª•ÊğŒ
+--  CURSOR get_sales_data_cur2 IS
+--    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
+--         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
+--         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- ”[•i”—Ê
+--         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- ”„ã‹àŠziÅj
+--         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
+--         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
+--         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+--         , ROUND( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
+--         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+--         , ROUND( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
+--         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+--         , ROUND( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
+--         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- ‹’“_ƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xse.ship_to_customer_code                                       AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- ‰ïŒv”N“x
+--                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- ”[•i“ú”NŒ
+--                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- ”[•i”—Ê
+--                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , xse.amount_inc_tax                                              AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , xse.container_code                                              AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , NVL2( xmbc.calc_type, NULL, xse.dlv_unit_price )                AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- Å‹àƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- Á”ïÅ—¦
+--                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- x•¥ğŒ
+--                , xse.closing_date                                                AS closing_date               -- ’÷‚ß“ú
+--                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- x•¥—\’è“ú
+--                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xse.amount_fix_date                                             AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , xsel.dlv_qty                               AS dlv_qty                       -- ”[•i”—Ê
+--                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NVL( flv1.attribute1
+--                            , cv_container_code_others )            AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NVL2( flv2.lookup_code
+--                             , NULL
+--                             , xsel.item_code )                     AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , flv2.lookup_code                           AS item_code_no_inv              -- ”ñİŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                     , fnd_lookup_values             flv1       -- —eŠíŒQ
+--                     , fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+--                    AND flv1.lookup_code(+)         = xsim.vessel_group
+--                    AND flv1.lookup_type(+)         = cv_lookup_type_04
+--                    AND flv1.language(+)            = USERENV( 'LANG' )
+--                    AND flv1.enabled_flag(+)        = cv_enable
+--                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+--                                                  AND NVL( flv1.end_date_active,   gd_process_date )
+--                    AND flv2.lookup_code(+)         = xsel.item_code
+--                    AND flv2.lookup_type(+)         = cv_lookup_type_05
+--                    AND flv2.language(+)            = USERENV( 'LANG' )
+--                    AND flv2.enabled_flag(+)        = cv_enable
+--                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+--                                                  AND NVL( flv2.end_date_active,   gd_process_date )
+--                )                           xse       -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñ
+--              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
+--           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
+--             AND xse.item_code_no_inv             IS NULL
+--             AND xmbc.calc_type(+)                 = cv_calc_type_container
+--             AND xmbc.cust_code(+)                 = xse.ship_to_customer_code
+--             AND xmbc.container_type_code(+)       = xse.container_code
+--             AND xmbc.calc_target_flag(+)          = cv_enable
+--             AND EXISTS ( SELECT 'X'
+--                          FROM xxcok_mst_bm_contract xmbc2 -- ”ÌèğŒƒ}ƒXƒ^
+--                          WHERE xmbc2.calc_type        = cv_calc_type_container
+--                            AND xmbc2.cust_code        = xse.ship_to_customer_code
+--                            AND xmbc2.calc_target_flag = cv_enable
+--                 )
+--         )                        xbc
+--    GROUP BY xbc.base_code
+--           , xbc.emp_code
+--           , xbc.ship_cust_code
+--           , xbc.ship_gyotai_sho
+--           , xbc.ship_gyotai_tyu
+--           , xbc.bill_cust_code
+--           , xbc.period_year
+--           , xbc.ship_delivery_chain_code
+--           , xbc.delivery_ym
+--           , xbc.dlv_uom_code
+--           , xbc.container_code
+--           , xbc.dlv_unit_price
+--           , xbc.tax_div
+--           , xbc.tax_code
+--           , xbc.tax_rate
+--           , xbc.tax_rounding_rule
+--           , xbc.term_name
+--           , xbc.closing_date
+--           , xbc.expect_payment_date
+--           , xbc.calc_target_period_from
+--           , xbc.calc_target_period_to
+--           , xbc.calc_type
+--           , xbc.bm1_vendor_code
+--           , xbc.bm1_vendor_site_code
+--           , xbc.bm1_bm_payment_type
+--           , xbc.bm1_pct
+--           , xbc.bm1_amt
+--           , xbc.bm2_vendor_code
+--           , xbc.bm2_vendor_site_code
+--           , xbc.bm2_bm_payment_type
+--           , xbc.bm2_pct
+--           , xbc.bm2_amt
+--           , xbc.bm3_vendor_code
+--           , xbc.bm3_vendor_site_code
+--           , xbc.bm3_bm_payment_type
+--           , xbc.bm3_pct
+--           , xbc.bm3_amt
+--           , xbc.item_code
+--           , xbc.amount_fix_date
+--  ;
+--  -- ”Ì”„ÀÑî•ñEˆê—¥ğŒ
+--  CURSOR get_sales_data_cur3 IS
+--    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
+--         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
+--         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- ”[•i”—Ê
+--         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- ”„ã‹àŠziÅj
+--         , NULL                                                           AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--         , NULL                                                           AS dlv_unit_price             -- ”„‰¿‹àŠz
+--         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
+--         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
+--         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
+--         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
+--         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- ‹’“_ƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xse.ship_to_customer_code                                       AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- ‰ïŒv”N“x
+--                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- ”[•i“ú”NŒ
+--                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- ”[•i”—Ê
+--                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , xse.amount_inc_tax                                              AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- Å‹àƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- Á”ïÅ—¦
+--                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- x•¥ğŒ
+--                , xse.closing_date                                                AS closing_date               -- ’÷‚ß“ú
+--                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- x•¥—\’è“ú
+--                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xse.amount_fix_date                                             AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , xsel.dlv_qty                               AS dlv_qty                       -- ”[•i”—Ê
+--                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NVL( flv1.attribute1
+--                            , cv_container_code_others )            AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NVL2( flv2.lookup_code
+--                             , NULL
+--                             , xsel.item_code )                     AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , flv2.lookup_code                           AS item_code_no_inv              -- ”ñİŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                     , fnd_lookup_values             flv1       -- —eŠíŒQ
+--                     , fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+--                    AND flv1.lookup_code(+)         = xsim.vessel_group
+--                    AND flv1.lookup_type(+)         = cv_lookup_type_04
+--                    AND flv1.language(+)            = USERENV( 'LANG' )
+--                    AND flv1.enabled_flag(+)        = cv_enable
+--                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+--                                                  AND NVL( flv1.end_date_active,   gd_process_date )
+--                    AND flv2.lookup_code(+)         = xsel.item_code
+--                    AND flv2.lookup_type(+)         = cv_lookup_type_05
+--                    AND flv2.language(+)            = USERENV( 'LANG' )
+--                    AND flv2.enabled_flag(+)        = cv_enable
+--                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+--                                                  AND NVL( flv2.end_date_active,   gd_process_date )
+--                )                           xse       -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñ
+--              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
+--           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
+--             AND xse.item_code_no_inv             IS NULL
+--             AND xmbc.calc_type                    = cv_calc_type_uniform_rate
+--             AND xmbc.cust_code                    = xse.ship_to_customer_code
+--             AND xmbc.calc_target_flag             = cv_enable
+--         )                        xbc
+--    GROUP BY xbc.base_code
+--           , xbc.emp_code
+--           , xbc.ship_cust_code
+--           , xbc.ship_gyotai_sho
+--           , xbc.ship_gyotai_tyu
+--           , xbc.bill_cust_code
+--           , xbc.period_year
+--           , xbc.ship_delivery_chain_code
+--           , xbc.delivery_ym
+--           , xbc.dlv_uom_code
+--           , xbc.tax_div
+--           , xbc.tax_code
+--           , xbc.tax_rate
+--           , xbc.tax_rounding_rule
+--           , xbc.term_name
+--           , xbc.closing_date
+--           , xbc.expect_payment_date
+--           , xbc.calc_target_period_from
+--           , xbc.calc_target_period_to
+--           , xbc.calc_type
+--           , xbc.bm1_vendor_code
+--           , xbc.bm1_vendor_site_code
+--           , xbc.bm1_bm_payment_type
+--           , xbc.bm1_pct
+--           , xbc.bm1_amt
+--           , xbc.bm2_vendor_code
+--           , xbc.bm2_vendor_site_code
+--           , xbc.bm2_bm_payment_type
+--           , xbc.bm2_pct
+--           , xbc.bm2_amt
+--           , xbc.bm3_vendor_code
+--           , xbc.bm3_vendor_site_code
+--           , xbc.bm3_bm_payment_type
+--           , xbc.bm3_pct
+--           , xbc.bm3_amt
+--           , xbc.item_code
+--           , xbc.amount_fix_date
+--  ;
+--  -- ”Ì”„ÀÑî•ñE’èŠzğŒ
+--  CURSOR get_sales_data_cur4 IS
+--    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
+--         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
+--         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--         , xbc.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
+--         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠziÅj
+--         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
+--         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
+--         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--         , NULL                                                           AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
+--         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--         , NULL                                                           AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.bm2_amt ) )                                    AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
+--         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--         , NULL                                                           AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.bm3_amt ) )                                    AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
+--         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--    FROM ( SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
+--                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , xses.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , xses.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , xses.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--                , xses.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
+--                , xses.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , xses.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , xses.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , xses.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--                , xses.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , xses.term_name                                                  AS term_name                  -- x•¥ğŒ
+--                , xses.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--                , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--                , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , xmbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , xmbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , xses.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , xses.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , xses.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , xmbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , xmbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , xses.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , xses.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , xses.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , xmbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , xmbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
+--                       , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NULL                                       AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+--                    AND NOT EXISTS ( SELECT 'X'
+--                                     FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
+--                                     WHERE flv2.lookup_code         = xsel.item_code
+--                                       AND flv2.lookup_type         = cv_lookup_type_05
+--                                       AND flv2.language            = USERENV( 'LANG' )
+--                                       AND flv2.enabled_flag        = cv_enable
+--                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+--                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
+--                        )
+--                  GROUP BY xseh.ship_to_customer_code
+--                         , xt0c.ship_gyotai_tyu
+--                         , xt0c.ship_gyotai_sho
+--                         , xt0c.ship_delivery_chain_code
+--                         , xt0c.bill_cust_code
+--                         , xt0c.bm1_vendor_code
+--                         , xt0c.bm1_vendor_site_code
+--                         , xt0c.bm1_bm_payment_type
+--                         , xt0c.bm2_vendor_code
+--                         , xt0c.bm2_vendor_site_code
+--                         , xt0c.bm2_bm_payment_type
+--                         , xt0c.bm3_vendor_code
+--                         , xt0c.bm3_vendor_site_code
+--                         , xt0c.bm3_bm_payment_type
+--                         , xt0c.tax_div
+--                         , xt0c.tax_code
+--                         , xt0c.tax_rate
+--                         , xt0c.tax_rounding_rule
+--                         , xt0c.receiv_discount_rate
+--                         , xt0c.term_name
+--                         , xt0c.closing_date
+--                         , xt0c.expect_payment_date
+--                         , xt0c.period_year
+--                         , xt0c.calc_target_period_from
+--                         , xt0c.calc_target_period_to
+--                         , xseh.sales_base_code
+--                         , xseh.results_employee_code
+--                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+--                         , xt0c.amount_fix_date
+--                )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
+--              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
+--           WHERE xses.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+--             AND xmbc.calc_type                    = cv_calc_type_flat_rate
+--             AND xmbc.cust_code                    = xses.ship_to_customer_code
+--             AND xmbc.calc_target_flag             = cv_enable
+--         )                        xbc
+--    GROUP BY xbc.base_code
+--           , xbc.emp_code
+--           , xbc.ship_cust_code
+--           , xbc.ship_gyotai_sho
+--           , xbc.ship_gyotai_tyu
+--           , xbc.bill_cust_code
+--           , xbc.period_year
+--           , xbc.ship_delivery_chain_code
+--           , xbc.delivery_ym
+--           , xbc.dlv_qty
+--           , xbc.dlv_uom_code
+--           , xbc.amount_inc_tax
+--           , xbc.container_code
+--           , xbc.dlv_unit_price
+--           , xbc.tax_div
+--           , xbc.tax_code
+--           , xbc.tax_rate
+--           , xbc.tax_rounding_rule
+--           , xbc.term_name
+--           , xbc.closing_date
+--           , xbc.expect_payment_date
+--           , xbc.calc_target_period_from
+--           , xbc.calc_target_period_to
+--           , xbc.calc_type
+--           , xbc.bm1_vendor_code
+--           , xbc.bm1_vendor_site_code
+--           , xbc.bm1_bm_payment_type
+--           , xbc.bm1_pct
+--           , xbc.bm1_amt
+--           , xbc.bm2_vendor_code
+--           , xbc.bm2_vendor_site_code
+--           , xbc.bm2_bm_payment_type
+--           , xbc.bm2_pct
+--           , xbc.bm2_amt
+--           , xbc.bm3_vendor_code
+--           , xbc.bm3_vendor_site_code
+--           , xbc.bm3_bm_payment_type
+--           , xbc.bm3_pct
+--           , xbc.bm3_amt
+--           , xbc.item_code
+--           , xbc.amount_fix_date
+--  ;
+--  -- ”Ì”„ÀÑî•ñE“d‹C—¿iŒÅ’è^•Ï“®j
+--  CURSOR get_sales_data_cur5 IS
+--    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
+--         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
+--         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--         , xbc.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
+--         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠziÅj
+--         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
+--         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
+--         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+---- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+----         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+----         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--         , NULL                                                           AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , NULL                                                           AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+---- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+--         , NULL                                                           AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+--         , NULL                                                           AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+--         , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
+--         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+---- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+----         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+----         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--         , NULL                                                           AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , NULL                                                           AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+---- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+--         , NULL                                                           AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+--         , NULL                                                           AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
+--         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+---- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+----         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+----         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--         , NULL                                                           AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , NULL                                                           AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+---- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+--         , NULL                                                           AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+--         , NULL                                                           AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
+--         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--    FROM ( -- “d‹C—¿iŒÅ’èj
+--           SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
+--                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , xses.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , xses.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , xses.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--                , NULL                                                            AS dlv_qty                    -- ”[•i”—Ê
+--                , NULL                                                            AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , 0                                                               AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , xses.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , xses.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--                , xses.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , xses.term_name                                                  AS term_name                  -- x•¥ğŒ
+--                , xses.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--                , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--                , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , xmbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , NULL                                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , NULL                                                            AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , NULL                                                            AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , NULL                                                            AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , NULL                                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , NULL                                                            AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , NULL                                                            AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , NULL                                                            AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
+--                       , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NULL                                       AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+--                    AND NOT EXISTS ( SELECT 'X'
+--                                     FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
+--                                     WHERE flv2.lookup_code         = xsel.item_code
+--                                       AND flv2.lookup_type         = cv_lookup_type_05
+--                                       AND flv2.language            = USERENV( 'LANG' )
+--                                       AND flv2.enabled_flag        = cv_enable
+--                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+--                                                                     AND NVL( flv2.end_date_active,   gd_process_date )                    )
+--                  GROUP BY xseh.ship_to_customer_code
+--                         , xt0c.ship_gyotai_tyu
+--                         , xt0c.ship_gyotai_sho
+--                         , xt0c.ship_delivery_chain_code
+--                         , xt0c.bill_cust_code
+--                         , xt0c.bm1_vendor_code
+--                         , xt0c.bm1_vendor_site_code
+--                         , xt0c.bm1_bm_payment_type
+--                         , xt0c.bm2_vendor_code
+--                         , xt0c.bm2_vendor_site_code
+--                         , xt0c.bm2_bm_payment_type
+--                         , xt0c.bm3_vendor_code
+--                         , xt0c.bm3_vendor_site_code
+--                         , xt0c.bm3_bm_payment_type
+--                         , xt0c.tax_div
+--                         , xt0c.tax_code
+--                         , xt0c.tax_rate
+--                         , xt0c.tax_rounding_rule
+--                         , xt0c.receiv_discount_rate
+--                         , xt0c.term_name
+--                         , xt0c.closing_date
+--                         , xt0c.expect_payment_date
+--                         , xt0c.period_year
+--                         , xt0c.calc_target_period_from
+--                         , xt0c.calc_target_period_to
+--                         , xseh.sales_base_code
+--                         , xseh.results_employee_code
+--                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+--                         , xt0c.amount_fix_date
+--                )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
+--              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
+--           WHERE xses.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+--             AND xmbc.calc_type                    = cv_calc_type_electricity_cost
+--             AND xmbc.cust_code                    = xses.ship_to_customer_code
+--             AND xmbc.calc_target_flag             = cv_enable
+--           UNION ALL
+--           -- “d‹C—¿i•Ï“®j
+--           SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
+--                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , xses.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , xses.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , xses.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--                , NULL                                                            AS dlv_qty                    -- ”[•i”—Ê
+--                , NULL                                                            AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , 0                                                               AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , xses.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , xses.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--                , xses.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , xses.term_name                                                  AS term_name                  -- x•¥ğŒ
+--                , xses.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--                , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--                , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , cv_calc_type_electricity_cost                                   AS calc_type                  -- ŒvZğŒ
+--                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , xses.amount_inc_tax                                             AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , NULL                                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , NULL                                                            AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , NULL                                                            AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , NULL                                                            AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , NULL                                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , NULL                                                            AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , NULL                                                            AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , NULL                                                            AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
+--                       , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NULL                                       AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+--                    AND xsel.item_code              = gv_elec_change_item_code
+--                  GROUP BY xseh.ship_to_customer_code
+--                         , xt0c.ship_gyotai_tyu
+--                         , xt0c.ship_gyotai_sho
+--                         , xt0c.ship_delivery_chain_code
+--                         , xt0c.bill_cust_code
+--                         , xt0c.bm1_vendor_code
+--                         , xt0c.bm1_vendor_site_code
+--                         , xt0c.bm1_bm_payment_type
+--                         , xt0c.bm2_vendor_code
+--                         , xt0c.bm2_vendor_site_code
+--                         , xt0c.bm2_bm_payment_type
+--                         , xt0c.bm3_vendor_code
+--                         , xt0c.bm3_vendor_site_code
+--                         , xt0c.bm3_bm_payment_type
+--                         , xt0c.tax_div
+--                         , xt0c.tax_code
+--                         , xt0c.tax_rate
+--                         , xt0c.tax_rounding_rule
+--                         , xt0c.receiv_discount_rate
+--                         , xt0c.term_name
+--                         , xt0c.closing_date
+--                         , xt0c.expect_payment_date
+--                         , xt0c.period_year
+--                         , xt0c.calc_target_period_from
+--                         , xt0c.calc_target_period_to
+--                         , xseh.sales_base_code
+--                         , xseh.results_employee_code
+--                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+--                         , xt0c.amount_fix_date
+--                )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
+--         )                        xbc
+--    GROUP BY xbc.base_code
+--           , xbc.emp_code
+--           , xbc.ship_cust_code
+--           , xbc.ship_gyotai_sho
+--           , xbc.ship_gyotai_tyu
+--           , xbc.bill_cust_code
+--           , xbc.period_year
+--           , xbc.ship_delivery_chain_code
+--           , xbc.delivery_ym
+--           , xbc.dlv_qty
+--           , xbc.dlv_uom_code
+--           , xbc.amount_inc_tax
+--           , xbc.container_code
+--           , xbc.dlv_unit_price
+--           , xbc.tax_div
+--           , xbc.tax_code
+--           , xbc.tax_rate
+--           , xbc.tax_rounding_rule
+--           , xbc.term_name
+--           , xbc.closing_date
+--           , xbc.expect_payment_date
+--           , xbc.calc_target_period_from
+--           , xbc.calc_target_period_to
+--           , xbc.calc_type
+--           , xbc.bm1_vendor_code
+--           , xbc.bm1_vendor_site_code
+--           , xbc.bm1_bm_payment_type
+--           , xbc.bm1_pct
+--           , xbc.bm1_amt
+--           , xbc.bm2_vendor_code
+--           , xbc.bm2_vendor_site_code
+--           , xbc.bm2_bm_payment_type
+--           , xbc.bm2_pct
+--           , xbc.bm2_amt
+--           , xbc.bm3_vendor_code
+--           , xbc.bm3_vendor_site_code
+--           , xbc.bm3_bm_payment_type
+--           , xbc.bm3_pct
+--           , xbc.bm3_amt
+--           , xbc.item_code
+--           , xbc.amount_fix_date
+--  ;
+--  -- ”Ì”„ÀÑî•ñE“ü‹à’lˆø—¦
+--  CURSOR get_sales_data_cur6 IS
+--    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
+--         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
+--         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--         , xbc.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
+--         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
+--         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠziÅj
+--         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
+--         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
+--         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+--         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
+--         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
+--         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+--         , TRUNC( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+--         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
+--         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--    FROM ( SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
+--                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
+--                , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
+--                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+--                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+--                , xses.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
+--                , xses.period_year                                                AS period_year                -- ‰ïŒv”N“x
+--                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
+--                , xses.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
+--                , NULL                                                            AS dlv_qty                    -- ”[•i”—Ê
+--                , NULL                                                            AS dlv_uom_code               -- ”[•i’PˆÊ
+--                , amount_inc_tax                                                  AS amount_inc_tax             -- ”„ã‹àŠz(Å)
+--                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
+--                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
+--                , xses.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
+--                , xses.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
+--                , xses.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
+--                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+--                , xses.term_name                                                  AS term_name                  -- x•¥ğŒ
+--                , xses.closing_date                                               AS closing_date               -- ’÷‚ß“ú
+--                , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
+--                , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                , cv_calc_type_uniform_rate                                       AS calc_type                  -- ŒvZğŒ
+--                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                , receiv_discount_rate                                            AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--                , NULL                                                            AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+--                , NULL                                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                , NULL                                                            AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                , NULL                                                            AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--                , NULL                                                            AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+--                , NULL                                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                , NULL                                                            AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                , NULL                                                            AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                , NULL                                                            AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--                , NULL                                                            AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+--                , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
+--                , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
+--           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+--                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+--                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+--                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+--                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
+--                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
+--                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
+--                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
+--                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
+--                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
+--                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+--                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
+--                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
+--                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
+--                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
+--                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
+--                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
+--                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
+--                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
+--                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
+--                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
+--                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+--                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
+--                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+--                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+--                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
+--                       , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
+--                       , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
+--                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- ”„ã‹àŠziÅj
+--                       , NULL                                       AS container_code                -- —eŠí‹æ•ªƒR[ƒh
+--                       , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
+--                       , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
+--                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+--                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+--                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
+--                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
+--                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+--                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+--                    AND xseh.delivery_date         <= xt0c.closing_date
+--                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+--                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+--                    AND EXISTS ( SELECT 'X'
+--                                 FROM fnd_lookup_values    flv
+--                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+--                                   AND flv.lookup_code             = xsel.sales_class
+--                                   AND flv.language                = USERENV( 'LANG' )
+--                                   AND flv.enabled_flag            = cv_enable
+--                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+--                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+--                                   AND ROWNUM = 1
+--                        )
+---- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+--                    AND xsim.item_code              = xsel.item_code
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--                    AND xt0c.receiv_discount_rate  IS NOT NULL -- “ü‹à’lˆø—¦‚ªİ’è‚³‚ê‚Ä‚¢‚éŒÚ‹q‚Ì‚İ
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--                    AND NOT EXISTS ( SELECT 'X'
+--                                     FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
+--                                     WHERE flv2.lookup_code         = xsel.item_code
+--                                       AND flv2.lookup_type         = cv_lookup_type_05
+--                                       AND flv2.language            = USERENV( 'LANG' )
+--                                       AND flv2.enabled_flag        = cv_enable
+--                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
+--                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
+--                        )
+--                  GROUP BY xseh.ship_to_customer_code
+--                         , xt0c.ship_gyotai_tyu
+--                         , xt0c.ship_gyotai_sho
+--                         , xt0c.ship_delivery_chain_code
+--                         , xt0c.bill_cust_code
+--                         , xt0c.bm1_vendor_code
+--                         , xt0c.bm1_vendor_site_code
+--                         , xt0c.bm1_bm_payment_type
+--                         , xt0c.bm2_vendor_code
+--                         , xt0c.bm2_vendor_site_code
+--                         , xt0c.bm2_bm_payment_type
+--                         , xt0c.bm3_vendor_code
+--                         , xt0c.bm3_vendor_site_code
+--                         , xt0c.bm3_bm_payment_type
+--                         , xt0c.tax_div
+--                         , xt0c.tax_code
+--                         , xt0c.tax_rate
+--                         , xt0c.tax_rounding_rule
+--                         , xt0c.receiv_discount_rate
+--                         , xt0c.term_name
+--                         , xt0c.closing_date
+--                         , xt0c.expect_payment_date
+--                         , xt0c.period_year
+--                         , xt0c.calc_target_period_from
+--                         , xt0c.calc_target_period_to
+--                         , xseh.sales_base_code
+--                         , xseh.results_employee_code
+--                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+--                         , xt0c.amount_fix_date
+--                )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
+--           WHERE xses.ship_gyotai_tyu             <> cv_gyotai_tyu_vd
+--         )                        xbc
+--    GROUP BY xbc.base_code
+--           , xbc.emp_code
+--           , xbc.ship_cust_code
+--           , xbc.ship_gyotai_sho
+--           , xbc.ship_gyotai_tyu
+--           , xbc.bill_cust_code
+--           , xbc.period_year
+--           , xbc.ship_delivery_chain_code
+--           , xbc.delivery_ym
+--           , xbc.dlv_qty
+--           , xbc.dlv_uom_code
+--           , xbc.amount_inc_tax
+--           , xbc.container_code
+--           , xbc.dlv_unit_price
+--           , xbc.tax_div
+--           , xbc.tax_code
+--           , xbc.tax_rate
+--           , xbc.tax_rounding_rule
+--           , xbc.term_name
+--           , xbc.closing_date
+--           , xbc.expect_payment_date
+--           , xbc.calc_target_period_from
+--           , xbc.calc_target_period_to
+--           , xbc.calc_type
+--           , xbc.bm1_vendor_code
+--           , xbc.bm1_vendor_site_code
+--           , xbc.bm1_bm_payment_type
+--           , xbc.bm1_pct
+--           , xbc.bm1_amt
+--           , xbc.bm2_vendor_code
+--           , xbc.bm2_vendor_site_code
+--           , xbc.bm2_bm_payment_type
+--           , xbc.bm2_pct
+--           , xbc.bm2_amt
+--           , xbc.bm3_vendor_code
+--           , xbc.bm3_vendor_site_code
+--           , xbc.bm3_bm_payment_type
+--           , xbc.bm3_pct
+--           , xbc.bm3_amt
+--           , xbc.item_code
+--           , xbc.amount_fix_date
+--  ;
   -- ”Ì”„ÀÑî•ñE”„‰¿•ÊğŒ
   CURSOR get_sales_data_cur1 IS
-    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
-         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
-         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
-         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- ”[•i”—Ê
-         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
-         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- ”„ã‹àŠziÅj
-         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
-         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
-         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
-         , ROUND( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
-         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
-         , ROUND( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
-         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
-         , ROUND( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
-         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- ‹’“_ƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- ’S“–ÒƒR[ƒh
-                , xse.ship_to_customer_code                                       AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- ‰ïŒv”N“x
-                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- ”[•i“ú”NŒ
-                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- ”[•i”—Ê
-                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- ”[•i’PˆÊ
-                , xse.amount_inc_tax                                              AS amount_inc_tax             -- ”„ã‹àŠz(Å)
-                , NVL2( xmbc.calc_type, NULL, xse.container_code )                AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-                , xse.dlv_unit_price                                              AS dlv_unit_price             -- ”„‰¿‹àŠz
-                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- Á”ïÅ‹æ•ª
-                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- Å‹àƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- Á”ïÅ—¦
-                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- x•¥ğŒ
-                , xse.closing_date                                                AS closing_date               -- ’÷‚ß“ú
-                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- x•¥—\’è“ú
-                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-                , xse.amount_fix_date                                             AS amount_fix_date            -- ‹àŠzŠm’è“ú
-           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
-                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
-                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
-                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
-                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
-                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
-                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
-                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
-                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
-                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
-                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
-                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
-                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
-                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
-                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
-                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
-                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
-                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
-                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
-                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
-                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
-                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
-                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
-                       , xsel.dlv_qty                               AS dlv_qty                       -- ”[•i”—Ê
-                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- ”[•i’PˆÊ
-                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- ”„ã‹àŠziÅj
-                       , NVL( flv1.attribute1
-                            , cv_container_code_others )            AS container_code                -- —eŠí‹æ•ªƒR[ƒh
-                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- ”„‰¿‹àŠz
-                       , NVL2( flv2.lookup_code
-                             , NULL
-                             , xsel.item_code )                     AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
-                       , flv2.lookup_code                           AS item_code_no_inv              -- ”ñİŒÉ•i–ÚƒR[ƒh
-                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
-                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
-                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
-                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
-                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
-                     , fnd_lookup_values             flv1       -- —eŠíŒQ
-                     , fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
-                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+    SELECT xbc.sales_base_code                                     AS base_code                -- ‹’“_ƒR[ƒh
+         , xbc.results_employee_code                               AS emp_code                 -- ’S“–ÒƒR[ƒh
+         , xbc.ship_to_customer_code                               AS ship_cust_code           -- ŒÚ‹qy”[•iæz
+         , xbc.ship_gyotai_sho                                     AS ship_gyotai_sho          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+         , xbc.ship_gyotai_tyu                                     AS ship_gyotai_tyu          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+         , xbc.bill_cust_code                                      AS bill_cust_code           -- ŒÚ‹qy¿‹æz
+         , xbc.period_year                                         AS period_year              -- ‰ïŒv”N“x
+         , xbc.ship_delivery_chain_code                            AS ship_delivery_chain_code -- ƒ`ƒF[ƒ““XƒR[ƒh
+         , xbc.delivery_ym                                         AS delivery_ym              -- ”[•i“ú”NŒ
+         , SUM( xbc.dlv_qty )                                      AS dlv_qty                  -- ”[•i”—Ê
+         , xbc.dlv_uom_code                                        AS dlv_uom_code             -- ”[•i’PˆÊ
+         , SUM( xbc.amount_inc_tax )                               AS amount_inc_tax           -- ”„ã‹àŠziÅj
+         , xbc.container_code                                      AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+         , xbc.dlv_unit_price                                      AS dlv_unit_price           -- ”„‰¿‹àŠz
+         , xbc.tax_div                                             AS tax_div                  -- Á”ïÅ‹æ•ª
+         , xbc.tax_code                                            AS tax_code                 -- Å‹àƒR[ƒh
+         , xbc.tax_rate                                            AS tax_rate                 -- Á”ïÅ—¦
+         , xbc.tax_rounding_rule                                   AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+         , xbc.term_name                                           AS term_name                -- x•¥ğŒ
+         , xbc.closing_date                                        AS closing_date             -- ’÷‚ß“ú
+         , xbc.expect_payment_date                                 AS expect_payment_date      -- x•¥—\’è“ú
+         , xbc.calc_target_period_from                             AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+         , xbc.calc_target_period_to                               AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+         , xbc.calc_type                                           AS calc_type                -- ŒvZğŒ
+         , xbc.bm1_vendor_code                                     AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+         , xbc.bm1_vendor_site_code                                AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm1_bm_payment_type                                 AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+         , xbc.bm1_pct                                             AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+         , xbc.bm1_amt                                             AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )  AS bm1_cond_bm_tax_pct      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )               AS bm1_cond_bm_amt_tax      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                    AS bm1_electric_amt_tax     -- y‚a‚l‚Pz“d‹C—¿(Å)
+         , xbc.bm2_vendor_code                                     AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+         , xbc.bm2_vendor_site_code                                AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm2_bm_payment_type                                 AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+         , xbc.bm2_pct                                             AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+         , xbc.bm2_amt                                             AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )  AS bm2_cond_bm_tax_pct      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )               AS bm2_cond_bm_amt_tax      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                    AS bm2_electric_amt_tax     -- y‚a‚l‚Qz“d‹C—¿(Å)
+         , xbc.bm3_vendor_code                                     AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+         , xbc.bm3_vendor_site_code                                AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm3_bm_payment_type                                 AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+         , xbc.bm3_pct                                             AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+         , xbc.bm3_amt                                             AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )  AS bm3_cond_bm_tax_pct      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )               AS bm3_cond_bm_amt_tax      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                    AS bm3_electric_amt_tax     -- y‚a‚l‚Rz“d‹C—¿(Å)
+         , xbc.item_code                                           AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+         , xbc.amount_fix_date                                     AS amount_fix_date          -- ‹àŠzŠm’è“ú
+    FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- ”„ã‹’“_ƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- ¬ÑŒvãÒƒR[ƒh
+                , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- yo‰×æzŒÚ‹qƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho                    , NULL )            AS ship_gyotai_sho          -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu                    , NULL )            AS ship_gyotai_tyu          -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+                , NVL2( xmbc.calc_type, xse.bill_cust_code                     , NULL )            AS bill_cust_code           -- y¿‹æzŒÚ‹qƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.period_year                        , NULL )            AS period_year              -- ‰ïŒv”N“x
+                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code           , NULL )            AS ship_delivery_chain_code -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+                , NVL2( xmbc.calc_type, TO_CHAR( xse.delivery_date, 'RRRRMM' ) , NULL )            AS delivery_ym              -- ”[•i”NŒ
+                , NVL2( xmbc.calc_type, xse.dlv_qty                            , NULL )            AS dlv_qty                  -- ”[•i”—Ê
+                , NVL2( xmbc.calc_type, xse.dlv_uom_code                       , NULL )            AS dlv_uom_code             -- ”[•i’PˆÊ
+                , xse.pure_amount + xse.tax_amount                                                 AS amount_inc_tax           -- ”„ã‹àŠziÅj
+                , NVL2( xmbc.calc_type, NULL, NVL( flv1.attribute1, cv_container_code_others ) )   AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+                , xse.dlv_unit_price                                                               AS dlv_unit_price           -- ”„‰¿‹àŠz
+                , NVL2( xmbc.calc_type, xse.tax_div                            , NULL )            AS tax_div                  -- Á”ïÅ‹æ•ª
+                , NVL2( xmbc.calc_type, xse.tax_code                           , NULL )            AS tax_code                 -- Å‹àƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.tax_rate                           , NULL )            AS tax_rate                 -- Á”ïÅ—¦
+                , NVL2( xmbc.calc_type, xse.tax_rounding_rule                  , NULL )            AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+                , NVL2( xmbc.calc_type, xse.term_name                          , NULL )            AS term_name                -- x•¥ğŒ
+                , xse.closing_date                                                                 AS closing_date             -- ’÷‚ß“ú
+                , NVL2( xmbc.calc_type, xse.expect_payment_date                , NULL )            AS expect_payment_date      -- x•¥—\’è“ú
+                , NVL2( xmbc.calc_type, xse.calc_target_period_from            , NULL )            AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+                , NVL2( xmbc.calc_type, xse.calc_target_period_to              , NULL )            AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+                , xmbc.calc_type                                                                   AS calc_type                -- ŒvZğŒ
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_code                    , NULL )            AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code               , NULL )            AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type                , NULL )            AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+                , NVL2( xmbc.calc_type, xmbc.bm1_pct                           , NULL )            AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+                , NVL2( xmbc.calc_type, xmbc.bm1_amt                           , NULL )            AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_code                    , NULL )            AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code               , NULL )            AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type                , NULL )            AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+                , NVL2( xmbc.calc_type, xmbc.bm2_pct                           , NULL )            AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+                , NVL2( xmbc.calc_type, xmbc.bm2_amt                           , NULL )            AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_code                    , NULL )            AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code               , NULL )            AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type                , NULL )            AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+                , NVL2( xmbc.calc_type, xmbc.bm3_pct                           , NULL )            AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+                , NVL2( xmbc.calc_type, xmbc.bm3_amt                           , NULL )            AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+                , NVL2( xmbc.calc_type, NULL, xse.item_code )                                      AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+                , xse.amount_fix_date                                                              AS amount_fix_date          -- ‹àŠzŠm’è“ú
+           FROM ( SELECT /*+ LEADING(xt0c xseh xsel xsim) USE_NL(xsel xsim) */
+                         xseh.sales_base_code                   AS sales_base_code             -- ”„ã‹’“_ƒR[ƒh
+                       , xseh.results_employee_code             AS results_employee_code       -- ¬ÑŒvãÒƒR[ƒh
+                       , xseh.ship_to_customer_code             AS ship_to_customer_code       -- yo‰×æzŒÚ‹qƒR[ƒh
+                       , xt0c.ship_gyotai_sho                   AS ship_gyotai_sho             -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+                       , xt0c.ship_gyotai_tyu                   AS ship_gyotai_tyu             -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+                       , xt0c.bill_cust_code                    AS bill_cust_code              -- y¿‹æzŒÚ‹qƒR[ƒh
+                       , xt0c.period_year                       AS period_year                 -- ‰ïŒv”N“x
+                       , xt0c.ship_delivery_chain_code          AS ship_delivery_chain_code    -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+                       , xseh.delivery_date                     AS delivery_date               -- ”[•i“ú
+                       , xsel.dlv_qty                           AS dlv_qty                     -- ”[•i”—Ê
+                       , xsel.dlv_uom_code                      AS dlv_uom_code                -- ”[•i’PˆÊ
+                       , xsel.pure_amount                       AS pure_amount                 -- –{‘Ì‹àŠz 
+                       , xsel.tax_amount                        AS tax_amount                  -- Á”ïÅ‹àŠz
+                       , xsel.dlv_unit_price                    AS dlv_unit_price              -- ”„‰¿‹àŠz
+                       , xt0c.tax_div                           AS tax_div                     -- Á”ïÅ‹æ•ª
+                       , xt0c.tax_code                          AS tax_code                    -- Å‹àƒR[ƒh
+                       , xt0c.tax_rate                          AS tax_rate                    -- Á”ïÅ—¦
+                       , xt0c.tax_rounding_rule                 AS tax_rounding_rule           -- ’[”ˆ—‹æ•ª
+                       , xt0c.term_name                         AS term_name                   -- x•¥ğŒ
+                       , xt0c.closing_date                      AS closing_date                -- ’÷‚ß“ú
+                       , xt0c.expect_payment_date               AS expect_payment_date         -- x•¥—\’è“ú
+                       , xt0c.calc_target_period_from           AS calc_target_period_from     -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+                       , xt0c.calc_target_period_to             AS calc_target_period_to       -- ŒvZ‘ÎÛŠúŠÔ(TO)
+                       , xt0c.bm1_vendor_code                   AS bm1_vendor_code             -- y‚a‚l‚Pzd“üæƒR[ƒh
+                       , xt0c.bm1_vendor_site_code              AS bm1_vendor_site_code        -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+                       , xt0c.bm1_bm_payment_type               AS bm1_bm_payment_type         -- y‚a‚l‚PzBMx•¥‹æ•ª
+                       , xt0c.bm2_vendor_code                   AS bm2_vendor_code             -- y‚a‚l‚Qzd“üæƒR[ƒh
+                       , xt0c.bm2_vendor_site_code              AS bm2_vendor_site_code        -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+                       , xt0c.bm2_bm_payment_type               AS bm2_bm_payment_type         -- y‚a‚l‚QzBMx•¥‹æ•ª
+                       , xt0c.bm3_vendor_code                   AS bm3_vendor_code             -- y‚a‚l‚Rzd“üæƒR[ƒh
+                       , xt0c.bm3_vendor_site_code              AS bm3_vendor_site_code        -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+                       , xt0c.bm3_bm_payment_type               AS bm3_bm_payment_type         -- y‚a‚l‚RzBMx•¥‹æ•ª
+                       , xsel.item_code                         AS item_code                   -- İŒÉ•i–ÚƒR[ƒh
+                       , xt0c.amount_fix_date                   AS amount_fix_date             -- ‹àŠzŠm’è“ú
+                       , xsim.vessel_group                      AS vessel_group                -- —eŠíŒSƒR[ƒh
+                  FROM xxcmm_system_items_b        xsim  -- Disc•i–ÚƒAƒhƒIƒ“
+                     , xxcos_sales_exp_lines       xsel  -- ”Ì”„ÀÑ–¾×
+                     , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+                     , xxcok_tmp_014a01c_custdata  xt0c  -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- ‹Æ‘Ôi’†•ª—ŞjFVD
+                    AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
-                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
-                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
                     AND EXISTS ( SELECT 'X'
-                                 FROM fnd_lookup_values    flv
-                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
-                                   AND flv.lookup_code             = xsel.sales_class
-                                   AND flv.language                = USERENV( 'LANG' )
-                                   AND flv.enabled_flag            = cv_enable
-                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
-                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                 FROM xxcok_mst_bm_contract xmbc2 -- ”ÌèğŒƒ}ƒXƒ^
+                                 WHERE xmbc2.calc_type                = cv_calc_type_sales_price      -- ŒvZğŒF”„‰¿•ÊğŒ
+                                   AND xmbc2.cust_code                = xseh.ship_to_customer_code
+                                   AND xmbc2.calc_target_flag         = cv_enable
+                                   AND xmbc2.container_type_code     IS NULL
                                    AND ROWNUM = 1
                         )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
-                    AND flv1.lookup_code(+)         = xsim.vessel_group
-                    AND flv1.lookup_type(+)         = cv_lookup_type_04
-                    AND flv1.language(+)            = USERENV( 'LANG' )
-                    AND flv1.enabled_flag(+)        = cv_enable
-                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
-                                                  AND NVL( flv1.end_date_active,   gd_process_date )
-                    AND flv2.lookup_code(+)         = xsel.item_code
-                    AND flv2.lookup_type(+)         = cv_lookup_type_05
-                    AND flv2.language(+)            = USERENV( 'LANG' )
-                    AND flv2.enabled_flag(+)        = cv_enable
-                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
-                                                  AND NVL( flv2.end_date_active,   gd_process_date )
-                )                           xse       -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñ
-              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
-           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
-             AND xse.item_code_no_inv             IS NULL
-             AND xmbc.calc_type(+)                 = cv_calc_type_sales_price
-             AND xmbc.cust_code(+)                 = xse.ship_to_customer_code
-             AND xmbc.selling_price(+)             = xse.dlv_unit_price
-             AND xmbc.calc_target_flag(+)          = cv_enable
-             AND EXISTS ( SELECT 'X'
-                          FROM xxcok_mst_bm_contract xmbc2 -- ”ÌèğŒƒ}ƒXƒ^
-                          WHERE xmbc2.calc_type        = cv_calc_type_sales_price
-                            AND xmbc2.cust_code        = xse.ship_to_customer_code
-                            AND xmbc2.calc_target_flag = cv_enable
-                 )
-         )                        xbc
-    GROUP BY xbc.base_code
-           , xbc.emp_code
-           , xbc.ship_cust_code
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values flv -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                 WHERE flv.lookup_type         = cv_lookup_type_07             -- QÆƒ^ƒCƒvF”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code         = xsel.sales_class
+                                   AND flv.language            = cv_lang
+                                   AND flv.enabled_flag        = cv_enable
+                                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                             AND NVL( flv.end_date_active  , gd_process_date )
+                                  AND ROWNUM = 1
+                        )
+                    AND NOT EXISTS ( SELECT 'X'
+                                     FROM fnd_lookup_values flv -- ”ñİŒÉ•i–Ú
+                                     WHERE flv.lookup_type         = cv_lookup_type_05 -- QÆƒ^ƒCƒvF”ñİŒÉ•i–Ú
+                                       AND flv.lookup_code         = xsel.item_code
+                                       AND flv.language            = cv_lang
+                                       AND flv.enabled_flag        = cv_enable
+                                       AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active  , gd_process_date )
+                                       AND ROWNUM = 1
+                        )
+                )                           xse   -- ”Ì”„ÀÑî•ñ
+              , fnd_lookup_values           flv1  -- —eŠíŒQ
+              , xxcok_mst_bm_contract       xmbc  -- ”ÌèğŒƒ}ƒXƒ^
+           WHERE flv1.lookup_type(+)         = cv_lookup_type_04                         -- QÆƒ^ƒCƒvF—eŠíŒQ
+             AND flv1.lookup_code(+)         = xse.vessel_group
+             AND flv1.language(+)            = cv_lang
+             AND flv1.enabled_flag(+)        = cv_enable
+             AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
+                                           AND NVL( flv1.end_date_active  , gd_process_date )
+             AND xmbc.calc_type(+)           = cv_calc_type_sales_price                  -- ŒvZğŒF”„‰¿•ÊğŒ
+             AND xmbc.cust_code(+)           = xse.ship_to_customer_code
+             AND xmbc.calc_target_flag(+)    = cv_enable
+             AND xmbc.selling_price(+)       = xse.dlv_unit_price
+         ) xbc -- ”Ì”„ÀÑî•ñE”„‰¿•ÊğŒ
+    GROUP BY xbc.sales_base_code
+           , xbc.results_employee_code
+           , xbc.ship_to_customer_code
            , xbc.ship_gyotai_sho
            , xbc.ship_gyotai_tyu
            , xbc.bill_cust_code
@@ -911,674 +2479,513 @@ AS
   ;
   -- ”Ì”„ÀÑî•ñE—eŠí‹æ•ª•ÊğŒ
   CURSOR get_sales_data_cur2 IS
-    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
-         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
-         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
-         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- ”[•i”—Ê
-         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
-         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- ”„ã‹àŠziÅj
-         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
-         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
-         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
-         , ROUND( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
-         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
-         , ROUND( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
-         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-         , ROUND( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
-         , ROUND( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
-         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- ‹’“_ƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- ’S“–ÒƒR[ƒh
-                , xse.ship_to_customer_code                                       AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- ‰ïŒv”N“x
-                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- ”[•i“ú”NŒ
-                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- ”[•i”—Ê
-                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- ”[•i’PˆÊ
-                , xse.amount_inc_tax                                              AS amount_inc_tax             -- ”„ã‹àŠz(Å)
-                , xse.container_code                                              AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-                , NVL2( xmbc.calc_type, NULL, xse.dlv_unit_price )                AS dlv_unit_price             -- ”„‰¿‹àŠz
-                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- Á”ïÅ‹æ•ª
-                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- Å‹àƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- Á”ïÅ—¦
-                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- x•¥ğŒ
-                , xse.closing_date                                                AS closing_date               -- ’÷‚ß“ú
-                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- x•¥—\’è“ú
-                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-                , xse.amount_fix_date                                             AS amount_fix_date            -- ‹àŠzŠm’è“ú
-           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
-                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
-                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
-                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
-                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
-                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
-                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
-                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
-                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
-                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
-                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
-                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
-                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
-                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
-                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
-                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
-                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
-                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
-                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
-                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
-                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
-                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
-                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
-                       , xsel.dlv_qty                               AS dlv_qty                       -- ”[•i”—Ê
-                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- ”[•i’PˆÊ
-                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- ”„ã‹àŠziÅj
-                       , NVL( flv1.attribute1
-                            , cv_container_code_others )            AS container_code                -- —eŠí‹æ•ªƒR[ƒh
-                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- ”„‰¿‹àŠz
-                       , NVL2( flv2.lookup_code
-                             , NULL
-                             , xsel.item_code )                     AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
-                       , flv2.lookup_code                           AS item_code_no_inv              -- ”ñİŒÉ•i–ÚƒR[ƒh
-                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
-                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
-                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
-                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
-                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
-                     , fnd_lookup_values             flv1       -- —eŠíŒQ
-                     , fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
-                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+    SELECT xbc.sales_base_code                                     AS base_code                -- ‹’“_ƒR[ƒh
+         , xbc.results_employee_code                               AS emp_code                 -- ’S“–ÒƒR[ƒh
+         , xbc.ship_to_customer_code                               AS ship_cust_code           -- ŒÚ‹qy”[•iæz
+         , xbc.ship_gyotai_sho                                     AS ship_gyotai_sho          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+         , xbc.ship_gyotai_tyu                                     AS ship_gyotai_tyu          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+         , xbc.bill_cust_code                                      AS bill_cust_code           -- ŒÚ‹qy¿‹æz
+         , xbc.period_year                                         AS period_year              -- ‰ïŒv”N“x
+         , xbc.ship_delivery_chain_code                            AS ship_delivery_chain_code -- ƒ`ƒF[ƒ““XƒR[ƒh
+         , xbc.delivery_ym                                         AS delivery_ym              -- ”[•i“ú”NŒ
+         , SUM( xbc.dlv_qty )                                      AS dlv_qty                  -- ”[•i”—Ê
+         , xbc.dlv_uom_code                                        AS dlv_uom_code             -- ”[•i’PˆÊ
+         , SUM( xbc.amount_inc_tax )                               AS amount_inc_tax           -- ”„ã‹àŠziÅj
+         , xbc.container_code                                      AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+         , xbc.dlv_unit_price                                      AS dlv_unit_price           -- ”„‰¿‹àŠz
+         , xbc.tax_div                                             AS tax_div                  -- Á”ïÅ‹æ•ª
+         , xbc.tax_code                                            AS tax_code                 -- Å‹àƒR[ƒh
+         , xbc.tax_rate                                            AS tax_rate                 -- Á”ïÅ—¦
+         , xbc.tax_rounding_rule                                   AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+         , xbc.term_name                                           AS term_name                -- x•¥ğŒ
+         , xbc.closing_date                                        AS closing_date             -- ’÷‚ß“ú
+         , xbc.expect_payment_date                                 AS expect_payment_date      -- x•¥—\’è“ú
+         , xbc.calc_target_period_from                             AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+         , xbc.calc_target_period_to                               AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+         , xbc.calc_type                                           AS calc_type                -- ŒvZğŒ
+         , xbc.bm1_vendor_code                                     AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+         , xbc.bm1_vendor_site_code                                AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm1_bm_payment_type                                 AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+         , xbc.bm1_pct                                             AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+         , xbc.bm1_amt                                             AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )  AS bm1_cond_bm_tax_pct      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )               AS bm1_cond_bm_amt_tax      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                    AS bm1_electric_amt_tax     -- y‚a‚l‚Pz“d‹C—¿(Å)
+         , xbc.bm2_vendor_code                                     AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+         , xbc.bm2_vendor_site_code                                AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm2_bm_payment_type                                 AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+         , xbc.bm2_pct                                             AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+         , xbc.bm2_amt                                             AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )  AS bm2_cond_bm_tax_pct      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )               AS bm2_cond_bm_amt_tax      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                    AS bm2_electric_amt_tax     -- y‚a‚l‚Qz“d‹C—¿(Å)
+         , xbc.bm3_vendor_code                                     AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+         , xbc.bm3_vendor_site_code                                AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm3_bm_payment_type                                 AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+         , xbc.bm3_pct                                             AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+         , xbc.bm3_amt                                             AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )  AS bm3_cond_bm_tax_pct      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )               AS bm3_cond_bm_amt_tax      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                    AS bm3_electric_amt_tax     -- y‚a‚l‚Rz“d‹C—¿(Å)
+         , xbc.item_code                                           AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+         , xbc.amount_fix_date                                     AS amount_fix_date          -- ‹àŠzŠm’è“ú
+    FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- ”„ã‹’“_ƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- ¬ÑŒvãÒƒR[ƒh
+                , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- yo‰×æzŒÚ‹qƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho                    , NULL )            AS ship_gyotai_sho          -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu                    , NULL )            AS ship_gyotai_tyu          -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+                , NVL2( xmbc.calc_type, xse.bill_cust_code                     , NULL )            AS bill_cust_code           -- y¿‹æzŒÚ‹qƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.period_year                        , NULL )            AS period_year              -- ‰ïŒv”N“x
+                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code           , NULL )            AS ship_delivery_chain_code -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+                , NVL2( xmbc.calc_type, TO_CHAR( xse.delivery_date, 'RRRRMM' ) , NULL )            AS delivery_ym              -- ”[•i”NŒ
+                , NVL2( xmbc.calc_type, xse.dlv_qty                            , NULL )            AS dlv_qty                  -- ”[•i”—Ê
+                , NVL2( xmbc.calc_type, xse.dlv_uom_code                       , NULL )            AS dlv_uom_code             -- ”[•i’PˆÊ
+                , xse.pure_amount + xse.tax_amount                                                 AS amount_inc_tax           -- ”„ã‹àŠziÅj
+                , NVL( xse.attribute1, cv_container_code_others )                                  AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+                , NVL2( xmbc.calc_type, NULL, xse.dlv_unit_price )                                 AS dlv_unit_price           -- ”„‰¿‹àŠz
+                , NVL2( xmbc.calc_type, xse.tax_div                            , NULL )            AS tax_div                  -- Á”ïÅ‹æ•ª
+                , NVL2( xmbc.calc_type, xse.tax_code                           , NULL )            AS tax_code                 -- Å‹àƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.tax_rate                           , NULL )            AS tax_rate                 -- Á”ïÅ—¦
+                , NVL2( xmbc.calc_type, xse.tax_rounding_rule                  , NULL )            AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+                , NVL2( xmbc.calc_type, xse.term_name                          , NULL )            AS term_name                -- x•¥ğŒ
+                , xse.closing_date                                                                 AS closing_date             -- ’÷‚ß“ú
+                , NVL2( xmbc.calc_type, xse.expect_payment_date                , NULL )            AS expect_payment_date      -- x•¥—\’è“ú
+                , NVL2( xmbc.calc_type, xse.calc_target_period_from            , NULL )            AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+                , NVL2( xmbc.calc_type, xse.calc_target_period_to              , NULL )            AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+                , xmbc.calc_type                                                                   AS calc_type                -- ŒvZğŒ
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_code                    , NULL )            AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code               , NULL )            AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type                , NULL )            AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+                , NVL2( xmbc.calc_type, xmbc.bm1_pct                           , NULL )            AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+                , NVL2( xmbc.calc_type, xmbc.bm1_amt                           , NULL )            AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_code                    , NULL )            AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code               , NULL )            AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type                , NULL )            AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+                , NVL2( xmbc.calc_type, xmbc.bm2_pct                           , NULL )            AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+                , NVL2( xmbc.calc_type, xmbc.bm2_amt                           , NULL )            AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_code                    , NULL )            AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code               , NULL )            AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type                , NULL )            AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+                , NVL2( xmbc.calc_type, xmbc.bm3_pct                           , NULL )            AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+                , NVL2( xmbc.calc_type, xmbc.bm3_amt                           , NULL )            AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+                , NVL2( xmbc.calc_type, NULL, xse.item_code )                                      AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+                , xse.amount_fix_date                                                              AS amount_fix_date          -- ‹àŠzŠm’è“ú
+           FROM ( SELECT /*+ LEADING(xt0c xseh xsel xsim) USE_NL(xsel xsim) */
+                         xseh.sales_base_code               AS sales_base_code                 -- ”„ã‹’“_ƒR[ƒh
+                       , xseh.results_employee_code         AS results_employee_code           -- ¬ÑŒvãÒƒR[ƒh
+                       , xseh.ship_to_customer_code         AS ship_to_customer_code           -- yo‰×æzŒÚ‹qƒR[ƒh
+                       , xt0c.ship_gyotai_sho               AS ship_gyotai_sho                 -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+                       , xt0c.ship_gyotai_tyu               AS ship_gyotai_tyu                 -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+                       , xt0c.bill_cust_code                AS bill_cust_code                  -- y¿‹æzŒÚ‹qƒR[ƒh
+                       , xt0c.period_year                   AS period_year                     -- ‰ïŒv”N“x
+                       , xt0c.ship_delivery_chain_code      AS ship_delivery_chain_code        -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+                       , xseh.delivery_date                 AS delivery_date                   -- ”[•i“ú
+                       , xsel.dlv_qty                       AS dlv_qty                         -- ”[•i”—Ê
+                       , xsel.dlv_uom_code                  AS dlv_uom_code                    -- ”[•i’PˆÊ
+                       , xsel.pure_amount                   AS pure_amount                     -- –{‘Ì‹àŠz
+                       , xsel.tax_amount                    AS tax_amount                      -- Á”ïÅ‹àŠz
+                       , xsel.dlv_unit_price                AS dlv_unit_price                  -- ”„‰¿‹àŠz
+                       , xt0c.tax_div                       AS tax_div                         -- Á”ïÅ‹æ•ª
+                       , xt0c.tax_code                      AS tax_code                        -- Å‹àƒR[ƒh
+                       , xt0c.tax_rate                      AS tax_rate                        -- Á”ïÅ—¦
+                       , xt0c.tax_rounding_rule             AS tax_rounding_rule               -- ’[”ˆ—‹æ•ª
+                       , xt0c.term_name                     AS term_name                       -- x•¥ğŒ
+                       , xt0c.closing_date                  AS closing_date                    -- ’÷‚ß“ú
+                       , xt0c.expect_payment_date           AS expect_payment_date             -- x•¥—\’è“ú
+                       , xt0c.calc_target_period_from       AS calc_target_period_from         -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+                       , xt0c.calc_target_period_to         AS calc_target_period_to           -- ŒvZ‘ÎÛŠúŠÔ(TO)
+                       , xt0c.bm1_vendor_code               AS bm1_vendor_code                 -- y‚a‚l‚Pzd“üæƒR[ƒh
+                       , xt0c.bm1_vendor_site_code          AS bm1_vendor_site_code            -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+                       , xt0c.bm1_bm_payment_type           AS bm1_bm_payment_type             -- y‚a‚l‚PzBMx•¥‹æ•ª
+                       , xt0c.bm2_vendor_code               AS bm2_vendor_code                 -- y‚a‚l‚Qzd“üæƒR[ƒh
+                       , xt0c.bm2_vendor_site_code          AS bm2_vendor_site_code            -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+                       , xt0c.bm2_bm_payment_type           AS bm2_bm_payment_type             -- y‚a‚l‚QzBMx•¥‹æ•ª
+                       , xt0c.bm3_vendor_code               AS bm3_vendor_code                 -- y‚a‚l‚Rzd“üæƒR[ƒh
+                       , xt0c.bm3_vendor_site_code          AS bm3_vendor_site_code            -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+                       , xt0c.bm3_bm_payment_type           AS bm3_bm_payment_type             -- y‚a‚l‚RzBMx•¥‹æ•ª
+                       , xsel.item_code                     AS item_code                       -- İŒÉ•i–ÚƒR[ƒh
+                       , xt0c.amount_fix_date               AS amount_fix_date                 -- ‹àŠzŠm’è“ú
+                       , flv1.attribute1                    AS attribute1                      -- —eŠí‹æ•ªƒR[ƒh
+                  FROM xxcmm_system_items_b        xsim  -- Disc•i–ÚƒAƒhƒIƒ“
+                     , xxcos_sales_exp_lines       xsel  -- ”Ì”„ÀÑ–¾×
+                     , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+                     , xxcok_tmp_014a01c_custdata  xt0c  -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+                     , fnd_lookup_values           flv1  -- —eŠíŒQ
+                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- ‹Æ‘Ôi’†•ª—ŞjFVD
+                    AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
-                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
-                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
                     AND EXISTS ( SELECT 'X'
-                                 FROM fnd_lookup_values    flv
-                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
-                                   AND flv.lookup_code             = xsel.sales_class
-                                   AND flv.language                = USERENV( 'LANG' )
-                                   AND flv.enabled_flag            = cv_enable
-                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
-                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                 FROM xxcok_mst_bm_contract xmbc2 -- ”ÌèğŒƒ}ƒXƒ^
+                                 WHERE xmbc2.calc_type         = cv_calc_type_container        -- ŒvZğŒF—eŠí‹æ•ª•ÊğŒ
+                                   AND xmbc2.cust_code         = xseh.ship_to_customer_code
+                                   AND xmbc2.calc_target_flag  = cv_enable
+                                   AND xmbc2.selling_price    IS NULL
                                    AND ROWNUM = 1
                         )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values flv -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                 WHERE flv.lookup_type         = cv_lookup_type_07             -- QÆƒ^ƒCƒvF”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code         = xsel.sales_class
+                                   AND flv.language            = cv_lang
+                                   AND flv.enabled_flag        = cv_enable
+                                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                             AND NVL( flv.end_date_active  , gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+                    AND NOT EXISTS ( SELECT 'X'
+                                     FROM fnd_lookup_values flv -- ”ñİŒÉ•i–Ú
+                                     WHERE flv.lookup_type         = cv_lookup_type_05  -- QÆƒ^ƒCƒvF”ñİŒÉ•i–Ú
+                                       AND flv.lookup_code         = xsel.item_code
+                                       AND flv.language            = cv_lang
+                                       AND flv.enabled_flag        = cv_enable
+                                       AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active  , gd_process_date )
+                                       AND ROWNUM = 1
+                        )
                     AND xsim.item_code              = xsel.item_code
+                    AND flv1.lookup_type(+)         = cv_lookup_type_04                         -- QÆƒ^ƒCƒvF—eŠíŒQ
                     AND flv1.lookup_code(+)         = xsim.vessel_group
-                    AND flv1.lookup_type(+)         = cv_lookup_type_04
-                    AND flv1.language(+)            = USERENV( 'LANG' )
+                    AND flv1.language(+)            = cv_lang
                     AND flv1.enabled_flag(+)        = cv_enable
                     AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
-                                                  AND NVL( flv1.end_date_active,   gd_process_date )
-                    AND flv2.lookup_code(+)         = xsel.item_code
-                    AND flv2.lookup_type(+)         = cv_lookup_type_05
-                    AND flv2.language(+)            = USERENV( 'LANG' )
-                    AND flv2.enabled_flag(+)        = cv_enable
-                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
-                                                  AND NVL( flv2.end_date_active,   gd_process_date )
-                )                           xse       -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñ
-              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
-           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
-             AND xse.item_code_no_inv             IS NULL
-             AND xmbc.calc_type(+)                 = cv_calc_type_container
-             AND xmbc.cust_code(+)                 = xse.ship_to_customer_code
-             AND xmbc.container_type_code(+)       = xse.container_code
-             AND xmbc.calc_target_flag(+)          = cv_enable
-             AND EXISTS ( SELECT 'X'
-                          FROM xxcok_mst_bm_contract xmbc2 -- ”ÌèğŒƒ}ƒXƒ^
-                          WHERE xmbc2.calc_type        = cv_calc_type_container
-                            AND xmbc2.cust_code        = xse.ship_to_customer_code
-                            AND xmbc2.calc_target_flag = cv_enable
-                 )
-         )                        xbc
-    GROUP BY xbc.base_code
-           , xbc.emp_code
-           , xbc.ship_cust_code
-           , xbc.ship_gyotai_sho
-           , xbc.ship_gyotai_tyu
-           , xbc.bill_cust_code
-           , xbc.period_year
-           , xbc.ship_delivery_chain_code
-           , xbc.delivery_ym
-           , xbc.dlv_uom_code
-           , xbc.container_code
-           , xbc.dlv_unit_price
-           , xbc.tax_div
-           , xbc.tax_code
-           , xbc.tax_rate
-           , xbc.tax_rounding_rule
-           , xbc.term_name
-           , xbc.closing_date
-           , xbc.expect_payment_date
-           , xbc.calc_target_period_from
-           , xbc.calc_target_period_to
-           , xbc.calc_type
-           , xbc.bm1_vendor_code
-           , xbc.bm1_vendor_site_code
-           , xbc.bm1_bm_payment_type
-           , xbc.bm1_pct
-           , xbc.bm1_amt
-           , xbc.bm2_vendor_code
-           , xbc.bm2_vendor_site_code
-           , xbc.bm2_bm_payment_type
-           , xbc.bm2_pct
-           , xbc.bm2_amt
-           , xbc.bm3_vendor_code
-           , xbc.bm3_vendor_site_code
-           , xbc.bm3_bm_payment_type
-           , xbc.bm3_pct
-           , xbc.bm3_amt
-           , xbc.item_code
-           , xbc.amount_fix_date
+                                                  AND NVL( flv1.end_date_active  , gd_process_date )
+                )                           xse   -- ”Ì”„ÀÑî•ñ
+              , xxcok_mst_bm_contract       xmbc  -- ”ÌèğŒƒ}ƒXƒ^
+           WHERE xmbc.calc_type(+)           = cv_calc_type_container                    -- ŒvZğŒF—eŠí‹æ•ª•ÊğŒ
+             AND xmbc.cust_code(+)           = xse.ship_to_customer_code
+             AND xmbc.calc_target_flag(+)    = cv_enable
+             AND xmbc.container_type_code(+) = NVL( xse.attribute1, cv_container_code_others )
+         ) xbc -- ”Ì”„ÀÑî•ñE—eŠí‹æ•ª•ÊğŒ
+    GROUP BY  xbc.sales_base_code
+            , xbc.results_employee_code
+            , xbc.ship_to_customer_code
+            , xbc.ship_gyotai_sho
+            , xbc.ship_gyotai_tyu
+            , xbc.bill_cust_code
+            , xbc.period_year
+            , xbc.ship_delivery_chain_code
+            , xbc.delivery_ym
+            , xbc.dlv_uom_code
+            , xbc.container_code
+            , xbc.dlv_unit_price
+            , xbc.tax_div
+            , xbc.tax_code
+            , xbc.tax_rate
+            , xbc.tax_rounding_rule
+            , xbc.term_name
+            , xbc.closing_date
+            , xbc.expect_payment_date
+            , xbc.calc_target_period_from
+            , xbc.calc_target_period_to
+            , xbc.calc_type
+            , xbc.bm1_vendor_code
+            , xbc.bm1_vendor_site_code
+            , xbc.bm1_bm_payment_type
+            , xbc.bm1_pct
+            , xbc.bm1_amt
+            , xbc.bm2_vendor_code
+            , xbc.bm2_vendor_site_code
+            , xbc.bm2_bm_payment_type
+            , xbc.bm2_pct
+            , xbc.bm2_amt
+            , xbc.bm3_vendor_code
+            , xbc.bm3_vendor_site_code
+            , xbc.bm3_bm_payment_type
+            , xbc.bm3_pct
+            , xbc.bm3_amt
+            , xbc.item_code
+            , xbc.amount_fix_date
   ;
   -- ”Ì”„ÀÑî•ñEˆê—¥ğŒ
   CURSOR get_sales_data_cur3 IS
-    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
-         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
-         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
-         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-         , SUM( xbc.dlv_qty )                                             AS dlv_qty                    -- ”[•i”—Ê
-         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
-         , SUM( xbc.amount_inc_tax )                                      AS amount_inc_tax             -- ”„ã‹àŠziÅj
-         , NULL                                                           AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-         , NULL                                                           AS dlv_unit_price             -- ”„‰¿‹àŠz
-         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
-         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
-         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
-         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
-         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-    FROM ( SELECT xse.sales_base_code                                             AS base_code                  -- ‹’“_ƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.results_employee_code       , NULL )  AS emp_code                   -- ’S“–ÒƒR[ƒh
-                , xse.ship_to_customer_code                                       AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-                , NVL2( xmbc.calc_type, xse.ship_gyotai_sho             , NULL )  AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-                , NVL2( xmbc.calc_type, xse.ship_gyotai_tyu             , NULL )  AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-                , NVL2( xmbc.calc_type, xse.bill_cust_code              , NULL )  AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-                , NVL2( xmbc.calc_type, xse.period_year                 , NULL )  AS period_year                -- ‰ïŒv”N“x
-                , NVL2( xmbc.calc_type, xse.ship_delivery_chain_code    , NULL )  AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.delivery_ym                 , NULL )  AS delivery_ym                -- ”[•i“ú”NŒ
-                , NVL2( xmbc.calc_type, xse.dlv_qty                     , NULL )  AS dlv_qty                    -- ”[•i”—Ê
-                , NVL2( xmbc.calc_type, xse.dlv_uom_code                , NULL )  AS dlv_uom_code               -- ”[•i’PˆÊ
-                , xse.amount_inc_tax                                              AS amount_inc_tax             -- ”„ã‹àŠz(Å)
-                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
-                , NVL2( xmbc.calc_type, xse.tax_div                     , NULL )  AS tax_div                    -- Á”ïÅ‹æ•ª
-                , NVL2( xmbc.calc_type, xse.tax_code                    , NULL )  AS tax_code                   -- Å‹àƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.tax_rate                    , NULL )  AS tax_rate                   -- Á”ïÅ—¦
-                , NVL2( xmbc.calc_type, xse.tax_rounding_rule           , NULL )  AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-                , NVL2( xmbc.calc_type, xse.term_name                   , NULL )  AS term_name                  -- x•¥ğŒ
-                , xse.closing_date                                                AS closing_date               -- ’÷‚ß“ú
-                , NVL2( xmbc.calc_type, xse.expect_payment_date         , NULL )  AS expect_payment_date        -- x•¥—\’è“ú
-                , NVL2( xmbc.calc_type, xse.calc_target_period_from     , NULL )  AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                , NVL2( xmbc.calc_type, xse.calc_target_period_to       , NULL )  AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-                , NVL2( xmbc.calc_type, xse.bm1_vendor_code             , NULL )  AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm1_vendor_site_code        , NULL )  AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm1_bm_payment_type         , NULL )  AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm1_pct                    , NULL )  AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm1_amt                    , NULL )  AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-                , NVL2( xmbc.calc_type, xse.bm2_vendor_code             , NULL )  AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm2_vendor_site_code        , NULL )  AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm2_bm_payment_type         , NULL )  AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm2_pct                    , NULL )  AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm2_amt                    , NULL )  AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-                , NVL2( xmbc.calc_type, xse.bm3_vendor_code             , NULL )  AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm3_vendor_site_code        , NULL )  AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                , NVL2( xmbc.calc_type, xse.bm3_bm_payment_type         , NULL )  AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-                , NVL2( xmbc.calc_type, xmbc.bm3_pct                    , NULL )  AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-                , NVL2( xmbc.calc_type, xmbc.bm3_amt                    , NULL )  AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-                , NVL2( xmbc.calc_type, NULL, xse.item_code )                     AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-                , xse.amount_fix_date                                             AS amount_fix_date            -- ‹àŠzŠm’è“ú
-           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
-                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
-                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
-                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
-                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
-                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
-                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
-                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
-                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
-                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
-                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
-                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
-                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
-                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
-                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
-                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
-                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
-                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
-                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
-                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
-                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
-                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
-                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
-                       , xsel.dlv_qty                               AS dlv_qty                       -- ”[•i”—Ê
-                       , xsel.dlv_uom_code                          AS dlv_uom_code                  -- ”[•i’PˆÊ
-                       , xsel.pure_amount + xsel.tax_amount         AS amount_inc_tax                -- ”„ã‹àŠziÅj
-                       , NVL( flv1.attribute1
-                            , cv_container_code_others )            AS container_code                -- —eŠí‹æ•ªƒR[ƒh
-                       , xsel.dlv_unit_price                        AS dlv_unit_price                -- ”„‰¿‹àŠz
-                       , NVL2( flv2.lookup_code
-                             , NULL
-                             , xsel.item_code )                     AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
-                       , flv2.lookup_code                           AS item_code_no_inv              -- ”ñİŒÉ•i–ÚƒR[ƒh
-                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
-                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
-                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
-                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
-                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
-                     , fnd_lookup_values             flv1       -- —eŠíŒQ
-                     , fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
-                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
-                    AND xseh.delivery_date         <= xt0c.closing_date
-                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
-                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
-                    AND EXISTS ( SELECT 'X'
-                                 FROM fnd_lookup_values    flv
-                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
-                                   AND flv.lookup_code             = xsel.sales_class
-                                   AND flv.language                = USERENV( 'LANG' )
-                                   AND flv.enabled_flag            = cv_enable
-                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
-                                                                 AND NVL( flv.end_date_active,   gd_process_date )
-                                   AND ROWNUM = 1
-                        )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
-                    AND xsim.item_code              = xsel.item_code
-                    AND flv1.lookup_code(+)         = xsim.vessel_group
-                    AND flv1.lookup_type(+)         = cv_lookup_type_04
-                    AND flv1.language(+)            = USERENV( 'LANG' )
-                    AND flv1.enabled_flag(+)        = cv_enable
-                    AND gd_process_date       BETWEEN NVL( flv1.start_date_active, gd_process_date )
-                                                  AND NVL( flv1.end_date_active,   gd_process_date )
-                    AND flv2.lookup_code(+)         = xsel.item_code
-                    AND flv2.lookup_type(+)         = cv_lookup_type_05
-                    AND flv2.language(+)            = USERENV( 'LANG' )
-                    AND flv2.enabled_flag(+)        = cv_enable
-                    AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
-                                                  AND NVL( flv2.end_date_active,   gd_process_date )
-                )                           xse       -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñ
-              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
-           WHERE xse.ship_gyotai_tyu               = cv_gyotai_tyu_vd
-             AND xse.item_code_no_inv             IS NULL
-             AND xmbc.calc_type                    = cv_calc_type_uniform_rate
-             AND xmbc.cust_code                    = xse.ship_to_customer_code
-             AND xmbc.calc_target_flag             = cv_enable
-         )                        xbc
-    GROUP BY xbc.base_code
-           , xbc.emp_code
-           , xbc.ship_cust_code
-           , xbc.ship_gyotai_sho
-           , xbc.ship_gyotai_tyu
-           , xbc.bill_cust_code
-           , xbc.period_year
-           , xbc.ship_delivery_chain_code
-           , xbc.delivery_ym
-           , xbc.dlv_uom_code
-           , xbc.tax_div
-           , xbc.tax_code
-           , xbc.tax_rate
-           , xbc.tax_rounding_rule
-           , xbc.term_name
-           , xbc.closing_date
-           , xbc.expect_payment_date
-           , xbc.calc_target_period_from
-           , xbc.calc_target_period_to
-           , xbc.calc_type
-           , xbc.bm1_vendor_code
-           , xbc.bm1_vendor_site_code
-           , xbc.bm1_bm_payment_type
-           , xbc.bm1_pct
-           , xbc.bm1_amt
-           , xbc.bm2_vendor_code
-           , xbc.bm2_vendor_site_code
-           , xbc.bm2_bm_payment_type
-           , xbc.bm2_pct
-           , xbc.bm2_amt
-           , xbc.bm3_vendor_code
-           , xbc.bm3_vendor_site_code
-           , xbc.bm3_bm_payment_type
-           , xbc.bm3_pct
-           , xbc.bm3_amt
-           , xbc.item_code
-           , xbc.amount_fix_date
+    SELECT /*+ LEADING(xt0c xmbc xseh xsel) */
+           xseh.sales_base_code                                                    AS base_code                -- ‹’“_ƒR[ƒh
+         , xseh.results_employee_code                                              AS emp_code                 -- ’S“–ÒƒR[ƒh
+         , xseh.ship_to_customer_code                                              AS ship_cust_code           -- ŒÚ‹qy”[•iæz
+         , xt0c.ship_gyotai_sho                                                    AS ship_gyotai_sho          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+         , xt0c.ship_gyotai_tyu                                                    AS ship_gyotai_tyu          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+         , xt0c.bill_cust_code                                                     AS bill_cust_code           -- ŒÚ‹qy¿‹æz
+         , xt0c.period_year                                                        AS period_year              -- ‰ïŒv”N“x
+         , xt0c.ship_delivery_chain_code                                           AS ship_delivery_chain_code -- ƒ`ƒF[ƒ““XƒR[ƒh
+         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )                                 AS delivery_ym              -- ”[•i“ú”NŒ
+         , SUM( xsel.dlv_qty )                                                     AS dlv_qty                  -- ”[•i”—Ê
+         , xsel.dlv_uom_code                                                       AS dlv_uom_code             -- ”[•i’PˆÊ
+         , SUM( xsel.pure_amount + xsel.tax_amount )                               AS amount_inc_tax           -- ”„ã‹àŠziÅj
+         , NULL                                                                    AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+         , NULL                                                                    AS dlv_unit_price           -- ”„‰¿‹àŠz
+         , xt0c.tax_div                                                            AS tax_div                  -- Á”ïÅ‹æ•ª
+         , xt0c.tax_code                                                           AS tax_code                 -- Å‹àƒR[ƒh
+         , xt0c.tax_rate                                                           AS tax_rate                 -- Á”ïÅ—¦
+         , xt0c.tax_rounding_rule                                                  AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+         , xt0c.term_name                                                          AS term_name                -- x•¥ğŒ
+         , xt0c.closing_date                                                       AS closing_date             -- ’÷‚ß“ú
+         , xt0c.expect_payment_date                                                AS expect_payment_date      -- x•¥—\’è“ú
+         , xt0c.calc_target_period_from                                            AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+         , xt0c.calc_target_period_to                                              AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+         , xmbc.calc_type                                                          AS calc_type                -- ŒvZğŒ
+         , xt0c.bm1_vendor_code                                                    AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+         , xt0c.bm1_vendor_site_code                                               AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+         , xt0c.bm1_bm_payment_type                                                AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+         , xmbc.bm1_pct                                                            AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+         , xmbc.bm1_amt                                                            AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm1_pct / 100 ) AS bm1_cond_bm_tax_pct      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm1_amt )                             AS bm1_cond_bm_amt_tax      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                                    AS bm1_electric_amt_tax     -- y‚a‚l‚Pz“d‹C—¿(Å)
+         , xt0c.bm2_vendor_code                                                    AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+         , xt0c.bm2_vendor_site_code                                               AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+         , xt0c.bm2_bm_payment_type                                                AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+         , xmbc.bm2_pct                                                            AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+         , xmbc.bm2_amt                                                            AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm2_pct / 100 ) AS bm2_cond_bm_tax_pct      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm2_amt )                             AS bm2_cond_bm_amt_tax      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                                    AS bm2_electric_amt_tax     -- y‚a‚l‚Qz“d‹C—¿(Å)
+         , xt0c.bm3_vendor_code                                                    AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+         , xt0c.bm3_vendor_site_code                                               AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+         , xt0c.bm3_bm_payment_type                                                AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+         , xmbc.bm3_pct                                                            AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+         , xmbc.bm3_amt                                                            AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm3_pct / 100 ) AS bm3_cond_bm_tax_pct      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm3_amt )                             AS bm3_cond_bm_amt_tax      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                                    AS bm3_electric_amt_tax     -- y‚a‚l‚Rz“d‹C—¿(Å)
+         , NULL                                                                    AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+         , xt0c.amount_fix_date                                                    AS amount_fix_date          -- ‹àŠzŠm’è“ú
+    FROM xxcok_mst_bm_contract       xmbc  -- ”ÌèğŒƒ}ƒXƒ^
+       , xxcos_sales_exp_lines       xsel  -- ”Ì”„ÀÑ–¾×
+       , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+       , xxcok_tmp_014a01c_custdata  xt0c  -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+    WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- ‹Æ‘Ôi’†•ª—ŞjFVD
+      AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
+      AND xseh.delivery_date         <= xt0c.closing_date
+      AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+      AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+      AND EXISTS ( SELECT 'X'
+                   FROM fnd_lookup_values flv -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                   WHERE flv.lookup_type         = cv_lookup_type_07             -- QÆƒ^ƒCƒvF”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                     AND flv.lookup_code         = xsel.sales_class
+                     AND flv.language            = cv_lang
+                     AND flv.enabled_flag        = cv_enable
+                     AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                               AND NVL( flv.end_date_active  , gd_process_date )
+                     AND ROWNUM = 1
+          )
+      AND NOT EXISTS ( SELECT 'X'
+                       FROM fnd_lookup_values flv -- ”ñİŒÉ•i–Ú
+                       WHERE flv.lookup_type         = cv_lookup_type_05         -- QÆƒ^ƒCƒvF”ñİŒÉ•i–Ú
+                         AND flv.lookup_code         = xsel.item_code
+                         AND flv.language            = cv_lang
+                         AND flv.enabled_flag        = cv_enable
+                         AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                   AND NVL( flv.end_date_active  , gd_process_date )
+                         AND ROWNUM = 1
+          )
+      AND xmbc.calc_type              = cv_calc_type_uniform_rate                 -- ŒvZğŒFˆê—¥ğŒ
+      AND xmbc.cust_code              = xt0c.ship_cust_code
+      AND xmbc.cust_code              = xseh.ship_to_customer_code
+      AND xmbc.calc_target_flag       = cv_enable
+      AND xmbc.container_type_code    IS NULL
+      AND xmbc.selling_price          IS NULL
+    GROUP BY xseh.sales_base_code
+           , xseh.results_employee_code
+           , xseh.ship_to_customer_code
+           , xt0c.ship_gyotai_sho
+           , xt0c.ship_gyotai_tyu
+           , xt0c.bill_cust_code
+           , xt0c.period_year
+           , xt0c.ship_delivery_chain_code
+           , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+           , xsel.dlv_uom_code
+           , xt0c.tax_div
+           , xt0c.tax_code
+           , xt0c.tax_rate
+           , xt0c.tax_rounding_rule
+           , xt0c.term_name
+           , xt0c.closing_date
+           , xt0c.expect_payment_date
+           , xt0c.calc_target_period_from
+           , xt0c.calc_target_period_to
+           , xmbc.calc_type
+           , xt0c.bm1_vendor_code
+           , xt0c.bm1_vendor_site_code
+           , xt0c.bm1_bm_payment_type
+           , xmbc.bm1_pct
+           , xmbc.bm1_amt
+           , xt0c.bm2_vendor_code
+           , xt0c.bm2_vendor_site_code
+           , xt0c.bm2_bm_payment_type
+           , xmbc.bm2_pct
+           , xmbc.bm2_amt
+           , xt0c.bm3_vendor_code
+           , xt0c.bm3_vendor_site_code
+           , xt0c.bm3_bm_payment_type
+           , xmbc.bm3_pct
+           , xmbc.bm3_amt
+           , xt0c.amount_fix_date
   ;
   -- ”Ì”„ÀÑî•ñE’èŠzğŒ
   CURSOR get_sales_data_cur4 IS
-    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
-         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
-         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
-         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-         , xbc.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
-         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
-         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠziÅj
-         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
-         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
-         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-         , NULL                                                           AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
-         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-         , NULL                                                           AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.bm2_amt ) )                                    AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
-         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-         , NULL                                                           AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.bm3_amt ) )                                    AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
-         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-    FROM ( SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
-                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
-                , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-                , xses.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-                , xses.period_year                                                AS period_year                -- ‰ïŒv”N“x
-                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-                , xses.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-                , xses.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
-                , xses.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
-                , xses.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠz(Å)
-                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
-                , xses.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-                , xses.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-                , xses.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-                , xses.term_name                                                  AS term_name                  -- x•¥ğŒ
-                , xses.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-                , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-                , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-                , xmbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-                , xmbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-                , xses.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-                , xses.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                , xses.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-                , xmbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-                , xmbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-                , xses.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-                , xses.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                , xses.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-                , xmbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-                , xmbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-                , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-                , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
-                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
-                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
-                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
-                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
-                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
-                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
-                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
-                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
-                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
-                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
-                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
-                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
-                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
-                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
-                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
-                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
-                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
-                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
-                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
-                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
-                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
-                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
-                       , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
-                       , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
-                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- ”„ã‹àŠziÅj
-                       , NULL                                       AS container_code                -- —eŠí‹æ•ªƒR[ƒh
-                       , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
-                       , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
-                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
-                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
-                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
-                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
-                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
-                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
-                    AND xseh.delivery_date         <= xt0c.closing_date
-                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
-                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
-                    AND EXISTS ( SELECT 'X'
-                                 FROM fnd_lookup_values    flv
-                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
-                                   AND flv.lookup_code             = xsel.sales_class
-                                   AND flv.language                = USERENV( 'LANG' )
-                                   AND flv.enabled_flag            = cv_enable
-                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
-                                                                 AND NVL( flv.end_date_active,   gd_process_date )
-                                   AND ROWNUM = 1
-                        )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
-                    AND xsim.item_code              = xsel.item_code
-                    AND NOT EXISTS ( SELECT 'X'
-                                     FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
-                                     WHERE flv2.lookup_code         = xsel.item_code
-                                       AND flv2.lookup_type         = cv_lookup_type_05
-                                       AND flv2.language            = USERENV( 'LANG' )
-                                       AND flv2.enabled_flag        = cv_enable
-                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
-                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
-                        )
-                  GROUP BY xseh.ship_to_customer_code
-                         , xt0c.ship_gyotai_tyu
-                         , xt0c.ship_gyotai_sho
-                         , xt0c.ship_delivery_chain_code
-                         , xt0c.bill_cust_code
-                         , xt0c.bm1_vendor_code
-                         , xt0c.bm1_vendor_site_code
-                         , xt0c.bm1_bm_payment_type
-                         , xt0c.bm2_vendor_code
-                         , xt0c.bm2_vendor_site_code
-                         , xt0c.bm2_bm_payment_type
-                         , xt0c.bm3_vendor_code
-                         , xt0c.bm3_vendor_site_code
-                         , xt0c.bm3_bm_payment_type
-                         , xt0c.tax_div
-                         , xt0c.tax_code
-                         , xt0c.tax_rate
-                         , xt0c.tax_rounding_rule
-                         , xt0c.receiv_discount_rate
-                         , xt0c.term_name
-                         , xt0c.closing_date
-                         , xt0c.expect_payment_date
-                         , xt0c.period_year
-                         , xt0c.calc_target_period_from
-                         , xt0c.calc_target_period_to
-                         , xseh.sales_base_code
-                         , xseh.results_employee_code
-                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
-                         , xt0c.amount_fix_date
-                )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
-              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
-           WHERE xses.ship_gyotai_tyu              = cv_gyotai_tyu_vd
-             AND xmbc.calc_type                    = cv_calc_type_flat_rate
-             AND xmbc.cust_code                    = xses.ship_to_customer_code
-             AND xmbc.calc_target_flag             = cv_enable
-         )                        xbc
-    GROUP BY xbc.base_code
-           , xbc.emp_code
-           , xbc.ship_cust_code
-           , xbc.ship_gyotai_sho
-           , xbc.ship_gyotai_tyu
-           , xbc.bill_cust_code
-           , xbc.period_year
-           , xbc.ship_delivery_chain_code
-           , xbc.delivery_ym
-           , xbc.dlv_qty
-           , xbc.dlv_uom_code
-           , xbc.amount_inc_tax
-           , xbc.container_code
-           , xbc.dlv_unit_price
-           , xbc.tax_div
-           , xbc.tax_code
-           , xbc.tax_rate
-           , xbc.tax_rounding_rule
-           , xbc.term_name
-           , xbc.closing_date
-           , xbc.expect_payment_date
-           , xbc.calc_target_period_from
-           , xbc.calc_target_period_to
-           , xbc.calc_type
-           , xbc.bm1_vendor_code
-           , xbc.bm1_vendor_site_code
-           , xbc.bm1_bm_payment_type
-           , xbc.bm1_pct
-           , xbc.bm1_amt
-           , xbc.bm2_vendor_code
-           , xbc.bm2_vendor_site_code
-           , xbc.bm2_bm_payment_type
-           , xbc.bm2_pct
-           , xbc.bm2_amt
-           , xbc.bm3_vendor_code
-           , xbc.bm3_vendor_site_code
-           , xbc.bm3_bm_payment_type
-           , xbc.bm3_pct
-           , xbc.bm3_amt
-           , xbc.item_code
-           , xbc.amount_fix_date
+    SELECT xseh.sales_base_code          AS base_code                -- ‹’“_ƒR[ƒh
+         , xseh.results_employee_code    AS emp_code                 -- ’S“–ÒƒR[ƒh
+         , xbc.ship_to_customer_code     AS ship_cust_code           -- ŒÚ‹qy”[•iæz
+         , xbc.ship_gyotai_sho           AS ship_gyotai_sho          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+         , xbc.ship_gyotai_tyu           AS ship_gyotai_tyu          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+         , xbc.bill_cust_code            AS bill_cust_code           -- ŒÚ‹qy¿‹æz
+         , xbc.period_year               AS period_year              -- ‰ïŒv”N“x
+         , xbc.ship_delivery_chain_code  AS ship_delivery_chain_code -- ƒ`ƒF[ƒ““XƒR[ƒh
+         , xbc.delivery_ym               AS delivery_ym              -- ”[•i“ú”NŒ
+         , xbc.dlv_qty                   AS dlv_qty                  -- ”[•i”—Ê
+         , xbc.dlv_uom_code              AS dlv_uom_code             -- ”[•i’PˆÊ
+         , xbc.amount_inc_tax            AS amount_inc_tax           -- ”„ã‹àŠziÅj
+         , xbc.container_code            AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+         , xbc.dlv_unit_price            AS dlv_unit_price           -- ”„‰¿‹àŠz
+         , xbc.tax_div                   AS tax_div                  -- Á”ïÅ‹æ•ª
+         , xbc.tax_code                  AS tax_code                 -- Å‹àƒR[ƒh
+         , xbc.tax_rate                  AS tax_rate                 -- Á”ïÅ—¦
+         , xbc.tax_rounding_rule         AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+         , xbc.term_name                 AS term_name                -- x•¥ğŒ
+         , xbc.closing_date              AS closing_date             -- ’÷‚ß“ú
+         , xbc.expect_payment_date       AS expect_payment_date      -- x•¥—\’è“ú
+         , xbc.calc_target_period_from   AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+         , xbc.calc_target_period_to     AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+         , xbc.calc_type                 AS calc_type                -- ŒvZğŒ
+         , xbc.bm1_vendor_code           AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+         , xbc.bm1_vendor_site_code      AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm1_bm_payment_type       AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+         , xbc.bm1_pct                   AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+         , xbc.bm1_amt                   AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+         , NULL                          AS bm1_cond_bm_tax_pct      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+         , TRUNC( xbc.bm1_amt )          AS bm1_cond_bm_amt_tax      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                          AS bm1_electric_amt_tax     -- y‚a‚l‚Pz“d‹C—¿(Å)
+         , xbc.bm2_vendor_code           AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+         , xbc.bm2_vendor_site_code      AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm2_bm_payment_type       AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+         , xbc.bm2_pct                   AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+         , xbc.bm2_amt                   AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+         , NULL                          AS bm2_cond_bm_tax_pct      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+         , TRUNC( xbc.bm2_amt )          AS bm2_cond_bm_amt_tax      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                          AS bm2_electric_amt_tax     -- y‚a‚l‚Qz“d‹C—¿(Å)
+         , xbc.bm3_vendor_code           AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+         , xbc.bm3_vendor_site_code      AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+         , xbc.bm3_bm_payment_type       AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+         , xbc.bm3_pct                   AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+         , xbc.bm3_amt                   AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+         , NULL                          AS bm3_cond_bm_tax_pct      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+         , TRUNC( xbc.bm3_amt )          AS bm3_cond_bm_amt_tax      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                          AS bm3_electric_amt_tax     -- y‚a‚l‚Rz“d‹C—¿(Å)
+         , xbc.item_code                 AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+         , xbc.amount_fix_date           AS amount_fix_date          -- ‹àŠzŠm’è“ú
+    FROM ( SELECT /*+ LEADING(xt0c xmbc xseh xsel) */
+                  MAX( xseh.sales_exp_header_id )           AS sales_exp_header_id      -- ”Ì”„ÀÑƒwƒbƒ_ID
+                , NULL                                      AS sales_base_code          -- ”„ã‹’“_ƒR[ƒh
+                , NULL                                      AS results_employee_code    -- ¬ÑŒvãÒƒR[ƒh
+                , xseh.ship_to_customer_code                AS ship_to_customer_code    -- yo‰×æzŒÚ‹qƒR[ƒh
+                , xt0c.ship_gyotai_sho                      AS ship_gyotai_sho          -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
+                , xt0c.ship_gyotai_tyu                      AS ship_gyotai_tyu          -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
+                , xt0c.bill_cust_code                       AS bill_cust_code           -- y¿‹æzŒÚ‹qƒR[ƒh
+                , xt0c.period_year                          AS period_year              -- ‰ïŒv”N“x
+                , xt0c.ship_delivery_chain_code             AS ship_delivery_chain_code -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
+                , TO_CHAR( xseh.delivery_date, 'RRRRMM' )   AS delivery_ym              -- ”[•i”NŒ
+                , NULL                                      AS dlv_qty                  -- ”[•i”—Ê
+                , NULL                                      AS dlv_uom_code             -- ”[•i’PˆÊ
+                , SUM( xsel.pure_amount + xsel.tax_amount ) AS amount_inc_tax           -- ”„ã‹àŠziÅj
+                , NULL                                      AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+                , NULL                                      AS dlv_unit_price           -- ”„‰¿‹àŠz
+                , xt0c.tax_div                              AS tax_div                  -- Á”ïÅ‹æ•ª
+                , xt0c.tax_code                             AS tax_code                 -- Å‹àƒR[ƒh
+                , xt0c.tax_rate                             AS tax_rate                 -- Á”ïÅ—¦
+                , xt0c.tax_rounding_rule                    AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+                , xt0c.term_name                            AS term_name                -- x•¥ğŒ
+                , xt0c.closing_date                         AS closing_date             -- ’÷‚ß“ú
+                , xt0c.expect_payment_date                  AS expect_payment_date      -- x•¥—\’è“ú
+                , xt0c.calc_target_period_from              AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+                , xt0c.calc_target_period_to                AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+                , xmbc.calc_type                            AS calc_type                -- ŒvZğŒ
+                , xt0c.bm1_vendor_code                      AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+                , xt0c.bm1_vendor_site_code                 AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+                , xt0c.bm1_bm_payment_type                  AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+                , NULL                                      AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+                , xmbc.bm1_amt                              AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+                , xt0c.bm2_vendor_code                      AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+                , xt0c.bm2_vendor_site_code                 AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+                , xt0c.bm2_bm_payment_type                  AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+                , NULL                                      AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+                , xmbc.bm2_amt                              AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+                , xt0c.bm3_vendor_code                      AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+                , xt0c.bm3_vendor_site_code                 AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+                , xt0c.bm3_bm_payment_type                  AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+                , NULL                                      AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+                , xmbc.bm3_amt                              AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+                , NULL                                      AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+                , xt0c.amount_fix_date                      AS amount_fix_date          -- ‹àŠzŠm’è“ú
+           FROM xxcok_mst_bm_contract       xmbc  -- ”ÌèğŒƒ}ƒXƒ^
+              , xxcos_sales_exp_lines       xsel  -- ”Ì”„ÀÑ–¾×
+              , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+              , xxcok_tmp_014a01c_custdata  xt0c  -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+           WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- ‹Æ‘Ôi’†•ª—ŞjFVD
+             AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
+             AND xseh.delivery_date         <= xt0c.closing_date
+             AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+             AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+             AND EXISTS ( SELECT  'X'
+                          FROM fnd_lookup_values flv -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                          WHERE flv.lookup_type         = cv_lookup_type_07             -- QÆƒ^ƒCƒvF”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                            AND flv.lookup_code         = xsel.sales_class
+                            AND flv.language            = cv_lang
+                            AND flv.enabled_flag        = cv_enable
+                            AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                      AND NVL( flv.end_date_active  , gd_process_date )
+                            AND ROWNUM = 1
+                 )
+             AND NOT EXISTS ( SELECT 'X'
+                              FROM fnd_lookup_values flv -- ”ñİŒÉ•i–Ú
+                              WHERE flv.lookup_type         = cv_lookup_type_05         -- QÆƒ^ƒCƒvF”ñİŒÉ•i–Ú
+                                AND flv.lookup_code         = xsel.item_code
+                                AND flv.language            = cv_lang
+                                AND flv.enabled_flag        = cv_enable
+                                AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                          AND NVL( flv.end_date_active  , gd_process_date )
+                                AND ROWNUM = 1
+                 )
+             AND xmbc.calc_type              = cv_calc_type_flat_rate                    -- ŒvZğŒF’èŠzğŒ
+             AND xmbc.cust_code              = xt0c.ship_cust_code
+             AND xmbc.cust_code              = xseh.ship_to_customer_code
+             AND xmbc.calc_target_flag       = cv_enable
+             AND xmbc.container_type_code   IS NULL
+             AND xmbc.selling_price         IS NULL
+           GROUP BY xseh.ship_to_customer_code
+                  , xt0c.ship_gyotai_sho
+                  , xt0c.ship_gyotai_tyu
+                  , xt0c.bill_cust_code
+                  , xt0c.period_year
+                  , xt0c.ship_delivery_chain_code
+                  , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+                  , xt0c.tax_div
+                  , xt0c.tax_code
+                  , xt0c.tax_rate
+                  , xt0c.tax_rounding_rule
+                  , xt0c.term_name
+                  , xt0c.closing_date
+                  , xt0c.expect_payment_date
+                  , xt0c.calc_target_period_from
+                  , xt0c.calc_target_period_to
+                  , xmbc.calc_type
+                  , xt0c.bm1_vendor_code
+                  , xt0c.bm1_vendor_site_code
+                  , xt0c.bm1_bm_payment_type
+                  , xmbc.bm1_amt
+                  , xt0c.bm2_vendor_code
+                  , xt0c.bm2_vendor_site_code
+                  , xt0c.bm2_bm_payment_type
+                  , xmbc.bm2_amt
+                  , xt0c.bm3_vendor_code
+                  , xt0c.bm3_vendor_site_code
+                  , xt0c.bm3_bm_payment_type
+                  , xmbc.bm3_amt
+                  , xt0c.amount_fix_date
+         )                           xbc   -- ”Ì”„ÀÑî•ñE’èŠzğŒ
+       , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+    WHERE xseh.sales_exp_header_id = xbc.sales_exp_header_id
   ;
   -- ”Ì”„ÀÑî•ñE“d‹C—¿iŒÅ’è^•Ï“®j
   CURSOR get_sales_data_cur5 IS
@@ -1609,44 +3016,33 @@ AS
          , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
          , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
          , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
--- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
---         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
---         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
          , NULL                                                           AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
          , NULL                                                           AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
--- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
          , NULL                                                           AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
          , NULL                                                           AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
          , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
          , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
          , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
          , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
--- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
---         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
---         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
          , NULL                                                           AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
          , NULL                                                           AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
--- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
          , NULL                                                           AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
          , NULL                                                           AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
          , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
          , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
          , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
          , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
--- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
---         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
---         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
          , NULL                                                           AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
          , NULL                                                           AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
--- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
          , NULL                                                           AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
          , NULL                                                           AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
          , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
          , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
          , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
     FROM ( -- “d‹C—¿iŒÅ’èj
-           SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
-                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
+           SELECT /*+ LEADING(xses xseh) */
+                  xseh.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
+                , xseh.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
                 , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
                 , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
                 , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
@@ -1668,12 +3064,12 @@ AS
                 , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
                 , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
                 , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                , xmbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
+                , xses.calc_type                                                  AS calc_type                  -- ŒvZğŒ
                 , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
                 , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
                 , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
                 , NULL                                                            AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-                , xmbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+                , xses.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
                 , NULL                                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
                 , NULL                                                            AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
                 , NULL                                                            AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
@@ -1686,7 +3082,9 @@ AS
                 , NULL                                                            AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
                 , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
                 , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
+           FROM ( SELECT /*+ LEADING(xt0c xmbc xseh xsel ) */
+                         MAX( xseh.sales_exp_header_id )            AS sales_exp_header_id           -- ”Ì”„ÀÑƒwƒbƒ_ID
+                       , xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
                        , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
                        , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
                        , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
@@ -1711,8 +3109,8 @@ AS
                        , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
                        , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
                        , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
-                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
+                       , NULL                                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
+                       , NULL                                       AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
                        , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
                        , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
                        , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
@@ -1721,15 +3119,16 @@ AS
                        , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
                        , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
                        , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
+                       , xmbc.calc_type                             AS calc_type                     -- ŒvZğŒ
+                       , xmbc.bm1_amt                               AS bm1_amt                       -- y‚a‚l‚PzBM‹àŠz
                   FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
                      , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
                      , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
-                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
+                     , xxcok_mst_bm_contract         xmbc       -- ”ÌèğŒƒ}ƒXƒ^
                   WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
                     AND EXISTS ( SELECT 'X'
                                  FROM fnd_lookup_values    flv
                                  WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
@@ -1740,8 +3139,6 @@ AS
                                                                  AND NVL( flv.end_date_active,   gd_process_date )
                                    AND ROWNUM = 1
                         )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
-                    AND xsim.item_code              = xsel.item_code
                     AND NOT EXISTS ( SELECT 'X'
                                      FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
                                      WHERE flv2.lookup_code         = xsel.item_code
@@ -1749,7 +3146,16 @@ AS
                                        AND flv2.language            = USERENV( 'LANG' )
                                        AND flv2.enabled_flag        = cv_enable
                                        AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
-                                                                     AND NVL( flv2.end_date_active,   gd_process_date )                    )
+                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
+                                       AND ROWNUM = 1
+                        )
+                    AND xt0c.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+                    AND xmbc.calc_type                    = cv_calc_type_electricity_cost
+                    AND xmbc.cust_code                    = xseh.ship_to_customer_code
+                    AND xmbc.cust_code                    = xt0c.ship_cust_code
+                    AND xmbc.calc_target_flag             = cv_enable
+                    AND xmbc.container_type_code         IS NULL
+                    AND xmbc.selling_price               IS NULL
                   GROUP BY xseh.ship_to_customer_code
                          , xt0c.ship_gyotai_tyu
                          , xt0c.ship_gyotai_sho
@@ -1775,16 +3181,13 @@ AS
                          , xt0c.period_year
                          , xt0c.calc_target_period_from
                          , xt0c.calc_target_period_to
-                         , xseh.sales_base_code
-                         , xseh.results_employee_code
                          , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
                          , xt0c.amount_fix_date
+                         , xmbc.calc_type
+                         , xmbc.bm1_amt
                 )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
-              , xxcok_mst_bm_contract       xmbc      -- ”ÌèğŒƒ}ƒXƒ^
-           WHERE xses.ship_gyotai_tyu              = cv_gyotai_tyu_vd
-             AND xmbc.calc_type                    = cv_calc_type_electricity_cost
-             AND xmbc.cust_code                    = xses.ship_to_customer_code
-             AND xmbc.calc_target_flag             = cv_enable
+              , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+           WHERE xseh.sales_exp_header_id = xses.sales_exp_header_id
            UNION ALL
            -- “d‹C—¿i•Ï“®j
            SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
@@ -1871,7 +3274,6 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
                     AND EXISTS ( SELECT 'X'
                                  FROM fnd_lookup_values    flv
                                  WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
@@ -1882,7 +3284,6 @@ AS
                                                                  AND NVL( flv.end_date_active,   gd_process_date )
                                    AND ROWNUM = 1
                         )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND xsel.item_code              = gv_elec_change_item_code
                   GROUP BY xseh.ship_to_customer_code
@@ -1960,239 +3361,110 @@ AS
   ;
   -- ”Ì”„ÀÑî•ñE“ü‹à’lˆø—¦
   CURSOR get_sales_data_cur6 IS
-    SELECT xbc.base_code                                                  AS base_code                  -- ‹’“_ƒR[ƒh
-         , xbc.emp_code                                                   AS emp_code                   -- ’S“–ÒƒR[ƒh
-         , xbc.ship_cust_code                                             AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-         , xbc.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-         , xbc.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-         , xbc.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-         , xbc.period_year                                                AS period_year                -- ‰ïŒv”N“x
-         , xbc.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-         , xbc.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-         , xbc.dlv_qty                                                    AS dlv_qty                    -- ”[•i”—Ê
-         , xbc.dlv_uom_code                                               AS dlv_uom_code               -- ”[•i’PˆÊ
-         , xbc.amount_inc_tax                                             AS amount_inc_tax             -- ”„ã‹àŠziÅj
-         , xbc.container_code                                             AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-         , xbc.dlv_unit_price                                             AS dlv_unit_price             -- ”„‰¿‹àŠz
-         , xbc.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-         , xbc.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-         , xbc.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-         , xbc.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-         , xbc.term_name                                                  AS term_name                  -- x•¥ğŒ
-         , xbc.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-         , xbc.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-         , xbc.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-         , xbc.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-         , xbc.calc_type                                                  AS calc_type                  -- ŒvZğŒ
-         , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-         , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm1_pct ) / 100 )         AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.dlv_qty * xbc.bm1_amt ) )                      AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
-         , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-         , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm2_pct ) / 100 )         AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.dlv_qty * xbc.bm2_amt ) )                      AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
-         , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-         , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-         , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-         , TRUNC( SUM( xbc.amount_inc_tax * xbc.bm3_pct ) / 100 )         AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
-         , TRUNC( SUM( xbc.dlv_qty * xbc.bm3_amt ) )                      AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
-         , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
-         , xbc.item_code                                                  AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-         , xbc.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-    FROM ( SELECT xses.sales_base_code                                            AS base_code                  -- ‹’“_ƒR[ƒh
-                , xses.results_employee_code                                      AS emp_code                   -- ’S“–ÒƒR[ƒh
-                , xses.ship_to_customer_code                                      AS ship_cust_code             -- ŒÚ‹qy”[•iæz
-                , xses.ship_gyotai_sho                                            AS ship_gyotai_sho            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
-                , xses.ship_gyotai_tyu                                            AS ship_gyotai_tyu            -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
-                , xses.bill_cust_code                                             AS bill_cust_code             -- ŒÚ‹qy¿‹æz
-                , xses.period_year                                                AS period_year                -- ‰ïŒv”N“x
-                , xses.ship_delivery_chain_code                                   AS ship_delivery_chain_code   -- ƒ`ƒF[ƒ““XƒR[ƒh
-                , xses.delivery_ym                                                AS delivery_ym                -- ”[•i“ú”NŒ
-                , NULL                                                            AS dlv_qty                    -- ”[•i”—Ê
-                , NULL                                                            AS dlv_uom_code               -- ”[•i’PˆÊ
-                , amount_inc_tax                                                  AS amount_inc_tax             -- ”„ã‹àŠz(Å)
-                , NULL                                                            AS container_code             -- —eŠí‹æ•ªƒR[ƒh
-                , NULL                                                            AS dlv_unit_price             -- ”„‰¿‹àŠz
-                , xses.tax_div                                                    AS tax_div                    -- Á”ïÅ‹æ•ª
-                , xses.tax_code                                                   AS tax_code                   -- Å‹àƒR[ƒh
-                , xses.tax_rate                                                   AS tax_rate                   -- Á”ïÅ—¦
-                , xses.tax_rounding_rule                                          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
-                , xses.term_name                                                  AS term_name                  -- x•¥ğŒ
-                , xses.closing_date                                               AS closing_date               -- ’÷‚ß“ú
-                , xses.expect_payment_date                                        AS expect_payment_date        -- x•¥—\’è“ú
-                , xses.calc_target_period_from                                    AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                , xses.calc_target_period_to                                      AS calc_target_period_to      -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                , cv_calc_type_uniform_rate                                       AS calc_type                  -- ŒvZğŒ
-                , xses.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-                , xses.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                , xses.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-                , receiv_discount_rate                                            AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-                , NULL                                                            AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
-                , NULL                                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-                , NULL                                                            AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                , NULL                                                            AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-                , NULL                                                            AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-                , NULL                                                            AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
-                , NULL                                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-                , NULL                                                            AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                , NULL                                                            AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-                , NULL                                                            AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-                , NULL                                                            AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
-                , NULL                                                            AS item_code                  -- ƒGƒ‰[•i–ÚƒR[ƒh
-                , xses.amount_fix_date                                            AS amount_fix_date            -- ‹àŠzŠm’è“ú
-           FROM ( SELECT xseh.ship_to_customer_code                 AS ship_to_customer_code         -- yo‰×æzŒÚ‹qƒR[ƒh
-                       , xt0c.ship_gyotai_tyu                       AS ship_gyotai_tyu               -- yo‰×æz‹Æ‘Ôi’†•ª—Şj
-                       , xt0c.ship_gyotai_sho                       AS ship_gyotai_sho               -- yo‰×æz‹Æ‘Ôi¬•ª—Şj
-                       , xt0c.ship_delivery_chain_code              AS ship_delivery_chain_code      -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
-                       , xt0c.bill_cust_code                        AS bill_cust_code                -- y¿‹æzŒÚ‹qƒR[ƒh
-                       , xt0c.bm1_vendor_code                       AS bm1_vendor_code               -- y‚a‚l‚Pzd“üæƒR[ƒh
-                       , xt0c.bm1_vendor_site_code                  AS bm1_vendor_site_code          -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm1_bm_payment_type                   AS bm1_bm_payment_type           -- y‚a‚l‚PzBMx•¥‹æ•ª
-                       , xt0c.bm2_vendor_code                       AS bm2_vendor_code               -- y‚a‚l‚Qzd“üæƒR[ƒh
-                       , xt0c.bm2_vendor_site_code                  AS bm2_vendor_site_code          -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm2_bm_payment_type                   AS bm2_bm_payment_type           -- y‚a‚l‚QzBMx•¥‹æ•ª
-                       , xt0c.bm3_vendor_code                       AS bm3_vendor_code               -- y‚a‚l‚Rzd“üæƒR[ƒh
-                       , xt0c.bm3_vendor_site_code                  AS bm3_vendor_site_code          -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-                       , xt0c.bm3_bm_payment_type                   AS bm3_bm_payment_type           -- y‚a‚l‚RzBMx•¥‹æ•ª
-                       , xt0c.tax_div                               AS tax_div                       -- Á”ïÅ‹æ•ª
-                       , xt0c.tax_code                              AS tax_code                      -- Å‹àƒR[ƒh
-                       , xt0c.tax_rate                              AS tax_rate                      -- Á”ïÅ—¦
-                       , xt0c.tax_rounding_rule                     AS tax_rounding_rule             -- ’[”ˆ—‹æ•ª
-                       , xt0c.receiv_discount_rate                  AS receiv_discount_rate          -- “ü‹à’lˆø—¦
-                       , xt0c.term_name                             AS term_name                     -- x•¥ğŒ
-                       , xt0c.closing_date                          AS closing_date                  -- ’÷‚ß“ú
-                       , xt0c.expect_payment_date                   AS expect_payment_date           -- x•¥—\’è“ú
-                       , xt0c.period_year                           AS period_year                   -- ‰ïŒv”N“x
-                       , xt0c.calc_target_period_from               AS calc_target_period_from       -- ŒvZ‘ÎÛŠúŠÔ(FROM)
-                       , xt0c.calc_target_period_to                 AS calc_target_period_to         -- ŒvZ‘ÎÛŠúŠÔ(TO)
-                       , xseh.sales_base_code                       AS sales_base_code               -- ”„ã‹’“_ƒR[ƒh
-                       , xseh.results_employee_code                 AS results_employee_code         -- ¬ÑŒvãÒƒR[ƒh
-                       , TO_CHAR( xseh.delivery_date, 'RRRRMM' )    AS delivery_ym                   -- ”[•i”NŒ
-                       , NULL                                       AS dlv_qty                       -- ”[•i”—Ê
-                       , NULL                                       AS dlv_uom_code                  -- ”[•i’PˆÊ
-                       , SUM( xsel.pure_amount + xsel.tax_amount )  AS amount_inc_tax                -- ”„ã‹àŠziÅj
-                       , NULL                                       AS container_code                -- —eŠí‹æ•ªƒR[ƒh
-                       , NULL                                       AS dlv_unit_price                -- ”„‰¿‹àŠz
-                       , NULL                                       AS item_code                     -- İŒÉ•i–ÚƒR[ƒh
-                       , xt0c.amount_fix_date                       AS amount_fix_date               -- ‹àŠzŠm’è“ú
-                  FROM xxcok_tmp_014a01c_custdata    xt0c       -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
-                     , xxcos_sales_exp_headers       xseh       -- ”Ì”„ÀÑƒwƒbƒ_
-                     , xxcos_sales_exp_lines         xsel       -- ”Ì”„ÀÑ–¾×
-                     , xxcmm_system_items_b          xsim       -- Disc•i–ÚƒAƒhƒIƒ“
-                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
-                    AND xseh.delivery_date         <= xt0c.closing_date
-                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
-                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
-                    AND EXISTS ( SELECT 'X'
-                                 FROM fnd_lookup_values    flv
-                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
-                                   AND flv.lookup_code             = xsel.sales_class
-                                   AND flv.language                = USERENV( 'LANG' )
-                                   AND flv.enabled_flag            = cv_enable
-                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
-                                                                 AND NVL( flv.end_date_active,   gd_process_date )
-                                   AND ROWNUM = 1
-                        )
--- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
-                    AND xsim.item_code              = xsel.item_code
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
-                    AND xt0c.receiv_discount_rate  IS NOT NULL -- “ü‹à’lˆø—¦‚ªİ’è‚³‚ê‚Ä‚¢‚éŒÚ‹q‚Ì‚İ
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-                    AND NOT EXISTS ( SELECT 'X'
-                                     FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
-                                     WHERE flv2.lookup_code         = xsel.item_code
-                                       AND flv2.lookup_type         = cv_lookup_type_05
-                                       AND flv2.language            = USERENV( 'LANG' )
-                                       AND flv2.enabled_flag        = cv_enable
-                                       AND gd_process_date       BETWEEN NVL( flv2.start_date_active, gd_process_date )
-                                                                     AND NVL( flv2.end_date_active,   gd_process_date )
-                        )
-                  GROUP BY xseh.ship_to_customer_code
-                         , xt0c.ship_gyotai_tyu
-                         , xt0c.ship_gyotai_sho
-                         , xt0c.ship_delivery_chain_code
-                         , xt0c.bill_cust_code
-                         , xt0c.bm1_vendor_code
-                         , xt0c.bm1_vendor_site_code
-                         , xt0c.bm1_bm_payment_type
-                         , xt0c.bm2_vendor_code
-                         , xt0c.bm2_vendor_site_code
-                         , xt0c.bm2_bm_payment_type
-                         , xt0c.bm3_vendor_code
-                         , xt0c.bm3_vendor_site_code
-                         , xt0c.bm3_bm_payment_type
-                         , xt0c.tax_div
-                         , xt0c.tax_code
-                         , xt0c.tax_rate
-                         , xt0c.tax_rounding_rule
-                         , xt0c.receiv_discount_rate
-                         , xt0c.term_name
-                         , xt0c.closing_date
-                         , xt0c.expect_payment_date
-                         , xt0c.period_year
-                         , xt0c.calc_target_period_from
-                         , xt0c.calc_target_period_to
-                         , xseh.sales_base_code
-                         , xseh.results_employee_code
-                         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
-                         , xt0c.amount_fix_date
-                )                           xses      -- ƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[E”Ì”„ÀÑî•ñiŒÚ‹qƒTƒ}ƒŠj
-           WHERE xses.ship_gyotai_tyu             <> cv_gyotai_tyu_vd
-         )                        xbc
-    GROUP BY xbc.base_code
-           , xbc.emp_code
-           , xbc.ship_cust_code
-           , xbc.ship_gyotai_sho
-           , xbc.ship_gyotai_tyu
-           , xbc.bill_cust_code
-           , xbc.period_year
-           , xbc.ship_delivery_chain_code
-           , xbc.delivery_ym
-           , xbc.dlv_qty
-           , xbc.dlv_uom_code
-           , xbc.amount_inc_tax
-           , xbc.container_code
-           , xbc.dlv_unit_price
-           , xbc.tax_div
-           , xbc.tax_code
-           , xbc.tax_rate
-           , xbc.tax_rounding_rule
-           , xbc.term_name
-           , xbc.closing_date
-           , xbc.expect_payment_date
-           , xbc.calc_target_period_from
-           , xbc.calc_target_period_to
-           , xbc.calc_type
-           , xbc.bm1_vendor_code
-           , xbc.bm1_vendor_site_code
-           , xbc.bm1_bm_payment_type
-           , xbc.bm1_pct
-           , xbc.bm1_amt
-           , xbc.bm2_vendor_code
-           , xbc.bm2_vendor_site_code
-           , xbc.bm2_bm_payment_type
-           , xbc.bm2_pct
-           , xbc.bm2_amt
-           , xbc.bm3_vendor_code
-           , xbc.bm3_vendor_site_code
-           , xbc.bm3_bm_payment_type
-           , xbc.bm3_pct
-           , xbc.bm3_amt
-           , xbc.item_code
-           , xbc.amount_fix_date
+    SELECT /*+ LEADING(xt0c xseh xsel) */
+           xseh.sales_base_code                                                                  AS base_code                -- ‹’“_ƒR[ƒh
+         , xseh.results_employee_code                                                            AS emp_code                 -- ’S“–ÒƒR[ƒh
+         , xseh.ship_to_customer_code                                                            AS ship_cust_code           -- ŒÚ‹qy”[•iæz
+         , xt0c.ship_gyotai_sho                                                                  AS ship_gyotai_sho          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi¬•ª—Şj
+         , xt0c.ship_gyotai_tyu                                                                  AS ship_gyotai_tyu          -- ŒÚ‹qy”[•iæz‹Æ‘Ôi’†•ª—Şj
+         , xt0c.bill_cust_code                                                                   AS bill_cust_code           -- ŒÚ‹qy¿‹æz
+         , xt0c.period_year                                                                      AS period_year              -- ‰ïŒv”N“x
+         , xt0c.ship_delivery_chain_code                                                         AS ship_delivery_chain_code -- ƒ`ƒF[ƒ““XƒR[ƒh
+         , TO_CHAR( xseh.delivery_date, 'RRRRMM' )                                               AS delivery_ym              -- ”[•i“ú”NŒ
+         , NULL                                                                                  AS dlv_qty                  -- ”[•i”—Ê
+         , NULL                                                                                  AS dlv_uom_code             -- ”[•i’PˆÊ
+         , SUM( xsel.pure_amount + xsel.tax_amount )                                             AS amount_inc_tax           -- ”„ã‹àŠziÅj
+         , NULL                                                                                  AS container_code           -- —eŠí‹æ•ªƒR[ƒh
+         , NULL                                                                                  AS dlv_unit_price           -- ”„‰¿‹àŠz
+         , xt0c.tax_div                                                                          AS tax_div                  -- Á”ïÅ‹æ•ª
+         , xt0c.tax_code                                                                         AS tax_code                 -- Å‹àƒR[ƒh
+         , xt0c.tax_rate                                                                         AS tax_rate                 -- Á”ïÅ—¦
+         , xt0c.tax_rounding_rule                                                                AS tax_rounding_rule        -- ’[”ˆ—‹æ•ª
+         , xt0c.term_name                                                                        AS term_name                -- x•¥ğŒ
+         , xt0c.closing_date                                                                     AS closing_date             -- ’÷‚ß“ú
+         , xt0c.expect_payment_date                                                              AS expect_payment_date      -- x•¥—\’è“ú
+         , xt0c.calc_target_period_from                                                          AS calc_target_period_from  -- ŒvZ‘ÎÛŠúŠÔ(FROM)
+         , xt0c.calc_target_period_to                                                            AS calc_target_period_to    -- ŒvZ‘ÎÛŠúŠÔ(TO)
+         , '30'                                                                                  AS calc_type                -- ŒvZğŒ
+         , xt0c.bm1_vendor_code                                                                  AS bm1_vendor_code          -- y‚a‚l‚Pzd“üæƒR[ƒh
+         , xt0c.bm1_vendor_site_code                                                             AS bm1_vendor_site_code     -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+         , NULL                                                                                  AS bm1_bm_payment_type      -- y‚a‚l‚PzBMx•¥‹æ•ª
+         , xt0c.receiv_discount_rate                                                             AS bm1_pct                  -- y‚a‚l‚PzBM—¦(%)
+         , NULL                                                                                  AS bm1_amt                  -- y‚a‚l‚PzBM‹àŠz
+         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xt0c.receiv_discount_rate / 100 )  AS bm1_cond_bm_tax_pct      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
+         , NULL                                                                                  AS bm1_cond_bm_amt_tax      -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                                                  AS bm1_electric_amt_tax     -- y‚a‚l‚Pz“d‹C—¿(Å)
+         , NULL                                                                                  AS bm2_vendor_code          -- y‚a‚l‚Qzd“üæƒR[ƒh
+         , NULL                                                                                  AS bm2_vendor_site_code     -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+         , NULL                                                                                  AS bm2_bm_payment_type      -- y‚a‚l‚QzBMx•¥‹æ•ª
+         , NULL                                                                                  AS bm2_pct                  -- y‚a‚l‚QzBM—¦(%)
+         , NULL                                                                                  AS bm2_amt                  -- y‚a‚l‚QzBM‹àŠz
+         , NULL                                                                                  AS bm2_cond_bm_tax_pct      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
+         , NULL                                                                                  AS bm2_cond_bm_amt_tax      -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                                                  AS bm2_electric_amt_tax     -- y‚a‚l‚Qz“d‹C—¿(Å)
+         , NULL                                                                                  AS bm3_vendor_code          -- y‚a‚l‚Rzd“üæƒR[ƒh
+         , NULL                                                                                  AS bm3_vendor_site_code     -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+         , NULL                                                                                  AS bm3_bm_payment_type      -- y‚a‚l‚RzBMx•¥‹æ•ª
+         , NULL                                                                                  AS bm3_pct                  -- y‚a‚l‚RzBM—¦(%)
+         , NULL                                                                                  AS bm3_amt                  -- y‚a‚l‚RzBM‹àŠz
+         , NULL                                                                                  AS bm3_cond_bm_tax_pct      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
+         , NULL                                                                                  AS bm3_cond_bm_amt_tax      -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
+         , NULL                                                                                  AS bm3_electric_amt_tax     -- y‚a‚l‚Rz“d‹C—¿(Å)
+         , NULL                                                                                  AS item_code                -- ƒGƒ‰[•i–ÚƒR[ƒh
+         , xt0c.amount_fix_date                                                                  AS amount_fix_date          -- ‹àŠzŠm’è“ú
+    FROM xxcos_sales_exp_lines       xsel  -- ”Ì”„ÀÑ–¾×
+       , xxcos_sales_exp_headers     xseh  -- ”Ì”„ÀÑƒwƒbƒ_
+       , xxcok_tmp_014a01c_custdata  xt0c  -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒÚ‹qî•ñˆê•\
+    WHERE xt0c.ship_gyotai_tyu       <> cv_gyotai_tyu_vd                          -- ‹Æ‘Ôi’†•ª—ŞjFVD
+      AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
+      AND xseh.delivery_date         <= xt0c.closing_date
+      AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+      AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+      AND xt0c.receiv_discount_rate  IS NOT NULL
+      AND EXISTS (  SELECT 'X'
+                    FROM fnd_lookup_values flv -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                    WHERE flv.lookup_type         = cv_lookup_type_07             -- QÆƒ^ƒCƒvF”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                      AND flv.lookup_code         = xsel.sales_class
+                      AND flv.language            = cv_lang
+                      AND flv.enabled_flag        = cv_enable
+                      AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                AND NVL( flv.end_date_active  , gd_process_date )
+                      AND ROWNUM = 1
+          )
+      AND NOT EXISTS ( SELECT 'X'
+                       FROM fnd_lookup_values flv -- ”ñİŒÉ•i–Ú
+                       WHERE flv.lookup_type         = cv_lookup_type_05         -- QÆƒ^ƒCƒvF”ñİŒÉ•i–Ú
+                         AND flv.lookup_code         = xsel.item_code
+                         AND flv.language            = cv_lang
+                         AND flv.enabled_flag        = cv_enable
+                         AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                   AND NVL( flv.end_date_active  , gd_process_date )
+                         AND ROWNUM = 1
+          )
+    GROUP BY xseh.sales_base_code
+           , xseh.results_employee_code
+           , xseh.ship_to_customer_code
+           , xt0c.ship_gyotai_sho
+           , xt0c.ship_gyotai_tyu
+           , xt0c.bill_cust_code
+           , xt0c.period_year
+           , xt0c.ship_delivery_chain_code
+           , TO_CHAR( xseh.delivery_date, 'RRRRMM' )
+           , xt0c.tax_div
+           , xt0c.tax_code
+           , xt0c.tax_rate
+           , xt0c.tax_rounding_rule
+           , xt0c.term_name
+           , xt0c.closing_date
+           , xt0c.expect_payment_date
+           , xt0c.calc_target_period_from
+           , xt0c.calc_target_period_to
+           , xt0c.bm1_vendor_code
+           , xt0c.bm1_vendor_site_code
+           , xt0c.receiv_discount_rate
+           , xt0c.amount_fix_date
   ;
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
   --==================================================
   -- ƒOƒ[ƒoƒ‹ƒ^ƒCƒv
   --==================================================
@@ -2297,7 +3569,10 @@ AS
         AND xsib.item_code               = xsel.item_code
         AND flv.lookup_code (+)          = xsib.vessel_group
         AND flv.lookup_type (+)          = cv_lookup_type_04
-        AND flv.language    (+)          = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND flv.language    (+)          = USERENV( 'LANG' )
+        AND flv.language    (+)          = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
         AND flv.enabled_flag (+)         = cv_enable
         AND gd_process_date BETWEEN NVL( flv.start_date_active, gd_process_date )
                                 AND NVL( flv.end_date_active  , gd_process_date )
@@ -2307,6 +3582,9 @@ AS
                            AND xbce.item_code           = xsel.item_code
                            AND xbce.container_type_code = NVL( flv.attribute1, cv_container_code_others )
                            AND xbce.selling_price       = xsel.dlv_unit_price
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi ADD START
+                           AND ROWNUM = 1
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi ADD END
             )
       FOR UPDATE OF xsel.sales_exp_line_id NOWAIT
     ;
@@ -2529,7 +3807,7 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || 'y' || i_g
 -- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
 --      IF( i_xcbs_data_tab( i ).supplier_code IS NOT NULL ) THEN
       IF(     ( i_xcbs_data_tab( i ).supplier_code IS NOT NULL )
-          AND (    ( i_xcbs_data_tab( i ).cond_bm_amt_tax       IS NOT NULL ) -- VDBM(Å) 
+          AND (    ( i_xcbs_data_tab( i ).cond_bm_amt_tax       IS NOT NULL ) -- VDBM(Å)
                 OR ( i_xcbs_data_tab( i ).electric_amt_tax      IS NOT NULL ) -- “d‹C—¿(Å)
                 OR ( i_xcbs_data_tab( i ).csh_rcpt_discount_amt IS NOT NULL ) -- “ü‹à’lˆøŠz
               )
@@ -3887,27 +5165,36 @@ END delete_xbce;
         AND hps.location_id                  = hl.location_id
         AND hcas.org_id                      = gn_org_id
         AND flv.lookup_type                  = cv_lookup_type_01
-        AND flv.lookup_code                  = gv_param_proc_type
-        AND flv.language                     = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND flv.lookup_code                  = gv_param_proc_type
+        AND flv.attribute1                   = gv_param_proc_type
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND flv.language                     = USERENV( 'LANG' )
+        AND flv.language                     = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
         AND gd_process_date            BETWEEN NVL( flv.start_date_active, gd_process_date )
                                            AND NVL( flv.end_date_active  , gd_process_date )
         AND flv.enabled_flag                 = cv_enable
-        AND (    ( hl.address3              LIKE flv.attribute1  || '%' AND flv.attribute1  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute2  || '%' AND flv.attribute2  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute3  || '%' AND flv.attribute3  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute4  || '%' AND flv.attribute4  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute5  || '%' AND flv.attribute5  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute6  || '%' AND flv.attribute6  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute7  || '%' AND flv.attribute7  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute8  || '%' AND flv.attribute8  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute9  || '%' AND flv.attribute9  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute10 || '%' AND flv.attribute10 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute11 || '%' AND flv.attribute11 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute12 || '%' AND flv.attribute12 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute13 || '%' AND flv.attribute13 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute14 || '%' AND flv.attribute14 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute15 || '%' AND flv.attribute15 IS NOT NULL )
-            )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND (    ( hl.address3              LIKE flv.attribute1  || '%' AND flv.attribute1  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute2  || '%' AND flv.attribute2  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute3  || '%' AND flv.attribute3  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute4  || '%' AND flv.attribute4  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute5  || '%' AND flv.attribute5  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute6  || '%' AND flv.attribute6  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute7  || '%' AND flv.attribute7  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute8  || '%' AND flv.attribute8  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute9  || '%' AND flv.attribute9  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute10 || '%' AND flv.attribute10 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute11 || '%' AND flv.attribute11 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute12 || '%' AND flv.attribute12 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute13 || '%' AND flv.attribute13 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute14 || '%' AND flv.attribute14 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute15 || '%' AND flv.attribute15 IS NOT NULL )
+--            )
+        AND hl.address3                   LIKE flv.lookup_code || '%'
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
         AND xcbs.amt_fix_status    = cv_xcbs_temp -- –¢Šm’è
       FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT
     ;
@@ -4172,229 +5459,590 @@ END insert_xt0c;
     get_acctg_calendar_expt        EXCEPTION; -- ‰ïŒvƒJƒŒƒ“ƒ_æ“¾ŠÖ”ƒGƒ‰[
 --
   BEGIN
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--    --==================================================
+--    -- ƒXƒe[ƒ^ƒX‰Šú‰»
+--    --==================================================
+--    lv_end_retcode := cv_status_normal;
+--    --==================================================
+--    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJn“ú(‰¼)æ“¾
+--    --==================================================
+--    IF( i_get_cust_data_rec.settle_amount_cycle IS NULL ) THEN
+--      RAISE get_operating_day_expt;
+--    END IF;
+--    ld_tmp_bm_support_period_from :=
+--      xxcok_common_pkg.get_operating_day_f(
+--        id_proc_date             => gd_process_date                               -- IN DATE   ˆ—“ú
+--      , in_days                  => -1 * i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+--      , in_proc_type             => cn_proc_type_before                           -- IN NUMBER ˆ—‹æ•ª
+--      );
+--    IF( ld_tmp_bm_support_period_from IS NULL ) THEN
+--      RAISE get_operating_day_expt;
+--    END IF;
+--    --==================================================
+--    -- x•¥ğŒ
+--    --==================================================
+--    IF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
+--      --==================================================
+--      -- ’÷‚ßx•¥“úæ“¾ix•¥ğŒj
+--      --==================================================
+--      xxcok_common_pkg.get_close_date_p(
+--        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
+--      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
+--      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
+--      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
+--      , iv_pay_cond                => i_get_cust_data_rec.term_name1    -- IN  VARCHAR2          x•¥ğŒ(IN)
+--      , od_close_date              => ld_close_date1                    -- OUT DATE              ’÷‚ß“ú(OUT)
+--      , od_pay_date                => ld_pay_date1                      -- OUT DATE              x•¥“ú(OUT)
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE get_close_date_expt;
+--      END IF;
+--      --==================================================
+--      -- x•¥—\’è“úæ“¾ix•¥ğŒj
+--      --==================================================
+--      ld_expect_payment_date1 :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_pay_date1                             -- IN DATE   ˆ—“ú
+--        , in_days                  => 0                                        -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_expect_payment_date1 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    END IF;
+--    --==================================================
+--    -- ‘æ2x•¥ğŒ
+--    --==================================================
+--    IF( i_get_cust_data_rec.term_name2 IS NOT NULL ) THEN
+--      --==================================================
+--      -- ’÷‚ßx•¥“úæ“¾i‘æ2x•¥ğŒj
+--      --==================================================
+--      xxcok_common_pkg.get_close_date_p(
+--        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
+--      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
+--      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
+--      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
+--      , iv_pay_cond                => i_get_cust_data_rec.term_name2    -- IN  VARCHAR2          x•¥ğŒ(IN)
+--      , od_close_date              => ld_close_date2                    -- OUT DATE              ’÷‚ß“ú(OUT)
+--      , od_pay_date                => ld_pay_date2                      -- OUT DATE              x•¥“ú(OUT)
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE get_close_date_expt;
+--      END IF;
+--      --==================================================
+--      -- x•¥—\’è“úæ“¾i‘æ2x•¥ğŒj
+--      --==================================================
+--      ld_expect_payment_date2 :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_pay_date2                             -- IN DATE   ˆ—“ú
+--        , in_days                  => 0                                        -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_expect_payment_date2 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    END IF;
+--    --==================================================
+--    -- ‘æ3x•¥ğŒ
+--    --==================================================
+--    IF( i_get_cust_data_rec.term_name3 IS NOT NULL ) THEN
+--      --==================================================
+--      -- ’÷‚ßx•¥“úæ“¾i‘æ3x•¥ğŒj
+--      --==================================================
+--      xxcok_common_pkg.get_close_date_p(
+--        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
+--      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
+--      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
+--      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
+--      , iv_pay_cond                => i_get_cust_data_rec.term_name3    -- IN  VARCHAR2          x•¥ğŒ(IN)
+--      , od_close_date              => ld_close_date3                    -- OUT DATE              ’÷‚ß“ú(OUT)
+--      , od_pay_date                => ld_pay_date3                      -- OUT DATE              x•¥“ú(OUT)
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE get_close_date_expt;
+--      END IF;
+--      --==================================================
+--      -- x•¥—\’è“úæ“¾i‘æ3x•¥ğŒj
+--      --==================================================
+--      ld_expect_payment_date3 :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_pay_date3                             -- IN DATE   ˆ—“ú
+--        , in_days                  => 0                                        -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_expect_payment_date3 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    END IF;
+--    --==================================================
+--    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èix•¥ğŒj
+--    --==================================================
+--    IF( i_get_cust_data_rec.term_name1 = gv_instantly_term_name ) THEN
+--      ld_bm_support_period_from_1 := gd_process_date;
+--      ld_bm_support_period_to_1   := gd_process_date;
+--      ld_close_date1              := gd_process_date;
+--    ELSIF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
+--      ld_bm_support_period_from_1 :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_close_date1                           -- IN DATE   ˆ—“ú
+--        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_bm_support_period_from_1 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--      ld_bm_support_period_to_1   :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_close_date1                           -- IN DATE   ˆ—“ú
+--        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_bm_support_period_to_1 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    ELSE
+--      ld_bm_support_period_from_1 := NULL;
+--      ld_bm_support_period_to_1   := NULL;
+--    END IF;
+--    IF(     ( i_get_cust_data_rec.term_name1      <> gv_instantly_term_name )
+--        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+--    ) THEN
+--      ld_bm_support_period_from_1 := ld_bm_support_period_to_1;
+--    END IF;
+--    --==================================================
+--    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èi‘æ2x•¥ğŒj
+--    --==================================================
+--    IF( i_get_cust_data_rec.term_name2 = gv_instantly_term_name ) THEN
+--      ld_bm_support_period_from_2 := gd_process_date;
+--      ld_bm_support_period_to_2   := gd_process_date;
+--      ld_close_date2              := gd_process_date;
+--    ELSIF( i_get_cust_data_rec.term_name2 IS NOT NULL ) THEN
+--      ld_bm_support_period_from_2 := 
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_close_date2                           -- IN DATE   ˆ—“ú
+--        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_bm_support_period_from_2 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--      ld_bm_support_period_to_2   :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_close_date2                           -- IN DATE   ˆ—“ú
+--        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_bm_support_period_to_2 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    ELSE
+--      ld_bm_support_period_from_2 := NULL;
+--      ld_bm_support_period_to_2   := NULL;
+--    END IF;
+--    IF(     ( i_get_cust_data_rec.term_name2      <> gv_instantly_term_name )
+--        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+--    ) THEN
+--      ld_bm_support_period_from_2 := ld_bm_support_period_to_2;
+--    END IF;
+--    --==================================================
+--    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èi‘æ3x•¥ğŒj
+--    --==================================================
+--    IF( i_get_cust_data_rec.term_name3 = gv_instantly_term_name ) THEN
+--      ld_bm_support_period_from_3 := gd_process_date;
+--      ld_bm_support_period_to_3   := gd_process_date;
+--      ld_close_date3              := gd_process_date;
+--    ELSIF( i_get_cust_data_rec.term_name3 IS NOT NULL ) THEN
+--      ld_bm_support_period_from_3 := 
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_close_date3                           -- IN DATE   ˆ—“ú
+--        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_bm_support_period_from_3 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--      ld_bm_support_period_to_3   :=
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_close_date3                           -- IN DATE   ˆ—“ú
+--        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_bm_support_period_to_3 IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    ELSE
+--      ld_bm_support_period_from_3 := NULL;
+--      ld_bm_support_period_to_3   := NULL;
+--    END IF;
+--    IF(     ( i_get_cust_data_rec.term_name3      <> gv_instantly_term_name )
+--        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+--    ) THEN
+--      ld_bm_support_period_from_3 := ld_bm_support_period_to_3;
+--    END IF;
+--    --==================================================
+--    -- x•¥ğŒ”»’è
+--    --==================================================
+--fnd_file.put_line( FND_FILE.LOG,'' || '===============================================' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'ship_cust_code            ' || 'y' || i_get_cust_data_rec.ship_cust_code || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'term_name1                ' || 'y' || i_get_cust_data_rec.term_name1     || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'term_name2                ' || 'y' || i_get_cust_data_rec.term_name2     || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'term_name3                ' || 'y' || i_get_cust_data_rec.term_name3     || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'close_date1               ' || 'y' || ld_close_date1                     || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'close_date2               ' || 'y' || ld_close_date2                     || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'close_date3               ' || 'y' || ld_close_date3                     || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_1  ' || 'y' || ld_bm_support_period_from_1        || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_1    ' || 'y' || ld_bm_support_period_to_1          || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_2  ' || 'y' || ld_bm_support_period_from_2        || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_2    ' || 'y' || ld_bm_support_period_to_2          || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_3  ' || 'y' || ld_bm_support_period_from_3        || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_3    ' || 'y' || ld_bm_support_period_to_3          || 'z' ); -- debug
+--fnd_file.put_line( FND_FILE.LOG,'' || '===============================================' ); -- debug
+--    IF( i_get_cust_data_rec.term_name1 = gv_instantly_term_name ) THEN
+--      lv_fix_term_name              := i_get_cust_data_rec.term_name1;
+--      ld_fix_close_date             := gd_process_date;
+--      ld_fix_expect_payment_date    := gd_process_date;
+--      ld_fix_bm_support_period_from := gd_process_date;
+--      ld_fix_bm_support_period_to   := gd_process_date;
+--    ELSIF( i_get_cust_data_rec.term_name2 = gv_instantly_term_name ) THEN
+--      lv_fix_term_name              := i_get_cust_data_rec.term_name2;
+--      ld_fix_close_date             := gd_process_date;
+--      ld_fix_expect_payment_date    := gd_process_date;
+--      ld_fix_bm_support_period_from := gd_process_date;
+--      ld_fix_bm_support_period_to   := gd_process_date;
+--    ELSIF( i_get_cust_data_rec.term_name3 = gv_instantly_term_name ) THEN
+--      lv_fix_term_name              := i_get_cust_data_rec.term_name3;
+--      ld_fix_close_date             := gd_process_date;
+--      ld_fix_expect_payment_date    := gd_process_date;
+--      ld_fix_bm_support_period_from := gd_process_date;
+--      ld_fix_bm_support_period_to   := gd_process_date;
+--    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_1
+--                               AND ld_bm_support_period_to_1  ) THEN
+--      lv_fix_term_name              := i_get_cust_data_rec.term_name1;
+--      ld_fix_close_date             := ld_close_date1;
+--      ld_fix_expect_payment_date    := ld_pay_date1;
+--      ld_fix_bm_support_period_from := ld_bm_support_period_from_1;
+--      ld_fix_bm_support_period_to   := ld_bm_support_period_to_1;
+--    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_2
+--                               AND ld_bm_support_period_to_2  ) THEN
+--      lv_fix_term_name              := i_get_cust_data_rec.term_name2;
+--      ld_fix_close_date             := ld_close_date2;
+--      ld_fix_expect_payment_date    := ld_pay_date2;
+--      ld_fix_bm_support_period_from := ld_bm_support_period_from_2;
+--      ld_fix_bm_support_period_to   := ld_bm_support_period_to_2;
+--    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_3
+--                               AND ld_bm_support_period_to_3  ) THEN
+--      lv_fix_term_name              := i_get_cust_data_rec.term_name3;
+--      ld_fix_close_date             := ld_close_date3;
+--      ld_fix_expect_payment_date    := ld_pay_date3;
+--      ld_fix_bm_support_period_from := ld_bm_support_period_from_3;
+--      ld_fix_bm_support_period_to   := ld_bm_support_period_to_3;
+--    ELSE
+--      lv_fix_term_name              := NULL;
+--      ld_fix_close_date             := NULL;
+--      ld_fix_expect_payment_date    := NULL;
+--      ld_fix_bm_support_period_from := NULL;
+--      ld_fix_bm_support_period_to   := NULL;
+--      RAISE skip_proc_expt;
+--    END IF;
+--    --==================================================
+--    -- ‹àŠzŠm’è“úæ“¾
+--    --==================================================
+--    IF( lv_fix_term_name = gv_instantly_term_name ) THEN
+--      ld_amount_fix_date := ld_fix_close_date;
+--    ELSIF( lv_fix_term_name <> gv_instantly_term_name ) THEN
+--      ld_amount_fix_date := 
+--        xxcok_common_pkg.get_operating_day_f(
+--          id_proc_date             => ld_fix_close_date                        -- IN DATE   ˆ—“ú
+--        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+--        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+--        );
+--      IF( ld_amount_fix_date IS NULL ) THEN
+--        RAISE get_operating_day_expt;
+--      END IF;
+--    ELSE
+--      ld_amount_fix_date := NULL;
+--    END IF;
     --==================================================
     -- ƒXƒe[ƒ^ƒX‰Šú‰»
     --==================================================
     lv_end_retcode := cv_status_normal;
     --==================================================
-    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJn“ú(‰¼)æ“¾
+    -- ‘¦•¥‚¢”»’è
     --==================================================
-    IF( i_get_cust_data_rec.settle_amount_cycle IS NULL ) THEN
-      RAISE get_operating_day_expt;
-    END IF;
-    ld_tmp_bm_support_period_from :=
-      xxcok_common_pkg.get_operating_day_f(
-        id_proc_date             => gd_process_date                               -- IN DATE   ˆ—“ú
-      , in_days                  => -1 * i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
-      , in_proc_type             => cn_proc_type_before                           -- IN NUMBER ˆ—‹æ•ª
-      );
-    IF( ld_tmp_bm_support_period_from IS NULL ) THEN
-      RAISE get_operating_day_expt;
-    END IF;
-    --==================================================
-    -- x•¥ğŒ
-    --==================================================
-    IF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
-      --==================================================
-      -- ’÷‚ßx•¥“úæ“¾ix•¥ğŒj
-      --==================================================
-      xxcok_common_pkg.get_close_date_p(
-        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
-      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
-      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
-      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
-      , iv_pay_cond                => i_get_cust_data_rec.term_name1    -- IN  VARCHAR2          x•¥ğŒ(IN)
-      , od_close_date              => ld_close_date1                    -- OUT DATE              ’÷‚ß“ú(OUT)
-      , od_pay_date                => ld_pay_date1                      -- OUT DATE              x•¥“ú(OUT)
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE get_close_date_expt;
-      END IF;
-      --==================================================
-      -- x•¥—\’è“úæ“¾ix•¥ğŒj
-      --==================================================
-      ld_expect_payment_date1 :=
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_pay_date1                             -- IN DATE   ˆ—“ú
-        , in_days                  => 0                                        -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_expect_payment_date1 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-    END IF;
-    --==================================================
-    -- ‘æ2x•¥ğŒ
-    --==================================================
-    IF( i_get_cust_data_rec.term_name2 IS NOT NULL ) THEN
-      --==================================================
-      -- ’÷‚ßx•¥“úæ“¾i‘æ2x•¥ğŒj
-      --==================================================
-      xxcok_common_pkg.get_close_date_p(
-        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
-      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
-      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
-      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
-      , iv_pay_cond                => i_get_cust_data_rec.term_name2    -- IN  VARCHAR2          x•¥ğŒ(IN)
-      , od_close_date              => ld_close_date2                    -- OUT DATE              ’÷‚ß“ú(OUT)
-      , od_pay_date                => ld_pay_date2                      -- OUT DATE              x•¥“ú(OUT)
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE get_close_date_expt;
-      END IF;
-      --==================================================
-      -- x•¥—\’è“úæ“¾i‘æ2x•¥ğŒj
-      --==================================================
-      ld_expect_payment_date2 :=
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_pay_date2                             -- IN DATE   ˆ—“ú
-        , in_days                  => 0                                        -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_expect_payment_date2 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-    END IF;
-    --==================================================
-    -- ‘æ3x•¥ğŒ
-    --==================================================
-    IF( i_get_cust_data_rec.term_name3 IS NOT NULL ) THEN
-      --==================================================
-      -- ’÷‚ßx•¥“úæ“¾i‘æ3x•¥ğŒj
-      --==================================================
-      xxcok_common_pkg.get_close_date_p(
-        ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
-      , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
-      , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
-      , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
-      , iv_pay_cond                => i_get_cust_data_rec.term_name3    -- IN  VARCHAR2          x•¥ğŒ(IN)
-      , od_close_date              => ld_close_date3                    -- OUT DATE              ’÷‚ß“ú(OUT)
-      , od_pay_date                => ld_pay_date3                      -- OUT DATE              x•¥“ú(OUT)
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE get_close_date_expt;
-      END IF;
-      --==================================================
-      -- x•¥—\’è“úæ“¾i‘æ3x•¥ğŒj
-      --==================================================
-      ld_expect_payment_date3 :=
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_pay_date3                             -- IN DATE   ˆ—“ú
-        , in_days                  => 0                                        -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_expect_payment_date3 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-    END IF;
-    --==================================================
-    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èix•¥ğŒj
-    --==================================================
-    IF( i_get_cust_data_rec.term_name1 = gv_instantly_term_name ) THEN
-      ld_bm_support_period_from_1 := gd_process_date;
-      ld_bm_support_period_to_1   := gd_process_date;
-      ld_close_date1              := gd_process_date;
-    ELSIF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
-      ld_bm_support_period_from_1 :=
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_close_date1                           -- IN DATE   ˆ—“ú
-        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_bm_support_period_from_1 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-      ld_bm_support_period_to_1   :=
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_close_date1                           -- IN DATE   ˆ—“ú
-        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_bm_support_period_to_1 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-    ELSE
-      ld_bm_support_period_from_1 := NULL;
-      ld_bm_support_period_to_1   := NULL;
-    END IF;
-    IF(     ( i_get_cust_data_rec.term_name1      <> gv_instantly_term_name )
-        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
+    IF(    ( i_get_cust_data_rec.term_name1 = gv_instantly_term_name )
+        OR ( i_get_cust_data_rec.term_name2 = gv_instantly_term_name )
+        OR ( i_get_cust_data_rec.term_name3 = gv_instantly_term_name )
     ) THEN
-      ld_bm_support_period_from_1 := ld_bm_support_period_to_1;
-    END IF;
-    --==================================================
-    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èi‘æ2x•¥ğŒj
-    --==================================================
-    IF( i_get_cust_data_rec.term_name2 = gv_instantly_term_name ) THEN
-      ld_bm_support_period_from_2 := gd_process_date;
-      ld_bm_support_period_to_2   := gd_process_date;
-      ld_close_date2              := gd_process_date;
-    ELSIF( i_get_cust_data_rec.term_name2 IS NOT NULL ) THEN
-      ld_bm_support_period_from_2 := 
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_close_date2                           -- IN DATE   ˆ—“ú
-        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_bm_support_period_from_2 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-      ld_bm_support_period_to_2   :=
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_close_date2                           -- IN DATE   ˆ—“ú
-        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_bm_support_period_to_2 IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
+      lv_fix_term_name              := gv_instantly_term_name;
+      ld_fix_close_date             := gd_process_date;
+      ld_fix_expect_payment_date    := gd_process_date;
+      ld_fix_bm_support_period_from := gd_process_date;
+      ld_fix_bm_support_period_to   := gd_process_date;
+      ld_amount_fix_date            := gd_process_date;
     ELSE
-      ld_bm_support_period_from_2 := NULL;
-      ld_bm_support_period_to_2   := NULL;
-    END IF;
-    IF(     ( i_get_cust_data_rec.term_name2      <> gv_instantly_term_name )
-        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
-    ) THEN
-      ld_bm_support_period_from_2 := ld_bm_support_period_to_2;
-    END IF;
-    --==================================================
-    -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èi‘æ3x•¥ğŒj
-    --==================================================
-    IF( i_get_cust_data_rec.term_name3 = gv_instantly_term_name ) THEN
-      ld_bm_support_period_from_3 := gd_process_date;
-      ld_bm_support_period_to_3   := gd_process_date;
-      ld_close_date3              := gd_process_date;
-    ELSIF( i_get_cust_data_rec.term_name3 IS NOT NULL ) THEN
-      ld_bm_support_period_from_3 := 
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_close_date3                           -- IN DATE   ˆ—“ú
-        , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_bm_support_period_from_3 IS NULL ) THEN
+      --==================================================
+      -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJn“ú(‰¼)æ“¾
+      --==================================================
+      IF( i_get_cust_data_rec.settle_amount_cycle IS NULL ) THEN
         RAISE get_operating_day_expt;
       END IF;
-      ld_bm_support_period_to_3   :=
+      ld_tmp_bm_support_period_from :=
         xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_close_date3                           -- IN DATE   ˆ—“ú
-        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          id_proc_date             => gd_process_date                               -- IN DATE   ˆ—“ú
+        , in_days                  => -1 * i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+        , in_proc_type             => cn_proc_type_before                           -- IN NUMBER ˆ—‹æ•ª
         );
-      IF( ld_bm_support_period_to_3 IS NULL ) THEN
+      IF( ld_tmp_bm_support_period_from IS NULL ) THEN
         RAISE get_operating_day_expt;
       END IF;
-    ELSE
-      ld_bm_support_period_from_3 := NULL;
-      ld_bm_support_period_to_3   := NULL;
+      --==================================================
+      -- x•¥ğŒ
+      --==================================================
+      IF( i_get_cust_data_rec.term_name1 IS NOT NULL ) THEN
+        --==================================================
+        -- ’÷‚ßx•¥“úæ“¾ix•¥ğŒj
+        --==================================================
+        xxcok_common_pkg.get_close_date_p(
+          ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
+        , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
+        , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
+        , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
+        , iv_pay_cond                => i_get_cust_data_rec.term_name1    -- IN  VARCHAR2          x•¥ğŒ(IN)
+        , od_close_date              => ld_close_date1                    -- OUT DATE              ’÷‚ß“ú(OUT)
+        , od_pay_date                => ld_pay_date1                      -- OUT DATE              x•¥“ú(OUT)
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE get_close_date_expt;
+        END IF;
+        --==================================================
+        -- x•¥—\’è“úæ“¾ix•¥ğŒj
+        --==================================================
+        ld_expect_payment_date1 :=
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_pay_date1                             -- IN DATE   ˆ—“ú
+          , in_days                  => 0                                        -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_expect_payment_date1 IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+        --==================================================
+        -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èix•¥ğŒj
+        --==================================================
+        ld_bm_support_period_to_1   :=
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_close_date1                           -- IN DATE   ˆ—“ú
+          , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_bm_support_period_to_1 IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+          ld_bm_support_period_from_1 := ld_bm_support_period_to_1;
+        ELSE
+          ld_bm_support_period_from_1 :=
+            xxcok_common_pkg.get_operating_day_f(
+              id_proc_date             => ld_close_date1                           -- IN DATE   ˆ—“ú
+            , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
+            , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+            );
+          IF( ld_bm_support_period_from_1 IS NULL ) THEN
+            RAISE get_operating_day_expt;
+          END IF;
+        END IF;
+      ELSE
+        ld_bm_support_period_from_1 := NULL;
+        ld_bm_support_period_to_1   := NULL;
+      END IF;
+      --==================================================
+      -- x•¥ğŒ”»’èix•¥ğŒj
+      --==================================================
+      IF( gd_process_date BETWEEN ld_bm_support_period_from_1
+                              AND ld_bm_support_period_to_1  ) THEN
+        lv_fix_term_name              := i_get_cust_data_rec.term_name1;
+        ld_fix_close_date             := ld_close_date1;
+        ld_fix_expect_payment_date    := ld_pay_date1;
+        ld_fix_bm_support_period_from := ld_bm_support_period_from_1;
+        ld_fix_bm_support_period_to   := ld_bm_support_period_to_1;
+      END IF;
+      --==================================================
+      -- ‘æ2x•¥ğŒ
+      -- i‘æ1jx•¥ğŒ‚ÅŒvZ‘ÎÛŠO‚Ìê‡‚Ì‚İ
+      --==================================================
+      IF(     ( lv_fix_term_name IS NULL )
+          AND ( i_get_cust_data_rec.term_name2 IS NOT NULL )
+      ) THEN
+        --==================================================
+        -- ’÷‚ßx•¥“úæ“¾i‘æ2x•¥ğŒj
+        --==================================================
+        xxcok_common_pkg.get_close_date_p(
+          ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
+        , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
+        , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
+        , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
+        , iv_pay_cond                => i_get_cust_data_rec.term_name2    -- IN  VARCHAR2          x•¥ğŒ(IN)
+        , od_close_date              => ld_close_date2                    -- OUT DATE              ’÷‚ß“ú(OUT)
+        , od_pay_date                => ld_pay_date2                      -- OUT DATE              x•¥“ú(OUT)
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE get_close_date_expt;
+        END IF;
+        --==================================================
+        -- x•¥—\’è“úæ“¾i‘æ2x•¥ğŒj
+        --==================================================
+        ld_expect_payment_date2 :=
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_pay_date2                             -- IN DATE   ˆ—“ú
+          , in_days                  => 0                                        -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_expect_payment_date2 IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+        --==================================================
+        -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èi‘æ2x•¥ğŒj
+        --==================================================
+        ld_bm_support_period_to_2   :=
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_close_date2                           -- IN DATE   ˆ—“ú
+          , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_bm_support_period_to_2 IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+          ld_bm_support_period_from_2 := ld_bm_support_period_to_2;
+        ELSE
+          ld_bm_support_period_from_2 := 
+            xxcok_common_pkg.get_operating_day_f(
+              id_proc_date             => ld_close_date2                           -- IN DATE   ˆ—“ú
+            , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
+            , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+            );
+          IF( ld_bm_support_period_from_2 IS NULL ) THEN
+            RAISE get_operating_day_expt;
+          END IF;
+        END IF;
+      ELSE
+        ld_bm_support_period_from_2 := NULL;
+        ld_bm_support_period_to_2   := NULL;
+      END IF;
+      --==================================================
+      -- x•¥ğŒ”»’èi‘æ2x•¥ğŒj
+      --==================================================
+      IF( gd_process_date BETWEEN ld_bm_support_period_from_2
+                              AND ld_bm_support_period_to_2  ) THEN
+        lv_fix_term_name              := i_get_cust_data_rec.term_name2;
+        ld_fix_close_date             := ld_close_date2;
+        ld_fix_expect_payment_date    := ld_pay_date2;
+        ld_fix_bm_support_period_from := ld_bm_support_period_from_2;
+        ld_fix_bm_support_period_to   := ld_bm_support_period_to_2;
+      END IF;
+      --==================================================
+      -- ‘æ3x•¥ğŒ
+      -- i‘æ1jx•¥ğŒE‘æ2x•¥ğŒ‚ÅŒvZ‘ÎÛŠO‚Ìê‡‚Ì‚İ
+      --==================================================
+      IF(     ( lv_fix_term_name IS NULL )
+          AND ( i_get_cust_data_rec.term_name3 IS NOT NULL )
+      ) THEN
+        --==================================================
+        -- ’÷‚ßx•¥“úæ“¾i‘æ3x•¥ğŒj
+        --==================================================
+        xxcok_common_pkg.get_close_date_p(
+          ov_errbuf                  => lv_errbuf                         -- OUT VARCHAR2          ƒƒO‚Éo—Í‚·‚éƒGƒ‰[EƒƒbƒZ[ƒW
+        , ov_retcode                 => lv_retcode                        -- OUT VARCHAR2          ƒŠƒ^[ƒ“ƒR[ƒh
+        , ov_errmsg                  => lv_errmsg                         -- OUT VARCHAR2          ƒ†[ƒU[‚ÉŒ©‚¹‚éƒGƒ‰[EƒƒbƒZ[ƒW
+        , id_proc_date               => ld_tmp_bm_support_period_from     -- IN  DATE DEFAULT NULL ˆ—“ú(‘ÎÛ“ú)
+        , iv_pay_cond                => i_get_cust_data_rec.term_name3    -- IN  VARCHAR2          x•¥ğŒ(IN)
+        , od_close_date              => ld_close_date3                    -- OUT DATE              ’÷‚ß“ú(OUT)
+        , od_pay_date                => ld_pay_date3                      -- OUT DATE              x•¥“ú(OUT)
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE get_close_date_expt;
+        END IF;
+        --==================================================
+        -- x•¥—\’è“úæ“¾i‘æ3x•¥ğŒj
+        --==================================================
+        ld_expect_payment_date3 :=
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_pay_date3                             -- IN DATE   ˆ—“ú
+          , in_days                  => 0                                        -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_expect_payment_date3 IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+        --==================================================
+        -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŠJnEI—¹“úŒˆ’èi‘æ3x•¥ğŒj
+        --==================================================
+        ld_bm_support_period_to_3   :=
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_close_date3                           -- IN DATE   ˆ—“ú
+          , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_bm_support_period_to_3 IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+          ld_bm_support_period_from_3 := ld_bm_support_period_to_3;
+        ELSE
+          ld_bm_support_period_from_3 := 
+            xxcok_common_pkg.get_operating_day_f(
+              id_proc_date             => ld_close_date3                           -- IN DATE   ˆ—“ú
+            , in_days                  => ABS( gn_bm_support_period_from )         -- IN NUMBER “ú”
+            , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+            );
+          IF( ld_bm_support_period_from_3 IS NULL ) THEN
+            RAISE get_operating_day_expt;
+          END IF;
+        END IF;
+      ELSE
+        ld_bm_support_period_from_3 := NULL;
+        ld_bm_support_period_to_3   := NULL;
+      END IF;
+      --==================================================
+      -- x•¥ğŒ”»’èi‘æ3x•¥ğŒj
+      --==================================================
+      IF( gd_process_date BETWEEN ld_bm_support_period_from_3
+                              AND ld_bm_support_period_to_3  ) THEN
+        lv_fix_term_name              := i_get_cust_data_rec.term_name3;
+        ld_fix_close_date             := ld_close_date3;
+        ld_fix_expect_payment_date    := ld_pay_date3;
+        ld_fix_bm_support_period_from := ld_bm_support_period_from_3;
+        ld_fix_bm_support_period_to   := ld_bm_support_period_to_3;
+      END IF;
+      --==================================================
+      -- x•¥ğŒ”»’è
+      -- ‚·‚×‚Ä‚Ìx•¥ğŒ‚ÅŒvZ‘ÎÛŠO‚Ìê‡
+      --==================================================
+      IF( lv_fix_term_name IS NULL ) THEN
+        lv_fix_term_name              := NULL;
+        ld_fix_close_date             := NULL;
+        ld_fix_expect_payment_date    := NULL;
+        ld_fix_bm_support_period_from := NULL;
+        ld_fix_bm_support_period_to   := NULL;
+        ld_amount_fix_date            := NULL;
+        RAISE skip_proc_expt;
+      END IF;
+      --==================================================
+      -- ‹àŠzŠm’è“úæ“¾
+      --==================================================
+      IF( lv_fix_term_name IS NOT NULL ) THEN
+        ld_amount_fix_date := 
+          xxcok_common_pkg.get_operating_day_f(
+            id_proc_date             => ld_fix_close_date                        -- IN DATE   ˆ—“ú
+          , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
+          , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
+          );
+        IF( ld_amount_fix_date IS NULL ) THEN
+          RAISE get_operating_day_expt;
+        END IF;
+      END IF;
     END IF;
-    IF(     ( i_get_cust_data_rec.term_name3      <> gv_instantly_term_name )
-        AND ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd       )
-    ) THEN
-      ld_bm_support_period_from_3 := ld_bm_support_period_to_3;
-    END IF;
-    --==================================================
-    -- x•¥ğŒ”»’è
-    --==================================================
 fnd_file.put_line( FND_FILE.LOG,'' || '===============================================' ); -- debug
 fnd_file.put_line( FND_FILE.LOG,'ship_cust_code            ' || 'y' || i_get_cust_data_rec.ship_cust_code || 'z' ); -- debug
 fnd_file.put_line( FND_FILE.LOG,'term_name1                ' || 'y' || i_get_cust_data_rec.term_name1     || 'z' ); -- debug
@@ -4410,71 +6058,7 @@ fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_2    ' || 'y' || ld_bm_su
 fnd_file.put_line( FND_FILE.LOG,'bm_support_period_from_3  ' || 'y' || ld_bm_support_period_from_3        || 'z' ); -- debug
 fnd_file.put_line( FND_FILE.LOG,'bm_support_period_to_3    ' || 'y' || ld_bm_support_period_to_3          || 'z' ); -- debug
 fnd_file.put_line( FND_FILE.LOG,'' || '===============================================' ); -- debug
-    IF( i_get_cust_data_rec.term_name1 = gv_instantly_term_name ) THEN
-      lv_fix_term_name              := i_get_cust_data_rec.term_name1;
-      ld_fix_close_date             := gd_process_date;
-      ld_fix_expect_payment_date    := gd_process_date;
-      ld_fix_bm_support_period_from := gd_process_date;
-      ld_fix_bm_support_period_to   := gd_process_date;
-    ELSIF( i_get_cust_data_rec.term_name2 = gv_instantly_term_name ) THEN
-      lv_fix_term_name              := i_get_cust_data_rec.term_name2;
-      ld_fix_close_date             := gd_process_date;
-      ld_fix_expect_payment_date    := gd_process_date;
-      ld_fix_bm_support_period_from := gd_process_date;
-      ld_fix_bm_support_period_to   := gd_process_date;
-    ELSIF( i_get_cust_data_rec.term_name3 = gv_instantly_term_name ) THEN
-      lv_fix_term_name              := i_get_cust_data_rec.term_name3;
-      ld_fix_close_date             := gd_process_date;
-      ld_fix_expect_payment_date    := gd_process_date;
-      ld_fix_bm_support_period_from := gd_process_date;
-      ld_fix_bm_support_period_to   := gd_process_date;
-    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_1
-                               AND ld_bm_support_period_to_1  ) THEN
-      lv_fix_term_name              := i_get_cust_data_rec.term_name1;
-      ld_fix_close_date             := ld_close_date1;
-      ld_fix_expect_payment_date    := ld_pay_date1;
-      ld_fix_bm_support_period_from := ld_bm_support_period_from_1;
-      ld_fix_bm_support_period_to   := ld_bm_support_period_to_1;
-    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_2
-                               AND ld_bm_support_period_to_2  ) THEN
-      lv_fix_term_name              := i_get_cust_data_rec.term_name2;
-      ld_fix_close_date             := ld_close_date2;
-      ld_fix_expect_payment_date    := ld_pay_date2;
-      ld_fix_bm_support_period_from := ld_bm_support_period_from_2;
-      ld_fix_bm_support_period_to   := ld_bm_support_period_to_2;
-    ELSIF( gd_process_date BETWEEN ld_bm_support_period_from_3
-                               AND ld_bm_support_period_to_3  ) THEN
-      lv_fix_term_name              := i_get_cust_data_rec.term_name3;
-      ld_fix_close_date             := ld_close_date3;
-      ld_fix_expect_payment_date    := ld_pay_date3;
-      ld_fix_bm_support_period_from := ld_bm_support_period_from_3;
-      ld_fix_bm_support_period_to   := ld_bm_support_period_to_3;
-    ELSE
-      lv_fix_term_name              := NULL;
-      ld_fix_close_date             := NULL;
-      ld_fix_expect_payment_date    := NULL;
-      ld_fix_bm_support_period_from := NULL;
-      ld_fix_bm_support_period_to   := NULL;
-      RAISE skip_proc_expt;
-    END IF;
-    --==================================================
-    -- ‹àŠzŠm’è“úæ“¾
-    --==================================================
-    IF( lv_fix_term_name = gv_instantly_term_name ) THEN
-      ld_amount_fix_date := ld_fix_close_date;
-    ELSIF( lv_fix_term_name <> gv_instantly_term_name ) THEN
-      ld_amount_fix_date := 
-        xxcok_common_pkg.get_operating_day_f(
-          id_proc_date             => ld_fix_close_date                        -- IN DATE   ˆ—“ú
-        , in_days                  => i_get_cust_data_rec.settle_amount_cycle  -- IN NUMBER “ú”
-        , in_proc_type             => cn_proc_type_before                      -- IN NUMBER ˆ—‹æ•ª
-        );
-      IF( ld_amount_fix_date IS NULL ) THEN
-        RAISE get_operating_day_expt;
-      END IF;
-    ELSE
-      ld_amount_fix_date := NULL;
-    END IF;
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
     --==================================================
     -- ‰ïŒvŠúŠÔæ“¾
     --==================================================
@@ -4839,27 +6423,36 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || 'y' || lt_
         AND hps.location_id                  = hl.location_id
         AND hcas.org_id                      = gn_org_id
         AND flv.lookup_type                  = cv_lookup_type_01
-        AND flv.lookup_code                  = gv_param_proc_type
-        AND flv.language                     = USERENV( 'LANG' )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND flv.lookup_code                  = gv_param_proc_type
+        AND flv.attribute1                   = gv_param_proc_type
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND flv.language                     = USERENV( 'LANG' )
+        AND flv.language                     = cv_lang
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
         AND gd_process_date            BETWEEN NVL( flv.start_date_active, gd_process_date )
                                            AND NVL( flv.end_date_active  , gd_process_date )
         AND flv.enabled_flag                 = cv_enable
-        AND (    ( hl.address3              LIKE flv.attribute1  || '%' AND flv.attribute1  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute2  || '%' AND flv.attribute2  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute3  || '%' AND flv.attribute3  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute4  || '%' AND flv.attribute4  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute5  || '%' AND flv.attribute5  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute6  || '%' AND flv.attribute6  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute7  || '%' AND flv.attribute7  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute8  || '%' AND flv.attribute8  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute9  || '%' AND flv.attribute9  IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute10 || '%' AND flv.attribute10 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute11 || '%' AND flv.attribute11 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute12 || '%' AND flv.attribute12 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute13 || '%' AND flv.attribute13 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute14 || '%' AND flv.attribute14 IS NOT NULL )
-              OR ( hl.address3              LIKE flv.attribute15 || '%' AND flv.attribute15 IS NOT NULL )
-            )
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR START
+--        AND (    ( hl.address3              LIKE flv.attribute1  || '%' AND flv.attribute1  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute2  || '%' AND flv.attribute2  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute3  || '%' AND flv.attribute3  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute4  || '%' AND flv.attribute4  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute5  || '%' AND flv.attribute5  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute6  || '%' AND flv.attribute6  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute7  || '%' AND flv.attribute7  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute8  || '%' AND flv.attribute8  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute9  || '%' AND flv.attribute9  IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute10 || '%' AND flv.attribute10 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute11 || '%' AND flv.attribute11 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute12 || '%' AND flv.attribute12 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute13 || '%' AND flv.attribute13 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute14 || '%' AND flv.attribute14 IS NOT NULL )
+--              OR ( hl.address3              LIKE flv.attribute15 || '%' AND flv.attribute15 IS NOT NULL )
+--            )
+        AND hl.address3                   LIKE flv.lookup_code || '%'
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi REPAIR END
         AND xcbs.closing_date                < id_target_date
         AND xcbs.cond_bm_interface_status   <> cv_xcbs_if_status_no
         AND xcbs.bm_interface_status        <> cv_xcbs_if_status_no
@@ -4872,6 +6465,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || 'y' || lt_
                            AND xbb.supplier_site_code       = xcbs.supplier_site_code
                            AND xbb.closing_date             = xcbs.closing_date
                            AND xbb.expect_payment_date      = xcbs.expect_payment_date
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi ADD START
+                           AND ROWNUM = 1
+-- 2009/07/16 Ver.2.3 [áŠQ0000756] SCS K.Yamaguchi ADD END
             )
       FOR UPDATE OF xcbs.cond_bm_support_id NOWAIT
     ;
