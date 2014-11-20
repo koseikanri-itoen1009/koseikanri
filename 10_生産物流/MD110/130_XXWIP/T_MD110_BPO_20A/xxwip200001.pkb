@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.14
+ * Version                : 1.15
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/03/19   1.12  H.Itou           本番障害#1332対応（他倉庫ロットの元指示総数が0になる不具合修正）
  *  2009/03/25   1.13  H.Itou           本番障害#1312対応（相手先在庫管理倉庫は対象外とする）
  *  2009/03/30   1.14  H.Itou           本番障害#1346対応（営業単位対応）
+ *  2011/12/06   1.15  Y.Horikawa       E_本稼動_07421対応（パフォーマンス改善）
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -180,7 +181,11 @@ AS
       --==========================
       wk_sql1 := NULL;
       wk_sql2 := NULL;
-      wk_sql1 := wk_sql1 || 'SELECT  enable_lot.inventory_location_id      storehouse_id            '; -- 保管倉庫ID
+-- 2011/12/06 Mod Start Ver.1.15
+--      wk_sql1 := wk_sql1 || 'SELECT  enable_lot.inventory_location_id      storehouse_id            '; -- 保管倉庫ID
+      wk_sql1 := wk_sql1 || 'SELECT  /*+ leading(enable_lot) index(ilm ic_lots_mst_pk) use_nl(enable_lot ilm) */ ';
+      wk_sql1 := wk_sql1 || '        enable_lot.inventory_location_id      storehouse_id            '; -- 保管倉庫ID
+-- 2011/12/06 Mod End Ver.1.15
       wk_sql1 := wk_sql1 || '      , enable_lot.storehouse_code            storehouse_code          '; -- 保管倉庫(コード)
       wk_sql1 := wk_sql1 || '      , enable_lot.description                storehouse_name          '; -- 保管倉庫(名称)
       wk_sql1 := wk_sql1 || '      , ' || lt_batch_id || '                 batch_id                 '; -- バッチID
@@ -751,7 +756,11 @@ AS
         wk_sql2 := wk_sql2 || '       AND     mld.document_type_code      = ''20'' ';
         wk_sql2 := wk_sql2 || '       AND     mld.record_type_code        = ''20'') ';
         wk_sql2 := wk_sql2 || '       + ';
-        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+        wk_sql2 := wk_sql2 || '      (SELECT  /*+ leading(grb) use_nl(grb gbh gmd mld itp) index(gmd gme_material_details_n1) index(mld xxinv_mld_n03) index(itp ic_tran_pndi3) */ ';
+        wk_sql2 := wk_sql2 || '               NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql2 := wk_sql2 || '       FROM    gme_batch_header      gbh ';
         wk_sql2 := wk_sql2 || '              ,gme_material_details  gmd ';
         wk_sql2 := wk_sql2 || '              ,ic_tran_pnd           itp ';
@@ -855,7 +864,11 @@ AS
         wk_sql2 := wk_sql2 || '       AND     otta.attribute1           = ''2'' ';
         wk_sql2 := wk_sql2 || '       AND     otta.transaction_type_id  = oha.order_type_id) ';
         wk_sql2 := wk_sql2 || '       + ';
-        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+        wk_sql2 := wk_sql2 || '      (SELECT  /*+ leading(grb) use_nl(grb gbh gmd mld itp) index(gmd gme_material_details_n1) index(mld xxinv_mld_n03) index(itp ic_tran_pndi3) */ ';
+        wk_sql2 := wk_sql2 || '               NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql2 := wk_sql2 || '       FROM    gme_batch_header      gbh ';
         wk_sql2 := wk_sql2 || '              ,gme_material_details  gmd ';
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details mld ';
@@ -952,7 +965,11 @@ AS
         wk_sql2 := wk_sql2 || '       AND     mld.document_type_code      = ''20'' ';
         wk_sql2 := wk_sql2 || '       AND     mld.record_type_code        = ''20'') ';
         wk_sql2 := wk_sql2 || '       + ';
-        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+        wk_sql2 := wk_sql2 || '      (SELECT  /*+ leading(grb) use_nl(grb gbh gmd mld itp) index(gmd gme_material_details_n1) index(mld xxinv_mld_n03) index(itp ic_tran_pndi3) */ ';
+        wk_sql2 := wk_sql2 || '               NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql2 := wk_sql2 || '       FROM    gme_batch_header      gbh ';
         wk_sql2 := wk_sql2 || '              ,gme_material_details  gmd ';
         wk_sql2 := wk_sql2 || '              ,ic_tran_pnd           itp ';
@@ -1054,7 +1071,11 @@ AS
         wk_sql2 := wk_sql2 || '       AND     otta.attribute1           = ''2'' ';
         wk_sql2 := wk_sql2 || '       AND     otta.transaction_type_id  = oha.order_type_id) ';
         wk_sql2 := wk_sql2 || '       + ';
-        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql2 := wk_sql2 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) ';
+        wk_sql2 := wk_sql2 || '      (SELECT  /*+ leading(grb) use_nl(grb gbh gmd mld itp) index(gmd gme_material_details_n1) index(mld xxinv_mld_n03) index(itp ic_tran_pndi3) */ ';
+        wk_sql2 := wk_sql2 || '               NVL(SUM(mld.actual_quantity), 0) ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql2 := wk_sql2 || '       FROM    gme_batch_header      gbh ';
         wk_sql2 := wk_sql2 || '              ,gme_material_details  gmd ';
         wk_sql2 := wk_sql2 || '              ,xxinv_mov_lot_details mld ';
@@ -1212,7 +1233,11 @@ AS
         wk_sql3 := wk_sql3 || '                 AND    mil.organization_id       = iwm.mtl_organization_id ';
         wk_sql3 := wk_sql3 || '                 AND    ili.loct_onhand           > 0 ';
         wk_sql3 := wk_sql3 || '                 UNION ';
-        wk_sql3 := wk_sql3 || '                 SELECT mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql3 := wk_sql3 || '                 SELECT mrih.ship_to_locat_id       location_id ';
+        wk_sql3 := wk_sql3 || '                 SELECT /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril) */ ';
+        wk_sql3 := wk_sql3 || '                        mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql3 := wk_sql3 || '                      , mril.item_id                item_id ';
         wk_sql3 := wk_sql3 || '                      , 0                           lot_id ';
         wk_sql3 := wk_sql3 || '                 FROM   xxinv_mov_req_instr_headers mrih ';
@@ -1223,7 +1248,11 @@ AS
         wk_sql3 := wk_sql3 || '                 AND    mrih.comp_actual_flg    = ''N'' ';
         wk_sql3 := wk_sql3 || '                 AND    mril.delete_flg         = ''N'' ';
         wk_sql3 := wk_sql3 || '                 UNION ';
-        wk_sql3 := wk_sql3 || '                 SELECT mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql3 := wk_sql3 || '                 SELECT mrih.shipped_locat_id       location_id ';
+        wk_sql3 := wk_sql3 || '                 SELECT /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril) */ ';
+        wk_sql3 := wk_sql3 || '                        mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql3 := wk_sql3 || '                      , mril.item_id                item_id ';
         wk_sql3 := wk_sql3 || '                      , 0                           lot_id ';
         wk_sql3 := wk_sql3 || '                 FROM   xxinv_mov_req_instr_headers mrih ';
@@ -1234,7 +1263,10 @@ AS
         wk_sql3 := wk_sql3 || '                 AND    mrih.comp_actual_flg    = ''N'' ';
         wk_sql3 := wk_sql3 || '                 AND    mril.delete_flg         = ''N'' ';
         wk_sql3 := wk_sql3 || '                 UNION ';
-        wk_sql3 := wk_sql3 || '                 SELECT /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id  location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql3 := wk_sql3 || '                 SELECT /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id  location_id ';
+        wk_sql3 := wk_sql3 || '                 SELECT oha.deliver_from_id  location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql3 := wk_sql3 || '                      , ' || lt_item_id || ' item_id ';
         wk_sql3 := wk_sql3 || '                      , 0                    lot_id ';
         wk_sql3 := wk_sql3 || '                 FROM   xxwsh_order_headers_all    oha ';
@@ -1252,7 +1284,10 @@ AS
         wk_sql3 := wk_sql3 || '                 AND    oha.latest_external_flag       = ''Y'' ';
         wk_sql3 := wk_sql3 || '                 AND    ola.delete_flag                = ''N'' ';
         wk_sql3 := wk_sql3 || '                 UNION ';
-        wk_sql3 := wk_sql3 || '                 SELECT /* index(MLD XXINV_MLD_N99) */ oha.deliver_from_id  location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql3 := wk_sql3 || '                 SELECT /* index(MLD XXINV_MLD_N99) */ oha.deliver_from_id  location_id ';
+        wk_sql3 := wk_sql3 || '                 SELECT oha.deliver_from_id  location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql3 := wk_sql3 || '                      , ' || lt_item_id || ' item_id ';
         wk_sql3 := wk_sql3 || '                      , 0                    lot_id ';
         wk_sql3 := wk_sql3 || '                 FROM   xxwsh_order_headers_all    oha ';
@@ -1286,7 +1321,11 @@ AS
         wk_sql3 := wk_sql3 || '                 AND    pha.attribute1   IN (''20'',''25'') ';
         wk_sql3 := wk_sql3 || '                 AND    pha.attribute4  <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'')  ';
         wk_sql3 := wk_sql3 || '                 UNION ';
-        wk_sql3 := wk_sql3 || '                 SELECT mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql3 := wk_sql3 || '                 SELECT mrih.ship_to_locat_id       location_id ';
+        wk_sql3 := wk_sql3 || '                 SELECT /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril) */ ';
+        wk_sql3 := wk_sql3 || '                        mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql3 := wk_sql3 || '                      , mril.item_id                item_id ';
         wk_sql3 := wk_sql3 || '                      , 0                           lot_id ';
         wk_sql3 := wk_sql3 || '                 FROM   xxinv_mov_req_instr_headers mrih ';
@@ -1298,7 +1337,11 @@ AS
         wk_sql3 := wk_sql3 || '                 AND    mril.delete_flg             = ''N'' ';
         wk_sql3 := wk_sql3 || '                 AND    mril.item_id                = ' || lt_item_id;
         wk_sql3 := wk_sql3 || '                 UNION ';
-        wk_sql3 := wk_sql3 || '                 SELECT mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql3 := wk_sql3 || '                 SELECT mrih.shipped_locat_id       location_id ';
+        wk_sql3 := wk_sql3 || '                 SELECT /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril) */ ';
+        wk_sql3 := wk_sql3 || '                        mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql3 := wk_sql3 || '                      , mril.item_id                item_id ';
         wk_sql3 := wk_sql3 || '                      , 0                           lot_id ';
         wk_sql3 := wk_sql3 || '                 FROM   xxinv_mov_req_instr_headers mrih ';
@@ -1381,7 +1424,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND   mil.organization_id    = iwm.mtl_organization_id ';
         wk_sql4 := wk_sql4 || '                 AND   ili.loct_onhand        > 0 ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mrih.ship_to_locat_id       location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril mld) */ ';
+        wk_sql4 := wk_sql4 || '                         mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                 item_id     ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                  lot_id      ';
         wk_sql4 := wk_sql4 || '                 FROM    xxinv_mov_req_instr_headers mrih  ';
@@ -1396,7 +1443,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     mld.document_type_code = ''20'' ';
         wk_sql4 := wk_sql4 || '                 AND     mld.record_type_code   = ''30'' ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mrih.shipped_locat_id       location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril mld) */ ';
+        wk_sql4 := wk_sql4 || '                         mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                 item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                  lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxinv_mov_req_instr_headers mrih  ';
@@ -1411,7 +1462,10 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     mld.document_type_code = ''20'' ';
         wk_sql4 := wk_sql4 || '                 AND     mld.record_type_code   = ''20'' ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id        location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id        location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  oha.deliver_from_id        location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                item_id     ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                 lot_id      ';
         wk_sql4 := wk_sql4 || '                 FROM    xxwsh_order_headers_all    oha  ';
@@ -1433,7 +1487,10 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     otta.attribute1          IN (''1'', ''3'') ';
         wk_sql4 := wk_sql4 || '                 AND     otta.transaction_type_id = oha.order_type_id ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id        location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id        location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  oha.deliver_from_id        location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                item_id     ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                 lot_id      ';
         wk_sql4 := wk_sql4 || '                 FROM    xxwsh_order_headers_all    oha   ';
@@ -1455,7 +1512,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     otta.attribute1          = ''2'' ';
         wk_sql4 := wk_sql4 || '                 AND     otta.transaction_type_id = oha.order_type_id ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mil.inventory_location_id  location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mil.inventory_location_id  location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(pha) index(pha po_pha_n03) use_nl(pha pla ilm mil) */ ';
+        wk_sql4 := wk_sql4 || '                         mil.inventory_location_id  location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , ilm.item_id                item_id     ';
         wk_sql4 := wk_sql4 || '                       , ilm.lot_id                 lot_id      ';
         wk_sql4 := wk_sql4 || '                 FROM    po_lines_all               pla  ';
@@ -1475,7 +1536,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute5    = mil.segment1 ';
         wk_sql4 := wk_sql4 || '                 AND     pha.attribute4   <= TO_CHAR(TO_DATE(''' || ld_max_date || '''), ''YYYY/MM/DD'') ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mrih.ship_to_locat_id       location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril mld) */ ';
+        wk_sql4 := wk_sql4 || '                         mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                 item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                  lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxinv_mov_req_instr_headers mrih  ';
@@ -1491,7 +1556,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     mld.document_type_code      = ''20'' ';
         wk_sql4 := wk_sql4 || '                 AND     mld.record_type_code        = ''10'' ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mrih.ship_to_locat_id       location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril mld) */ ';
+        wk_sql4 := wk_sql4 || '                         mrih.ship_to_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                 item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                  lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxinv_mov_req_instr_headers mrih  ';
@@ -1510,7 +1579,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     mld.document_type_code      = ''20'' ';
         wk_sql4 := wk_sql4 || '                 AND     mld.record_type_code        = ''20'' ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  /*+ use_nl(gmd mld gbh grb itp mil) */ mil.inventory_location_id location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  /*+ use_nl(gmd mld gbh grb itp mil) */ mil.inventory_location_id location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(gmd gbh grb mil mld itp) use_nl(grb mil) index(itp ic_tran_pndi3) */ ';
+        wk_sql4 := wk_sql4 || '                         mil.inventory_location_id location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , gmd.item_id                item_id ';
         wk_sql4 := wk_sql4 || '                       , itp.lot_id                 lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    gme_batch_header           gbh  ';
@@ -1537,7 +1610,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     gbh.routing_id         = grb.routing_id ';
         wk_sql4 := wk_sql4 || '                 AND     grb.attribute9         = mil.segment1  ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mrih.shipped_locat_id       location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril mld) */ ';
+        wk_sql4 := wk_sql4 || '                         mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                 item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                  lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxinv_mov_req_instr_headers mrih  ';
@@ -1553,7 +1630,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     mld.document_type_code   = ''20'' ';
         wk_sql4 := wk_sql4 || '                 AND     mld.record_type_code     = ''10'' ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  mrih.shipped_locat_id       location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(mrih) index(mrih xxinv_mrih_sales_n01) use_nl(mril mld) */ ';
+        wk_sql4 := wk_sql4 || '                         mrih.shipped_locat_id       location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                 item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                  lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxinv_mov_req_instr_headers mrih  ';
@@ -1569,7 +1650,10 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     mld.document_type_code   = ''20'' ';
         wk_sql4 := wk_sql4 || '                 AND     mld.record_type_code     = ''30'' ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id        location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id        location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  oha.deliver_from_id        location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id                item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                 lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxwsh_order_headers_all    oha  ';
@@ -1592,7 +1676,10 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     otta.attribute1          = ''1'' ';
         wk_sql4 := wk_sql4 || '                 AND     otta.transaction_type_id = oha.order_type_id ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id      location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  /*+ index(MLD XXINV_MLD_N99) */ oha.deliver_from_id      location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  oha.deliver_from_id      location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , mld.item_id              item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id               lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    xxwsh_order_headers_all  oha  ';
@@ -1615,7 +1702,11 @@ AS
         wk_sql4 := wk_sql4 || '                 AND     otta.attribute1           = ''2'' ';
         wk_sql4 := wk_sql4 || '                 AND     otta.transaction_type_id  = oha.order_type_id ';
         wk_sql4 := wk_sql4 || '                 UNION ';
-        wk_sql4 := wk_sql4 || '                 SELECT  /*+ use_nl(gmd mld gbh grb itp mil) */ mil.inventory_location_id  location_id ';
+-- 2011/12/06 Mod Start Ver.1.15
+--        wk_sql4 := wk_sql4 || '                 SELECT  /*+ use_nl(gmd mld gbh grb itp mil) */ mil.inventory_location_id  location_id ';
+        wk_sql4 := wk_sql4 || '                 SELECT  /*+ leading(gmd gbh grb mil mld itp) use_nl(grb mil) index(itp ic_tran_pndi3) */ ';
+        wk_sql4 := wk_sql4 || '                         mil.inventory_location_id  location_id ';
+-- 2011/12/06 Mod End Ver.1.15
         wk_sql4 := wk_sql4 || '                       , gmd.item_id                item_id ';
         wk_sql4 := wk_sql4 || '                       , mld.lot_id                 lot_id ';
         wk_sql4 := wk_sql4 || '                 FROM    gme_batch_header           gbh  ';
