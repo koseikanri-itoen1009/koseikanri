@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_rep_quote_list
  * Description     : 見積帳票ワークテーブル
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2009/05/01    1.2  K.Satomura    システムテスト障害対応(T1_0889)
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_quote_list
 (
@@ -35,7 +36,10 @@ CREATE TABLE xxcso.xxcso_rep_quote_list
   item_name                       VARCHAR2(20),
   jan_code                        VARCHAR2(240),
   standard                        VARCHAR2(10),
-  inc_num                         VARCHAR2(5),
+  /* 2009.05.01 K.Satomura T1_0889対応 START */
+  --inc_num                         VARCHAR2(5),
+  inc_num                         VARCHAR2(7),
+  /* 2009.05.01 K.Satomura T1_0889対応 END */
   sticer_price                    VARCHAR2(240),
   quote_div                       VARCHAR2(10),
   quotation_price                 NUMBER(7,2),
