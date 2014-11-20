@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_EDI_INVENTORY
  * Description : EDI在庫情報テーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,7 +12,7 @@
  *  2009/01/30    1.0   SCS K.Watanabe   新規作成
  *  2009/02/17    1.1   SCS T.Ishiwata   単位コード(EBS)追加
  *  2009/07/02    1.2   SCS K.Kiriu      [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]対応
- *
+ *  2010/03/09    1.3   SCS T.Nakano     [E_本稼動_01695]対応
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_EDI_INVENTORY
 (
@@ -245,6 +245,9 @@ CREATE TABLE XXCOS.XXCOS_EDI_INVENTORY
   ,PROGRAM_APPLICATION_ID            NUMBER(15)           NULL                   --  コンカレント・プログラム・アプリケーションID
   ,PROGRAM_ID                        NUMBER(15)           NULL                   --  コンカレント・プログラムID
   ,PROGRAM_UPDATE_DATE               DATE                 NULL                   --  プログラム更新日
+/* 2010/03/09 Ver1.3 UPD Start */
+  ,EDI_RECEIVED_DATE                 DATE                 NULL                   --  EDI受信日
+/* 2010/03/09 Ver1.3 UPD End */
   ,CONSTRAINT XXCOS_EDI_INVENTORY_PK  PRIMARY KEY ( STK_INFO_ID )
    USING INDEX TABLESPACE xxidx2
 );
@@ -475,5 +478,8 @@ COMMENT ON COLUMN XXCOS.XXCOS_EDI_INVENTORY.REQUEST_ID                     IS  '
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_INVENTORY.PROGRAM_APPLICATION_ID         IS  'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_INVENTORY.PROGRAM_ID                     IS  'コンカレント・プログラムID';
 COMMENT ON COLUMN XXCOS.XXCOS_EDI_INVENTORY.PROGRAM_UPDATE_DATE            IS  'プログラム更新日';
+/* 2010/03/09 Ver1.3 UPD Start */
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_INVENTORY.EDI_RECEIVED_DATE              IS  'EDI受信日';
+/* 2010/03/09 Ver1.3 UPD End */
 --
 COMMENT ON TABLE  XXCOS.XXCOS_EDI_INVENTORY                                IS  'EDI在庫情報テーブル';

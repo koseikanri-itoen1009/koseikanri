@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,7 +47,7 @@ AS
  *  2009/09/15    1.12  M.Sano           [0001211] レビュー指摘対応
  *  2010/01/04    1.13  M.Sano           [E_本稼動_00738] 受注連携済フラグ「S(対象外)」追加に伴う修正
  *  2010/01/06    1.14  N.Maeda          [E_本稼動_00552] 取引先名(漢字)のスペース削除
- *
+ *  2010/03/10    1.15  T.Nakano         [E_本稼動_01695] EDI取込日の変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2778,6 +2778,9 @@ AS
                     ,xeh.result_delivery_date           xeh_result_delivery_date   -- 実納品日
                     ,xeh.shop_delivery_date             xeh_shop_delivery_date     -- 店舗納品日
                     ,xeh.data_creation_date_edi_data    xeh_data_creat_date_edi_d       -- データ作成日（ＥＤＩデータ中）
+-- ************ 2010/03/10 T.Nakano 1.15 ADD START ***************** --
+                    ,xeh.edi_received_date              xeh_edi_received_date           -- EDI受信日
+-- ************ 2010/03/10 T.Nakano 1.15 ADD START ***************** --
                     ,xeh.data_creation_time_edi_data    xeh_data_creation_time_edi_d    -- データ作成時刻（ＥＤＩデータ中）
                     ,xeh.invoice_class                  xeh_invoice_class               -- 伝票区分
                     ,xeh.small_classification_code      xeh_small_classification_code   -- 小分類コード
@@ -3269,6 +3272,9 @@ AS
                     ,xeh.result_delivery_date           xeh_result_delivery_date   -- 実納品日
                     ,xeh.shop_delivery_date             xeh_shop_delivery_date     -- 店舗納品日
                     ,xeh.data_creation_date_edi_data    xeh_data_creat_date_edi_d    -- データ作成日（ＥＤＩデータ中）
+-- ************ 2010/03/10 T.Nakano 1.15 ADD START ***************** --
+                    ,xeh.edi_received_date              xeh_edi_received_date        -- EDI受信日
+-- ************ 2010/03/10 T.Nakano 1.15 ADD START ***************** --
                     ,xeh.data_creation_time_edi_data    xeh_data_creation_time_edi_d -- データ作成時刻（ＥＤＩデータ中）
                     ,xeh.invoice_class                  xeh_invoice_class            -- 伝票区分
                     ,xeh.small_classification_code      xeh_small_classification_code   -- 小分類コード
@@ -3746,11 +3752,18 @@ AS
                         ,TRUNC(xeh_l.xeh_data_creat_date_edi_d))))
              BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
              AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+-- ************ 2010/03/10 T.Nakano 1.15 MOD START ***************** --
+--      AND (
+--             i_input_rec.edi_input_date IS NULL                                                               --EDI取込日
+--        OR   i_input_rec.edi_input_date IS NOT NULL
+--        AND  TRUNC(xeh_l.xeh_data_creat_date_edi_d) = TO_DATE(i_input_rec.edi_input_date,cv_date_fmt)
+--        )
       AND (
-             i_input_rec.edi_input_date IS NULL                                                               --EDI取込日
-        OR   i_input_rec.edi_input_date IS NOT NULL
-        AND  TRUNC(xeh_l.xeh_data_creat_date_edi_d) = TO_DATE(i_input_rec.edi_input_date,cv_date_fmt)
+            (i_input_rec.edi_input_date IS NULL)                                                              --EDI取込日
+        OR  (i_input_rec.edi_input_date IS NOT NULL
+          AND  TRUNC(xeh_l.xeh_edi_received_date) = TO_DATE(i_input_rec.edi_input_date,cv_date_fmt))
         )
+-- ************ 2010/03/10 T.Nakano 1.15 MOD END ***************** --
       AND    xxcos_common2_pkg.get_deliv_slip_flag(                                                           --納品書発行フラグ取得関数
                i_input_rec.publish_flag_seq                                                          --納品書発行フラグ順番
               ,DECODE(i_input_rec.chain_code                                                         --入力パラメータ.チェーン店コード

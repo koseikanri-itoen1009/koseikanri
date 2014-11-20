@@ -7,7 +7,7 @@ AS
  * Description      : 帳票発行画面(アドオン)で指定した条件を元にEDI経由で取り込んだ在庫情報を、
  *                    帳票サーバ向けにファイルを出力します。
  * MD.050           : 在庫情報データ作成 MD050_COS_014_A05
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *  2009/04/02    1.7   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
  *  2009/05/27    1.8   K.Tsuboi         [T1_1222] 単位の取得元変更
  *  2009/06/18    1.9   T.Kitajima       [T1_1158] 店舗コードNULL対応
- *
+ *  2010/03/09    1.10  T.Nakano         [E_本稼動_01695] EDI取込日の変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1951,6 +1951,9 @@ AS
                       ,xei.center_shipping_date                                center_shipping_date           --センター出庫日
                       ,xei.center_result_shipping_date                         center_result_shipping_date    --センター実出庫日
                       ,xei.data_creation_date_edi_data                         data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
+----******************************************* 2010/03/09 1.10 T.Nakano UPD START *************************************
+                      ,xei.edi_received_date                                   edi_received_date              --EDI受信日
+----******************************************* 2010/03/09 1.10 T.Nakano UPD END *************************************
                       ,xei.data_creation_time_edi_data                         data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
                       ,xei.stk_date                                            stk_date                       --在庫日付
                       ,xei.offer_vendor_code_class                             offer_vendor_code_class        --提供企業取引先コード区分
@@ -2177,6 +2180,9 @@ AS
                       ,xei.center_shipping_date                                center_shipping_date           --センター出庫日
                       ,xei.center_result_shipping_date                         center_result_shipping_date    --センター実出庫日
                       ,xei.data_creation_date_edi_data                         data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
+----******************************************* 2010/03/09 1.10 T.Nakano UPD START *************************************
+                      ,xei.edi_received_date                                   edi_received_date              --EDI受信日
+----******************************************* 2010/03/09 1.10 T.Nakano UPD END *************************************
                       ,xei.data_creation_time_edi_data                         data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
                       ,xei.stk_date                                            stk_date                       --在庫日付
                       ,xei.offer_vendor_code_class                             offer_vendor_code_class        --提供企業取引先コード区分
@@ -2393,7 +2399,10 @@ AS
                 i_input_rec.store_code           IS  NULL
               )
              )
-         AND TRUNC(xei.data_creation_date_edi_data)                                                           --データ作成日
+----******************************************* 2010/03/09 1.10 T.Nakano MOD START *************************************
+--         AND TRUNC(xei.data_creation_date_edi_data)                                                           --データ作成日
+         AND TRUNC(xei.edi_received_date)                                                                     --EDI受信日
+----******************************************* 2010/03/09 1.10 T.Nakano MOD END *************************************
                BETWEEN TO_DATE(i_input_rec.edi_date_from, cv_date_fmt )
                AND     TO_DATE(i_input_rec.edi_date_to  , cv_date_fmt )
          AND (     i_input_rec.item_class        != cv_prod_class_all                                         --商品区分

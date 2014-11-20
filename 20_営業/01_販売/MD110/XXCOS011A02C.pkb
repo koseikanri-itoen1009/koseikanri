@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI在庫情報ワークテーブルに取込まれたEDI在庫情報データを
  *                     EDI在庫情報テーブルにそれぞれ登録します。
  * MD.050           : 在庫情報データ取込（MD050_COS_011_A02）
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -47,7 +47,7 @@ AS
  *  2009/09/16    1.6   M.Sano          [0001156]顧客品目・顧客品目相互参照の有効フラグの参照
  *                                      [0001289]顧客導出エラー、品目導出エラー時の取得項目修正
  *  2009/09/24    1.6   M.Sano          [0001289]レビュー指摘対応 (「顧客コード」の妥当性チェックエラー処理修正)
- *
+ *  2010/03/04    1.7   T.Nakano        [E_本稼動_01695]EDI受信日の追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -698,7 +698,11 @@ AS
                 -- チェーン店固有エリア（フッター）    
     chain_peculiar_area_footer         xxcos_edi_inventory_work.chain_peculiar_area_footer%TYPE,
                 -- ステータス                          
-    err_status                         xxcos_edi_inventory_work.err_status%TYPE
+    err_status                         xxcos_edi_inventory_work.err_status%TYPE,
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+                -- EDI受信日
+    creation_date                      xxcos_edi_inventory_work.creation_date%TYPE
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
   );
   --
   -- ===============================
@@ -1220,7 +1224,11 @@ AS
                 -- 品目コード
     item_code                          xxcos_edi_inventory.item_code%TYPE,
                 -- 単位コード（EBS）
-    ebs_uom_code                       xxcos_edi_inventory.ebs_uom_code%TYPE
+    ebs_uom_code                       xxcos_edi_inventory.ebs_uom_code%TYPE,
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+                -- EDI受信日
+    edi_received_date                  xxcos_edi_inventory.edi_received_date%TYPE
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
   );
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -2504,6 +2512,10 @@ AS
                 -- チェーン店固有エリア（フッター）
     gt_req_edi_inv_data(in_line_cnt).chain_peculiar_area_footer     
                                         :=  gt_ediinv_work_data(in_line_cnt).chain_peculiar_area_footer;
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+    gt_req_edi_inv_data(in_line_cnt).edi_received_date     
+                                        :=  gt_ediinv_work_data(in_line_cnt).creation_date;
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
 --
     -- ***************************************
     -- ***        実処理の記述             ***
@@ -3567,7 +3579,10 @@ AS
           request_id,
           program_application_id,
           program_id,
-          program_update_date
+          program_update_date,
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+          edi_received_date
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
         )
       VALUES
         (
@@ -3796,7 +3811,10 @@ AS
           cn_request_id,                      -- 要求ID
           cn_program_application_id,          -- コンカレント・プログラム・アプリケーションID
           cn_program_id,                      -- コンカレント・プログラムID
-          cd_program_update_date              -- プログラム更新日
+          cd_program_update_date,             -- プログラム更新日
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+          gt_req_edi_inv_data(ln_no).edi_received_date                 -- EDI受信日
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
         );
 --
     END LOOP  xxcos_edi_inventory_insert;
@@ -4406,7 +4424,10 @@ AS
       ediinvwk.rebate_amt_sum                 rebate_amt_sum,                 -- 割戻し金額合計
       ediinvwk.collect_bottle_amt_sum         collect_bottle_amt_sum,         -- 回収容器金額合計
       ediinvwk.chain_peculiar_area_footer     chain_peculiar_area_footer,     -- ﾁｪｰﾝ店固有ｴﾘｱ(ﾌｯﾀ)
-      ediinvwk.err_status                     err_status                      -- ｽﾃｰﾀｽ
+      ediinvwk.err_status                     err_status,                     -- ｽﾃｰﾀｽ
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakanao Add Start
+      ediinvwk.creation_date                  creation_date                   -- 作成日
+-- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakanao Add End
     FROM    xxcos_edi_inventory_work    ediinvwk                            -- EDI在庫情報ワークテーブル
     WHERE   ediinvwk.if_file_name       =    lv_cur_param3                  -- インタフェースファイル名
       AND   ediinvwk.err_status         =    lv_cur_param1                  -- ステータス
