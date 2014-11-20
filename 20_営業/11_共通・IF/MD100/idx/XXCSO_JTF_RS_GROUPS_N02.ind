@@ -1,0 +1,1 @@
+CREATE INDEX jtf.xxcso_jtf_rs_groups_n02 ON jtf_rs_groups_b (UPPER(attribute1)) TABLESPACE apps_ts_tx_idx;

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoRscRtnBaseLovVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019009j.lov.server.XxcsoRscRtnBaseLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019009j.lov.server.XxcsoRscRtnBaseLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xcav.account_number base_code,
+       xcav.party_name base_name,
+       'Y' base_code_flag
+FROM   xxcso_cust_accounts_v xcav
+WHERE  xcav.customer_class_code = '1'
+AND    xcav.account_number = (SELECT xxcso_util_common_pkg.get_rs_base_code(xrv.resource_id, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                              FROM   xxcso_resources_v2 xrv
+                              WHERE  xrv.user_id = fnd_global.user_id
+                             )
+UNION
+SELECT xcav.account_number base_code,
+       xcav.party_name base_name,
+       'Y' base_code_flag
+FROM   xxcso_cust_accounts_v xcav
+WHERE  xcav.customer_class_code = '1'
+AND    xcav.management_base_code = (SELECT xxcso_util_common_pkg.get_rs_base_code(xrv.resource_id, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) bs_code
+                                    FROM   xxcso_resources_v2 xrv
+                                    WHERE  xrv.user_id = fnd_global.user_id
+                                   )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCodeFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="BASE_CODE_FLAG"
+      Expression="BASE_CODE_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>
