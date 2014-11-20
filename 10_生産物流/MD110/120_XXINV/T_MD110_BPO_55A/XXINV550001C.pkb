@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.43
+ * Version          : 1.44
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2008/02/10    1.41  Yukari Kanami      本番指摘 #1168対応
  *  2009/02/13    1.42  Yasuhisa Yamamoto  本番指摘 #1186対応
  *  2009/08/05    1.43  Masayuki Nomura    本番指摘 #1592対応
+ *  2009/11/06    1.44  Yukiko Fukami      本番指摘 #1685対応
  *
  *****************************************************************************************/
 --
@@ -1035,7 +1036,10 @@ AS
                                  SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
                                  FROM   ic_jrnl_mst ijm_x988
                                        ,xxpo_namaha_prod_txns  xnpt_adji
-                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+-- 2009/11/06 v1.44 UPDATE START
+--                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.txns_id
+-- 2009/11/06 v1.44 UPDATE END
                                  AND    itc_adji.reason_code = gc_reason_adji_xnpt
                                  AND    ijm_adji.attribute1  = ijm_x988.attribute1
                                  ))
@@ -1091,7 +1095,10 @@ AS
                                  SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
                                  FROM   ic_jrnl_mst ijm_x988
                                        ,xxpo_namaha_prod_txns  xnpt_adji
-                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+-- 2009/11/06 v1.44 UPDATE START
+--                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.txns_id
+-- 2009/11/06 v1.44 UPDATE END
                                  AND    itc_adji.reason_code = gc_reason_adji_xnpt
                                  AND    ijm_adji.attribute1  = ijm_x988.attribute1
                                  ))
@@ -1644,7 +1651,10 @@ AS
                                  SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
                                  FROM   ic_jrnl_mst ijm_x988
                                        ,xxpo_namaha_prod_txns  xnpt_adji
-                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+-- 2009/11/06 v1.44 UPDATE START
+--                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.txns_id
+-- 2009/11/06 v1.44 UPDATE END
                                  AND    itc_adji.reason_code = gc_reason_adji_xnpt
                                  AND    ijm_adji.attribute1  = ijm_x988.attribute1
                                  ))
@@ -1700,7 +1710,10 @@ AS
                                  SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
                                  FROM   ic_jrnl_mst ijm_x988
                                        ,xxpo_namaha_prod_txns  xnpt_adji
-                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+-- 2009/11/06 v1.44 UPDATE START
+--                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.txns_id
+-- 2009/11/06 v1.44 UPDATE END
                                  AND    itc_adji.reason_code = gc_reason_adji_xnpt
                                  AND    ijm_adji.attribute1  = ijm_x988.attribute1
                                  ))
