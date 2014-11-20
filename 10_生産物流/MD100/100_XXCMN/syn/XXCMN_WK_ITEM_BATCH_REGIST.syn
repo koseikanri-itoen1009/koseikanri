@@ -1,0 +1,15 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCMN_WK_ITEM_BATCH_REGIST
+ * Description : 品目マスタ一括アップロードワーク(シノニム)
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/12/10    1.0   K.Boku           [E_本稼動_08443]新規作成
+ *
+ ****************************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxcmn_wk_item_batch_regist FOR xxcmn.xxcmn_wk_item_batch_regist;
