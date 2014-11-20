@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/01/23    1.10  Oracle 椎名 昭圭 本番#1047対応
  *  2009/01/27    1.11  Oracle 椎名 昭圭 本番#819対応
  *  2009/01/28    1.12  Oracle 椎名 昭圭 本番#1047対応(再)
+ *  2009/02/10    1.13  Oracle 椎名 昭圭 本番#1127対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2933,6 +2934,9 @@ AS
         FROM   po_lines_all pla
         WHERE  NVL(pla.attribute13,gv_flg_off) <> gv_flg_on
         AND    pla.po_header_id = pha.po_header_id
+-- 2009/02/10 v1.13 ADD START
+        AND    pla.cancel_flag <> gv_flg_on
+-- 2009/02/10 v1.13 ADD END
       )
       AND    pha.attribute1 < gv_add_status_num_zmi;
 --
