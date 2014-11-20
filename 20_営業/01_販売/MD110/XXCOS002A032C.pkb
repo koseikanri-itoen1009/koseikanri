@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2010/01/19    1.12  T.Nakano         [E_本稼動_01039]対応 新規ポイント情報追加
  *  2010/04/16    1.13  D.Abe            [E_本稼動_02270]対応 拠点計顧客軒数を追加
  *  2010/05/18    1.14  D.Abe            [E_本稼動_02767]対応 PT対応（xxcos_rs_info2_vを変更）
+ *  2010/12/14    1.15  K.Kiriu          [E_本稼動_05671]対応 PT対応（有効訪問ビューの関数を外だしにする）
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -186,6 +187,12 @@ AS
   ct_msg_dummy_sales_group      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10573';
   --  XXCOS:営業成績集約情報保存期間
   ct_msg_002a03_keeping_period  CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10574';
+/* 2010/12/14 Ver1.15 Add Start */
+  --  XXCSO:タスクステータスID（クローズ）
+  ct_msg_task_status_id         CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10589';
+  --  XXCSO:訪問実績データ識別用タスクタイプ
+  ct_msg_task_type_id           CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10590';
+/* 2010/12/14 Ver1.15 Add End   */
   --  営業成績表 新規貢献売上集計テーブル
   ct_msg_newcust_tbl            CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10575';
   --  営業成績表 売上実績集計テーブル
@@ -220,6 +227,15 @@ AS
   ct_prof_002a03_keeping_period
     CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_002A03_KEEPING_PERIOD';
 --
+/* 2010/12/14 Ver1.15 Add Start */
+  --  XXCSO:タスクステータスID（クローズ）
+  ct_prof_task_status_id
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCSO1_TASK_STATUS_CLOSED_ID';
+--
+  --  XXCSO:訪問実績データ識別用タスクタイプ
+  ct_prof_taks_type_id
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCSO1_TASK_TYPE_VISIT';
+/* 2010/12/14 Ver1.15 Add Start */
   --  クイックコード（顧客軒数カウント条件マスタ）
   ct_qct_customer_count_type
     CONSTANT  fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_CUSTOMER_COUNT';
@@ -502,6 +518,12 @@ AS
   gt_prof_dummy_sales_group               fnd_profile_option_values.profile_option_value%TYPE;
   --  XXCOS:営業成績集約情報保存期間
   gt_prof_002a03_keeping_period           fnd_profile_option_values.profile_option_value%TYPE;
+/* 2010/12/14 Ver1.15 Add Start */
+  --  XXCSO:タスクステータスID（クローズ）
+  gt_prof_task_status_id                  jtf_tasks_b.task_status_id%TYPE;
+  --  XXCSO:訪問実績データ識別用タスクタイプF
+  gt_prof_task_type_id                    jtf_tasks_b.task_type_id%TYPE;
+/* 2010/12/14 Ver1.15 Add End   */
 --
   --  AR会計情報格納用
   g_account_info_tab                      g_account_info_ttype;
@@ -768,8 +790,46 @@ AS
       RAISE global_get_profile_expt;
     END IF;
 --
+/* 2010/12/14 Ver1.15 Add Start */
+    -- 実行区分が'0'(全て)か'6'(各種件数取得制御)の場合
+    IF ( gv_processing_class IN ( cv_para_cls_all, cv_para_cls_control_count ) ) THEN
+      --==================================
+      -- 5.XXCSO:タスクステータスID（クローズ）
+      --==================================
+      gt_prof_task_status_id := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_task_status_id ) );
+--
+      -- プロファイルが取得できない場合はエラー
+      IF ( gt_prof_task_status_id IS NULL ) THEN
+        --プロファイル名文字列取得
+        lv_profile_name := xxccp_common_pkg.get_msg(
+          iv_application        => ct_xxcos_appl_short_name,
+          iv_name               => ct_msg_task_status_id
+          );
+--
+        lv_profile_name :=  NVL(lv_profile_name, ct_prof_task_status_id);
+        RAISE global_get_profile_expt;
+      END IF;
+--
+      --==================================
+      -- 6.XXCSO:訪問実績データ識別用タスクタイプ
+      --==================================
+      gt_prof_task_type_id := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_taks_type_id ) );
+--
+      -- プロファイルが取得できない場合はエラー
+      IF ( gt_prof_task_type_id IS NULL ) THEN
+        --プロファイル名文字列取得
+        lv_profile_name := xxccp_common_pkg.get_msg(
+          iv_application        => ct_xxcos_appl_short_name,
+          iv_name               => ct_msg_task_type_id
+          );
+--
+        lv_profile_name :=  NVL(lv_profile_name, ct_prof_taks_type_id);
+        RAISE global_get_profile_expt;
+      END IF;
+    END IF;
+/* 2010/12/14 Ver1.15 Add End   */
     --==================================
-    -- 5.AR会計期間取得(前月) 6.前月年月取得
+    -- 7.AR会計期間取得(前月) 8.前月年月取得
     --==================================
     -- 共通関数＜会計期間情報取得＞
     g_account_info_tab(cn_last_month).base_date := LAST_DAY(ADD_MONTHS(gd_process_date, -1));
@@ -799,7 +859,7 @@ AS
     END IF;
 --
     --==================================
-    -- 7.AR会計期間取得(当月) 8.当月年月取得
+    -- 9.AR会計期間取得(当月) 10.当月年月取得
     --==================================
     -- 共通関数＜会計期間情報取得＞
     g_account_info_tab(cn_this_month).base_date := gd_process_date;
@@ -854,7 +914,7 @@ AS
 */
 --
     --==================================
-    -- 9.会計年度期間取得
+    -- 11.会計年度期間取得
     --==================================
     <<get_account_period>>
     FOR lp_idx IN g_account_info_tab.FIRST..g_account_info_tab.LAST LOOP
@@ -3225,7 +3285,10 @@ AS
 --                              SELECT  task.ROWID
 --                              FROM    jtf_tasks_b                   task
                               SELECT  task.task_id
-                              FROM    xxcso_visit_actual_v task
+/* 2010/12/14 Ver1.15 Mod Start */
+--                              FROM    xxcso_visit_actual_v task
+                              FROM    xxcos_visit_actual_v task
+/* 2010/12/14 Ver1.15 Mod End   */
 /* 2009/04/28 Ver1.4 Mod End   */
                               WHERE   task.actual_end_date          >=      it_account_info.from_date
                               AND     task.actual_end_date          <       it_account_info.base_date + 1
@@ -3239,6 +3302,10 @@ AS
                               AND     task.party_id                 =       xsal.party_id
 /* 2009/04/28 Ver1.4 Mod End   */
 --                              AND     task.owner_id                 =       xsal.resource_id
+/* 2010/12/14 Ver1.15 Add Start */
+                              AND     task.task_status_id           =       gt_prof_task_status_id
+                              AND     task.task_type_id             =       gt_prof_task_type_id
+/* 2010/12/14 Ver1.15 Add End   */
                               AND     ROWNUM                        =       1
                               )
               GROUP BY
@@ -3820,7 +3887,10 @@ AS
 /* 2009/08/31 Ver1.6 Del Start */
 /* 2009/04/28 Ver1.4 Mod Start */
 --                      jtf_tasks_b                   task,
-                      xxcso_visit_actual_v          task,
+/* 2010/12/14 Ver1.15 Mod Start */
+--                      xxcso_visit_actual_v          task,
+                      xxcos_visit_actual_v          task,
+/* 2010/12/14 Ver1.15 Mod End   */
 /* 2009/04/28 Ver1.4 Mod End   */
                       xxcos_lookup_values_v         xlvm
 /* 2010/05/18 Ver1.14 Mod Start */
@@ -3828,6 +3898,10 @@ AS
 --              AND     task.actual_end_date          <       it_account_info.base_date + 1
               WHERE   TRUNC(task.actual_end_date)     >=      it_account_info.from_date
               AND     TRUNC(task.actual_end_date)     <       it_account_info.base_date + 1
+/* 2010/12/14 Ver1.15 Add Start */
+              AND     task.task_status_id             =       gt_prof_task_status_id
+              AND     task.task_type_id               =       gt_prof_task_type_id
+/* 2010/12/14 Ver1.15 Add End   */
 /* 2010/05/18 Ver1.14 Mod End   */
 /* 2009/04/28 Ver1.4 Del Start */
 --              AND     task.source_object_type_code  =       ct_task_obj_type_party
@@ -4065,7 +4139,10 @@ AS
 /* 2009/08/31 Ver1.6 Del End   */
 /* 2009/04/28 Ver1.4 Mod Start */
 --                      jtf_tasks_b                   task
-                      xxcso_visit_actual_v          task
+/* 2010/12/14 Ver1.15 Mod Start */
+--                      xxcso_visit_actual_v          task
+                      xxcos_visit_actual_v          task
+/* 2010/12/14 Ver1.15 Mod End   */
 /* 2009/04/28 Ver1.4 Mod End   */
 /* 2010/05/18 Ver1.14 Mod Start */
 --              WHERE   task.actual_end_date          >=      it_account_info.from_date
@@ -4079,6 +4156,10 @@ AS
 --              AND     task.deleted_flag             =       cv_no
 /* 2009/04/28 Ver1.4 Del End   */
               AND     task.attribute11              =       cv_task_dff11_valid
+/* 2010/12/14 Ver1.15 Add Start */
+              AND     task.task_status_id           =       gt_prof_task_status_id
+              AND     task.task_type_id             =       gt_prof_task_type_id
+/* 2010/12/14 Ver1.15 Add End   */
               AND     xrsi.resource_id              =       task.owner_id
               AND     xrsi.effective_start_date     <=      TRUNC(task.actual_end_date)
               AND     xrsi.effective_end_date       >=      TRUNC(task.actual_end_date)
