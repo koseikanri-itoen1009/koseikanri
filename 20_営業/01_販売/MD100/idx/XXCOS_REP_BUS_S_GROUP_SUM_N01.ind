@@ -1,0 +1,8 @@
+CREATE INDEX xxcos.xxcos_rep_bus_s_group_sum_n01 ON xxcos.xxcos_rep_bus_s_group_sum (
+  results_employee_code
+ ,dlv_date
+ ,policy_group_code
+ ,sale_base_code
+)
+TABLESPACE xxidx2
+/
