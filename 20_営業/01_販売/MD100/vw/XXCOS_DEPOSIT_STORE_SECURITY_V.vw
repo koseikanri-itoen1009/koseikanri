@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_deposit_store_security_v
  * Description     : ìXï‹ÅióaÇËã‡VDÅjÉZÉLÉÖÉäÉeÉBview
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/03/06    1.0   K.Kumamoto       êVãKçÏê¨
+ *  2009/05/07    1.1   K.Kiriu          [T1_0326]ÉXÉeÅ[É^ÉXèåèí«â¡ëŒâû
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_deposit_store_security_v (
   user_id
@@ -18,6 +19,9 @@ CREATE OR REPLACE VIEW xxcos_deposit_store_security_v (
  ,chain_code
  ,chain_store_code
  ,chain_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+ ,status
+/* 2009/05/07 Ver1.1 Add End   */
 )
 AS
   SELECT xuiv.user_id                                        user_id
@@ -26,12 +30,18 @@ AS
         ,store.chain_code                                    chain_code
         ,store.store_code                                    store_code
         ,store.cust_store_name                               cust_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+        ,store.status                                        status
+/* 2009/05/07 Ver1.1 Add End   */
   FROM (
     SELECT hca.account_number      account_number
           ,xlvv.lookup_code        chain_code
           ,xca.store_code          store_code
           ,xca.cust_store_name     cust_store_name
           ,xca.delivery_base_code  delivery_base_code
+/* 2009/05/07 Ver1.1 Add Start */
+          ,hca.status              status
+/* 2009/05/07 Ver1.1 Add End   */
     FROM   xxcos_lookup_values_v xlvv
           ,xxcmm_cust_accounts xca
           ,hz_cust_accounts hca
@@ -64,5 +74,8 @@ COMMENT ON  COLUMN  xxcos_deposit_store_security_v.account_number   IS  'å⁄ãqÉRÅ
 COMMENT ON  COLUMN  xxcos_deposit_store_security_v.chain_code       IS  'É`ÉFÅ[ÉììXÉRÅ[Éh';
 COMMENT ON  COLUMN  xxcos_deposit_store_security_v.chain_store_code IS  'ìXï‹ÉRÅ[Éh';
 COMMENT ON  COLUMN  xxcos_deposit_store_security_v.chain_store_name IS  'ìXï‹ñºèÃ';
+/* 2009/05/07 Ver1.1 Add Start */
+COMMENT ON  COLUMN  xxcos_deposit_store_security_v.status           IS  'ÉXÉeÅ[É^ÉX';
+/* 2009/05/07 Ver1.1 Add End   */
 --
 COMMENT ON  TABLE   xxcos_deposit_store_security_v                  IS  'ìXï‹ÅióaÇËã‡VDÅjÉZÉLÉÖÉäÉeÉBÉrÉÖÅ[';

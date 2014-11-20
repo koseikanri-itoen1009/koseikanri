@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/03/04    1.0   K.Kumamoto       新規作成
+ *  2009/05/07    1.1   K.Kiriu          [T1_0373]ステータス条件追加対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dept_store_security_v (
   user_id
@@ -18,6 +19,9 @@ CREATE OR REPLACE VIEW xxcos_dept_store_security_v (
  ,dept_code
  ,dept_store_code
  ,dept_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+ ,status
+/* 2009/05/07 Ver1.1 Add End   */
 )
 AS
   SELECT xuiv.user_id                                        user_id
@@ -26,6 +30,9 @@ AS
         ,store.dept_code                                     dept_code
         ,store.store_code                                    store_code
         ,store.cust_store_name                               cust_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+        ,store.status                                        status
+/* 2009/05/07 Ver1.1 Add End   */
   FROM (
     --store:百貨店店舗情報
     SELECT hca_s.account_number                              account_number
@@ -33,6 +40,9 @@ AS
           ,xca_s.delivery_base_code                          delivery_base_code
           ,xca_s.store_code                                  store_code
           ,xca_s.cust_store_name                             cust_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+          ,hca_s.status                                      status
+/* 2009/05/07 Ver1.1 Add End   */
     FROM   xxcmm_cust_accounts                               xca_s
           ,hz_cust_accounts                                  hca_s
     WHERE  xca_s.child_dept_shop_code IS NOT NULL
@@ -60,5 +70,8 @@ COMMENT ON  COLUMN  xxcos_dept_store_security_v.account_number   IS  '顧客コード
 COMMENT ON  COLUMN  xxcos_dept_store_security_v.dept_code        IS  '百貨店コード';
 COMMENT ON  COLUMN  xxcos_dept_store_security_v.dept_store_code  IS  '店舗コード';
 COMMENT ON  COLUMN  xxcos_dept_store_security_v.dept_store_name  IS  '店舗名称';
+/* 2009/05/07 Ver1.1 Add Start */
+COMMENT ON  COLUMN  xxcos_dept_store_security_v.status           IS  'ステータス';
+/* 2009/05/07 Ver1.1 Add End   */
 --
 COMMENT ON  TABLE   xxcos_dept_store_security_v                  IS  '店舗(百貨店)セキュリティビュー';

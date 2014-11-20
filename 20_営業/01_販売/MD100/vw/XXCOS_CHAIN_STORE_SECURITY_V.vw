@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_chain_store_security_v
  * Description     : “X•Ü(ƒ`ƒF[ƒ““X)ƒZƒLƒ…ƒŠƒeƒBview
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   T.Kumamoto       V‹Kì¬
+ *  2009/05/07    1.1   K.Kiriu          [T1_0326]ƒXƒe[ƒ^ƒXğŒ’Ç‰Á‘Î‰
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_chain_store_security_v (
   user_id
@@ -18,6 +19,9 @@ CREATE OR REPLACE VIEW xxcos_chain_store_security_v (
  ,chain_code
  ,chain_store_code
  ,chain_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+ ,status
+/* 2009/05/07 Ver1.1 Add End   */
 )
 AS
   SELECT xuiv.user_id                                        user_id
@@ -26,6 +30,9 @@ AS
         ,store.chain_code                                    chain_code
         ,store.store_code                                    store_code
         ,store.cust_store_name                               cust_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+        ,store.status                                        status
+/* 2009/05/07 Ver1.1 Add End   */
   FROM (
     --store:ƒ`ƒF[ƒ““X“X•Üî•ñ
     SELECT hca_s.account_number                              account_number
@@ -33,6 +40,9 @@ AS
           ,xca_s.delivery_base_code                          delivery_base_code
           ,xca_s.store_code                                  store_code
           ,xca_s.cust_store_name                             cust_store_name
+/* 2009/05/07 Ver1.1 Add Start */
+          ,hca_s.status                                      status
+/* 2009/05/07 Ver1.1 Add End   */
     FROM   xxcmm_cust_accounts                               xca_s
           ,hz_cust_accounts                                  hca_s
     WHERE  xca_s.chain_store_code IS NOT NULL
@@ -60,5 +70,8 @@ COMMENT ON  COLUMN  xxcos_chain_store_security_v.account_number   IS  'ŒÚ‹qƒR[ƒ
 COMMENT ON  COLUMN  xxcos_chain_store_security_v.chain_code       IS  'ƒ`ƒF[ƒ““XƒR[ƒh';
 COMMENT ON  COLUMN  xxcos_chain_store_security_v.chain_store_code IS  '“X•ÜƒR[ƒh';
 COMMENT ON  COLUMN  xxcos_chain_store_security_v.chain_store_name IS  '“X•Ü–¼Ì';
+/* 2009/05/07 Ver1.1 Add Start */
+COMMENT ON  COLUMN  xxcos_chain_store_security_v.status           IS  'ƒXƒe[ƒ^ƒX';
+/* 2009/05/07 Ver1.1 Add End   */
 --
 COMMENT ON  TABLE   xxcos_chain_store_security_v                  IS  '“X•Ü(ƒ`ƒF[ƒ““X)ƒZƒLƒ…ƒŠƒeƒBƒrƒ…[';
