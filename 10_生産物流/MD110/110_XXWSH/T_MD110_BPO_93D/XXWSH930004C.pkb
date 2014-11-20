@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/12/25    1.13  Oracle福田直樹   本番障害#831対応
  *  2009/01/06    1.14  Oracle吉田夏樹   本番障害#929対応
  *  2009/01/20    1.15  Oracle山本恭久   本番障害#806,#814,#975対応
+ *  2009/01/28    1.16  Oracle山本恭久   本番障害#1044対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1436,7 +1437,9 @@ AS
 ---- mod end ver1.3
                          WHEN ((xicv.item_class_code = '5')               -- 品目区分が製品、かつ
                           AND (ir_get_data.conv_unit IS NOT NULL)         -- 入出庫換算単位がNULLでない、かつ
-                          AND (ir_get_data.prod_class_code = '2')         -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update start
+--                          AND (ir_get_data.prod_class_code = '2')         -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update end
                           AND (ir_get_data.num_of_cases > 0))THEN         -- ケース入数が1以上の場合
 ---- mod start ver1.2
 ----                              (xmld.actual_quantity/ir_get_data.num_of_cases)
@@ -1471,7 +1474,9 @@ AS
                        CASE
                          WHEN ((xicv.item_class_code = '5')            -- 品目区分が製品、かつ
                           AND (ir_get_data.conv_unit IS NOT NULL)      -- 入出庫換算単位がNULLでない、かつ
-                          AND (ir_get_data.prod_class_code = '2')      -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update start
+--                          AND (ir_get_data.prod_class_code = '2')      -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update end
                           AND (ir_get_data.num_of_cases > 0))THEN      -- ケース入数が1以上の場合
                            ROUND(xmld.actual_quantity / ir_get_data.num_of_cases, 3)   -- 換算する
                          ELSE
@@ -1488,7 +1493,9 @@ AS
                         CASE
                           WHEN ((xicv.item_class_code = '5')              -- 品目区分が製品、かつ
                            AND (ir_get_data.conv_unit IS NOT NULL)        -- 入出庫換算単位がNULLでない、かつ
-                           AND (ir_get_data.prod_class_code = '2')        -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update start
+--                           AND (ir_get_data.prod_class_code = '2')        -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update end
                            AND (ir_get_data.num_of_cases > 0))THEN        -- ケース入数が1以上の場合
                             ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)  -- 換算する
                           ELSE
@@ -1514,7 +1521,9 @@ AS
 ---- mod end ver1.3
                          WHEN ((xicv.item_class_code = '5')             -- 品目区分が製品、かつ
                           AND (ir_get_data.conv_unit IS NOT NULL)       -- 入出庫換算単位がNULLでない、かつ
-                          AND (ir_get_data.prod_class_code = '2')       -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update start
+--                          AND (ir_get_data.prod_class_code = '2')       -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update end
                           AND (ir_get_data.num_of_cases > 0)) THEN      -- ケース入数が1以上の場合
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod start ver1.2
@@ -1541,7 +1550,9 @@ AS
 --                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
                          WHEN ((xicv.item_class_code = '5')             -- 品目区分が製品、かつ
                           AND (ir_get_data.conv_unit IS NOT NULL)       -- 入出庫換算単位がNULLでない、かつ
-                          AND (ir_get_data.prod_class_code = '2')       -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update start
+--                          AND (ir_get_data.prod_class_code = '2')       -- 商品区分がドリンク、かつ
+-- 2009/01/28 Y.Yamamoto #1044 update end
                           AND (ir_get_data.num_of_cases > 0)) THEN      -- ケース入数が1以上の場合
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod end ver1.3
@@ -1622,7 +1633,9 @@ AS
         -- 商品区分がドリンク、かつ
         -- ケース入数が1以上の場合
         IF ((ir_get_data.conv_unit IS NOT NULL)
-          AND (ir_get_data.prod_class_code = '2')
+-- 2009/01/28 Y.Yamamoto #1044 update start
+--          AND (ir_get_data.prod_class_code = '2')
+-- 2009/01/28 Y.Yamamoto #1044 update end
           AND (ir_get_data.num_of_cases > 0)) THEN
           or_temp_tab.quant_r := ROUND((ir_get_data.quant_r/ir_get_data.num_of_cases),3);
         ELSE
@@ -1742,12 +1755,29 @@ AS
         --or_temp_tab.quant_o       := ir_get_data.quant_o ;  -- 出庫数
         --or_temp_tab.quant_r       := 0 ;  -- 依頼数
         -- 出庫対象の場合
+-- 2009/01/29 Y.Yamamoto #1044 add start
+        or_temp_tab.quant_r       := 0 ;  -- 依頼数
+-- 2009/01/29 Y.Yamamoto #1044 add end
         IF (ln_quant_kbn = 1) THEN
           or_temp_tab.quant_i       := 0 ;                                              -- 入庫数
+-- 2009/01/29 Y.Yamamoto #1044 update start
+          IF ((SUBSTRB(ir_get_data.request_no,1,2) = '96')
+          AND (ir_get_data.conv_unit IS NOT NULL )) THEN -- HHT発番データで換算単位ありの場合
+            or_temp_tab.quant_o     := ROUND(NVL( ir_get_data.quant_d, ir_get_data.quant_r) / ir_get_data.num_of_cases ,3) ;  -- 出庫数
+          ELSE
           or_temp_tab.quant_o       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 出庫数
+          END IF;
+-- 2009/01/29 Y.Yamamoto #1044 update end
         -- 入庫対象の場合
         ELSIF (ln_quant_kbn = 2) THEN
+-- 2009/01/29 Y.Yamamoto #1044 update start
+          IF ((SUBSTRB(ir_get_data.request_no,1,2) = '96')
+          AND (ir_get_data.conv_unit IS NOT NULL )) THEN -- HHT発番データで換算単位ありの場合
+            or_temp_tab.quant_i     := ROUND(NVL( ir_get_data.quant_d, ir_get_data.quant_r) / ir_get_data.num_of_cases ,3) ;  -- 入庫数
+          ELSE
           or_temp_tab.quant_i       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 入庫数
+          END IF;
+-- 2009/01/29 Y.Yamamoto #1044 update end
           or_temp_tab.quant_o       := 0 ;                                              -- 出庫数
         END IF;
         -- 2008/07/28 A.Shiina v1.6 UPDATE End ------------------------------------------------
@@ -2398,6 +2428,10 @@ AS
             --,xcv.complusion_output_code       AS complusion_output_kbn -- 強制出力区分   -- 2008/10/31 統合指摘#462 Del
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分  -- 2008/10/31 統合指摘#462 Add
 -- 2008/07/09 A.Shiina v1.5 ADD End
+-- 2009/01/29 Y.Yamamoto #1044 add start
+            ,ximv.conv_unit                   AS conv_unit        -- 入出庫換算単位
+            ,TO_NUMBER(ximv.num_of_cases)     AS num_of_cases     -- ケース入数
+-- 2009/01/29 Y.Yamamoto #1044 add end
       FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
           ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
           ,xxcmn_item_locations2_v    xil       -- ＯＰＭ保管場所マスタ
@@ -2676,6 +2710,10 @@ AS
         lr_get_data.quant_d          := re_main.quant_d  ;          -- 内訳数量(インタフェース用)
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
         lr_get_data.status           := re_main.status ;            -- ヘッダステータス
+-- 2009/01/29 Y.Yamamoto #1044 add start
+        lr_get_data.conv_unit        := re_main.conv_unit ;         -- 入出庫換算単位
+        lr_get_data.num_of_cases     := re_main.num_of_cases ;      -- ケース入数
+-- 2009/01/29 Y.Yamamoto #1044 add end
 --
        --------------------------------------------------
         -- 中間テーブル登録データ設定
