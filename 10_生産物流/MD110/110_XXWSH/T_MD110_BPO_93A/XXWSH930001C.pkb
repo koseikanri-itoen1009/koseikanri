@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.33
+ * Version          : 1.35
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -121,6 +121,7 @@ AS
  *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
  *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応#470(配送Noの実績訂正を行うとヘッダに同一依頼Noのレコードが複数件作成されてしまう)
  *  2008/12/09    1.34 Oracle 福田 直樹  本番障害対応#594(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェックエラーでもLOGだけ出力し警告にしない)
+ *  2008/12/09    1.35 Oracle 福田 直樹  本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -12083,12 +12084,24 @@ AS
     --gr_mov_req_instr_h_rec.schedule_arrival_date
     --                                        := gr_interface_info_rec(in_index).arrival_date;
     -- 2008/12/02 本番障害#320 Del End ----------------------------------------
-    -- 2008/12/02 本番障害#320 Add Start --------------------------------------
-    -- 出庫予定日
-    gr_mov_req_instr_h_rec.schedule_ship_date    := NULL;
-    -- 入庫予定日
-    gr_mov_req_instr_h_rec.schedule_arrival_date := NULL;
+--
+    -- 2008/12/09 Del Start 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+    ---- 2008/12/02 本番障害#320 Add Start --------------------------------------
+    ---- 出庫予定日
+    --gr_mov_req_instr_h_rec.schedule_ship_date    := NULL;
+    ---- 入庫予定日
+    --gr_mov_req_instr_h_rec.schedule_arrival_date := NULL;
     -- 2008/12/02 本番障害#320 Add End ----------------------------------------
+    -- 2008/12/09 Del End 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+--
+    -- 2008/12/09 Add Start 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+    -- 出庫予定日
+    gr_mov_req_instr_h_rec.schedule_ship_date
+                                            := gr_interface_info_rec(in_index).shipped_date;
+    -- 入庫予定日
+    gr_mov_req_instr_h_rec.schedule_arrival_date
+                                            := gr_interface_info_rec(in_index).arrival_date;
+    -- 2008/12/09 Add End 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
 --
     -- 運賃区分
     IF (NVL(gr_interface_info_rec(in_index).delivery_no,'0') <> '0') THEN
@@ -12615,6 +12628,18 @@ AS
     --END IF;
     -- 2008/12/02 本番障害#320 Del End ----------------------------------------
 --
+    -- 2008/12/09 Add Start 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+    IF (gr_interface_info_rec(in_index).out_warehouse_flg = gv_flg_on)
+    THEN
+      --出庫予定日
+      gr_mov_req_instr_h_rec.schedule_ship_date
+                                            := gr_interface_info_rec(in_index).shipped_date;
+      --入庫予定日
+      gr_mov_req_instr_h_rec.schedule_arrival_date
+                                            := gr_interface_info_rec(in_index).arrival_date;
+    END IF;
+    -- 2008/12/09 Add End 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+--
     --パレット回収枚数
     gr_mov_req_instr_h_rec.collected_pallet_qty
                                           := gr_interface_info_rec(in_index).collected_pallet_qty;
@@ -12806,6 +12831,8 @@ AS
       SET xmrih.status                      = gr_mov_req_instr_h_rec.status
          --,xmrih.schedule_ship_date          = gr_mov_req_instr_h_rec.schedule_ship_date     -- 2008/12/02 本番障害#320 Del
          --,xmrih.schedule_arrival_date       = gr_mov_req_instr_h_rec.schedule_arrival_date  -- 2008/12/02 本番障害#320 Del
+         ,xmrih.schedule_ship_date          = gr_mov_req_instr_h_rec.schedule_ship_date       -- 2008/12/09 Add 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+         ,xmrih.schedule_arrival_date       = gr_mov_req_instr_h_rec.schedule_arrival_date    -- 2008/12/09 Add 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
          ,xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
          ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
          ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
