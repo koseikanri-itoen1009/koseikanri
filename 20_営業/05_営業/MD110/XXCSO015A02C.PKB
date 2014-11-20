@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,7 +16,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(A-1)
  *  open_csv_file          作業依頼／発注情報CSVファイルオープン (A-2)
- *  get_mst_info_rec       作業依頼／発注情報関連マスタ情報抽出 (A-4)
+ *  get_ipro_po_related_data 作業依頼／発注情報関連マスタ情報抽出 (A-4)
  *  update_wk_reqst_tbl    作業依頼／発注情報連携対象テーブル更新 (A-6)
  *  create_csv_rec         作業依頼／発注情報CSV出力 (A-7)
  *  close_csv_file         CSVファイルクローズ処理   (A-8)
@@ -39,6 +39,7 @@ AS
  *                                       ・現設置先顧客情報の取得条件を修正
  *  2009-04-02    1.2   K.Satomura       ＳＴ障害対応(T1_0169対応)
  *  2009-04-06    1.3   D.Abe            ＳＴ障害対応(T1_0306対応)
+ *  2009-04-10    1.4   K.Satomura       ＳＴ障害対応(T1_0408,0492対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -204,9 +205,14 @@ AS
     ,work_hope_time          VARCHAR2(4)                                               -- 作業希望時間
     ,cur_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE   -- 現設置先名
     ,cur_full_name           VARCHAR2(100)                                             -- 現設置先担当者氏名
-    ,cur_phone_number1       VARCHAR2(6)                                               -- 現設置先電話１
-    ,cur_phone_number2       VARCHAR2(6)                                               -- 現設置先電話２
-    ,cur_phone_number3       VARCHAR2(6)                                               -- 現設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 START */
+    --,cur_phone_number1       VARCHAR2(6)                                               -- 現設置先電話１
+    --,cur_phone_number2       VARCHAR2(6)                                               -- 現設置先電話２
+    --,cur_phone_number3       VARCHAR2(6)                                               -- 現設置先電話３
+    ,cur_phone_number1       VARCHAR2(100)                                               -- 現設置先電話１
+    ,cur_phone_number2       VARCHAR2(100)                                               -- 現設置先電話２
+    ,cur_phone_number3       VARCHAR2(100)                                               -- 現設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 END */
     ,cur_postal_code         xxcso_cust_acct_sites_v.postal_code%TYPE                  -- 現設置先郵便番号
     ,cur_est_site_adress1    xxcso_cust_acct_sites_v.state%TYPE                        -- 現設置先住所１
     ,cur_est_site_adress2    xxcso_cust_acct_sites_v.city%TYPE                         -- 現設置先住所２
@@ -215,9 +221,14 @@ AS
     ,cur_est_site_adress5    VARCHAR2(20)                                              -- 現設置先住所５
     ,new_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE   -- 新設置先名
     ,new_full_name           VARCHAR2(100)                                             -- 新設置先担当者氏名
-    ,new_phone_number1       VARCHAR2(6)                                               -- 新設置先電話１
-    ,new_phone_number2       VARCHAR2(6)                                               -- 新設置先電話２
-    ,new_phone_number3       VARCHAR2(6)                                               -- 新設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 START */
+    --,new_phone_number1       VARCHAR2(6)                                               -- 新設置先電話１
+    --,new_phone_number2       VARCHAR2(6)                                               -- 新設置先電話２
+    --,new_phone_number3       VARCHAR2(6)                                               -- 新設置先電話３
+    ,new_phone_number1       VARCHAR2(100)                                               -- 新設置先電話１
+    ,new_phone_number2       VARCHAR2(100)                                               -- 新設置先電話２
+    ,new_phone_number3       VARCHAR2(100)                                               -- 新設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 END */
     ,new_postal_code         xxcso_cust_acct_sites_v.postal_code%TYPE                  -- 新設置先郵便番号
     ,new_est_site_adress1    xxcso_cust_acct_sites_v.state%TYPE                        -- 新設置先住所１
     ,new_est_site_adress2    xxcso_cust_acct_sites_v.city%TYPE                         -- 新設置先住所２
@@ -753,9 +764,14 @@ AS
     lv_work_locatn_tel3        VARCHAR2(6);                                             -- 事業所電話３
     lv_cur_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE; -- 現設置先名
     lv_cur_full_name           VARCHAR2(100);                                           -- 現設置先担当者氏名
-    lv_cur_phone_number1       VARCHAR2(6);                                             -- 現設置先電話１
-    lv_cur_phone_number2       VARCHAR2(6);                                             -- 現設置先電話２
-    lv_cur_phone_number3       VARCHAR2(6);                                             -- 現設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 START */
+    --lv_cur_phone_number1       VARCHAR2(6);                                             -- 現設置先電話１
+    --lv_cur_phone_number2       VARCHAR2(6);                                             -- 現設置先電話２
+    --lv_cur_phone_number3       VARCHAR2(6);                                             -- 現設置先電話３
+    lv_cur_phone_number1       VARCHAR2(100);                                             -- 現設置先電話１
+    lv_cur_phone_number2       VARCHAR2(100);                                             -- 現設置先電話２
+    lv_cur_phone_number3       VARCHAR2(100);                                             -- 現設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 END */
     lv_cur_postal_code         xxcso_cust_acct_sites_v.postal_code%TYPE;                -- 現設置先郵便番号
     lv_cur_est_site_adress1    xxcso_cust_acct_sites_v.state%TYPE;                      -- 現設置先住所１
     lv_cur_est_site_adress2    xxcso_cust_acct_sites_v.city%TYPE;                       -- 現設置先住所２
@@ -763,9 +779,14 @@ AS
     lv_cur_est_site_adress4    xxcso_cust_acct_sites_v.address2%TYPE;                   -- 現設置先住所４
     lv_new_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE; -- 新設置先名
     lv_new_full_name           VARCHAR2(100);                                           -- 新設置先担当者氏名
-    lv_new_phone_number1       VARCHAR2(6);                                             -- 新設置先電話１
-    lv_new_phone_number2       VARCHAR2(6);                                             -- 新設置先電話２
-    lv_new_phone_number3       VARCHAR2(6);                                             -- 新設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 START */
+    --lv_new_phone_number1       VARCHAR2(6);                                             -- 新設置先電話１
+    --lv_new_phone_number2       VARCHAR2(6);                                             -- 新設置先電話２
+    --lv_new_phone_number3       VARCHAR2(6);                                             -- 新設置先電話３
+    lv_new_phone_number1       VARCHAR2(100);                                             -- 新設置先電話１
+    lv_new_phone_number2       VARCHAR2(100);                                             -- 新設置先電話２
+    lv_new_phone_number3       VARCHAR2(100);                                             -- 新設置先電話３
+    /* 2009.04.10 K.Satomura T1_0492対応 END */
     lv_new_postal_code         xxcso_cust_acct_sites_v.postal_code%TYPE;                -- 新設置先郵便番号
     lv_new_est_site_adress1    xxcso_cust_acct_sites_v.state%TYPE;                      -- 新設置先住所１
     lv_new_est_site_adress2    xxcso_cust_acct_sites_v.city%TYPE;                       -- 新設置先住所２
@@ -777,8 +798,12 @@ AS
     lv_work_location_code      xxcso_requisition_lines_v.work_location_code%TYPE;       -- 事業所コード
     ln_un_number_id            NUMBER;                  -- 機種ID
     ln_created_by              NUMBER;                  -- 作成者
-    lv_cur_phone_number        VARCHAR2(20);            -- 編集用電話番号
-    lv_new_phone_number        VARCHAR2(20);            -- 編集用電話番号
+    /* 2009.04.10 K.Satomura T1_0492対応 START */
+    --lv_cur_phone_number        VARCHAR2(20);            -- 編集用電話番号
+    --lv_new_phone_number        VARCHAR2(20);            -- 編集用電話番号
+    lv_cur_phone_number        xxcso_cust_acct_sites_v.phone_number%TYPE; -- 編集用電話番号
+    lv_new_phone_number        xxcso_cust_acct_sites_v.phone_number%TYPE; -- 編集用電話番号
+    /* 2009.04.10 K.Satomura T1_0492対応 END */
     lv_code                    VARCHAR2(20);            -- 編集用参照コード
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
     lv_log_po_head_num         VARCHAR2(20);            -- ログ用発注番号
@@ -1126,6 +1151,9 @@ AS
               ,casv.city
               ,casv.address1
               ,casv.address2
+              /* 2009.04.10 K.Satomura T1_0408対応 START */
+              ,casv.account_number
+              /* 2009.04.10 K.Satomura T1_0408対応 END */
         INTO   lv_cur_organization_name
               ,lv_cur_full_name
               ,lv_cur_phone_number
@@ -1134,6 +1162,9 @@ AS
               ,lv_cur_est_site_adress2
               ,lv_cur_est_site_adress3
               ,lv_cur_est_site_adress4
+              /* 2009.04.10 K.Satomura T1_0408対応 START */
+              ,lv_cur_customer_code2
+              /* 2009.04.10 K.Satomura T1_0408対応 END */
         FROM   xxcso_cust_acct_sites_v casv
               ,xxcso_employees_v       empv
               ,xxcso_cust_resources_v  crsv
