@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.1
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/05/31   1.3   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/06/02   1.4   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/06/05   1.5   Oracle 北寒寺 正夫 結合テスト不具合対応
+ *  2008/06/12   1.6   Oracle 北寒寺 正夫 結合テスト不具合対応
  *
  *****************************************************************************************/
 --
@@ -168,6 +169,9 @@ AS
 -- 2008/06/05 START
   gv_action_type_ship  CONSTANT VARCHAR2(2)   := '1';                  -- 出荷
   gv_action_type_move  CONSTANT VARCHAR2(2)   := '3';                  -- 移動
+-- M.Hokkanji Ver1.6 START
+  gv_min_default_date  CONSTANT VARCHAR2(10)  := '1900/01/01';         --MINDATE
+-- M.Hokkanji Ver1.6 END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1550,9 +1554,16 @@ AS
     END CASE;
 --
     -- ORDER句の合体3
+-- M.Hokkanji Ver1.6 START
+--    lv_fwd_sql := lv_fwd_sql || ' ORDER BY ol.shipping_item_code, oh.schedule_ship_date,' ||
+--                                ' oh.schedule_arrival_date, il.distribution_block, '      ||
+--                                'oh.deliver_from, ol.designated_production_date DESC';
     lv_fwd_sql := lv_fwd_sql || ' ORDER BY ol.shipping_item_code, oh.schedule_ship_date,' ||
                                 ' oh.schedule_arrival_date, il.distribution_block, '      ||
-                                'oh.deliver_from, ol.designated_production_date DESC';
+                                'oh.deliver_from, NVL(ol.designated_production_date,TO_DATE(''' || gv_min_default_date || ''',''YYYY/MM/DD'')) DESC, ' ||
+                                ' p.reserve_order, oh.head_sales_branch, oh.arrival_time_from, ' ||
+                                ' oh.request_no ';
+-- M.Hokkanji Ver1.6 END
     -- FOR句の合体4
     lv_fwd_sql := lv_fwd_sql || ' FOR UPDATE OF ol.order_line_id NOWAIT';
 --
@@ -1727,10 +1738,15 @@ AS
       ELSE NULL;
     END CASE;
 --
+-- M.Hokkanji Ver1.6 START
     -- ORDER句の合体3
+--    lv_mov_sql := lv_mov_sql || ' ORDER BY ml.item_code, ih.schedule_ship_date,' ||
+--                                ' ih.schedule_arrival_date, il.distribution_block, '      ||
+--                                'ih.shipped_locat_code, ml.designated_production_date DESC';
     lv_mov_sql := lv_mov_sql || ' ORDER BY ml.item_code, ih.schedule_ship_date,' ||
                                 ' ih.schedule_arrival_date, il.distribution_block, '      ||
-                                'ih.shipped_locat_code, ml.designated_production_date DESC';
+                                ' ih.shipped_locat_code, NVL(ml.designated_production_date,TO_DATE(''' || gv_min_default_date || ''',''YYYY/MM/DD'')) DESC, ' ||
+                                ' ih.arrival_time_from, ih.mov_num ';
     -- FOR句の合体4
     lv_mov_sql := lv_mov_sql || ' FOR UPDATE OF ml.mov_line_id NOWAIT';
 --
@@ -2423,7 +2439,6 @@ AS
             * gr_demand_tbl(in_d_cnt).num_of_cases;                            -- 実績数量
 --2008/05/30 START 引当残数量の方が大きく換算する場合に上記チェックを行うためチェック位置を移動
         IF ((gr_demand_tbl(in_d_cnt).conv_unit IS NOT NULL) AND (ln_case_num = 0)) THEN
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'換算:');
           RETURN 1;
         END IF;
 --2008/05/30 END
@@ -3513,6 +3528,10 @@ AS
       FOR ln_s_cnt IN 1..ln_s_max LOOP
         -- チェックなしフラグの初期化
         lv_no_check_flg := gv_cons_flg_no;
+-- M.Hokkanji Ver1.6 START フラグをONにしないと処理件数に追加されないため
+-- 対象となった明細は常に更新するように修正
+        lv_no_meisai_flg := gv_cons_flg_yes;
+-- M.Hokkanji Ver1.6 END
         -- ===============================================
         -- A-6  ロット引当チェック check_lot_allot
         -- ===============================================
@@ -3528,7 +3547,7 @@ AS
         IF (lv_no_check_flg = gv_cons_flg_no) THEN
 --
 -- 2008/06/02 START A-6で処理が通った場合は明細も必ず更新するため
-          lv_no_meisai_flg := gv_cons_flg_yes;
+--          lv_no_meisai_flg := gv_cons_flg_yes;
 -- 2008/06/02 END
           -- 需要情報が「出荷」で、入力パラメータの商品区分が「リーフ」か「ドリンク」の場合、
           -- または
@@ -3654,7 +3673,7 @@ AS
             IF (ln_result = 1) THEN
               -- チェック処理結果を格納する
               IF ( (gr_check_tbl(1).warnning_date IS NULL)
-                OR (gr_check_tbl(1).warnning_date < ld_reversal_date ))
+                OR (gr_check_tbl(1).warnning_date < ld_standard_date ))
               THEN
                 gr_check_tbl(1).warnning_class := gv_cons_wrn_fresh;              -- 警告区分
                 gr_check_tbl(1).warnning_date  := ld_standard_date;               -- 警告日付

@@ -7,7 +7,7 @@ AS
  * Description      : 引当解除処理
  * MD.050/070       : 生産物流共通(出荷･移動仮引当)(T_MD050_BPO_920)
  *                    引当解除処理                 (T_MD070_BPO_92D)
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/18    1.0   Tatsuya Kurata    新規作成
  *  2008/06/03    1.1   Masao Hokkanji    結合テスト不具合対応
+ *  2008/06/12    1.2   Masao Hokkanji    T_TE080_BPO920不具合ログNo24対応
+ *  2008/06/13    1.3   Masao Hokkanji    抽出条件変更対応
  *
  *****************************************************************************************/
 --
@@ -141,6 +143,9 @@ AS
   gv_ship_req       CONSTANT VARCHAR2(2)  := '10';  -- 文書タイプ「出荷依頼」
   gv_move_req       CONSTANT VARCHAR2(2)  := '20';  -- 文書タイプ「移動指示」
   gv_auto           CONSTANT VARCHAR2(2)  := '10';  -- 自動手動引当区分「自動引当」
+-- M.Hokkanji Ver1.2 START
+  gv_record_type_10 CONSTANT VARCHAR2(2)  := '10';  -- レコードタイプ「指示」
+-- M.Hokkanji Ver1.2 END
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -156,7 +161,9 @@ AS
   gn_request_id        NUMBER;              -- 要求ID
   gn_prog_appl_id      NUMBER;              -- プログラムアプリケーションID
   gn_prog_id           NUMBER;              -- プログラムID
---
+-- M.Hokkanji Ver1.2 START
+  gd_prog_upd_date     DATE;                -- プログラム更新日
+-- M.Hokkanji Ver1.2 END
   gn_del_cut           NUMBER DEFAULT 0;    -- 削除件数用
   gn_l_id_cnt          NUMBER DEFAULT 0;    -- 出荷依頼対象レコード用カウント
   gn_m_id_cnt          NUMBER DEFAULT 0;    -- 移動指示対象レコード用カウント
@@ -433,12 +440,24 @@ AS
         AND   xoha.latest_external_flag     = :para_new                 -- 最新フラグ「Ｙ」
         AND   xoha.order_type_id            = xottv.transaction_type_id -- 受注タイプID
         AND   xottv.shipping_shikyu_class   = :para_kbn_ship            -- 出荷支給区分「出荷依頼」
+        AND   NOT EXISTS ( SELECT xoha2.order_header_id
+                             FROM xxwsh_order_headers_all xoha2,
+                                  xxwsh_order_lines_all xola2
+                            WHERE xoha2.order_header_id = xoha.order_header_id
+                              AND xola2.order_header_id = xoha2.order_header_id
+                              AND xola2.delete_flag  <> :para_delete2   -- 削除フラグ「Ｙ」以外
+                              AND xola2.shipped_quantity IS NOT NULL
+
+        )
         AND   xoha.order_header_id          = xola.order_header_id      -- 受注ヘッダアドオンID
         AND   xola.delete_flag             <> :para_delete              -- 削除フラグ「Ｙ」以外
         AND   xola.automanual_reserve_class = :para_auto                -- 自動手動引当区分「自動引当」
         AND   xola.order_line_id            = xmld.mov_line_id          -- 明細ID
-        AND   xola.shipped_quantity         IS NULL                     -- 出荷実績数量(NULLのみ対象)
       ';
+-- M.Hokkanji Ver1.3 START
+-- ヘッダに紐付く明細に実績数量が入力されているデータが一件でもある場合対象外
+--        AND   xola.shipped_quantity         IS NULL                     -- 出荷実績数量(NULLのみ対象)
+-- M.Hokkanji Ver1.3 END
 --
     -- 入力Ｐ任意部分1（入力Ｐ「ブロック」のうちいずれかに入力がある場合）
     gv_sql_in_para_1 := ' AND (xilv.distribution_block  = :para_block1  -- 物流ブロック
@@ -511,6 +530,7 @@ AS
                                                                             ,gv_yes
                                                                             ,gv_kbn_ship
                                                                             ,gv_yes
+                                                                            ,gv_yes
                                                                             ,gv_auto
                                                                             ,gr_param.block1
                                                                             ,gr_param.block2
@@ -530,6 +550,7 @@ AS
                                                                             ,gv_re_notif
                                                                             ,gv_yes
                                                                             ,gv_kbn_ship
+                                                                            ,gv_yes
                                                                             ,gv_yes
                                                                             ,gv_auto
                                                                             ,gr_param.block1
@@ -551,6 +572,7 @@ AS
                                                                           ,gv_yes
                                                                           ,gv_kbn_ship
                                                                           ,gv_yes
+                                                                          ,gv_yes
                                                                           ,gv_auto
                                                                           ,gr_param.del_from_id
                                                                           ,gr_param.del_type
@@ -567,6 +589,7 @@ AS
                                                                           ,gv_re_notif
                                                                           ,gv_yes
                                                                           ,gv_kbn_ship
+                                                                          ,gv_yes
                                                                           ,gv_yes
                                                                           ,gv_auto
                                                                           ,gr_param.del_type
@@ -591,6 +614,7 @@ AS
                                                                             ,gv_yes
                                                                             ,gv_kbn_ship
                                                                             ,gv_yes
+                                                                            ,gv_yes
                                                                             ,gv_auto
                                                                             ,gr_param.block1
                                                                             ,gr_param.block2
@@ -609,6 +633,7 @@ AS
                                                                             ,gv_re_notif
                                                                             ,gv_yes
                                                                             ,gv_kbn_ship
+                                                                            ,gv_yes
                                                                             ,gv_yes
                                                                             ,gv_auto
                                                                             ,gr_param.block1
@@ -629,6 +654,7 @@ AS
                                                                           ,gv_yes
                                                                           ,gv_kbn_ship
                                                                           ,gv_yes
+                                                                          ,gv_yes
                                                                           ,gv_auto
                                                                           ,gr_param.del_from_id
                                                                           ;
@@ -644,6 +670,7 @@ AS
                                                                           ,gv_re_notif
                                                                           ,gv_yes
                                                                           ,gv_kbn_ship
+                                                                          ,gv_yes
                                                                           ,gv_yes
                                                                           ,gv_auto
                                                                           ;
@@ -774,13 +801,25 @@ AS
           OR  xmrih.status                   = :para_adjust)       -- ステータス「調整中」
         AND ( xmrih.notif_status             = :para_n_notif       -- 通知ステータス「未通知」
           OR  xmrih.notif_status             = :para_re_notif)     -- 通知ステータス「再通知要」
+        AND   NOT EXISTS ( SELECT xmrih2.mov_hdr_id
+                             FROM xxinv_mov_req_instr_headers xmrih2,
+                                  xxinv_mov_req_instr_lines xmril2
+                            WHERE xmrih2.mov_hdr_id = xmrih.mov_hdr_id
+                              AND xmril2.mov_hdr_id = xmrih2.mov_hdr_id
+                              AND xmril2.delete_flg <> :para_delete2 -- 削除フラグ「Ｙ」以外
+                              AND (xmril2.shipped_quantity IS NOT NULL
+                                OR xmril2.ship_to_quantity IS NOT NULL)
+        )
         AND   xmrih.mov_hdr_id               = xmril.mov_hdr_id    -- 移動ヘッダID
         AND   xmril.delete_flg              <> :para_delete        -- 削除フラグ「Ｙ」以外
         AND   xmril.automanual_reserve_class = :para_auto          -- 自動手動引当区分「自動引当」
         AND   xmril.mov_line_id              = xmld.mov_line_id    -- 移動明細ID
-        AND   xmril.shipped_quantity         IS NULL               -- 出庫実績数量(NULLのみ対象)
-        AND   xmril.ship_to_quantity         IS NULL               -- 入庫実績数量(NULLのみ対象)
       ';
+-- M.Hokkanji Ver1.3 START
+-- ヘッダに紐付く明細に実績数量が入力されているデータが一件でもある場合対象外
+--        AND   xmril.shipped_quantity         IS NULL               -- 出庫実績数量(NULLのみ対象)
+--        AND   xmril.ship_to_quantity         IS NULL               -- 入庫実績数量(NULLのみ対象)
+-- M.Hokkanji Ver1.3 END
 --
     -- 入力Ｐ任意部分1（入力Ｐ「ブロック」のうちいずれかに入力がある場合）
     gv_sql_in_para_1 := ' AND (xilv.distribution_block  = :para_block1  -- 物流ブロック
@@ -847,6 +886,7 @@ AS
                                                                         ,gv_n_notif
                                                                         ,gv_re_notif
                                                                         ,gv_yes
+                                                                        ,gv_yes
                                                                         ,gv_auto
                                                                         ,gr_param.block1
                                                                         ,gr_param.block2
@@ -865,6 +905,7 @@ AS
                                                                         ,gv_adjust
                                                                         ,gv_n_notif
                                                                         ,gv_re_notif
+                                                                        ,gv_yes
                                                                         ,gv_yes
                                                                         ,gv_auto
                                                                         ,gr_param.block1
@@ -885,6 +926,7 @@ AS
                                                                       ,gv_n_notif
                                                                       ,gv_re_notif
                                                                       ,gv_yes
+                                                                      ,gv_yes
                                                                       ,gv_auto
                                                                       ,gr_param.del_from_id
                                                                       ;
@@ -900,6 +942,7 @@ AS
                                                                       ,gv_adjust
                                                                       ,gv_n_notif
                                                                       ,gv_re_notif
+                                                                      ,gv_yes
                                                                       ,gv_yes
                                                                       ,gv_auto
                                                                       ;
@@ -996,6 +1039,9 @@ AS
         FROM xxinv_mov_lot_details  xmld    -- 移動ロット詳細（アドオン）
         WHERE xmld.mov_line_id        = gt_l_order_line_id(o_id_cnt)  -- 受注明細アドオンID
         AND   xmld.document_type_code = gv_ship_req                   -- 文書タイプ「出荷依頼」
+-- M.Hokkanji Ver1.3 START
+        AND   xmld.record_type_code = gv_record_type_10               -- レコードタイプ(指示)
+-- M.Hokkanji Ver1.3 END
         ;
 --
       -- 削除件数をカウント
@@ -1029,6 +1075,9 @@ AS
         FROM xxinv_mov_lot_details  xmld    -- 移動ロット詳細（アドオン）
         WHERE xmld.mov_line_id        = gt_mod_line_id(m_id_cnt)  -- 受注明細アドオンID
         AND   xmld.document_type_code = gv_move_req               -- 文書タイプ「移動指示」
+-- M.Hokkanji Ver1.3 START
+        AND   xmld.record_type_code = gv_record_type_10               -- レコードタイプ(指示)
+-- M.Hokkanji Ver1.3 END
         ;
 --
       -- 削除件数をカウント
@@ -1113,17 +1162,20 @@ AS
           ,xola.request_id               = gn_request_id     -- 要求ID
           ,xola.program_application_id   = gn_prog_appl_id   -- コンカレント・プログラム・アプリID
           ,xola.program_id               = gn_prog_id        -- コンカレント・プログラムID
+-- M.Hokkanji Ver1.2 START
+          ,xola.program_update_date      = gd_prog_upd_date  -- プログラム更新日
+-- M.Hokkanji Ver1.2 END
        WHERE xola.order_line_id   = gt_l_order_line_id(i)  -- 受注明細アドオンID
        ;
 --
      -- 処理件数カウント
--- 2008/06/03 START カーソルで処理されない場合SQL%rowcountは前のSQLの処理件数を
--- 表示するため上記カーソルが実行された場合のみ実行するように条件を追加
-    IF ( gt_l_order_line_id.COUNT >= 1 ) THEN
-      ln_cnt        := SQL%rowcount;
-      gn_target_cnt := gn_target_cnt + ln_cnt;
-    END IF;
--- 2008/06/03 END
+-- M.Hokkanji Ver1.3 START
+-- 処理件数は移動ロット詳細の削除件数をカウントするように変更
+--    IF ( gt_l_order_line_id.COUNT >= 1 ) THEN
+--      ln_cnt        := SQL%rowcount;
+--      gn_target_cnt := gn_target_cnt + ln_cnt;
+--    END IF;
+-- M.Hokkanji Ver1.3 END
 --
   EXCEPTION
 --
@@ -1195,17 +1247,20 @@ AS
         ,xmril.request_id               = gn_request_id     -- 要求ID
         ,xmril.program_application_id   = gn_prog_appl_id   -- コンカレント・プログラム・アプリID
         ,xmril.program_id               = gn_prog_id        -- コンカレント・プログラムID
+-- M.Hokkanji Ver1.2 START
+        ,xmril.program_update_date      = gd_prog_upd_date  -- プログラム更新日
+-- M.Hokkanji Ver1.2 END
      WHERE xmril.mov_line_id   = gt_mod_line_id(i)  -- 移動明細ID
      ;
 --
      -- 処理件数カウント
--- 2008/06/03 START カーソルで処理されない場合SQL%rowcountは前のSQLの処理件数を
--- 表示するため上記カーソルが実行された場合のみ実行するように条件を追加
-    IF ( gt_mod_line_id.COUNT >= 1 ) THEN
-      ln_cnt        := SQL%rowcount;
-      gn_target_cnt := gn_target_cnt + ln_cnt;
-    END IF;
--- 2008/06/03 END
+-- M.Hokkanji Ver1.3 START
+-- 処理件数は移動ロット詳細の削除件数をカウントするように変更
+--    IF ( gt_mod_line_id.COUNT >= 1 ) THEN
+--      ln_cnt        := SQL%rowcount;
+--      gn_target_cnt := gn_target_cnt + ln_cnt;
+--    END IF;
+-- M.Hokkanji Ver1.3 END
 --
   EXCEPTION
 --
@@ -1359,6 +1414,9 @@ AS
     gn_request_id          := FND_GLOBAL.CONC_REQUEST_ID; -- 要求ID
     gn_prog_appl_id        := FND_GLOBAL.PROG_APPL_ID;    -- プログラムアプリケーションID
     gn_prog_id             := FND_GLOBAL.CONC_PROGRAM_ID; -- プログラムID
+-- M.Hokkanji Ver1.2 START
+    gd_prog_upd_date       := gd_sysdate;                 -- プログラム更新日
+-- M.Hokkanji Ver1.2 END
 --
     -- 処理件数初期化
     gn_target_cnt          := 0;
@@ -1652,7 +1710,10 @@ AS
     -- リターン・コードのセット、終了処理
     -- ==================================
     --処理件数出力
-    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00008','CNT',TO_CHAR(gn_target_cnt));
+-- M.Hokkanji Ver1.3 START
+--    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00008','CNT',TO_CHAR(gn_target_cnt));
+    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00008','CNT',TO_CHAR(gn_del_cut));
+-- M.Hokkanji Ver1.3 END
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
     --ステータス出力
