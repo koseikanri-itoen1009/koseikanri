@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    計算書                                (T_MD070_BPO_78A)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/06/20    1.3  Yasuhisa Yamamoto ST不具合対応#135
  *  2008/07/29    1.4   Satoshi Yunba    禁則文字対応
  *  2008/12/05    1.5  Tsuyoki Yoshimoto 本番障害#446
+ *  2008/12/25    1.6  Takao Ohashi      本番障害#848,850
  *
  *****************************************************************************************/
 --
@@ -88,7 +89,7 @@ AS
   ------------------------------
   gc_application_cmn      CONSTANT VARCHAR2(5)  := 'XXCMN' ;            -- アプリケーション（XXCMN）
   gc_application_po       CONSTANT VARCHAR2(5)  := 'XXPO' ;             -- アプリケーション（XXPO）
-
+--
   ------------------------------
   -- 項目編集関連
   ------------------------------
@@ -97,6 +98,16 @@ AS
   gc_jp_dd                CONSTANT VARCHAR2(2)  := '日' ;
   gc_char_d_format        CONSTANT VARCHAR2(30) := 'YYYY/MM/DD' ;
   gc_char_dt_format       CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS' ;
+--
+-- add start ver1.6
+  ------------------------------
+  -- 参照コード
+  ------------------------------
+  -- 移動ロット詳細アドオン：文書タイプ
+  gc_doc_type_prov        CONSTANT VARCHAR2(2)  := '30';    -- 支給指示
+  -- 移動ロット詳細アドオン：レコードタイプ
+  gc_rec_type_stck        CONSTANT VARCHAR2(2)  := '20';    -- 出庫実績
+-- add end ver1.6
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -112,7 +123,11 @@ AS
   -- 計算書データ格納用レコード変数
   TYPE rec_data_type_dtl  IS RECORD 
     (
-      v_vendor_name         xxcmn_vendors.vendor_name%TYPE          -- 取引先：取引先名称
+-- mod start ver1.6
+--      v_vendor_name         xxcmn_vendors.vendor_name%TYPE          -- 取引先：取引先名称
+      vendor_code           xxwsh_order_headers_all.vendor_code%TYPE -- 取引先：取引先コード
+     ,v_vendor_name         xxcmn_vendors.vendor_name%TYPE          -- 取引先：取引先名称
+-- mod end ver1.6
      ,v_zip                 xxcmn_vendors.zip%TYPE                  -- 取引先：郵便番号
      ,v_address_line1       xxcmn_vendors.address_line1%TYPE        -- 取引先：住所１
      ,v_address_line2       xxcmn_vendors.address_line2%TYPE        -- 取引先：住所２
@@ -131,6 +146,10 @@ AS
      ,item_name             xxcmn_item_mst_b.item_short_name%TYPE             -- 品目名称
      ,unit_price            xxwsh_order_lines_all.unit_price%TYPE             -- 単価
      ,tax_rate              fnd_lookup_values.lookup_code%TYPE                -- 消費税率
+-- add start ver1.6
+     ,amount                NUMBER                                            -- 金額
+     ,tax                   NUMBER                                            -- 消費税
+-- add end ver1.6
      ,quantity              xxwsh_order_lines_all.quantity%TYPE               -- 出荷実績数量
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
@@ -544,7 +563,11 @@ AS
        ,in_dept_code        xxwsh_order_headers_all.performance_management_dept%TYPE
       )
     IS
-      SELECT xv.vendor_name     AS v_vendor_name    -- 取引先：取引先名称
+-- mod start ver1.6
+--      SELECT xv.vendor_name     AS v_vendor_name    -- 取引先：取引先名称
+      SELECT xoha.vendor_code   AS vendor_code      -- 取引先：取引先コード
+            ,xv.vendor_name     AS v_vendor_name    -- 取引先：取引先名称
+-- mod end ver1.6
             ,xv.zip             AS v_zip            -- 取引先：郵便番号
             ,xv.address_line1   AS v_address_line1  -- 取引先：住所１
             ,xv.address_line2   AS v_address_line2  -- 取引先：住所２
@@ -566,19 +589,38 @@ AS
             ,ximb.item_short_name           AS item_name    -- 品目名称
             ,xola.unit_price                AS unit_price   -- 単価
             ,TO_NUMBER( flv.lookup_code )   AS tax_rate     -- 消費税率
-            ,CASE
+-- add start ver1.6
+            ,SUM(ROUND(CASE
+              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xmld.actual_quantity
+              WHEN ( otta.order_category_code = 'RETURN' ) THEN xmld.actual_quantity * -1
+             END * xola.unit_price))        AS amount       -- 金額
+            ,SUM(ROUND(CASE
+              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xmld.actual_quantity
+              WHEN ( otta.order_category_code = 'RETURN' ) THEN xmld.actual_quantity * -1
+             END * xola.unit_price * TO_NUMBER( flv.lookup_code ) / 100)) AS tax -- 消費税
+-- add start ver1.6
+-- mod start ver1.6
+--            ,CASE
+            ,SUM(CASE
 -- 2008/12/05 v1.5 T.Yoshimoto Mod Start 本番#446
               --WHEN ( otta.order_category_code = 'ORDER'  ) THEN xola.quantity
-              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xola.shipped_quantity
+--              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xola.shipped_quantity
+              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xmld.actual_quantity
 -- 2008/12/05 v1.5 T.Yoshimoto Mod End 本番#446
-              WHEN ( otta.order_category_code = 'RETURN' ) THEN xola.quantity * -1
-             END quantity                           -- 出荷実績数量
+--              WHEN ( otta.order_category_code = 'RETURN' ) THEN xola.quantity * -1
+              WHEN ( otta.order_category_code = 'RETURN' ) THEN xmld.actual_quantity * -1
+--             END quantity                           -- 出荷実績数量
+             END) quantity                           -- 出荷実績数量
+-- mod end ver1.6
       FROM xxwsh_order_headers_all    xoha    -- 受注ヘッダアドオン
           ,oe_transaction_types_all   otta    -- 受注タイプ
           ,xxcmn_vendors              xv      -- 仕入先アドオン
           ,hr_locations_all           hla     -- 事業所マスタ
           ,xxcmn_locations_all        xla     -- 事業所アドオン
           ,xxwsh_order_lines_all      xola    -- 受注明細アドオン
+-- add start ver1.6
+          ,xxinv_mov_lot_details      xmld    -- 移動ロット詳細アドオン
+-- add end ver1.6
           ,xxcmn_item_mst_b           ximb    -- 品目アドオン
           ,gmi_item_categories        gic     -- 品目カテゴリ割当
           ,mtl_categories_b           mcb     -- 品目カテゴリ
@@ -619,6 +661,11 @@ AS
 -- E 2008/02/06 mod by m.ikeda ---------------------------------------------------------------- E --
       AND   xola.delete_flag          = 'N'
       AND   xoha.order_header_id      = xola.order_header_id
+-- add start ver1.6
+      AND   xola.order_line_id        = xmld.mov_line_id
+      AND   xmld.document_type_code   = gc_doc_type_prov
+      AND   xmld.record_type_code     = gc_rec_type_stck
+-- add end ver1.6
       ---------------------------------------------------------------------------------------------
       -- 事業所アドオンの絞込み条件
       AND   xoha.arrival_date         BETWEEN xla.start_date_active     -- 着荷日で有効なデータ
@@ -647,6 +694,28 @@ AS
       AND   xoha.latest_external_flag = 'Y'                         -- 最新フラグ      ＝最新
       AND   xoha.arrival_date         BETWEEN gd_fiscal_date_from   -- 着荷日が〆切年月に含まれる
                                       AND     gd_fiscal_date_to     -- 
+-- add start ver1.6
+      GROUP BY xoha.vendor_code         -- 取引先：取引先コード
+              ,xv.vendor_name           -- 取引先：取引先名称
+              ,xv.zip                   -- 取引先：郵便番号
+              ,xv.address_line1         -- 取引先：住所１
+              ,xv.address_line2         -- 取引先：住所２
+              ,xla.location_name        -- 事業所：事業所名称
+              ,xla.zip                  -- 事業所：郵便番号
+              ,xla.address_line1        -- 事業所：住所１
+              ,xla.phone                -- 事業所：電話番号
+              ,xla.fax                  -- 事業所：ＦＡＸ番号
+              ,mcb.segment1             -- 品目区分
+              ,xoha.arrival_date        -- 着荷日
+              ,CASE otta.attribute11
+                WHEN gc_ship_rcv_pay_ctg_yhe THEN xoha.request_no || '*'
+                ELSE           xoha.request_no
+               END                          -- 依頼No（伝票番号）
+              ,xola.shipping_item_code      -- 品目コード
+              ,ximb.item_short_name         -- 品目名称
+              ,xola.unit_price              -- 単価
+              ,TO_NUMBER( flv.lookup_code ) -- 消費税率
+-- add end ver1.6
       ORDER BY xoha.vendor_code         -- 取引先コード
               ,mcb.segment1             -- 品目区分
               ,xoha.arrival_date        -- 着荷日
@@ -946,7 +1015,11 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_name' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_location_name ;
+-- mod start ver1.6
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_location_name ;
+        gt_xml_data_table(gl_xml_idx).tag_value 
+                                     := xxcmn_common_pkg.get_user_dept(FND_GLOBAL.USER_ID);
+-- mod end ver1.6
 --
         ------------------------------
         -- 明細ＬＧ開始タグ
@@ -1026,8 +1099,12 @@ AS
       -- 計算項目の算出
       -- -----------------------------------------------------
       -- 個別計算項目
-      ln_amount   := ROUND( gt_main_data(i).quantity * gt_main_data(i).unit_price ) ;
-      ln_tax      := ROUND( ln_amount * gt_main_data(i).tax_rate / 100 ) ;
+-- mod start ver1.6
+--      ln_amount   := ROUND( gt_main_data(i).quantity * gt_main_data(i).unit_price ) ;
+--      ln_tax      := ROUND( ln_amount * gt_main_data(i).tax_rate / 100 ) ;
+      ln_amount   := gt_main_data(i).amount;
+      ln_tax      := gt_main_data(i).tax;
+-- mod end ver1.6
 -- 2008/06/20 v1.3 Y.Yamamoto Update Start
 --      ln_balance  := ln_amount - ln_tax ;
       ln_balance  := ln_amount + ln_tax ;
