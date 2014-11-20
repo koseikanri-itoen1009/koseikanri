@@ -1,0 +1,1 @@
+CREATE INDEX gmi.gmi_itc_n01 ON gmi.ic_tran_cmp (reason_code,doc_type,trans_date,whse_code);
