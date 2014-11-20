@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,9 +11,10 @@
 * 2008-10-07 1.2  伊藤ひとみ     統合テスト指摘240対応
 * 2008-10-22 1.3  二瓶　大輔     統合テスト指摘194対応
 * 2008-10-24 1.4  二瓶　大輔     TE080_BPO_600 No22
-* 2008-12-10 1.5  伊藤ひとみ     本番#587対応
-* 2008-12-11 1.6  伊藤ひとみ     本番#675対応
-* 2008-12-25 1.7  二瓶　大輔     本番#771対応
+* 2008-12-10 1.5  伊藤ひとみ     本番障害#587対応
+* 2008-12-11 1.6  伊藤ひとみ     本番障害#675対応
+* 2008-12-25 1.7  二瓶　大輔     本番障害#771対応
+* 2009-01-22 1.8  伊藤ひとみ     本番障害#1000対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -44,7 +45,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.7
+ * @version 1.8
  ***************************************************************************
  */
  
@@ -1843,6 +1844,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String itemClass                 = (String)hrow.getAttribute("ItemClass");               // 品目区分
     Number itemId                    = (Number)hrow.getAttribute("ItemId");                  // 品目ID
     String itemShortName             = (String)hrow.getAttribute("ItemShortName");           // 品目略称
+// 2009-01-22 H.Itou ADD START 本番#1000対応
+    String requestNo                 = (String)hrow.getAttribute("RequestNo");                // 依頼No
+// 2009-01-22 H.Itou ADD END
     // 検索条件表示リージョン格納用変数
     String warningClass              = null;                                                 // 警告区分
     Date   warningDate               = null;                                                 // 警告日付
@@ -1967,7 +1971,12 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                      showLotNo,
                      deliverToId,
                      scheduleArrivalDate,
-                     scheduleShipDate);
+// 2009-01-22 H.Itou MOD START 本番#1000対応
+//                     scheduleShipDate);
+                     scheduleShipDate,
+                     requestNo
+                     );
+// 2009-01-22 H.Itou MOD END
 
             result  = (Number)data.get("result");  // 処理結果
             revDate = (Date)data.get("revDate");   // 逆転日付
@@ -2050,7 +2059,12 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                      showLotNo,
                      deliverToId,
                      scheduleArrivalDate,
-                     scheduleShipDate);
+// 2009-01-22 H.Itou MOD START 本番#1000対応
+//                     scheduleShipDate);
+                     scheduleShipDate,
+                     requestNo
+                     );
+// 2009-01-22 H.Itou MOD END
 
             result  = (Number)data.get("result");  // 処理結果
             revDate = (Date)data.get("revDate");   // 逆転日付

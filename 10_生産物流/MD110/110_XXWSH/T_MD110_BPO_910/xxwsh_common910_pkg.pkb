@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.27
+ * Version                : 1.28
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  calc_total_value       P         B.積載効率チェック(合計値算出)
  *  calc_load_efficiency   P         C.積載効率チェック(積載効率算出)
  *  check_lot_reversal     P         D.ロット逆転防止チェック
+ *  check_lot_reversal2    P         D.ロット逆転防止チェック(依頼No指定あり)
  *  check_fresh_condition  P         E.鮮度条件チェック
  *  calc_lead_time         P         F.リードタイム算出
  *  check_shipping_judgment
@@ -61,6 +62,7 @@ AS
  *  2008/11/12   1.25  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2008/12/07   1.26  ORACLE北寒寺正夫 [出荷可否チェック]本番障害#318対応
  *  2008/12/23   1.27  ORACLE北寒寺正夫 [積載効率チェック(合計値算出)] 本番指摘#781対応
+ *  2009/01/22   1.28  SCS   伊藤ひとみ [ロット逆転防止チェック(依頼No指定あり)] 本番障害#1000対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2830,6 +2832,9 @@ AS
               AND   xmld.record_type_code          =  cv_record_type_02       -- レコードタイプ
               AND   ilm.lot_id                     =  xmld.lot_id             -- OPMロットID
               AND   ilm.item_id                    =  xmld.item_id            -- OPM品目ID
+-- 2009/01/22 H.Itou Add Start 本番#1000対応
+              AND   xmld.actual_quantity           >  0                       -- 実績数量
+-- 2009/01/22 H.Itou Add End
             UNION ALL
             SELECT  /*+ leading(xoha xola) index(xoha xxwsh_oh_n13) */
                     ilm.attribute1
@@ -2868,7 +2873,10 @@ AS
               AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
               AND   xmld.record_type_code          =  cv_record_type_02       -- レコードタイプ
               AND   ilm.lot_id                     =  xmld.lot_id             -- OPMロットID
-              AND   ilm.item_id                    =  xmld.item_id)           -- OPM品目ID
+              AND   ilm.item_id                    =  xmld.item_id            -- OPM品目ID
+-- 2009/01/22 H.Itou Add Start 本番#1000対応
+              AND   xmld.actual_quantity           >  0)                      -- 実績数量
+-- 2009/01/22 H.Itou Add End
               ;
 -- 2008/09/17 v1.19 UPDATE END
           EXCEPTION
@@ -3090,6 +3098,687 @@ AS
 --
   END check_lot_reversal;
 --
+-- 2009/01/22 H.Itou Add Start 本番#1000対応 ロット逆転防止チェック(依頼No指定あり)を追加(自分自身を含めずにチェックする)
+  /**********************************************************************************
+   * Procedure Name   : check_lot_reversal2
+   * Description      : ロット逆転防止チェック
+   ***********************************************************************************/
+  PROCEDURE check_lot_reversal2(
+    iv_lot_biz_class              IN  VARCHAR2,                                -- 1.ロット逆転処理種別
+    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,           -- 2.品目コード
+    iv_lot_no                     IN  ic_lots_mst.lot_no%TYPE,                 -- 3.ロットNo
+    iv_move_to_id                 IN  NUMBER,                                  -- 4.配送先ID/入庫先ID
+    iv_arrival_date               IN  DATE,                                    -- 5.着日
+    id_standard_date              IN  DATE  DEFAULT SYSDATE,                   -- 6.基準日(適用日基準日)
+    iv_request_no                 IN  xxwsh_order_headers_all.request_no%TYPE, -- 7.依頼No
+    ov_retcode                    OUT NOCOPY VARCHAR2,                         -- 7.リターンコード
+    ov_errmsg_code                OUT NOCOPY VARCHAR2,                         -- 8.エラーメッセージコード
+    ov_errmsg                     OUT NOCOPY VARCHAR2,                         -- 9.エラーメッセージ
+    on_result                     OUT NOCOPY NUMBER,                           -- 10.処理結果
+    on_reversal_date              OUT NOCOPY DATE                              -- 11.逆転日付
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_lot_reversal2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージID
+    cv_xxwsh_in_pram_set_err       CONSTANT VARCHAR2(100) := 'APP-XXWSH-12651'; -- 必須入力パラメータ未設定エラーメッセージ
+    cv_xxwsh_in_pram_lot_err       CONSTANT VARCHAR2(100) := 'APP-XXWSH-12652'; -- 入力パラメータ「ロット逆転処理種別」セット内容エラー
+    cv_xxwsh_in_pram_arr_err       CONSTANT VARCHAR2(100) := 'APP-XXWSH-12653'; -- 入力パラメータ未設定エラーメッセージ
+    cv_xxwsh_in_no_lot_err         CONSTANT VARCHAR2(100) := 'APP-XXWSH-12654'; -- 対象ロットデータなしエラーメッセージ
+    -- トークン
+    cv_tkn_in_parm                 CONSTANT VARCHAR2(30)  := 'in_param';
+    cv_tkn_lot_no                  CONSTANT VARCHAR2(30)  := 'lot_no';
+    -- トークンセット値
+    cv_ship_move_class_char        CONSTANT VARCHAR2(30)  := 'ロット逆転処理種別';
+    cv_item_code_char              CONSTANT VARCHAR2(30)  := '品目コード';
+    cv_lot_no_char                 CONSTANT VARCHAR2(30)  := 'ロットNo';
+    cv_move_to_char                CONSTANT VARCHAR2(30)  := '配送先ID/入庫先ID';
+    cv_request_no_char             CONSTANT VARCHAR2(30)  := '依頼No/移動No';
+    --
+    -- ロット逆転処理種別
+    cv_ship_plan                   CONSTANT VARCHAR2(1)   := '1';         -- 出荷指示
+    cv_ship_result                 CONSTANT VARCHAR2(1)   := '2';         -- 出荷実績
+    cv_move_plan                   CONSTANT VARCHAR2(1)   := '5';         -- 移動指示
+    cv_move_result                 CONSTANT VARCHAR2(1)   := '6';         -- 移動実績
+    --
+    -- 出荷依頼ステータス
+    cv_request_status_03           CONSTANT VARCHAR2(2)   := '03';        -- 締め済み
+    cv_request_status_04           CONSTANT VARCHAR2(2)   := '04';        -- 出荷実績計上済
+    -- 移動ステータス
+    cv_move_status_03              CONSTANT VARCHAR2(2)   := '03';        -- 調整中
+    cv_move_status_04              CONSTANT VARCHAR2(2)   := '04';        -- 出庫報告有
+    cv_move_status_05              CONSTANT VARCHAR2(2)   := '05';        -- 入庫報告有
+    cv_move_status_06              CONSTANT VARCHAR2(2)   := '06';        -- 入出庫報告有
+    --
+    -- 出荷支給区分
+    cv_shipping_shikyu_class_01    CONSTANT VARCHAR2(1)   := '1';         -- 出荷依頼
+    -- 文書タイプ
+    cv_document_type_10            CONSTANT VARCHAR2(2)   := '10';        -- 出荷依頼
+    cv_document_type_20            CONSTANT VARCHAR2(2)   := '20';        -- 移動
+    -- レコードタイプ
+    cv_record_type_01              CONSTANT VARCHAR2(2)   := '10';         -- 指示
+    cv_record_type_02              CONSTANT VARCHAR2(2)   := '20';         -- 出庫実績
+    cv_record_type_03              CONSTANT VARCHAR2(2)   := '30';         -- 入庫実績
+    --
+    cv_zero                        CONSTANT VARCHAR2(1)   := '0';         -- ゼロ値(VARCHAR2)
+    cv_yes                         CONSTANT VARCHAR2(1)   := 'Y';         -- Y (YES_NO区分)
+    cv_no                          CONSTANT VARCHAR2(1)   := 'N';         -- N (YES_NO区分)
+    --
+    ln_result_success              CONSTANT NUMBER        := 0;           -- 0 (正常)
+    ln_result_error                CONSTANT NUMBER        := 1;           -- 1 (異常)
+    --
+    cv_mindate                     CONSTANT DATE
+                                        := fnd_date.string_to_date('1900/01/01', gv_yyyymmdd);
+                                                                          -- 最小日付
+--
+--
+    -- *** ローカル変数 ***
+    -- エラー変数
+    lv_err_cd             VARCHAR2(30);
+    --
+    ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
+    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
+    --
+    ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
+    ld_max_ship_arrival_date       xxwsh_order_headers_all.arrival_date%type;
+                                                                          -- 最大着荷日(出荷)
+    ld_max_rship_manufact_date     DATE;                                  -- 出荷実績製造年月日
+    --
+    ld_max_move_manufact_date      DATE;                                  -- 移動指示製造年月日
+    ld_max_move_arrival_date       xxinv_mov_req_instr_headers.actual_arrival_date%type;
+                                                                          -- 最大着荷日(移動)
+    ld_max_rmove_manufact_date     DATE;                                  -- 移動実績製造年月日
+    --
+    ld_max_onhand_manufact_date    DATE;                                  -- 手持製造年月日
+    --
+    ld_check_manufact_date         DATE;                                  -- チェック日付
+    --
+    ln_result                      NUMBER;                                -- 結果
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --
+    /**********************************
+     *  パラメータチェック(D-1)       *
+     **********************************/
+    -- 必須入力パラメータをチェックします
+    -- ロット逆転処理種別
+    IF   ( iv_lot_biz_class IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_in_pram_set_err,
+                                            cv_tkn_in_parm,
+                                            cv_ship_move_class_char);
+      lv_err_cd := cv_xxwsh_in_pram_set_err;
+      RAISE global_api_expt;
+    --
+    -- 品目コード
+    ELSIF( iv_item_no       IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_in_pram_set_err,
+                                            cv_tkn_in_parm,
+                                            cv_item_code_char);
+      lv_err_cd := cv_xxwsh_in_pram_set_err;
+      RAISE global_api_expt;
+    --
+    -- ロットNo
+    ELSIF( iv_lot_no         IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_in_pram_set_err,
+                                            cv_tkn_in_parm,
+                                            cv_lot_no_char);
+      lv_err_cd := cv_xxwsh_in_pram_set_err;
+      RAISE global_api_expt;
+    --
+    -- 配送先ID/入庫先ID
+    ELSIF( iv_move_to_id    IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_in_pram_set_err,
+                                            cv_tkn_in_parm,
+                                            cv_move_to_char);
+      lv_err_cd := cv_xxwsh_in_pram_set_err;
+      RAISE global_api_expt;
+    --
+    -- 依頼No
+    ELSIF( iv_request_no    IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_in_pram_set_err,
+                                            cv_tkn_in_parm,
+                                            cv_request_no_char);
+      lv_err_cd := cv_xxwsh_in_pram_set_err;
+      RAISE global_api_expt;
+    END IF;
+    --
+    --
+    -- 入力パラメータ「ロット逆転処理種別」の値チェック
+    -- 値が1、2、5、6であるかチェック
+    IF ( iv_lot_biz_class NOT IN ( cv_ship_plan,
+                                   cv_ship_result,
+                                   cv_move_plan,
+                                   cv_move_result )) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                            cv_xxwsh_in_pram_lot_err
+                                           );
+      lv_err_cd := cv_xxwsh_in_pram_lot_err;
+      RAISE global_api_expt;
+    ELSE
+    -- 値が1、5の場合、「着日」がセットされているかチェック
+      IF  ( ( iv_lot_biz_class IN ( cv_ship_plan, cv_move_plan ))
+        AND ( iv_arrival_date  IS NULL )) THEN
+        --
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                              cv_xxwsh_in_pram_arr_err
+                                             );
+        lv_err_cd := cv_xxwsh_in_pram_arr_err;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+    --
+    /**********************************
+     *  製造年月日取得(D-2)           *
+     **********************************/
+    -- OPMロットマスタから当該ロットの製造年月日を取得
+    BEGIN
+      SELECT fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd )   -- 最大製造年月日
+      INTO   ld_max_manufact_date
+      FROM   ic_lots_mst              ilm,                             -- OPMロットマスタ
+             xxcmn_item_mst2_v        ximv                             -- OPM品目情報VIEW2
+      WHERE  ximv.item_no             = iv_item_no                     -- 品目コード
+        AND  ximv.start_date_active  <= trunc( id_standard_date )
+        AND  ximv.end_date_active    >= trunc( id_standard_date )
+        AND  ilm.item_id              = ximv.item_id
+        AND  ilm.lot_no               = iv_lot_no;                     -- ロットNo
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- 取得エラー
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
+                                              cv_xxwsh_in_no_lot_err,
+                                              cv_tkn_lot_no,
+                                              iv_lot_no);
+        lv_err_cd := cv_xxwsh_in_no_lot_err;
+      RAISE global_api_expt;
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+    --
+    --
+    --
+    /**********************************
+     *  親品目取得(D-3)               *
+     **********************************/
+    -- OPM品目マスタから親品目コードを取得
+    BEGIN
+      SELECT ximv2.item_no                                             -- 品目コード(親品目)
+      INTO   lv_parent_item_no
+      FROM   xxcmn_item_mst2_v         ximv1,                          -- OPM品目情報VIEW2(子)
+             xxcmn_item_mst2_v         ximv2                           -- OPM品目情報VIEW2(親)
+      WHERE  ximv1.item_no             =  iv_item_no                   -- 品目コード
+        AND  ximv1.start_date_active  <=  trunc( id_standard_date )
+        AND  ximv1.end_date_active    >=  trunc( id_standard_date )
+        AND  ximv2.item_id             =  ximv1.parent_item_id         -- 親品目ID
+        AND  ximv2.start_date_active  <=  trunc( id_standard_date )
+        AND  ximv2.end_date_active    >=  trunc( id_standard_date );
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+      -- データなしは除外
+        NULL;
+      --
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+    --
+    --
+    /**********************************
+    *  ロット逆転処理種別の判定       *
+    **********************************/
+    IF ( iv_lot_biz_class IN ( cv_ship_plan , cv_ship_result) ) THEN
+    --
+      /**********************************
+       *  供給情報取得(出荷)(D-4)       *
+       **********************************/
+       -- 1. 出荷指示情報の取得
+      IF ( iv_lot_biz_class = cv_ship_plan ) THEN
+        BEGIN
+          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ))
+                                                                            -- 出荷指示製造年月日
+          INTO    ld_max_ship_manufact_date
+          FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
+                  xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
+                  xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
+                  xxwsh_oe_transaction_types2_v  xottv,                     -- 受注タイプ
+                  ic_lots_mst                    ilm                        -- OPMロットマスタ
+          WHERE   xoha.deliver_to_id             =  iv_move_to_id                -- 出荷先ID
+            AND   NVL(xoha.latest_external_flag, cv_no)
+                                                 =  cv_yes                       -- 最新フラグ
+            AND   xoha.schedule_arrival_date    <=  iv_arrival_date              -- 着日
+            AND   xoha.req_status                =  cv_request_status_03         -- 締め済み
+            AND   xoha.request_no               <>  iv_request_no                -- 自分自身の依頼Noは除く
+            AND   xottv.transaction_type_id      =  xoha.order_type_id           -- 受注タイプID
+            AND   xottv.shipping_shikyu_class    =  cv_shipping_shikyu_class_01  -- 出荷依頼
+            AND   xottv.start_date_active       <=  trunc( id_standard_date )
+            AND   ( (xottv.end_date_active      >=  trunc( id_standard_date ))
+                  OR(xottv.end_date_active      IS  NULL ))
+            AND   xola.order_header_id           =  xoha.order_header_id         -- 受注ヘッダID
+            AND   xola.shipping_item_code       IN                               -- 品目コード
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+            AND   NVL( xola.delete_flag,  cv_no )
+                                                <>  cv_yes                       -- 削除フラグ'Y'以外
+            AND   xmld.mov_line_id               =  xola.order_line_id           -- 受注明細ID
+            AND   xmld.document_type_code        =  cv_document_type_10          -- 文書タイプ
+            AND   xmld.record_type_code          =  cv_record_type_01            -- レコードタイプ
+            AND   ilm.lot_id                     =  xmld.lot_id                  -- OPMロットID
+            AND   ilm.item_id                    =  xmld.item_id                 -- OPM品目ID
+            ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+      END IF;
+      --
+      --
+      -- 2-1. 入力パラメータに合致する最大の着荷日を取得
+      BEGIN
+        SELECT  MAX( arrival_date )                                    -- 最大着荷日
+        INTO    ld_max_ship_arrival_date
+        FROM
+          (SELECT /*+ leading(xoha) index(xoha xxwsh_oh_n27) */
+                  xoha.arrival_date
+          FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
+                  xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
+                  xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
+          WHERE   xoha.result_deliver_to_id        =  iv_move_to_id           -- 出荷先ID(実績)
+            AND   NVL(xoha.latest_external_flag, cv_no)
+                                                   =  cv_yes                      -- 最新フラグ=Y
+            AND   xoha.req_status                  =  cv_request_status_04        -- 出荷実績計上済
+            AND   xoha.request_no                 <>  iv_request_no               -- 自分自身の依頼Noは除く
+            AND   xottv.transaction_type_id        =  xoha.order_type_id          -- 受注タイプID
+            AND   xottv.shipping_shikyu_class      =  cv_shipping_shikyu_class_01 -- 出荷支給区分
+            AND   xottv.start_date_active         <=  TRUNC( id_standard_date )
+            AND   (( xottv.end_date_active        >=  TRUNC( id_standard_date ))
+                  OR(xottv.end_date_active        IS  NULL ))
+            AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
+            AND   xola.shipping_item_code       IN                               -- 品目コード
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+            AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
+            AND   xola.shipped_quantity            >  0                         -- 出荷実績数量0以上
+          UNION ALL
+          SELECT  /*+ leading(xoha) index(xoha xxwsh_oh_n13) */
+                  xoha.arrival_date
+          FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
+                  xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
+                  xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
+          WHERE   xoha.result_deliver_to_id       IS NULL
+            AND   xoha.deliver_to_id               =  iv_move_to_id           -- 出荷先ID(実績)
+            AND   NVL(xoha.latest_external_flag, cv_no)
+                                                   =  cv_yes                      -- 最新フラグ=Y
+            AND   xoha.req_status                  =  cv_request_status_04        -- 出荷実績計上済
+            AND   xoha.request_no                 <>  iv_request_no               -- 自分自身の依頼Noは除く
+            AND   xottv.transaction_type_id        =  xoha.order_type_id          -- 受注タイプID
+            AND   xottv.shipping_shikyu_class      =  cv_shipping_shikyu_class_01 -- 出荷支給区分
+            AND   xottv.start_date_active         <=  TRUNC( id_standard_date )
+            AND   (( xottv.end_date_active        >=  TRUNC( id_standard_date ))
+                  OR(xottv.end_date_active        IS  NULL ))
+            AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
+            AND   xola.shipping_item_code       IN                               -- 出荷品目
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+            AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
+            AND   xola.shipped_quantity            >  0)                        -- 出荷実績数量0以上
+            ;
+        EXCEPTION
+          --
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+      END;
+      --
+      --
+      -- 2-2. 上記で取得した最大着荷日に紐づくのロットの最大製造日を取得
+      IF ( ld_max_ship_arrival_date IS NOT NULL ) THEN
+        BEGIN
+          SELECT  MAX( fnd_date.string_to_date( attribute1, gv_yyyymmdd ) )
+          INTO    ld_max_rship_manufact_date
+          FROM
+            (SELECT /*+ leading(xoha xola) index(xoha xxwsh_oh_n27) */
+                    ilm.attribute1
+            FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
+                    xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
+                    xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
+                    xxwsh_oe_transaction_types2_v  xottv,                     -- 受注タイプ
+                    ic_lots_mst                    ilm                        -- OPMロットマスタ
+            WHERE   xoha.result_deliver_to_id      =  iv_move_to_id           -- 出荷先ID(実績)
+              AND   xoha.arrival_date    >= TRUNC( ld_max_ship_arrival_date )   -- 最大着荷日
+              AND   xoha.arrival_date     < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+              AND   NVL(xoha.latest_external_flag, cv_no) =  cv_yes           -- 最新フラグ=Y
+              AND   xoha.req_status                =  cv_request_status_04    -- 出荷実績計上済
+              AND   xoha.request_no               <>  iv_request_no           -- 自分自身の依頼Noは除く
+              AND   xottv.transaction_type_id      =  xoha.order_type_id      -- 受注タイプID
+              AND   xottv.shipping_shikyu_class    =  cv_shipping_shikyu_class_01 -- 出荷依頼
+              AND   xottv.start_date_active       <=  TRUNC( id_standard_date )
+              AND   (( xottv.end_date_active      >=  TRUNC( id_standard_date ))
+                    OR(xottv.end_date_active      IS  NULL ))
+              AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
+              AND   xola.shipping_item_code       IN                               -- 品目コード
+                    -- 親品目と親品目に紐付く子品目(2階層まで)
+                   (SELECT ximv.item_no
+                    FROM   xxcmn_item_mst2_v ximv
+                    WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                    AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    )
+              AND   NVL( xola.delete_flag, cv_no ) <> cv_yes                  -- 削除フラグ'Y'以外
+              AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
+              AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
+              AND   xmld.record_type_code          =  cv_record_type_02       -- レコードタイプ
+              AND   ilm.lot_id                     =  xmld.lot_id             -- OPMロットID
+              AND   ilm.item_id                    =  xmld.item_id            -- OPM品目ID
+              AND   xmld.actual_quantity           >  0                       -- 実績数量
+            UNION ALL
+            SELECT  /*+ leading(xoha xola) index(xoha xxwsh_oh_n13) */
+                    ilm.attribute1
+            FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
+                    xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
+                    xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
+                    xxwsh_oe_transaction_types2_v  xottv,                     -- 受注タイプ
+                    ic_lots_mst                    ilm                        -- OPMロットマスタ
+            WHERE   xoha.result_deliver_to_id     IS NULL
+              AND   xoha.deliver_to_id             =  iv_move_to_id               -- 出荷先ID(実績)
+              AND   xoha.schedule_arrival_date    >= TRUNC( ld_max_ship_arrival_date ) -- 最大着荷日
+              AND   xoha.schedule_arrival_date   < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+              AND   NVL(xoha.latest_external_flag, cv_no) =  cv_yes           -- 最新フラグ=Y
+              AND   xoha.req_status                =  cv_request_status_04    -- 出荷実績計上済
+              AND   xoha.request_no               <>  iv_request_no           -- 自分自身の依頼Noは除く
+              AND   xottv.transaction_type_id      =  xoha.order_type_id      -- 受注タイプID
+              AND   xottv.shipping_shikyu_class    =  cv_shipping_shikyu_class_01 -- 出荷依頼
+              AND   xottv.start_date_active       <=  trunc( id_standard_date )
+              AND   (( xottv.end_date_active      >=  trunc( id_standard_date ))
+                    OR(xottv.end_date_active      IS  NULL ))
+              AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
+              AND   xola.shipping_item_code       IN                               -- 品目コード
+                    -- 親品目と親品目に紐付く子品目(2階層まで)
+                   (SELECT ximv.item_no
+                    FROM   xxcmn_item_mst2_v ximv
+                    WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                    AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    )
+              AND   NVL( xola.delete_flag, cv_no ) <>  cv_yes                 -- 削除フラグ'Y'以外
+              AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
+              AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
+              AND   xmld.record_type_code          =  cv_record_type_02       -- レコードタイプ
+              AND   ilm.lot_id                     =  xmld.lot_id             -- OPMロットID
+              AND   ilm.item_id                    =  xmld.item_id            -- OPM品目ID
+              AND   xmld.actual_quantity           >  0 )                     -- 実績数量
+              ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+        END;
+      END IF;
+      --
+    --
+    ELSE
+      /**********************************
+       *  供給情報取得(移動・在庫)(D-5) *
+       **********************************/
+      --
+      -- 3.移動指示情報の取得
+      IF ( iv_lot_biz_class = cv_move_plan ) THEN
+        --
+        BEGIN
+          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+                                                                -- 移動指示製造年月日
+          INTO    ld_max_move_manufact_date
+          FROM    xxinv_mov_req_instr_headers    xmrih,         -- 移動依頼/指示ヘッダ（アドオン）
+                  xxinv_mov_req_instr_lines      xmril,         -- 移動依頼/指示明細（アドオン）
+                  xxinv_mov_lot_details          xmld,          -- 移動ロット詳細
+                  ic_lots_mst                    ilm            -- OPMロットマスタ
+          WHERE   xmrih.ship_to_locat_id    =  iv_move_to_id             -- 入庫先ID
+            AND   xmrih.comp_actual_flg     =  cv_no                     -- 実績計上済フラグ
+            AND   xmrih.status             IN( cv_move_status_03,
+                                               cv_move_status_04 )       -- ステータス
+            AND   xmrih.mov_num            <>  iv_request_no             -- 自分自身の移動Noは除く
+            AND   xmrih.schedule_arrival_date
+                                           <=  iv_arrival_date           -- 着日
+            AND   xmril.mov_hdr_id          =  xmrih.mov_hdr_id          -- 移動ヘッダID
+            AND   xmril.item_code       IN                               -- 品目コード
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+            AND   xmril.delete_flg          =  cv_no                           -- 取消フラグ
+            AND   xmld.mov_line_id          =  xmril.mov_line_id               -- 移動明細ID
+            AND   xmld.document_type_code   =  cv_document_type_20             -- 文書タイプ
+            AND   ((( xmrih.status  = cv_move_status_03 )                      -- レコードタイプ
+                    AND ( xmld.record_type_code = cv_record_type_01 ))             -- 指示
+                  OR(( xmrih.status = cv_move_status_04 )
+                    AND ( xmld.record_type_code = cv_record_type_02 )))            -- 出庫実績
+            AND   xmld.actual_quantity      >  0                               -- 実績数量
+            AND   ilm.lot_id                =  xmld.lot_id                     -- OPMロットID
+            AND   ilm.item_id               =  xmld.item_id                    -- OPM品目ID
+            ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+      END IF;
+      --
+      --
+      -- 4. 手持数量情報の取得
+      BEGIN
+        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+        INTO    ld_max_onhand_manufact_date
+        FROM    ic_loct_inv              ili,                      -- OPM手持数量
+                ic_lots_mst              ilm,                      -- OPMロットマスタ
+                xxcmn_item_mst2_v        ximv,                     -- OPM品目情報VIEW2
+                xxcmn_item_locations_v   xilv                      -- OPM保管場所情報VIEW
+        WHERE   ximv.item_no       IN                               -- 品目コード
+                -- 親品目と親品目に紐付く子品目(2階層まで)
+               (SELECT ximv1.item_no
+                FROM   xxcmn_item_mst2_v ximv1
+                WHERE  ximv1.start_date_active <= TRUNC(id_standard_date)
+                AND    ximv1.end_date_active   >= TRUNC(id_standard_date)
+                AND    LEVEL                   <= 2                 -- 子階層まで抽出
+                START WITH ximv1.item_no        = lv_parent_item_no -- 親品目から検索
+                CONNECT BY NOCYCLE PRIOR ximv1.item_id = ximv1.parent_item_id
+                )
+          AND   ximv.start_date_active    <= TRUNC(id_standard_date)
+          AND   ximv.end_date_active      >= TRUNC(id_standard_date)
+          AND   xilv.inventory_location_id = iv_move_to_id         -- 入庫先ID
+          AND   ili.item_id                =  ximv.item_id         -- OPM品目ID
+          AND   ili.location               =  xilv.segment1        -- 保管倉庫コード
+          AND   ilm.lot_id                 =  ili.lot_id           -- ロットID
+          AND   ilm.item_id                =  ili.item_id          -- OPM品目ID
+          ;
+      EXCEPTION
+        WHEN  OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+      --
+      --
+      -- 5. 移動実績情報の取得
+      BEGIN
+        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+        INTO    ld_max_rmove_manufact_date
+        FROM    xxinv_mov_req_instr_headers    xmrih,         -- 移動依頼/指示ヘッダ（アドオン）
+                xxinv_mov_req_instr_lines      xmril,         -- 移動依頼/指示明細（アドオン）
+                xxinv_mov_lot_details          xmld,          -- 移動ロット詳細
+                ic_lots_mst                    ilm            -- OPMロットマスタ
+        WHERE   xmrih.ship_to_locat_id    =  iv_move_to_id
+          AND   xmrih.comp_actual_flg     =  cv_no                     -- 実績計上済フラグ
+          AND   xmrih.status             IN( cv_move_status_05,
+                                             cv_move_status_06 )       -- ステータス
+          AND   xmrih.mov_num            <>  iv_request_no             -- 自分自身の移動Noは除く
+          AND   xmril.mov_hdr_id          =  xmrih.mov_hdr_id          -- 移動ヘッダID
+          AND   xmril.item_code       IN                               -- 品目コード
+                -- 親品目と親品目に紐付く子品目(2階層まで)
+               (SELECT ximv.item_no
+                FROM   xxcmn_item_mst2_v ximv
+                WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                )
+          AND   xmril.delete_flg          =  cv_no                            -- 取消フラグ
+          AND   xmld.mov_line_id          =  xmril.mov_line_id                -- 移動明細ID
+          AND   xmld.document_type_code   =  cv_document_type_20              -- 文書タイプ
+          AND   xmld.record_type_code     =  cv_record_type_03                -- レコードタイプ
+          AND   xmld.actual_quantity      >  0                                -- 実績数量
+          AND   ilm.lot_id                =  xmld.lot_id                      -- OPMロットID
+          AND   ilm.item_id               =  xmld.item_id                     -- OPM品目ID
+          ;
+      EXCEPTION
+        WHEN  NO_DATA_FOUND THEN
+          -- データなしは除外
+          NULL;
+          --
+        WHEN  OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+      --
+    END IF;
+    --
+    /**********************************
+     *  ロット逆転判定処理(D-6)       *
+     **********************************/
+    -- ロット逆転対象の日付を算出
+    CASE iv_lot_biz_class
+      -- ロット逆転処理種別が「1」の場合
+      WHEN ( cv_ship_plan  ) THEN
+        -- 「出荷指示製造年月日」「出荷実績製造年月日」のうち最大
+        ld_check_manufact_date
+                 := GREATEST( NVL(ld_max_ship_manufact_date,  cv_mindate),
+                              NVL(ld_max_rship_manufact_date, cv_mindate) );
+        --
+        --
+      -- ロット逆転処理種別が「2」の場合
+      WHEN ( cv_ship_result ) THEN
+        ld_check_manufact_date := ld_max_rship_manufact_date;
+        --
+        --
+      -- ロット逆転処理種別が「5」の場合
+      WHEN ( cv_move_plan   ) THEN
+        -- 「移動指示製造年月日」「移動実績製造年月日」「手持製造年月日」のうち最大
+        ld_check_manufact_date
+                 := GREATEST( NVL(ld_max_move_manufact_date,   cv_mindate),
+                              NVL(ld_max_rmove_manufact_date,  cv_mindate),
+                              NVL(ld_max_onhand_manufact_date, cv_mindate) );
+        --
+        --
+      -- ロット逆転処理種別が「6」の場合
+      WHEN ( cv_move_result ) THEN
+        -- 移動実績製造年月日」「手持製造年月日」のうち最大
+        ld_check_manufact_date
+                 := GREATEST( NVL(ld_max_rmove_manufact_date  ,cv_mindate),
+                              NVL(ld_max_onhand_manufact_date ,cv_mindate) );
+    END CASE;
+    --
+    -- 「チェック日付」＞ 「最大製造年月日」ならば、ロット逆転
+    IF ( ( ld_check_manufact_date <= ld_max_manufact_date )
+      OR ( ld_check_manufact_date IS NULL                ) ) THEN
+      on_result         :=  ln_result_success;                     -- 処理結果
+      on_reversal_date  :=  NULL;                                  -- 逆転日付
+    ELSE
+      on_result         :=  ln_result_error;                       -- 処理結果
+      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+    END IF;
+      --
+    /**********************************
+     *  OUTパラメータセット(D-7)      *
+     **********************************/
+    --
+    ov_retcode                  := gv_status_normal;   -- リターンコード
+    ov_errmsg_code              := NULL;               -- エラーメッセージコード
+    ov_errmsg                   := NULL;               -- エラーメッセージ
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg      := lv_errmsg;
+      ov_errmsg_code := lv_err_cd;
+      ov_retcode     := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg      := SQLERRM;
+      ov_errmsg_code := SQLCODE;
+      ov_retcode     := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg      := SQLERRM;
+      ov_errmsg_code := SQLCODE;
+      ov_retcode     := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_lot_reversal2;
+--
+-- 2009/01/22 H.Itou Add End
   /**********************************************************************************
    * Procedure Name   : check_fresh_condition
    * Description      : 鮮度条件チェック

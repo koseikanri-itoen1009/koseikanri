@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流共通（出荷・移動チェック）
  * MD.050           : 生産物流共通（出荷・移動チェック）T_MD050_BPO_910
  * MD.070           : なし
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  calc_total_value       P         B.積載効率チェック(合計値算出)
  *  calc_load_efficiency   P         C.積載効率チェック(積載効率算出)
  *  check_lot_reversal     P         D.ロット逆転防止チェック
+ *  check_lot_reversal2    P         D.ロット逆転防止チェック(依頼No指定あり)
  *  check_fresh_condition  P         E.鮮度条件チェック
  *  calc_lead_time         P         F.リードタイム算出
  *  check_shipping_judgment
@@ -62,6 +63,7 @@ AS
  *  2008/11/12   1.25  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2008/12/07   1.26  ORACLE北寒寺正夫 [出荷可否チェック]本番障害#318対応
  *  2008/12/23   1.27  ORACLE北寒寺正夫 [積載効率チェック(合計値算出)] 本番指摘#781対応
+ *  2009/01/22   1.28  SCS   伊藤ひとみ [ロット逆転防止チェック(依頼No指定あり)] 本番障害#1000対応
  *****************************************************************************************/
 --
 -- 2008/10/06 H.Itou Del Start 統合テスト指摘240
@@ -144,6 +146,22 @@ AS
     on_result                     OUT NOCOPY NUMBER,                                       -- 10.処理結果
     on_reversal_date              OUT NOCOPY DATE);                                        -- 11.逆転日付
 --
+-- 2009/01/22 H.Itou Add Start 本番#1000対応
+  -- ロット逆転防止チェック
+  PROCEDURE check_lot_reversal2(
+    iv_lot_biz_class              IN  VARCHAR2,                                            -- 1.ロット逆転処理種別
+    iv_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE,                       -- 2.品目コード
+    iv_lot_no                     IN  ic_lots_mst.lot_no%TYPE,                             -- 3.ロットNo
+    iv_move_to_id                 IN  NUMBER,                                              -- 4.配送先ID/取引先サイトID/入庫先ID
+    iv_arrival_date               IN  DATE,                                                -- 5.着日
+    id_standard_date              IN  DATE  DEFAULT SYSDATE,                               -- 6.基準日(適用日基準日)
+    iv_request_no                 IN  xxwsh_order_headers_all.request_no%TYPE,             -- 7.依頼No
+    ov_retcode                    OUT NOCOPY VARCHAR2,                                     -- 8.リターンコード
+    ov_errmsg_code                OUT NOCOPY VARCHAR2,                                     -- 9.エラーメッセージコード
+    ov_errmsg                     OUT NOCOPY VARCHAR2,                                     -- 10.エラーメッセージ
+    on_result                     OUT NOCOPY NUMBER,                                       -- 11.処理結果
+    on_reversal_date              OUT NOCOPY DATE);                                        -- 12.逆転日付
+-- 2009/01/22 H.Itou Add End
   -- 鮮度条件チェック
   PROCEDURE check_fresh_condition(
     iv_move_to_id                 IN  NUMBER,                                              -- 1.配送先ID

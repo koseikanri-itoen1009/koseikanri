@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2008-12-05 1.9  伊藤ひとみ   本番障害#452対応
 * 2008-12-06 1.10 宮田         本番障害#484対応
 * 2008-12-15 1.11 二瓶大輔     本番障害#648対応
+* 2009-01-22 1.12 伊藤ひとみ   本番障害#1000対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -39,7 +40,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.11
+ * @version 1.12
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -3896,7 +3897,11 @@ public class XxwshUtility
     String lotNo,
     Number moveToId,
     Date   arrivalDate,
-    Date   standardDate
+// 2009-01-22 H.Itou MOD START 本番障害#1000対応
+//    Date   standardDate
+    Date   standardDate,
+    String requestNo
+// 2009-01-22 H.Itou MOD END
   ) throws OAException
   {
     String apiName = "doCheckLotReversalMov";
@@ -3908,18 +3913,33 @@ public class XxwshUtility
     //PL/SQL作成
     StringBuffer sb = new StringBuffer(100);
     sb.append("BEGIN "                                    );
-    sb.append("  xxwsh_common910_pkg.check_lot_reversal( ");
+// 2009-01-22 H.Itou MOD START 本番障害#1000対応
+//    sb.append("  xxwsh_common910_pkg.check_lot_reversal( ");
+//    sb.append("    iv_lot_biz_class    => :1,            ");   // 1.ロット逆転処理種別 1:出荷(指示)、5:移動(指示)
+//    sb.append("    iv_item_no          => :2,            ");   // 2.品目コード
+//    sb.append("    iv_lot_no           => :3,            ");   // 3.ロットNo
+//    sb.append("    iv_move_to_id       => :4,            ");   // 4.配送先ID/取引先サイトID/入庫先ID
+//    sb.append("    iv_arrival_date     => :5,            ");   // 5.着日
+//    sb.append("    id_standard_date    => :6,            ");   // 6.基準日(適用日基準日)
+//    sb.append("    ov_retcode          => :7,            ");   // 7.リターンコード
+//    sb.append("    ov_errmsg_code      => :8,            ");   // 8.エラーメッセージコード
+//    sb.append("    ov_errmsg           => :9,            ");   // 9.エラーメッセージ
+//    sb.append("    on_result           => :10,           ");   // 10.処理結果
+//    sb.append("    on_reversal_date    => :11);          ");   // 11.逆転日付
+    sb.append("  xxwsh_common910_pkg.check_lot_reversal2( ");
     sb.append("    iv_lot_biz_class    => :1,            ");   // 1.ロット逆転処理種別 1:出荷(指示)、5:移動(指示)
     sb.append("    iv_item_no          => :2,            ");   // 2.品目コード
     sb.append("    iv_lot_no           => :3,            ");   // 3.ロットNo
     sb.append("    iv_move_to_id       => :4,            ");   // 4.配送先ID/取引先サイトID/入庫先ID
     sb.append("    iv_arrival_date     => :5,            ");   // 5.着日
     sb.append("    id_standard_date    => :6,            ");   // 6.基準日(適用日基準日)
-    sb.append("    ov_retcode          => :7,            ");   // 7.リターンコード
-    sb.append("    ov_errmsg_code      => :8,            ");   // 8.エラーメッセージコード
-    sb.append("    ov_errmsg           => :9,            ");   // 9.エラーメッセージ
-    sb.append("    on_result           => :10,           ");   // 10.処理結果
-    sb.append("    on_reversal_date    => :11);          ");   // 11.逆転日付
+    sb.append("    iv_request_no       => :7,            ");   // 7.依頼No
+    sb.append("    ov_retcode          => :8,            ");   // 8.リターンコード
+    sb.append("    ov_errmsg_code      => :9,            ");   // 9.エラーメッセージコード
+    sb.append("    ov_errmsg           => :10,           ");   // 10.エラーメッセージ
+    sb.append("    on_result           => :11,           ");   // 11.処理結果
+    sb.append("    on_reversal_date    => :12);          ");   // 12.逆転日付
+// 2009-01-22 H.Itou MOD END
     sb.append("END; "                                     );
 
     //PL/SQL設定
@@ -3935,26 +3955,45 @@ public class XxwshUtility
       cstmt.setInt(4,    XxcmnUtility.intValue(moveToId));     // 配送先ID
       cstmt.setDate(5,   XxcmnUtility.dateValue(arrivalDate)); // 着日
       cstmt.setDate(6,   XxcmnUtility.dateValue(standardDate));// 基準日(適用日基準日)
+// 2009-01-22 H.Itou ADD START 本番障害#1000対応
+      cstmt.setString(7, requestNo);                            // 依頼No
+// 2009-01-22 H.Itou ADD END
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(7,  Types.VARCHAR); // リターンコード
-      cstmt.registerOutParameter(8,  Types.VARCHAR); // エラーメッセージコード
-      cstmt.registerOutParameter(9,  Types.VARCHAR); // エラーメッセージ
-      cstmt.registerOutParameter(10, Types.INTEGER); // 処理結果
-      cstmt.registerOutParameter(11, Types.DATE);    // 逆転日付
+// 2009-01-22 H.Itou MOD START 本番障害#1000対応
+//      cstmt.registerOutParameter(7,  Types.VARCHAR); // リターンコード
+//      cstmt.registerOutParameter(8,  Types.VARCHAR); // エラーメッセージコード
+//      cstmt.registerOutParameter(9,  Types.VARCHAR); // エラーメッセージ
+//      cstmt.registerOutParameter(10, Types.INTEGER); // 処理結果
+//      cstmt.registerOutParameter(11, Types.DATE);    // 逆転日付
+      cstmt.registerOutParameter(8,  Types.VARCHAR); // リターンコード
+      cstmt.registerOutParameter(9,  Types.VARCHAR); // エラーメッセージコード
+      cstmt.registerOutParameter(10,  Types.VARCHAR); // エラーメッセージ
+      cstmt.registerOutParameter(11, Types.INTEGER); // 処理結果
+      cstmt.registerOutParameter(12, Types.DATE);    // 逆転日付
+// 2009-01-22 H.Itou MOD END
 
       //PL/SQL実行
       cstmt.execute();
-
-      String retCode    = cstmt.getString(7);               // リターンコード
-      String errmsgCode = cstmt.getString(8);               // エラーメッセージコード
-      String errmsg     = cstmt.getString(9);               // エラーメッセージ
+      
+// 2009-01-22 H.Itou MOD START 本番障害#1000対応
+//      String retCode    = cstmt.getString(7);               // リターンコード
+//      String errmsgCode = cstmt.getString(8);               // エラーメッセージコード
+//      String errmsg     = cstmt.getString(9);               // エラーメッセージ
+      String retCode    = cstmt.getString(8);               // リターンコード
+      String errmsgCode = cstmt.getString(9);               // エラーメッセージコード
+      String errmsg     = cstmt.getString(10);               // エラーメッセージ
+// 2009-01-22 H.Itou MOD END
 
       // API正常終了の場合、値をセット
       if (XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
       {
-        ret.put("result",  new Number(cstmt.getInt(10))); // 処理結果
-        ret.put("revDate", new Date(cstmt.getDate(11)));  // 逆転日付
+// 2009-01-22 H.Itou MOD START 本番障害#1000対応
+//        ret.put("result",  new Number(cstmt.getInt(10))); // 処理結果
+//        ret.put("revDate", new Date(cstmt.getDate(11)));  // 逆転日付
+        ret.put("result",  new Number(cstmt.getInt(11))); // 処理結果
+        ret.put("revDate", new Date(cstmt.getDate(12)));  // 逆転日付
+// 2009-01-22 H.Itou MOD END
         
       // API正常終了でない場合、エラー  
       } else
