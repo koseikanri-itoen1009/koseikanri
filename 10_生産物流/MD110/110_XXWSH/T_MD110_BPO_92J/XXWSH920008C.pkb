@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.10
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/01/28   1.9   SCS伊藤           本番障害#1028対応（パラメータに指示部署追加）
  *  2009/03/17   1.10  SCS北寒寺         本番障害#1323対応
  *  2009/10/16   1.11  SCS菅原           本番障害#1611対応
+ *  2010/01/08   1.12  SCS北寒寺         本番稼働障害#701対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -121,6 +122,9 @@ AS
 -- 2009/01/19 D.Nihei ADD START
   gv_error_10002       CONSTANT VARCHAR2(30)  := 'APP-XXCMN-10002';    -- プロファイル取得エラー
 -- 2009/01/19 D.Nihei ADD END
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+  gv_error_11615       CONSTANT VARCHAR2(30)  := 'APP-XXWSH-11615';    -- クローズ年月取得エラー
+-- 2010/01/08 M.Hokkanji Ver1.12 END
   --定数
   gv_cons_msg_kbn_wsh  CONSTANT VARCHAR2(5)   := 'XXWSH';              -- メッセージ区分XXWSH
   gv_cons_msg_kbn_cmn  CONSTANT VARCHAR2(5)   := 'XXCMN';              -- メッセージ区分XXCMN
@@ -223,6 +227,13 @@ AS
 --
   gv_request_type      VARCHAR2(20);         -- 依頼No/移動番号_区分
 --
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+  gn_lot_cnt             NUMBER;             -- 取得ロット件数(デバッグ用)
+  gn_get_can_enc_qty_cnt NUMBER;             -- 引当可能数取得件数(デバッグ用)
+-- 2010/01/08 M.Hokkanji Ver1.12 END
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+  gd_open_date         DATE;                 -- オープン日付
+-- 2010/01/08 M.Hokkanji Ver1.12 END
 -- 2008/11/13 M.Hokkanji PT START
   gv_item_code_list    VARCHAR2(4000);
 -- 2008/11/13 M.Hokkanji PT END
@@ -3866,6 +3877,9 @@ AS
 --
     -- *** ローカル変数 ***
 --
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+   lv_open_date VARCHAR2(10);
+-- 2010/01/08 M.Hokkanji Ver1.12 END
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -4014,6 +4028,18 @@ AS
     END IF;
 --
 -- 2009/01/19 D.Nihei ADD END
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+   gd_open_date := NULL;
+   lv_open_date := NULL;
+   lv_open_date := xxcmn_common_pkg.get_opminv_close_period;
+   IF ( lv_open_date IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg( gv_cons_msg_kbn_wsh
+                                            ,gv_error_11615
+                                           ) ;
+      RAISE global_api_expt;
+   END IF;
+   gd_open_date := ADD_MONTHS(TO_DATE(lv_open_date,'YYYYMM'), 1);
+-- 2010/01/08 M.Hokkanji Ver1.12 END
 --
   EXCEPTION
 -- 2009/01/19 D.Nihei ADD START
@@ -4420,6 +4446,21 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+    cv_status_02             CONSTANT VARCHAR2(2) := '02';
+    cv_status_03             CONSTANT VARCHAR2(2) := '03';
+    cv_status_04             CONSTANT VARCHAR2(2) := '04';
+    cv_status_05             CONSTANT VARCHAR2(2) := '05';
+    cv_status_06             CONSTANT VARCHAR2(2) := '06';
+    cv_status_08             CONSTANT VARCHAR2(2) := '08';
+    cv_document_type_code_10 CONSTANT VARCHAR2(2) := '10';
+    cv_document_type_code_20 CONSTANT VARCHAR2(2) := '20';
+    cv_document_type_code_30 CONSTANT VARCHAR2(2) := '30';
+    cv_record_type_code_10   CONSTANT VARCHAR2(2) := '10';
+    cv_record_type_code_20   CONSTANT VARCHAR2(2) := '20';
+    cv_record_type_code_30   CONSTANT VARCHAR2(2) := '30';
+    cn_zero                  CONSTANT NUMBER      := 0;
+-- 2010/01/08 M.Hokkanji Ver1.12 END
     -- *** ローカル変数 ***
     ln_cnt         NUMBER := 0;
     ln_supply_cnt  NUMBER := 0;
@@ -4436,10 +4477,105 @@ AS
            , NULL                    -- 引当可能数(後でセットする)
       FROM   ic_lots_mst         lm  -- ロットマスタ
            , xxcmn_lot_status_v  ls  -- ロットステータスView
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+           -- 引当済ロットか、全倉庫で手持在庫・入庫予定・入庫実績があるロットのみ抽出。(出庫のみ取得できても、画面表示しないため抽出不要)
+           ,( -- 手持在庫が0より多いロット
+              SELECT ili.lot_id   lot_id
+                    ,ili.item_id  item_id
+              FROM   ic_loct_inv  ili
+              WHERE  ili.item_id = in_opm_item_id
+              AND    ili.loct_onhand > cn_zero
+              UNION
+              -- S1)供給数  移動入庫予定
+              SELECT  mld.lot_id   lot_id
+                     ,mld.item_id  item_id
+              FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                     ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                     ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+              WHERE   mrih.comp_actual_flg        = 'N'
+              AND     mrih.status                IN (cv_status_02,cv_status_03)
+              AND     mrih.schedule_arrival_date >= gd_open_date -- 予定なのでOPEN日付のデータのみ対象。
+              AND     mrih.mov_hdr_id             = mril.mov_hdr_id
+              AND     mril.mov_line_id            = mld.mov_line_id
+              AND     mril.delete_flg             = gv_cons_flg_no
+              AND     mld.item_id                 = in_opm_item_id
+              AND     mld.document_type_code      = cv_document_type_code_20
+              AND     mld.record_type_code        = cv_record_type_code_10
+              UNION
+              -- S4)供給数  実績計上済の移動出庫実績
+              SELECT  mld.lot_id   lot_id
+                     ,mld.item_id  item_id
+              FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                     ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                     ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+              WHERE   mrih.comp_actual_flg    = gv_cons_flg_no
+              AND     mrih.status             = cv_status_04
+              AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) >= gd_open_date  -- 予定なのでOPEN日付のデータのみ対象。
+              AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+              AND     mril.mov_line_id        = mld.mov_line_id
+              AND     mril.delete_flg         = gv_cons_flg_no
+              AND     mld.item_id             = in_opm_item_id
+              AND     mld.document_type_code  = cv_document_type_code_20
+              AND     mld.record_type_code    = cv_record_type_code_20
+              AND     mld.actual_quantity     > cn_zero
+              UNION
+              -- I1)実績未取在庫数  移動入庫（入出庫報告有）
+              -- I2)実績未取在庫数  移動入庫（入庫報告有）
+              -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+              -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有)
+              SELECT  mld.lot_id   lot_id
+                     ,mld.item_id  item_id
+              FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
+                     ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
+                     ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+              WHERE (((mrih.comp_actual_flg    = gv_cons_flg_no)
+                  AND (mld.record_type_code    = cv_record_type_code_30)
+                  AND (mld.actual_quantity     > cn_zero)) 
+                OR   ((mrih.comp_actual_flg    = gv_cons_flg_yes)
+                  AND (mrih.correct_actual_flg = gv_cons_flg_yes)
+                  AND (mld.record_type_code    = cv_record_type_code_30)
+                  AND (mld.actual_quantity - NVL(mld.before_actual_quantity, cn_zero) > cn_zero))
+                OR   ((mrih.comp_actual_flg    = gv_cons_flg_yes)
+                  AND (mrih.correct_actual_flg = gv_cons_flg_yes)
+                  AND (mld.record_type_code    = cv_record_type_code_20)
+                  AND (NVL(mld.before_actual_quantity, cn_zero) - mld.actual_quantity > cn_zero)))
+              AND     mrih.status            IN (cv_status_05,cv_status_06)
+              AND     mrih.actual_arrival_date >= gd_open_date
+              AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+              AND     mril.mov_line_id        = mld.mov_line_id
+              AND     mril.delete_flg         = gv_cons_flg_no
+              AND     mld.item_id             = in_opm_item_id
+              AND     mld.document_type_code  = cv_document_type_code_20
+              AND     mld.record_type_code   IN (cv_record_type_code_20,cv_record_type_code_30)
+              UNION
+              -- I5)実績未取在庫数  出荷
+              -- I6)実績未取在庫数  支給
+              SELECT  mld.lot_id   lot_id
+                     ,mld.item_id  item_id
+              FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
+                     ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
+                     ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+              WHERE   oha.req_status           IN (cv_status_04,cv_status_08)
+              AND     oha.actual_confirm_class  = gv_cons_flg_no
+              AND     oha.latest_external_flag  = gv_cons_flg_yes
+              AND     oha.shipped_date          >= gd_open_date
+              AND     oha.order_header_id       = ola.order_header_id
+              AND     ola.delete_flag           = gv_cons_flg_no
+              AND     ola.order_line_id         = mld.mov_line_id
+              AND     mld.item_id               = in_opm_item_id
+              AND     mld.document_type_code   IN (cv_document_type_code_10,cv_document_type_code_30)
+              AND     mld.record_type_code      = cv_record_type_code_20
+              AND     NVL(mld.before_actual_quantity, cn_zero) - mld.actual_quantity > cn_zero
+            ) enable_lot
+-- 2010/01/08 M.Hokkanji Ver1.12 END
       WHERE  lm.item_id           = in_opm_item_id          -- 需要情報.OPM品目ID
         AND  lm.attribute23       = ls.lot_status           -- ロットステータス
         AND  ls.prod_class_code   = gv_item_class           -- 入力パラメータ.商品区分
         AND  ((ls.move_inst_a_reserve = 'Y') OR (ls.ship_req_a_reserve = 'Y')) -- 出荷(自動)か移動(自動)が'Y'
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+        AND  lm.item_id           = enable_lot.item_id
+        AND  lm.lot_id            = enable_lot.lot_id
+-- 2010/01/08 M.Hokkanji Ver1.12 END
       ORDER BY lm.attribute1 ASC,
                lm.attribute2 ASC; 
 --
@@ -4464,6 +4600,9 @@ AS
 --
     -- カーソルクローズ
     CLOSE lc_supply_cur;
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+    gn_lot_cnt := gn_lot_cnt + NVL(gr_supply_tbl.COUNT,0);
+-- 2010/01/08 M.Hokkanji Ver1.12 END
 --
   EXCEPTION
 --
@@ -4581,6 +4720,9 @@ AS
                                                            , gr_demand_tbl(in_d_cnt).schedule_ship_date   -- 有効日
                                                            , gr_demand_tbl(in_d_cnt).frequent_whse        -- 代表倉庫
                                                             );
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+      gn_get_can_enc_qty_cnt := gn_get_can_enc_qty_cnt + 1;
+-- 2010/01/08 M.Hokkanji Ver1.12 END
 -- 2009/01/19 D.Nihei MOD END
     END IF;
 -- Ver1.01 M.Hokkanji Start
@@ -5444,6 +5586,10 @@ AS
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
     gv_item_class := iv_item_class;
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+    gn_lot_cnt             := 0;
+    gn_get_can_enc_qty_cnt := 0;
+-- 2010/01/08 M.Hokkanji Ver1.12 END
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -5687,6 +5833,18 @@ AS
       FOR ln_s_cnt IN 1..ln_s_max LOOP
         -- チェックなしフラグの初期化
         lv_no_check_flg := gv_cons_flg_no;
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+-- @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+/*
+FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).request_no
+                              || '【品目コード】' || gr_demand_tbl(ln_d_cnt).shipping_item_code
+                              || '【保管倉庫】' || gr_demand_tbl(ln_d_cnt).deliver_from
+                              || '【出庫日】 ' || TO_CHAR(gr_demand_tbl(ln_d_cnt).schedule_ship_date,'YYYY/MM/DD')
+                              || '【ロットNo】' || gr_supply_tbl(ln_s_cnt).lot_no
+                              );
+*/
+-- @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+-- 2010/01/08 M.Hokkanji Ver1.12 END
         -- ===============================================
         -- A-8  ロット引当チェック check_lot_allot
         -- ===============================================
@@ -6227,6 +6385,12 @@ AS
     gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00012','STATUS',gv_conc_status);
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
+--
+-- 2010/01/08 M.Hokkanji Ver1.12 START
+-- @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+--FND_FILE.PUT_LINE( FND_FILE.LOG, '【ロット取得件数：】' || gn_lot_cnt || '【引当可能数取得件数：】' || gn_get_can_enc_qty_cnt);
+-- @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+-- 2010/01/08 M.Hokkanji Ver1.12 END
     --ステータスセット
     retcode := lv_retcode;
     --終了ステータスがエラーの場合はROLLBACKする
