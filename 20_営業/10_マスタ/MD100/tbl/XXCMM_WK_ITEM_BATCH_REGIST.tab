@@ -11,11 +11,13 @@ CREATE TABLE xxcmm.xxcmm_wk_item_batch_regist
     sales_target_flag              VARCHAR2(100),
     parent_item_code               VARCHAR2(100),
     case_inc_num                   VARCHAR2(100),
+-- Ver1.1  2009/05/15  Add T1_0906対応
+    case_conv_inc_num              VARCHAR2(100),
+-- End
     item_um                        VARCHAR2(100),
     item_product_class             VARCHAR2(100),
     rate_class                     VARCHAR2(100),
     net                            VARCHAR2(100),
-    weight_volume_class            VARCHAR2(100),
     weight_volume                  VARCHAR2(100),
     jan_code                       VARCHAR2(100),
     nets                           VARCHAR2(100),
@@ -57,7 +59,6 @@ CREATE TABLE xxcmm.xxcmm_wk_item_batch_regist
     program_id                     NUMBER(15,0),
     program_update_date            DATE
 )
-TABLESPACE xxdata2
 /
 COMMENT ON TABLE xxcmm.xxcmm_wk_item_batch_regist                         IS '品目一括登録ワーク'
 /
@@ -83,6 +84,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.parent_item_code       IS '親
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.case_inc_num           IS 'ケース入数'
 /
+-- Ver1.1  2009/05/15  Add T1_0906対応
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.case_conv_inc_num      IS 'ケース換算入数'
+/
+-- End
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_um                IS '基準単位'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_product_class     IS '商品製品区分'
@@ -90,8 +95,6 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_product_class     IS '商
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.rate_class             IS '率区分'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.net                    IS 'NET'
-/
-COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.weight_volume_class    IS '重量容積区分'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.weight_volume          IS '重量／体積'
 /
