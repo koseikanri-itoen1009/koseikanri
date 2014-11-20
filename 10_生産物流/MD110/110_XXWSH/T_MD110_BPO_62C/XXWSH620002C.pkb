@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,9 @@ AS
  *                                       1.10.3 配送先が混載している場合は全ての配送先を出力する。
  *  2008/07/17    1.11  Satoshi Takemoto 結合テスト不具合対応(変更要求対応#92,#98)
  *  2008/08/04    1.12  Takao Ohashi     結合出荷テスト(出荷追加_18,19,20)修正
+ *  2008/10/27    1.13  Masayoshi Uehara 統合指摘297、T_TE080_BPO_620 指摘35指摘45指摘47
+ *                                       T_S_501T_S_601T_S_607、T_TE110_BPO_230-001 指摘440
+ *                                       課題#32 単位/入数換算の処理ロジック
  *
  *****************************************************************************************/
 --
@@ -114,6 +117,7 @@ AS
   gc_new_modify_flg_mod       CONSTANT  VARCHAR2(1)   := 'M' ;              -- 修正
   gc_asterisk                 CONSTANT  VARCHAR2(1)   := '*' ;              -- 固定値「*」
   -- 商品区分
+  gc_prod_cd_leaf             CONSTANT  VARCHAR2(1)   := '1' ;              -- リーフ   --v1.13追加
   gc_prod_cd_drink            CONSTANT  VARCHAR2(1)   := '2' ;              -- ドリンク
   gc_item_cd_prdct            CONSTANT  VARCHAR2(1)   := '5' ;              -- 製品
   gc_item_cd_material         CONSTANT  VARCHAR2(1)   := '1' ;              -- 原料
@@ -282,6 +286,9 @@ AS
     ,deliver_from               xoha.deliver_from%TYPE                -- 出庫元
     ,description                xil2v.description%TYPE                -- 出庫元(名称)
     ,schedule_ship_date         xoha.schedule_ship_date%TYPE          -- 出庫日
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    ,item_class_code            xic4v.item_class_code%TYPE            -- 品目区分
+-- 2008/10/27 mod end 1.13 
     ,item_class_name            xic4v.item_class_name%TYPE            -- 品目区分名
     ,new_modify_flg             xoha.new_modify_flg%TYPE              -- 新規修正フラグ
     ,schedule_arrival_date      xoha.schedule_arrival_date%TYPE       -- 着日
@@ -312,6 +319,9 @@ AS
     ,small_quantity             xoha.small_quantity%TYPE              -- 個数
     ,item_code                  xola.shipping_item_code%TYPE          -- 品目(コード)
     ,item_name                  xim2v.item_short_name%TYPE            -- 品目(名称)
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    ,lot_id                     xmld.lot_id%TYPE                      -- ロットID
+-- 2008/10/27 mod end 1.13 
     ,lot_no                     xmld.lot_no%TYPE                      -- ロットNo
     ,attribute1                 ilm.attribute1%TYPE                   -- 製造日
     ,attribute3                 ilm.attribute3%TYPE                   -- 賞味期限
@@ -320,6 +330,7 @@ AS
     ,net                        xim2v.net%TYPE                        -- 重量(NET)
     ,qty                        xmld.actual_quantity%TYPE             -- 数量
     ,conv_unit                  xim2v.conv_unit%TYPE                  -- 入出庫換算単位
+    
   );
   type_report_data      rec_report_data;
   TYPE list_report_data IS TABLE OF rec_report_data INDEX BY BINARY_INTEGER ;
@@ -492,20 +503,21 @@ AS
       AND fu.employee_id = papf.person_id;
     --2008/07/04 ST不具合対応#394
 --
-    IF ( gv_papf_attribute3 = gc_user_kbn_inside ) THEN  --2008/07/04 ST不具合対応#394
-      IF ( gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN -- パラメータ予定/確定区分が確定の場合
-        IF ( gt_param.iv_notif_date IS NULL ) THEN
-          -- メッセージセット
-          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
-                                                ,gc_msg_id_required
-                                                ,gc_msg_tkn_nm_parmeta
-                                                ,gc_msg_tkn_val_parmeta2
-                                               ) ;
-          RAISE prm_check_expt ;
-        END IF ;
-      END IF ;
-    END IF ;
---
+-- 2008/10/27 del start1.13 統合指摘297 確定実施日は必須から任意に変更する。
+--    IF ( gv_papf_attribute3 = gc_user_kbn_inside ) THEN  --2008/07/04 ST不具合対応#394
+--      IF ( gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN -- パラメータ予定/確定区分が確定の場合
+--        IF ( gt_param.iv_notif_date IS NULL ) THEN
+--          -- メッセージセット
+--          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+--                                                ,gc_msg_id_required
+--                                                ,gc_msg_tkn_nm_parmeta
+--                                                ,gc_msg_tkn_val_parmeta2
+--                                               ) ;
+--          RAISE prm_check_expt ;
+--        END IF ;
+--      END IF ;
+--    END IF ;
+-- 2008/10/27 del end 1.13
     -- パラメータ締め実施日が未入力の場合に、締め実施時間FromかToに入力があった場合、
     -- エラーとする。
     IF ( gt_param.iv_shime_date IS NULL ) THEN
@@ -742,6 +754,9 @@ AS
     || ' ,deliver_from '            -- 出庫元
     || ' ,description '             -- 出庫元(名称)
     || ' ,schedule_ship_date '      -- 出庫日
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,item_class_code '         -- 品目区分
+-- 2008/10/27 mod end 1.13 
     || ' ,item_class_name '         -- 品目区分名
     || ' ,new_modify_flg '          -- 新規修正フラグ
     || ' ,schedule_arrival_date '   -- 着日
@@ -772,6 +787,9 @@ AS
     || ' ,small_quantity '          -- 個数
     || ' ,item_code '               -- 品目(コード)
     || ' ,item_name '               -- 品目(名称)
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,lot_id '                  -- ロットID
+-- 2008/10/27 mod end 1.13 
     || ' ,lot_no '                  -- ロットNo
     || ' ,attribute1 '              -- 製造日
     || ' ,attribute3 '              -- 賞味期限
@@ -799,6 +817,9 @@ AS
     || ' ,xoha.deliver_from AS deliver_from ' 
     || ' ,xil2v.description AS description ' 
     || ' ,xoha.schedule_ship_date AS schedule_ship_date ' 
+-- 2008/10/27 ADD start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,xic4v.item_class_code AS item_class_code ' 
+-- 2008/10/27 ADD end 1.13 
     || ' ,xic4v.item_class_name AS item_class_name ' 
     || ' ,DECODE(xoha.new_modify_flg, ''' 
       || gc_new_modify_flg_mod ||''', '''
@@ -855,6 +876,9 @@ AS
     || ' ,xoha.small_quantity AS small_quantity ' 
     || ' ,xola.shipping_item_code AS item_code ' 
     || ' ,xim2v.item_short_name AS item_name ' 
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,xmld.lot_id AS lot_id ' 
+-- 2008/10/27 mod end 1.13 
     || ' ,xmld.lot_no AS lot_no ' 
     || ' ,ilm.attribute1 AS attribute1 ' 
     || ' ,ilm.attribute3 AS attribute3 ' 
@@ -902,6 +926,9 @@ AS
     || ' END  AS qty' 
     || ' ,CASE' 
     || ' WHEN ( xic4v.item_class_code = '|| gc_item_cd_prdct ||' )' 
+-- 2008/10/27 add start 1.13 課題32 単位/入数換算ロジック修正
+    || ' AND ( xim2v.num_of_cases > 0 ) ' 
+-- 2008/10/27 add end 1.13 
     || ' AND ( xim2v.conv_unit IS NOT NULL ) THEN' 
     || ' xim2v.conv_unit' 
     || ' ELSE' 
@@ -943,18 +970,30 @@ AS
       lv_sql_shu_where1 :=  lv_sql_shu_where1 
       || ' AND ( xoha.freight_carrier_code = '''|| gt_param.iv_freight_carrier_code ||''')' ;
     END IF ;
-    IF ( gt_param.iv_notif_date IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_date IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_date IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_shu_where1 :=  lv_sql_shu_where1 
       || ' AND ( TRUNC(TO_DATE(xoha.notif_date,'''|| gc_date_fmt_all ||'''))' 
       || ' = TRUNC(TO_DATE('''|| TRUNC(gt_param.iv_notif_date) ||''', '''
                               || gc_date_fmt_all ||''')) )' ;
     END IF ;
-    IF ( gt_param.iv_notif_time_from IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_time_from IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_time_from IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_shu_where1 :=  lv_sql_shu_where1 
       || ' AND ( TO_CHAR(xoha.notif_date, '''
       || gc_date_fmt_hh24mi ||''') >= '''|| gt_param.iv_notif_time_from ||''')' ;
     END IF ;
-    IF ( gt_param.iv_notif_time_to IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_time_to IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_time_to IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_shu_where1 :=  lv_sql_shu_where1
       || ' AND ( TO_CHAR(xoha.notif_date, '''
       || gc_date_fmt_hh24mi ||''') <= '''|| gt_param.iv_notif_time_to ||''')' ;
@@ -1005,6 +1044,12 @@ AS
       lv_sql_shu_where1 :=  lv_sql_shu_where1 
       || ' AND xil2v.eos_control_type = '''|| gt_param.iv_online_kbn ||'''' ;
     END IF ;
+-- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
+    IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
+      lv_sql_shu_where1 :=  lv_sql_shu_where1 
+      || ' AND ( xil2v.eos_detination <> xc2v.eos_detination ) ' ;
+    END IF ;
+-- 2008/10/27 add end 1.13 
     lv_sql_shu_where1 :=  lv_sql_shu_where1
     || ' AND (' 
     || ' xil2v.distribution_block IN ( '''|| gt_param.iv_block1 ||'''' 
@@ -1080,17 +1125,29 @@ AS
     -- 出荷依頼締め管理(アドオン)
     ------------------------------------------------
     || ' AND xoha.tightening_program_id = xtc.concurrent_id(+)' ;
-    IF ( gt_param.iv_shime_date IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13仕様不備T_S_601 予定依頼区分が予定の時、締め実施日、時間を条件とする
+--    IF ( gt_param.iv_shime_date IS NOT NULL ) THEN
+    IF ( gt_param.iv_shime_date IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_p ) THEN
+-- 2008/10/27 mod end
       lv_sql_shu_where2 :=  lv_sql_shu_where2
       || ' AND TRUNC(xtc.tightening_date) = ' 
       || ' TRUNC(TO_DATE('''|| TRUNC(gt_param.iv_shime_date) ||'''))' ;
     END IF ;
-    IF ( gt_param.iv_shime_time_from IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13仕様不備T_S_601 予定依頼区分が予定の時、締め実施日、時間を条件とする
+--    IF ( gt_param.iv_shime_time_from IS NOT NULL ) THEN
+    IF ( gt_param.iv_shime_time_from IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_p ) THEN
+-- 2008/10/27 mod end
       lv_sql_shu_where2 :=  lv_sql_shu_where2
       || ' AND TO_CHAR(xtc.tightening_date, '''
       || gc_date_fmt_hh24mi ||''') '||' >= '''|| gt_param.iv_shime_time_from ||''' ' ;
     END IF ;
-    IF ( gt_param.iv_shime_time_to IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13仕様不備T_S_601 予定依頼区分が予定の時、締め実施日、時間を条件とする
+--    IF ( gt_param.iv_shime_time_to IS NOT NULL ) THEN
+    IF ( gt_param.iv_shime_time_to IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_p ) THEN
+-- 2008/10/27 mod end
       lv_sql_shu_where2 :=  lv_sql_shu_where2
       || ' AND TO_CHAR(xtc.tightening_date, '''
       || gc_date_fmt_hh24mi ||''') ' 
@@ -1211,6 +1268,9 @@ AS
     || ' ,xoha.deliver_from AS deliver_from ' 
     || ' ,xil2v.description AS description ' 
     || ' ,xoha.schedule_ship_date AS schedule_ship_date ' 
+-- 2008/10/27 ADD start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,xic4v.item_class_code AS item_class_code ' 
+-- 2008/10/27 ADD end 1.13 
     || ' ,xic4v.item_class_name AS item_class_name ' 
     || ' ,DECODE(xoha.new_modify_flg, '''
       || gc_new_modify_flg_mod ||''', '''
@@ -1261,6 +1321,9 @@ AS
     || ' ,xoha.small_quantity AS small_quantity ' 
     || ' ,xola.shipping_item_code AS item_code ' 
     || ' ,xim2v.item_short_name AS item_name ' 
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,xmld.lot_id AS lot_id ' 
+-- 2008/10/27 mod end 1.13 
     || ' ,xmld.lot_no AS lot_no ' 
     || ' ,ilm.attribute1 AS attribute1 ' 
     || ' ,ilm.attribute3 AS attribute3 ' 
@@ -1283,7 +1346,17 @@ AS
     || ' OR ( xola.reserved_quantity = 0 ) ) THEN ' 
     || ' xola.quantity ' 
     || ' END AS qty ' 
-    || ' ,xim2v.item_um AS conv_unit '
+-- 2008/10/27 mod start 1.13 課題32 単位/入数換算ロジック修正
+--    || ' ,xim2v.item_um AS conv_unit '
+    || ' ,CASE' 
+    || ' WHEN ( xic4v.item_class_code = '|| gc_item_cd_prdct ||' )' 
+    || ' AND ( xim2v.num_of_cases > 0 ) ' 
+    || ' AND ( xim2v.conv_unit IS NOT NULL ) THEN' 
+    || ' xim2v.conv_unit' 
+    || ' ELSE' 
+    || ' xim2v.item_um' 
+    || ' END  AS conv_unit' 
+-- 2008/10/27 mod end 1.13 
     || ' FROM' 
     || ' xxwsh_carriers_schedule xcs '            -- 配車配送計画(アドオン)
     || ' ,xxwsh_order_headers_all xoha '          -- 受注ヘッダアドオン
@@ -1319,18 +1392,30 @@ AS
       lv_sql_sik_where1 :=  lv_sql_sik_where1
       || ' AND xoha.freight_carrier_code = '''|| gt_param.iv_freight_carrier_code||'''' ;
     END IF ;
-    IF ( gt_param.iv_notif_date IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_date IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_date IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_sik_where1 :=  lv_sql_sik_where1
       || ' AND TRUNC(TO_DATE(xoha.notif_date, '''|| gc_date_fmt_all ||'''))' 
       || ' = TRUNC(TO_DATE('''|| TRUNC(gt_param.iv_notif_date) ||''', '''
                               || gc_date_fmt_all ||'''))' ;
     END IF ;
-    IF ( gt_param.iv_notif_time_from IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_time_from IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_time_from IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_sik_where1 :=  lv_sql_sik_where1
       || ' AND TO_CHAR(xoha.notif_date, '''|| gc_date_fmt_hh24mi ||''') >= '''
       || gt_param.iv_notif_time_from ||'''' ;
     END IF ;
-    IF ( gt_param.iv_notif_time_to IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_time_to IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_time_to IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_sik_where1 :=  lv_sql_sik_where1
       || ' AND TO_CHAR(xoha.notif_date, '''|| gc_date_fmt_hh24mi ||''') <= '''
       || gt_param.iv_notif_time_to ||'''' ;
@@ -1387,6 +1472,12 @@ AS
       || ' AND xil2v.eos_control_type = '''
       || gt_param.iv_online_kbn ||'''' ;
     END IF ;
+-- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
+    IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
+      lv_sql_sik_where1 :=  lv_sql_sik_where1 
+      || ' AND ( xil2v.eos_detination <> xc2v.eos_detination ) ' ;
+    END IF ;
+-- 2008/10/27 add end 1.13 
     lv_sql_sik_where1 :=  lv_sql_sik_where1
     || ' AND (' 
     || ' xil2v.distribution_block IN ('''|| gt_param.iv_block1 ||''', '''
@@ -1569,6 +1660,9 @@ AS
     || ' ,xmrih.shipped_locat_code AS deliver_from ' 
     || ' ,xil2v1.description AS description ' 
     || ' ,xmrih.schedule_ship_date AS schedule_ship_date ' 
+-- 2008/10/27 ADD start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,xic4v.item_class_code AS item_class_code ' 
+-- 2008/10/27 ADD end 1.13 
     || ' ,xic4v.item_class_name AS item_class_name ' 
     || ' ,DECODE(xmrih.new_modify_flg, '''
       || gc_new_modify_flg_mod ||''', '''
@@ -1625,6 +1719,9 @@ AS
     || ' ,xmrih.small_quantity AS small_quantity ' 
     || ' ,xmril.item_code AS item_code ' 
     || ' ,xim2v.item_short_name AS item_name ' 
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,xmld.lot_id AS lot_id ' 
+-- 2008/10/27 mod end 1.13 
     || ' ,xmld.lot_no AS lot_no ' 
     || ' ,ilm.attribute1 AS attribute1 ' 
     || ' ,ilm.attribute3 AS attribute3 ' 
@@ -1676,6 +1773,9 @@ AS
     || ' ,CASE' 
     || ' WHEN ( xic4v.prod_class_code = '''|| gc_prod_cd_drink ||'''' 
     || ' AND xic4v.item_class_code = '''|| gc_item_cd_prdct ||'''' 
+-- 2008/10/27 add start 1.13 課題32 単位/入数換算ロジック修正
+    || ' AND xim2v.num_of_cases > 0 ' 
+-- 2008/10/27 add end 1.13 
     || ' AND xim2v.conv_unit IS NOT NULL ) THEN' 
     || ' xim2v.conv_unit' 
     || ' ELSE' 
@@ -1712,18 +1812,30 @@ AS
     || ' AND xmrih.status <> '''|| gc_move_status_not ||'''' 
     || ' AND xmrih.schedule_ship_date >= '''|| TRUNC(gt_param.iv_ship_from) ||'''' 
     || ' AND xmrih.schedule_ship_date <= '''|| TRUNC(gt_param.iv_ship_to) ||'''' ;
-    IF ( gt_param.iv_notif_date IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_date IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_date IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_ido_where1 :=  lv_sql_ido_where1
       || ' AND TRUNC(TO_DATE(xmrih.notif_date, '''|| gc_date_fmt_all ||'''))' 
       || ' = TRUNC(TO_DATE('''|| TRUNC(gt_param.iv_notif_date) ||''', '''
       || gc_date_fmt_all ||'''))' ;
     END IF ;
-    IF ( gt_param.iv_notif_time_from IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_time_from IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_time_from IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_ido_where1 :=  lv_sql_ido_where1
       || ' AND TO_CHAR(xmrih.notif_date, '''|| gc_date_fmt_hh24mi ||''') >= '''
       || gt_param.iv_notif_time_from ||'''' ;
     END IF ;
-    IF ( gt_param.iv_notif_time_to IS NOT NULL ) THEN
+-- 2008/10/27 mod start1.13 統合指摘297 予定依頼区分が確定の時、確定通知実施日、時間を条件とする
+--    IF ( gt_param.iv_notif_time_to IS NOT NULL ) THEN
+    IF ( gt_param.iv_notif_time_to IS NOT NULL 
+      AND gt_param.iv_plan_decide_kbn = gc_plan_decide_d ) THEN
+-- 2008/10/27 mod end
       lv_sql_ido_where1 :=  lv_sql_ido_where1
       || ' AND TO_CHAR(xmrih.notif_date, '''|| gc_date_fmt_hh24mi ||''') <= '''
       || gt_param.iv_notif_time_to ||'''' ;
@@ -1799,6 +1911,14 @@ AS
     -- OPM保管場所マスタ（入）
     -------------------------------------------------------------------------------
     || ' AND xmrih.ship_to_locat_id = xil2v2.inventory_location_id' 
+-- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
+    ;
+    IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
+      lv_sql_ido_where1 :=  lv_sql_ido_where1 
+      || ' AND ( xil2v1.eos_detination <> xc2v.eos_detination ) ' ;
+    END IF ;
+    lv_sql_ido_where1 :=  lv_sql_ido_where1 
+-- 2008/10/27 add end 1.13 
     -------------------------------------------------------------------------------
     -- 事業所情報VIEW2
     -------------------------------------------------------------------------------
@@ -1947,6 +2067,9 @@ AS
     || ' ,xcs.deliver_from AS deliver_from ' 
     || ' ,xil2v1.description AS description ' 
     || ' ,xcs.schedule_ship_date AS schedule_ship_date ' 
+-- 2008/10/27 ADD start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,NULL AS item_class_code ' 
+-- 2008/10/27 ADD end 1.13 
     || ' ,NULL AS item_class_name ' 
     || ' ,NULL AS new_modify_flg ' 
     || ' ,xcs.schedule_arrival_date AS schedule_arrival_date' 
@@ -2012,6 +2135,9 @@ AS
     || ' ,xcs.small_quantity AS small_quantity ' 
     || ' ,NULL AS item_code ' 
     || ' ,NULL AS item_name ' 
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+    || ' ,NULL AS lot_id ' 
+-- 2008/10/27 mod end 1.13 
     || ' ,NULL AS lot_no ' 
     || ' ,NULL AS attribute1 ' 
     || ' ,NULL AS attribute3 ' 
@@ -2069,6 +2195,12 @@ AS
       lv_sql_etc_where1 :=  lv_sql_etc_where1
       || ' AND xil2v1.eos_control_type = '''|| gt_param.iv_online_kbn ||'''' ;
     END IF ;
+-- 2008/10/27 add start 1.13 T_TE080_BPO_620指摘47 出庫配送区分が出庫の場合、倉庫兼運送業者を除外
+    IF ( gt_param.iv_shukko_haisou_kbn = gc_shukko_haisou_kbn_d ) THEN
+      lv_sql_etc_where1 :=  lv_sql_etc_where1 
+      || ' AND ( xil2v1.eos_detination <> xc2v.eos_detination ) ' ;
+    END IF ;
+-- 2008/10/27 add end 1.13 
     lv_sql_etc_where1 :=  lv_sql_etc_where1
     || ' AND (' 
     || ' xil2v1.distribution_block IN ( '''|| gt_param.iv_block1 ||'''' 
@@ -2201,7 +2333,17 @@ AS
     || ' ,schedule_arrival_date ASC'  -- 着日
     || ' ,delivery_no ASC'            -- 配送No
     || ' ,req_mov_no ASC'             -- 依頼No/移動No
-    || ' ,item_code ASC' ;            -- 商品コード
+-- 2008/10/27 mod start 1.13 T_TE080_BPO_620指摘47 ソート順変更
+--    || ' ,item_code ASC' ;            -- 商品コード
+    || ' ,item_code ASC'              -- 商品コード
+--    || ' ,DECODE(item_class_code, ''' || gc_item_cd_prdct     || ''', attribute1 )' -- 製造日
+--    || ' ,DECODE(item_class_code, ''' || gc_item_cd_prdct     || ''', attribute2 )' -- 固有記号
+    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', attribute1 )' -- 製造日
+    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', attribute2 )' -- 固有記号
+--    || ' ,DECODE(xic4v.item_class_code, ''' || gc_item_cd_prdct     || ''', ''0'' , TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )' -- ロットNO
+    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', 0 , TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )' -- ロットNO
+    ;
+-- 2008/10/27 mod end 1.13 
 --
     -- カーソルオープン
     OPEN c_cur FOR  lv_sql_head           || lv_sql_shu_sel_from1 || lv_sql_shu_sel_from2 || 
