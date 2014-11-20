@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                       [SCS障害No.0000653対応]ホット警告残数出力不正対応
  *                                       [SCS障害No.0000690対応]出力関連変数初期化不良対応
  *  2009/07/24   1.6    M.Sano           [SCS障害No.0000691対応]コラム変更、H/C区分変更時のホット警告残数変更
+ *  2009/08/20   1.7    M.Sano           [SCS障害No.0000867対応]PT考慮
  *
  *****************************************************************************************/
 --
@@ -154,7 +155,10 @@ AS
 
   cv_lookup_type_gyotai   CONSTANT VARCHAR2(30) := 'XXCOS1_GYOTAI_SHO_MST_003_A03'; -- 参照タイプ　業態小分類
   cv_organization_code    CONSTANT VARCHAR2(30) := 'XXCOI1_ORGANIZATION_CODE';      -- 在庫組織コード
-  
+-- 2009/08/20 Add Ver.1.7 Start
+--
+  ct_lang                 CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');  -- 言語コード
+-- 2009/08/20 Add Ver.1.7 End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -229,7 +233,11 @@ AS
 --カーソル
   CURSOR main_cur
   IS
-    SELECT hzca.cust_account_id   cust_account_id        --顧客ID
+-- 2009/08/20 Mod Ver.1.7 Start
+--    SELECT hzca.cust_account_id   cust_account_id        --顧客ID
+    SELECT /*+ INDEX(xxca xxcmm_cust_accounts_n09) */
+           hzca.cust_account_id   cust_account_id        --顧客ID
+-- 2009/08/20 Mod Ver.1.7 End
           ,hzca.account_number    account_number         --顧客コード
     FROM   hz_cust_accounts       hzca                   --顧客マスタ
           ,xxcmm_cust_accounts    xxca                   --顧客追加情報
@@ -237,8 +245,11 @@ AS
     WHERE  hzca.cust_account_id   = xxca.customer_id
     AND    xxca.business_low_type = flvl.meaning
     AND    flvl.lookup_type       = cv_lookup_type_gyotai
-    AND    flvl.security_group_id = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
-    AND    flvl.language          = USERENV('LANG')
+-- 2009/08/20 Mod Ver.1.7 Start
+--    AND    flvl.security_group_id = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--    AND    flvl.language          = USERENV('LANG')
+    AND    flvl.language          = ct_lang
+-- 2009/08/20 Mod Ver.1.7 End
     AND    TRUNC(SYSDATE)         BETWEEN flvl.start_date_active
                                     AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
     AND    flvl.enabled_flag      = cv_flag_on
@@ -1543,7 +1554,7 @@ AS
             ln_column_cnt := 0;
             <<loop_3>>
             FOR column_rec_d IN column_cur LOOP
--- 2009/07/15 Ver.1.5 Mod End
+-- 2009/07/15 Ver.1.5 Mod Start
               --納品実績情報明細関連の変数の初期化
               gn_monthly_sales           := NULL;
               gn_sales_days              := NULL;
