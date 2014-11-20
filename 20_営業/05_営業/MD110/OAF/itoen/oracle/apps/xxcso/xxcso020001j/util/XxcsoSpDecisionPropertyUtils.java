@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS¬ì_     V‹Kì¬
 * 2009-04-20 1.1  SCS–ö•½’¼l   [STáŠQT1_0302]•Ô‹pƒ{ƒ^ƒ“‰Ÿ‰ºŒã•\¦•s³‘Î‰
+* 2009-05-13 1.2  SCS–ö•½’¼l   [STáŠQT1_0954]T1_0302C³˜R‚ê”½‰f
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1305,10 +1306,12 @@ public class XxcsoSpDecisionPropertyUtils
         {
           contReturnSelfFlag = true;
         }
-        else
-        {
-          contReturnSelfFlag = false;
-        }
+// 2009-05-13 [STáŠQT1_0954] Del Start
+//        else
+//        {
+//          contReturnSelfFlag = false;
+//        }
+// 2009-05-13 [STáŠQT1_0954] Del End
       }
 // 2009-04-20 [STáŠQT1_0302] Add End
       
