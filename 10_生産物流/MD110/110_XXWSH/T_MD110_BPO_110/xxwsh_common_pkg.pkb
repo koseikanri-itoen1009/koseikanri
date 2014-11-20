@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.31
+ * Version                : 1.32
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2008/11/13   1.29  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘311対応
  *  2008/11/25   1.30  Oracle 北寒寺正夫[配車解除関数] 本番障害#84対応
  *  2008/11/27   1.31  Oracle 椎名昭圭  [依頼Noコンバート関数] 本番障害#179対応
+ *  2008/12/02   1.32  Oracle 野村正幸  本番#318対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1128,6 +1129,20 @@ AS
     -- *** ローカル定数 ***
     cv_cancel           CONSTANT VARCHAR2(2)   := '99';                    --取消
 --
+-- ##### 20081202 Ver.1.32 本番#318対応 START #####
+    lv_except_msg                    VARCHAR2(200);                          -- エラーメッセージ
+    cv_get_err              CONSTANT VARCHAR2(100) := 'APP-XXWSH-10013';     -- 取得エラー
+    cv_msg_kbn              CONSTANT VARCHAR2(5)   := 'XXWSH';               -- 出荷
+    cv_tkn_table            CONSTANT VARCHAR2(20)  := 'TABLE';               -- TABLE
+    cv_xoha                 CONSTANT VARCHAR2(100) := '受注ヘッダアドオン';
+    cv_tkn_type             CONSTANT VARCHAR2(20)  := 'TYPE';                -- TYPE
+    cv_tkn_no_type          CONSTANT VARCHAR2(20)  := 'NO_TYPE';             -- NO_TYPE
+    cv_request_no           CONSTANT VARCHAR2(10)  := '依頼No';
+    cv_tkn_request_no       CONSTANT VARCHAR2(20)  := 'REQUEST_NO';          -- REQUEST_NO
+    cv_log_level            CONSTANT VARCHAR2(1)   := '6';                   -- ログレベル
+    cv_colon                CONSTANT VARCHAR2(1)   := ':';                   -- コロン
+-- ##### 20081202 Ver.1.32 本番#318対応 END   #####
+--
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
@@ -1196,12 +1211,30 @@ AS
 --
     ELSIF (on_same_request_count = 1) THEN
 --
-      SELECT xoha.order_header_id
-      INTO   on_order_header_id
-      FROM   xxwsh_order_headers_all  xoha
-      WHERE  xoha.req_status  <> cv_cancel
-      AND    xoha.request_no  =  iv_request_no
-      ;
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+      BEGIN
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
+--
+        SELECT xoha.order_header_id
+        INTO   on_order_header_id
+        FROM   xxwsh_order_headers_all  xoha
+        WHERE  xoha.req_status  <> cv_cancel
+        AND    xoha.request_no  =  iv_request_no
+        ;
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn        , cv_get_err,
+                                                    cv_tkn_table      , cv_xoha,
+                                                    cv_tkn_type       , NULL,
+                                                    cv_tkn_no_type    , NULL,
+                                                    cv_tkn_request_no , iv_request_no);
+          FND_LOG.STRING(cv_log_level, gv_pkg_name
+                        || cv_colon
+                        || cv_prg_name, lv_except_msg);
+          RETURN gn_status_error;
+      END;
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
 --
     ELSE
       -- 指定した依頼Noは存在しません。

@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.20
+ * Version                : 1.21
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/10/15    1.18  Marushita        I_S_387対応
  *  2008/11/18    1.19  M.Hokkanji       統合指摘141、632、658対応
  *  2008/11/26    1.20  M.Hokkanji       本番障害133対応
+ *  2008/12/02    1.21  M.Nomura         本番障害318対応
  *
  *****************************************************************************************/
 --
@@ -241,6 +242,10 @@ AS
     -- ===============================
     cv_prg_name             CONSTANT VARCHAR2(30) := 'allow_pickup_flag_chk';       -- プログラム名
     cv_err                  CONSTANT xxcmn_item_locations2_v.allow_pickup_flag%TYPE := '0';
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+    cv_table_name_tran               VARCHAR2(30)   := 'OPM保管場所情報VIEW2';
+    cv_deliver_from                  VARCHAR2(30)   := '配送先コード';
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -270,11 +275,29 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    SELECT allow_pickup_flag           -- 出荷引当対象フラグ
-    INTO   lv_allow_pickup_flag
-    FROM   xxcmn_item_locations2_v       -- OPM保管場所情報VIEW2
-    WHERE  segment1 = iv_deliver_from
-    AND    disable_date IS NULL;
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+    BEGIN
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
+--
+      SELECT allow_pickup_flag           -- 出荷引当対象フラグ
+      INTO   lv_allow_pickup_flag
+      FROM   xxcmn_item_locations2_v       -- OPM保管場所情報VIEW2
+      WHERE  segment1 = iv_deliver_from
+      AND    disable_date IS NULL;
+--
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_cmn,
+                                              gv_cnst_cmn_012,
+                                              gv_cnst_tkn_table,
+                                              cv_table_name_tran,
+                                              gv_cnst_tkn_key,
+                                              cv_deliver_from || ':' || iv_deliver_from);
+        lv_errbuf := lv_errmsg;
+      RETURN gn_status_error;
+    END;
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
 --
     IF (lv_allow_pickup_flag = cv_err) THEN
       -- 引当不可
@@ -758,7 +781,6 @@ AS
     cv_calc_load_efficiency_api
                    VARCHAR2(50)   := '積載効率チェック(積載効率算出)';
     cv_sales_div   VARCHAR2(1)    := '1'; -- クイックコード「コード区分」「倉庫」
---
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -2152,12 +2174,30 @@ AS
 --
           IF ( iv_prod_class = cv_prod_class_leaf ) THEN -- リーフのみ
 --
-            -- 2008/07/08 ST不具合対応#405 START
-            -- 出庫形態(引取変更)取得
-            SELECT transaction_type_id
-              INTO gv_transaction_type_id_ship
-              FROM XXWSH_OE_TRANSACTION_TYPES2_V
-              WHERE transaction_type_name = gv_transaction_type_name_ship;
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+            BEGIN
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
+--
+              -- 2008/07/08 ST不具合対応#405 START
+              -- 出庫形態(引取変更)取得
+              SELECT transaction_type_id
+                INTO gv_transaction_type_id_ship
+                FROM XXWSH_OE_TRANSACTION_TYPES2_V
+                WHERE transaction_type_name = gv_transaction_type_name_ship;
+--
+-- ##### 20081202 Ver.1.21 本番#318対応 START #####
+            EXCEPTION
+              -- 取得できなかった場合は返り値に1：処理エラーを返し終了
+              WHEN OTHERS THEN
+                lv_errmsg :=xxcmn_common_pkg.get_msg(gv_cnst_msg_cmn,
+                                                  gv_cnst_cmn_012,
+                                                  gv_cnst_tkn_table,
+                                                  cv_table_name_tran,
+                                                  gv_cnst_tkn_key,
+                                                  cv_tran_type_name || ':' || gv_transaction_type_name_ship);
+                RAISE global_api_expt;
+            END;
+-- ##### 20081202 Ver.1.21 本番#318対応 END   #####
 --
             IF gv_transaction_type_id_ship IS NULL THEN  -- 取得できない場合はエラー
               lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
