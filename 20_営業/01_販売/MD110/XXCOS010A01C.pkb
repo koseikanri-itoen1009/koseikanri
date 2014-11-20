@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2010/05/06    1.19  K.Oomata         [E_本稼動_02569] 受注作成対象外データの担当営業員取得エラー不具合対応
  *  2010/05/10    1.20  K.Oomata         [E_本稼動_02626] EDIエラー情報テーブルのパージタイミング不具合対応
  *  2011/02/04    1.21  T.Ishiwata       [E_本稼動_06475] 最上位担当営業員設定時、EDIワークに残さない対応
+ *  2011/07/25    1.22  K.Kubo           [E_本稼動_07906] 流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -721,6 +722,10 @@ AS
             edi.err_status                   err_status,                        -- ステータス
             edi.creation_date                creation_date                      -- 作成日
 -- 2010/01/19 Ver1.15 M.Sano Mod End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+           ,edi.bms_header_data              bms_header_data                    -- 流通ＢＭＳヘッダデータ
+           ,edi.bms_line_data                bms_line_data                      -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
     FROM    xxcos_edi_order_work             edi
 -- 2010/01/19 Ver1.15 M.Sano Mod Start
 --    WHERE   edi.if_file_name                 = iv_file_name                     -- インタフェースファイル名
@@ -1134,6 +1139,10 @@ AS
       edi_unit_price                         xxcos_edi_lines.edi_unit_price%TYPE,                        -- ＥＤＩ原単価（発注）
 -- 2010/04/19 Ver.1.18 Y.Goto add End
       check_status                           xxcos_edi_order_work.err_status%TYPE                        -- チェックステータス
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+     ,bms_header_data                        xxcos_edi_headers.bms_header_data%TYPE                      -- 流通ＢＭＳヘッダデータ
+     ,bms_line_data                          xxcos_edi_lines.bms_line_data%TYPE                          -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
     );
 --
   -- EDI受注情報ワークテーブル テーブルタイプ定義
@@ -1685,6 +1694,10 @@ AS
   TYPE g_tsukagatazaiko_div_ttype            IS TABLE OF xxcos_edi_headers.tsukagatazaiko_div%TYPE
     INDEX BY PLS_INTEGER;     -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+  TYPE g_bms_header_data_ttype               IS TABLE OF xxcos_edi_headers.bms_header_data%TYPE
+    INDEX BY PLS_INTEGER;     -- 流通ＢＭＳヘッダデータ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 -- 2010/01/19 Ver.1.15 M.Sano add Start
   TYPE g_edi_received_date_ttype             IS TABLE OF xxcos_edi_headers.edi_received_date%TYPE
     INDEX BY PLS_INTEGER;     -- EDI受信日
@@ -1885,6 +1898,10 @@ AS
     INDEX BY PLS_INTEGER;     -- HHT納品予定連携済フラグ
   TYPE g_order_connect_line_num_ttype        IS TABLE OF xxcos_edi_lines.order_connection_line_number%TYPE
     INDEX BY PLS_INTEGER;     -- 受注関連明細番号
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+  TYPE g_bms_line_data_ttype                 IS TABLE OF xxcos_edi_lines.bms_line_data%TYPE
+    INDEX BY PLS_INTEGER;     -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 --
   -- EDIエラー情報テーブル テーブルタイプ定義
   TYPE g_edi_errors_ttype                    IS TABLE OF xxcos_edi_errors%ROWTYPE
@@ -2209,6 +2226,9 @@ AS
 -- 2009/12/28 M.Sano Ver.1.14 add Start
   gt_upd_tsukagatazaiko_div                  g_tsukagatazaiko_div_ttype;        -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+  gt_upd_bms_header_data                     g_bms_header_data_ttype;           -- 流通ＢＭＳヘッダデータ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 --
   --  EDI明細情報インサート用変数
   gt_edi_lines                               g_edi_lines_ttype;                 -- EDI明細情報テーブル
@@ -2309,6 +2329,9 @@ AS
   gt_upd_line_uom                            g_line_uom_ttype;                  -- 明細単位
   gt_upd_hht_delivery_sche_flag              g_hht_delivery_sche_flag_ttype;    -- HHT納品予定連携済フラグ
   gt_upd_order_connect_line_num              g_order_connect_line_num_ttype;    -- 受注関連明細番号
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+  gt_upd_bms_line_data                       g_bms_line_data_ttype;             -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 --
   -- EDIエラー情報用変数
   gt_edi_errors                              g_edi_errors_ttype;                -- EDIエラー情報テーブル
@@ -5037,6 +5060,10 @@ AS
 -- 2010/04/19 Ver.1.18 Y.Goto add Start
     gt_edi_work(ln_idx).edi_unit_price                 := it_edi_work.order_unit_price;                  -- ＥＤＩ原単価（発注）
 -- 2010/04/19 Ver.1.18 Y.Goto add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+    gt_edi_work(ln_idx).bms_header_data                := it_edi_work.bms_header_data;                   -- 流通ＢＭＳヘッダデータ
+    gt_edi_work(ln_idx).bms_line_data                  := it_edi_work.bms_line_data;                     -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 --
   EXCEPTION
 --
@@ -5583,6 +5610,9 @@ AS
 -- 2010/01/19 Ver1.15 M.Sano Add Start
     gt_edi_headers(ln_idx).edi_received_date                := it_edi_work.creation_date;                     -- EDI受信日
 -- 2010/01/19 Ver1.15 M.Sano Add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+    gt_edi_headers(ln_idx).bms_header_data                  := it_edi_work.bms_header_data;                   -- 流通ＢＭＳヘッダデータ
+-- 2011/07/25 Ver1.22 K.Kubo add End
     gt_edi_headers(ln_idx).created_by                       := cn_created_by;                                 -- 作成者
     gt_edi_headers(ln_idx).creation_date                    := cd_creation_date;                              -- 作成日
     gt_edi_headers(ln_idx).last_updated_by                  := cn_last_updated_by;                            -- 最終更新者
@@ -5933,6 +5963,9 @@ AS
     gt_upd_tsukagatazaiko_div(ln_idx)                  := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
     gt_upd_price_list_header_id(ln_idx)                := it_edi_work.price_list_header_id;              -- 価格表ヘッダID
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+    gt_upd_bms_header_data(ln_idx)                     := it_edi_work.bms_header_data;                   -- 流通ＢＭＳヘッダデータ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 --
   EXCEPTION
 --
@@ -6211,6 +6244,9 @@ AS
 -- 2010/04/19 Ver.1.18 Y.Goto add Start
     gt_edi_lines(ln_idx).edi_unit_price                := it_edi_work.edi_unit_price;                    -- ＥＤＩ元単価（発注）
 -- 2010/04/19 Ver.1.18 Y.Goto add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+    gt_edi_lines(ln_idx).bms_line_data                 := it_edi_work.bms_line_data;                     -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
     gt_edi_lines(ln_idx).created_by                    := cn_created_by;                                 -- 作成者
     gt_edi_lines(ln_idx).creation_date                 := cd_creation_date;                              -- 作成日
     gt_edi_lines(ln_idx).last_updated_by               := cn_last_updated_by;                            -- 最終更新者
@@ -6392,6 +6428,9 @@ AS
 --    gt_upd_order_connect_line_num(ln_idx)              := it_edi_work.line_no;                           -- 受注関連明細番号
     gt_upd_order_connect_line_num(ln_idx)              := it_edi_work.order_connection_line_number;      -- 受注関連明細番号
 -- 2010/01/19 Ver.1.15 M.Sano add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+    gt_upd_bms_line_data(ln_idx)                       := it_edi_work.bms_line_data;                     -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
 --
   EXCEPTION
 --
@@ -6982,6 +7021,9 @@ AS
 -- 2009/12/28 M.Sano Ver.1.14 add Start
               tsukagatazaiko_div                  = gt_upd_tsukagatazaiko_div(ln_idx),             -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+              bms_header_data                     = gt_upd_bms_header_data(ln_idx),            -- 流通ＢＭＳヘッダデータ
+-- 2011/07/25 Ver1.22 K.Kubo add End
               last_updated_by                     = cn_last_updated_by,                        -- 最終更新者
               last_update_date                    = cd_last_update_date,                       -- 最終更新日
               last_update_login                   = cn_last_update_login,                      -- 最終更新ログイン
@@ -7253,6 +7295,9 @@ AS
               item_code                      = gt_upd_item_code(ln_idx),                   -- 品目コード
               line_uom                       = gt_upd_line_uom(ln_idx),                    -- 明細単位
               order_connection_line_number   = gt_upd_order_connect_line_num(ln_idx),      -- 受注関連明細番号
+-- 2011/07/25 Ver1.22 K.Kubo add Start
+              bms_line_data                  = gt_upd_bms_line_data(ln_idx),               -- 流通ＢＭＳ明細データ
+-- 2011/07/25 Ver1.22 K.Kubo add End
               last_updated_by                = cn_last_updated_by,                         -- 最終更新者
               last_update_date               = cd_last_update_date,                        -- 最終更新日
               last_update_login              = cn_last_update_login,                       -- 最終更新ログイン
