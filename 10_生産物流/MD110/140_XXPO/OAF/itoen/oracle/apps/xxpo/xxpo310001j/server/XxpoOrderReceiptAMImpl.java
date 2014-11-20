@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,8 @@
 * 2008-06-26 1.3  北寒寺正夫   結合テスト指摘No02対応
 * 2008-07-08 1.4  二瓶大輔     変更要求#91対応
 * 2008-08-25 1.5  伊藤ひとみ   変更要求#205対応
+* 2008-11-04 1.6  吉元強樹     統合指摘#546対応
+* 2008-11-05 1.7  伊藤ひとみ   統合テスト指摘71,103,104対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -47,7 +49,7 @@ import itoen.oracle.apps.xxpo.util.XxpoUtility;
 /***************************************************************************
  * 受入実績作成:受入実績作成アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.5
+ * @version 1.7
  ***************************************************************************
  */
 public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -203,34 +205,43 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
     ArrayList exceptions = new ArrayList(100);
 
-    // 納入日(From)が設定されていない場合
-    if (XxcmnUtility.isBlankOrNull(fdDate))
+// 2008-11-05 H.Itou Add Start 統合テスト指摘103
+    Object headerNumber  = orderReceiptSerchVORow.getAttribute("HeaderNumber"); // 発注番号
+
+    // 発注番号がNULLのときのみ必須。    
+    if (XxcmnUtility.isBlankOrNull(headerNumber))
     {
-      exceptions.add( new OAAttrValException(
-                            OAAttrValException.TYP_VIEW_OBJECT,
-                            orderReceiptSerchVO.getName(),
-                            orderReceiptSerchVORow.getKey(),
-                            "DeliveryDateFrom",
-                            fdDate,
-                            XxcmnConstants.APPL_XXPO,
-                            XxpoConstants.XXPO10002));
+// 2008-11-05 H.Itou Add End
+      // 納入日(From)が設定されていない場合
+      if (XxcmnUtility.isBlankOrNull(fdDate))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              orderReceiptSerchVO.getName(),
+                              orderReceiptSerchVORow.getKey(),
+                              "DeliveryDateFrom",
+                              fdDate,
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10002));
+      }
+
+      // 納入先が設定されていない場合
+      if (XxcmnUtility.isBlankOrNull(locationCode))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              orderReceiptSerchVO.getName(),
+                              orderReceiptSerchVORow.getKey(),
+                              "LocationCode",
+                              locationCode,
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10002));
+      }
+
+      OAException.raiseBundledOAException(exceptions);
+// 2008-11-05 H.Itou Add Start 統合テスト指摘103
     }
-
-    // 納入先が設定されていない場合
-    if (XxcmnUtility.isBlankOrNull(locationCode))
-    {
-      exceptions.add( new OAAttrValException(
-                            OAAttrValException.TYP_VIEW_OBJECT,
-                            orderReceiptSerchVO.getName(),
-                            orderReceiptSerchVORow.getKey(),
-                            "LocationCode",
-                            locationCode,
-                            XxcmnConstants.APPL_XXPO,
-                            XxpoConstants.XXPO10002));
-    }
-
-    OAException.raiseBundledOAException(exceptions);
-
+// 2008-11-05 H.Itou Add End
   } // doRequiredCheck
 
   /***************************************************************************
@@ -534,6 +545,29 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
     }
   } // doStockResultMake
+
+// 2008-11-05 H.Itou Add Start 統合テスト指摘104
+  /***************************************************************************
+   * (発注受入検索画面)納入日Fromを納入日TOへコピーするメソッドです。
+   ***************************************************************************
+   */
+  public void copyDeliveryDateFrom()
+  {
+    // 発注受入検索VO取得
+    OAViewObject vo = getXxpoOrderReceiptSerchVO1();
+    // 1行目を取得
+    OARow row = (OARow)vo.first();
+
+    Date deliveryDateFrom = (Date)row.getAttribute("DeliveryDateFrom"); // 納入日From
+    Date deliveryDateTo   = (Date)row.getAttribute("DeliveryDateTo");   // 納入日To
+
+    // 納入日ToがNullの場合、出庫日Fromをコピー
+    if (XxcmnUtility.isBlankOrNull(deliveryDateTo))
+    {
+      row.setAttribute("DeliveryDateTo", deliveryDateFrom);
+    }
+  } // copyDeliveryDateFrom
+// 2008-11-05 H.Itou Add End
 
   /***************************************************************************
    * (発注受入詳細画面)初期化処理を行うメソッドです。
@@ -2733,6 +2767,7 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     searchParams.put("lineNumber", params.get("pChangedLineNum"));
 
     XxpoReceiptDetailsVOImpl receiptDetailsVO = getXxpoReceiptDetailsVO1();
+
     receiptDetailsVO.initQuery(searchParams);  
 
   }
@@ -2913,6 +2948,12 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // 訂正処理
     } else
     {
+// 20081104 v1.6 yoshimoto Add Start
+      // *********************************************** //
+      // * 処理5-1～5-2:受入情報を新規登録事前チェック * //
+      // *********************************************** //
+      chkInitialRegistration();
+// 20081104 v1.6 yoshimoto Add End
 
       // ********************************************* //
       // * 処理6-3～6-7:訂正データ登録処理           * //
@@ -6543,6 +6584,12 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
       String unitName         = (String)orderDetailsVORow.getAttribute("UnitName");
 
       createRow.setAttribute("RcvRtnUom", unitName);
+// 2008-11-05 H.Itou Add Start 統合テスト指摘71
+      // 初回の場合、発注明細の納入日、数量を初期表示する。
+      createRow.setAttribute("TxnsDate",       (Date)orderDetailsVORow.getAttribute("DeliveryDate"));
+      createRow.setAttribute("RcvRtnQuantity", (String)orderDetailsVORow.getAttribute("OrderAmount"));
+// 2008-11-05 H.Itou Add End
+
 
     // 1行以上の明細が存在する場合
     } else
@@ -6715,7 +6762,6 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
     }
   } //getUserData
-
 
   /**
    * 

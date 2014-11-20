@@ -7,16 +7,7 @@
             <oa:sortableHeader id="LineNumberHdr" prompt="No"/>
          </ui:columnHeader>
          <ui:contents>
-            <oa:messageStyledText id="LineNumber" viewAttr="LineNum">
-               <ui:primaryClientAction>
-                  <ui:fireAction event="LineNumberLink" id="fireAction1">
-                     <ui:parameters>
-                        <ui:parameter key="searchHeaderNumber" value="${oa.current.HeaderNumber}"/>
-                        <ui:parameter key="searchLineNumber" value="${oa.current.LineNum}"/>
-                     </ui:parameters>
-                  </ui:fireAction>
-               </ui:primaryClientAction>
-            </oa:messageStyledText>
+            <oa:messageStyledText id="LineNumber" viewAttr="LineNum"/>
          </ui:contents>
       </oa:column>
       <oa:column id="column2" columnDataFormat="numberFormat">
@@ -73,6 +64,23 @@
          </ui:columnHeader>
          <ui:contents>
             <oa:messageCheckBox id="DecisionMoney" shortDesc="金額確定" viewAttr="MoneyDecisionFlag" readOnly="true"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column9" columnDataFormat="iconButtonFormat" width="10%">
+         <ui:columnHeader>
+            <oa:sortableHeader id="IconHdr" prompt="受入入力"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:image id="Icon" shortDesc="発注受入入力アイコン" viewAttr="AllReceipt" source="rework_enabled.gif">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="LineNumberLink" id="fireAction2">
+                     <ui:parameters>
+                        <ui:parameter key="searchHeaderNumber" value="${oa.current.HeaderNumber}"/>
+                        <ui:parameter key="searchLineNumber" value="${oa.current.LineNum}"/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:image>
          </ui:contents>
       </oa:column>
    </ui:contents>

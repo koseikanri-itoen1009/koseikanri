@@ -1,13 +1,15 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptMakeCO
 * 概要説明   : 受入実績作成:発注受入入力コントローラ
-* バージョン : 1.1
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-04 1.0  吉元強樹     新規作成
 * 2008-06-27 1.1  北寒寺正夫   適用ボタン押下時の処理を修正
+* 2008-11-04 1.2  吉元強樹     統合指摘#546対応
+* 2008-11-05 1.3  伊藤ひとみ   統合指摘#546バグ対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.webui;
@@ -35,7 +37,7 @@ import oracle.apps.fnd.common.MessageToken;
 /***************************************************************************
  * 受入実績作成:発注受入入力コントローラです。
  * @author  SCS 吉元 強樹
- * @version 1.1
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
@@ -71,8 +73,29 @@ public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
           // URLパラメータを削除
           pageContext.removeParameter("Yes");
 
-          // 登録・更新処理
-          HashMap retHash = (HashMap)am.invokeMethod("apply2");
+// 20081104 v1.2 yoshimoto Add Start
+          HashMap retHash = null;
+          try
+          {
+// 20081104 v1.2 yoshimoto Add End
+
+            // 登録・更新処理
+            retHash = (HashMap)am.invokeMethod("apply2");
+// 20081104 v1.2 yoshimoto Add Start
+          } catch(OAException oe)
+          {
+
+            HashMap params = new HashMap();
+            params.put("ERROR", "ERROR");
+
+            pageContext.putDialogMessage(oe);
+
+            pageContext.forwardImmediatelyToCurrentPage(
+              params,
+              true,
+              OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
+          }
+// 20081104 v1.2 yoshimoto Add End
 
           String ret = (String)retHash.get("RetFlag");
           Object requestId = retHash.get("RequestId");
@@ -177,8 +200,8 @@ public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
 // 20080627 Add Start
       } else if (pageContext.getParameter("ERROR") != null) 
       {
-
         pageContext.removeParameter("ERROR");
+
 // 20080627 Add End
       // ********************************* //
       // *      前画面からの遷移時       * //
@@ -386,8 +409,29 @@ public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
           } else
           {
 
-            // 登録・更新処理
-            HashMap retHash = (HashMap)am.invokeMethod("apply2");
+// 20081104 v1.2 yoshimoto Add Start
+            HashMap retHash = null;
+            try
+            {
+// 20081104 v1.2 yoshimoto Add End
+              // 登録・更新処理
+              retHash = (HashMap)am.invokeMethod("apply2");
+
+// 20081104 v1.2 yoshimoto Add Start
+            } catch(OAException oe)
+            {
+
+              HashMap params = new HashMap();
+              params.put("ERROR", "ERROR");
+
+              pageContext.putDialogMessage(oe);
+
+              pageContext.forwardImmediatelyToCurrentPage(
+                params,
+                true,
+                OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
+            }
+// 20081104 v1.2 yoshimoto Add End
 
             String ret = (String)retHash.get("RetFlag");
             Object requestId = retHash.get("RequestId");
@@ -417,7 +461,9 @@ public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
           
               params.put(XxpoConstants.URL_PARAM_HEADER_NUMBER,        headerNumber);
               params.put(XxpoConstants.URL_PARAM_CHANGED_LINE_NUMBER,  lineNumber);  
-
+// 2008-11-05 H.Itou Add Start "ERROR"パラメータが残っている可能性があるので初期化。
+              params.put("ERROR",  null);  
+// 2008-11-05 H.Itou Add End
               // 引数設定
               Serializable searchParams[] = { params };
               // doSearchの引数型設定

@@ -207,7 +207,7 @@
                               </oa:cellFormat>
                               <oa:cellFormat id="OrderHeaderCell701" columnSpan="7">
                                  <ui:contents>
-                                    <oa:messageTextInput id="TxtDescription" shortDesc="摘要" maximumLength="60" styleClass="LegendText" viewName="XxpoOrderHeaderVO1" viewAttr="Description" columns="60" readOnly="${oa.XxpoOrderReceiptDetailsPVO1.DescriptionReadOnly}"/>
+                                    <oa:messageTextInput id="TxtDescription" shortDesc="摘要" maximumLength="60" styleClass="LegendText" viewName="XxpoOrderHeaderVO1" viewAttr="Description" columns="120" readOnly="${oa.XxpoOrderReceiptDetailsPVO1.DescriptionReadOnly}"/>
                                  </ui:contents>
                               </oa:cellFormat>
                            </ui:contents>

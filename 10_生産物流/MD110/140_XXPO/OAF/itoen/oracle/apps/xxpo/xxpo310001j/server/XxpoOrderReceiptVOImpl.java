@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptVOImpl
 * 概要説明   : 発注受入:検索ビューオブジェクト
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-31 1.0  吉元強樹     新規作成
+* 2008-11-05 1.1  伊藤ひとみ   統合テスト指摘103対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -20,7 +21,7 @@ import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
 /***************************************************************************
  * 検索ビューオブジェクトです。
  * @author  SCS 吉元 強樹
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoOrderReceiptVOImpl extends OAViewObjectImpl 
@@ -89,241 +90,247 @@ public class XxpoOrderReceiptVOImpl extends OAViewObjectImpl
       //バインド変数をカウント
       bindCount = bindCount + 1;     
       //検索値をセット
-      parameters.add(headerNumber);      
-    }
+      parameters.add(headerNumber); 
+// 2008-11-05 H.Itou Add Start 統合テスト指摘103
+    // 発注Noが入力されていない場合、その他の検索条件を追加
+    } else
+    {
+// 2008-11-05 H.Itou Add End 統合テスト指摘103
         
-    // 支給No.が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(requestNumber) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 支給No.が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(requestNumber) == false)
       {
-        whereClause.append(" AND request_number = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND request_number = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" request_number = :" + bindCount);
-      }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(requestNumber);      
-    }     
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" request_number = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(requestNumber);      
+      }     
         
-    // 取引先が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(vendorId) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 取引先が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(vendorId) == false)
       {
-        whereClause.append(" AND vendor_id = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND vendor_id = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" vendor_id = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" vendor_id = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(vendorId);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(vendorId);      
-    }
 
-    // 斡旋者が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(mediationId) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 斡旋者が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(mediationId) == false)
       {
-        whereClause.append(" AND mediation_id = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND mediation_id = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" mediation_id = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" mediation_id = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(mediationId);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(mediationId);      
-    }
 
-    // 納入日Fromが入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(deliveryDateFrom) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 納入日Fromが入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(deliveryDateFrom) == false)
       {
-        whereClause.append(" AND delivery_date >= :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND delivery_date >= :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" delivery_date >= :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" delivery_date >= :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(deliveryDateFrom);
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(deliveryDateFrom);
-    }
 
-    // 納入日Toが入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(deliveryDateTo) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 納入日Toが入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(deliveryDateTo) == false)
       {
-        whereClause.append(" AND delivery_date <= :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND delivery_date <= :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" delivery_date <= :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" delivery_date <= :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(deliveryDateTo);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(deliveryDateTo);      
-    }
 
-    // ステータスが入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(status) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // ステータスが入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(status) == false)
       {
-        whereClause.append(" AND status_code = :" + bindCount);
-      // 条件追加1件目の場合
-      }else
-      {
-        whereClause.append(" status_code = :" + bindCount); 
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND status_code = :" + bindCount);
+        // 条件追加1件目の場合
+        }else
+        {
+          whereClause.append(" status_code = :" + bindCount); 
+        }
+      
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(status);  
       }
-      
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(status);  
-    }
 
-    // 納入先が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(location) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 納入先が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(location) == false)
       {
-        whereClause.append(" AND location_code = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND location_code = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" location_code = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" location_code = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(location);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(location);      
-    }
 
-    // 発注部署が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(department) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 発注部署が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(department) == false)
       {
-        whereClause.append(" AND department_code = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND department_code = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" department_code = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" department_code = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;     
+        //検索値をセット
+        parameters.add(department);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;     
-      //検索値をセット
-      parameters.add(department);      
-    }
 
-    // 承諾要が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(approved) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 承諾要が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(approved) == false)
       {
-        whereClause.append(" AND approved_flag = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND approved_flag = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" approved_flag = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" approved_flag = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;
+      
+        //検索値をセット
+        parameters.add(approved);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;
-      
-      //検索値をセット
-      parameters.add(approved);      
-    }
 
-    // 直送区分が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(purchase) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 直送区分が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(purchase) == false)
       {
-        whereClause.append(" AND dropship_code = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND dropship_code = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" dropship_code = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" dropship_code = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;
+
+        //検索値をセット
+        parameters.add(purchase);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;
 
-      //検索値をセット
-      parameters.add(purchase);      
-    }
-
-    // 発注承諾が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(orderApproved) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 発注承諾が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(orderApproved) == false)
       {
-        whereClause.append(" AND orderapproved_flag = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND orderapproved_flag = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" orderapproved_flag = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" orderapproved_flag = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;
+      
+        //検索値をセット
+        parameters.add(orderApproved);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;
-      
-      //検索値をセット
-      parameters.add(orderApproved);      
-    }
 
-    // 仕入承諾が入力されていた場合
-    if (XxcmnUtility.isBlankOrNull(purchaseApproved) == false)
-    {
-      // 条件追加1件目以降の場合
-      if (whereClause.length() != 0)
+      // 仕入承諾が入力されていた場合
+      if (XxcmnUtility.isBlankOrNull(purchaseApproved) == false)
       {
-        whereClause.append(" AND purchaseapproved_flag = :" + bindCount);
+        // 条件追加1件目以降の場合
+        if (whereClause.length() != 0)
+        {
+          whereClause.append(" AND purchaseapproved_flag = :" + bindCount);
       
-      // 条件追加1件目の場合
-      } else
-      {
-        whereClause.append(" purchaseapproved_flag = :" + bindCount);
+        // 条件追加1件目の場合
+        } else
+        {
+          whereClause.append(" purchaseapproved_flag = :" + bindCount);
+        }
+        //バインド変数をカウント
+        bindCount = bindCount + 1;
+      
+        //検索値をセット
+        parameters.add(purchaseApproved);      
       }
-      //バインド変数をカウント
-      bindCount = bindCount + 1;
-      
-      //検索値をセット
-      parameters.add(purchaseApproved);      
+// 2008-11-05 H.Itou Add Start 統合テスト指摘103
     }
-
+// 2008-11-05 H.Itou Add End 統合テスト指摘103
     // 検索条件をVOにセット
     setWhereClause(whereClause.toString());
 

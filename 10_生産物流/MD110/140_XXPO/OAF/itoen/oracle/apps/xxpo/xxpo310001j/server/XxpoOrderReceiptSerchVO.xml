@@ -82,9 +82,8 @@
       Name="DeliveryDateFrom"
       IsQueriable="false"
       IsPersistent="false"
-      Precision="255"
       Type="oracle.jbo.domain.Date"
-      ColumnType="VARCHAR2"
+      ColumnType="DATE"
       AliasName="VIEW_ATTR"
       SQLType="DATE" >
    </ViewAttribute>
@@ -140,6 +139,25 @@
    </ViewAttribute>
    <ViewAttribute
       Name="OutPurchaseSiteCode"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeliveryDateTo"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="VIEW_ATTR"
+      SQLType="DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="HeaderNumber"
       IsQueriable="false"
       IsPersistent="false"
       Precision="255"

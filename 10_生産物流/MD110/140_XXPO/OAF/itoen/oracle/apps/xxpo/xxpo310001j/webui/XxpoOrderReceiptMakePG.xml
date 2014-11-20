@@ -226,7 +226,7 @@
                                              <ui:contents>
                                                 <oa:cellFormat id="DescriptionCell100">
                                                    <ui:contents>
-                                                      <oa:messageTextInput id="Description" maximumLength="40" columns="40" viewAttr="LineDescription" readOnly="${oa.current.ReceiptDetailsReadOnly}" styleClass="LegendText" prompt="" shortDesc="摘要"/>
+                                                      <oa:messageTextInput id="Description" maximumLength="40" columns="80" viewAttr="LineDescription" readOnly="${oa.current.ReceiptDetailsReadOnly}" styleClass="LegendText" prompt="" shortDesc="摘要"/>
                                                    </ui:contents>
                                                 </oa:cellFormat>
                                              </ui:contents>

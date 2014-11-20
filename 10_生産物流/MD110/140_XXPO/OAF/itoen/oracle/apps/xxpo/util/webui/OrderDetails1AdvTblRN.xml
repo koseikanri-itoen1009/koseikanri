@@ -7,16 +7,7 @@
             <oa:sortableHeader id="LineNumberHdr" prompt="No"/>
          </ui:columnHeader>
          <ui:contents>
-            <oa:messageStyledText id="LineNumber" viewAttr="LineNum" serverUnvalidated="false" warnAboutChanges="true">
-               <ui:primaryClientAction>
-                  <ui:fireAction event="LineNumberLink" unvalidated="false">
-                     <ui:parameters>
-                        <ui:parameter key="searchHeaderNumber" value="${oa.current.HeaderNumber}"/>
-                        <ui:parameter key="searchLineNumber" value="${oa.current.LineNum}"/>
-                     </ui:parameters>
-                  </ui:fireAction>
-               </ui:primaryClientAction>
-            </oa:messageStyledText>
+            <oa:messageStyledText id="LineNumber" viewAttr="LineNum" serverUnvalidated="false" warnAboutChanges="true"/>
          </ui:contents>
       </oa:column>
       <oa:column id="column2">
@@ -101,10 +92,27 @@
       </oa:column>
       <oa:column id="column11" columnDataFormat="iconButtonFormat">
          <ui:columnHeader>
-            <oa:sortableHeader id="AllReceiptHdr" prompt="全受"/>
+            <oa:sortableHeader id="AllReceiptHdr1" prompt="全受"/>
          </ui:columnHeader>
          <ui:contents>
             <oa:messageCheckBox id="AllReceipt" shortDesc="全受" viewAttr="AllReceipt" readOnly="${oa.current.AllReceiptReadOnly}"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="column12" columnDataFormat="iconButtonFormat" width="10%">
+         <ui:columnHeader>
+            <oa:sortableHeader id="IconHdr" prompt="受入入力"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:image id="Icon" shortDesc="発注受入入力アイコン" viewAttr="AllReceipt" source="rework_enabled.gif">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="LineNumberLink">
+                     <ui:parameters>
+                        <ui:parameter key="searchHeaderNumber" value="${oa.current.HeaderNumber}"/>
+                        <ui:parameter key="searchLineNumber" value="${oa.current.LineNum}"/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:image>
          </ui:contents>
       </oa:column>
       <oa:formValue id="LineId" prompt="発注明細ID" viewAttr="LineId"/>
