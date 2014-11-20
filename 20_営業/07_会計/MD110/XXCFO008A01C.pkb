@@ -7,7 +7,7 @@ AS
  * Description     : ŒÚ‹qƒ}ƒXƒ^VD’Þ‘KŠî€Šz‚ÌXV
  * MD.050          : MD050_CFO_008_A01_ŒÚ‹qƒ}ƒXƒ^VD’Þ‘KŠî€Šz‚ÌXV
  * MD.070          : MD050_CFO_008_A01_ŒÚ‹qƒ}ƒXƒ^VD’Þ‘KŠî€Šz‚ÌXV
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -34,6 +34,8 @@ AS
  *  2008-11-07    1.0  SCS ‰Á“¡ ’‰   ‰‰ñì¬
  *  2009-06-26    1.1  SCS ²X–Ø    [0000018]ƒpƒtƒH[ƒ}ƒ“ƒX‰ü‘P
  *  2009-11-24    1.2  SCS Ž›“à      [E_–{‰Ò“®_00017]ƒpƒtƒH[ƒ}ƒ“ƒX‰ü‘P
+ *  2010/12/06    1.3  SCS “n•Ó      [E_–{‰Ò“®_05773]
+ *                                     ŒÚ‹qƒ}ƒXƒ^‚Â‚è‘K‹àŠz‚Æ‚f‚k‰¼•¥‚Â‚è‘K‹àŠz•sˆê’v‘Î‰ž
  ************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -609,15 +611,36 @@ AS
         AND NVL( fnlt.end_date_active,gd_operation_date )   >= gd_operation_date
         AND xxca.business_low_type   = fnlt.lookup_code
         AND EXISTS (
-            SELECT /*+ INDEX(glblmv GL_BALANCES_N1) */
+-- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+--            SELECT /*+ INDEX(glblmv GL_BALANCES_N1) */
+            SELECT /*+
+                       LEADING(gcc    glblmv)
+                       USE_NL (gcc    glblmv)
+                       INDEX  (gcc    GL_CODE_COMBINATIONS_N5)
+                       INDEX  (glblmv GL_BALANCES_N1)
+                    */
+-- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
                    'X'
-            FROM gl_balances glblmv
-            WHERE glblmv.set_of_books_id     = gn_set_of_bks_id
+-- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+--            FROM gl_balances glblmv
+            FROM gl_code_combinations gcc
+                ,gl_balances          glblmv
+-- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
+--
+-- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+--            WHERE glblmv.set_of_books_id     = gn_set_of_bks_id
+            WHERE gcc.code_combination_id    = glblmv.code_combination_id
+              AND glblmv.set_of_books_id     = gn_set_of_bks_id
+-- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
               AND glblmv.currency_code       = cv_currency_code
               AND glblmv.actual_flag         = cv_actual_flag_a
               AND glblmv.period_name         IN ( gv_this_period_name,
                                                   gv_last_period_name )
-              AND glblmv.code_combination_id = glbl.code_combination_id
+-- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+--              AND glblmv.code_combination_id = glbl.code_combination_id
+              AND gcc.segment3               =  glcc.segment3
+              AND gcc.segment5               =  glcc.segment5
+-- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
               AND ( glblmv. period_net_dr    <> 0
                  OR glblmv. period_net_cr    <> 0 )
             )
