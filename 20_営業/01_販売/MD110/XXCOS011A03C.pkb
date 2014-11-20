@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2009/09/03    1.12  N.Maeda          [0001065]『XXCOS_HEAD_PROD_CLASS_V』のMainSQL取込
  *  2009/09/25    1.13  N.Maeda          [0001306]伝票計集計単位修正
  *                                       [0001307]出荷数量取得元テーブル修正
+ *  2009/10/05    1.14  N.Maeda          [0001464]受注明細分割による影響対応
  *
  *****************************************************************************************/
 --
@@ -213,6 +214,9 @@ AS
   cv_msg_category_err   CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12954';     --カテゴリセットID取得エラーメッセージ
   cv_msg_item_div_h     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+  cv_get_order_source_id_err CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12268';
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- 入力パラメータ名
   cv_tkn_date_from      CONSTANT VARCHAR2(9)   := 'DATE_FROM';         -- 日付期間チェックの開始日
@@ -244,6 +248,9 @@ AS
 /* 2009/05/12 Ver1.8 Add Start */
   cv_tkn_param12        CONSTANT VARCHAR2(8)   := 'PARAME12';          -- 入力パラメータ値
 /* 2009/05/12 Ver1.8 Add End   */
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+  cv_order_source            CONSTANT VARCHAR2(20) := 'ORDER_SOURCE';
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
   -- 日付
   cd_sysdate            CONSTANT DATE          := SYSDATE;                            -- システム日付
   cd_process_date       CONSTANT DATE          := xxccp_common_pkg2.get_process_date; -- 業務処理日
@@ -655,6 +662,9 @@ AS
 /* 2009/04/28 Ver1.7 Add Start */
   cv_attribute                CONSTANT VARCHAR2(50)  := 'ATTRIBUTE';                     -- 予備エリア
 /* 2009/04/28 Ver1.7 Add End   */
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+  cv_online                   CONSTANT VARCHAR2(50)  := 'Online';                        -- 受注ソース(ONLINE)
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -706,6 +716,9 @@ AS
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
    gt_category_set_id      mtl_category_sets_tl.category_set_id%TYPE;          --カテゴリセットID
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+    gt_order_source_online oe_order_sources.order_source_id%TYPE;
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル宣言
@@ -713,7 +726,11 @@ AS
   -- EDI受注データ
   CURSOR edi_order_cur
   IS
-    SELECT xeh.edi_header_info_id               edi_header_info_id             -- EDIヘッダ情報.EDIヘッダ情報ID
+    SELECT 
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+           /*+ USE_NL(XEH) */
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
+           xeh.edi_header_info_id               edi_header_info_id             -- EDIヘッダ情報.EDIヘッダ情報ID
           ,xeh.medium_class                     medium_class                   -- EDIヘッダ情報.媒体区分
           ,xeh.data_type_code                   data_type_code                 -- EDIヘッダ情報.データ種コード
           ,xeh.file_no                          file_no                        -- EDIヘッダ情報.ファイルNo
@@ -1056,7 +1073,21 @@ AS
           ,xel.item_code                        item_code                      -- EDI明細情報.品目コード
           ,xel.line_uom                         line_uom                       -- EDI明細情報.明細単位
           ,xel.order_connection_line_number     order_connection_line_number   -- EDI明細情報.受注関連明細番号
-          ,oola.ordered_quantity                ordered_quantity               -- 受注明細.受注数量
+-- ******* 2009/10/05 1.14 N.Maeda MOD START ******* --
+--          ,oola.ordered_quantity                ordered_quantity               -- 受注明細.受注数量
+          ,CASE
+             WHEN ( ooha.order_source_id = gt_order_source_online ) THEN
+               oola.ordered_quantity
+             ELSE
+               ( SELECT SUM ( oola_ilv.ordered_quantity ) ordered_quantity
+                 FROM   oe_order_lines_all oola_ilv
+                 WHERE  oola_ilv.header_id    = oola.header_id
+                 AND    oola_ilv.org_id       = oola.org_id
+                 AND    NVL ( oola_ilv.global_attribute3 , oola_ilv.line_id ) = oola.line_id
+                 AND    NVL ( oola_ilv.global_attribute4 , oola_ilv.orig_sys_line_ref ) = oola.orig_sys_line_ref
+               )
+           END                                  ordered_quantity
+-- ******* 2009/10/05 1.14 N.Maeda MOD  END  ******* --
           ,xtrv.tax_rate                        tax_rate                       -- 消費税率ビュー.消費税率
 --****************************** 2009/06/11 1.10 T.Kitajima ADD START ******************************--
           ,xca3.edi_forward_number              edi_forward_number             -- 顧客追加情報.EDI伝送追番
@@ -2556,6 +2587,30 @@ AS
 --
     END IF;
 -- ********** 2009/09/03 1.12 N.Maeda ADD  END  ********** --
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+    BEGIN
+      SELECT oos.order_source_id     order_source_id    -- 受注ソースID
+      INTO   gt_order_source_online
+      FROM   oe_order_sources        oos                -- 受注ソーステーブル
+      WHERE  oos.name                = cv_online
+      AND    oos.enabled_flag        = cv_y;
+    EXCEPTION
+      WHEN OTHERS THEN
+          lv_err_msg  :=  xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_application,
+                           iv_name         =>  cv_get_order_source_id_err,
+                           iv_token_name1  =>  cv_order_source,
+                           iv_token_value1 =>  cv_online
+                           );
+          -- メッセージに出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_err_msg
+          );
+          lv_errbuf  := lv_err_msg;
+          ln_err_chk := cn_1;  -- エラー有り
+      END;
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
 --
     --==============================================================
     -- エラーの場合
@@ -3393,6 +3448,9 @@ AS
 --
     <<edit_loop>>
     FOR ln_loop_cnt IN 1 .. gn_target_cnt LOOP
+-- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
+      lt_invoice_number := gt_edi_order_tab(ln_loop_cnt).invoice_number;
+-- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
 --****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
       --数値チェック
       BEGIN
