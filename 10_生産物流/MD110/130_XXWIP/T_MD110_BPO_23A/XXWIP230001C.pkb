@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産依頼書兼生産指図書）
  * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産依頼書兼生産指図書）          (T_MD070_BPO_23A)
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/05/20    1.1   Yusuke   Tabata     内部変更要求Seq95(日付型パラメータ型変換)対応
  *  2008/05/20    1.2   Daisuke  Nihei      結合テスト不具合対応（資材：依頼数が表示されない）
  *  2008/05/30    1.3   Daisuke  Nihei      結合テスト不具合対応（条件：予定区分不備)
+ *  2008/06/04    1.4   Daisuke  Nihei      結合テスト不具合対応（生産指示書表示不正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1439,7 +1440,12 @@ AS
           ,gmd_routings_vl            grv                   -- 工順マスタビュー
           ,xxcmn_item_categories3_v   xicv                  -- 品目カテゴリービュー
       WHERE gbh.batch_id              = gmd.batch_id
-      AND   gmd.material_detail_id    = xmd.material_detail_id(+)
+-- 2008/06/04 D.Nihei MOD START
+--      AND   gmd.material_detail_id    = xmd.material_detail_id(+)
+      AND   itp.line_id               = xmd.material_detail_id(+)
+      AND   itp.item_id               = xmd.item_id(+)
+      AND   itp.lot_id                = xmd.lot_id(+)
+-- 2008/06/04 D.Nihei MOD END
 -- 2008/05/30 D.Nihei MOD START
 --      AND   xmd.plan_type(+)          = gv_yotei_kbn_tonyu
       AND   xmd.plan_type(+)         <> gv_yotei_kbn_tonyu

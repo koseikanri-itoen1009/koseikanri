@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,7 +42,8 @@ AS
  *  2008/02/06    1.0   Ryouhei Fujii       新規作成
  *  2008/05/20    1.1   Yusuke  Tabata      内部変更要求(Seq95)日付型パラメータ型変換対応
  *  2008/05/29    1.2   Ryouhei Fujii       結合テスト不具合対応　NET換算パターン障害
- *
+ *  2008/06/04    1.3   Daisuke Nihei       結合テスト不具合対応　切／計込計算式不備対応
+ *                                          結合テスト不具合対応　パーセント計算式不備対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1351,7 +1352,10 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- （副産物数／総投入品数）×100（少数点第3位で四捨五入）
       gt_xml_data_table(gl_xml_idx).tag_value :=
-                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / ln_tounyu_total ) * 100 ) , 2)
+-- 2008/06/04 D.Nihei MOD START
+--                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / ln_tounyu_total ) * 100 ) , 2)
+                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / (ln_tounyu_total - ln_reinyu_tounyu_total) ) * 100 ) , 2)
+-- 2008/06/04 D.Nihei MOD END
                           ,gv_num_format3);
 --
       -- 【タグ】副産物明細データ終了タグ
@@ -1393,7 +1397,10 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- （副産物明細合計数／総投入品数）×100（少数点第3位で四捨五入）
       gt_xml_data_table(gl_xml_idx).tag_value :=
-                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / ln_tounyu_total ) * 100 ) , 2)
+-- 2008/06/04 D.Nihei MOD START
+--                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / ln_tounyu_total ) * 100 ) , 2)
+                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 ) , 2)
+-- 2008/06/04 D.Nihei MOD END
                           ,gv_num_format3);
 --
       -- -----------------------------------------------------
@@ -1562,85 +1569,17 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- （仕上数／総投入品数）×100（少数点第3位で四捨五入）
     gt_xml_data_table(gl_xml_idx).tag_value :=
-                TO_CHAR( ROUND(  (ln_siage_total / ln_tounyu_total) * 100 , 2)
+-- 2008/06/04 D.Nihei MOD START
+--                TO_CHAR( ROUND(  (ln_siage_total / ln_tounyu_total) * 100 , 2)
+                TO_CHAR( ROUND(  (ln_siage_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
                         ,gv_num_format3);
+-- 2008/06/04 D.Nihei MOD END
 --
     -- -----------------------------------------------------
     -- 仕上数データ終了タグ出力
     -- -----------------------------------------------------
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := '/g_siagesuu_mei';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
---
---=========================================================================
-    -- -----------------------------------------------------
-    -- 切／計込明細データ開始タグ出力
-    -- -----------------------------------------------------
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'g_kirikeikomi_mei';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
---
-    -- 【データ】切／計込明細合計
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_total';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-    -- 切／計込明細合計の計算
-    -- 投入合計－（仕上数＋副産物計）の値をセット
-    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) ;
-    gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_kirikeikomi_total ,gv_num_format1);
---
-    -- 【データ】切／計込明細単位
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_unit';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-    gt_xml_data_table(gl_xml_idx).tag_value := gv_unit_kirikeikomi ;
---
-    -- 【データ】切／計込明細割合
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_percent';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      -- 切／計込明細合計　／　投入合計　＊　100（少数点第3位で四捨五入）の値を出力
-    gt_xml_data_table(gl_xml_idx).tag_value :=
-                TO_CHAR( ROUND( (ln_kirikeikomi_total / ln_tounyu_total) * 100 , 2)
-                        ,gv_num_format3);
---
-    -- -----------------------------------------------------
-    -- 切／計込明細データ終了タグ出力
-    -- -----------------------------------------------------
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := '/g_kirikeikomi_mei';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
---
---=========================================================================
-    -- -----------------------------------------------------
-    -- 切／計込合計データ開始タグ出力
-    -- -----------------------------------------------------
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'g_kirikeikomi_sum';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
---
-    -- 【データ】副産物・切れ計
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_sum';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-    -- 副産物計 + 切／計込明細合計をセット
-    gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_fukusanbutu_total + ln_kirikeikomi_total
-                                                      ,gv_num_format1);
---
-    -- 【データ】切／計込合計割合
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_sum_percent';
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      -- 副産物・切れ計　／　「３」の投入計　＊　100（少数点第3位で四捨五入）の値を出力
-    gt_xml_data_table(gl_xml_idx).tag_value := 
-                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / ln_tounyu_total) * 100 , 2)
-                        ,gv_num_format3);
---
-    -- -----------------------------------------------------
-    -- 切／計込合計データ終了タグ出力
-    -- -----------------------------------------------------
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := '/g_kirikeikomi_sum';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
 --=========================================================================
@@ -1764,6 +1703,86 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
     END IF;
+--
+--=========================================================================
+    -- -----------------------------------------------------
+    -- 切／計込明細データ開始タグ出力
+    -- -----------------------------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'g_kirikeikomi_mei';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
+--
+    -- 【データ】切／計込明細合計
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_total';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    -- 切／計込明細合計の計算
+    -- 投入合計－（仕上数＋副産物計）の値をセット
+-- 2008/06/04 D.Nihei MOD START
+--    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) ;
+    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) - (ln_reinyu_tounyu_total + ln_reinyu_utikomi_total);
+-- 2008/06/04 D.Nihei MOD END
+    gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_kirikeikomi_total ,gv_num_format1);
+--
+    -- 【データ】切／計込明細単位
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_unit';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := gv_unit_kirikeikomi ;
+--
+    -- 【データ】切／計込明細割合
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_percent';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      -- 切／計込明細合計　／　投入合計　＊　100（少数点第3位で四捨五入）の値を出力
+    gt_xml_data_table(gl_xml_idx).tag_value :=
+-- 2008/06/04 D.Nihei MOD START
+--                TO_CHAR( ROUND( (ln_kirikeikomi_total / ln_tounyu_total) * 100 , 2)
+                TO_CHAR( ROUND( (ln_kirikeikomi_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
+-- 2008/06/04 D.Nihei MOD END
+                        ,gv_num_format3);
+--
+    -- -----------------------------------------------------
+    -- 切／計込明細データ終了タグ出力
+    -- -----------------------------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := '/g_kirikeikomi_mei';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
+--
+--=========================================================================
+    -- -----------------------------------------------------
+    -- 切／計込合計データ開始タグ出力
+    -- -----------------------------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'g_kirikeikomi_sum';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
+--
+    -- 【データ】副産物・切れ計
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_sum';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    -- 副産物計 + 切／計込明細合計をセット
+    gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_fukusanbutu_total + ln_kirikeikomi_total
+                                                      ,gv_num_format1);
+--
+    -- 【データ】切／計込合計割合
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_sum_percent';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      -- 副産物・切れ計　／　「３」の投入計　＊　100（少数点第3位で四捨五入）の値を出力
+    gt_xml_data_table(gl_xml_idx).tag_value := 
+-- 2008/06/04 D.Nihei MOD START
+--                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / ln_tounyu_total) * 100 , 2)
+                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
+-- 2008/06/04 D.Nihei MOD END
+                        ,gv_num_format3);
+--
+    -- -----------------------------------------------------
+    -- 切／計込合計データ終了タグ出力
+    -- -----------------------------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := '/g_kirikeikomi_sum';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
 --=========================================================================
     -- -----------------------------------------------------
