@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *                                       [障害COK_028]売上原価 NULL 対応
  * 2009/05/20     1.2   SCS M.HIRUTA     [障害T1_1099]売上実績振替情報テーブルより原価情報を取得する際のカラム変更
  *                                                    売上原価金額 ⇒ 営業原価
+ * 2009/09/08     1.3   SCS K.YAMAGUCHI  [障害0001318]性能改善
  *
  *****************************************************************************************/
   --===============================
@@ -159,8 +160,12 @@ AS
            , SUM(xsti.trading_cost)       AS trading_cost                -- 営業原価
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
-    WHERE    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
-                                          =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- A-2で取得した売上計上日
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--    WHERE    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
+--                                          =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- A-2で取得した売上計上日
+    WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
+    AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
     AND      xsti.report_decision_flag    =  cv_report_decision_flag     -- 速報確定フラグ1(確定)
     AND      xsti.info_interface_flag     =  cv_info_interface_flag      -- 情報系I/Fフラグ1(I/F済)
     AND      xsti.gl_interface_flag       =  cv_unsettled_interface_flag -- 仕訳作成フラグ0(仕訳作成未済)
@@ -215,10 +220,18 @@ AS
              id_dlt_possible_date IN DATE
            )
     IS
-      SELECT 'X'
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      SELECT 'X'
+      SELECT /*+
+               INDEX( xsti XXCOK_SELLING_TRNS_INFO_N03 )
+             */
+             xsti.selling_trns_info_id  AS selling_trns_info_id
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       FROM   xxcok_selling_trns_info     xsti
       WHERE  xsti.selling_date        <= id_dlt_possible_date    -- ADD_MONTHS(業務処理日付, - A-1で取得した保持期間)
-      AND    xsti.report_decision_flag = cv_report_decision_flag -- 速報確定フラグ1(確定)
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE START
+--      AND    xsti.report_decision_flag = cv_report_decision_flag -- 速報確定フラグ1(確定)
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE END
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
 --
   BEGIN
@@ -228,38 +241,70 @@ AS
     --================================================================
     ld_dlt_possible_date := ADD_MONTHS( gd_operation_date, - gv_table_keep_period );
 --
-    OPEN  dlt_cur(
-            ld_dlt_possible_date
-          );
-    CLOSE dlt_cur;
-    --================================================================
-    --売上実績振替情報テーブルの削除処理
-    --================================================================
-    BEGIN
-      DELETE FROM xxcok_selling_trns_info     xsti
-      WHERE       xsti.selling_date        <= ld_dlt_possible_date     --ADD_MONTHS(業務処理日付,-A-1で取得した保持期間)
-      AND         xsti.report_decision_flag = cv_report_decision_flag; --速報確定フラグ1(確定)
-    EXCEPTION
-      -- *** 確定データ削除エラー ***
-      WHEN OTHERS THEN
-        lv_out_msg  := xxccp_common_pkg.get_msg(
-                         cv_appli_xxcok_name
-                       , cv_settlement_flag_msg
-                       );
-        lb_retcode  := xxcok_common_pkg.put_message_f( 
-                         FND_FILE.OUTPUT    -- 出力区分
-                       , lv_out_msg         -- メッセージ
-                       , 0                  -- 改行
-                       );
-        ov_errmsg   := NULL;
-        ov_errbuf   := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
-        ov_retcode  := cv_status_error;
-    END;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--    OPEN  dlt_cur(
+--            ld_dlt_possible_date
+--          );
+--    CLOSE dlt_cur;
+--    --================================================================
+--    --売上実績振替情報テーブルの削除処理
+--    --================================================================
+--    BEGIN
+--      DELETE FROM xxcok_selling_trns_info     xsti
+--      WHERE       xsti.selling_date        <= ld_dlt_possible_date     --ADD_MONTHS(業務処理日付,-A-1で取得した保持期間)
+--      AND         xsti.report_decision_flag = cv_report_decision_flag; --速報確定フラグ1(確定)
+--    EXCEPTION
+--      -- *** 確定データ削除エラー ***
+--      WHEN OTHERS THEN
+--        lv_out_msg  := xxccp_common_pkg.get_msg(
+--                         cv_appli_xxcok_name
+--                       , cv_settlement_flag_msg
+--                       );
+--        lb_retcode  := xxcok_common_pkg.put_message_f( 
+--                         FND_FILE.OUTPUT    -- 出力区分
+--                       , lv_out_msg         -- メッセージ
+--                       , 0                  -- 改行
+--                       );
+--        ov_errmsg   := NULL;
+--        ov_errbuf   := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--        ov_retcode  := cv_status_error;
+--    END;
+    << purge_loop >>
+    FOR dlt_rec IN dlt_cur( ld_dlt_possible_date ) LOOP
+      --================================================================
+      --売上実績振替情報テーブルの削除処理
+      --================================================================
+      BEGIN
+        DELETE
+        FROM  xxcok_selling_trns_info   xsti
+        WHERE xsti.selling_trns_info_id = dlt_rec.selling_trns_info_id
+        ;
+      EXCEPTION
+        -- *** 確定データ削除エラー ***
+        WHEN OTHERS THEN
+          lv_out_msg  := xxccp_common_pkg.get_msg(
+                           cv_appli_xxcok_name
+                         , cv_settlement_flag_msg
+                         );
+          lb_retcode  := xxcok_common_pkg.put_message_f( 
+                           FND_FILE.OUTPUT    -- 出力区分
+                         , lv_out_msg         -- メッセージ
+                         , 0                  -- 改行
+                         );
+          ov_errmsg   := NULL;
+          ov_errbuf   := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+          ov_retcode  := cv_status_error;
+          EXIT purge_loop;
+      END;
+    END LOOP purge_loop;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
 --
   EXCEPTION
     -- *** ロック警告メッセージ ***
     WHEN lock_err_expt THEN
-      gn_warn_cnt := gn_warn_cnt + 1;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE START
+--      gn_warn_cnt := gn_warn_cnt + 1;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE END
       lv_out_msg  := xxccp_common_pkg.get_msg(
                        cv_appli_xxcok_name
                      , cv_lock_warn_msg
@@ -271,7 +316,10 @@ AS
                     );
       ov_errmsg   := NULL;
       ov_errbuf   := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
-      ov_retcode  := cv_status_warn;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      ov_retcode  := cv_status_warn;
+      ov_retcode  := cv_status_error;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf   := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
@@ -309,49 +357,93 @@ AS
     --==============================================================
     CURSOR l_dlt_cur
     IS
-      SELECT 'X'
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      SELECT 'X'
+      SELECT /*+
+               INDEX( xsti XXCOK_SELLING_TRNS_INFO_N03 )
+             */
+             xsti.selling_trns_info_id  AS selling_trns_info_id
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       FROM  xxcok_selling_trns_info      xsti                       -- 売上実績振替情報テーブル
       WHERE xsti.selling_date         <= gd_selling_date            -- 売上計上日
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD START
+      AND   xsti.selling_date         >= TRUNC( ADD_MONTHS( gd_selling_date, -1 ), 'MM' ) -- 売上計上日の前月月初
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD END
       AND   xsti.report_decision_flag  = cv_flash_report_flag       -- 速報確定フラグ0(速報)
       AND   xsti.info_interface_flag   = cv_info_interface_flag     -- 情報系I/Fフラグ1(I/F済)
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
 --
   BEGIN
     ov_retcode := cv_status_normal;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--    --================================================================
+--    --カーソルオープン
+--    --================================================================
+--    OPEN  l_dlt_cur;
+--    CLOSE l_dlt_cur;
+--    --================================================================
+--    --売上実績振替情報テーブルの削除処理
+--    --================================================================
+--    BEGIN
+--      DELETE FROM  xxcok_selling_trns_info      xsti
+--      WHERE        xsti.selling_date         <= gd_selling_date         -- 売上計上日
+--      AND          xsti.report_decision_flag  = cv_flash_report_flag    -- 速報確定フラグ0(速報)
+--      AND          xsti.info_interface_flag   = cv_info_interface_flag; -- 情報系I/Fフラグ1(I/F済)
+--    EXCEPTION
+--      -- *** 速報データ削除エラー ***
+--      WHEN OTHERS THEN
+--        lv_out_msg := xxccp_common_pkg.get_msg(
+--                        cv_appli_xxcok_name
+--                      , cv_flash_flag_msg
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f( 
+--                        FND_FILE.OUTPUT    -- 出力区分
+--                      , lv_out_msg         -- メッセージ
+--                      , 0                  -- 改行
+--                      );
+--        ov_errmsg  := NULL;
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--        ov_retcode := cv_status_error;
+--    END;
     --================================================================
     --カーソルオープン
     --================================================================
-    OPEN  l_dlt_cur;
-    CLOSE l_dlt_cur;
-    --================================================================
-    --売上実績振替情報テーブルの削除処理
-    --================================================================
-    BEGIN
-      DELETE FROM  xxcok_selling_trns_info      xsti
-      WHERE        xsti.selling_date         <= gd_selling_date         -- 売上計上日
-      AND          xsti.report_decision_flag  = cv_flash_report_flag    -- 速報確定フラグ0(速報)
-      AND          xsti.info_interface_flag   = cv_info_interface_flag; -- 情報系I/Fフラグ1(I/F済)
-    EXCEPTION
-      -- *** 速報データ削除エラー ***
-      WHEN OTHERS THEN
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                        cv_appli_xxcok_name
-                      , cv_flash_flag_msg
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f( 
-                        FND_FILE.OUTPUT    -- 出力区分
-                      , lv_out_msg         -- メッセージ
-                      , 0                  -- 改行
-                      );
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
-        ov_retcode := cv_status_error;
-    END;
+    << dlt_decision_flash_loop >>
+    FOR l_dlt_rec IN l_dlt_cur LOOP
+      --================================================================
+      --売上実績振替情報テーブルの削除処理
+      --================================================================
+      BEGIN
+        DELETE
+        FROM  xxcok_selling_trns_info      xsti
+        WHERE xsti.selling_trns_info_id = l_dlt_rec.selling_trns_info_id
+        ;
+      EXCEPTION
+        -- *** 速報データ削除エラー ***
+        WHEN OTHERS THEN
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                          cv_appli_xxcok_name
+                        , cv_flash_flag_msg
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f( 
+                          FND_FILE.OUTPUT    -- 出力区分
+                        , lv_out_msg         -- メッセージ
+                        , 0                  -- 改行
+                        );
+          ov_errmsg  := NULL;
+          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+          ov_retcode := cv_status_error;
+          EXIT dlt_decision_flash_loop;
+      END;
+    END LOOP dlt_decision_flash_loop;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
 --
   EXCEPTION
     -- *** ロック警告メッセージ ***
     WHEN lock_err_expt THEN
-      gn_warn_cnt:= gn_warn_cnt + 1;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE START
+--      gn_warn_cnt:= gn_warn_cnt + 1;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE END
       lv_out_msg := xxccp_common_pkg.get_msg(
                       cv_appli_xxcok_name
                     , cv_lock_warn_msg
@@ -363,7 +455,10 @@ AS
                     );
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
-      ov_retcode := cv_status_warn;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      ov_retcode := cv_status_warn;
+      ov_retcode := cv_status_error;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
@@ -402,13 +497,22 @@ AS
     --==============================================================
     CURSOR l_upd_cur
     IS
-      SELECT 'X'
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      SELECT 'X'
+      SELECT /*+
+               INDEX( xsti XXCOK_SELLING_TRNS_INFO_N03 )
+             */
+             xsti.selling_trns_info_id  AS selling_trns_info_id
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       FROM   xxcok_selling_trns_info     xsti                         -- 売上実績振替情報テーブル
       WHERE  xsti.report_decision_flag = cv_report_decision_flag      -- 速報確定フラグ1(確定)
       AND    xsti.info_interface_flag  = cv_info_interface_flag       -- 情報系I/Fフラグ1(I/F済)
       AND    xsti.gl_interface_flag    = cv_unsettled_interface_flag  -- 仕訳作成フラグ0(仕訳作成未済)
-      AND    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
-                                       =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- 売上計上日
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      AND    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
+--                                       =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- 売上計上日
+      AND    xsti.selling_date         = i_get_rec.xsti_selling_date  -- 売上計上日
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       AND    xsti.base_code            = i_get_rec.base_code          -- 売上振替先拠点コード
       AND    xsti.delivery_base_code   = i_get_rec.delivery_base_code -- 売上振替元拠点コード
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
@@ -418,51 +522,96 @@ AS
     --==============================================================
     --カーソルオープン
     --==============================================================
-    OPEN  l_upd_cur;
-    CLOSE l_upd_cur;
-    --==============================================================
-    --売上実績振替情報テーブルの更新処理
-    --===============================================================
-    BEGIN
---
-      UPDATE xxcok_selling_trns_info       xsti
-      SET    xsti.gl_interface_flag      = cv_finish_interface_flag      -- 仕訳作成フラグ1(仕訳作成済)
-           , xsti.org_slip_number        = gv_slip_number                -- A-4で取得した伝票番号
-           , xsti.last_updated_by        = cn_last_updated_by            -- ログインユーザーID
-           , xsti.last_update_date       = SYSDATE                       -- システム日付
-           , xsti.last_update_login      = cn_last_update_login          -- ログインID
-           , xsti.request_id             = cn_request_id                 -- コンカレント要求ID
-           , xsti.program_application_id = cn_program_application_id     -- プログラム・アプリケーションID
-           , xsti.program_id             = cn_program_id                 -- コンカレント・プログラムID
-           , xsti.program_update_date    = SYSDATE                       -- システム日付
-      WHERE  xsti.report_decision_flag   = cv_report_decision_flag       -- 速報確定フラグ1(確定)
-      AND    xsti.info_interface_flag    = cv_info_interface_flag        -- 情報系I/Fフラグ1(I/F済)
-      AND    xsti.gl_interface_flag      = cv_unsettled_interface_flag   -- 仕訳作成フラグ0(仕訳作成未済)
-      AND    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
-                                         =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- 売上計上日
-      AND    xsti.base_code              = i_get_rec.base_code           -- 売上振替先拠点コード
-      AND    xsti.delivery_base_code     = i_get_rec.delivery_base_code; -- 売上振替元拠点コード
---
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- *** 仕訳作成フラグ更新エラー ***
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                        cv_appli_xxcok_name
-                      , cv_upd_msg
-                      , cv_sales_token
-                      , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
-                      , cv_location_token
-                      , i_get_rec.base_code
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f( 
-                        FND_FILE.OUTPUT    -- 出力区分
-                      , lv_out_msg         -- メッセージ
-                      , 0                  -- 改行
-                      );
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
-        ov_retcode := cv_status_error;
-    END;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--    OPEN  l_upd_cur;
+--    CLOSE l_upd_cur;
+--    --==============================================================
+--    --売上実績振替情報テーブルの更新処理
+--    --===============================================================
+--    BEGIN
+----
+--      UPDATE xxcok_selling_trns_info       xsti
+--      SET    xsti.gl_interface_flag      = cv_finish_interface_flag      -- 仕訳作成フラグ1(仕訳作成済)
+--           , xsti.org_slip_number        = gv_slip_number                -- A-4で取得した伝票番号
+--           , xsti.last_updated_by        = cn_last_updated_by            -- ログインユーザーID
+--           , xsti.last_update_date       = SYSDATE                       -- システム日付
+--           , xsti.last_update_login      = cn_last_update_login          -- ログインID
+--           , xsti.request_id             = cn_request_id                 -- コンカレント要求ID
+--           , xsti.program_application_id = cn_program_application_id     -- プログラム・アプリケーションID
+--           , xsti.program_id             = cn_program_id                 -- コンカレント・プログラムID
+--           , xsti.program_update_date    = SYSDATE                       -- システム日付
+--      WHERE  xsti.report_decision_flag   = cv_report_decision_flag       -- 速報確定フラグ1(確定)
+--      AND    xsti.info_interface_flag    = cv_info_interface_flag        -- 情報系I/Fフラグ1(I/F済)
+--      AND    xsti.gl_interface_flag      = cv_unsettled_interface_flag   -- 仕訳作成フラグ0(仕訳作成未済)
+--      AND    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
+--                                         =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- 売上計上日
+--      AND    xsti.base_code              = i_get_rec.base_code           -- 売上振替先拠点コード
+--      AND    xsti.delivery_base_code     = i_get_rec.delivery_base_code; -- 売上振替元拠点コード
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        -- *** 仕訳作成フラグ更新エラー ***
+--        lv_out_msg := xxccp_common_pkg.get_msg(
+--                        cv_appli_xxcok_name
+--                      , cv_upd_msg
+--                      , cv_sales_token
+--                      , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
+--                      , cv_location_token
+--                      , i_get_rec.base_code
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f( 
+--                        FND_FILE.OUTPUT    -- 出力区分
+--                      , lv_out_msg         -- メッセージ
+--                      , 0                  -- 改行
+--                      );
+--        ov_errmsg  := NULL;
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+--        ov_retcode := cv_status_error;
+--    END;
+    << update_xsti_loop >>
+    FOR l_upd_rec IN l_upd_cur LOOP
+      --==============================================================
+      --売上実績振替情報テーブルの更新処理
+      --===============================================================
+      BEGIN
+        UPDATE xxcok_selling_trns_info       xsti
+        SET    xsti.gl_interface_flag      = cv_finish_interface_flag      -- 仕訳作成フラグ1(仕訳作成済)
+             , xsti.org_slip_number        = gv_slip_number                -- A-4で取得した伝票番号
+             , xsti.last_updated_by        = cn_last_updated_by            -- ログインユーザーID
+             , xsti.last_update_date       = SYSDATE                       -- システム日付
+             , xsti.last_update_login      = cn_last_update_login          -- ログインID
+             , xsti.request_id             = cn_request_id                 -- コンカレント要求ID
+             , xsti.program_application_id = cn_program_application_id     -- プログラム・アプリケーションID
+             , xsti.program_id             = cn_program_id                 -- コンカレント・プログラムID
+             , xsti.program_update_date    = SYSDATE                       -- システム日付
+        WHERE  xsti.selling_trns_info_id   = l_upd_rec.selling_trns_info_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- *** 仕訳作成フラグ更新エラー ***
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                          cv_appli_xxcok_name
+                        , cv_upd_msg
+                        , cv_sales_token
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--                        , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
+                        , TO_CHAR(i_get_rec.xsti_selling_date,'YYYY/MM/DD')
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
+                        , cv_location_token
+                        , i_get_rec.base_code
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f( 
+                          FND_FILE.OUTPUT    -- 出力区分
+                        , lv_out_msg         -- メッセージ
+                        , 0                  -- 改行
+                        );
+          ov_errmsg  := NULL;
+          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
+          ov_retcode := cv_status_error;
+          EXIT update_xsti_loop;
+      END;
+    END LOOP update_xsti_loop;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
 --
   EXCEPTION
     -- *** ロックエラーメッセージ ***
@@ -471,7 +620,10 @@ AS
                       cv_appli_xxcok_name
                     , cv_lock_err_msg
                     , cv_sales_token
-                    , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--                    , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
+                    , TO_CHAR(i_get_rec.xsti_selling_date,'YYYY/MM/DD')
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
                     , cv_location_token
                     , i_get_rec.base_code
                     );
@@ -565,7 +717,10 @@ AS
       , gd_selling_date                                -- A-2で取得した売上計上日
       , gv_currency_code                               -- A-1で取得した機能通貨コード
       , SYSDATE                                        -- SYSDATE
-      , cn_last_update_login                           -- ログインユーザーID
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      , cn_last_update_login                           -- ログインユーザーID
+      , cn_created_by                                  -- ログインユーザーID
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       , cv_result_flag                                 -- 'A'(実績)
       , gv_gl_category_results                         -- A-1で取得した仕訳カテゴリ名
       , gv_gl_source_results                           -- A-1で取得した仕訳ソース名
@@ -586,7 +741,10 @@ AS
       , gv_selling_without_tax_code                    -- A-1で取得した課税売上外税消費税コード
       , gv_slip_number                                 -- A-4で取得した伝票番号
       , iv_base_code                                   -- A-3で取得した売上振替先拠点コード
-      , cn_last_update_login                           -- ログインユーザーID
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      , cn_last_update_login                           -- ログインユーザーID
+      , cn_created_by                                  -- ログインユーザーID
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       , gv_set_of_bks_name                             -- A-1で取得した会計帳簿名
       );
     EXCEPTION
@@ -1033,7 +1191,10 @@ AS
                     );
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -1471,17 +1632,7 @@ AS
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
-    --================================================================
-    --get_object_journal_p呼び出し(仕訳対象取得(A-3))
-    --================================================================
-    get_object_journal_p(
-      ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-    , ov_retcode => lv_retcode          -- リターン・コード
-    , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD START
     --================================================================
     --dlt_decision_flash_p呼び出し(速報確定フラグ「速報」削除(A-8))
     --================================================================
@@ -1492,10 +1643,6 @@ AS
     );
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
-    ELSIF ( lv_retcode = cv_status_warn ) THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_warn;
     END IF;
     --================================================================
     --dlt_decision_fixedness_p呼び出し(速報確定フラグ「確定」削除(A-9))
@@ -1507,11 +1654,55 @@ AS
     );
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
-    ELSIF ( lv_retcode = cv_status_warn ) THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_warn;
     END IF;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD END
+    --================================================================
+    --get_object_journal_p呼び出し(仕訳対象取得(A-3))
+    --================================================================
+    get_object_journal_p(
+      ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+    , ov_retcode => lv_retcode          -- リターン・コード
+    , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD START
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      ov_retcode := cv_status_warn;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi ADD END
+    END IF;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE START
+--    --================================================================
+--    --dlt_decision_flash_p呼び出し(速報確定フラグ「速報」削除(A-8))
+--    --================================================================
+--    dlt_decision_flash_p(
+--      ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+--    , ov_retcode => lv_retcode          -- リターン・コード
+--    , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    ELSIF ( lv_retcode = cv_status_warn ) THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+--    --================================================================
+--    --dlt_decision_fixedness_p呼び出し(速報確定フラグ「確定」削除(A-9))
+--    --================================================================
+--    dlt_decision_fixedness_p(
+--      ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+--    , ov_retcode => lv_retcode          -- リターン・コード
+--    , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    ELSIF ( lv_retcode = cv_status_warn ) THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_warn;
+--    END IF;
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi DELETE END
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
