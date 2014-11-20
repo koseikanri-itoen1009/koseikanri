@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  chk_period_status      在庫会計期間チェック(A-20)
  *  del_detail_data        旧明細削除処理(A-21)
  *  upd_old_data           旧情報出庫数量初期化処理(A-22)
+ *  upd_no_order_data      受注非存在情報数量初期化処理(A-23)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -60,6 +61,7 @@ AS
  *  2009/12/14    1.13  H.Sasaki         [E_本稼動_00428]在庫会計期間CLOSE時の処理を修正
  *  2009/12/18    1.14  H.Sasaki         [E_本稼動_00524]伝票日付違いの入庫情報編集内容を修正
  *  2010/01/04    1.15  H.Sasaki         [E_本稼動_00760]サマリデータの更新方法を修正
+ *  2010/01/06    1.16  H.Sasaki         [E_本稼動_00908]既存一時表データの修正方法変更
  *
  *****************************************************************************************/
 --
@@ -196,6 +198,9 @@ AS
   cv_lock_expt_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10029'; -- ロックエラーメッセージ(入庫情報一時表)
   cv_detail_lock_expt_err_msg CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10336'; -- ロックエラーメッセージ(入庫情報一時表)
   cv_lines_lock_expt_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10031'; -- ロックエラーメッセージ(受注明細アドオンテーブル)
+-- == 2010/01/06 V1.16 Added START ===============================================================
+  cv_msg_code_10411           CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10411'; -- 受注非存在データメッセージ
+-- == 2010/01/06 V1.16 Added END   ===============================================================
 --
   cv_conc_not_parm_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
   cv_not_found_slip_msg       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008'; -- 対象データ無し
@@ -498,6 +503,148 @@ AS
 --
   END upd_old_data;
 -- == 2009/12/18 V1.14 Added END   ===============================================================
+-- == 2010/01/06 V1.16 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : upd_no_order_data（ループ部）
+   * Description      : 受注非存在情報数量初期化処理(A-23)
+   ***********************************************************************************/
+  PROCEDURE upd_no_order_data(
+      iv_slip_num   IN VARCHAR2      --   伝票番号
+    , ov_errbuf    OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode   OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg    OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_no_order_data';    -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    -- 受注に存在しない、入庫情報一時表データ
+    CURSOR  no_order_datalock_cur
+    IS
+      SELECT  xsi.ROWID
+      FROM    xxcoi_storage_information     xsi
+      WHERE   xsi.slip_type                 =   cv_slip_type
+      AND     xsi.slip_num                  =   iv_slip_num
+      AND     NVL(xsi.ship_summary_qty, 0)  <>  0
+      AND NOT EXISTS( SELECT  1
+                      FROM    xxwsh_order_headers_all     xoh
+                            , xxwsh_order_lines_all       xol
+                      WHERE   xoh.order_header_id         =   xol.order_header_id
+                      AND     xoh.latest_external_flag    =   cv_y_flag
+                      AND     xoh.request_no              =   xsi.slip_num
+                      AND     xol.request_item_code       =   xsi.item_code
+              )
+      FOR UPDATE NOWAIT;
+    --
+    -- *** ローカル・レコード ***
+    no_odr_lock_rec     no_order_datalock_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    <<no_order_data_loop>>
+    FOR no_odr_lock_rec IN no_order_datalock_cur LOOP
+      -- 受注の存在しないデータは出庫側数量を初期化
+      UPDATE  xxcoi_storage_information
+      SET     ship_case_qty           =   0
+             ,ship_singly_qty         =   0
+             ,ship_summary_qty        =   0
+             ,last_updated_by         =   cn_last_updated_by
+             ,last_update_date        =   SYSDATE
+             ,last_update_login       =   cn_last_update_login
+             ,request_id              =   cn_request_id
+             ,program_application_id  =   cn_program_application_id
+             ,program_id              =   cn_program_id
+             ,program_update_date     =   SYSDATE
+      WHERE   ROWID                   =   no_odr_lock_rec.rowid;
+    END LOOP no_order_data_loop;
+--
+  EXCEPTION
+    WHEN lock_expt THEN
+      IF ( no_order_datalock_cur%ISOPEN ) THEN
+        CLOSE no_order_datalock_cur;
+      END IF;
+--
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_msg_code_10411
+                       , iv_token_name1  => cv_tkn_den_no
+                       , iv_token_value1 => iv_slip_num
+                     );
+      lv_errbuf := lv_errmsg;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+      --
+      fnd_file.put_line(
+          which => fnd_file.output
+        , buff  => ov_errmsg --ユーザー・エラーメッセージ
+      );
+      fnd_file.put_line(
+          which => fnd_file.log
+        , buff  => ov_errbuf --エラーメッセージ
+      );
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF ( no_order_datalock_cur%ISOPEN ) THEN
+        CLOSE no_order_datalock_cur;
+      END IF;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF ( no_order_datalock_cur%ISOPEN ) THEN
+        CLOSE no_order_datalock_cur;
+      END IF;
+--
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF ( no_order_datalock_cur%ISOPEN ) THEN
+        CLOSE no_order_datalock_cur;
+      END IF;
+--
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_no_order_data;
+-- == 2010/01/06 V1.16 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -4224,6 +4371,9 @@ AS
     lt_auto_confirmation_flg  xxcoi_subinventory_info_v.auto_confirmation_flag%TYPE;
                                                                       -- 自動入庫確認フラグ
     ln_store_check_cnt        NUMBER;                                 -- 自動入庫確認済伝票カウンタ
+-- == 2010/01/06 V1.16 Added START ===============================================================
+    lt_slip_num               xxcoi_storage_information.slip_num%TYPE;    -- 伝票番号
+-- == 2010/01/06 V1.16 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -4281,6 +4431,29 @@ AS
       <<g_summary_tab_loop>>
       FOR gn_slip_cnt IN 1 .. gn_summary_cnt LOOP
 --
+-- == 2010/01/06 V1.16 Added START ===============================================================
+        IF (lt_slip_num IS NULL OR lt_slip_num <> g_summary_tab(gn_slip_cnt).req_move_no)  THEN
+          -- 伝票単位で一度だけチェックを実施
+          -- 伝票番号を保持
+          lt_slip_num :=  g_summary_tab(gn_slip_cnt).req_move_no;
+          --
+          -- ======================================
+          -- A-23.受注非存在情報数量初期化処理
+          -- ======================================
+          upd_no_order_data(
+              iv_slip_num   =>  lt_slip_num                       -- 伝票番号
+            , ov_errbuf     =>  lv_errbuf                         -- エラー・メッセージ
+            , ov_retcode    =>  lv_retcode                        -- リターン・コード
+            , ov_errmsg     =>  lv_errmsg                         -- ユーザー・エラー・メッセージ
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            gn_warn_cnt := gn_warn_cnt + 1;
+          END IF;
+        END IF;
+-- == 2010/01/06 V1.16 Added END   ===============================================================
+        --
         --伝票単位処理制御フラグ初期化
         lb_slip_chk_status := TRUE;
 --
