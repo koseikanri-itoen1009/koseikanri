@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A08C(body)
  * Description      : 月別商品計画(営業原価)チェックリスト出力
  * MD.050           : 月別商品計画(営業原価)チェックリスト出力 MD050_CSM_002_A08
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/02/27    1.5   SCS T.Tsukino   [障害CT_070]  対象0件時のヘッダ出力不具合対応
  *  2009/05/07    1.6   SCS M.Ohtsuki   [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2009/05/21    1.7   SCS M.Ohtsuki   [障害T1_1101] 売上金額不正(値引額含む)
+ *  2009/07/13    1.8   SCS M.Ohtsuki   [SCS障害管理番号0000657] ヘッダ出力時不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3912,6 +3913,9 @@ AS
     END LOOP;
     CLOSE check_list_data_cur;
     IF lv_item_plan_data IS NULL THEN
+--//+ADD START   2009/07/13 0000657 M.Ohtsuki
+    IF (gv_location_cd <> cv_location_1) THEN                                                       --「全拠点」以外の場合
+--//+ADD END     2009/07/13 0000657 M.Ohtsuki
 --//+ADD START   2009/02/27 CT070 T.Tsukino
       BEGIN
         SELECT location_nm 
@@ -3936,7 +3940,10 @@ AS
                         which  => FND_FILE.OUTPUT
                        ,buff   => lv_data_head
                        );
---//+ADD END   2009/02/27 CT070 T.Tsukino
+--//+ADD END     2009/02/27 CT070 T.Tsukino
+--//+ADD START   2009/07/13 0000657 M.Ohtsuki
+      END IF;
+--//+ADD END     2009/07/13 0000657 M.Ohtsuki
       lv_errmsg := xxccp_common_pkg.get_msg(
                                             iv_application  => cv_xxcsm
                                            ,iv_name         => cv_chk_err_10001
