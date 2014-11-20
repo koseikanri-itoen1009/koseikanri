@@ -195,7 +195,10 @@ SELECT  SMRP.year                         year                   --年度
                       ----------------------------------------------
                       -- 有償支給データ
                       ----------------------------------------------
-                      SELECT  NVL( XOHA.arrival_date, XOHA.shipped_date )
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+                      --SELECT  NVL( XOHA.arrival_date, XOHA.shipped_date )
+                      SELECT  XOHA.arrival_date
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
                                                                 tran_date       --対象日(着荷日)
                              ,XOHA.performance_management_dept  dept_code       --部署コード
                              ,XOHA.vendor_id                    vendor_id       --取引先ID
@@ -226,6 +229,9 @@ SELECT  SMRP.year                         year                   --年度
                          --ロット情報取得
                          AND  XMLD.item_id = ILTM.item_id(+)
                          AND  XMLD.lot_id = ILTM.lot_id(+)
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+                         AND  XOHA.arrival_date IS NOT NULL
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
                       -- [ 有償支給データ END ] --
                    )  RVPY
                   ,ic_cldr_dtl    ICD    --在庫カレンダ
