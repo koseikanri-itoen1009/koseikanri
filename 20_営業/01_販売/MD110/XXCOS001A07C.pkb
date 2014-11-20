@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/09/04    1.13  N.Maeda          [0001211]消費税関連項目取得基準日修正
  *  2009/11/27    1.14  K.Atsushiba      [E_本稼動_00147]PT対応
  *  2010/02/03    1.15  N.Maeda          [E_本稼動_01441]入出庫データ連携時VDコラム取引用ヘッダ作成条件修正
+ *  2010/03/18    1.16  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,9 @@ AS
   cv_tkn_profile     CONSTANT VARCHAR2(20)  := 'PROFILE';                -- プロファイル名
   cv_tkn_yes         CONSTANT VARCHAR2(1)   := 'Y';                      -- 判定:YES
   cv_tkn_no          CONSTANT VARCHAR2(1)   := 'N';                      -- 判定:NO
+--****************************** 2010/03/18 1.16 S.Miyakoshi ADD START ******************************
+  cv_tkn_a           CONSTANT VARCHAR2(1)   := 'A';                      -- 判定:A(有効)
+--****************************** 2010/03/18 1.16 S.Miyakoshi ADD END   ******************************
   cv_tkn_out         CONSTANT VARCHAR2(3)   := 'OUT';                    -- 出庫側
   cv_tkn_in          CONSTANT VARCHAR2(2)   := 'IN';                     -- 入庫側
   cv_default         CONSTANT VARCHAR2(1)   := '0';                      -- 初期値
@@ -1090,6 +1094,11 @@ AS
           AND    acct.org_id            = gt_org_id               -- 顧客所在地.ORG_ID＝1145
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
+--****************************** 2010/03/18 1.16 S.Miyakoshi ADD START ******************************
+          AND    acct.status            = cv_tkn_a                --顧客所在地.ステータス   = 'A'(有効)
+          AND    site.status            = cv_tkn_a                --顧客使用目的.ステータス = 'A'(有効)
+          AND    site.primary_flag      = cv_tkn_yes              --顧客使用目的.主フラグ   = 'Y'(有効)
+--****************************** 2010/03/18 1.16 S.Miyakoshi ADD END   ******************************
 --************************* 2009/04/16 N.Maeda Ver1.5 MOD START ****************************************************
 --          AND    (
 --                    xsv.account_number = inv.outside_cust_code    -- 担当営業員view.顧客番号＝入出庫一時表.出庫側顧客
@@ -1242,6 +1251,11 @@ AS
           AND    acct.org_id            = gt_org_id               -- 顧客所在地.ORG_ID＝1145
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
+--****************************** 2010/03/18 1.16 S.Miyakoshi ADD START ******************************
+          AND    acct.status            = cv_tkn_a                --顧客所在地.ステータス   = 'A'(有効)
+          AND    site.status            = cv_tkn_a                --顧客使用目的.ステータス = 'A'(有効)
+          AND    site.primary_flag      = cv_tkn_yes              --顧客使用目的.主フラグ   = 'Y'(有効)
+--****************************** 2010/03/18 1.16 S.Miyakoshi ADD END   ******************************
 --************************* 2009/04/16 N.Maeda Ver1.5 MOD START ****************************************************
 --          AND    (
 --                    xsv.account_number = inv.inside_cust_code     -- 担当営業員view.顧客番号＝入出庫一時表.入庫側顧客
