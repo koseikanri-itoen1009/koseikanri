@@ -4,16 +4,17 @@ AS
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
  * Package Name     : XXWSH920003C(body)
- * Description      : ¶Y•¨—¬(ˆø“–A”zÔ)
- * MD.050           : Œv‰æEˆÚ“®EİŒÉE”Ì”„Œv‰æ/ˆøæŒv‰æ T_MD050_BPO921
- * MD.070           : Œv‰æEˆÚ“®EİŒÉE”Ì”„Œv‰æ/ˆøæŒv‰æ T_MD070_BPO92E
- * Version          : 1.0
+ * Description      : ˆÚ“®w¦”­’ˆË—Š©“®ì¬
+ * MD.050           : ¶Y•¨—¬‹¤’Êio‰×EˆÚ“®‰¼ˆø“–j T_MD050_BPO921
+ * MD.070           : ˆÚ“®w¦”­’ˆË—Š©“®ì¬ T_MD070_BPO92C
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
- * header_data_save       ƒwƒbƒ_ì¬ƒf[ƒ^•Û‘¶
+ * set_debug_switch       ƒfƒoƒbƒO—pƒƒOo—Í—pØ‚è‘Ö‚¦ƒXƒCƒbƒ`æ“¾ˆ—
+ * debug_log              ƒfƒoƒbƒO—pƒƒOo—Íˆ—
  * check_parameter        C-1  ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN
  * get_profile            C-2  ƒvƒƒtƒ@ƒCƒ‹’læ“¾
  * purge_table            C-3  ƒp[ƒWˆ—
@@ -24,10 +25,11 @@ AS
  * get_ints_data          C-8  ’†ŠÔƒe[ƒuƒ‹’Šo(o‰×)
  * get_intm_data          C-9  ’†ŠÔƒe[ƒuƒ‹’Šo(ˆÚ“®)
  * regi_move_data         C-10 ˆÚ“®ˆË—Š/w¦“o˜^
- * regi_order_data        C-11 ”­’ˆË—Š“o˜^
+ * regi_poreq_data        C-11 ”­’ˆË—Š“o˜^
  * regi_order_detail      C-12 ó’–¾×XV
  * regi_move_detail       C-13 ˆÚ“®w¦/w¦–¾×XV
  * insert_tables          C-14 “o˜^XVˆ—
+ * calc_weight_capacity   C-15 d—Ê—eÏŒvZ/ÏÚŒø—¦Zo
  * submain                ƒƒCƒ“ˆ—ƒvƒƒV[ƒWƒƒ
  * main                   ƒRƒ“ƒJƒŒƒ“ƒgÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒ
  *
@@ -36,6 +38,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/23   1.0   Oracle “y“c –Î   ‰‰ñì¬
+ *  2008/06/11   1.1   Oracle ’†“c €   ƒfƒoƒbƒOo—Í§Œä‘Î‰BƒGƒ‰[ƒnƒ“ƒhƒŠƒ“ƒO•s”õ‚ÌC³B
+ *                                      d—Ê—eÏZo/ÏÚŒø—¦Zoˆ—‚ğƒvƒƒV[ƒWƒƒ‰»(C-15)B
  *
  *****************************************************************************************/
 --
@@ -99,7 +103,7 @@ AS
   gv_msg_wsh_13101     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13101';    -- •K{ƒpƒ‰ƒ[ƒ^
   gv_msg_wsh_13004     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13004';    -- “ú•t‘¶İ
   gv_msg_wsh_13005     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13005';    -- “ú•t‹t“]
-  gv_msg_wsh_12101     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12101';    -- ƒvƒƒtƒ@ƒCƒ‹æ“¾
+  gv_msg_wsh_13002     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13002';    -- ƒvƒƒtƒ@ƒCƒ‹æ“¾
   gv_msg_wsh_13103     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13103';    -- ƒƒbƒNƒGƒ‰[
   gv_msg_wsh_13006     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13006';    -- ƒf[ƒ^íœƒGƒ‰[
   gv_msg_wsh_13007     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13007';    -- İŒÉ•â[Œ³æ“¾
@@ -107,6 +111,8 @@ AS
   gv_msg_wsh_13009     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13009';    -- Å‘å”z‘—‹æ•ªZoƒGƒ‰[
   gv_msg_wsh_13124     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13124';    -- ‡Œv’lZoŠÖ”ƒGƒ‰[
   gv_msg_wsh_13172     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13172';    -- ÏÚŒø—¦ZoŠÖ”ƒGƒ‰[
+  gv_msg_wsh_13001     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13001';    -- ÏÚƒI[ƒo[ƒƒbƒZ[ƒW
+  gv_msg_wsh_11653     CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11653';    -- İŒÉ‰ïŒvŠúŠÔƒNƒ[ƒYƒGƒ‰[
   --ƒg[ƒNƒ“
   gv_tkn_item          CONSTANT VARCHAR2(15)  := 'ITEM';               -- “ü—Íƒpƒ‰ƒ[ƒ^
   gv_tkn_item_from     CONSTANT VARCHAR2(15)  := 'ITEM_FROM';          -- ŠúŠÔFrom
@@ -126,6 +132,7 @@ AS
   gv_tkn_param8        CONSTANT VARCHAR2(15)  := 'PARAM8';             -- ƒpƒ‰ƒ[ƒ^8
   gv_tkn_param9        CONSTANT VARCHAR2(15)  := 'PARAM9';             -- ƒpƒ‰ƒ[ƒ^9
   gv_tkn_param10       CONSTANT VARCHAR2(15)  := 'PARAM10';            -- ƒpƒ‰ƒ[ƒ^10
+  gv_tkn_date          CONSTANT VARCHAR2(15)  := 'DATE';               -- İŒÉ‰ïŒvŠúŠÔƒ`ƒFƒbƒN
   --’è”
   gv_cons_input_param  CONSTANT VARCHAR2(100) := '“ü—Íƒpƒ‰ƒ[ƒ^’l';   -- '“ü—Íƒpƒ‰ƒ[ƒ^’l'
   gv_cons_m_org_id     CONSTANT VARCHAR2(50)  := 'XXCMN_MASTER_ORG_ID';-- ƒ}ƒXƒ^‘gDID
@@ -135,7 +142,7 @@ AS
   gv_cons_t_deliv      CONSTANT VARCHAR2(1)   := '1';                  -- 'o‰×ˆË—Š'(ˆ—í•Ê)
   gv_cons_t_move       CONSTANT VARCHAR2(1)   := '3';                  -- 'ˆÚ“®w¦'(ˆ—í•Ê)
   gv_cons_a_type       CONSTANT VARCHAR2(15)  := 'ˆ—í•Ê';           -- 'ˆ—í•Ê'
-  gv_cons_deliv_f_id   CONSTANT VARCHAR2(15)  := 'oŒÉ';               -- 'oŒÉ'
+  gv_cons_deliv_f      CONSTANT VARCHAR2(15)  := 'oŒÉŒ³';             -- 'oŒÉŒ³'
   gv_cons_deliv_type   CONSTANT VARCHAR2(15)  := 'oŒÉŒ`‘Ô';           -- 'oŒÉŒ`‘Ô'
   gv_cons_obj_d_from   CONSTANT VARCHAR2(15)  := '‘ÎÛŠúŠÔFrom';       -- '‘ÎÛŠúŠÔFrom'
   gv_cons_obj_d_to     CONSTANT VARCHAR2(15)  := '‘ÎÛŠúŠÔTo';         -- '‘ÎÛŠúŠÔTo'
@@ -158,7 +165,6 @@ AS
   gv_cons_flg_off      CONSTANT VARCHAR2(1)   := '0';                  -- ƒtƒ‰ƒO '0'=OFF
   gv_cons_id_drink     CONSTANT VARCHAR2(1)   := '2';                  -- ¤•i‹æ•ªEƒhƒŠƒ“ƒN
   gv_cons_id_leaf      CONSTANT VARCHAR2(1)   := '1';                  -- ¤•i‹æ•ªEƒŠ[ƒt
-  gv_cons_item_class   CONSTANT VARCHAR2(1)   := '1';                  -- •i–Ú‹æ•ª
   gv_cons_item_product CONSTANT VARCHAR2(1)   := '5';                  -- u»•iv
   gv_cons_mov_sts_e    CONSTANT VARCHAR2(2)   := '02';                 -- uˆË—ŠÏv
   gv_cons_mov_sts_c    CONSTANT VARCHAR2(2)   := '03';                 -- u’²®’†v
@@ -173,8 +179,8 @@ AS
   gv_cons_wh           CONSTANT VARCHAR2(1)   := '4';                  -- ƒR[ƒh‹æ•ªu‘qŒÉv
   gv_cons_ds_deliv     CONSTANT VARCHAR2(1)   := '2';                  -- ’¼‘—‘qŒÉ‹æ•ªuo‰×v
   gv_cons_ds_normal    CONSTANT VARCHAR2(1)   := '1';                  -- ’¼‘—‘qŒÉ‹æ•ªu’Êív
-  gv_cons_ds_type_n    CONSTANT VARCHAR2(1)   := '1';                  -- ’¼‘—
-  gv_cons_ds_type_d    CONSTANT VARCHAR2(1)   := '0';                  -- ’¼‘—ˆÈŠO
+  gv_cons_ds_type_d    CONSTANT VARCHAR2(1)   := '1';                  -- ’¼‘—
+  gv_cons_ds_type_n    CONSTANT VARCHAR2(1)   := '0';                  -- ’¼‘—ˆÈŠO
   gv_cons_wild_card    CONSTANT VARCHAR2(7)   := 'ZZZZZZZ';            -- •i–ÚƒR[ƒh('ZZZZZZZ')
   gv_cons_weight       CONSTANT VARCHAR2(1)   := '1';                  -- d—Ê—eÏ‹æ•ªud—Êv
   gv_cons_capacity     CONSTANT VARCHAR2(1)   := '2';                  -- d—Ê—eÏ‹æ•ªu—eÏv
@@ -198,8 +204,8 @@ AS
   gn_target_cnt_move   NUMBER :=0;       -- ‘ÎÛŒ”(ˆÚ“®)
   gn_upd_data_cnt_ol   NUMBER :=0;       -- ó’–¾×XV‘ÎÛŒ”
   gn_upd_data_cnt_ml   NUMBER :=0;       -- ˆÚ“®ˆË—Š/w¦–¾×XV‘ÎÛŒ”
-  gn_ins_data_cnt_oh   NUMBER :=0;       -- ó’ƒwƒbƒ_‘}“ü‘ÎÛŒ”
-  gn_ins_data_cnt_ol   NUMBER :=0;       -- ó’–¾×‘}“ü‘ÎÛŒ”
+  gn_ins_data_cnt_ph   NUMBER :=0;       -- ”­’ˆË—Šƒwƒbƒ_‘}“ü‘ÎÛŒ”
+  gn_ins_data_cnt_pl   NUMBER :=0;       -- ”­’ˆË—Š–¾×‘}“ü‘ÎÛŒ”
   gn_ins_data_cnt_mh   NUMBER :=0;       -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_‘}“ü‘ÎÛŒ”
   gn_ins_data_cnt_ml   NUMBER :=0;       -- ˆÚ“®ˆË—Š/w¦–¾×‘}“ü‘ÎÛŒ”
   gn_login_user        NUMBER;           -- ƒƒOƒCƒ“ID
@@ -207,29 +213,27 @@ AS
   gn_conc_request_id   NUMBER;           -- —v‹ID
   gn_prog_appl_id      NUMBER;           -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
   gn_conc_program_id   NUMBER;           -- ƒvƒƒOƒ‰ƒ€ID
-  gv_loading_over_flg  VARCHAR2(1) := gv_cons_flg_n;      -- Å‘åÏÚŒø—¦100%ƒI[ƒo[ƒtƒ‰ƒO
-  gv_mov_hdr_id        xxinv_mov_req_instr_headers.mov_hdr_id%TYPE;              -- ˆÚ“®ƒwƒbƒ_ID
-  gv_odr_hdr_id        xxpo_requisition_headers.requisition_header_id%TYPE;      -- ”­’ƒwƒbƒ_ID
+  gn_mov_hdr_id        xxinv_mov_req_instr_headers.mov_hdr_id%TYPE;              -- ˆÚ“®ƒwƒbƒ_ID
+  gn_poreq_hdr_id      xxpo_requisition_headers.requisition_header_id%TYPE;      -- ”­’ƒwƒbƒ_ID
 --
 -- ƒwƒbƒ_’PˆÊ€–Ú•Û‘¶—p(ˆÚ“®)
-  gn_stock_rep_origin_m  xxwsh_shipping_stock_rep_tmp.stock_rep_origin%TYPE;     -- İŒÉ•â[Œ³
+  gv_stock_rep_origin_m  xxwsh_shipping_stock_rep_tmp.stock_rep_origin%TYPE;     -- İŒÉ•â[Œ³
   gv_deliver_from_m      xxwsh_shipping_stock_rep_tmp.deliver_from%TYPE;         -- o‰×Œ³ƒR[ƒh
+  gv_prod_class_code_m   xxwsh_shipping_stock_rep_tmp.prod_class_code%TYPE;      -- ¤•i‹æ•ª
   gv_weight_capacity_class_m xxwsh_shipping_stock_rep_tmp.weight_capacity_class%TYPE;
                                                                                  -- d—Ê—eÏ‹æ•ª
   gv_product_flg_m       xxinv_mov_req_instr_headers.product_flg%TYPE;           -- »•i¯•Ê‹æ•ª
   gv_item_class_code_m   xxwsh_shipping_stock_rep_tmp.item_class_code%TYPE;      -- •i–Ú‹æ•ª
   gv_stock_rep_rule_m    xxwsh_shipping_stock_rep_tmp.stock_rep_rule%TYPE;       --İŒÉ•â[ƒ‹[ƒ‹
 -- ƒwƒbƒ_’PˆÊ€–Ú•Û‘¶—p(”­’)
-  gn_stock_rep_origin_o  xxwsh_shipping_stock_rep_tmp.stock_rep_origin%TYPE;     -- İŒÉ•â[Œ³
-  gv_deliver_from_o      xxwsh_shipping_stock_rep_tmp.deliver_from%TYPE;         -- o‰×Œ³ƒR[ƒh
-  gv_deliver_to_o        xxwsh_shipping_stock_rep_tmp.deliver_to%TYPE;           -- o‰×æƒR[ƒh
-  gv_weight_capacity_class_o xxwsh_shipping_stock_rep_tmp.weight_capacity_class%TYPE;
-                                                                                 -- d—Ê—eÏ‹æ•ª
-  gv_item_class_code_o   xxwsh_shipping_stock_rep_tmp.item_class_code%TYPE;      -- •i–Ú‹æ•ª
-  gv_stock_rep_rule_o    xxwsh_shipping_stock_rep_tmp.stock_rep_rule%TYPE;       --İŒÉ•â[ƒ‹[ƒ‹
--- –¾×’PˆÊ€–Ú•Û‘¶—p
-  gv_item_code_ml         xxwsh_mov_stock_rep_tmp.item_code%TYPE;           -- •i–ÚƒR[ƒh
-  gv_item_code_ol         xxwsh_mov_stock_rep_tmp.item_code%TYPE;          -- •i–ÚƒR[ƒh
+  gv_stock_rep_origin_p  xxwsh_shipping_stock_rep_tmp.stock_rep_origin%TYPE;     -- İŒÉ•â[Œ³
+  gv_deliver_from_p      xxwsh_shipping_stock_rep_tmp.deliver_from%TYPE;         -- o‰×Œ³ƒR[ƒh
+  gv_deliver_to_p        xxwsh_shipping_stock_rep_tmp.deliver_to%TYPE;           -- o‰×æƒR[ƒh
+  gv_stock_rep_rule_p    xxwsh_shipping_stock_rep_tmp.stock_rep_rule%TYPE;       --İŒÉ•â[ƒ‹[ƒ‹
+-- –¾×’PˆÊ€–Ú•Û‘¶—p(ˆÚ“®)
+  gv_item_code_ml        xxwsh_mov_stock_rep_tmp.item_code%TYPE;           -- •i–ÚƒR[ƒh
+-- –¾×’PˆÊ€–Ú•Û‘¶—p(”­’)
+  gv_item_code_pl        xxwsh_mov_stock_rep_tmp.item_code%TYPE;           -- •i–ÚƒR[ƒh
   gn_line_number            NUMBER := 0;                                   -- –¾×”Ô†(ˆÚ“®)
   gn_order_line_number      NUMBER := 0;                                   -- –¾×”Ô†(ó’)
 --‡Œv•Û—p
@@ -237,10 +241,12 @@ AS
   gn_sum_small_quantity     NUMBER :=0;                                    -- ‡Œv¬ŒûŒÂ”
   gn_sum_weight             NUMBER :=0;                                    -- ‡Œv¬Úd—Ê
   gn_sum_capacity           NUMBER :=0;                                    -- ‡Œv¬Ú—eÏ
-  gn_sum_inst_quantity      NUMBER :=0;                                    -- ‡Œvw¦”—Ê(ˆÚ“®)
-  gn_sum_inst_line_quantity NUMBER :=0;                                    -- ‡Œvw¦”—Ê(ˆÚ“®)
-  gn_sum_req_quantity       NUMBER :=0;                                    -- ‡ŒvˆË—Š”—Ê(”­’)
-  gn_sum_req_line_quantity  NUMBER :=0;                                    -- ‡ŒvˆË—Š”—Ê(”­’)
+  gn_sum_inst_quantity      NUMBER :=0;                                  -- ƒwƒbƒ_‡Œvw¦”—Ê(ˆÚ“®)
+  gn_sum_inst_line_quantity NUMBER :=0;                                    -- –¾×‡Œvw¦”—Ê(ˆÚ“®)
+  gn_sum_req_line_quantity  NUMBER :=0;                                    -- –¾×‡ŒvˆË—Š”—Ê(”­’)
+--
+-- ƒfƒoƒbƒO—p
+  gb_debug                  BOOLEAN DEFAULT FALSE;    --ƒfƒoƒbƒOƒƒOo—Í—pƒXƒCƒbƒ`
 --
   -- C-4, C-8 o‰×î•ñ’Šo‚Ìƒf[ƒ^‚ğŠi”[‚·‚éƒŒƒR[ƒh
   TYPE deliv_data_rec IS RECORD(
@@ -608,6 +614,7 @@ AS
     program_update_date         xxinv_mov_req_instr_headers.program_update_date%TYPE,
     -- ƒvƒƒOƒ‰ƒ€XV“ú
     not_insert_flg              VARCHAR2(1)
+    -- ƒGƒ‰[”­¶‚É‚æ‚é“o˜^œŠOƒŒƒR[ƒh”»•Êƒtƒ‰ƒO
   );
   TYPE move_header_tbl IS TABLE OF move_header_rec INDEX BY PLS_INTEGER;
   gr_move_header_tbl  move_header_tbl;
@@ -1024,8 +1031,10 @@ AS
     -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
     program_id                 xxinv_mov_req_instr_lines.program_id%TYPE,
     -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
-    program_update_date        xxinv_mov_req_instr_lines.program_update_date%TYPE
+    program_update_date        xxinv_mov_req_instr_lines.program_update_date%TYPE,
     -- ƒvƒƒOƒ‰ƒ€XV“ú
+    not_insert_flg              VARCHAR2(1)
+    -- ƒGƒ‰[”­¶‚É‚æ‚é“o˜^œŠOƒŒƒR[ƒh”»•Êƒtƒ‰ƒO
   );
   TYPE move_lines_tbl IS TABLE OF move_lines_rec INDEX BY PLS_INTEGER;
   gr_move_lines_tbl  move_lines_tbl;
@@ -1584,7 +1593,7 @@ AS
 --
   -- C-12 ó’–¾×‚Ìƒf[ƒ^‚ğŠi”[‚·‚éƒŒƒR[ƒh
   TYPE order_lines_u_rec IS RECORD(
-    request_no               xxwsh_order_lines_all.request_no%TYPE,-- ˆË—ŠNoiƒL[j
+    request_no               xxwsh_order_headers_all.request_no%TYPE,-- ˆË—ŠNoiƒL[j
     shipping_item_code       xxwsh_order_lines_all.shipping_item_code%TYPE, -- •i–ÚƒR[ƒhiƒL[j
     move_number              xxwsh_order_lines_all.move_number%TYPE,
                                                                    -- ˆÚ“®No
@@ -1727,74 +1736,85 @@ AS
     gt_ml_program_update_date     ml_program_update_date;     -- ƒvƒƒOƒ‰ƒ€XV“ú
 --
   /**********************************************************************************
-   * Function Name    : header_data_save
-   * Description      : ƒwƒbƒ_ì¬ƒf[ƒ^•Û‘¶
-   * Return           : 0=‘¶İ‚µ‚È‚¢A0>‘¶İ‚·‚é(“Yš)
+   * Procedure Name   : set_debug_switch
+   * Description      : ƒfƒoƒbƒO—pƒƒOo—Í—pØ‚è‘Ö‚¦ƒXƒCƒbƒ`æ“¾ˆ—
    ***********************************************************************************/
-  FUNCTION header_data_save(
-    in_shori_cnt             IN         NUMBER,     -- ˆ—ƒJƒEƒ“ƒ^
-    iv_action_type           IN         VARCHAR2)   -- ˆ—í•Ê
-    RETURN NUMBER
+  PROCEDURE set_debug_switch
   IS
     -- ===============================
     -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'header_data_save'; --ƒvƒƒOƒ‰ƒ€–¼
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_debug_switch'; -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
     -- ===============================
     -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
---
-    -- ===============================
-    -- ƒ†[ƒU[’è‹`—áŠO
-    -- ===============================
-    process_exp               EXCEPTION;     -- Šeˆ—‚ÅƒGƒ‰[‚ª”­¶‚µ‚½ê‡
-    PRAGMA EXCEPTION_INIT(process_exp, -20001);
---
+    -- *** ƒ[ƒJƒ‹’è” ***
+    cv_debug_switch_prof_name CONSTANT VARCHAR2(30) := 'XXWSH_92C_DEBUG_SWITCH';  -- ÃŞÊŞ¯¸ŞÌ×¸Ş
+    cv_debug_switch_on        CONSTANT VARCHAR2(1)  := '1';   --ƒfƒoƒbƒOo—Í‚·‚é
     -- *** ƒ[ƒJƒ‹•Ï” ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
 --
   BEGIN
 --
-    -- ˆ—í•Ê‚ªuo‰×v
-    IF (iv_action_type = gv_cons_t_deliv) THEN
-      gn_stock_rep_origin_m      := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
-                                                                               -- İŒÉ•â[Œ³
-      gv_deliver_from_m          := gr_deliv_data_tbl(in_shori_cnt).deliver_from;
-                                                                               -- o‰×Œ³ƒR[ƒh
-      gv_weight_capacity_class_m := gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class;
-                                                                               -- d—Ê—eÏ‹æ•ª
-      gv_item_class_code_m       := gr_deliv_data_tbl(in_shori_cnt).item_class_code;
-                                                                               -- •i–Ú‹æ•ª
-      gv_product_flg_m           := gr_deliv_data_tbl(in_shori_cnt).product_flg;
-                                                                               -- »•i¯•Ê‹æ•ª
-    ELSE
-      gn_stock_rep_origin_m      := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;
-                                                                               -- İŒÉ•â[Œ³
-      gv_deliver_from_m          := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;
-                                                                               -- o‰×Œ³ƒR[ƒh
-      gv_weight_capacity_class_m := gr_move_data_tbl(in_shori_cnt).weight_capacity_class;
-                                                                               -- d—Ê—eÏ‹æ•ª
-      gv_item_class_code_m       := gr_move_data_tbl(in_shori_cnt).item_class_code;
-                                                                               -- •i–Ú‹æ•ª
-      gv_product_flg_m           := gr_move_data_tbl(in_shori_cnt).product_flg;
-                                                                               -- »•i¯•Ê‹æ•ª
+    --ƒfƒoƒbƒOØ‚è‘Ö‚¦ƒvƒƒtƒ@ƒCƒ‹æ“¾
+    IF (FND_PROFILE.VALUE(cv_debug_switch_prof_name) = cv_debug_switch_on ) THEN
+      gb_debug := TRUE;
     END IF;
---
-    RETURN 0;
---
   EXCEPTION
-    WHEN process_exp THEN
-      RAISE_APPLICATION_ERROR
-       (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part,1,5000),TRUE);
---
---###############################  ŒÅ’è—áŠOˆ—•” START   ###################################
---
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN OTHERS THEN
-      RAISE_APPLICATION_ERROR
-        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+      gb_debug := FALSE;
 --
---###################################  ŒÅ’è•” END   #########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
-  END header_data_save;
+  END set_debug_switch;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : debug_log
+   * Description      : ƒfƒoƒbƒO—pƒƒOo—Íˆ—
+   ***********************************************************************************/
+  PROCEDURE debug_log(in_which in number,       -- o—ÍæFFND_FILE.LOG or FND_FILE.OUTPUT
+                      iv_msg   in varchar2 )    -- ƒƒbƒZ[ƒW
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'debug_log'; -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+--
+  BEGIN
+--
+    --ƒfƒoƒbƒOON‚È‚ço—Í
+    IF (gb_debug) THEN
+      FND_FILE.PUT_LINE(in_which, iv_msg);
+    END IF;
+  EXCEPTION
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      NULL ;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END debug_log;
+--
 --
    /**********************************************************************************
    * Procedure Name   : check_parameter
@@ -1803,7 +1823,7 @@ AS
   PROCEDURE check_parameter(
     iv_action_type           IN         VARCHAR2,   -- ˆ—í•Ê
     iv_req_mov_no            IN         VARCHAR2,   -- ˆË—Š/ˆÚ“®No
-    iv_deliver_from_id       IN         VARCHAR2,   -- oŒÉŒ³
+    iv_deliver_from          IN         VARCHAR2,   -- oŒÉŒ³
     iv_deliver_type          IN         VARCHAR2,   -- oŒÉŒ`‘Ô
     iv_object_date_from      IN         VARCHAR2,   -- ‘ÎÛŠúŠÔFrom
     iv_object_date_to        IN         VARCHAR2,   -- ‘ÎÛŠúŠÔTo
@@ -1846,9 +1866,8 @@ AS
 --
 --###########################  ŒÅ’è•” END   ############################
 --
--- DEBUG
--- FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-1)in...' || gv_cons_a_type);
--- DEBUG
+debug_log(FND_FILE.LOG,'(C-1)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ˆ—í•Ê•K{ƒ`ƒFƒbƒN
     IF (iv_action_type IS NULL) THEN
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh -- 'XXWSH'
@@ -1862,11 +1881,11 @@ AS
     END IF;
 --
     -- oŒÉŒ³•K{ƒ`ƒFƒbƒN
-    IF (iv_deliver_from_id IS NULL) THEN
+    IF (iv_deliver_from IS NULL) THEN
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh -- 'XXWSH'
                                                     ,gv_msg_wsh_13101  -- •K{“ü—Íƒpƒ‰ƒ[ƒ^ƒGƒ‰[
                                                     ,gv_tkn_item       -- ƒg[ƒNƒ“'ITEM'
-                                                    ,gv_cons_deliv_f_id) -- 'oŒÉ'
+                                                    ,gv_cons_deliv_f)  -- 'oŒÉŒ³'
                                                     ,1
                                                     ,5000);
       -- ƒGƒ‰[ƒŠƒ^[ƒ“•ˆ—’†~
@@ -2011,14 +2030,47 @@ AS
                                                       ,iv_object_date_to)   -- '‘ÎÛŠúŠÔTo'
                                                       ,1
                                                       ,5000);
--- DEBUG
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-1)iv_object_date_from = ' || iv_object_date_from);
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-1)iv_object_date_to = ' || iv_object_date_to);
--- DEBUG
         -- ƒGƒ‰[ƒŠƒ^[ƒ“•ˆ—’†~
         RAISE global_api_expt;
       END IF;
     END IF;
+--
+    -- w’è“úFromTo‚Ì‹t“]ƒGƒ‰[ƒ`ƒFƒbƒN
+    IF (iv_shipped_date > iv_arrival_date) THEN
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                    ,gv_msg_wsh_13005     -- “ú•t‹t“]ƒGƒ‰[
+                                                    ,gv_tkn_item_from     -- ƒg[ƒNƒ“'ITEM_FROM'
+                                                    ,gv_cons_ship_date    -- 'oŒÉ“úw’è'
+                                                    ,gv_tkn_value_from    -- ƒg[ƒNƒ“'VALUE_FROM'
+                                                    ,iv_shipped_date      -- 'oŒÉ“úw’è'
+                                                    ,gv_tkn_item_to       -- ƒg[ƒNƒ“'ITEM_TO'
+                                                    ,gv_cons_arvl_date    -- '’…“úw’è'
+                                                    ,gv_tkn_value_to      -- ƒg[ƒNƒ“'VALUE_TO'
+                                                    ,iv_arrival_date)     -- '’…“úw’è'
+                                                    ,1
+                                                    ,5000);
+      -- ƒGƒ‰[ƒŠƒ^[ƒ“•ˆ—’†~
+      RAISE global_api_expt;
+    END IF;
+--
+    -- oŒÉ“úw’è‚ªOPMİŒÉ‰ïŒvŠúŠÔ‚ÅƒNƒ[ƒY‚Ìê‡
+    IF (xxcmn_common_pkg.get_opminv_close_period
+          >= TO_CHAR(TO_DATE(iv_shipped_date, 'YYYY/MM/DD'),'YYYYMM')) THEN
+--
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_cons_msg_kbn_wsh                            -- 'XXWSH'
+                            ,gv_msg_wsh_11653                               -- İŒÉ‰ïŒvŠúŠÔƒNƒ[ƒY
+                            ,gv_tkn_date                                    -- ƒg[ƒNƒ“'DATE'
+                            ,TO_CHAR(TO_DATE(iv_shipped_date, 'YYYY/MM/DD')
+                                    ,'YYYYMM'))                             -- 'oŒÉ“úw’è'
+                            ,1
+                            ,5000);
+      -- ƒGƒ‰[ƒŠƒ^[ƒ“•ˆ—’†~
+      RAISE global_api_expt;
+--
+    END IF;
+--
+debug_log(FND_FILE.LOG,'(C-1)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -2090,13 +2142,15 @@ AS
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
+debug_log(FND_FILE.LOG,'(C-2)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ƒ†[ƒUƒvƒƒtƒ@ƒCƒ‹‚Ìæ“¾
     lv_organization_id := SUBSTRB(FND_PROFILE.VALUE(gv_cons_m_org_id), 1,15);
 --
     -- ƒvƒƒtƒ@ƒCƒ‹‚ªæ“¾‚Å‚«‚È‚¢ê‡‚ÍƒGƒ‰[
     IF (lv_organization_id IS NULL) THEN
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                                    ,gv_msg_wsh_12101     -- ƒvƒƒtƒ@ƒCƒ‹æ“¾ƒGƒ‰[
+                                                    ,gv_msg_wsh_13002     -- ƒvƒƒtƒ@ƒCƒ‹æ“¾ƒGƒ‰[
                                                     ,gv_tkn_prof_name     -- ƒg[ƒNƒ“'PROF_NAME'
                                                     ,gv_cons_m_org_id_tkn) -- XXCMN:ƒ}ƒXƒ^‘gDID
                                                     ,1
@@ -2105,20 +2159,28 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    -- ”’lŒ^‚É•ÏŠ·(•ÏŠ·‚Å‚«‚È‚¢ê‡‚Í—áŠOˆ—‚ÖƒGƒ‰[j
-    gn_organization_id := TO_NUMBER(lv_organization_id);
+    BEGIN
+      -- ”’lŒ^‚É•ÏŠ·(•ÏŠ·‚Å‚«‚È‚¢ê‡‚Í—áŠOˆ—‚ÖƒGƒ‰[j
+      gn_organization_id := TO_NUMBER(lv_organization_id);
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE INVALID_NUMBER;
+    END;
+--
+--
+debug_log(FND_FILE.LOG,'(C-2)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
     --*** ”’lŒ^‚É•ÏŠ·‚Å‚«‚È‚©‚Á‚½ê‡=TO_NUMBER() ***
     WHEN INVALID_NUMBER THEN
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh   -- 'XXWSH'
-                                                    ,gv_msg_wsh_12101  -- ƒvƒƒtƒ@ƒCƒ‹æ“¾ƒGƒ‰[
+                                                    ,gv_msg_wsh_13002  -- ƒvƒƒtƒ@ƒCƒ‹æ“¾ƒGƒ‰[
                                                     ,gv_tkn_prof_name  -- ƒg[ƒNƒ“'PROF_NAME'
                                                     ,gv_cons_m_org_id_tkn) -- XXCMN:ƒ}ƒXƒ^‘gDID
                                                     ,1
                                                     ,5000);
       ov_errmsg  := lv_errmsg;                                                  --# ”CˆÓ #
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000);
       ov_retcode := gv_status_error;                                            --# ”CˆÓ #
 --
 --#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
@@ -2190,55 +2252,49 @@ AS
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)in.....');
--- DEBUG
+debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ˆ—í•Ê‚Åˆ—‘ÎÛƒe[ƒuƒ‹‚ªˆÙ‚È‚é
     -- ˆ—í•Ê‚ªuo‰×ˆË—Šv‚Ìê‡
     IF (iv_action_type = gv_cons_t_deliv) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)ˆ—í•Ê‚ªuo‰×ˆË—Šv');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-3)ˆ—í•Êuo‰×ˆË—Šv');
+--
       -- o‰×İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹‚ğƒƒbƒN‚·‚é
       lb_retcode := xxcmn_common_pkg.get_tbl_lock(gv_cons_schema_wsh, gv_cons_dlv_tmp_tbl);
       -- ƒƒbƒN‚Å‚«‚È‚©‚Á‚½ê‡
       IF (lb_retcode = FALSE) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)get_tbl_lock lb_retcode = FALSE');
--- DEBUG
+--
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                       ,gv_msg_wsh_13103     -- ƒe[ƒuƒ‹ƒƒbƒNƒGƒ‰[
                                                       ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                      ,gv_cons_dlv_tmp_jp) 
+                                                      ,gv_cons_dlv_tmp_jp)
                                                                       -- o‰×İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹
                                                       ,1
                                                       ,5000);
          RAISE global_api_expt;
       END IF;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)get_tbl_lock lb_retcode = TRUE');
--- DEBUG
+--
       -- ‘Sƒe[ƒuƒ‹ƒf[ƒ^‚ğíœ‚·‚é
       lb_retcode := xxcmn_common_pkg.del_all_data(gv_cons_schema_wsh, gv_cons_dlv_tmp_tbl);
       -- ƒf[ƒ^‚Ìíœ‚É¸”s‚µ‚½ê‡
       IF (lb_retcode = FALSE) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = FALSE');
--- DEBUG
+--
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                       ,gv_msg_wsh_13006 -- ƒe[ƒuƒ‹ƒf[ƒ^íœƒGƒ‰[
                                                       ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                      ,gv_cons_dlv_tmp_jp) 
+                                                      ,gv_cons_dlv_tmp_jp)
                                                                       -- o‰×İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹
                                                       ,1
                                                       ,5000);
          RAISE global_api_expt;
       END IF;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
--- DEBUG
+--
     -- ˆ—í•Ê‚ªuˆÚ“®w¦v‚Ìê‡
     ELSE
+--
+debug_log(FND_FILE.LOG,'(C-3)ˆ—í•ÊuˆÚ“®w¦v');
+--
       -- ˆÚ“®İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹‚ğƒƒbƒN‚·‚é
       lb_retcode := xxcmn_common_pkg.get_tbl_lock(gv_cons_schema_wsh, gv_cons_mov_tmp_tbl);
       -- ƒƒbƒN‚Å‚«‚È‚©‚Á‚½ê‡
@@ -2246,7 +2302,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                       ,gv_msg_wsh_13103     -- ƒe[ƒuƒ‹ƒƒbƒNƒGƒ‰[
                                                       ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                      ,gv_cons_mov_tmp_jp) 
+                                                      ,gv_cons_mov_tmp_jp)
                                                                       -- ˆÚ“®İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹
                                                       ,1
                                                       ,5000);
@@ -2259,13 +2315,16 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                       ,gv_msg_wsh_13006 -- ƒe[ƒuƒ‹ƒf[ƒ^íœƒGƒ‰[
                                                       ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                      ,gv_cons_mov_tmp_jp) 
+                                                      ,gv_cons_mov_tmp_jp)
                                                                       -- ˆÚ“®İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹
                                                       ,1
                                                       ,5000);
          RAISE global_api_expt;
       END IF;
     END IF;
+--
+--
+debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -2336,7 +2395,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         xoha.deliver_from_id,               -- o‰×Œ³ID
         xoha.deliver_from,                  -- o‰×Œ³ƒR[ƒh
         xoha.weight_capacity_class,         -- d—Ê—eÏ‹æ•ª
-        xola.shipping_inventory_item_id,    -- o‰×•i–ÚID
+        xola.shipping_inventory_item_id,    -- INVo‰×•i–ÚID
         ximv.item_id,                       -- OPM•i–ÚID
         xola.shipping_item_code,            -- •i–ÚƒR[ƒh
         xola.quantity,                      -- ”—Ê
@@ -2346,11 +2405,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         NULL,                               -- »•i¯•Ê‹æ•ª
         xicv.prod_class_code,               -- ¤•i‹æ•ª
         NVL(xilv.direct_ship_type,gv_cons_ds_type_n),              -- ’¼‘—‹æ•ª
-        ximv.num_of_deliver,                -- o‰×“ü”
+        TO_NUMBER(ximv.num_of_deliver),     -- o‰×“ü”
         ximv.conv_unit,                     -- “üoŒÉŠ·Z’PˆÊ
-        ximv.num_of_cases,                  -- ƒP[ƒX“ü”
+        TO_NUMBER(ximv.num_of_cases),       -- ƒP[ƒX“ü”
         ximv.item_um,                       -- ’PˆÊ
-        ximv.frequent_qty,                  -- ‘ã•\“ü”
+        TO_NUMBER(ximv.frequent_qty),       -- ‘ã•\“ü”
         NULL,                               -- İŒÉ•â[ƒ‹[ƒ‹
         NULL                                -- İŒÉ•â[Œ³
       FROM
@@ -2378,7 +2437,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         AND xola.shipping_inventory_item_id  = ximv.inventory_item_id   -- o‰×•i–ÚID
         AND xoha.schedule_ship_date    >= TO_DATE(iv_object_date_from,'YYYY/MM/DD')-- o‰×—\’è“ú
         AND xicv.item_id                = ximv.item_id               -- •i–ÚID
-        AND xicv.item_id           NOT IN ( SELECT xicv.item_id 
+        AND xicv.item_id           NOT IN ( SELECT xicv.item_id
                                             FROM   xxcmn_item_categories4_v xicv
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
@@ -2401,7 +2460,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         xoha.deliver_from_id,               -- o‰×Œ³ID
         xoha.deliver_from,                  -- o‰×Œ³ƒR[ƒh
         xoha.weight_capacity_class,         -- d—Ê—eÏ‹æ•ª
-        xola.shipping_inventory_item_id,    -- o‰×•i–ÚID
+        xola.shipping_inventory_item_id,    -- INVo‰×•i–ÚID
         ximv.item_id,                       -- OPM•i–ÚID
         xola.shipping_item_code,            -- •i–ÚƒR[ƒh
         xola.quantity,                      -- ”—Ê
@@ -2411,11 +2470,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         NULL,                               -- »•i¯•Ê‹æ•ª
         xicv.prod_class_code,               -- ¤•i‹æ•ª
         NVL(xilv.direct_ship_type,gv_cons_ds_type_n),              -- ’¼‘—‹æ•ª
-        ximv.num_of_deliver,                -- o‰×“ü”
+        TO_NUMBER(ximv.num_of_deliver),     -- o‰×“ü”
         ximv.conv_unit,                     -- “üoŒÉŠ·Z’PˆÊ
-        ximv.num_of_cases,                  -- ƒP[ƒX“ü”
+        TO_NUMBER(ximv.num_of_cases),       -- ƒP[ƒX“ü”
         ximv.item_um,                       -- ’PˆÊ
-        ximv.frequent_qty,                  -- ‘ã•\“ü”
+        TO_NUMBER(ximv.frequent_qty),       -- ‘ã•\“ü”
         NULL,                               -- İŒÉ•â[ƒ‹[ƒ‹
         NULL                                -- İŒÉ•â[Œ³
       FROM
@@ -2444,7 +2503,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         AND xoha.schedule_ship_date    >= TO_DATE(iv_object_date_from,'YYYY/MM/DD')-- o‰×—\’è“ú
         AND xoha.schedule_ship_date    <= TO_DATE(iv_object_date_to,'YYYY/MM/DD')-- o‰×—\’è“ú
         AND xicv.item_id                = ximv.item_id               -- •i–ÚID
-        AND xicv.item_id           NOT IN ( SELECT xicv.item_id 
+        AND xicv.item_id           NOT IN ( SELECT xicv.item_id
                                             FROM   xxcmn_item_categories4_v xicv
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
@@ -2467,18 +2526,18 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         xmrih.ship_to_locat_id,         -- “üŒÉæID
         xmrih.ship_to_locat_code,       -- “üŒÉæƒR[ƒh
         xmrih.weight_capacity_class,    -- d—Ê—eÏ‹æ•ª
-        ximv.item_id,                   -- •i–ÚID
-        ximv.inventory_item_id,         -- 
+        ximv.item_id,                   -- OPM•i–ÚID
+        ximv.inventory_item_id,         -- INV•i–ÚID
         xmril.item_code,                -- •i–ÚƒR[ƒh
         xmril.instruct_qty,             -- w¦”—Ê
         xicv.item_class_code,           -- •i–Ú‹æ•ª
         NULL,                           -- »•i¯•Ê‹æ•ª
         xicv.prod_class_code,           -- ¤•i‹æ•ª
-        ximv.num_of_deliver,            -- o‰×“ü”
+        TO_NUMBER(ximv.num_of_deliver), -- o‰×“ü”
         ximv.conv_unit,                 -- “üoŒÉŠ·Z’PˆÊ
-        ximv.num_of_cases,              -- ƒP[ƒX“ü”
+        TO_NUMBER(ximv.num_of_cases),   -- ƒP[ƒX“ü”
         ximv.item_um,                   -- ’PˆÊ
-        ximv.frequent_qty,              -- ‘ã•\“ü”
+        TO_NUMBER(ximv.frequent_qty),   -- ‘ã•\“ü”
         NULL,                           -- İŒÉ•â[ƒ‹[ƒ‹
         NULL                            -- İŒÉ•â[Œ³
       FROM
@@ -2499,7 +2558,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         AND xmril.item_id            = ximv.item_id           -- •i–ÚID
         AND xmrih.schedule_ship_date   >= TO_DATE(iv_object_date_from,'YYYY/MM/DD') -- o‰×—\’è“ú
         AND xicv.item_id                = ximv.item_id        -- •i–ÚID
-        AND xicv.item_id           NOT IN ( SELECT xicv.item_id 
+        AND xicv.item_id           NOT IN ( SELECT xicv.item_id
                                             FROM   xxcmn_item_categories4_v xicv
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
@@ -2522,18 +2581,18 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         xmrih.ship_to_locat_id,         -- “üŒÉæID
         xmrih.ship_to_locat_code,       -- “üŒÉæƒR[ƒh
         xmrih.weight_capacity_class,    -- d—Ê—eÏ‹æ•ª
-        ximv.item_id,                   -- •i–ÚID
-        ximv.inventory_item_id,         -- 
+        ximv.item_id,                   -- OPM•i–ÚID
+        ximv.inventory_item_id,         -- INV•i–ÚID
         xmril.item_code,                -- •i–ÚƒR[ƒh
         xmril.instruct_qty,             -- w¦”—Ê
         xicv.item_class_code,           -- •i–Ú‹æ•ª
         NULL,                           -- »•i¯•Ê‹æ•ª
         xicv.prod_class_code,           -- ¤•i‹æ•ª
-        ximv.num_of_deliver,            -- o‰×“ü”
+        TO_NUMBER(ximv.num_of_deliver), -- o‰×“ü”
         ximv.conv_unit,                 -- “üoŒÉŠ·Z’PˆÊ
-        ximv.num_of_cases,              -- ƒP[ƒX“ü”
+        TO_NUMBER(ximv.num_of_cases),   -- ƒP[ƒX“ü”
         ximv.item_um,                   -- ’PˆÊ
-        ximv.frequent_qty,              -- ‘ã•\“ü”
+        TO_NUMBER(ximv.frequent_qty),   -- ‘ã•\“ü”
         NULL,                           -- İŒÉ•â[ƒ‹[ƒ‹
         NULL                            -- İŒÉ•â[Œ³
       FROM
@@ -2556,7 +2615,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
         AND xmrih.schedule_ship_date >= TO_DATE(iv_object_date_from,'YYYY/MM/DD')    -- o‰×—\’è“ú
         AND xmrih.schedule_ship_date <= TO_DATE(iv_object_date_to,'YYYY/MM/DD') --(NULL‚Ìê‡‚ ‚è)
         AND xicv.item_id                = ximv.item_id               -- •i–ÚID
-        AND xicv.item_id           NOT IN ( SELECT xicv.item_id 
+        AND xicv.item_id           NOT IN ( SELECT xicv.item_id
                                             FROM   xxcmn_item_categories4_v xicv
                                             WHERE  xicv.prod_class_code = gv_cons_id_drink
                                               AND  xicv.item_class_code = gv_cons_item_product)
@@ -2583,21 +2642,21 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-3)del_all_data lb_retcode = TRUE');
     -- ***        Àˆ—‚Ì‹Lq             ***
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_action_type = ' || iv_action_type);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_req_mov_no = ' || iv_req_mov_no);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_deliver_from = ' || iv_deliver_from);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_deliver_type = ' || iv_deliver_type);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_object_date_from = ' || iv_object_date_from);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_object_date_to = ' || iv_object_date_to);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)iv_arrival_date = ' || iv_arrival_date);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-4)' || cv_prg_name || ' Start¥¥¥');
+debug_log(FND_FILE.LOG,'  iv_action_type = ' || iv_action_type);
+debug_log(FND_FILE.LOG,'  iv_req_mov_no = ' || iv_req_mov_no);
+debug_log(FND_FILE.LOG,'  iv_deliver_from = ' || iv_deliver_from);
+debug_log(FND_FILE.LOG,'  iv_deliver_type = ' || iv_deliver_type);
+debug_log(FND_FILE.LOG,'  iv_object_date_from = ' || iv_object_date_from);
+debug_log(FND_FILE.LOG,'  iv_object_date_to = ' || iv_object_date_to);
+debug_log(FND_FILE.LOG,'  iv_arrival_date = ' || iv_arrival_date);
 --
     -- ˆ—í•Ê‚ªuo‰×v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚È‚¢ê‡‚Ìƒf[ƒ^’Šo
     IF ((iv_action_type = gv_cons_t_deliv) AND (iv_object_date_to IS NULL)) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_deliv_from in');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ˆ—í•Ê‚ªuo‰×v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚È‚¢ê‡‚Ìƒf[ƒ^’Šo');
+--
       -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
       OPEN lc_deliv_data_cur_from;
 --
@@ -2606,18 +2665,17 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_deliv_from in');
 --
       -- ˆ—Œ”‚ÌƒZƒbƒg
       gn_target_cnt := gr_deliv_data_tbl.COUNT;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_deliv_from) = ' || gn_target_cnt);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ’ŠoŒ” = ' || gn_target_cnt);
 --
       -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
       CLOSE lc_deliv_data_cur_from;
 --
     -- ˆ—í•Ê‚ªuo‰×v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚éê‡‚Ìƒf[ƒ^’Šo
     ELSIF ((iv_action_type = gv_cons_t_deliv) AND (iv_object_date_to IS NOT NULL)) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_deliv_fromto in');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ˆ—í•Ê‚ªuo‰×v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚éê‡‚Ìƒf[ƒ^’Šo');
+--
       -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
       OPEN lc_deliv_data_cur_fromto;
 --
@@ -2626,22 +2684,17 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_deliv_fromto in');
 --
       -- ˆ—Œ”‚ÌƒZƒbƒg
       gn_target_cnt := gr_deliv_data_tbl.COUNT;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_deliv_fromto) = ' || gn_target_cnt);
-if (gn_target_cnt>0) then
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gr_deliv_data_tbl(1).drop_ship_wsh_div = ' || gr_deliv_data_tbl(1).drop_ship_wsh_div);
-end if;
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_deliv_from in');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ’ŠoŒ” = ' || gn_target_cnt);
 --
       -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
       CLOSE lc_deliv_data_cur_fromto;
 --
     -- ˆ—í•Ê‚ªuˆÚ“®v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚È‚¢ê‡‚Ìƒf[ƒ^’Šo
     ELSIF ((iv_action_type = gv_cons_t_move) AND (iv_object_date_to IS NULL)) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_move_from in');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ˆ—í•Ê‚ªuˆÚ“®v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚È‚¢ê‡‚Ìƒf[ƒ^’Šo');
+--
       -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
       OPEN lc_move_data_cur_from;
 --
@@ -2650,18 +2703,17 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_move_from in');
 --
       -- ˆ—Œ”‚ÌƒZƒbƒg
       gn_target_cnt := gr_move_data_tbl.COUNT;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_from) = ' || gn_target_cnt);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ’ŠoŒ” = ' || gn_target_cnt);
 --
       -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
       CLOSE lc_move_data_cur_from;
 --
     -- ˆ—í•Ê‚ªuˆÚ“®v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚éê‡‚Ìƒf[ƒ^’Šo
     ELSE
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_move_fromto in');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ˆ—í•Ê‚ªuˆÚ“®v‚Å‘ÎÛŠúŠÔTO‚ª“ü—Í‚³‚ê‚Ä‚¢‚éê‡‚Ìƒf[ƒ^’Šo');
+--
       -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
       OPEN lc_move_data_cur_fromto;
 --
@@ -2670,14 +2722,17 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)lc_move_fromto in');
 --
       -- ˆ—Œ”‚ÌƒZƒbƒg
       gn_target_cnt := gr_move_data_tbl.COUNT;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_target_cnt);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ’ŠoŒ” = ' || gn_target_cnt);
+--
 --
       -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
       CLOSE lc_move_data_cur_fromto;
 --
     END IF;
+--
+--
+debug_log(FND_FILE.LOG,'(C-4)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -2685,15 +2740,57 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
 --
     -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_expt THEN
+--
+      IF ( lc_deliv_data_cur_from%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur_from;
+      END IF;
+      IF ( lc_deliv_data_cur_fromto%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur_fromto;
+      END IF;
+      IF ( lc_move_data_cur_from%ISOPEN ) THEN
+        CLOSE lc_move_data_cur_from;
+      END IF;
+      IF ( lc_move_data_cur_fromto%ISOPEN ) THEN
+        CLOSE lc_move_data_cur_fromto;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_others_expt THEN
+--
+      IF ( lc_deliv_data_cur_from%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur_from;
+      END IF;
+      IF ( lc_deliv_data_cur_fromto%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur_fromto;
+      END IF;
+      IF ( lc_move_data_cur_from%ISOPEN ) THEN
+        CLOSE lc_move_data_cur_from;
+      END IF;
+      IF ( lc_move_data_cur_fromto%ISOPEN ) THEN
+        CLOSE lc_move_data_cur_fromto;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN OTHERS THEN
+--
+      IF ( lc_deliv_data_cur_from%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur_from;
+      END IF;
+      IF ( lc_deliv_data_cur_fromto%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur_fromto;
+      END IF;
+      IF ( lc_move_data_cur_from%ISOPEN ) THEN
+        CLOSE lc_move_data_cur_from;
+      END IF;
+      IF ( lc_move_data_cur_fromto%ISOPEN ) THEN
+        CLOSE lc_move_data_cur_fromto;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -2738,12 +2835,13 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     -- ˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh2
     lv_vendor_site_code1     xxcmn_sourcing_rules2_v.vendor_site_code1%TYPE;
     -- d“üæƒTƒCƒgƒR[ƒh1
-    lv_item_code          xxcmn_item_mst2_v.item_no%TYPE;                  -- •i–ÚƒR[ƒh
+    lv_item_code          xxcmn_sourcing_rules2_v.item_code%TYPE;          -- •i–ÚƒR[ƒh
     lv_delivery_whse_code xxcmn_sourcing_rules2_v.delivery_whse_code%TYPE; -- o‰×Œ³ƒR[ƒh
     lv_no                 xxwsh_order_headers_all.request_no%TYPE;         -- ˆË—Š/ˆÚ“®No
     lv_item_name          xxcmn_item_mst2_v.item_name%TYPE;                -- •i–Ú–¼Ì
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    -- 1-1 •i–Úw’è o‰×•ÛŠÇ‘qŒÉƒR[ƒh <-- ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh1
     CURSOR lc_rule_cur1_1  -- 1-1‚ÌğŒ
     IS
     SELECT
@@ -2763,6 +2861,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.move_from_whse_code1;
  --
+    -- 1-2 •i–Úw’è o‰×•ÛŠÇ‘qŒÉƒR[ƒh <-- d“üæƒTƒCƒgƒR[ƒh
     CURSOR lc_rule_cur1_2  -- 1-2‚ÌğŒ
     IS
     SELECT
@@ -2784,6 +2883,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.vendor_site_code1;
 --
+    -- 2-1 •i–Úw’è ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh1 <-- ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh2
     CURSOR lc_rule_cur2_1  -- 2-1‚ÌğŒ
     IS
     SELECT
@@ -2803,6 +2903,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.move_from_whse_code2;
 --
+    -- 2-2 •i–Úw’è ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh1 <-- d“üæƒTƒCƒgƒR[ƒh
     CURSOR lc_rule_cur2_2  -- 2-2‚ÌğŒ
     IS
     SELECT
@@ -2824,6 +2925,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.vendor_site_code1;
 --
+    -- 3-1 •i–Úw’è ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh2 <-- d“üæƒTƒCƒgƒR[ƒh
     CURSOR lc_rule_cur3_1
     IS
     SELECT
@@ -2843,6 +2945,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.vendor_site_code1;
 --
+    -- 1-1-z •i–ÚALL o‰×•ÛŠÇ‘qŒÉƒR[ƒh <-- ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh1
     CURSOR lc_rule_cur1_1_z
     IS
     SELECT
@@ -2862,6 +2965,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.move_from_whse_code1;
 --
+    -- 1-2-z •i–ÚALL o‰×•ÛŠÇ‘qŒÉƒR[ƒh <-- d“üæƒTƒCƒgƒR[ƒh
     CURSOR lc_rule_cur1_2_z
     IS
     SELECT
@@ -2883,6 +2987,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.vendor_site_code1;
 --
+    -- 2-1-z •i–ÚALL ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh1 <-- ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh2
     CURSOR lc_rule_cur2_1_z
     IS
     SELECT
@@ -2902,6 +3007,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.move_from_whse_code2;
 --
+    -- 2-2-z •i–ÚALL ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh1 <-- d“üæƒTƒCƒgƒR[ƒh
     CURSOR lc_rule_cur2_2_z
     IS
     SELECT
@@ -2923,6 +3029,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     ORDER BY
       xsrv.vendor_site_code1;
 --
+    -- 3-1-z •i–ÚALL ˆÚ“®•ÛŠÇ‘qŒÉƒR[ƒh2 <-- d“üæƒTƒCƒgƒR[ƒh
     CURSOR lc_rule_cur3_1_z
     IS
     SELECT
@@ -2971,12 +3078,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-4)gn_target_cnt(lc_move_fromto) = ' || gn_
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)in..........');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)in_shori_cnt =' || in_shori_cnt);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)iv_action_type =' || iv_action_type);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)iv_arrival_date =' || iv_arrival_date);
--- DEBUG
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' Start¥¥¥');
+debug_log(FND_FILE.LOG,'  in_shori_cnt =' || in_shori_cnt);
+debug_log(FND_FILE.LOG,'  iv_action_type =' || iv_action_type);
+debug_log(FND_FILE.LOG,'  iv_arrival_date =' || iv_arrival_date);
+--
     -- ˆ—í•Ê‚É‚æ‚è•i–ÚƒR[ƒh‚Æo‰×•ÛŠÇ‘qŒÉƒR[ƒh‚ÆNo‚ğØ‚è•ª‚¯‚é
     -- o‰×‚È‚ç
     IF (iv_action_type = gv_cons_t_deliv) THEN
@@ -2988,18 +3094,16 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)iv_arrival_date =' || iv_arrival_date);
       lv_delivery_whse_code := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;   -- oŒÉŒ³ƒR[ƒh
       lv_no                 := gr_move_data_tbl(in_shori_cnt).mov_num;              -- ˆÚ“®No
     END IF;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)..........');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lv_item_code =' || lv_item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lv_delivery_whse_code =' || lv_delivery_whse_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lv_no =' || lv_no);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lv_item_code =' || lv_item_code);
+debug_log(FND_FILE.LOG,'  lv_delivery_whse_code =' || lv_delivery_whse_code);
+debug_log(FND_FILE.LOG,'  lv_no(ˆË—ŠNo/ˆÚ“®No) =' || lv_no);
 --
     -- 1-1 (ˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur1_1 IN lc_rule_cur1_1 LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_1 Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_1 Found...');
+--
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚ÍuˆÚ“®v
         gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule   := gv_cons_rule_move;
@@ -3012,17 +3116,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_1 Found...');
         -- İŒÉ•â[Œ³‚ÍˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur1_1.move_from_whse_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_1 NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_1 NotFound...');
+--
 --
     -- 1-2 (d“üæƒTƒCƒgƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur1_2 IN lc_rule_cur1_2 LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_2 Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_2 Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚Íu”­’v
@@ -3036,17 +3143,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_2 Found...');
         -- İŒÉ•â[Œ³‚Íd“üæƒTƒCƒgƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur1_2.vendor_site_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_2 NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_2 NotFound...');
+--
 --
     -- 2-1 (ˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh2‚ğŒŸõ)
     FOR r_rule_cur2_1 IN lc_rule_cur2_1 LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_1 Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_1 Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚ÍuˆÚ“®v
@@ -3060,17 +3170,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_1 Found...');
         -- İŒÉ•â[Œ³‚ÍˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh2
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur2_1.move_from_whse_code2;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_1 NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_1 NotFound...');
+--
 --
     -- 2-2 (d“üæƒTƒCƒgƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur2_2 IN lc_rule_cur2_2 LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_2 Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_2 Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚Íu”­’v
@@ -3084,17 +3197,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_2 Found...');
         -- İŒÉ•â[Œ³‚Íd“üæƒTƒCƒgƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur2_2.vendor_site_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_2 NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_2 NotFound...');
+--
 --
     -- 3-1 (d“üæƒTƒCƒgƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur3_1 IN lc_rule_cur3_1 LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur3_1 Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur3_1 Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚Íu”­’v
@@ -3108,17 +3224,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur3_1 Found...');
         -- İŒÉ•â[Œ³‚Íd“üæƒTƒCƒgƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur3_1.vendor_site_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur3_1 NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur3_1 NotFound...');
+--
 --
     -- 1-1 Z”Å(ˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur1_1_z IN lc_rule_cur1_1_z LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_1_z Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_1_z Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚ÍuˆÚ“®v
@@ -3132,17 +3251,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_1_z Found...');
         -- İŒÉ•â[Œ³‚ÍˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur1_1_z.move_from_whse_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_1_z NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_1_z NotFound...');
+--
 --
     -- 1-2 Z”Å(d“üæƒTƒCƒgƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur1_2_z IN lc_rule_cur1_2_z LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_2_z Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_2_z Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚Íu”­’v
@@ -3156,17 +3278,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_2_z Found...');
         -- İŒÉ•â[Œ³‚Íd“üæƒTƒCƒgƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur1_2_z.vendor_site_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur1_2_z NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur1_2_z NotFound...');
+--
 --
     -- 2_1 Z”Å(ˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh2‚ğŒŸõ)
     FOR r_rule_cur2_1_z IN lc_rule_cur2_1_z LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_1_z Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_1_z Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚ÍuˆÚ“®v
@@ -3180,17 +3305,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_1_z Found...');
         -- İŒÉ•â[Œ³‚ÍˆÚ“®Œ³•ÛŠÇ‘qŒÉƒR[ƒh2
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur2_1_z.move_from_whse_code2;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_1_z NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_1_z NotFound...');
+--
 --
     -- 2-2 Z”Å(d“üæƒTƒCƒgƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur2_2_z IN lc_rule_cur2_2_z LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_2_z Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_2_z Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚Íu”­’v
@@ -3204,17 +3332,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_2_z Found...');
         -- İŒÉ•â[Œ³‚Íd“üæƒTƒCƒgƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur2_2_z.vendor_site_code1;
       END IF;
+--
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
       RETURN;
+--
     END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur2_2_z NotFound...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur2_2_z NotFound...');
+--
 --
     -- 3-1 Z”Å(d“üæƒTƒCƒgƒR[ƒh1‚ğŒŸõ)
     FOR r_rule_cur3_1_z IN lc_rule_cur3_1_z LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur3_1_z Found...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur3_1_z Found...');
+--
       -- o‰×‚È‚ç
       IF (iv_action_type = gv_cons_t_deliv) THEN
         -- İŒÉ•â[ƒ‹[ƒ‹‚Íu”­’v
@@ -3228,19 +3359,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur3_1_z Found...');
         -- İŒÉ•â[Œ³‚Íd“üæƒTƒCƒgƒR[ƒh1
         gr_move_data_tbl(in_shori_cnt).stock_rep_origin := r_rule_cur3_1_z.vendor_site_code1;
       END IF;
-      RETURN;
-    END LOOP;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)lc_rule_cur3_1_z NotFound...');
--- DEBUG
 --
-    -- ƒJ[ƒ\ƒ‹1-1 ` 3-1A1-1-Z ` 3-1-Z‚ÅŒŸõ‚Å‚«‚È‚©‚Á‚½ê‡‚ÍuİŒÉ•â[Œ³‚È‚µv‚Æ‚µ‚ÄA
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End¥¥¥¥¥');
+      RETURN;
+--
+    END LOOP;
+--
+debug_log(FND_FILE.LOG,'  lc_rule_cur3_1_z NotFound...');
+--
+--
+    -- ƒJ[ƒ\ƒ‹1-1 ‚©‚ç 3-1A1-1-Z ‚©‚ç 3-1-Z‚ÅŒŸõ‚Å‚«‚È‚©‚Á‚½ê‡‚ÍuİŒÉ•â[Œ³‚È‚µv‚Æ‚µ‚ÄA
     -- ©“®ì¬‚µ‚È‚¢
     -- •i–Ú–¼Ì‚ğŒŸõ
     FOR r_item_name_cur IN lc_item_name_cur LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)all NotFound lv_item_name = ' || r_item_name_cur.item_name);
--- DEBUG
+--
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                   ,gv_msg_wsh_13007       -- İŒÉ•â[Œ³æ“¾ƒGƒ‰[
                                                   ,gv_tkn_param1          -- ƒg[ƒNƒ“'PARAM1'
@@ -3253,17 +3385,19 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)all NotFound lv_item_name = ' || r_item_
                                                   ,r_item_name_cur.item_name     -- •i–Ú–¼Ì
                                                   ,gv_tkn_param5          -- ƒg[ƒNƒ“'PARAM5'
                                                   ,lv_delivery_whse_code  -- o‰×(ŒÉ)Œ³ƒR[ƒh
-                                                  ) 
+                                                  )
                                                   ,1
                                                   ,5000);
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
     END LOOP;
+--
     -- ŒxƒŠƒ^[ƒ“‚·‚é
     RAISE common_warn_expt;
 --
   EXCEPTION
     -- *** ‹¤’ÊŠÖ”ƒGƒ‰[ƒnƒ“ƒhƒ‰ (Œx‚ğ•Ô‚·)***
     WHEN common_warn_expt THEN
+debug_log(FND_FILE.LOG,'(C-5)' || cv_prg_name || ' End with Warnning¥¥¥¥¥');
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
@@ -3316,10 +3450,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)all NotFound lv_item_name = ' || r_item_
     -- *** ƒ[ƒJƒ‹’è” ***
 --
     -- *** ƒ[ƒJƒ‹•Ï” ***
-    ln_tbl_cnt   NUMBER;
-    ln_cnt       NUMBER;     -- ‘ã“ü‚Ì“Y‚¦š
-    ln_loop_cnt  NUMBER;     -- ƒ‹[ƒvƒJƒEƒ“ƒ^
-    ln_not_cnt   NUMBER :=0; -- “Ç‚İ”ò‚Î‚µ”
+    ln_tbl_cnt   NUMBER :=0;     -- ˆ—‘ÎÛŒ”
+    ln_cnt       NUMBER :=0;     -- ’†ŠÔƒe[ƒuƒ‹Ši”[‘ÎÛŒ”ƒJƒEƒ“ƒ^
+    ln_inst_cnt  NUMBER :=0;     -- ’†ŠÔƒe[ƒuƒ‹Ši”[ˆ——pƒ‹[ƒvƒJƒEƒ“ƒ^
+    ln_loop_cnt  NUMBER :=0;     -- ˆ—‘ÎÛƒŒƒR[ƒhæ“¾ƒ‹[ƒvƒJƒEƒ“ƒ^
+    ln_not_cnt   NUMBER :=0;     -- “Ç‚İ”ò‚Î‚µƒŒƒR[ƒh‚ÌƒJƒEƒ“ƒ^
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
@@ -3331,103 +3466,92 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-5)all NotFound lv_item_name = ' || r_item_
 --
 --###########################  ŒÅ’è•” END   ############################
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)in...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-6)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ƒŒƒR[ƒh•Ï”‚ÌƒŒƒR[ƒh”‚ğ‹‚ß‚é
---    ln_tbl_cnt := NVL(gn_target_cnt_deliv,0);
     ln_tbl_cnt := gr_deliv_data_tbl.COUNT;
+debug_log(FND_FILE.LOG,'  ˆ—‘ÎÛŒ” = ' || ln_tbl_cnt);
+--
     -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)ln_tbl_cnt = ' || ln_tbl_cnt);
--- DEBUG
-    ln_cnt := 0;
     <<shipped_loop>>
     FOR ln_loop_cnt IN 1..ln_tbl_cnt LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule = ' || gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)gr_deliv_data_tbl(ln_loop_cnt).stock_rep_origin = ' || gr_deliv_data_tbl(ln_loop_cnt).stock_rep_origin);
--- DEBUG
-      -- ƒ‹[ƒ‹‚ÍŒ©‚Â‚©‚ç‚È‚©‚Á‚½ƒf[ƒ^‚Íˆ—‘ÎÛŠO‚Æ‚·‚é
+--
+debug_log(FND_FILE.LOG,'  ' || ln_loop_cnt || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'  İŒÉ•â[Œ³ = ' || gr_deliv_data_tbl(ln_loop_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'  o‰×Œ³ID = ' || gr_deliv_data_tbl(ln_loop_cnt).deliver_from_id);
+debug_log(FND_FILE.LOG,'  o‰×Œ³ƒR[ƒh = ' || gr_deliv_data_tbl(ln_loop_cnt).deliver_from);
+debug_log(FND_FILE.LOG,'  o‰×æID = ' || gr_deliv_data_tbl(ln_loop_cnt).deliver_to_id);
+debug_log(FND_FILE.LOG,'  o‰×æƒR[ƒh = ' || gr_deliv_data_tbl(ln_loop_cnt).deliver_to);
+debug_log(FND_FILE.LOG,'  o‰×OPM•i–ÚID = '
+                        || gr_deliv_data_tbl(ln_loop_cnt).item_id);
+debug_log(FND_FILE.LOG,'  o‰×INV•i–ÚID = '
+                        || gr_deliv_data_tbl(ln_loop_cnt).shipping_inventory_item_id);
+debug_log(FND_FILE.LOG,'  o‰×•i–ÚƒR[ƒh = '
+                        || gr_deliv_data_tbl(ln_loop_cnt).shipping_item_code);
+debug_log(FND_FILE.LOG,'  ˆË—ŠNo = ' || gr_deliv_data_tbl(ln_loop_cnt).request_no);
+--
+      -- ƒ‹[ƒ‹‚ªæ“¾‚Å‚«‚½ƒŒƒR[ƒh‚Ì‚İ‚ğ’†ŠÔƒe[ƒuƒ‹Ši”[‘ÎÛ‚Æ‚·‚éB
       IF ((gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_move)
            OR
            (gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_order))
       THEN
         ln_cnt := ln_cnt + 1;
-      gt_s_deliver_to_id(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).deliver_to_id;              -- o‰×æID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)============================');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)o‰×æID = ' || gr_deliv_data_tbl(ln_cnt).deliver_to_id);
--- DEBUG
-      gt_s_deliver_to(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).deliver_to;                 -- o‰×æƒR[ƒh
-      gt_s_request_no(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).request_no;                 -- ˆË—ŠNo
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)ˆË—ŠNo = ' || gr_deliv_data_tbl(ln_cnt).request_no);
--- DEBUG
-      gt_s_deliver_from_id(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).deliver_from_id;            -- o‰×Œ³ID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)o‰×Œ³ID = ' || gr_deliv_data_tbl(ln_cnt).deliver_from_id);
--- DEBUG
-      gt_s_deliver_from(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).deliver_from;               -- o‰×Œ³ƒR[ƒh
-      gt_s_weight_capacity_class(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).weight_capacity_class;      -- d—Ê—eÏ‹æ•ª
-      gt_s_shipping_inv_item_id(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).shipping_inventory_item_id; -- o‰×•i–ÚID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)o‰×•i–ÚID = ' || gr_deliv_data_tbl(ln_cnt).shipping_inventory_item_id);
--- DEBUG
-      gt_s_item_id(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).item_id;                    -- o‰×•i–ÚID
-      gt_s_shipping_item_code(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).shipping_item_code;         -- •i–ÚƒR[ƒh
-      gt_s_quantity(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).quantity;                   -- ”—Ê
-      gt_s_order_type_id(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).order_type_id;              -- ó’ƒ^ƒCƒvID
-      gt_s_transaction_type_name(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).transaction_type_name;      -- oŒÉŒ`‘Ô
-      gt_s_item_class_code(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).item_class_code;            -- •i–Ú‹æ•ª
-      gt_s_prod_class_code(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).prod_class_code;            -- ¤•i‹æ•ª
-      gt_s_drop_ship_wsh_div(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).drop_ship_wsh_div;          -- ’¼‘—‹æ•ª
-      gt_s_num_of_deliver(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).num_of_deliver;             -- o‰×“ü”
-      gt_s_conv_unit(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).conv_unit;                  -- “üoŒÉŠ·Z’PˆÊ
-      gt_s_num_of_cases(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).num_of_cases;               -- ƒP[ƒX“ü”
-      gt_s_item_um(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).item_um;                    -- ’PˆÊ
-      gt_s_frequent_qty(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).frequent_qty;               -- ‘ã•\“ü”
-      gt_s_stock_rep_rule(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule;             -- İŒÉ•â[ƒ‹[ƒ‹
-      gt_s_stock_rep_origin(ln_cnt) :=
-       gr_deliv_data_tbl(ln_loop_cnt).stock_rep_origin;           -- İŒÉ•â[Œ³
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)İŒÉ•â[Œ³ = ' || gr_deliv_data_tbl(ln_loop_cnt).stock_rep_origin);
--- DEBUG
-    -- ƒ‹[ƒ‹‚È‚µ‚¾‚Á‚½‚ç“Ç‚İ”ò‚Î‚·
-    ELSE
-      ln_not_cnt := ln_not_cnt + 1;
-    END IF;
+        gt_s_deliver_to_id(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).deliver_to_id;              -- o‰×æID
+        gt_s_deliver_to(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).deliver_to;                 -- o‰×æƒR[ƒh
+        gt_s_request_no(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).request_no;                 -- ˆË—ŠNo
+        gt_s_deliver_from_id(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).deliver_from_id;            -- o‰×Œ³ID
+        gt_s_deliver_from(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).deliver_from;               -- o‰×Œ³ƒR[ƒh
+        gt_s_weight_capacity_class(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).weight_capacity_class;      -- d—Ê—eÏ‹æ•ª
+        gt_s_shipping_inv_item_id(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).shipping_inventory_item_id; -- o‰×INV•i–ÚID
+        gt_s_item_id(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).item_id;                    -- o‰×OPM•i–ÚID
+        gt_s_shipping_item_code(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).shipping_item_code;         -- •i–ÚƒR[ƒh
+        gt_s_quantity(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).quantity;                   -- ”—Ê
+        gt_s_order_type_id(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).order_type_id;              -- ó’ƒ^ƒCƒvID
+        gt_s_transaction_type_name(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).transaction_type_name;      -- oŒÉŒ`‘Ô
+        gt_s_item_class_code(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).item_class_code;            -- •i–Ú‹æ•ª
+        gt_s_prod_class_code(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).prod_class_code;            -- ¤•i‹æ•ª
+        gt_s_drop_ship_wsh_div(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).drop_ship_wsh_div;          -- ’¼‘—‹æ•ª
+        gt_s_num_of_deliver(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).num_of_deliver;             -- o‰×“ü”
+        gt_s_conv_unit(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).conv_unit;                  -- “üoŒÉŠ·Z’PˆÊ
+        gt_s_num_of_cases(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).num_of_cases;               -- ƒP[ƒX“ü”
+        gt_s_item_um(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).item_um;                    -- ’PˆÊ
+        gt_s_frequent_qty(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).frequent_qty;               -- ‘ã•\“ü”
+        gt_s_stock_rep_rule(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule;             -- İŒÉ•â[ƒ‹[ƒ‹
+        gt_s_stock_rep_origin(ln_cnt) :=
+          gr_deliv_data_tbl(ln_loop_cnt).stock_rep_origin;           -- İŒÉ•â[Œ³
+--
+      -- ƒ‹[ƒ‹‚ğæ“¾‚Å‚«‚È‚©‚Á‚½ê‡‚Í’†ŠÔƒe[ƒuƒ‹Ši”[‘ÎÛŠO‚Æ‚·‚éB
+      ELSE
+        ln_not_cnt := ln_not_cnt + 1;
+      END IF;
     END LOOP shipped_loop;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
--- DEBUG
-    -- “Ç‚İ”ò‚Î‚µ”‚ğˆø‚¢‚Ä’²®
-    ln_tbl_cnt := ln_tbl_cnt - ln_not_cnt;
     -- o‰×İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹“o˜^
-    IF (ln_tbl_cnt > 0) THEN
-    FORALL ln_cnt IN 1..ln_tbl_cnt
+    IF (ln_cnt > 0) THEN
+    FORALL ln_inst_cnt IN 1..ln_cnt
       INSERT INTO xxwsh_shipping_stock_rep_tmp(
         deliver_to_id,              -- o‰×æID
         deliver_to,                 -- o‰×æƒR[ƒh
@@ -3452,33 +3576,35 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
         stock_rep_rule,             -- İŒÉ•â[ƒ‹[ƒ‹
         stock_rep_origin            -- İŒÉ•â[Œ³
       )VALUES(
-        gt_s_deliver_to_id(ln_cnt),              -- o‰×æID
-        gt_s_deliver_to(ln_cnt),                 -- o‰×æƒR[ƒh
-        gt_s_request_no(ln_cnt),                 -- ˆË—ŠNo
-        gt_s_deliver_from_id(ln_cnt),            -- o‰×Œ³ID
-        gt_s_deliver_from(ln_cnt),               -- o‰×Œ³ƒR[ƒh
-        gt_s_weight_capacity_class(ln_cnt),      -- d—Ê—eÏ‹æ•ª
-        gt_s_shipping_inv_item_id(ln_cnt),       -- o‰×•i–ÚID
-        gt_s_item_id(ln_cnt),                    -- •i–ÚID
-        gt_s_shipping_item_code(ln_cnt),         -- •i–ÚƒR[ƒh
-        gt_s_quantity(ln_cnt),                   -- ”—Ê
-        gt_s_order_type_id(ln_cnt),              -- ó’ƒ^ƒCƒvID
-        gt_s_transaction_type_name(ln_cnt),      -- oŒÉŒ`‘Ô
-        gt_s_item_class_code(ln_cnt),            -- •i–Ú‹æ•ª
-        gt_s_prod_class_code(ln_cnt),            -- ¤•i‹æ•ª
-        gt_s_drop_ship_wsh_div(ln_cnt),          -- ’¼‘—‹æ•ª
-        gt_s_num_of_deliver(ln_cnt),             -- o‰×“ü”
-        gt_s_conv_unit(ln_cnt),                  -- “üoŒÉŠ·Z’PˆÊ
-        gt_s_num_of_cases(ln_cnt),               -- ƒP[ƒX“ü”
-        gt_s_item_um(ln_cnt),                    -- ’PˆÊ
-        gt_s_frequent_qty(ln_cnt),               -- ‘ã•\“ü”
-        gt_s_stock_rep_rule(ln_cnt),             -- İŒÉ•â[ƒ‹[ƒ‹
-        gt_s_stock_rep_origin(ln_cnt)            -- İŒÉ•â[Œ³
+        gt_s_deliver_to_id(ln_inst_cnt),              -- o‰×æID
+        gt_s_deliver_to(ln_inst_cnt),                 -- o‰×æƒR[ƒh
+        gt_s_request_no(ln_inst_cnt),                 -- ˆË—ŠNo
+        gt_s_deliver_from_id(ln_inst_cnt),            -- o‰×Œ³ID
+        gt_s_deliver_from(ln_inst_cnt),               -- o‰×Œ³ƒR[ƒh
+        gt_s_weight_capacity_class(ln_inst_cnt),      -- d—Ê—eÏ‹æ•ª
+        gt_s_shipping_inv_item_id(ln_inst_cnt),       -- INVo‰×•i–ÚID
+        gt_s_item_id(ln_inst_cnt),                    -- OPM•i–ÚID
+        gt_s_shipping_item_code(ln_inst_cnt),         -- •i–ÚƒR[ƒh
+        gt_s_quantity(ln_inst_cnt),                   -- ”—Ê
+        gt_s_order_type_id(ln_inst_cnt),              -- ó’ƒ^ƒCƒvID
+        gt_s_transaction_type_name(ln_inst_cnt),      -- oŒÉŒ`‘Ô
+        gt_s_item_class_code(ln_inst_cnt),            -- •i–Ú‹æ•ª
+        gt_s_prod_class_code(ln_inst_cnt),            -- ¤•i‹æ•ª
+        gt_s_drop_ship_wsh_div(ln_inst_cnt),          -- ’¼‘—‹æ•ª
+        gt_s_num_of_deliver(ln_inst_cnt),             -- o‰×“ü”
+        gt_s_conv_unit(ln_inst_cnt),                  -- “üoŒÉŠ·Z’PˆÊ
+        gt_s_num_of_cases(ln_inst_cnt),               -- ƒP[ƒX“ü”
+        gt_s_item_um(ln_inst_cnt),                    -- ’PˆÊ
+        gt_s_frequent_qty(ln_inst_cnt),               -- ‘ã•\“ü”
+        gt_s_stock_rep_rule(ln_inst_cnt),             -- İŒÉ•â[ƒ‹[ƒ‹
+        gt_s_stock_rep_origin(ln_inst_cnt)            -- İŒÉ•â[Œ³
       );
       END IF;
--- DEBUG
---commit;
--- DEBUG
+--
+--
+debug_log(FND_FILE.LOG,'  ’†ŠÔƒe[ƒuƒ‹(o‰×)Ši”[Œ” = ' || ln_cnt);
+debug_log(FND_FILE.LOG,'  “Ç‚İ”ò‚Î‚µƒŒƒR[ƒhŒ” = ' || ln_not_cnt);
+debug_log(FND_FILE.LOG,'(C-6)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -3530,10 +3656,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
     -- *** ƒ[ƒJƒ‹’è” ***
 --
     -- *** ƒ[ƒJƒ‹•Ï” ***
-    ln_tbl_cnt   NUMBER;
-    ln_cnt       NUMBER;     -- ‘ã“ü‚Ì“Y‚¦š
-    ln_loop_cnt  NUMBER;     -- ƒ‹[ƒvƒJƒEƒ“ƒ^
-    ln_not_cnt   NUMBER :=0; -- “Ç‚İ”ò‚Î‚µ”
+    ln_tbl_cnt   NUMBER :=0;     -- ˆ—‘ÎÛŒ”
+    ln_cnt       NUMBER :=0;     -- ’†ŠÔƒe[ƒuƒ‹Ši”[‘ÎÛŒ”ƒJƒEƒ“ƒ^
+    ln_inst_cnt  NUMBER :=0;     -- ’†ŠÔƒe[ƒuƒ‹Ši”[ˆ——pƒ‹[ƒvƒJƒEƒ“ƒ^
+    ln_loop_cnt  NUMBER :=0;     -- ˆ—‘ÎÛƒŒƒR[ƒhæ“¾ƒ‹[ƒvƒJƒEƒ“ƒ^
+    ln_not_cnt   NUMBER :=0;     -- “Ç‚İ”ò‚Î‚µƒŒƒR[ƒh‚ÌƒJƒEƒ“ƒ^
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
@@ -3545,92 +3672,84 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-6)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
 --
 --###########################  ŒÅ’è•” END   ############################
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)in...');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-7)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ƒŒƒR[ƒh•Ï”‚ÌƒŒƒR[ƒh”‚ğ‹‚ß‚é
---    ln_tbl_cnt := NVL(gn_target_cnt_move,0);
     ln_tbl_cnt := gr_move_data_tbl.COUNT;
+debug_log(FND_FILE.LOG,'  ˆ—‘ÎÛŒ” = ' || ln_tbl_cnt);
+--
     -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)ln_tbl_cnt = ' || ln_tbl_cnt);
--- DEBUG
     ln_cnt := 0;
     <<move_loop>>
     FOR ln_loop_cnt IN 1..ln_tbl_cnt LOOP
-      -- ƒ‹[ƒ‹‚ÍŒ©‚Â‚©‚ç‚È‚©‚Á‚½ƒf[ƒ^‚Íˆ—‘ÎÛŠO‚Æ‚·‚é
+--
+debug_log(FND_FILE.LOG,'  ' || ln_loop_cnt || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_move_data_tbl(ln_loop_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'  İŒÉ•â[Œ³ = ' || gr_move_data_tbl(ln_loop_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'  oŒÉŒ³ID = ' || gr_move_data_tbl(ln_loop_cnt).shipped_locat_id);
+debug_log(FND_FILE.LOG,'  oŒÉŒ³ƒR[ƒh = ' || gr_move_data_tbl(ln_loop_cnt).shipped_locat_code);
+debug_log(FND_FILE.LOG,'  “üŒÉæID = ' || gr_move_data_tbl(ln_loop_cnt).ship_to_locat_id);
+debug_log(FND_FILE.LOG,'  “üŒÉæƒR[ƒh = ' || gr_move_data_tbl(ln_loop_cnt).ship_to_locat_code);
+debug_log(FND_FILE.LOG,'  OPM•i–ÚID = ' || gr_move_data_tbl(ln_loop_cnt).item_id);
+debug_log(FND_FILE.LOG,'  INV•i–ÚID = ' || gr_move_data_tbl(ln_loop_cnt).inventory_item_id);
+debug_log(FND_FILE.LOG,'  •i–ÚƒR[ƒh = ' || gr_move_data_tbl(ln_loop_cnt).item_code);
+debug_log(FND_FILE.LOG,'  ˆÚ“®”Ô† = ' || gr_move_data_tbl(ln_loop_cnt).mov_num);
+--
+      -- ƒ‹[ƒ‹‚ªæ“¾‚Å‚«‚½ƒŒƒR[ƒh‚Ì‚İ‚ğ’†ŠÔƒe[ƒuƒ‹Ši”[‘ÎÛ‚Æ‚·‚éB
       IF ((gr_move_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_move)
            OR
            (gr_move_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_order))
       THEN
-      ln_cnt := ln_cnt + 1;
-      gt_i_mov_num(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).mov_num;                    -- ˆÚ“®”Ô†
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)****************************************************');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)ˆÚ“®”Ô†gt_i_mov_num(ln_cnt) = ' || gt_i_mov_num(ln_cnt));
--- DEBUG
-      gt_i_shipped_locat_id(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).shipped_locat_id;           -- oŒÉŒ³ID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)oŒÉŒ³IDgt_i_shipped_locat_id(ln_cnt) = ' || gt_i_shipped_locat_id(ln_cnt));
--- DEBUG
-      gt_i_shipped_locat_code(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).shipped_locat_code;         -- oŒÉŒ³ƒR[ƒh
-      gt_i_ship_to_locat_id(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).ship_to_locat_id;           -- “üŒÉæID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“üŒÉŒ³gt_i_ship_to_locat_id(ln_cnt) = ' || gt_i_ship_to_locat_id(ln_cnt));
--- DEBUG
-      gt_i_ship_to_locat_code(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).ship_to_locat_code;         -- “üŒÉæƒR[ƒh
-      gt_i_weight_capacity_class(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).weight_capacity_class;      -- d—Ê—eÏ‹æ•ª
-      gt_i_item_id(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).item_id;                    -- •i–ÚID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)•i–ÚIDgt_i_item_id(ln_cnt) = ' || gt_i_item_id(ln_cnt));
--- DEBUG
-      gt_i_inventory_item_id(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).inventory_item_id;          -- •i–ÚID
-      gt_i_item_code(ln_cnt) :=
-       gr_move_data_tbl(ln_cnt).item_code;                  -- •i–ÚƒR[ƒh
-      gt_i_instruct_qty(ln_loop_cnt) :=
-       gr_move_data_tbl(ln_cnt).instruct_qty;               -- w¦”—Ê
-      gt_i_item_class_code(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).item_class_code;            -- •i–Ú‹æ•ª
-      gt_i_prod_class_code(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).prod_class_code;            -- ¤•i‹æ•ª
-      gt_i_num_of_deliver(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).num_of_deliver;             -- o‰×“ü”
-      gt_i_conv_unit(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).conv_unit;                  -- “üoŒÉŠ·Z’PˆÊ
-      gt_i_num_of_cases(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).num_of_cases;               -- ƒP[ƒX“ü”
-      gt_i_item_um(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).item_um;                    -- ’PˆÊ
-      gt_i_frequent_qty(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).frequent_qty;               -- ‘ã•\“ü”
-      gt_i_stock_rep_rule(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).stock_rep_rule;             -- İŒÉ•â[ƒ‹[ƒ‹
-      gt_i_stock_rep_origin(ln_cnt) :=
-       gr_move_data_tbl(ln_loop_cnt).stock_rep_origin;           -- İŒÉ•â[Œ³
+        ln_cnt := ln_cnt + 1;
+        gt_i_mov_num(ln_cnt) :=
+           gr_move_data_tbl(ln_loop_cnt).mov_num;                    -- ˆÚ“®”Ô†
+        gt_i_shipped_locat_id(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).shipped_locat_id;           -- oŒÉŒ³ID
+        gt_i_shipped_locat_code(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).shipped_locat_code;         -- oŒÉŒ³ƒR[ƒh
+        gt_i_ship_to_locat_id(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).ship_to_locat_id;           -- “üŒÉæID
+        gt_i_ship_to_locat_code(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).ship_to_locat_code;         -- “üŒÉæƒR[ƒh
+        gt_i_weight_capacity_class(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).weight_capacity_class;      -- d—Ê—eÏ‹æ•ª
+        gt_i_item_id(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).item_id;                    -- OPM•i–ÚID
+        gt_i_inventory_item_id(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).inventory_item_id;          -- INV•i–ÚID
+        gt_i_item_code(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).item_code;                  -- •i–ÚƒR[ƒh
+        gt_i_instruct_qty(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).instruct_qty;               -- w¦”—Ê
+        gt_i_item_class_code(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).item_class_code;            -- •i–Ú‹æ•ª
+        gt_i_prod_class_code(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).prod_class_code;            -- ¤•i‹æ•ª
+        gt_i_num_of_deliver(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).num_of_deliver;             -- o‰×“ü”
+        gt_i_conv_unit(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).conv_unit;                  -- “üoŒÉŠ·Z’PˆÊ
+        gt_i_num_of_cases(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).num_of_cases;               -- ƒP[ƒX“ü”
+        gt_i_item_um(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).item_um;                    -- ’PˆÊ
+        gt_i_frequent_qty(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).frequent_qty;               -- ‘ã•\“ü”
+        gt_i_stock_rep_rule(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).stock_rep_rule;             -- İŒÉ•â[ƒ‹[ƒ‹
+        gt_i_stock_rep_origin(ln_cnt) :=
+          gr_move_data_tbl(ln_loop_cnt).stock_rep_origin;           -- İŒÉ•â[Œ³
 --
-    -- ƒ‹[ƒ‹‚È‚µ‚¾‚Á‚½‚ç“Ç‚İ”ò‚Î‚·
-    ELSE
-      ln_not_cnt := ln_not_cnt + 1;
-    END IF;
+      -- ƒ‹[ƒ‹‚ğæ“¾‚Å‚«‚È‚©‚Á‚½ê‡‚Í’†ŠÔƒe[ƒuƒ‹Ši”[‘ÎÛŠO‚Æ‚·‚éB
+      ELSE
+        ln_not_cnt := ln_not_cnt + 1;
+      END IF;
     END LOOP move_loop;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
--- DEBUG
-    -- “Ç‚İ”ò‚Î‚µ”‚ğˆø‚¢‚Ä’²®
-    ln_tbl_cnt := ln_tbl_cnt - ln_not_cnt;
---
     -- ˆÚ“®İŒÉ•â[Œ³’†ŠÔƒe[ƒuƒ‹“o˜^
-    IF (ln_tbl_cnt > 0) THEN
-    FORALL ln_cnt IN 1..ln_tbl_cnt
+    IF (ln_cnt > 0) THEN
+    FORALL ln_inst_cnt IN 1..ln_cnt
       INSERT INTO xxwsh_mov_stock_rep_tmp(
         mov_num,                     -- ˆÚ“®No
         shipped_locat_id,            -- oŒÉŒ³ID
@@ -3638,8 +3757,8 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
         ship_to_locat_id,            -- “üŒÉæID
         ship_to_locat_code,          -- “üŒÉæƒR[ƒh
         weight_capacity_class,       -- d—Ê—eÏ‹æ•ª
-        item_id,                     -- •i–ÚID
-        inventory_item_id,           --
+        item_id,                     -- OPM•i–ÚID
+        inventory_item_id,           -- INV•i–ÚID
         item_code,                   -- •i–ÚƒR[ƒh
         instruct_qty,                -- w¦”—Ê
         item_class_code,             -- •i–Ú‹æ•ª
@@ -3652,30 +3771,32 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
         stock_rep_rule,              -- İŒÉ•â[ƒ‹[ƒ‹
         stock_rep_origin             -- İŒÉ•â[Œ³
       )VALUES(
-        gt_i_mov_num(ln_cnt),                     -- ˆÚ“®No
-        gt_i_shipped_locat_id(ln_cnt),            -- oŒÉŒ³ID
-        gt_i_shipped_locat_code(ln_cnt),          -- oŒÉŒ³ƒR[ƒh
-        gt_i_ship_to_locat_id(ln_cnt),            -- “üŒÉæID
-        gt_i_ship_to_locat_code(ln_cnt),          -- “üŒÉæƒR[ƒh
-        gt_i_weight_capacity_class(ln_cnt),       -- d—Ê—eÏ‹æ•ª
-        gt_i_item_id(ln_cnt),                     -- •i–ÚID
-        gt_i_inventory_item_id(ln_cnt),           -- •i–ÚID
-        gt_i_item_code(ln_cnt),                   -- •i–ÚƒR[ƒh
-        gt_i_instruct_qty(ln_cnt),                -- w¦”—Ê
-        gt_i_item_class_code(ln_cnt),             -- •i–Ú‹æ•ª
-        gt_i_prod_class_code(ln_cnt),             -- ¤•i‹æ•ª
-        gt_i_num_of_deliver(ln_cnt),              -- o‰×“ü”
-        gt_i_conv_unit(ln_cnt),                   -- “üoŒÉŠ·Z’PˆÊ
-        gt_i_num_of_cases(ln_cnt),                -- ƒP[ƒX“ü”
-        gt_i_item_um(ln_cnt),                     -- ’PˆÊ
-        gt_i_frequent_qty(ln_cnt),                -- ‘ã•\“ü”
-        gt_i_stock_rep_rule(ln_cnt),              -- İŒÉ•â[ƒ‹[ƒ‹
-        gt_i_stock_rep_origin(ln_cnt)             -- İŒÉ•â[Œ³
+        gt_i_mov_num(ln_inst_cnt),                     -- ˆÚ“®No
+        gt_i_shipped_locat_id(ln_inst_cnt),            -- oŒÉŒ³ID
+        gt_i_shipped_locat_code(ln_inst_cnt),          -- oŒÉŒ³ƒR[ƒh
+        gt_i_ship_to_locat_id(ln_inst_cnt),            -- “üŒÉæID
+        gt_i_ship_to_locat_code(ln_inst_cnt),          -- “üŒÉæƒR[ƒh
+        gt_i_weight_capacity_class(ln_inst_cnt),       -- d—Ê—eÏ‹æ•ª
+        gt_i_item_id(ln_inst_cnt),                     -- OPM•i–ÚID
+        gt_i_inventory_item_id(ln_inst_cnt),           -- INV•i–ÚID
+        gt_i_item_code(ln_inst_cnt),                   -- •i–ÚƒR[ƒh
+        gt_i_instruct_qty(ln_inst_cnt),                -- w¦”—Ê
+        gt_i_item_class_code(ln_inst_cnt),             -- •i–Ú‹æ•ª
+        gt_i_prod_class_code(ln_inst_cnt),             -- ¤•i‹æ•ª
+        gt_i_num_of_deliver(ln_inst_cnt),              -- o‰×“ü”
+        gt_i_conv_unit(ln_inst_cnt),                   -- “üoŒÉŠ·Z’PˆÊ
+        gt_i_num_of_cases(ln_inst_cnt),                -- ƒP[ƒX“ü”
+        gt_i_item_um(ln_inst_cnt),                     -- ’PˆÊ
+        gt_i_frequent_qty(ln_inst_cnt),                -- ‘ã•\“ü”
+        gt_i_stock_rep_rule(ln_inst_cnt),              -- İŒÉ•â[ƒ‹[ƒ‹
+        gt_i_stock_rep_origin(ln_inst_cnt)             -- İŒÉ•â[Œ³
       );
     END IF;
--- DEBUG
---commit;
--- DEBUG
+--
+--
+debug_log(FND_FILE.LOG,'  ’†ŠÔƒe[ƒuƒ‹(ˆÚ“®)Ši”[Œ” = ' || ln_cnt);
+debug_log(FND_FILE.LOG,'  “Ç‚İ”ò‚Î‚µƒŒƒR[ƒhŒ” = ' || ln_not_cnt);
+debug_log(FND_FILE.LOG,'(C-7)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -3746,7 +3867,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
         xssrt.order_type_id,                 -- ó’ƒ^ƒCƒvID
         xssrt.transaction_type_name,         -- oŒÉŒ`‘Ô
         xssrt.item_class_code,               -- •i–Ú‹æ•ª
-       DECODE(xssrt.item_class_code, gv_cons_item_class, gv_cons_p_flg_prod, gv_cons_p_flg_noprod),
+        DECODE(xssrt.item_class_code,gv_cons_item_product,gv_cons_p_flg_prod,gv_cons_p_flg_noprod),
         -- •i–Ú‹æ•ª‚ª'1'‚È‚ç'1'‚ğ‚»‚Ì‘¼‚Í'2'‚ğƒZƒbƒg¨»•i¯•Ê‹æ•ª
         xssrt.prod_class_code,               -- ¤•i‹æ•ª
         NVL(xssrt.drop_ship_wsh_div,gv_cons_ds_type_n),   -- ’¼‘—‹æ•ª
@@ -3765,8 +3886,10 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
         xssrt.deliver_from,                  -- o‰×Œ³ƒR[ƒh
         xssrt.drop_ship_wsh_div,             -- ’¼‘—‹æ•ª
         xssrt.deliver_to,                    -- o‰×æƒR[ƒh
+        xssrt.prod_class_code,               -- ¤•i‹æ•ª
         xssrt.weight_capacity_class,         -- d—Ê—eÏ‹æ•ª
-        xssrt.item_class_code DESC,          -- •i–Ú‹æ•ª
+        DECODE(xssrt.item_class_code,gv_cons_item_product,gv_cons_p_flg_prod,gv_cons_p_flg_noprod),
+                                             -- »•i¯•Ê‹æ•ª
         xssrt.shipping_item_code;            -- •i–ÚƒR[ƒh
 --
     -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
@@ -3784,9 +3907,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-7)“Ç‚İ”ò‚Î‚µ” = ' || ln_not_cnt );
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)in...............');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-8)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ƒŒƒR[ƒh•Ï”‚Ì‰Šú‰»
     gr_deliv_data_tbl.delete;
 --
@@ -3801,9 +3924,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)in...............');
 --
     -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
     CLOSE lc_deliv_data_cur;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)gn_target_cnt_deliv =' || gn_target_cnt_deliv);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ’†ŠÔƒe[ƒuƒ‹(o‰×)æ“¾Œ” =' || gn_target_cnt_deliv);
+debug_log(FND_FILE.LOG,'(C-8)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -3811,15 +3934,30 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)gn_target_cnt_deliv =' || gn_target_cnt_
 --
     -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_expt THEN
+--
+      IF ( lc_deliv_data_cur%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_others_expt THEN
+--
+      IF ( lc_deliv_data_cur%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN OTHERS THEN
+--
+      IF ( lc_deliv_data_cur%ISOPEN ) THEN
+        CLOSE lc_deliv_data_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -3868,11 +4006,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)gn_target_cnt_deliv =' || gn_target_cnt_
         xmsrt.ship_to_locat_code,            -- “üŒÉæƒR[ƒh
         xmsrt.weight_capacity_class,         -- d—Ê—eÏ‹æ•ª
         xmsrt.item_id,                       -- •i–ÚID
-        xmsrt.inventory_item_id,             -- 
+        xmsrt.inventory_item_id,             --
         xmsrt.item_code,                     -- •i–ÚƒR[ƒh
         xmsrt.instruct_qty,                  -- w¦”—Ê
         xmsrt.item_class_code,               -- •i–Ú‹æ•ª
-       DECODE(xmsrt.item_class_code, gv_cons_item_class, gv_cons_p_flg_prod, gv_cons_p_flg_noprod),
+        DECODE(xmsrt.item_class_code,gv_cons_item_product,gv_cons_p_flg_prod,gv_cons_p_flg_noprod),
         -- •i–Ú‹æ•ª‚ª'1'‚È‚ç'1'‚ğ‚»‚Ì‘¼‚Í'2'‚ğƒZƒbƒg¨»•i¯•Ê‹æ•ª
         xmsrt.prod_class_code,               -- ¤•i‹æ•ª
         xmsrt.num_of_deliver,                -- o‰×“ü”
@@ -3888,8 +4026,10 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)gn_target_cnt_deliv =' || gn_target_cnt_
         xmsrt.stock_rep_rule,                -- İŒÉ•â[ƒ‹[ƒ‹
         xmsrt.stock_rep_origin,              -- İŒÉ•â[Œ³
         xmsrt.shipped_locat_code,            -- oŒÉŒ³ƒR[ƒh
+        xmsrt.prod_class_code,               -- ¤•i‹æ•ª
         xmsrt.weight_capacity_class,         -- d—Ê—eÏ‹æ•ª
-        xmsrt.item_class_code DESC,          -- •i–Ú‹æ•ª
+        DECODE(xmsrt.item_class_code,gv_cons_item_product,gv_cons_p_flg_prod,gv_cons_p_flg_noprod),
+                                             -- »•i¯•Ê‹æ•ª
         xmsrt.item_code;                     -- •i–ÚƒR[ƒh
 --
     -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
@@ -3907,9 +4047,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-8)gn_target_cnt_deliv =' || gn_target_cnt_
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-9)in ......................');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-9)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ƒŒƒR[ƒh•Ï”‚Ì‰Šú‰»
     gr_move_data_tbl.delete;
 --
@@ -3924,9 +4064,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-9)in ......................');
 --
     -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
     CLOSE lc_move_data_cur;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-9)gn_target_cnt_move =' || gn_target_cnt_move);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ’†ŠÔƒe[ƒuƒ‹(ˆÚ“®)æ“¾Œ” =' || gn_target_cnt_move);
+debug_log(FND_FILE.LOG,'(C-9)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -3934,15 +4074,30 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-9)gn_target_cnt_move =' || gn_target_cnt_m
 --
     -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_expt THEN
+--
+      IF ( lc_move_data_cur%ISOPEN ) THEN
+        CLOSE lc_move_data_cur;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_others_expt THEN
+--
+      IF ( lc_move_data_cur%ISOPEN ) THEN
+        CLOSE lc_move_data_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN OTHERS THEN
+--
+      IF ( lc_move_data_cur%ISOPEN ) THEN
+        CLOSE lc_move_data_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -3984,39 +4139,41 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-9)gn_target_cnt_move =' || gn_target_cnt_m
 --
     -- *** ƒ[ƒJƒ‹•Ï” ***
     ln_ret_code                    NUMBER;  -- ‹¤’ÊŠÖ”‚ÌƒŠƒ^[ƒ“’l
-    lv_mov_line_id                 xxinv_mov_req_instr_lines.mov_line_id%TYPE;   -- –¾×ID
+    lv_mov_line_id                 xxinv_mov_req_instr_lines.mov_line_id%TYPE;              --–¾×ID
     lv_seq_no                      VARCHAR2(12);
-    lv_stock_rep_origin      xxcmn_item_locations2_v.segment1%TYPE;              -- İŒÉ•â[Œ³
-    lv_stock_rep_origin_id   xxcmn_item_locations2_v.inventory_location_id%TYPE; -- İŒÉ•â[Œ³ID
-    lv_frequent_mover        xxcmn_item_locations2_v.frequent_mover%TYPE;        -- ‘ã•\‰^‘—‹ÆÒ
-    lv_locat_to_code         xxcmn_item_locations2_v.segment1%TYPE;            -- “üŒÉæ(oŒÉŒ³)
+    lv_stock_rep_origin      xxcmn_item_locations2_v.segment1%TYPE;                     --İŒÉ•â[Œ³
+    lv_stock_rep_origin_id   xxcmn_item_locations2_v.inventory_location_id%TYPE;      --İŒÉ•â[Œ³ID
+    lv_frequent_mover        xxcmn_item_locations2_v.frequent_mover%TYPE;             --‘ã•\‰^‘—‹ÆÒ
+    lv_locat_to_code         xxcmn_item_locations2_v.segment1%TYPE;                 --“üŒÉæ(oŒÉŒ³)
     lv_locat_to_id           xxcmn_item_locations2_v.inventory_location_id%TYPE;
-                                                                           -- “üŒÉæID(oŒÉŒ³ID)
-    ln_sum_palette_weight          NUMBER;      -- ‡ŒvƒpƒŒƒbƒgd—Ê
-    lv_loading_over_class          VARCHAR2(1); -- ÏÚƒI[ƒo[‹æ•ª
-    ln_load_efficiency_weight      NUMBER;      -- d—ÊÏÚŒø—¦
-    ln_load_efficiency_capacity    NUMBER;      -- —eÏÏÚŒø—¦
-    ln_work_number                 NUMBER;
-    lv_ship_methods          xxcmn_ship_methods.ship_method%TYPE;              -- o‰×•û–@
-    lv_mixed_ship_method     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE; -- ¬Ú”z‘—‹æ•ª
-    lv_career_id             xxinv_mov_req_instr_headers.career_id%TYPE;       -- ‰^‘—‹ÆÒID
-    lv_prod_class_code       xxcmn_item_categories_v.segment1%TYPE;            -- ¤•i‹æ•ª
-    lv_weight_capacity_class xxwsh_shipping_stock_rep_tmp.weight_capacity_class%TYPE;
-                                                                               -- d—Ê—eÏ‹æ•ª
-    lv_max_ship_methods       xxcmn_ship_methods.ship_method%TYPE;             -- Å‘å”z‘—‹æ•ª
-    ln_drink_deadweight       xxcmn_ship_methods.drink_deadweight%TYPE;        -- ƒhƒŠƒ“ƒNÏÚd—Ê
-    ln_leaf_deadweight        xxcmn_ship_methods.leaf_deadweight%TYPE;         -- ƒŠ[ƒtÏÚd—Ê
-    ln_drink_loading_capacity xxcmn_ship_methods.drink_loading_capacity%TYPE;  -- ƒhƒŠƒ“ƒNÏÚ—eÏ
-    ln_leaf_loading_capacity  xxcmn_ship_methods.leaf_loading_capacity%TYPE;   -- ƒŠ[ƒtÏÚ—eÏ
-    ln_palette_max_qty        xxcmn_ship_methods.palette_max_qty%TYPE;         -- ƒpƒŒƒbƒgÅ‘å–‡”
-    lv_item_code              xxwsh_shipping_stock_rep_tmp.shipping_item_code%TYPE; -- •i–ÚƒR[ƒh
-    ln_quantity               NUMBER;
-    ln_sum_weight             NUMBER;       -- ‡Œvd—Ê O
-    ln_sum_capacity           NUMBER;       -- ‡Œv—eÏ O
-    ln_sum_p_weight           NUMBER;       -- ‡ŒvƒpƒŒƒbƒgd—Ê O
+                                                                                --“üŒÉæID(oŒÉŒ³ID)
+    lv_loading_over_class          VARCHAR2(1);                                   --ÏÚƒI[ƒo[‹æ•ª
+    ln_sum_palette_weight    xxinv_mov_req_instr_headers.sum_pallet_weight%TYPE;  --‡ŒvƒpƒŒƒbƒgd—Ê
+    ln_load_efficiency_weight   xxinv_mov_req_instr_headers.loading_efficiency_weight%TYPE;
+                                                                                      --d—ÊÏÚŒø—¦
+    ln_load_efficiency_capacity xxinv_mov_req_instr_headers.loading_efficiency_capacity%TYPE;
+                                                                                     -- —eÏÏÚŒø—¦
+    lv_ship_methods          xxinv_mov_req_instr_headers.shipping_method_code%TYPE;      -- o‰×•û–@
+    lv_mixed_ship_method     xxinv_mov_req_instr_headers.shipping_method_code%TYPE;  -- ¬Ú”z‘—‹æ•ª
+    lv_career_id             xxinv_mov_req_instr_headers.career_id%TYPE;               -- ‰^‘—‹ÆÒID
+    lv_prod_class_code       xxinv_mov_req_instr_headers.item_class%TYPE;                -- ¤•i‹æ•ª
+    lv_weight_capacity_class xxinv_mov_req_instr_headers.weight_capacity_class%TYPE; -- d—Ê—eÏ‹æ•ª
+    lv_max_ship_methods      xxinv_mov_req_instr_headers.shipping_method_code%TYPE;   -- Å‘å”z‘—‹æ•ª
+    ln_drink_deadweight      xxinv_mov_req_instr_headers.sum_weight%TYPE;         -- ƒhƒŠƒ“ƒNÏÚd—Ê
+    ln_leaf_deadweight       xxinv_mov_req_instr_headers.sum_weight%TYPE;           -- ƒŠ[ƒtÏÚd—Ê
+    ln_drink_loading_capacity xxinv_mov_req_instr_headers.sum_capacity%TYPE;      -- ƒhƒŠƒ“ƒNÏÚ—eÏ
+    ln_leaf_loading_capacity  xxinv_mov_req_instr_headers.sum_capacity%TYPE;        -- ƒŠ[ƒtÏÚ—eÏ
+    ln_palette_max_qty        NUMBER;          -- ƒpƒŒƒbƒgÅ‘å–‡”
+    lv_item_code              xxinv_mov_req_instr_lines.item_code%TYPE;                 -- •i–ÚƒR[ƒh
+    lv_product_flg            xxinv_mov_req_instr_headers.product_flg%TYPE;           -- »•i¯•Ê‹æ•ª
+    ln_item_id                xxinv_mov_req_instr_lines.item_id%TYPE;                    -- OPM•i–ÚID
+    lv_item_um                xxwsh_mov_stock_rep_tmp.item_um%TYPE;                           -- ’PˆÊ
+    ln_num_of_deliver         xxwsh_mov_stock_rep_tmp.num_of_deliver%TYPE;                -- o‰×“ü”
+    lv_conv_unit              xxwsh_mov_stock_rep_tmp.conv_unit%TYPE;               -- “üoŒÉŠ·Z’PˆÊ
+    ln_num_of_cases           xxwsh_mov_stock_rep_tmp.num_of_cases%TYPE;                -- ƒP[ƒX“ü”
 --
-    lv_header_create_flg      VARCHAR2(1);  -- ƒwƒbƒ_ì¬ƒtƒ‰ƒO
-    lv_line_create_flg        VARCHAR2(1);  -- –¾×ì¬ƒtƒ‰ƒO
+    lv_header_create_flg      VARCHAR2(1) := gv_cons_flg_n;  -- ƒwƒbƒ_ì¬ƒtƒ‰ƒO
+    lv_line_create_flg        VARCHAR2(1) := gv_cons_flg_n;  -- –¾×ì¬ƒtƒ‰ƒO
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
     CURSOR lc_il_id_cur  -- •ÛŠÇ’IID‚ğŒŸõ‚·‚é
@@ -4052,71 +4209,89 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-9)gn_target_cnt_move =' || gn_target_cnt_m
 --
 --###########################  ŒÅ’è•” END   ############################
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)in_shori_cnt = ' || in_shori_cnt || ' ########################');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(C-10)' || cv_prg_name || ' Start¥¥¥');
+--
 -- ############################################################################################
 -- ƒwƒbƒ_ƒf[ƒ^ƒZƒbƒg
 -- ############################################################################################
-    -- ƒwƒbƒ_‚ğì¬‚·‚é‚©‚ğ”»’f‚·‚é(İŒÉ•â[Œ³Ao‰×Œ³ƒR[ƒhAd—Ê—eÏ‹æ•ªA
-    -- •i–Ú‹æ•ª‚Ì‚Ç‚ê‚ª‚ªˆÙ‚È‚éê‡)
+    -- ƒwƒbƒ_‚ğì¬‚·‚é‚©‚ğ”»’f‚·‚é(İŒÉ•â[Œ³Ao‰×Œ³ƒR[ƒhA¤•i‹æ•ªAd—Ê—eÏ‹æ•ªA
+    -- »•i¯•Ê‹æ•ª‚Ì‚¢‚Ã‚ê‚©‚ªˆÙ‚È‚éê‡)
     -- ˆ—í•Ê‚ªuo‰×v
     IF (iv_action_type = gv_cons_t_deliv) THEN
-      IF ((gn_stock_rep_origin_m IS NULL)                -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
+      IF ((gv_stock_rep_origin_m IS NULL)                -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬ ‚Ü‚½‚Í
          OR                                              -- ˆÈ‰º‚Ì‚Ç‚ê‚©‚Ì€–Ú‚ªˆÙ‚È‚é
-         ((gn_stock_rep_origin_m      <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin)
+         ((gv_stock_rep_origin_m      <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin)
           OR
           (gv_stock_rep_rule_m        <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule)
           OR
           (gv_deliver_from_m          <> gr_deliv_data_tbl(in_shori_cnt).deliver_from)
           OR
+          (gv_prod_class_code_m       <> gr_deliv_data_tbl(in_shori_cnt).prod_class_code)
+          OR
           (gv_weight_capacity_class_m <> gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class)
           OR
-          (gv_product_flg_m           <> gr_deliv_data_tbl(in_shori_cnt).product_flg)
-          OR
-          (gv_item_class_code_m       <> gr_deliv_data_tbl(in_shori_cnt).item_class_code)))
+          (gv_product_flg_m           <> gr_deliv_data_tbl(in_shori_cnt).product_flg)))
       THEN
+--
         lv_header_create_flg := gv_cons_flg_y;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ƒwƒbƒ_‚ğì‚è‚Ü‚·......................');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_stock_rep_origin_m = ' || gn_stock_rep_origin_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_stock_rep_rule_m = ' || gv_stock_rep_rule_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_deliver_from_m = ' || gv_deliver_from_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_weight_capacity_class_m = ' || gn_stock_rep_origin_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_product_flg_m = ' || gv_product_flg_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_item_class_code_m = ' || gv_item_class_code_m);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ì¬......................');
+debug_log(FND_FILE.LOG,'    İŒÉ•â[Œ³ = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'    İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'    oŒÉŒ³(•â[æ) = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_from);
+debug_log(FND_FILE.LOG,'    d—Ê—eÏ‹æ•ª = '
+                        || gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class);
+debug_log(FND_FILE.LOG,'    ¤•i‹æ•ª = ' || gr_deliv_data_tbl(in_shori_cnt).prod_class_code);
+debug_log(FND_FILE.LOG,'    »•i¯•Ê‹æ•ª = ' || gr_deliv_data_tbl(in_shori_cnt).product_flg);
+debug_log(FND_FILE.LOG,'    •i–Ú‹æ•ª = ' || gr_deliv_data_tbl(in_shori_cnt).item_class_code);
+--
       ELSE
+--
         lv_header_create_flg := gv_cons_flg_n;
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ì¬•s—v..................');
+--
       END IF;
+--
     -- ˆ—í•Ê‚ªuˆÚ“®v
     ELSE
-      IF ((gn_stock_rep_origin_m IS NULL)                -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
+--
+      IF ((gv_stock_rep_origin_m IS NULL)                -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬ ‚Ü‚½‚Í
          OR                                              -- ˆÈ‰º‚Ì‚Ç‚ê‚©‚Ì€–Ú‚ªˆÙ‚È‚é
-         ((gn_stock_rep_origin_m      <> gr_move_data_tbl(in_shori_cnt).stock_rep_origin)
+         ((gv_stock_rep_origin_m      <> gr_move_data_tbl(in_shori_cnt).stock_rep_origin)
             OR
           (gv_stock_rep_rule_m        <> gr_move_data_tbl(in_shori_cnt).stock_rep_rule)
             OR
           (gv_deliver_from_m          <> gr_move_data_tbl(in_shori_cnt).shipped_locat_code)
             OR
+          (gv_prod_class_code_m       <> gr_move_data_tbl(in_shori_cnt).prod_class_code)
+            OR
           (gv_weight_capacity_class_m <> gr_move_data_tbl(in_shori_cnt).weight_capacity_class)
             OR
-          (gv_product_flg_m           <> gr_move_data_tbl(in_shori_cnt).product_flg)
-            OR
-          (gv_item_class_code_m       <> gr_move_data_tbl(in_shori_cnt).item_class_code)))
+          (gv_product_flg_m           <> gr_move_data_tbl(in_shori_cnt).product_flg)))
       THEN
+--
         lv_header_create_flg := gv_cons_flg_y;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ƒwƒbƒ_‚ğì‚è‚Ü‚·......................');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_stock_rep_origin_m = ' || gn_stock_rep_origin_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_stock_rep_rule_m = ' || gv_stock_rep_rule_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_deliver_from_m = ' || gv_deliver_from_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_weight_capacity_class_m = ' || gn_stock_rep_origin_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_product_flg_m = ' || gv_product_flg_m);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_item_class_code_m = ' || gv_item_class_code_m);
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ì¬......................');
+debug_log(FND_FILE.LOG,'    İŒÉ•â[Œ³ = ' || gr_move_data_tbl(in_shori_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'    İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_move_data_tbl(in_shori_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'    oŒÉŒ³(•â[æ) = ' || gr_move_data_tbl(in_shori_cnt).shipped_locat_code);
+debug_log(FND_FILE.LOG,'    d—Ê—eÏ‹æ•ª = '
+                        || gr_move_data_tbl(in_shori_cnt).weight_capacity_class);
+debug_log(FND_FILE.LOG,'    ¤•i‹æ•ª = ' || gr_move_data_tbl(in_shori_cnt).prod_class_code);
+debug_log(FND_FILE.LOG,'    »•i¯•Ê‹æ•ª = ' || gr_move_data_tbl(in_shori_cnt).product_flg);
+debug_log(FND_FILE.LOG,'    •i–Ú‹æ•ª = ' || gr_move_data_tbl(in_shori_cnt).item_class_code);
+--
       ELSE
+--
         lv_header_create_flg := gv_cons_flg_n;
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ì¬•s—v..................');
+--
       END IF;
+--
     END IF;
 --
     -- ƒwƒbƒ_ì¬—v‚Ìê‡
@@ -4130,10 +4305,18 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_item_class_code_m = ' || gv_item_cla
       -- –¾×”Ô†‰Šú‰»
       gn_line_number   := 0;
 --
-      -- ƒV[ƒPƒ“ƒX‚æ‚èˆÚ“®ƒwƒbƒ_ID‚ğ‹‚ß‚é
-      SELECT xxinv_mov_hdr_s1.NEXTVAL
-      INTO   gv_mov_hdr_id
-      FROM   DUAL;
+      BEGIN
+        -- ƒV[ƒPƒ“ƒX‚æ‚èˆÚ“®ƒwƒbƒ_ID‚ğ‹‚ß‚é
+        SELECT xxinv_mov_hdr_s1.NEXTVAL
+        INTO   gn_mov_hdr_id
+        FROM   DUAL;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+          ov_retcode := gv_status_error;
+          RAISE global_api_expt;
+      END;
 --
       -- Ì”ÔŠÖ”
       xxcmn_common_pkg.get_seq_no( gv_cons_seq_move,
@@ -4141,9 +4324,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gv_item_class_code_m = ' || gv_item_cla
                                    lv_errbuf,
                                    lv_retcode,
                                    lv_errmsg);
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no - lv_seq_no =' || lv_seq_no);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®”Ô† = ' || lv_seq_no);
+--
       -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
       IF (lv_retcode <> gv_status_normal) THEN
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
@@ -4158,74 +4341,52 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no - lv_seq_no =' || lv_seq_no)
                                                       ,lv_errmsg)           -- ƒƒbƒZ[ƒW
                                                       ,1
                                                       ,5000);
-         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-         gn_warn_cnt := gn_warn_cnt + 1;
-        -- ƒwƒbƒ_ì¬’PˆÊ‚Ì€–Ú•Û
-      ln_ret_code := header_data_save(in_shori_cnt, iv_action_type );
-         RAISE common_warn_expt;
-      END IF;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no after.......');
--- DEBUG
 --
-      -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚ÅİŒÉ•â[Œ³A“üŒÉæ‚ğØ‚è•ª‚¯‚é
-      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
+        gn_warn_cnt := gn_warn_cnt + 1;
+        RAISE common_warn_expt;
+--
+      END IF;
+--
+      -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Å’l‚Ìæ“¾Œ³(o‰×/ˆÚ“®)‚ğØ‚è•ª‚¯‚é
+      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚Ìê‡
+--
         lv_stock_rep_origin := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin; --oŒÉŒ³(•â[Œ³)
         lv_locat_to_code    := gr_deliv_data_tbl(in_shori_cnt).deliver_from;     --“üŒÉæ
         lv_locat_to_id      := gr_deliv_data_tbl(in_shori_cnt).deliver_from_id;  --“üŒÉæID
-      ELSE
+        lv_weight_capacity_class := gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class;
+                                                                                      --d—Ê—eÏ‹æ•ª
+        lv_prod_class_code := gr_deliv_data_tbl(in_shori_cnt).prod_class_code;   --¤•i‹æ•ª
+        lv_product_flg := gr_deliv_data_tbl(in_shori_cnt).product_flg;           --»•i¯•Ê‹æ•ª
+--
+      ELSE --ˆÚ“®‚Ìê‡
+--
         lv_stock_rep_origin := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;  --oŒÉŒ³(•â[Œ³)
         lv_locat_to_code    := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;--“üŒÉæ
         lv_locat_to_id      := gr_move_data_tbl(in_shori_cnt).shipped_locat_id;  --“üŒÉæID
+        lv_weight_capacity_class := gr_move_data_tbl(in_shori_cnt).weight_capacity_class;
+                                                                                      --d—Ê—eÏ‹æ•ª
+        lv_prod_class_code := gr_move_data_tbl(in_shori_cnt).prod_class_code;    --¤•i‹æ•ª
+        lv_product_flg := gr_move_data_tbl(in_shori_cnt).product_flg;            --»•i¯•Ê‹æ•ª
+--
       END IF;
-      -- oŒÉŒ³ID(•ÛŠÇ’IID)‚¨‚æ‚Ñ‘ã•\‰^‘—‹ÆÒ‚ğŒŸõ
+--
+--
+      -- oŒÉŒ³ID(•â[Œ³‚ÌOPM•ÛŠÇêŠID)‚¨‚æ‚Ñ‘ã•\‰^‘—‹ÆÒ‚ğŒŸõ
       OPEN  lc_il_id_cur;
       FETCH lc_il_id_cur INTO lv_stock_rep_origin_id,
                               lv_frequent_mover;
       CLOSE lc_il_id_cur;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no after2.......');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)lv_stock_rep_origin = ' || lv_stock_rep_origin);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)lv_stock_rep_origin_id = ' || lv_stock_rep_origin_id);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)lv_locat_to_code = ' || lv_locat_to_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)lv_locat_to_id = ' || lv_locat_to_id);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)lv_frequent_mover = ' || lv_frequent_mover);
--- DEBUG
-/*    -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Å“üŒÉæID‚ğØ‚è•ª‚¯‚é
-      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
-        lv_locat_to_id := gr_deliv_data_tbl(in_shori_cnt).deliver_from_id; -- “üŒÉæID(o‰×Œ³ID)
-      ELSE
-        lv_locat_to_id := gr_move_data_tbl(in_shori_cnt).shipped_locat_id; -- “üŒÉæID(oŒÉŒ³ID)
-      END IF;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no after3.......');
--- DEBUG
-      -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚ÅİŒÉ•â[Œ³‚ğØ‚è•ª‚¯‚é
-      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
-        lv_locat_code := gr_deliv_data_tbl(in_shori_cnt).deliver_from;      -- o‰×Œ³ƒR[ƒh
-      ELSE
-        lv_locat_code := gr_move_data_tbl(in_shori_cnt).shipped_locat_code; -- oŒÉŒ³ƒR[ƒh
-      END IF;
-*/
+debug_log(FND_FILE.LOG,'    İŒÉ•â[Œ³ID =' || lv_stock_rep_origin_id);
+debug_log(FND_FILE.LOG,'    ‰^‘—‹ÆÒƒR[ƒh =' || lv_frequent_mover);
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no after4.......');
--- DEBUG
+      -- ‰^‘—‹ÆÒID‚ğŒŸõ
+      OPEN  lc_carrier_id_cur;
+      FETCH lc_carrier_id_cur INTO lv_career_id;
+      CLOSE lc_carrier_id_cur;
 --
-      -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Åƒpƒ‰ƒ[ƒ^‚ğØ‚è•ª‚¯‚é
-      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
-        lv_weight_capacity_class := gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class;
-      ELSE
-        lv_weight_capacity_class := gr_move_data_tbl(in_shori_cnt).weight_capacity_class;
-      END IF;
+debug_log(FND_FILE.LOG,'    ‰^‘—‹ÆÒID =' || lv_career_id);
 --
-      -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Åƒpƒ‰ƒ[ƒ^‚ğØ‚è•ª‚¯‚é
-      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
-        lv_prod_class_code := gr_deliv_data_tbl(in_shori_cnt).prod_class_code;
-      ELSE
-        lv_prod_class_code := gr_move_data_tbl(in_shori_cnt).prod_class_code;
-      END IF;
       -- Å‘å”z‘—‹æ•ªZoŠÖ”
       ln_ret_code := xxwsh_common_pkg.get_max_ship_method(
                                        gv_cons_wh,                -- 1.ƒR[ƒh‹æ•ª‚P I '4'
@@ -4242,14 +4403,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_seq_no after4.......');
                                        ln_drink_loading_capacity, -- 12.ƒhƒŠƒ“ƒNÏÚ—eÏ O
                                        ln_leaf_loading_capacity,  -- 13.ƒŠ[ƒtÏÚ—eÏ O
                                        ln_palette_max_qty);       -- 14.ƒpƒŒƒbƒgÅ‘å–‡” O
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method lv_stock_rep_origin = ' || lv_stock_rep_origin);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method lv_locat_to_code = ' || lv_locat_to_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method lv_prod_class_code = ' || lv_prod_class_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method lv_weight_capacity_class = ' || lv_weight_capacity_class);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method ln_ret_code = ' || ln_ret_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method lv_max_ship_methods = ' || lv_max_ship_methods);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  Å‘å”z‘—‹æ•ªæ“¾ŠÖ” ˆ—Œ‹‰Ê');
+debug_log(FND_FILE.LOG,'    lv_stock_rep_origin = ' || lv_stock_rep_origin);
+debug_log(FND_FILE.LOG,'    lv_locat_to_code = ' || lv_locat_to_code);
+debug_log(FND_FILE.LOG,'    lv_prod_class_code = ' || lv_prod_class_code);
+debug_log(FND_FILE.LOG,'    lv_weight_capacity_class = ' || lv_weight_capacity_class);
+debug_log(FND_FILE.LOG,'    ln_ret_code = ' || ln_ret_code);
+debug_log(FND_FILE.LOG,'    lv_max_ship_methods = ' || lv_max_ship_methods);
+debug_log(FND_FILE.LOG,'    ln_drink_deadweight = ' || TO_CHAR(ln_drink_deadweight));
+debug_log(FND_FILE.LOG,'    ln_leaf_deadweight = ' || TO_CHAR(ln_leaf_deadweight));
+debug_log(FND_FILE.LOG,'    ln_drink_loading_capacity = ' || TO_CHAR(ln_drink_loading_capacity));
+debug_log(FND_FILE.LOG,'    ln_leaf_loading_capacity = ' || TO_CHAR(ln_leaf_loading_capacity));
+debug_log(FND_FILE.LOG,'    ln_palette_max_qty = ' || TO_CHAR(ln_palette_max_qty));
+--
       -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
       IF (ln_ret_code <> gn_status_normal) THEN
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
@@ -4272,498 +4439,351 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)get_max_ship_method lv_max_ship_methods
                                                     ,iv_arrival_date)     -- Šî€“ú
                                                     ,1
                                                     ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
         gn_warn_cnt := gn_warn_cnt + 1;
-        -- ƒwƒbƒ_ì¬’PˆÊ‚Ì€–Ú•Û
-      ln_ret_code := header_data_save(in_shori_cnt, iv_action_type );
-        --Å‘å”z‘—‹æ•ªZoŠÖ”‚ÌƒGƒ‰[‚Í“–ƒvƒƒVƒWƒƒ‚©‚çƒŠƒ^[ƒ“‚·‚é
         RAISE common_warn_expt;
-      END IF;
 --
-      -- •i–ÚƒR[ƒh‚ÌU‚è•ª‚¯(o‰×‚È‚ç)
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        lv_item_code := gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;
-        ln_quantity  := gr_deliv_data_tbl(in_shori_cnt).quantity;
-      ELSE
-        lv_item_code := gr_move_data_tbl(in_shori_cnt).item_code;
-        ln_quantity  := gr_move_data_tbl(in_shori_cnt).instruct_qty;
       END IF;
-/*      -- ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)
-      xxwsh_common910_pkg.calc_total_value(
-                                         lv_item_code,        -- 1.•i–ÚƒR[ƒh I
-                                         ln_quantity,         -- 2.”—Ê I
-                                         lv_retcode,          -- 3.ƒŠƒ^[ƒ“ƒR[ƒh O
-                                         lv_errbuf,           -- 4.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
-                                         lv_errmsg,           -- 5.ƒGƒ‰[ƒƒbƒZ[ƒW O
-                                         ln_sum_weight,       -- 6.‡Œvd—Ê O
-                                         ln_sum_capacity,     -- 7.‡Œv—eÏ O
-                                         ln_sum_p_weight);    -- 8.‡ŒvƒpƒŒƒbƒgd—Ê O
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)---------------------------------------------');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value in lv_item_code  = ' || lv_item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value in ln_quantity = ' || ln_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value out lv_retcode = ' || lv_retcode);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value out lv_errbuf = ' || lv_errbuf);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value out lv_errmsg = ' || lv_errmsg);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value out ln_sum_weight = ' || ln_sum_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value out ln_sum_capacity = ' || ln_sum_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value out ln_sum_p_weight = ' || ln_sum_p_weight);
--- DEBUG
---
-      -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
-      IF (lv_retcode <> gv_status_normal) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                                   ,gv_msg_wsh_13124     -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
-                                                   ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                   ,gv_cons_mov_hdr_tbl  -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
-                                                   ,gv_tkn_param1        -- ƒg[ƒNƒ“'PARAM1'
-                                                   ,lv_item_code         -- •i–ÚƒR[ƒh
-                                                   ,gv_tkn_param2        -- ƒg[ƒNƒ“'PARAM2'
-                                                   ,ln_quantity          -- ‡Œv”—Ê
-                                                   ,gv_tkn_param3        -- ƒg[ƒNƒ“'PARAM3'
-                                                   ,lv_errbuf            -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
-                                                   ,gv_tkn_param4        -- ƒg[ƒNƒ“'PARAM4'
-                                                   ,lv_errmsg            -- ƒGƒ‰[ƒƒbƒZ[ƒW
-                                                   )
-                                                   ,1
-                                                   ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-        gn_warn_cnt := gn_warn_cnt + 1;
-        -- ƒwƒbƒ_ì¬’PˆÊ‚Ì€–Ú•Û
-      ln_ret_code := header_data_save(in_shori_cnt, iv_action_type );
-        --Å‘å”z‘—‹æ•ªZoŠÖ”‚ÌƒGƒ‰[‚Í“–ƒvƒƒVƒWƒƒ‚©‚çƒŠƒ^[ƒ“‚·‚é
-        RAISE common_warn_expt;
-      END IF;
-*/
---
-      -- ‰^‘—‹ÆÒID‚ğŒŸõ
-      OPEN  lc_carrier_id_cur;
-      FETCH lc_carrier_id_cur INTO lv_career_id;
-      CLOSE lc_carrier_id_cur;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)lv_career_id =' || lv_career_id);
--- DEBUG
 --
       -- ##########################################################################
       -- •Ï”‚ÉŠi”[‚·‚é ###########################################################
       -- ##########################################################################
       -- ”z—ñ”Ô†‚ğ{‚P‚·‚é
       gn_ins_data_cnt_mh := gn_ins_data_cnt_mh + 1;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ƒwƒbƒ_•Ï”‚ÉŠi”[‚Å‚· gn_ins_data_cnt_mh =' || gn_ins_data_cnt_mh);
--- DEBUG
-      gr_move_header_tbl(gn_ins_data_cnt_mh).mov_hdr_id := gv_mov_hdr_id;
+--
+debug_log(FND_FILE.LOG,'  ƒwƒbƒ_•Ï”Ši”[ gn_ins_data_cnt_mh =' || TO_CHAR(gn_ins_data_cnt_mh));
+--
       -- ˆÚ“®ƒwƒbƒ_ID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).mov_num := lv_seq_no;-- ƒV[ƒPƒ“ƒXNo
+      gr_move_header_tbl(gn_ins_data_cnt_mh).mov_hdr_id := gn_mov_hdr_id;
       -- ˆÚ“®”Ô†
-      gr_move_header_tbl(gn_ins_data_cnt_mh).mov_type := gv_cons_move_type; --uÏ‘—‚ ‚è'1'v
+      gr_move_header_tbl(gn_ins_data_cnt_mh).mov_num := lv_seq_no;-- ƒV[ƒPƒ“ƒXNo
       -- ˆÚ“®ƒ^ƒCƒv
-      gr_move_header_tbl(gn_ins_data_cnt_mh).entered_date := SYSDATE; -- ƒVƒXƒeƒ€“ú
+      gr_move_header_tbl(gn_ins_data_cnt_mh).mov_type := gv_cons_move_type; --uÏ‘—‚ ‚è'1'v
       -- “ü—Í“ú
-      gr_move_header_tbl(gn_ins_data_cnt_mh).instruction_post_code := iv_instruction_post_code;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).entered_date := SYSDATE; -- ƒVƒXƒeƒ€“ú
       -- w¦•”                                                  -- ƒpƒ‰ƒ[ƒ^‚Ìw¦•”w’è
-      gr_move_header_tbl(gn_ins_data_cnt_mh).status := gv_cons_mov_sts_c; --u’²®’†'03'v
+      gr_move_header_tbl(gn_ins_data_cnt_mh).instruction_post_code := iv_instruction_post_code;
       -- ƒXƒe[ƒ^ƒX
-      gr_move_header_tbl(gn_ins_data_cnt_mh).notif_status := gv_cons_sts_mi; --u–¢’Ê’m'10'v
+      gr_move_header_tbl(gn_ins_data_cnt_mh).status := gv_cons_mov_sts_c; --u’²®’†'03'v
       -- ’Ê’mƒXƒe[ƒ^ƒX
-      gr_move_header_tbl(gn_ins_data_cnt_mh).shipped_locat_id := lv_stock_rep_origin_id;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).notif_status := gv_cons_sts_mi; --u–¢’Ê’m'10'v
       -- oŒÉŒ³ID
+      gr_move_header_tbl(gn_ins_data_cnt_mh).shipped_locat_id := lv_stock_rep_origin_id;
+      -- oŒÉŒ³•ÛŠÇêŠ
       gr_move_header_tbl(gn_ins_data_cnt_mh).shipped_locat_code := lv_stock_rep_origin;
                                                                            -- İŒÉ•â[Œ³
-      -- oŒÉŒ³•ÛŠÇêŠ
-      gr_move_header_tbl(gn_ins_data_cnt_mh).ship_to_locat_id := lv_locat_to_id;
       -- “üŒÉæID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).ship_to_locat_code := lv_locat_to_code;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).ship_to_locat_id := lv_locat_to_id;
       -- “üŒÉæ•ÛŠÇêŠ
+      gr_move_header_tbl(gn_ins_data_cnt_mh).ship_to_locat_code := lv_locat_to_code;
+      -- oŒÉ—\’è“ú
       gr_move_header_tbl(gn_ins_data_cnt_mh).schedule_ship_date :=
                                     TRUNC(TO_DATE(iv_shipped_date,'YYYY/MM/DD')); --oŒÉ“úw’è
-      -- oŒÉ—\’è“ú
+      -- “üŒÉ—\’è“ú
       gr_move_header_tbl(gn_ins_data_cnt_mh).schedule_arrival_date :=
                                     TRUNC(TO_DATE(iv_arrival_date,'YYYY/MM/DD')); -- ’…“úw’è
-      -- “üŒÉ—\’è“ú
-      gr_move_header_tbl(gn_ins_data_cnt_mh).freight_charge_class := gv_cons_umu_ari; -- u—L'1'v
       -- ‰^’À‹æ•ª
+      gr_move_header_tbl(gn_ins_data_cnt_mh).freight_charge_class := gv_cons_umu_ari; -- u—L'1'v
+      -- Œ_–ñŠO‰^’À‹æ•ª
       gr_move_header_tbl(gn_ins_data_cnt_mh).no_cont_freight_class
                                                               := gv_cons_no_cont_freight; --‘ÎÛŠO0
-      -- Œ_–ñŠO‰^’À‹æ•ª
-      gr_move_header_tbl(gn_ins_data_cnt_mh).shipping_method_code := lv_max_ship_methods;
       -- ”z‘—‹æ•ª
-      gr_move_header_tbl(gn_ins_data_cnt_mh).organization_id := gn_organization_id; -- ƒ}ƒXƒ^‘gDID
+      gr_move_header_tbl(gn_ins_data_cnt_mh).shipping_method_code := lv_max_ship_methods;
       -- ‘gDID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).career_id := lv_career_id;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).organization_id := gn_organization_id; -- ƒ}ƒXƒ^‘gDID
       -- ‰^‘—‹ÆÒID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).freight_carrier_code := lv_frequent_mover;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).career_id := lv_career_id;
       -- ‰^‘—‹ÆÒ
-      gr_move_header_tbl(gn_ins_data_cnt_mh).based_weight := ln_leaf_deadweight; -- ƒŠ[ƒtÏÚd—Ê
+      gr_move_header_tbl(gn_ins_data_cnt_mh).freight_carrier_code := lv_frequent_mover;
       -- Šî–{d—Ê
+      gr_move_header_tbl(gn_ins_data_cnt_mh).based_weight := ln_leaf_deadweight; -- ƒŠ[ƒtÏÚd—Ê
+      -- Šî–{—eÏ
       gr_move_header_tbl(gn_ins_data_cnt_mh).based_capacity := ln_leaf_loading_capacity;
-      -- Šî–{—eÏ                                                                -- ƒŠ[ƒtÏÚ—eÏ
-      -- o‰×‚È‚ç
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        gr_move_header_tbl(gn_ins_data_cnt_mh).weight_capacity_class :=
-                      gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class;
-        -- d—Ê—eÏ‹æ•ª
-        gr_move_header_tbl(gn_ins_data_cnt_mh).item_class :=
-                      gr_deliv_data_tbl(in_shori_cnt).prod_class_code;
-        -- ¤•i‹æ•ª
-      -- ˆÚ“®‚È‚ç
-      ELSE
-        gr_move_header_tbl(gn_ins_data_cnt_mh).weight_capacity_class :=
-                      gr_move_data_tbl(in_shori_cnt).weight_capacity_class;
-        -- d—Ê—eÏ‹æ•ª
-        gr_move_header_tbl(gn_ins_data_cnt_mh).item_class :=
-                      gr_move_data_tbl(in_shori_cnt).prod_class_code;
-        -- ¤•i‹æ•ª
-      END IF;
---
-      -- o‰×‚È‚ç
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        -- •i–Ú‹æ•ª‚ª»•i‚È‚ç
-        IF (gr_deliv_data_tbl(in_shori_cnt).item_class_code = gv_cons_item_product) THEN
-          gr_move_header_tbl(gn_ins_data_cnt_mh).product_flg := gv_cons_p_flg_prod; -- '1'‚ğƒZƒbƒg
-          -- »•i¯•Ê‹æ•ª
-        ELSE
-          gr_move_header_tbl(gn_ins_data_cnt_mh).product_flg := gv_cons_p_flg_noprod; --'2'‚ğƒZƒbƒg
-          -- »•i¯•Ê‹æ•ª
-        END IF;
-      -- ˆÚ“®‚È‚ç
-      ELSE
-        -- •i–Ú‹æ•ª‚ª»•i‚È‚ç
-        IF (gr_move_data_tbl(in_shori_cnt).item_class_code = gv_cons_item_product) THEN
-          gr_move_header_tbl(gn_ins_data_cnt_mh).product_flg := gv_cons_p_flg_prod; -- '1'‚ğƒZƒbƒg
-          -- »•i¯•Ê‹æ•ª
-        ELSE
-          gr_move_header_tbl(gn_ins_data_cnt_mh).product_flg := gv_cons_p_flg_noprod; --'2'‚ğƒZƒbƒg
-          -- »•i¯•Ê‹æ•ª
-        END IF;
-      END IF;
---
--- DEBUG
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_created_by = ' || gn_created_by);
--- DEBUG
-      gr_move_header_tbl(gn_ins_data_cnt_mh).comp_actual_flg := gv_cons_flg_n; --ÀÑ–¢Œvã'N'
+                                                                                 -- ƒŠ[ƒtÏÚ—eÏ
+      -- d—Ê—eÏ‹æ•ª
+      gr_move_header_tbl(gn_ins_data_cnt_mh).weight_capacity_class := lv_weight_capacity_class;
+      -- ¤•i‹æ•ª
+      gr_move_header_tbl(gn_ins_data_cnt_mh).item_class := lv_prod_class_code;
+      -- »•i¯•Ê‹æ•ª
+      gr_move_header_tbl(gn_ins_data_cnt_mh).product_flg := lv_product_flg;
       -- ÀÑŒvãÏƒtƒ‰ƒO
-      gr_move_header_tbl(gn_ins_data_cnt_mh).correct_actual_flg := gv_cons_flg_n; --ÀÑ–¢’ù³'N'
+      gr_move_header_tbl(gn_ins_data_cnt_mh).comp_actual_flg := gv_cons_flg_n; --ÀÑ–¢Œvã'N'
       -- ÀÑ’ù³ƒtƒ‰ƒO
-      gr_move_header_tbl(gn_ins_data_cnt_mh).screen_update_by := gn_created_by;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).correct_actual_flg := gv_cons_flg_n; --ÀÑ–¢’ù³'N'
       -- ‰æ–ÊXVÒ
-      gr_move_header_tbl(gn_ins_data_cnt_mh).screen_update_date := SYSDATE;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).screen_update_by := gn_created_by;
       -- ‰æ–ÊXV“ú
-      gr_move_header_tbl(gn_ins_data_cnt_mh).created_by := gn_created_by;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).screen_update_date := SYSDATE;
       -- ì¬Ò
-      gr_move_header_tbl(gn_ins_data_cnt_mh).creation_date :=SYSDATE;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).created_by := gn_created_by;
       -- ì¬“ú
-      gr_move_header_tbl(gn_ins_data_cnt_mh).last_updated_by := gn_created_by;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).creation_date :=SYSDATE;
       -- ÅIXVÒ
-      gr_move_header_tbl(gn_ins_data_cnt_mh).last_update_date := SYSDATE;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).last_updated_by := gn_created_by;
       -- ÅIXV“ú
-      gr_move_header_tbl(gn_ins_data_cnt_mh).last_update_login := gn_login_user;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).last_update_date := SYSDATE;
       -- ÅIXVƒƒOƒCƒ“
-      gr_move_header_tbl(gn_ins_data_cnt_mh).request_id := gn_conc_request_id;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).last_update_login := gn_login_user;
       -- —v‹ID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).program_application_id := gn_prog_appl_id;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).request_id := gn_conc_request_id;
       -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).program_id := gn_conc_program_id;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).program_application_id := gn_prog_appl_id;
       -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
-      gr_move_header_tbl(gn_ins_data_cnt_mh).program_update_date := SYSDATE;
+      gr_move_header_tbl(gn_ins_data_cnt_mh).program_id := gn_conc_program_id;
       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      gr_move_header_tbl(gn_ins_data_cnt_mh).program_update_date := SYSDATE;
+--
 --
       -- ƒwƒbƒ_ì¬’PˆÊ‚Ì€–Ú•Û
-      ln_ret_code := header_data_save(in_shori_cnt, iv_action_type );
+      -- ˆ—í•Ê‚ªuo‰×v
+      IF (iv_action_type = gv_cons_t_deliv) THEN
+        gv_stock_rep_origin_m      := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
+                                                                               -- İŒÉ•â[Œ³
+        gv_stock_rep_rule_m        := gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule;
+                                                                               -- İŒÉ•â[ƒ‹[ƒ‹
+        gv_deliver_from_m          := gr_deliv_data_tbl(in_shori_cnt).deliver_from;
+                                                                               -- o‰×Œ³ƒR[ƒh
+        gv_prod_class_code_m       := gr_deliv_data_tbl(in_shori_cnt).prod_class_code;
+                                                                               -- ¤•i‹æ•ª
+        gv_weight_capacity_class_m := gr_deliv_data_tbl(in_shori_cnt).weight_capacity_class;
+                                                                               -- d—Ê—eÏ‹æ•ª
+        gv_product_flg_m           := gr_deliv_data_tbl(in_shori_cnt).product_flg;
+                                                                               -- »•i¯•Ê‹æ•ª
+      ELSE
+        gv_stock_rep_origin_m      := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;
+                                                                               -- İŒÉ•â[Œ³
+        gv_stock_rep_rule_m        := gr_move_data_tbl(in_shori_cnt).stock_rep_rule;
+                                                                               -- İŒÉ•â[ƒ‹[ƒ‹
+        gv_deliver_from_m          := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;
+                                                                               -- o‰×Œ³ƒR[ƒh
+        gv_prod_class_code_m       := gr_move_data_tbl(in_shori_cnt).prod_class_code;
+                                                                               -- ¤•i‹æ•ª
+        gv_weight_capacity_class_m := gr_move_data_tbl(in_shori_cnt).weight_capacity_class;
+                                                                               -- d—Ê—eÏ‹æ•ª
+        gv_product_flg_m           := gr_move_data_tbl(in_shori_cnt).product_flg;
+                                                                               -- »•i¯•Ê‹æ•ª
+      END IF;
 --
     END IF; -- ƒwƒbƒ_ƒf[ƒ^ƒZƒbƒgI—¹(‡Œv’lœ‚­)
 --
 -- #############################################################################################
 -- –¾×ƒf[ƒ^ƒZƒbƒg
 -- #############################################################################################
+--
     -- –¾×‚ğì¬‚·‚é‚©‚ğ”»’f‚·‚é(•i–ÚƒR[ƒh‚ªˆÙ‚È‚éê‡)
     -- ˆ—í•Ê‚ªuo‰×v
     IF (iv_action_type = gv_cons_t_deliv) THEN
+--
       IF ((gv_item_code_ml IS NULL)
-           OR
-          (gv_item_code_ml <> gr_deliv_data_tbl(in_shori_cnt).shipping_item_code)) THEN
+           OR (lv_header_create_flg = gv_cons_flg_y)
+           OR (gv_item_code_ml <> gr_deliv_data_tbl(in_shori_cnt).shipping_item_code)) THEN
 --
         -- w¦”—Ê–¾×‡Œv•Ï”‚ğ–¾×’PˆÊ‚Å‰Šú‰»
         gn_sum_inst_line_quantity  := 0;
---
         -- –¾×ì¬ƒtƒ‰ƒO 'Y'
         lv_line_create_flg := gv_cons_flg_y;
         -- –¾×”Ô†ƒCƒ“ƒNƒŠƒƒ“ƒg
         gn_line_number := gn_line_number + 1;
-        -- w¦”—ÊZo‚Ì‚½‚ßo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_inst_quantity  :=
-                gn_sum_inst_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
-        -- w¦”—ÊZo‚Ì‚½‚ßo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_inst_line_quantity  :=
-                gn_sum_inst_line_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
+--
       ELSE
         -- –¾×ì¬ƒtƒ‰ƒO 'N'
         lv_line_create_flg := gv_cons_flg_n;
-        -- w¦”—ÊZo‚Ì‚½‚ßo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_inst_quantity  :=
-                gn_sum_inst_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
-        -- w¦”—ÊZo‚Ì‚½‚ßo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_inst_line_quantity  :=
-                gn_sum_inst_line_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
+--
       END IF;
+--
     -- ˆ—í•Ê‚ªuˆÚ“®v
     ELSE
       IF ((gv_item_code_ml IS NULL)
-           OR
-          (gv_item_code_ml <> gr_move_data_tbl(in_shori_cnt).item_code)) THEN
+           OR (lv_header_create_flg = gv_cons_flg_y)
+           OR (gv_item_code_ml <> gr_move_data_tbl(in_shori_cnt).item_code)) THEN
 --
         -- w¦”—Ê–¾×‡Œv•Ï”‚ğ–¾×’PˆÊ‚Å‰Šú‰»
         gn_sum_inst_line_quantity  := 0;
---
         -- –¾×ì¬ƒtƒ‰ƒO 'Y'
         lv_line_create_flg := gv_cons_flg_y;
         -- –¾×”Ô†ƒCƒ“ƒNƒŠƒƒ“ƒg
         gn_line_number := gn_line_number + 1;
-        -- w¦”—ÊZo‚Ì‚½‚ßˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_inst_quantity :=
-                gn_sum_inst_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
-        -- w¦”—ÊZo‚Ì‚½‚ßˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_inst_line_quantity :=
-                gn_sum_inst_line_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+--
       ELSE
         -- –¾×ì¬ƒtƒ‰ƒO 'N'
         lv_line_create_flg := gv_cons_flg_n;
-        -- w¦”—ÊZo‚Ì‚½‚ßˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_inst_quantity :=
-                gn_sum_inst_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
-        -- w¦”—ÊZo‚Ì‚½‚ßˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_inst_line_quantity :=
-                gn_sum_inst_line_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+--
       END IF;
+--
+    END IF;
+--
+    -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Å’l‚Ìæ“¾Œ³(o‰×/ˆÚ“®)‚ğØ‚è•ª‚¯‚é
+    IF (iv_action_type = gv_cons_t_deliv) THEN      -- o‰×
+      lv_item_code := gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;  -- •i–ÚƒR[ƒh
+      ln_item_id := gr_deliv_data_tbl(in_shori_cnt).item_id;               -- OPM•i–ÚID
+      lv_item_um := gr_deliv_data_tbl(in_shori_cnt).item_um;               -- ’PˆÊ
+      ln_num_of_deliver := gr_deliv_data_tbl(in_shori_cnt).num_of_deliver; -- o‰×“ü”
+      lv_conv_unit := gr_deliv_data_tbl(in_shori_cnt).conv_unit;           -- “üoŒÉŠ·Z’PˆÊ
+      ln_num_of_cases := gr_deliv_data_tbl(in_shori_cnt).num_of_cases;     -- ƒP[ƒX“ü”
+--
+      -- w¦”—ÊZo‚Ì‚½‚ßo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
+      gn_sum_inst_quantity := gn_sum_inst_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
+      -- w¦”—ÊZo‚Ì‚½‚ßo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
+      gn_sum_inst_line_quantity  :=
+                         gn_sum_inst_line_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
+--
+    ELSE                                            -- ˆÚ“®
+      lv_item_code := gr_move_data_tbl(in_shori_cnt).item_code;            -- •i–ÚƒR[ƒh
+      ln_item_id := gr_move_data_tbl(in_shori_cnt).item_id;                -- OPM•i–ÚID
+      lv_item_um := gr_move_data_tbl(in_shori_cnt).item_um;                -- ’PˆÊ
+      ln_num_of_deliver := gr_move_data_tbl(in_shori_cnt).num_of_deliver;  -- o‰×“ü”
+      lv_conv_unit := gr_move_data_tbl(in_shori_cnt).conv_unit;            -- “üoŒÉŠ·Z’PˆÊ
+      ln_num_of_cases := gr_move_data_tbl(in_shori_cnt).num_of_cases;      -- ƒP[ƒX“ü”
+--
+      -- w¦”—ÊZo‚Ì‚½‚ßˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
+      gn_sum_inst_quantity := gn_sum_inst_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+      -- w¦”—ÊZo‚Ì‚½‚ßˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
+      gn_sum_inst_line_quantity :=
+                         gn_sum_inst_line_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+--
     END IF;
 --
     -- –¾×ƒf[ƒ^ì¬—v‚È‚ç‚Î–¾×‚ğì¬
     IF (lv_line_create_flg = gv_cons_flg_y) THEN
+--
       -- **************************************************
       -- ˆÚ“®ˆË—Š/w¦–¾×“o˜^—p•Ï”‚Éƒf[ƒ^‚ğƒZƒbƒg‚·‚é
       -- **************************************************
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)–¾×‚ğì‚è‚Ü‚· gn_ins_data_cnt_ml =' || gn_ins_data_cnt_ml);
--- DEBUG
 --
-      -- ƒV[ƒPƒ“ƒX‚æ‚èˆÚ“®–¾×ID‚ğ‹‚ß‚é
-      SELECT xxinv_mov_line_s1.NEXTVAL
-      INTO   lv_mov_line_id
-      FROM   DUAL;
+      -- ”z—ñ”Ô†‚ğ{‚P‚·‚é
+      gn_ins_data_cnt_ml := gn_ins_data_cnt_ml + 1;
 --
-      -- •i–ÚƒR[ƒh‚ÌU‚è•ª‚¯(o‰×‚È‚ç)
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        lv_item_code := gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;
---        ln_quantity  := gr_deliv_data_tbl(in_shori_cnt).quantity;
-      ELSE
-        lv_item_code := gr_move_data_tbl(in_shori_cnt).item_code;
---        ln_quantity  := gr_move_data_tbl(in_shori_cnt).instruct_qty;
-      END IF;
-/*      -- ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)
-      xxwsh_common910_pkg.calc_total_value(
-                                   lv_item_code,                -- 1.•i–ÚƒR[ƒh
-                                   gn_sum_inst_line_quantity,   -- 2.w¦”—Ê
-                                   lv_retcode,                  -- 3.ƒŠƒ^[ƒ“ƒR[ƒh O
-                                   lv_errbuf,                   -- 4.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
-                                   lv_errmsg,                   -- 5.ƒGƒ‰[ƒƒbƒZ[ƒW O
-                                   gn_sum_weight,               -- 6.‡Œvd—Ê O
-                                   gn_sum_capacity,             -- 7.‡Œv—eÏ O
-                                   ln_sum_palette_weight);      -- 8.‡ŒvƒpƒŒƒbƒgd—Ê
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)---------------------------------------------');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M in lv_item_code  = ' || lv_item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M in ln_quantity = ' || ln_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M out lv_retcode = ' || lv_retcode);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M out lv_errbuf = ' || lv_errbuf);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M out lv_errmsg = ' || lv_errmsg);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M out gn_sum_weight = ' || gn_sum_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M out gn_sum_capacity = ' || gn_sum_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_total_value M out ln_sum_palette_weight = ' || ln_sum_palette_weight);
--- DEBUG
-      -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
-      IF (lv_retcode <> gv_status_normal) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                                   ,gv_msg_wsh_13124     -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
-                                                   ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                   ,gv_cons_mov_hdr_tbl  -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
-                                                   ,gv_tkn_param1        -- ƒg[ƒNƒ“'PARAM1'
-                                                   ,lv_item_code         -- •i–ÚƒR[ƒh
-                                                   ,gv_tkn_param2        -- ƒg[ƒNƒ“'PARAM2'
-                                                   ,gn_sum_inst_line_quantity -- w¦”—Ê
-                                                   ,gv_tkn_param3        -- ƒg[ƒNƒ“'PARAM3'
-                                                   ,lv_errbuf            -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
-                                                   ,gv_tkn_param4        -- ƒg[ƒNƒ“'PARAM4'
-                                                   ,lv_errmsg            -- ƒGƒ‰[ƒƒbƒZ[ƒW
-                                                   )
-                                                   ,1
-                                                   ,5000);
-         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-         RAISE common_warn_expt;
-      END IF;
-*/
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×ì¬......................');
+debug_log(FND_FILE.LOG,'    gn_ins_data_cnt_ml = ' || gn_ins_data_cnt_ml);
+debug_log(FND_FILE.LOG,'    –¾×”Ô† = ' || TO_CHAR(gn_line_number));
+debug_log(FND_FILE.LOG,'    •i–ÚƒR[ƒh = ' || lv_item_code);
+debug_log(FND_FILE.LOG,'    ’PˆÊ = ' || lv_item_um);
+debug_log(FND_FILE.LOG,'    o‰×“ü” = ' || TO_CHAR(ln_num_of_deliver));
+debug_log(FND_FILE.LOG,'    “üoŒÉŠ·Z’PˆÊ = ' || lv_conv_unit);
+debug_log(FND_FILE.LOG,'    ƒP[ƒX“ü” = ' || TO_CHAR(ln_num_of_cases));
+debug_log(FND_FILE.LOG,'    –¾×”—Ê‡Œv(‰ÁZŒo‰ß) = ' || TO_CHAR(gn_sum_inst_line_quantity));
+debug_log(FND_FILE.LOG,'    ƒwƒbƒ_”—Ê‡Œv(‰ÁZŒo‰ß) = ' || TO_CHAR(gn_sum_inst_quantity));
+--
+      BEGIN
+        -- ƒV[ƒPƒ“ƒX‚æ‚èˆÚ“®–¾×ID‚ğ‹‚ß‚é
+        SELECT xxinv_mov_line_s1.NEXTVAL
+        INTO   lv_mov_line_id
+        FROM   DUAL;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+          ov_retcode := gv_status_error;
+          RAISE global_api_expt;
+      END;
 --
       -- ##########################################################################
       -- •Ï”‚ÉŠi”[‚·‚é ###########################################################
       -- ##########################################################################
-      -- ”z—ñ”Ô†‚ğ{‚P‚·‚é
-      gn_ins_data_cnt_ml := gn_ins_data_cnt_ml + 1;
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).mov_line_id := lv_mov_line_id;
       -- ˆÚ“®–¾×ID
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).mov_hdr_id := gv_mov_hdr_id;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).mov_line_id := lv_mov_line_id;
       -- ˆÚ“®ƒwƒbƒ_ID
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).line_number := gn_line_number;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).mov_hdr_id := gn_mov_hdr_id;
       -- –¾×”Ô†
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).organization_id := gn_organization_id;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).line_number := gn_line_number;
       -- ‘gDID
-      -- o‰×‚È‚ç
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        gr_move_lines_tbl(gn_ins_data_cnt_ml).item_id :=
-                                   gr_deliv_data_tbl(in_shori_cnt).item_id ;
-        -- OPM•i–ÚID
-        gr_move_lines_tbl(gn_ins_data_cnt_ml).item_code :=
-                                   gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;
-        -- •i–ÚƒR[ƒh
---        gr_move_lines_tbl(gn_ins_data_cnt_ml).instruct_qty := gn_sum_inst_quantity;
---        -- w¦”—Ê
---        gr_move_lines_tbl(gn_ins_data_cnt_ml).first_instruct_qty := gn_sum_inst_quantity;
---        -- ‰‰ñw¦”—Ê
-        gr_move_lines_tbl(gn_ins_data_cnt_ml).uom_code :=
-                                   gr_deliv_data_tbl(in_shori_cnt).item_um;
-        -- ’PˆÊ
-      ELSE
-        gr_move_lines_tbl(gn_ins_data_cnt_ml).item_id :=
-                                   gr_move_data_tbl(in_shori_cnt).item_id ;
-        -- •i–ÚID
-        gr_move_lines_tbl(gn_ins_data_cnt_ml).item_code :=
-                                   gr_move_data_tbl(in_shori_cnt).item_code;
-        -- •i–ÚƒR[ƒh
---        gr_move_lines_tbl(gn_ins_data_cnt_ml).instruct_qty := gn_sum_inst_quantity;
---        -- w¦”—Ê
---        gr_move_lines_tbl(gn_ins_data_cnt_ml).first_instruct_qty := gn_sum_inst_quantity;
---        -- ‰‰ñw¦”—Ê
-        gr_move_lines_tbl(gn_ins_data_cnt_ml).uom_code :=
-                                   gr_move_data_tbl(in_shori_cnt).item_um;
-        -- ’PˆÊ
-      END IF;
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).weight := gn_sum_weight;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).organization_id := gn_organization_id;
+      -- OPM•i–ÚID
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).item_id := ln_item_id;
+      -- •i–ÚƒR[ƒh
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).item_code := lv_item_code;
+      -- w¦”—Ê
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).instruct_qty := gn_sum_inst_line_quantity;
+      -- ‰‰ñw¦”—Ê
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).first_instruct_qty := gn_sum_inst_line_quantity;
+      -- ’PˆÊ
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).uom_code := lv_item_um;
       -- d—Ê
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).capacity := gn_sum_capacity;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).weight := NULL;
       -- —eÏ
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).delete_flg := gv_cons_flg_n; -- 'N'‚ğƒZƒbƒg;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).capacity := NULL;
       -- æÁƒtƒ‰ƒO
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).created_by := gn_created_by;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).delete_flg := gv_cons_flg_n; -- 'N'‚ğƒZƒbƒg;
       -- ì¬Ò
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).creation_date := SYSDATE;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).created_by := gn_created_by;
       -- ì¬“ú
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).last_updated_by := gn_created_by;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).creation_date := SYSDATE;
       -- ÅIXVÒ
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).last_update_date := SYSDATE;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).last_updated_by := gn_created_by;
       -- ÅIXV“ú
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).last_update_login := gn_login_user;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).last_update_date := SYSDATE;
       -- ÅIXVƒƒOƒCƒ“
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).request_id := gn_conc_request_id;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).last_update_login := gn_login_user;
       -- —v‹ID
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).program_application_id := gn_prog_appl_id;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).request_id := gn_conc_request_id;
       -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).program_id := gn_conc_program_id;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).program_application_id := gn_prog_appl_id;
       -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
-      gr_move_lines_tbl(gn_ins_data_cnt_ml).program_update_date := SYSDATE;
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).program_id := gn_conc_program_id;
       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).program_update_date := SYSDATE;
 --
       -- –¾×ì¬’PˆÊ‚Ì€–Ú•Û
-      -- ˆ—í•Ê‚ªuo‰×v
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        gv_item_code_ml := gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;
-      ELSE
-        gv_item_code_ml := gr_move_data_tbl(in_shori_cnt).item_code;
-      END IF;
-    END IF; -- –¾×ƒf[ƒ^ì¬I—¹
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)–¾×ƒf[ƒ^ì¬I—¹');
--- DEBUG
+      gv_item_code_ml := lv_item_code;
 --
--- ############################################################################################
--- ‡Œv”—Ê“™‚Ìƒwƒbƒ_ƒf[ƒ^•âŠ®
--- ############################################################################################
-    -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Åƒpƒ‰ƒ[ƒ^‚ğØ‚è•ª‚¯‚é
---    IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
---      gr_move_header_tbl(gn_ins_data_cnt_mh).sum_quantity := gn_sum_req_quantity; -- ‡ŒvˆË—Š”—Ê
---    ELSE
---      gr_move_header_tbl(gn_ins_data_cnt_mh).sum_quantity := gn_sum_inst_quantity; -- ‡Œvw¦”—Ê
---    END IF;
-    gr_move_header_tbl(gn_ins_data_cnt_mh).sum_quantity := gn_sum_inst_quantity; -- ‡Œvw¦”—Ê
-    gr_move_lines_tbl(gn_ins_data_cnt_ml).instruct_qty
-                                                 := gn_sum_inst_line_quantity; -- w¦”—Ê(–¾×)
-    gr_move_lines_tbl(gn_ins_data_cnt_ml).first_instruct_qty
-                                                 := gn_sum_inst_line_quantity; -- ‰‰ñw¦”—Ê(–¾×)
---
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ƒwƒbƒ_ƒf[ƒ^•âŠ®');
-    IF (iv_action_type = gv_cons_t_deliv) THEN
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_inst_quantity = ' || gn_sum_inst_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_inst_line_quantity = ' || gn_sum_inst_line_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gr_deliv_data_tbl(in_shori_cnt).num_of_deliver = ' || gr_deliv_data_tbl(in_shori_cnt).num_of_deliver);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gr_deliv_data_tbl(in_shori_cnt).conv_unit = ' || gr_deliv_data_tbl(in_shori_cnt).conv_unit);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gr_deliv_data_tbl(in_shori_cnt).num_of_cases = ' || gr_deliv_data_tbl(in_shori_cnt).num_of_cases);
-else
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_inst_quantity = ' || gn_sum_inst_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_inst_line_quantity = ' || gn_sum_inst_line_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gr_move_data_tbl(in_shori_cnt).num_of_deliver = ' || gr_move_data_tbl(in_shori_cnt).num_of_deliver);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gr_move_data_tbl(in_shori_cnt).conv_unit = ' || gr_move_data_tbl(in_shori_cnt).conv_unit);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gr_move_data_tbl(in_shori_cnt).num_of_cases = ' || gr_move_data_tbl(in_shori_cnt).num_of_cases);
-end if;
--- DEBUG
-    -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Åˆ—‚ğØ‚è•ª‚¯‚é
-    -- o‰×‚È‚ç
-    IF (iv_action_type = gv_cons_t_deliv) THEN
-      -- o‰×“ü”‚É’l‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚½‚ç
-      IF (gr_deliv_data_tbl(in_shori_cnt).num_of_deliver > 0) THEN
-        gn_sum_quantity := gn_sum_inst_quantity /                 -- ‡Œvw¦”—Ê / o‰×“ü”
-                                 gr_deliv_data_tbl(in_shori_cnt).num_of_deliver;
-      ELSE
-        -- “üoŒÉŠ·Z’PˆÊ‚É’l‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚½‚ç
-        IF (gr_deliv_data_tbl(in_shori_cnt).conv_unit IS NOT NULL) THEN
-          gn_sum_quantity :=  gn_sum_inst_quantity /              -- ‡Œvw¦”—Ê / ƒP[ƒX“ü”
-                                  NVL(gr_deliv_data_tbl(in_shori_cnt).num_of_cases, 1 );
-        ELSE
-          gn_sum_quantity := gn_sum_inst_quantity;
-        END IF;
-      END IF;
-    -- ˆÚ“®‚È‚ç
     ELSE
-      -- o‰×“ü”‚É’l‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚½‚ç
-      IF (gr_move_data_tbl(in_shori_cnt).num_of_deliver > 0) THEN
-        gn_sum_quantity := gn_sum_inst_quantity /                 -- ‡Œvw¦”—Ê / o‰×“ü”
-                                 gr_move_data_tbl(in_shori_cnt).num_of_deliver;
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×ì¬•s—v..................');
+debug_log(FND_FILE.LOG,'    –¾×”—Ê‡Œv(‰ÁZŒo‰ß) = ' || TO_CHAR(gn_sum_inst_line_quantity));
+debug_log(FND_FILE.LOG,'    ƒwƒbƒ_”—Ê‡Œv(‰ÁZŒo‰ß) = ' || TO_CHAR(gn_sum_inst_quantity));
+      -- w¦”—Ê
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).instruct_qty := gn_sum_inst_line_quantity;
+      -- ‰‰ñw¦”—Ê
+      gr_move_lines_tbl(gn_ins_data_cnt_ml).first_instruct_qty := gn_sum_inst_line_quantity;
+--
+    END IF; -- –¾×ƒf[ƒ^ì¬I—¹
+--
+--
+-- ############################################################################################
+-- ƒwƒbƒ_ƒf[ƒ^•âŠ®
+-- ############################################################################################
+--
+    -- ƒwƒbƒ_‡Œvw¦”—Ê‚ÌXV
+    gr_move_header_tbl(gn_ins_data_cnt_mh).sum_quantity := gn_sum_inst_quantity; -- ‡Œvw¦”—Ê
+--
+    -- ¬ŒûŒÂ”Aƒ‰ƒxƒ‹–‡”‚ÌZo
+    -- o‰×“ü”‚É’l‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚½‚ç
+    IF (ln_num_of_deliver > 0) THEN
+      gn_sum_quantity := gn_sum_inst_quantity / ln_num_of_deliver;  -- ‡Œv”—Ê / o‰×“ü”
+--
+    -- “üoŒÉŠ·Z’PˆÊ‚É’l‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚½‚ç
+    ELSE
+      IF (lv_conv_unit IS NOT NULL) THEN
+        gn_sum_quantity := gn_sum_inst_quantity / NVL(ln_num_of_cases, 1); -- ‡Œv”—Ê / ƒP[ƒX“ü”
       ELSE
-        -- “üoŒÉŠ·Z’PˆÊ‚É’l‚ªƒZƒbƒg‚³‚ê‚Ä‚¢‚½‚ç
-        IF (gr_move_data_tbl(in_shori_cnt).conv_unit IS NOT NULL) THEN
-          gn_sum_quantity :=  gn_sum_inst_quantity /              -- ‡Œvw¦”—Ê / ƒP[ƒX“ü”
-                                  NVL(gr_move_data_tbl(in_shori_cnt).num_of_cases, 1 );
-        ELSE
-          gn_sum_quantity := gn_sum_inst_quantity;
-        END IF;
+        gn_sum_quantity := gn_sum_inst_quantity;
       END IF;
     END IF;
+--
+    -- ¬ŒûŒÂ”‚ÌXV
     gr_move_header_tbl(gn_ins_data_cnt_mh).small_quantity := gn_sum_quantity;
-    -- ¬ŒûŒÂ”
 --
+    -- ƒ‰ƒxƒ‹–‡”‚ÌXV
     gr_move_header_tbl(gn_ins_data_cnt_mh).label_quantity := gn_sum_quantity;
-    -- ƒ‰ƒxƒ‹–‡”
 --
-    gr_move_header_tbl(gn_ins_data_cnt_mh).sum_weight := gn_sum_weight; -- •i–Ú’PˆÊ‚Ì‡Œvd—Ê
-    -- ¬Úd—Ê‡Œv
 --
-    gr_move_header_tbl(gn_ins_data_cnt_mh).sum_capacity := gn_sum_capacity; -- •i–Ú’PˆÊ‚Ì‡Œv—eÏ
-    -- ¬Ú—eÏ‡Œv
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ƒwƒbƒ_ƒf[ƒ^•âŠ® I—¹');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_quantity = ' || gn_sum_quantity);
--- DEBUG
+debug_log(FND_FILE.LOG,'    ¬ŒûŒÂ”(ŒvZŒo‰ß) = ' || gn_sum_quantity);
+debug_log(FND_FILE.LOG,'(C-10)' || cv_prg_name || ' End¥¥¥¥¥');
+--
 --
   EXCEPTION
     -- *** ‹¤’ÊŠÖ”ƒGƒ‰[ƒnƒ“ƒhƒ‰ (Œx‚ğ•Ô‚·)***
     WHEN common_warn_expt THEN
+--
+debug_log(FND_FILE.LOG,'(C-10)' || cv_prg_name || ' End with Warnning¥¥¥¥¥');
+--
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_carrier_id_cur%ISOPEN ) THEN
+        CLOSE lc_carrier_id_cur;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
@@ -4772,15 +4792,39 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_quantity = ' || gn_sum_quantity)
 --
     -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_expt THEN
+--
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_carrier_id_cur%ISOPEN ) THEN
+        CLOSE lc_carrier_id_cur;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_others_expt THEN
+--
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_carrier_id_cur%ISOPEN ) THEN
+        CLOSE lc_carrier_id_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN OTHERS THEN
+--
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_carrier_id_cur%ISOPEN ) THEN
+        CLOSE lc_carrier_id_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -4789,10 +4833,10 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_quantity = ' || gn_sum_quantity)
   END regi_move_data;
 --
    /**********************************************************************************
-   * Procedure Name   : regi_order_data
+   * Procedure Name   : regi_poreq_data
    * Description      : C-11 ”­’ˆË—Š“o˜^
    ***********************************************************************************/
-  PROCEDURE regi_order_data(
+  PROCEDURE regi_poreq_data(
     in_shori_cnt             IN         NUMBER,     -- ˆ—ƒJƒEƒ“ƒ^
     iv_action_type           IN         VARCHAR2,   -- ˆ—í•Ê
     iv_shipped_date          IN         VARCHAR2,   -- oŒÉ“úw’è
@@ -4805,7 +4849,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_quantity = ' || gn_sum_quantity)
     -- ===============================
     -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'regi_order_data'; -- ƒvƒƒOƒ‰ƒ€–¼
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'regi_poreq_data'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
 --#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
@@ -4822,20 +4866,24 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_quantity = ' || gn_sum_quantity)
 --
     -- *** ƒ[ƒJƒ‹•Ï” ***
     ln_ret_code                 NUMBER;  -- ‹¤’ÊŠÖ”‚ÌƒŠƒ^[ƒ“’l
-    lv_ord_line_id        xxpo_requisition_lines.requisition_line_id%TYPE;     -- ”­’–¾×ID
-    lv_seq_no                   VARCHAR2(12);                                  -- Ì”ÔŠÖ”‚Å‚ÌOUT
-    lv_vendor_id          xxcmn_vendors2_v.vendor_id%TYPE;                     -- d“üæID
-    lv_vendor_no          xxcmn_vendors2_v.segment1%TYPE;                      -- d“üæ”Ô†
-    lv_vendor_site_id     xxcmn_vendor_sites2_v.vendor_site_id%TYPE;           -- d“üæƒTƒCƒgID
-    lv_employee_number    per_all_people_f.employee_number%TYPE;               -- ]‹Æˆõ”Ô†
-    lv_emp_dept_code      xxcmn_locations2_v.location_code%TYPE;               -- –‹ÆŠƒR[ƒh
-    ln_odr_line_seq_id          NUMBER;                                        -- ”­’–¾×ID
-    ln_odr_line_seq_no          NUMBER;                                        -- –¾×”Ô†
-    lv_stock_rep_origin   xxwsh_shipping_stock_rep_tmp.stock_rep_origin%TYPE;  -- d“üæ(•â[Œ³)
-    lv_location_code         xxcmn_item_locations2_v.segment1%TYPE;            -- “üŒÉæ(oŒÉŒ³)
-    lv_inventory_location_id xxcmn_item_locations2_v.inventory_location_id%TYPE; -- •ÛŠÇ’IID
-                                                                           -- “üŒÉæID(oŒÉŒ³ID)
-    lv_department         xxcmn_vendors2_v.department%TYPE;                    -- d“üæŠÇ—•”
+    ln_po_line_id               xxpo_requisition_lines.requisition_line_id%TYPE;         --”­’–¾×ID
+    lv_seq_no                   VARCHAR2(12);                                       --Ì”ÔŠÖ”‚Å‚ÌOUT
+    ln_vendor_id                xxcmn_vendors2_v.vendor_id%TYPE;                           --d“üæID
+    lv_vendor_no                xxcmn_vendors2_v.segment1%TYPE;                          --d“üæ”Ô†
+    ln_vendor_site_id           xxcmn_vendor_sites2_v.vendor_site_id%TYPE;           --d“üæƒTƒCƒgID
+    lv_employee_number          per_all_people_f.employee_number%TYPE;                   --]‹Æˆõ”Ô†
+    lv_emp_dept_code            xxcmn_locations2_v.location_code%TYPE;                 --–‹ÆŠƒR[ƒh
+    ln_odr_line_seq_no          xxpo_requisition_lines.requisition_line_number%TYPE;      -- –¾×”Ô†
+    lv_stock_rep_origin         xxwsh_shipping_stock_rep_tmp.stock_rep_origin%TYPE;  --d“üæ(•â[Œ³)
+    lv_location_code            xxpo_requisition_headers.location_code%TYPE;         --“üŒÉæ(oŒÉŒ³)
+    ln_inventory_location_id    xxpo_requisition_headers.location_id%TYPE;       --“üŒÉæID(oŒÉŒ³ID)
+    lv_department       xxpo_requisition_headers.requested_to_department_code%TYPE;  --d“üæŠÇ—•”
+    lv_drop_ship_type           xxpo_requisition_headers.drop_ship_type%TYPE;              --’¼‘—‹æ•ª
+    lv_delivery_code            xxpo_requisition_headers.delivery_code%TYPE;                 --”z‘—æ
+    lv_item_code                xxpo_requisition_lines.item_code%TYPE;                  -- •i–ÚƒR[ƒh
+    ln_item_id                  xxpo_requisition_lines.item_id%TYPE;                     -- OPM•i–ÚID
+    lv_requested_quantity_uom   xxpo_requisition_lines.requested_quantity_uom%TYPE;   -- ˆË—Š”—Ê’PˆÊ
+    ln_pack_quantity            xxpo_requisition_lines.pack_quantity%TYPE;                -- İŒÉ“ü”
 --
     lv_header_create_flg        VARCHAR2(1);                                   -- ƒwƒbƒ_ì¬ƒtƒ‰ƒO
     lv_line_create_flg          VARCHAR2(1);                                   -- –¾×ì¬ƒtƒ‰ƒO
@@ -4916,108 +4964,110 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)gn_sum_quantity = ' || gn_sum_quantity)
 --
 --###########################  ŒÅ’è•” END   ############################
 --
+--
+debug_log(FND_FILE.LOG,'(C-11)' || cv_prg_name || ' Start¥¥¥');
+--
 -- ############################################################################################
 -- ƒwƒbƒ_ƒf[ƒ^ƒZƒbƒg
 -- ############################################################################################
 --
-    -- ƒwƒbƒ_‚ğì¬‚·‚é‚©‚ğ”»’f‚·‚é(İŒÉ•â[Œ³Ao‰×Œ³ƒR[ƒh‚Ì‚Ç‚ê‚ª‚ªˆÙ‚È‚éê‡)
-    -- ˆ—í•Ê‚ªuo‰×v
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)in_shori_cnt = ' || in_shori_cnt || ' ƒŒƒR[ƒh–Úˆ—ŠJn');FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)iv_action_type = ' || iv_action_type);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gn_stock_rep_origin_o = ' || gn_stock_rep_origin_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_stock_rep_rule_o = ' || gv_stock_rep_rule_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_deliver_from_o = ' || gv_deliver_from_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_deliver_to_o = ' || gv_deliver_to_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)+++++++++++++++++++++++++++++++++++++++++++++++++++++');
--- DEBUG
+    -- ƒwƒbƒ_‚ğì¬‚·‚é‚©‚ğ”»’f‚·‚é(İŒÉ•â[Œ³Ao‰×Œ³ƒR[ƒh‚Ì‚¢‚Ã‚ê‚©‚ªˆÙ‚È‚éê‡)
+    -- ˆ—í•Ê‚ªo‰×‚ÅAo‰×Œ³‚Ì’¼‘—‘qŒÉ‹æ•ª=’¼‘—‚Ìê‡‚É‚ÍA”z‘—æ‚ªˆÙ‚È‚éê‡‚à‘ÎÛ
+    -- ˆ—í•Ê‚ªuo‰×v‚Å ’¼‘—‚Ìê‡
     IF ((iv_action_type = gv_cons_t_deliv)
-         AND 
+         AND
         (gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div = gv_cons_ds_type_d)) THEN
-      IF ((gn_stock_rep_origin_o IS NULL)                 -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
+--
+      -- ƒwƒbƒ_‚ğì¬‚·‚é
+      IF ((gv_stock_rep_origin_p IS NULL)                 -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
          OR                                              -- ˆÈ‰º‚Ì‚Ç‚ê‚©‚Ì€–Ú‚ªˆÙ‚È‚é
-         ((gn_stock_rep_origin_o      <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin)
+         ((gv_stock_rep_origin_p      <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin)
           OR
-          (gv_stock_rep_rule_o        <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule)
+          (gv_stock_rep_rule_p        <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule)
           OR
-          (gv_deliver_from_o          <> gr_deliv_data_tbl(in_shori_cnt).deliver_from)
+          (gv_deliver_from_p          <> gr_deliv_data_tbl(in_shori_cnt).deliver_from)
           OR
-          (gv_deliver_to_o            <> gr_deliv_data_tbl(in_shori_cnt).deliver_to)))
+          (gv_deliver_to_p            <> gr_deliv_data_tbl(in_shori_cnt).deliver_to)))
       THEN
-        lv_stock_rep_origin  := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
+--
         lv_header_create_flg := gv_cons_flg_y;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - header_creat - ’¼‘—');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gn_stock_rep_origin_o = ' || gn_stock_rep_origin_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_stock_rep_rule_o = ' || gv_stock_rep_rule_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_deliver_from_o = ' || gv_deliver_from_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).deliver_from = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_from);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_deliver_to_o = ' || gv_deliver_to_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).deliver_to = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_to);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ì¬(o‰× ’¼‘—)......................');
+debug_log(FND_FILE.LOG,'    İŒÉ•â[Œ³ = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'    İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'    o‰×Œ³(•â[æ) = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_from);
+debug_log(FND_FILE.LOG,'    ’¼‘—‘qŒÉ‹æ•ª = ' || gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div);
+debug_log(FND_FILE.LOG,'    o‰×æ = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_to);
+--
+      -- ƒwƒbƒ_‚ğì¬‚µ‚È‚¢
       ELSE
+--
         lv_header_create_flg := gv_cons_flg_n;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - header_not_creat - ’¼‘—');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ì¬•s—v(o‰× ’¼‘—)..................');
+--
       END IF;
-    ELSIF ((iv_action_type = gv_cons_t_deliv) 
-         AND 
+--
+    -- ˆ—í•Ê‚ªuo‰×v‚Å ’Êí‚Ìê‡
+    ELSIF ((iv_action_type = gv_cons_t_deliv)
+         AND
         (gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div <> gv_cons_ds_type_d)) THEN
-      IF ((gn_stock_rep_origin_o IS NULL)                 -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
+--
+      -- ƒwƒbƒ_‚ğì¬‚·‚é
+      IF ((gv_stock_rep_origin_p IS NULL)                 -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
           OR                                              -- ˆÈ‰º‚Ì‚Ç‚ê‚©‚Ì€–Ú‚ªˆÙ‚È‚é
-         ((gn_stock_rep_origin_o      <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin)
+         ((gv_stock_rep_origin_p      <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin)
           OR
-          (gv_stock_rep_rule_o        <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule)
+          (gv_stock_rep_rule_p        <> gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule)
           OR
-          (gv_deliver_from_o          <> gr_deliv_data_tbl(in_shori_cnt).deliver_from)))
+          (gv_deliver_from_p          <> gr_deliv_data_tbl(in_shori_cnt).deliver_from)))
       THEN
-        lv_stock_rep_origin  := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
+--
         lv_header_create_flg := gv_cons_flg_y;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - header_creat - ’¼‘—ˆÈŠO');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gn_stock_rep_origin_o = ' || gn_stock_rep_origin_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_stock_rep_rule_o = ' || gv_stock_rep_rule_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_deliver_from_o = ' || gv_deliver_from_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).deliver_from = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_from);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ì¬(o‰× ’Êí)......................');
+debug_log(FND_FILE.LOG,'    İŒÉ•â[Œ³ = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'    İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'    o‰×Œ³(•â[æ) = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_from);
+debug_log(FND_FILE.LOG,'    ’¼‘—‘qŒÉ‹æ•ª = ' || gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div);
+debug_log(FND_FILE.LOG,'    o‰×æ = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_to);
+--
+      -- ƒwƒbƒ_‚ğì¬‚µ‚È‚¢
       ELSE
+--
         lv_header_create_flg := gv_cons_flg_n;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - header_not_creat- ’¼‘—ˆÈŠO');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ì¬•s—v(o‰× ’Êí)..................');
+--
       END IF;
-    -- ˆ—í•Ê‚ªuˆÚ“®v
+--
+    -- ˆ—í•Ê‚ªuˆÚ“®v‚Ìê‡
     ELSE
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)ELSE............');
-      IF ((gn_stock_rep_origin_o IS NULL)                -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
+      -- ƒwƒbƒ_‚ğì¬‚·‚é
+      IF ((gv_stock_rep_origin_p IS NULL)                -- 1Œ–Ú‚Ìƒwƒbƒ_ì¬
          OR                                              -- ˆÈ‰º‚Ì‚Ç‚ê‚©‚Ì€–Ú‚ªˆÙ‚È‚é
-         ((gn_stock_rep_origin_o      <> gr_move_data_tbl(in_shori_cnt).stock_rep_origin)
+         ((gv_stock_rep_origin_p      <> gr_move_data_tbl(in_shori_cnt).stock_rep_origin)
            OR
-          (gv_stock_rep_rule_o        <> gr_move_data_tbl(in_shori_cnt).stock_rep_rule)
+          (gv_stock_rep_rule_p        <> gr_move_data_tbl(in_shori_cnt).stock_rep_rule)
            OR
-          (gv_deliver_from_o          <> gr_move_data_tbl(in_shori_cnt).shipped_locat_code)))
+          (gv_deliver_from_p          <> gr_move_data_tbl(in_shori_cnt).shipped_locat_code)))
       THEN
-        lv_stock_rep_origin  := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;
+--
         lv_header_create_flg := gv_cons_flg_y;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_move - header_creat - ˆÚ“®');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gn_stock_rep_origin_o = ' || gn_stock_rep_origin_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_move_data_tbl(in_shori_cnt).stock_rep_origin = ' || gr_move_data_tbl(in_shori_cnt).stock_rep_origin);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_stock_rep_rule_o = ' || gv_stock_rep_rule_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_move_data_tbl(in_shori_cnt).stock_rep_rule = ' || gr_move_data_tbl(in_shori_cnt).stock_rep_rule);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_deliver_from_o = ' || gv_deliver_from_o);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_move_data_tbl(in_shori_cnt).shipped_locat_code = ' || gr_move_data_tbl(in_shori_cnt).shipped_locat_code);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ì¬(ˆÚ“®)......................');
+debug_log(FND_FILE.LOG,'    İŒÉ•â[Œ³ = ' || gr_move_data_tbl(in_shori_cnt).stock_rep_origin);
+debug_log(FND_FILE.LOG,'    İŒÉ•â[ƒ‹[ƒ‹ = ' || gr_move_data_tbl(in_shori_cnt).stock_rep_rule);
+debug_log(FND_FILE.LOG,'    o‰×Œ³(•â[æ) = ' || gr_move_data_tbl(in_shori_cnt).shipped_locat_code);
+--
+      -- ƒwƒbƒ_‚ğì¬‚µ‚È‚¢
       ELSE
         lv_header_create_flg := gv_cons_flg_n;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_move - header_not_creat - ˆÚ“®');
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ì¬•s—v(ˆÚ“®)..................');
+--
       END IF;
+--
     END IF;
 --
     -- ƒwƒbƒ_ì¬—v‚Ìê‡
@@ -5025,32 +5075,33 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_move - header_not_creat - ˆÚ“
       -- **************************************************
       -- ”­’ˆË—Šƒwƒbƒ_“o˜^—p•Ï”‚Éƒf[ƒ^‚ğƒZƒbƒg‚·‚é
       -- **************************************************
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)header(Y) - gn_ins_data_cnt_oh = ' || gn_ins_data_cnt_oh);
--- DEBUG
 --
-      -- w¦”—Ê‡Œv•Ï”‚ğƒwƒbƒ_’PˆÊ‚Å‰Šú‰»
-      gn_sum_req_quantity  := 0;
       -- –¾×”Ô†‰Šú‰»
       gn_line_number      := 0;
 --
-      -- ƒV[ƒPƒ“ƒX‚æ‚è”­’ƒwƒbƒ_ID‚ğ‹‚ß‚é
-      SELECT xxpo_requisition_headers_s1.NEXTVAL
-      INTO   gv_odr_hdr_id
-      FROM   DUAL;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - gv_odr_hdr_id = ' || gv_odr_hdr_id);
--- DEBUG
+      BEGIN
+        -- ƒV[ƒPƒ“ƒX‚æ‚è”­’ˆË—Šƒwƒbƒ_ID‚ğ‹‚ß‚é
+        SELECT xxpo_requisition_headers_s1.NEXTVAL
+        INTO   gn_poreq_hdr_id
+        FROM   DUAL;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+          ov_retcode := gv_status_error;
+          RAISE global_api_expt;
+      END;
+--
       -- Ì”ÔŠÖ”
       xxcmn_common_pkg.get_seq_no( gv_cons_seq_order,
                                    lv_seq_no,
                                    lv_errbuf,
                                    lv_retcode,
                                    lv_errmsg);
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - get_seq_no = ' || lv_seq_no);
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'    ”­’ˆË—Š”Ô† = ' || lv_seq_no);
+--
       -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
       IF (lv_retcode <> gv_status_normal) THEN
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
@@ -5065,133 +5116,136 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_cons_t_deliv - get_seq_no = ' || lv_
                                                       ,lv_errmsg)           -- ƒƒbƒZ[ƒW
                                                       ,1
                                                       ,5000);
-         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-         RAISE common_warn_expt;
+--
+        gn_warn_cnt := gn_warn_cnt + 1;
+        RAISE common_warn_expt;
+--
       END IF;
 --
-      -- ƒL[‚ÌİŒÉ•â[Œ³‚ğˆ—í•Ê‚É‚æ‚èØ‚è•ª‚¯‚é
-      -- o‰×‚È‚ç
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        lv_stock_rep_origin := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
-      ELSE
-        lv_stock_rep_origin := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;
+      -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Å’l‚Ìæ“¾Œ³(o‰×/ˆÚ“®)‚ğØ‚è•ª‚¯‚é
+      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚Ìê‡
+--
+        lv_stock_rep_origin := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin; -- d“üæ(•â[Œ³)
+        lv_location_code    := gr_deliv_data_tbl(in_shori_cnt).deliver_from;     -- o‰×Œ³(•â[æ)
+--
+        -- ’¼‘—‹æ•ª‚ªu’¼‘—v‚¾‚Á‚½‚çuo‰×v‚ğƒZƒbƒg
+        IF (gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div = gv_cons_ds_type_d) THEN
+          lv_drop_ship_type := gv_cons_ds_deliv;                                  -- ’¼‘—‹æ•ª(o‰×)
+          lv_delivery_code  := gr_deliv_data_tbl(in_shori_cnt).deliver_to;        -- ’¼‘—”z‘—æ
+--
+        -- ’¼‘—‹æ•ª‚ªu’¼‘—ˆÈŠOv‚©NULL‚È‚ç‚Îu’Êív‚ğƒZƒbƒg
+        ELSE
+          lv_drop_ship_type := gv_cons_ds_normal;                                 -- ’¼‘—‹æ•ª(’Êí)
+          lv_delivery_code  := '';                                                -- ’¼‘—”z‘—æ
+--
+        END IF;
+--
+      ELSE  -- ˆÚ“®‚Ìê‡
+--
+        lv_stock_rep_origin := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;   -- d“üæ(•â[Œ³)
+        lv_location_code    := gr_move_data_tbl(in_shori_cnt).shipped_locat_code; -- oŒÉŒ³(•â[æ)
+        lv_drop_ship_type   := gv_cons_ds_normal;                                 -- ’¼‘—‹æ•ª(’Êí)
+        lv_delivery_code    := '';                                                -- ’¼‘—”z‘—æ
+--
       END IF;
 --
       -- d“üæID, d“üæƒTƒCƒgID, d“üæ”Ô†, •”‚ğŒŸõ‚·‚é
       OPEN  lc_vendor_cur;
-      FETCH lc_vendor_cur INTO lv_vendor_id, lv_vendor_site_id, lv_vendor_no, lv_department;
+      FETCH lc_vendor_cur INTO ln_vendor_id, ln_vendor_site_id, lv_vendor_no, lv_department;
       CLOSE lc_vendor_cur;
 --
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################lv_location_code = ' || lv_location_code);
-      IF (iv_action_type = gv_cons_t_deliv) THEN -- o‰×‚È‚ç
-        lv_location_code    := gr_deliv_data_tbl(in_shori_cnt).deliver_from;
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################gr_deliv_data_tbl(in_shori_cnt).deliver_from = ' || gr_deliv_data_tbl(in_shori_cnt).deliver_from);
-      ELSE
-        lv_location_code    := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################gr_move_data_tbl(in_shori_cnt).shipped_locat_code = ' || gr_move_data_tbl(in_shori_cnt).shipped_locat_code);
-      END IF;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################lv_location_code = ' || lv_location_code);
--- DEBUG
+debug_log(FND_FILE.LOG,'    d“üæID =' || TO_CHAR(ln_vendor_id));
+debug_log(FND_FILE.LOG,'    d“üæ”Ô† =' || lv_vendor_no);
+debug_log(FND_FILE.LOG,'    d“üæƒTƒCƒgID =' || TO_CHAR(ln_vendor_site_id));
+debug_log(FND_FILE.LOG,'    d“üæŠÇ—•” =' || lv_department);
+--
       -- •ÛŠÇ’IID‚ğŒŸõ
       OPEN  lc_il_id_cur;
-      FETCH lc_il_id_cur INTO lv_inventory_location_id;
+      FETCH lc_il_id_cur INTO ln_inventory_location_id;
       CLOSE lc_il_id_cur;
+--
+debug_log(FND_FILE.LOG,'  ”[“üæID(•â[æ) =' || TO_CHAR(ln_inventory_location_id));
 --
       -- ]‹Æˆõ”Ô†‚Æ–‹ÆŠƒR[ƒh‚ğŒŸõ
       OPEN  lc_user_cur;
       FETCH lc_user_cur INTO lv_employee_number, lv_emp_dept_code;
       CLOSE lc_user_cur;
 --
+debug_log(FND_FILE.LOG,'    ˆË—ŠÒƒR[ƒh =' || lv_employee_number);
+debug_log(FND_FILE.LOG,'    ˆË—ŠÒ•”ƒR[ƒh =' || lv_emp_dept_code);
+--
       -- ##########################################################################
       -- •Ï”‚ÉŠi”[‚·‚é ###########################################################
       -- ##########################################################################
       -- ”z—ñ”Ô†‚ğ{‚P‚·‚é
-      gn_ins_data_cnt_oh := gn_ins_data_cnt_oh + 1;
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).requisition_header_id := gv_odr_hdr_id;
+      gn_ins_data_cnt_ph := gn_ins_data_cnt_ph + 1;
       -- ”­’ˆË—Šƒwƒbƒ_ID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).po_header_number := lv_seq_no;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).requisition_header_id := gn_poreq_hdr_id;
       -- ”­’”Ô†
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).status := gv_cons_po_sts; --ˆË—Šì¬Ï'10'
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).po_header_number := lv_seq_no;
       -- ƒXƒe[ƒ^ƒX
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).vendor_id := lv_vendor_id;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).status := gv_cons_po_sts; --ˆË—Šì¬Ï'10'
       -- d“üæID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).vendor_code := lv_vendor_no;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).vendor_id := ln_vendor_id;
       -- d“üæƒR[ƒh
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).vendor_site_id := lv_vendor_site_id;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).vendor_code := lv_vendor_no;
       -- d“üæƒTƒCƒgID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).promised_date :=
-                                            TO_DATE(iv_arrival_date,'YYYY/MM/DD'); -- ’…“úw’è
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).vendor_site_id := ln_vendor_site_id;
       -- ”[“ü“ú
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).location_id := lv_inventory_location_id;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).promised_date :=
+                                            TO_DATE(iv_arrival_date,'YYYY/MM/DD'); -- ’…“úw’è
       -- ”[“üæID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).location_code := lv_location_code;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).location_id := ln_inventory_location_id;
       -- ”[“üæƒR[ƒh
-      -- o‰×‚È‚ç
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        -- ’¼‘—‹æ•ª‚ªu’¼‘—v‚¾‚Á‚½‚çuo‰×v‚ğƒZƒbƒg
-        IF (gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div = gv_cons_ds_type_d) THEN
-          gr_requisition_header_tbl(gn_ins_data_cnt_oh).drop_ship_type := gv_cons_ds_deliv;
-          gr_requisition_header_tbl(gn_ins_data_cnt_oh).delivery_code :=
-                                gr_deliv_data_tbl(in_shori_cnt).deliver_to; -- o‰×æƒR[ƒh
-          -- ”z‘—æƒR[ƒh
-        END IF;
-        -- ’¼‘—‹æ•ª‚ªu’¼‘—ˆÈŠOv‚©NULL‚È‚ç‚Îu’Êív‚ğƒZƒbƒg
-        IF (gr_deliv_data_tbl(in_shori_cnt).drop_ship_wsh_div = gv_cons_ds_type_n) THEN
-          gr_requisition_header_tbl(gn_ins_data_cnt_oh).drop_ship_type := gv_cons_ds_normal;
-        END IF;
-      ELSE
-        -- u’Êív‚ğƒZƒbƒg
-        gr_requisition_header_tbl(gn_ins_data_cnt_oh).drop_ship_type := gv_cons_ds_normal;
-      END IF;
-      -- ’¼‘—‹æ•ª
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).requested_by_code := lv_employee_number;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).location_code := lv_location_code;
+      --’¼‘—‹æ•ª
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).drop_ship_type := lv_drop_ship_type;
+      --”z‘—æ
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).delivery_code := lv_delivery_code;
       -- ˆË—ŠÒƒR[ƒh
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).requested_dept_code := lv_emp_dept_code;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).requested_by_code := lv_employee_number;
       -- ˆË—ŠÒ•”ƒR[ƒh
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).requested_to_department_code := lv_department;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).requested_dept_code := lv_emp_dept_code;
       -- ˆË—Šæ•”ƒR[ƒh
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).change_flag := gv_change_flag_n;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).requested_to_department_code := lv_department;
       -- •ÏXƒtƒ‰ƒO
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).created_by := gn_created_by;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).change_flag := gv_change_flag_n;
       -- ì¬Ò
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).creation_date := SYSDATE;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).created_by := gn_created_by;
       -- ì¬“ú
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).last_updated_by := gn_created_by;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).creation_date := SYSDATE;
       -- ÅIXVÒ
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).last_update_date := SYSDATE;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).last_updated_by := gn_created_by;
       -- ÅIXV“ú
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).last_update_login := gn_login_user;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).last_update_date := SYSDATE;
       -- ÅIXVƒƒOƒCƒ“
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).request_id := gn_conc_request_id;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).last_update_login := gn_login_user;
       -- —v‹ID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).program_application_id := gn_prog_appl_id;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).request_id := gn_conc_request_id;
       -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).program_id := gn_conc_program_id;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).program_application_id := gn_prog_appl_id;
       -- ƒvƒƒOƒ‰ƒ€ID
-      gr_requisition_header_tbl(gn_ins_data_cnt_oh).program_update_date := SYSDATE;
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).program_id := gn_conc_program_id;
       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      gr_requisition_header_tbl(gn_ins_data_cnt_ph).program_update_date := SYSDATE;
+--
       -- ƒwƒbƒ_ì¬’PˆÊ‚Ì€–Ú•Û
       -- ˆ—í•Ê‚ªuo‰×v
       IF (iv_action_type = gv_cons_t_deliv) THEN
-        gn_stock_rep_origin_o      := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
+        gv_stock_rep_origin_p      := gr_deliv_data_tbl(in_shori_cnt).stock_rep_origin;
                                                                                  -- İŒÉ•â[Œ³
-        gv_deliver_from_o          := gr_deliv_data_tbl(in_shori_cnt).deliver_from;
+        gv_deliver_from_p          := gr_deliv_data_tbl(in_shori_cnt).deliver_from;
                                                                                  -- o‰×Œ³ƒR[ƒh
-        gv_deliver_to_o            := gr_deliv_data_tbl(in_shori_cnt).deliver_to;
+        gv_deliver_to_p            := gr_deliv_data_tbl(in_shori_cnt).deliver_to;
                                                                                  -- o‰×æƒR[ƒh
-        gv_stock_rep_rule_o        := gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule;
+        gv_stock_rep_rule_p        := gr_deliv_data_tbl(in_shori_cnt).stock_rep_rule;
                                                                                  -- İŒÉ•â[ƒ‹[ƒ‹
       ELSE
-        gn_stock_rep_origin_o      := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;
+        gv_stock_rep_origin_p      := gr_move_data_tbl(in_shori_cnt).stock_rep_origin;
                                                                                  -- İŒÉ•â[Œ³
-        gv_deliver_from_o          := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;
+        gv_deliver_from_p          := gr_move_data_tbl(in_shori_cnt).shipped_locat_code;
                                                                                  -- o‰×Œ³ƒR[ƒh
-        gv_deliver_to_o            := gr_move_data_tbl(in_shori_cnt).ship_to_locat_code;
-                                                                                 -- o‰×æƒR[ƒh
-        gv_stock_rep_rule_o        := gr_move_data_tbl(in_shori_cnt).stock_rep_rule;
+        gv_stock_rep_rule_p        := gr_move_data_tbl(in_shori_cnt).stock_rep_rule;
                                                                                  -- İŒÉ•â[ƒ‹[ƒ‹
       END IF;
 --
@@ -5200,203 +5254,177 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)##################lv_location_code = ' 
 -- #############################################################################################
 -- –¾×ƒf[ƒ^ƒZƒbƒg
 -- #############################################################################################
+--
     -- –¾×‚ğì¬‚·‚é‚©‚ğ”»’f‚·‚é(•i–ÚƒR[ƒh‚ªˆÙ‚È‚éê‡)
     -- ˆ—í•Ê‚ªuo‰×v
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gv_item_code_ol = ' || gv_item_code_ol);
--- DEBUG
     IF (iv_action_type = gv_cons_t_deliv) THEN
-      IF (((gv_item_code_ol IS NULL) OR (lv_header_create_flg = gv_cons_flg_y))
-           OR
-           (gv_item_code_ol <> gr_deliv_data_tbl(in_shori_cnt).shipping_item_code))
-      THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line_deliv_Y = ' || gv_item_code_ol);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_deliv_data_tbl(in_shori_cnt).shipping_item_code = ' || gr_deliv_data_tbl(in_shori_cnt).shipping_item_code);
--- DEBUG
+--
+      IF ((gv_item_code_pl IS NULL)
+           OR (lv_header_create_flg = gv_cons_flg_y)
+           OR (gv_item_code_pl <> gr_deliv_data_tbl(in_shori_cnt).shipping_item_code)) THEN
 --
         -- ˆË—Š”—Ê–¾×‡Œv•Ï”‚ğ–¾×’PˆÊ‚Å‰Šú‰»
         gn_sum_req_line_quantity  := 0;
---
         -- –¾×ì¬ƒtƒ‰ƒO 'Y'
         lv_line_create_flg := gv_cons_flg_y;
         -- –¾×”Ô†ƒCƒ“ƒNƒŠƒƒ“ƒg
         gn_line_number := gn_line_number + 1;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_req_quantity :=
-                gn_sum_req_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_req_line_quantity :=
-                gn_sum_req_line_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
---        gn_sum_inst_quantity :=
---                gn_sum_req_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
+--
       ELSE
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line_deliv_N = ' || gv_item_code_ol);
--- DEBUG
+--
         -- –¾×ì¬ƒtƒ‰ƒO 'N'
         lv_line_create_flg := gv_cons_flg_n;
 --
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_req_quantity  :=
-                gn_sum_req_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_req_line_quantity  :=
-                gn_sum_req_line_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
---        gn_sum_inst_quantity  :=
---                gn_sum_req_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
       END IF;
+--
     -- ˆ—í•Ê‚ªuˆÚ“®v
     ELSE
-      IF (((gv_item_code_ol IS NULL) OR (lv_header_create_flg = gv_cons_flg_y))
-           OR
-           (gv_item_code_ol <> gr_move_data_tbl(in_shori_cnt).item_code))
-      THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line_move_Y = ' || gv_item_code_ol);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)gr_move_data_tbl(in_shori_cnt).item_code = ' || gr_move_data_tbl(in_shori_cnt).item_code);
--- DEBUG
+      IF ((gv_item_code_pl IS NULL)
+           OR (lv_header_create_flg = gv_cons_flg_y)
+           OR (gv_item_code_pl <> gr_move_data_tbl(in_shori_cnt).item_code)) THEN
+--
         -- ˆË—Š”—Ê–¾×‡Œv•Ï”‚ğ–¾×’PˆÊ‚Å‰Šú‰»
         gn_sum_req_line_quantity  := 0;
---
         -- –¾×ì¬ƒtƒ‰ƒO 'Y'
         lv_line_create_flg := gv_cons_flg_y;
         -- –¾×”Ô†ƒCƒ“ƒNƒŠƒƒ“ƒg
         gn_line_number := gn_line_number + 1;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_req_quantity :=
-                gn_sum_req_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_req_line_quantity :=
-                gn_sum_req_line_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
---        gn_sum_inst_quantity :=
---                gn_sum_inst_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+--
       ELSE
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line_move_N = ' || gv_item_code_ol);
--- DEBUG
         -- –¾×ì¬ƒtƒ‰ƒO 'N'
         lv_line_create_flg := gv_cons_flg_n;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(ƒwƒbƒ_)
-        gn_sum_req_quantity :=
-                gn_sum_req_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
-        -- ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
-        gn_sum_req_line_quantity :=
-                gn_sum_req_line_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
---        gn_sum_inst_quantity :=
---                gn_sum_inst_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+--
       END IF;
+--
+    END IF;
+--
+    -- ƒpƒ‰ƒ[ƒ^‚Ìˆ—í•Ê‚Å’l‚Ìæ“¾Œ³(o‰×/ˆÚ“®)‚ğØ‚è•ª‚¯‚é
+    IF (iv_action_type = gv_cons_t_deliv) THEN      -- o‰×
+      lv_item_code := gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;   -- •i–ÚƒR[ƒh
+      ln_item_id := gr_deliv_data_tbl(in_shori_cnt).item_id;                -- OPM•i–ÚID
+      lv_requested_quantity_uom := gr_deliv_data_tbl(in_shori_cnt).item_um; -- ’PˆÊ
+      ln_pack_quantity := gr_deliv_data_tbl(in_shori_cnt).frequent_qty;  -- ‘ã•\“ü”
+--
+      -- ˆË—Š”—ÊZo‚Ì‚½‚ß‚Ìo‰×ˆË—Š”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
+      gn_sum_req_line_quantity :=
+              gn_sum_req_line_quantity  + gr_deliv_data_tbl(in_shori_cnt).quantity;
+--
+    ELSE                                            -- ˆÚ“®
+      lv_item_code := gr_move_data_tbl(in_shori_cnt).item_code;            -- •i–ÚƒR[ƒh
+      ln_item_id := gr_move_data_tbl(in_shori_cnt).item_id;                -- OPM•i–ÚID
+      lv_requested_quantity_uom := gr_move_data_tbl(in_shori_cnt).item_um; -- ’PˆÊ
+      ln_pack_quantity := gr_move_data_tbl(in_shori_cnt).frequent_qty;  -- ‘ã•\“ü”
+--
+      -- ˆË—Š”—ÊZo‚Ì‚½‚ß‚ÌˆÚ“®w¦”—Ê‚Ì‘«‚µ‚±‚İ(–¾×)
+      gn_sum_req_line_quantity :=
+              gn_sum_req_line_quantity + gr_move_data_tbl(in_shori_cnt).instruct_qty;
+--
     END IF;
 --
     -- –¾×ƒf[ƒ^ì¬—v‚È‚ç‚Î–¾×‚ğì¬
     IF (lv_line_create_flg = gv_cons_flg_y) THEN
 --
-      -- ”z—ñ”Ô†‚ğ{‚P‚·‚é
-      gn_ins_data_cnt_ol := gn_ins_data_cnt_ol + 1;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line(Y) - gn_ins_data_cnt_ol = ' || gn_ins_data_cnt_ol);
--- DEBUG
---
-      -- ƒV[ƒPƒ“ƒX‚æ‚è”­’ˆË—Š–¾×ID‚ğ‹‚ß‚é
-      SELECT xxpo_requisition_lines_s1.NEXTVAL
-      INTO   lv_ord_line_id
-      FROM   DUAL;
---
-      -- –¾×”Ô†(–¾×‚²‚Æ‚ÉU‚ç‚ê‚éƒV[ƒPƒ“ƒX”Ô†)‚ğƒCƒ“ƒNƒŠƒƒ“ƒg‚·‚é
-      gn_order_line_number := gn_order_line_number + 1;
---
+      -- **************************************************
       -- ”­’ˆË—Š–¾×“o˜^—p•Ï”‚Éƒf[ƒ^‚ğƒZƒbƒg‚·‚é
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requisition_line_id := lv_ord_line_id;
+      -- **************************************************
+--
+      -- ”z—ñ”Ô†‚ğ{‚P‚·‚é
+      gn_ins_data_cnt_pl := gn_ins_data_cnt_pl + 1;
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Š–¾×ì¬......................');
+debug_log(FND_FILE.LOG,'    gn_ins_data_cnt_pl = ' || gn_ins_data_cnt_pl);
+debug_log(FND_FILE.LOG,'    –¾×”Ô† = ' || TO_CHAR(gn_line_number));
+debug_log(FND_FILE.LOG,'    •i–ÚƒR[ƒh = ' || lv_item_code);
+debug_log(FND_FILE.LOG,'    ’PˆÊ = ' || lv_requested_quantity_uom);
+debug_log(FND_FILE.LOG,'    –¾×”—Ê‡Œv(‰ÁZŒo‰ß) = ' || TO_CHAR(gn_sum_req_line_quantity));
+--
+      BEGIN
+        -- ƒV[ƒPƒ“ƒX‚æ‚è”­’ˆË—Š–¾×ID‚ğ‹‚ß‚é
+        SELECT xxpo_requisition_lines_s1.NEXTVAL
+        INTO   ln_po_line_id
+        FROM   DUAL;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+          ov_retcode := gv_status_error;
+          RAISE global_api_expt;
+      END;
+--
+      -- ##########################################################################
+      -- •Ï”‚ÉŠi”[‚·‚é ###########################################################
+      -- ##########################################################################
+      -- ”­’ˆË—Š–¾×“o˜^—p•Ï”‚Éƒf[ƒ^‚ğƒZƒbƒg‚·‚é
       -- ”­’ˆË—Š–¾×ID
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requisition_header_id := gv_odr_hdr_id;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requisition_line_id := ln_po_line_id;
       -- ”­’ˆË—Šƒwƒbƒ_ID
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requisition_line_number := gn_line_number;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requisition_header_id := gn_poreq_hdr_id;
       -- –¾×”Ô†
-      -- o‰×‚È‚ç
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).item_id :=
-                         gr_deliv_data_tbl(in_shori_cnt).item_id ;
-        -- •i–ÚID
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).item_code :=
-                         gr_deliv_data_tbl(in_shori_cnt).shipping_item_code ;
-        -- •i–ÚƒR[ƒh
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).pack_quantity :=
-                         gr_deliv_data_tbl(in_shori_cnt).frequent_qty ;
-        -- İŒÉ“ü”
---        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity := gn_sum_inst_quantity;
---        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity := gn_sum_req_quantity;
---        -- ˆË—Š”—Ê
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity_uom :=
-                         gr_deliv_data_tbl(in_shori_cnt).item_um;
-        -- ˆË—Š”—Ê’PˆÊƒR[ƒh
-      ELSE
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).item_id :=
-                         gr_move_data_tbl(in_shori_cnt).item_id ;
-        -- •i–ÚID
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).item_code :=
-                         gr_move_data_tbl(in_shori_cnt).item_code ;
-        -- •i–ÚƒR[ƒh
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).pack_quantity :=
-                         gr_move_data_tbl(in_shori_cnt).frequent_qty ;
-        -- İŒÉ“ü”
---        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity := gn_sum_inst_quantity;
---        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity := gn_sum_req_quantity;
---        -- ˆË—Š”—Ê
-        gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity_uom :=
-                         gr_move_data_tbl(in_shori_cnt).item_um;
-        -- ˆË—Š”—Ê’PˆÊƒR[ƒh
-      END IF;
--- DEBUG
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line(Y) - gn_sum_inst_quantity = ' || gn_sum_inst_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line(Y) - gn_sum_req_quantity = ' || gn_sum_req_quantity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)line(Y) - gn_sum_req_line_quantity = ' || gn_sum_req_line_quantity);
--- DEBUG
---
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).cancelled_flg := gv_cons_flg_n; -- 'N'‚ğƒZƒbƒg
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requisition_line_number := gn_line_number;
+      -- •i–ÚID
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).item_id := ln_item_id;
+      -- •i–ÚƒR[ƒh
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).item_code := lv_item_code;
+      -- İŒÉ“ü”
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).pack_quantity := ln_pack_quantity;
+      -- ˆË—Š”—Ê
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requested_quantity := gn_sum_req_line_quantity;
+      -- ˆË—Š”—Ê’PˆÊƒR[ƒh
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requested_quantity_uom
+                                                         := lv_requested_quantity_uom;
       -- æÁƒtƒ‰ƒO
---
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).created_by := gn_created_by;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).cancelled_flg := gv_cons_flg_n; -- 'N'‚ğƒZƒbƒg
       -- ì¬Ò
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).creation_date := SYSDATE;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).created_by := gn_created_by;
       -- ì¬“ú
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).last_updated_by := gn_created_by;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).creation_date := SYSDATE;
       -- ÅIXVÒ
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).last_update_date := SYSDATE;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).last_updated_by := gn_created_by;
       -- ÅIXV“ú
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).last_update_login := gn_login_user;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).last_update_date := SYSDATE;
       -- ÅIXVƒƒOƒCƒ“
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).request_id := gn_conc_request_id;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).last_update_login := gn_login_user;
       -- —v‹ID
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).program_application_id := gn_prog_appl_id;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).request_id := gn_conc_request_id;
       -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).program_id := gn_conc_program_id;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).program_application_id := gn_prog_appl_id;
       -- ƒvƒƒOƒ‰ƒ€ID
-      gr_requisition_lines_tbl(gn_ins_data_cnt_ol).program_update_date := SYSDATE;
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).program_id := gn_conc_program_id;
       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).program_update_date := SYSDATE;
 --
       -- –¾×ì¬’PˆÊ‚Ì€–Ú•Û
-      -- ˆ—í•Ê‚ªuo‰×v
-      IF (iv_action_type = gv_cons_t_deliv) THEN
-        gv_item_code_ol := gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;
-      ELSE
-        gv_item_code_ol := gr_move_data_tbl(in_shori_cnt).item_code;
-      END IF;
+      gv_item_code_pl := lv_item_code;
+--
+    ELSE
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Š–¾×ì¬•s—v..................');
+debug_log(FND_FILE.LOG,'    –¾×”—Ê‡Œv(‰ÁZŒo‰ß) = ' || TO_CHAR(gn_sum_req_line_quantity));
+      -- ˆË—Š”—Ê
+      gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requested_quantity := gn_sum_req_line_quantity;
+--
     END IF;   -- –¾×ƒf[ƒ^ì¬I—¹
 --
--- ############################################################################################
--- –¾×’PˆÊ‚Ì‡Œv”—Ê‚ğ•âŠ®
--- ############################################################################################
-    gr_requisition_lines_tbl(gn_ins_data_cnt_ol).requested_quantity := gn_sum_req_line_quantity;
-                                                                                         -- –¾×”—Ê
 --
+debug_log(FND_FILE.LOG,'(C-11)' || cv_prg_name || ' End¥¥¥¥¥');
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)–¾×ƒf[ƒ^ì¬I—¹');
--- DEBUG
 --
   EXCEPTION
     -- *** ‹¤’ÊŠÖ”ƒGƒ‰[ƒnƒ“ƒhƒ‰ (Œx‚ğ•Ô‚·)***
     WHEN common_warn_expt THEN
+--
+debug_log(FND_FILE.LOG,'(C-11)' || cv_prg_name || ' End with Warnning¥¥¥¥¥');
+--
+      IF ( lc_vendor_cur%ISOPEN ) THEN
+        CLOSE lc_vendor_cur;
+      END IF;
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_user_cur%ISOPEN ) THEN
+        CLOSE lc_user_cur;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
@@ -5405,21 +5433,54 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)–¾×ƒf[ƒ^ì¬I—¹');
 --
     -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_expt THEN
+--
+      IF ( lc_vendor_cur%ISOPEN ) THEN
+        CLOSE lc_vendor_cur;
+      END IF;
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_user_cur%ISOPEN ) THEN
+        CLOSE lc_user_cur;
+      END IF;
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN global_api_others_expt THEN
+--
+      IF ( lc_vendor_cur%ISOPEN ) THEN
+        CLOSE lc_vendor_cur;
+      END IF;
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_user_cur%ISOPEN ) THEN
+        CLOSE lc_user_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
     WHEN OTHERS THEN
+--
+      IF ( lc_vendor_cur%ISOPEN ) THEN
+        CLOSE lc_vendor_cur;
+      END IF;
+      IF ( lc_il_id_cur%ISOPEN ) THEN
+        CLOSE lc_il_id_cur;
+      END IF;
+      IF ( lc_user_cur%ISOPEN ) THEN
+        CLOSE lc_user_cur;
+      END IF;
+--
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
 --#####################################  ŒÅ’è•” END   ##########################################
 --
-  END regi_order_data;
+  END regi_poreq_data;
 --
    /**********************************************************************************
    * Procedure Name   : regi_order_detail
@@ -5470,11 +5531,11 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-11)–¾×ƒf[ƒ^ì¬I—¹');
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
+--
+debug_log(FND_FILE.LOG,'(C-12)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ó’–¾×XV‘ÎÛŒ”‚ğ{‚P‚·‚é
     gn_upd_data_cnt_ol := gn_upd_data_cnt_ol + 1;
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-12)gn_upd_data_cnt_ol = ' || gn_upd_data_cnt_ol);
--- DEBUG
 --
     -- ŠeƒŒƒR[ƒh•Ï”‚Éƒf[ƒ^‚ğƒZƒbƒg‚·‚é
     -- ƒL[€–Ú‚ğƒZƒbƒg‚·‚é
@@ -5482,10 +5543,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-12)gn_upd_data_cnt_ol = ' || gn_upd_data_c
                        gr_deliv_data_tbl(in_shori_cnt).request_no;          -- ˆË—ŠNoiƒL[j
     gt_ol_shipping_item_code(gn_upd_data_cnt_ol) :=
                        gr_deliv_data_tbl(in_shori_cnt).shipping_item_code;  -- •i–ÚƒR[ƒhiƒL[j
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-12)gt_ol_request_no(gn_upd_data_cnt_ol) = ' || gt_ol_request_no(gn_upd_data_cnt_ol));
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-12)gt_ol_shipping_item_code(gn_upd_data_cnt_ol) = ' || gt_ol_shipping_item_code(gn_upd_data_cnt_ol));
--- DEBUG
+--
     gt_ol_move_number(gn_upd_data_cnt_ol)            := iv_move_number;     -- ˆÚ“®No
     gt_ol_po_number(gn_upd_data_cnt_ol)              := iv_po_number;       -- ”­’No
     gt_ol_last_updated_by(gn_upd_data_cnt_ol)        := gn_created_by;      -- ÅIXVÒ
@@ -5495,6 +5553,14 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-12)gt_ol_shipping_item_code(gn_upd_data_cn
     gt_ol_program_application_id(gn_upd_data_cnt_ol) := gn_prog_appl_id;    -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
     gt_ol_program_id(gn_upd_data_cnt_ol)             := gn_conc_program_id; -- ƒvƒƒOƒ‰ƒ€ID
     gt_ol_program_update_date(gn_upd_data_cnt_ol)    := SYSDATE;            -- ƒvƒƒOƒ‰ƒ€XV“ú
+--
+--
+debug_log(FND_FILE.LOG,'  ó’–¾×XV‘ÎÛƒJƒEƒ“ƒg = ' || TO_CHAR(gn_upd_data_cnt_ol) || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  ˆË—ŠNO = ' || gt_ol_request_no(gn_upd_data_cnt_ol));
+debug_log(FND_FILE.LOG,'  •i–ÚƒR[ƒh = ' || gt_ol_shipping_item_code(gn_upd_data_cnt_ol));
+debug_log(FND_FILE.LOG,'  ˆÚ“®No = ' || gt_ol_move_number(gn_upd_data_cnt_ol));
+debug_log(FND_FILE.LOG,'  ”­’No = ' || gt_ol_po_number(gn_upd_data_cnt_ol));
+debug_log(FND_FILE.LOG,'(C-12)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -5567,22 +5633,18 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-12)gt_ol_shipping_item_code(gn_upd_data_cn
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
 --
+--
+debug_log(FND_FILE.LOG,'(C-13)' || cv_prg_name || ' Start¥¥¥');
+--
     -- ˆÚ“®ˆË—Š/w¦–¾×XV‘ÎÛŒ”‚ğ{‚P‚·‚é
     gn_upd_data_cnt_ml := gn_upd_data_cnt_ml + 1;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gn_upd_data_cnt_ml = ' || gn_upd_data_cnt_ml);
--- DEBUG
     -- ŠeƒŒƒR[ƒh•Ï”‚Éƒf[ƒ^‚ğƒZƒbƒg‚·‚é
     -- ƒL[€–Ú‚ğƒZƒbƒg‚·‚é
     gt_ml_mov_num(gn_upd_data_cnt_ml) :=
                        gr_move_data_tbl(in_shori_cnt).mov_num;  -- ˆÚ“®”Ô†iƒL[j
     gt_ml_item_code(gn_upd_data_cnt_ml) :=
                        gr_move_data_tbl(in_shori_cnt).item_code;  -- •i–ÚƒR[ƒhiƒL[j
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gt_ml_mov_num(gn_upd_data_cnt_ml) = ' || gt_ml_mov_num(gn_upd_data_cnt_ml));
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gt_ml_item_code(gn_upd_data_cnt_ml) = ' || gt_ml_item_code(gn_upd_data_cnt_ml));
--- DEBUG
 --
     gt_ml_move_num(gn_upd_data_cnt_ml)               := iv_move_number;     -- QÆˆÚ“®”Ô†
     gt_ml_po_num(gn_upd_data_cnt_ml)                 := iv_po_number;       -- QÆ”­’”Ô†
@@ -5593,6 +5655,14 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gt_ml_item_code(gn_upd_data_cnt_ml) = '
     gt_ml_program_application_id(gn_upd_data_cnt_ml) := gn_prog_appl_id;    -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
     gt_ml_program_id(gn_upd_data_cnt_ml)             := gn_conc_program_id; -- ƒvƒƒOƒ‰ƒ€ID
     gt_ml_program_update_date(gn_upd_data_cnt_ml)    := SYSDATE;            -- ƒvƒƒOƒ‰ƒ€XV“ú
+--
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×XV‘ÎÛƒJƒEƒ“ƒg = ' || TO_CHAR(gn_upd_data_cnt_ml) || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  ˆÚ“®”Ô† = ' || gt_ml_mov_num(gn_upd_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  •i–ÚƒR[ƒh = ' || gt_ml_item_code(gn_upd_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  QÆˆÚ“®”Ô† = ' || gt_ml_move_num(gn_upd_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  QÆ”­’”Ô† = ' || gt_ml_po_num(gn_upd_data_cnt_ml));
+debug_log(FND_FILE.LOG,'(C-13)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
 --
@@ -5615,6 +5685,438 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gt_ml_item_code(gn_upd_data_cnt_ml) = '
 --#####################################  ŒÅ’è•” END   ##########################################
 --
   END regi_move_detail;
+--
+--
+   /**********************************************************************************
+   * Procedure Name   : calc_weight_capacity
+   * Description      : C-15 d—Ê—eÏŒvZ/ÏÚŒø—¦Zo
+   ***********************************************************************************/
+  PROCEDURE calc_weight_capacity(
+    iv_arrival_date       IN         VARCHAR2,     -- ’…“úw’è
+    ov_errbuf             OUT NOCOPY VARCHAR2,     -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode            OUT NOCOPY VARCHAR2,     -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg             OUT NOCOPY VARCHAR2)     -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'calc_weight_capacity'; -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+--
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    ln_line_cnt             NUMBER := 0;
+    ln_weight               NUMBER := 0;       --–¾×d—Ê‡ŒvWŒv—p
+    ln_p_weight             NUMBER := 0;       --–¾×ƒpƒŒƒbƒgd—ÊWŒv—p
+    ln_sum_weight           NUMBER := 0;       --ƒwƒbƒ_d—ÊWŒv—p
+    ln_sum_p_weight         NUMBER := 0;       --ƒwƒbƒ_ƒpƒŒƒbƒgd—ÊWŒv—p
+    ln_capacity             NUMBER := 0;       --–¾×—eÏWŒv—p
+    ln_sum_capacity         NUMBER := 0;       --ƒwƒbƒ_—eÏWŒv—p
+    lv_item_code            xxinv_mov_req_instr_lines.item_code%TYPE; --d—Ê‡ŒvZo‘ÎÛ•i–Ú
+    ln_instruct_qty         xxinv_mov_req_instr_lines.instruct_qty%TYPE; --d—Ê‡ŒvZo‘ÎÛ”—Ê
+    ln_mov_hdr_id           xxinv_mov_req_instr_headers.mov_hdr_id%TYPE;
+--
+    lv_loading_over_class          VARCHAR2(1); -- ÏÚƒI[ƒo[‹æ•ª
+    lv_ship_methods                xxcmn_ship_methods.ship_method%TYPE;        -- o‰×•û–@
+    ln_load_efficiency_weight      NUMBER;      -- d—ÊÏÚŒø—¦
+    ln_load_efficiency_capacity    NUMBER;      -- —eÏÏÚŒø—¦
+    lv_mixed_ship_method     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE; -- ¬Ú”z‘—‹æ•ª
+--
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+--
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+--
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+    -- ***************************************
+    -- ***        Àˆ—‚Ì‹Lq             ***
+    -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
+    -- ***************************************
+--
+debug_log(FND_FILE.LOG,'(C-15)' || cv_prg_name || ' Start¥¥¥');
+--
+-- ############################################################################################
+-- ˆÚ“®–¾×d—Ê/—eÏ•âŠ®ƒ‹[ƒv
+-- ############################################################################################
+    <<move_line_weight_capacityloop>>
+    FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
+      ln_weight := 0;
+      ln_capacity := 0;
+      ln_p_weight := 0;
+--
+      --Še–¾×‚Ìd—Ê—eÏZo‘ÎÛ‚Ì•i–ÚƒR[ƒh‚ğŠi”[
+      lv_item_code := gr_move_lines_tbl(ln_line_cnt).item_code;
+      --Še–¾×‚Ìd—Ê—eÏZo‘ÎÛ‚Ì”—Ê‚ğŠi”[
+      ln_instruct_qty := gr_move_lines_tbl(ln_line_cnt).instruct_qty;
+--
+      -- ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)
+      xxwsh_common910_pkg.calc_total_value(
+                                         lv_item_code,        -- 1.•i–ÚƒR[ƒh I
+                                         ln_instruct_qty,     -- 2.”—Ê I
+                                         lv_retcode,          -- 3.ƒŠƒ^[ƒ“ƒR[ƒh O
+                                         lv_errbuf,           -- 4.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
+                                         lv_errmsg,           -- 5.ƒGƒ‰[ƒƒbƒZ[ƒW O
+                                         ln_weight,           -- 6.‡Œvd—Ê O
+                                         ln_capacity,         -- 7.‡Œv—eÏ O
+                                         ln_p_weight);        -- 8.‡ŒvƒpƒŒƒbƒgd—Ê O
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾× ‡Œv’lZo(d—Ê/—eÏ)');
+debug_log(FND_FILE.LOG,'    •i–ÚƒR[ƒh  = ' || lv_item_code);
+debug_log(FND_FILE.LOG,'    –¾×”—Ê = ' || ln_instruct_qty);
+debug_log(FND_FILE.LOG,'    ƒŠƒ^[ƒ“ƒR[ƒh = ' || lv_retcode);
+debug_log(FND_FILE.LOG,'    ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh = ' || lv_errbuf);
+debug_log(FND_FILE.LOG,'    ƒGƒ‰[ƒƒbƒZ[ƒW = ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'    ‡Œvd—Ê = ' || ln_weight);
+debug_log(FND_FILE.LOG,'    ‡Œv—eÏ = ' || ln_capacity);
+debug_log(FND_FILE.LOG,'    ‡ŒvƒpƒŒƒbƒgd—Êt = ' || ln_p_weight);
+--
+      -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
+      IF (lv_retcode <> gv_status_normal) THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                                   ,gv_msg_wsh_13124     -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
+                                                   ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
+                                                   ,gv_cons_mov_hdr_tbl  -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
+                                                   ,gv_tkn_param1        -- ƒg[ƒNƒ“'PARAM1'
+                                                   ,lv_item_code         -- •i–ÚƒR[ƒh
+                                                   ,gv_tkn_param2        -- ƒg[ƒNƒ“'PARAM2'
+                                                   ,ln_instruct_qty          -- ‡Œv”—Ê
+                                                   ,gv_tkn_param3        -- ƒg[ƒNƒ“'PARAM3'
+                                                   ,lv_errbuf            -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
+                                                   ,gv_tkn_param4        -- ƒg[ƒNƒ“'PARAM4'
+                                                   ,lv_errmsg            -- ƒGƒ‰[ƒƒbƒZ[ƒW
+                                                   )
+                                                   ,1
+                                                   ,5000);
+--
+        -- Œx‚Ìo—Í
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        -- ŒxŒ”‚ÌƒJƒEƒ“ƒg
+        gn_warn_cnt := gn_warn_cnt + 1;
+        ov_retcode := gv_status_warn;
+--
+        -- ƒCƒ“ƒT[ƒg‘ÎÛ‚©‚çœŠO‚·‚éƒtƒ‰ƒO‚ğON‚É‚·‚éB
+        gr_move_lines_tbl(ln_line_cnt).not_insert_flg := gv_cons_flg_on;
+--
+      ELSE
+        gr_move_lines_tbl(ln_line_cnt).not_insert_flg := gv_cons_flg_off;
+--
+      END IF;
+--
+debug_log(FND_FILE.LOG,'  –¾×‰ÁZŒ‹‰Ê');
+debug_log(FND_FILE.LOG,'    ‡Œvd—Ê = ' || ln_weight);
+debug_log(FND_FILE.LOG,'    ƒpƒŒƒbƒg‡Œvd—Ê = ' || ln_p_weight);
+debug_log(FND_FILE.LOG,'    ‡Œv—eÏ = ' || ln_capacity);
+      --–¾×–ˆ‚Ìd—Ê‚ğƒZƒbƒg
+      gr_move_lines_tbl(ln_line_cnt).weight := ln_weight;
+      --–¾×–ˆ‚ÌƒpƒŒƒbƒgd—Ê‚ğƒZƒbƒg
+      gr_move_lines_tbl(ln_line_cnt).pallet_weight := ln_p_weight;
+      --–¾×–ˆ‚Ì—eÏ‚ğƒZƒbƒg
+      gr_move_lines_tbl(ln_line_cnt).capacity := ln_capacity;
+--
+    END LOOP move_line_weight_capacityloop;
+--
+--
+-- ############################################################################################
+-- ˆÚ“®ƒwƒbƒ_d—Ê/—eÏ•âŠ®ƒ‹[ƒv
+-- ############################################################################################
+--
+    --ƒwƒbƒ_’PˆÊ‚É•R‚Ã‚­–¾×‚Ìd—Ê/—eÏ‚ğ‡Œv‚·‚é
+    <<move_hdr_weight_capacity_loop>>
+    FOR ln_hdr_cnt IN 1..gr_move_header_tbl.COUNT LOOP
+--
+      ln_sum_weight := 0;
+      ln_sum_p_weight := 0;
+      ln_sum_capacity := 0;
+--
+      FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
+--
+        -- “¯‚¶ƒwƒbƒ_ID‚È‚ç‚Î‡Z‚·‚é
+        IF (gr_move_header_tbl(ln_hdr_cnt).mov_hdr_id =
+            gr_move_lines_tbl(ln_line_cnt).mov_hdr_id)
+        THEN
+          ln_sum_weight := ln_sum_weight + NVL(gr_move_lines_tbl(ln_line_cnt).weight, 0);
+          ln_sum_p_weight := ln_sum_p_weight + NVL(gr_move_lines_tbl(ln_line_cnt).pallet_weight, 0);
+          ln_sum_capacity := ln_sum_capacity + NVL(gr_move_lines_tbl(ln_line_cnt).capacity, 0);
+        END IF;
+--
+      END LOOP;
+--
+debug_log(FND_FILE.LOG,'  ƒwƒbƒ_‰ÁZŒ‹‰Ê');
+debug_log(FND_FILE.LOG,'    ‡Œvd—Ê = ' || ln_sum_weight);
+debug_log(FND_FILE.LOG,'    ƒpƒŒƒbƒg‡Œvd—Ê = ' || ln_sum_p_weight);
+debug_log(FND_FILE.LOG,'    ‡Œv—eÏ = ' || ln_sum_capacity);
+      gr_move_header_tbl(ln_hdr_cnt).sum_weight := ln_sum_weight;
+      gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight := ln_sum_p_weight;
+      gr_move_header_tbl(ln_hdr_cnt).sum_capacity := ln_sum_capacity;
+--
+    END LOOP move_hdr_weight_capacity_loop;
+--
+-- ############################################################################################
+-- ˆÚ“®ƒwƒbƒ_ÏÚŒø—¦•âŠ®ƒ‹[ƒv
+-- ############################################################################################
+--
+    ln_mov_hdr_id := NULL;
+--
+    -- d—Ê—eÏ‹æ•ª‚É‰‚¶‚ÄAd—ÊÏÚŒø—¦‚Ü‚½‚Í—eÏÏÚŒø—¦‚ğƒZƒbƒg‚·‚é
+    <<move_header_le_loop>>
+    FOR ln_hdr_cnt IN 1..gr_move_header_tbl.COUNT LOOP
+--
+      ln_sum_weight := 0;
+      ln_sum_capacity := 0;
+      ln_load_efficiency_weight := 0;
+      ln_load_efficiency_capacity := 0;
+--
+      -- d—Ê—eÏ‹æ•ª=d—Ê‚Ìê‡‚ÉAd—ÊÏÚŒø—¦‚ğZo‚·‚é
+      IF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_weight THEN
+--
+        --d—ÊZo‚Ì‚½‚ßA‡Œvd—Ê‚ÉƒpƒŒƒbƒgd—Ê‚ğ‰ÁZ‚·‚é
+        ln_sum_weight := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_weight,0) +
+                         NVL(gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight,0);
+--
+        -- ‚Pƒwƒbƒ_‚ ‚½‚è‚ÌÏÚŒø—¦‚ğZo‚µ‚Äƒwƒbƒ_‚ÉƒZƒbƒg‚·‚é
+        -- ÏÚŒø—¦ƒ`ƒFƒbƒN(ÏÚŒø—¦Zo)
+        xxwsh_common910_pkg.calc_load_efficiency(
+             ln_sum_weight,                                       -- 1.‡Œvd—Ê I
+             NULL,                                                -- 2.‡Œv—eÏ I
+             gv_cons_wh,                                          -- 3.ƒR[ƒh‹æ•ª‚P I '4'
+             gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.“üoŒÉêŠƒR[ƒh‚P I
+               gv_cons_wh,                                          -- 5.ƒR[ƒh‹æ•ª‚Q I '4'
+             gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.“üoŒÉêŠƒR[ƒh‚Q I
+             gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.o‰×•û–@ I
+             gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.¤•i‹æ•ª I
+             NULL,                                                -- 9.©“®”zÔ‘ÎÛ‹æ•ª I
+             TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.Šî€“ú(“K—p“úŠî€“ú) I
+             lv_retcode,                                          -- 11.ƒŠƒ^[ƒ“ƒR[ƒh O
+             lv_errbuf,                                           -- 12.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
+             lv_errmsg,                                           -- 13.ƒGƒ‰[ƒƒbƒZ[ƒW O
+             lv_loading_over_class,                               -- 14.ÏÚƒI[ƒo[‹æ•ª O
+             lv_ship_methods,                                     -- 15.o‰×•û–@ O
+             ln_load_efficiency_weight,                           -- 16.d—ÊÏÚŒø—¦ O
+             ln_load_efficiency_capacity,                         -- 17.—eÏÏÚŒø—¦ O
+             lv_mixed_ship_method);                               -- 18.¬Ú”z‘—‹æ•ª O
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ÏÚŒø—¦(d—Ê)-----------------');
+debug_log(FND_FILE.LOG,'    ‡Œvd—Ê = ' || gr_move_header_tbl(ln_hdr_cnt).sum_weight);
+debug_log(FND_FILE.LOG,'    “üoŒÉêŠƒR[ƒh‚P = ' || gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code);
+debug_log(FND_FILE.LOG,'    “üoŒÉêŠƒR[ƒh‚Q = ' || gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code);
+debug_log(FND_FILE.LOG,'    o‰×•û–@ = ' || gr_move_header_tbl(ln_hdr_cnt).shipping_method_code);
+debug_log(FND_FILE.LOG,'    ¤•i‹æ•ª = ' ||  gr_move_header_tbl(ln_hdr_cnt).item_class);
+debug_log(FND_FILE.LOG,'    Šî€“ú(“K—p“úŠî€“ú) = ' ||  iv_arrival_date);
+debug_log(FND_FILE.LOG,'    ƒŠƒ^[ƒ“ƒR[ƒh = ' || lv_retcode);
+debug_log(FND_FILE.LOG,'    ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh = ' || lv_errbuf);
+debug_log(FND_FILE.LOG,'    ƒGƒ‰[ƒƒbƒZ[ƒW = ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'    ÏÚƒI[ƒo[‹æ•ª = ' || lv_loading_over_class);
+debug_log(FND_FILE.LOG,'    o‰×•û–@ = ' || lv_ship_methods);
+debug_log(FND_FILE.LOG,'    d—ÊÏÚŒø—¦ = ' || ln_load_efficiency_weight);
+debug_log(FND_FILE.LOG,'    —eÏÏÚŒø—¦ = ' || ln_load_efficiency_capacity);
+debug_log(FND_FILE.LOG,'    ¬Ú”z‘—‹æ•ª = ' || lv_mixed_ship_method);
+--
+        -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
+        IF (lv_retcode <> gv_status_normal) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                        ,gv_msg_wsh_13172                                   -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
+                        ,gv_tkn_table_name                                  -- ƒg[ƒNƒ“'TABLE_NAME'
+                        ,gv_cons_mov_hdr_tbl                                -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
+                        ,gv_tkn_param1                                      -- ƒg[ƒNƒ“'PARAM1'
+                        ,gr_move_header_tbl(ln_hdr_cnt).sum_weight          -- ‡Œvd—Ê
+                        ,gv_tkn_param2                                      -- ƒg[ƒNƒ“'PARAM2'
+                        ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
+                        ,gv_tkn_param3                                      -- ƒg[ƒNƒ“'PARAM3'
+                        ,gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code  -- “üoŒÉêŠƒR[ƒh
+                        ,gv_tkn_param4                                      -- ƒg[ƒNƒ“'PARAM4'
+                        ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
+                        ,gv_tkn_param5                                      -- ƒg[ƒNƒ“'PARAM5'
+                        ,gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code  -- “üoŒÉêŠƒR[ƒh
+                        ,gv_tkn_param6                                      -- ƒg[ƒNƒ“'PARAM6'
+                        ,gr_move_header_tbl(ln_hdr_cnt).shipping_method_code -- o‰×•û–@
+                        ,gv_tkn_param7                                      -- ƒg[ƒNƒ“'PARAM7'
+                        ,gr_move_header_tbl(ln_hdr_cnt).item_class          -- ¤•i‹æ•ª
+                        ,gv_tkn_param8                                      -- ƒg[ƒNƒ“'PARAM8'
+                        ,lv_errbuf                                    -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
+                        ,gv_tkn_param9                                      -- ƒg[ƒNƒ“'PARAM9'
+                        ,lv_errmsg                                          -- ƒGƒ‰[ƒƒbƒZ[ƒW
+                        )
+                        ,1
+                        ,5000);
+--
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        -- ŒxŒ”‚ÌƒJƒEƒ“ƒg
+          gn_warn_cnt := gn_warn_cnt + 1;
+          ov_retcode := gv_status_warn;
+          -- ƒCƒ“ƒT[ƒg‘ÎÛ‚©‚çœŠO‚·‚éƒtƒ‰ƒO‚ğON‚É‚·‚éB
+          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
+--
+        ELSE
+          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
+        END IF;
+--
+        -- ÏÚƒI[ƒo[‹æ•ª‚ª'1'‚¾‚Á‚½‚ç
+        IF (lv_loading_over_class = gv_cons_over_1y) THEN
+--
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                               gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                              ,gv_msg_wsh_13001     -- ÏÚƒI[ƒo[ƒGƒ‰[
+                                              ,gr_move_header_tbl(ln_hdr_cnt).mov_num -- ˆÚ“®”Ô†
+                                              ,lv_errmsg)           -- ƒƒbƒZ[ƒW
+                                              ,1
+                                              ,5000);
+--
+          gn_warn_cnt := gn_warn_cnt + 1;
+          ov_retcode := gv_status_warn;
+--
+        END IF;
+--
+      -- d—Ê—eÏ‹æ•ª=—eÏ‚Ìê‡‚ÉA—eÏÏÚŒø—¦‚ğZo‚·‚é
+      ELSIF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_capacity THEN
+--
+        --—eÏ‚Ìæ“¾
+        ln_sum_capacity := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_capacity,0);
+--
+        -- ‚Pƒwƒbƒ_‚ ‚½‚è‚ÌÏÚŒø—¦‚ğZo‚µ‚Äƒwƒbƒ_‚ÉƒZƒbƒg‚·‚é
+        -- ÏÚŒø—¦ƒ`ƒFƒbƒN(ÏÚŒø—¦Zo)
+        xxwsh_common910_pkg.calc_load_efficiency(
+             NULL,                                                -- 1.‡Œvd—Ê I
+             ln_sum_capacity,                                     -- 2.‡Œv—eÏ I
+             gv_cons_wh,                                          -- 3.ƒR[ƒh‹æ•ª‚P I '4'
+             gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.“üoŒÉêŠƒR[ƒh‚P I
+             gv_cons_wh,                                          -- 5.ƒR[ƒh‹æ•ª‚Q I '4'
+             gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.“üoŒÉêŠƒR[ƒh‚Q I
+             gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.o‰×•û–@ I
+             gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.¤•i‹æ•ª I
+             NULL,                                                -- 9.©“®”zÔ‘ÎÛ‹æ•ª I
+             TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.Šî€“ú(“K—p“úŠî€“ú) I
+             lv_retcode,                                          -- 11.ƒŠƒ^[ƒ“ƒR[ƒh O
+             lv_errbuf,                                           -- 12.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
+             lv_errmsg,                                           -- 13.ƒGƒ‰[ƒƒbƒZ[ƒW O
+             lv_loading_over_class,                               -- 14.ÏÚƒI[ƒo[‹æ•ª O
+             lv_ship_methods,                                     -- 15.o‰×•û–@ O
+             ln_load_efficiency_weight,                           -- 16.d—ÊÏÚŒø—¦ O
+             ln_load_efficiency_capacity,                         -- 17.—eÏÏÚŒø—¦ O
+             lv_mixed_ship_method);                               -- 18.¬Ú”z‘—‹æ•ª O
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ÏÚŒø—¦(—eÏ)-----------------');
+debug_log(FND_FILE.LOG,'    ‡Œvd—Ê = ' || gr_move_header_tbl(ln_hdr_cnt).sum_capacity);
+debug_log(FND_FILE.LOG,'    “üoŒÉêŠƒR[ƒh‚P = ' || gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code);
+debug_log(FND_FILE.LOG,'    “üoŒÉêŠƒR[ƒh‚Q = ' || gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code);
+debug_log(FND_FILE.LOG,'    o‰×•û–@ = ' || gr_move_header_tbl(ln_hdr_cnt).shipping_method_code);
+debug_log(FND_FILE.LOG,'    ¤•i‹æ•ª = ' ||  gr_move_header_tbl(ln_hdr_cnt).item_class);
+debug_log(FND_FILE.LOG,'    Šî€“ú(“K—p“úŠî€“ú) = ' ||  iv_arrival_date);
+debug_log(FND_FILE.LOG,'    ƒŠƒ^[ƒ“ƒR[ƒh = ' || lv_retcode);
+debug_log(FND_FILE.LOG,'    ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh = ' || lv_errbuf);
+debug_log(FND_FILE.LOG,'    ƒGƒ‰[ƒƒbƒZ[ƒW = ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'    ÏÚƒI[ƒo[‹æ•ª = ' || lv_loading_over_class);
+debug_log(FND_FILE.LOG,'    o‰×•û–@ = ' || lv_ship_methods);
+debug_log(FND_FILE.LOG,'    d—ÊÏÚŒø—¦ = ' || ln_load_efficiency_weight);
+debug_log(FND_FILE.LOG,'    —eÏÏÚŒø—¦ = ' || ln_load_efficiency_capacity);
+debug_log(FND_FILE.LOG,'    ¬Ú”z‘—‹æ•ª = ' || lv_mixed_ship_method);
+--
+        -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
+        IF (lv_retcode <> gv_status_normal) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                          ,gv_msg_wsh_13172                                   -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
+                          ,gv_tkn_table_name                                  -- ƒg[ƒNƒ“'TABLE_NAME'
+                          ,gv_cons_mov_hdr_tbl                                -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
+                          ,gv_tkn_param1                                      -- ƒg[ƒNƒ“'PARAM1'
+                          ,gr_move_header_tbl(ln_hdr_cnt).sum_capacity        -- ‡Œv—eÏ
+                          ,gv_tkn_param2                                      -- ƒg[ƒNƒ“'PARAM2'
+                          ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
+                          ,gv_tkn_param3                                      -- ƒg[ƒNƒ“'PARAM3'
+                          ,gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code  -- “üoŒÉêŠƒR[ƒh
+                          ,gv_tkn_param4                                      -- ƒg[ƒNƒ“'PARAM4'
+                          ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
+                          ,gv_tkn_param5                                      -- ƒg[ƒNƒ“'PARAM5'
+                          ,gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code  -- “üoŒÉêŠƒR[ƒh
+                          ,gv_tkn_param6                                      -- ƒg[ƒNƒ“'PARAM6'
+                          ,gr_move_header_tbl(ln_hdr_cnt).shipping_method_code -- o‰×•û–@
+                          ,gv_tkn_param7                                      -- ƒg[ƒNƒ“'PARAM7'
+                          ,gr_move_header_tbl(ln_hdr_cnt).item_class          -- ¤•i‹æ•ª
+                          ,gv_tkn_param8                                      -- ƒg[ƒNƒ“'PARAM8'
+                          ,lv_errbuf                                    -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
+                          ,gv_tkn_param9                                      -- ƒg[ƒNƒ“'PARAM9'
+                          ,lv_errmsg                                          -- ƒGƒ‰[ƒƒbƒZ[ƒW
+                          )
+                          ,1
+                          ,5000);
+--
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+          gn_warn_cnt := gn_warn_cnt + 1;
+          ov_retcode := gv_status_warn;
+          -- ƒCƒ“ƒT[ƒg‘ÎÛ‚©‚çœŠO‚·‚éƒtƒ‰ƒO‚ğON‚É‚·‚éB
+          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
+--
+        ELSE
+          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
+        END IF;
+--
+        -- ÏÚƒI[ƒo[‹æ•ª‚ª'1'‚¾‚Á‚½‚ç
+        IF (lv_loading_over_class = gv_cons_over_1y) THEN
+--
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                               gv_cons_msg_kbn_wsh  -- 'XXWSH'
+                                              ,gv_msg_wsh_13001     -- ÏÚƒI[ƒo[ƒGƒ‰[
+                                              ,gr_move_header_tbl(ln_hdr_cnt).mov_num -- ˆÚ“®”Ô†
+                                              ,lv_errmsg)           -- ƒƒbƒZ[ƒW
+                                              ,1
+                                              ,5000);
+--
+          gn_warn_cnt := gn_warn_cnt + 1;
+          ov_retcode := gv_status_warn;
+--
+        END IF;
+--
+      END IF;
+--
+      -- ƒwƒbƒ_‚ÉƒZƒbƒg
+      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_weight := ln_load_efficiency_weight;
+      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_capacity := ln_load_efficiency_capacity;
+--
+    END LOOP;
+--
+debug_log(FND_FILE.LOG,'(C-15)' || cv_prg_name || ' End¥¥¥¥¥');
+--
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END calc_weight_capacity;
+--
 --
    /**********************************************************************************
    * Procedure Name   : insert_tables
@@ -5644,9 +6146,19 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gt_ml_item_code(gn_upd_data_cnt_ml) = '
     -- *** ƒ[ƒJƒ‹’è” ***
 --
     -- *** ƒ[ƒJƒ‹•Ï” ***
-    ln_data_cnt    NUMBER;
-    ln_search_cnt  NUMBER;
-    lv_line_ins_flg VARCHAR2(1);
+    ln_data_cnt           NUMBER;         -- INSERTƒ‹[ƒv—pƒJƒEƒ“ƒ^(‹¤—L)
+--
+    ln_mh_data_cnt        NUMBER;         -- œŠO‘ÎÛ‚ğŠÜ‚ŞˆÚ“®ƒwƒbƒ_“o˜^‘ÎÛŒŸõ—p‚ÌƒJƒEƒ“ƒ^
+    ln_ml_data_cnt        NUMBER;         -- œŠO‘ÎÛ‚ğŠÜ‚ŞˆÚ“®–¾×“o˜^‘ÎÛŒŸõ—p‚ÌƒJƒEƒ“ƒ^
+    ln_mh_ins_data_cnt    NUMBER := 0;    -- ˆÚ“®ƒwƒbƒ_“o˜^—p‚ÌƒJƒEƒ“ƒ^
+    ln_ml_ins_data_cnt    NUMBER := 0;    -- ˆÚ“®–¾×“o˜^—p‚ÌƒJƒEƒ“ƒ^
+    ln_search_cnt         NUMBER;
+    lv_line_ins_flg       VARCHAR2(1);
+--
+    ln_ph_data_cnt        NUMBER;         -- ”­’ˆË—Šƒwƒbƒ_“o˜^‘ÎÛŒŸõ—p‚ÌƒJƒEƒ“ƒ^
+    ln_pl_data_cnt        NUMBER;         -- ”­’ˆË—Š–¾×“o˜^‘ÎÛŒŸõ—p‚ÌƒJƒEƒ“ƒ^
+    ln_ph_ins_data_cnt    NUMBER := 0;    -- ˆÚ“®ƒwƒbƒ_“o˜^—p‚ÌƒJƒEƒ“ƒ^
+    ln_pl_ins_data_cnt    NUMBER := 0;    -- ˆÚ“®–¾×“o˜^—p‚ÌƒJƒEƒ“ƒ^
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
@@ -5664,167 +6176,174 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-13)gt_ml_item_code(gn_upd_data_cnt_ml) = '
     -- ***        Àˆ—‚Ì‹Lq             ***
     -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
     -- ***************************************
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gn_ins_data_cnt_mh = ' || gn_ins_data_cnt_mh);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gn_ins_data_cnt_ml = ' || gn_ins_data_cnt_ml);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gn_ins_data_cnt_oh = ' || gn_ins_data_cnt_oh);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gn_ins_data_cnt_ol = ' || gn_ins_data_cnt_ol);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gn_upd_data_cnt_ml = ' || gn_upd_data_cnt_ml);
--- DEBUG
-    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é
-    <<ln_ins_cnt_loop>>
-    FOR ln_data_cnt IN 1..gn_ins_data_cnt_mh LOOP
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_move_header_tbl(ln_data_cnt).not_insert_flg = ' || gr_move_header_tbl(ln_data_cnt).not_insert_flg);
--- DEBUG
-      IF (gr_move_header_tbl(ln_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
-      gt_h_mov_hdr_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).mov_hdr_id;                  -- ˆÚ“®ƒwƒbƒ_ID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)ln_data_cnt(mh) = ' || ln_data_cnt);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_move_header_tbl(ln_data_cnt).mov_hdr_id = ' || gr_move_header_tbl(ln_data_cnt).mov_hdr_id);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_move_header_tbl(ln_data_cnt).created_by = ' || gr_move_header_tbl(ln_data_cnt).created_by);
--- DEBUG
-      gt_h_mov_num(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).mov_num;                     -- ˆÚ“®”Ô†
-      gt_h_mov_type(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).mov_type;                    -- ˆÚ“®ƒ^ƒCƒv
-      gt_h_entered_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).entered_date;                -- “ü—Í“ú
-      gt_h_instruction_post_code(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).instruction_post_code;       -- w¦•”
-      gt_h_status(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).status;                      -- ƒXƒe[ƒ^ƒX
-      gt_h_notif_status(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).notif_status;                -- ’Ê’mƒXƒe[ƒ^ƒX
-      gt_h_shipped_locat_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).shipped_locat_id;            -- oŒÉŒ³ID
-      gt_h_shipped_locat_code(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).shipped_locat_code;          -- oŒÉŒ³•ÛŠÇêŠ
-      gt_h_ship_to_locat_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).ship_to_locat_id;            -- “üŒÉæID
-      gt_h_ship_to_locat_code(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).ship_to_locat_code;          -- “üŒÉæ•ÛŠÇêŠ
-      gt_h_schedule_ship_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).schedule_ship_date;          -- oŒÉ—\’è“ú
-      gt_h_schedule_arrival_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).schedule_arrival_date;       -- “üŒÉ—\’è“ú
-      gt_h_freight_charge_class(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).freight_charge_class;        -- ‰^’À‹æ•ª
-      gt_h_collected_pallet_qty(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).collected_pallet_qty;        -- ƒpƒŒƒbƒg‰ñû–‡”
-      gt_h_out_pallet_qty(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).out_pallet_qty;              -- ƒpƒŒƒbƒg–‡”(o)
-      gt_h_in_pallet_qty(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).in_pallet_qty;               -- ƒpƒŒƒbƒg–‡”(“ü)
-      gt_h_no_cont_freight_class(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).no_cont_freight_class;       -- Œ_–ñŠO‰^’À‹æ•ª
-      gt_h_delivery_no(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).delivery_no;                 -- ”z‘—No
-      gt_h_description(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).description;                 -- “E—v
-      gt_h_loading_efficiency_weight(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).loading_efficiency_weight;   -- ÏÚ—¦(d—Ê)
-      gt_h_loading_efficiency_capa(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).loading_efficiency_capacity; -- ÏÚ—¦(—eÏ)
-      gt_h_organization_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).organization_id;             -- ‘gDID
-      gt_h_career_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).career_id;                   -- ‰^‘—‹ÆÒID
-      gt_h_freight_carrier_code(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).freight_carrier_code;        -- ‰^‘—‹ÆÒ
-      gt_h_shipping_method_code(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).shipping_method_code;        -- ”z‘—‹æ•ª
-      gt_h_actual_career_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).actual_career_id;            -- ‰^‘—‹ÆÒID_ÀÑ
-      gt_h_actual_freight_carrier_cd(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).actual_freight_carrier_code; -- ‰^‘—‹ÆÒ_ÀÑ
-      gt_h_actual_shipping_method_cd(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).actual_shipping_method_code; -- ”z‘—‹æ•ª_ÀÑ
-      gt_h_arrival_time_from(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).arrival_time_from;           -- ’…‰×ŠÔFROM
-      gt_h_arrival_time_to(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).arrival_time_to;             -- ’…‰×ŠÔTO
-      gt_h_slip_number(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).slip_number;                 -- ‘—‚èóNo
-      gt_h_sum_quantity(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).sum_quantity;                -- ‡Œv”—Ê
-      gt_h_small_quantity(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).small_quantity;              -- ¬ŒûŒÂ”
-      gt_h_label_quantity(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).label_quantity;              -- ƒ‰ƒxƒ‹–‡”
-      gt_h_based_weight(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).based_weight;                -- Šî–{d—Ê
-      gt_h_based_capacity(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).based_capacity;              -- Šî–{—eÏ
-      gt_h_sum_weight(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).sum_weight;                  -- ¬Úd—Ê‡Œv
-      gt_h_sum_capacity(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).sum_capacity;                -- ¬Ú—eÏ‡Œv
-      gt_h_sum_pallet_weight(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).sum_pallet_weight;           -- ‡ŒvƒpƒŒƒbƒgd—Ê
-      gt_h_pallet_sum_quantity(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).pallet_sum_quantity;         -- ƒpƒŒƒbƒg‡Œv–‡”
-      gt_h_mixed_ratio(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).mixed_ratio;                 -- ¬Ú—¦
-      gt_h_weight_capacity_class(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).weight_capacity_class;       -- d—Ê—eÏ‹æ•ª
-      gt_h_actual_ship_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).actual_ship_date;            -- oŒÉÀÑ“ú
-      gt_h_actual_arrival_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).actual_arrival_date;         -- “üŒÉÀÑ“ú
-      gt_h_mixed_sign(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).mixed_sign;                  -- ¬Ú‹L†
-      gt_h_batch_no(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).batch_no;                    -- è”zNo
-      gt_h_item_class(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).item_class;                  -- ¤•i‹æ•ª
-      gt_h_product_flg(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).product_flg;                 -- »•i¯•Ê‹æ•ª
-      gt_h_no_instr_actual_class(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).no_instr_actual_class;       -- w¦‚È‚µÀÑ‹æ•ª
-      gt_h_comp_actual_flg(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).comp_actual_flg;             -- ÀÑŒvãÏƒtƒ‰ƒO
-      gt_h_correct_actual_flg(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).correct_actual_flg;          -- ÀÑ’ù³ƒtƒ‰ƒO
-      gt_h_prev_notif_status(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).prev_notif_status;           -- ‘O‰ñ’Ê’mƒXƒe[ƒ^ƒX
-      gt_h_notif_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).notif_date;                  -- Šm’è’Ê’mÀÑ“ú
-      gt_h_prev_delivery_no(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).prev_delivery_no;            -- ‘O‰ñ”z‘—No
-      gt_h_new_modify_flg(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).new_modify_flg;              -- V‹KC³ƒtƒ‰ƒO
-      gt_h_screen_update_by(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).screen_update_by;            -- ‰æ–ÊXVÒ
-      gt_h_screen_update_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).screen_update_date;          -- ‰æ–ÊXV“ú
-      gt_h_created_by(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).created_by;                  -- ì¬Ò
-      gt_h_creation_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).creation_date;               -- ì¬“ú
-      gt_h_last_updated_by(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).last_updated_by;             -- ÅIXVÒ
-      gt_h_last_update_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).last_update_date;            -- ÅIXV“ú
-      gt_h_last_update_login(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).last_update_login;           -- ÅIXVƒƒOƒCƒ“
-      gt_h_request_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).request_id;                  -- —v‹ID
-      gt_h_program_application_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).program_application_id;
-                                                       -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gt_h_program_id(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).program_id;                  -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
-      gt_h_program_update_date(ln_data_cnt) :=
-          gr_move_header_tbl(ln_data_cnt).program_update_date;         -- ƒvƒƒOƒ‰ƒ€XV“ú
-    END IF;
-    END LOOP ln_ins_cnt_loop;
 --
-    -- ƒwƒbƒ_‚ğ“Ç‚İ”ò‚Î‚·•”•ª‚ª‚ ‚é‚Ì‚ÅŒvZ‚µ‚È‚¨‚·
-    gn_ins_data_cnt_mh := gt_h_mov_hdr_id.COUNT;
+debug_log(FND_FILE.LOG,'(C-14)' || cv_prg_name || ' Start¥¥¥');
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_“o˜^Œ”(Œx‚É‚æ‚éœŠO‘ÎÛŠÜ‚Ş) = ' || TO_CHAR(gn_ins_data_cnt_mh));
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×“o˜^Œ”(Œx‚É‚æ‚éœŠO‘ÎÛŠÜ‚Ş) = ' || TO_CHAR(gn_ins_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_“o˜^Œ” = ' || TO_CHAR(gn_ins_data_cnt_ph));
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Š–¾×“o˜^Œ” = ' || TO_CHAR(gn_ins_data_cnt_pl));
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×XVŒ”(Œx‚É‚æ‚éœŠO‘ÎÛŠÜ‚Ş) = ' || TO_CHAR(gn_upd_data_cnt_ml));
+debug_log(FND_FILE.LOG,'  ó’–¾×XVŒ”(Œx‚É‚æ‚éœŠO‘ÎÛŠÜ‚Ş) = ' || TO_CHAR(gn_upd_data_cnt_ol));
+--
+    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é ˆÚ“®ƒwƒbƒ_
+    <<ln_mh_ins_cnt_loop>>
+    FOR ln_mh_data_cnt IN 1..gn_ins_data_cnt_mh LOOP
+--
+debug_log(FND_FILE.LOG,'  “o˜^œŠOƒtƒ‰ƒO = '|| gr_move_header_tbl(ln_mh_data_cnt).not_insert_flg);
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ID = ' || gr_move_header_tbl(ln_mh_data_cnt).mov_hdr_id);
+debug_log(FND_FILE.LOG,'  ˆÚ“®”Ô† = ' || gr_move_header_tbl(ln_mh_data_cnt).mov_num);
+--
+      IF (gr_move_header_tbl(ln_mh_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
+--
+        -- ƒwƒbƒ_ƒCƒ“ƒT[ƒg—p•Ï”‚ÌƒCƒ“ƒNƒŠƒƒ“ƒg
+        ln_mh_ins_data_cnt := ln_mh_ins_data_cnt + 1;
+--
+        gt_h_mov_hdr_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).mov_hdr_id;                  -- ˆÚ“®ƒwƒbƒ_ID
+        gt_h_mov_num(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).mov_num;                     -- ˆÚ“®”Ô†
+        gt_h_mov_type(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).mov_type;                    -- ˆÚ“®ƒ^ƒCƒv
+        gt_h_entered_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).entered_date;                -- “ü—Í“ú
+        gt_h_instruction_post_code(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).instruction_post_code;       -- w¦•”
+        gt_h_status(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).status;                      -- ƒXƒe[ƒ^ƒX
+        gt_h_notif_status(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).notif_status;                -- ’Ê’mƒXƒe[ƒ^ƒX
+        gt_h_shipped_locat_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).shipped_locat_id;            -- oŒÉŒ³ID
+        gt_h_shipped_locat_code(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).shipped_locat_code;          -- oŒÉŒ³•ÛŠÇêŠ
+        gt_h_ship_to_locat_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).ship_to_locat_id;            -- “üŒÉæID
+        gt_h_ship_to_locat_code(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).ship_to_locat_code;          -- “üŒÉæ•ÛŠÇêŠ
+        gt_h_schedule_ship_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).schedule_ship_date;          -- oŒÉ—\’è“ú
+        gt_h_schedule_arrival_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).schedule_arrival_date;       -- “üŒÉ—\’è“ú
+        gt_h_freight_charge_class(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).freight_charge_class;        -- ‰^’À‹æ•ª
+        gt_h_collected_pallet_qty(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).collected_pallet_qty;        -- ƒpƒŒƒbƒg‰ñû–‡”
+        gt_h_out_pallet_qty(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).out_pallet_qty;              -- ƒpƒŒƒbƒg–‡”(o)
+        gt_h_in_pallet_qty(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).in_pallet_qty;               -- ƒpƒŒƒbƒg–‡”(“ü)
+        gt_h_no_cont_freight_class(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).no_cont_freight_class;       -- Œ_–ñŠO‰^’À‹æ•ª
+        gt_h_delivery_no(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).delivery_no;                 -- ”z‘—No
+        gt_h_description(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).description;                 -- “E—v
+        gt_h_loading_efficiency_weight(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).loading_efficiency_weight;   -- ÏÚ—¦(d—Ê)
+        gt_h_loading_efficiency_capa(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).loading_efficiency_capacity; -- ÏÚ—¦(—eÏ)
+        gt_h_organization_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).organization_id;             -- ‘gDID
+        gt_h_career_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).career_id;                   -- ‰^‘—‹ÆÒID
+        gt_h_freight_carrier_code(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).freight_carrier_code;        -- ‰^‘—‹ÆÒ
+        gt_h_shipping_method_code(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).shipping_method_code;        -- ”z‘—‹æ•ª
+        gt_h_actual_career_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).actual_career_id;            -- ‰^‘—‹ÆÒID_ÀÑ
+        gt_h_actual_freight_carrier_cd(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).actual_freight_carrier_code; -- ‰^‘—‹ÆÒ_ÀÑ
+        gt_h_actual_shipping_method_cd(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).actual_shipping_method_code; -- ”z‘—‹æ•ª_ÀÑ
+        gt_h_arrival_time_from(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).arrival_time_from;           -- ’…‰×ŠÔFROM
+        gt_h_arrival_time_to(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).arrival_time_to;             -- ’…‰×ŠÔTO
+        gt_h_slip_number(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).slip_number;                 -- ‘—‚èóNo
+        gt_h_sum_quantity(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).sum_quantity;                -- ‡Œv”—Ê
+        gt_h_small_quantity(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).small_quantity;              -- ¬ŒûŒÂ”
+        gt_h_label_quantity(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).label_quantity;              -- ƒ‰ƒxƒ‹–‡”
+        gt_h_based_weight(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).based_weight;                -- Šî–{d—Ê
+        gt_h_based_capacity(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).based_capacity;              -- Šî–{—eÏ
+        gt_h_sum_weight(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).sum_weight;                  -- ¬Úd—Ê‡Œv
+        gt_h_sum_capacity(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).sum_capacity;                -- ¬Ú—eÏ‡Œv
+        gt_h_sum_pallet_weight(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).sum_pallet_weight;           -- ‡ŒvƒpƒŒƒbƒgd—Ê
+        gt_h_pallet_sum_quantity(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).pallet_sum_quantity;         -- ƒpƒŒƒbƒg‡Œv–‡”
+        gt_h_mixed_ratio(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).mixed_ratio;                 -- ¬Ú—¦
+        gt_h_weight_capacity_class(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).weight_capacity_class;       -- d—Ê—eÏ‹æ•ª
+        gt_h_actual_ship_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).actual_ship_date;            -- oŒÉÀÑ“ú
+        gt_h_actual_arrival_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).actual_arrival_date;         -- “üŒÉÀÑ“ú
+        gt_h_mixed_sign(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).mixed_sign;                  -- ¬Ú‹L†
+        gt_h_batch_no(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).batch_no;                    -- è”zNo
+        gt_h_item_class(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).item_class;                  -- ¤•i‹æ•ª
+        gt_h_product_flg(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).product_flg;                 -- »•i¯•Ê‹æ•ª
+        gt_h_no_instr_actual_class(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).no_instr_actual_class;       -- w¦‚È‚µÀÑ‹æ•ª
+        gt_h_comp_actual_flg(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).comp_actual_flg;             -- ÀÑŒvãÏƒtƒ‰ƒO
+        gt_h_correct_actual_flg(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).correct_actual_flg;          -- ÀÑ’ù³ƒtƒ‰ƒO
+        gt_h_prev_notif_status(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).prev_notif_status;           -- ‘O‰ñ’Ê’mƒXƒe[ƒ^ƒX
+        gt_h_notif_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).notif_date;                  -- Šm’è’Ê’mÀÑ“ú
+        gt_h_prev_delivery_no(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).prev_delivery_no;            -- ‘O‰ñ”z‘—No
+        gt_h_new_modify_flg(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).new_modify_flg;              -- V‹KC³ƒtƒ‰ƒO
+        gt_h_screen_update_by(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).screen_update_by;            -- ‰æ–ÊXVÒ
+        gt_h_screen_update_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).screen_update_date;          -- ‰æ–ÊXV“ú
+        gt_h_created_by(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).created_by;                  -- ì¬Ò
+        gt_h_creation_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).creation_date;               -- ì¬“ú
+        gt_h_last_updated_by(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).last_updated_by;             -- ÅIXVÒ
+        gt_h_last_update_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).last_update_date;            -- ÅIXV“ú
+        gt_h_last_update_login(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).last_update_login;           -- ÅIXVƒƒOƒCƒ“
+        gt_h_request_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).request_id;                  -- —v‹ID
+        gt_h_program_application_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).program_application_id;
+                                                         -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+        gt_h_program_id(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).program_id;                  -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
+        gt_h_program_update_date(ln_mh_ins_data_cnt) :=
+            gr_move_header_tbl(ln_mh_data_cnt).program_update_date;         -- ƒvƒƒOƒ‰ƒ€XV“ú
+--
+      END IF;
+--
+    END LOOP ln_mh_ins_cnt_loop;
+--
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_“o˜^Œ” = ' || TO_CHAR(ln_mh_ins_data_cnt));
+--
     -- FORALL‚É‚ÄˆÚ“®ˆË—Š/w¦ƒwƒbƒ_‚ğINSERT‚·‚é
-    FORALL ln_data_cnt IN 1..gn_ins_data_cnt_mh
+    FORALL ln_data_cnt IN 1..ln_mh_ins_data_cnt
+--
       INSERT INTO xxinv_mov_req_instr_headers(
         mov_hdr_id,                  -- ˆÚ“®ƒwƒbƒ_ID
         mov_num,                     -- ˆÚ“®”Ô†
@@ -5963,102 +6482,120 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_move_header_tbl(ln_data_cnt).created
         gt_h_program_update_date(ln_data_cnt)          -- ƒvƒƒOƒ‰ƒ€XV“ú
       );
 --
-    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é
-    <<ln_ins_cnt_loop>>
-    FOR ln_data_cnt IN 1..gn_ins_data_cnt_ml LOOP
+--
+    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é  ˆÚ“®–¾×
+    <<ln_ml_ins_cnt_loop>>
+    FOR ln_ml_data_cnt IN 1..gn_ins_data_cnt_ml LOOP
+--
       -- ƒwƒbƒ_—p•Ï”‚É‚ ‚é‚©‚Ç‚¤‚©ŒŸõ‚ ‚ê‚Î‚»‚Ì‚Ü‚ÜA‚È‚¯‚ê‚Îì¬‚µ‚È‚¢–¾×‚Æ‚·‚é
       <<search_loop>>
-      FOR ln_search_cnt IN 1..gn_ins_data_cnt_mh LOOP
-        IF (gr_move_lines_tbl(ln_data_cnt).mov_hdr_id = gt_h_mov_hdr_id(ln_search_cnt)) THEN
+      FOR ln_search_cnt IN 1..ln_mh_ins_data_cnt LOOP
+--
+        IF (gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id = gt_h_mov_hdr_id(ln_search_cnt)) THEN
           lv_line_ins_flg := gv_cons_flg_on;
           EXIT;
         END IF;
+--
       END LOOP search_loop;
-      IF (lv_line_ins_flg = gv_cons_flg_on ) THEN
-      gt_m_mov_line_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).mov_line_id;                -- ˆÚ“®–¾×ID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)ln_data_cnt(ml) = ' || ln_data_cnt);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_move_lines_tbl(ln_data_cnt).mov_line_id = ' || gr_move_lines_tbl(ln_data_cnt).mov_line_id);
--- DEBUG
-      gt_m_mov_hdr_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).mov_hdr_id;                 -- ˆÚ“®ƒwƒbƒ_ID
-      gt_m_line_number(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).line_number;                -- –¾×”Ô†
-      gt_m_organization_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).organization_id;            -- ‘gDID
-      gt_m_item_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).item_id;                    -- OPM•i–ÚID
-      gt_m_item_code(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).item_code;                  -- •i–Ú
-      gt_m_request_qty(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).request_qty;                -- ˆË—Š”—Ê
-      gt_m_pallet_quantity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).pallet_quantity;            -- ƒpƒŒƒbƒg”
-      gt_m_layer_quantity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).layer_quantity;             -- ’i”
-      gt_m_case_quantity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).case_quantity;              -- ƒP[ƒX”
-      gt_m_instruct_qty(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).instruct_qty;               -- w¦”—Ê
-      gt_m_reserved_quantity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).reserved_quantity;          -- ˆø“–”
-      gt_m_uom_code(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).uom_code;                   -- ’PˆÊ
-      gt_m_designated_pdt_date(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).designated_production_date; -- w’è»‘¢“ú
-      gt_m_pallet_qty(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).pallet_qty;                 -- ƒpƒŒƒbƒg–‡”
-      gt_m_move_num(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).move_num;                   -- QÆˆÚ“®”Ô†
-      gt_m_po_num(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).po_num;                     -- QÆ”­’”Ô†
-      gt_m_first_instruct_qty(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).first_instruct_qty;         -- ‰‰ñw¦”—Ê
-      gt_m_shipped_quantity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).shipped_quantity;           -- oŒÉÀÑ”—Ê
-      gt_m_ship_to_quantity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).ship_to_quantity;           -- “üŒÉÀÑ”—Ê
-      gt_m_weight(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).weight;                     -- d—Ê
-      gt_m_capacity(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).capacity;                   -- —eÏ
-      gt_m_pallet_weight(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).pallet_weight;              -- ƒpƒŒƒbƒgd—Ê
-      gt_m_automanual_reserve_class(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).automanual_reserve_class;   -- ©“®è“®ˆø“–‹æ•ª
-      gt_m_delete_flg(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).delete_flg;                 -- æÁƒtƒ‰ƒO
-      gt_m_warning_date(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).warning_date;               -- Œx“ú•t
-      gt_m_warning_class(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).warning_class;              -- Œx‹æ•ª
-      gt_m_created_by(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).created_by;                 -- ì¬Ò
-      gt_m_creation_date(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).creation_date;              -- ì¬“ú
-      gt_m_last_updated_by(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).last_updated_by;            -- ÅIXVÒ
-      gt_m_last_update_date(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).last_update_date;           -- ÅIXV“ú
-      gt_m_last_update_login(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).last_update_login;          -- ÅIXVƒƒOƒCƒ“
-      gt_m_request_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).request_id;                 -- —v‹ID
-      gt_m_program_application_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).program_application_id;
-                                                     -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gt_m_program_id(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).program_id;                -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
-      gt_m_program_update_date(ln_data_cnt) :=
-              gr_move_lines_tbl(ln_data_cnt).program_update_date;       -- ƒvƒƒOƒ‰ƒ€XV“ú
-    ELSE
+--
+debug_log(FND_FILE.LOG,'  “o˜^œŠOƒtƒ‰ƒO(–¾×) = ' || gr_move_lines_tbl(ln_ml_data_cnt).not_insert_flg);
+debug_log(FND_FILE.LOG,'  “o˜^œŠOƒtƒ‰ƒO(ƒwƒbƒ_) = ' || lv_line_ins_flg);
+debug_log(FND_FILE.LOG,'  ˆÚ“®ƒwƒbƒ_ID = ' || gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id);
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×ID = ' || gr_move_lines_tbl(ln_ml_data_cnt).mov_line_id);
+debug_log(FND_FILE.LOG,'  •i–ÚƒR[ƒh = ' || gr_move_lines_tbl(ln_ml_data_cnt).item_code);
+--
+      IF (lv_line_ins_flg = gv_cons_flg_on )
+         OR (gr_move_lines_tbl(ln_ml_data_cnt).not_insert_flg <> gv_cons_flg_on) THEN
+--
+        -- –¾×ƒCƒ“ƒT[ƒg—p•Ï”‚ÌƒCƒ“ƒNƒŠƒƒ“ƒg
+        ln_ml_ins_data_cnt := ln_ml_ins_data_cnt + 1;
+--
+        gt_m_mov_line_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).mov_line_id;                -- ˆÚ“®–¾×ID
+        gt_m_mov_hdr_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).mov_hdr_id;                 -- ˆÚ“®ƒwƒbƒ_ID
+        gt_m_line_number(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).line_number;                -- –¾×”Ô†
+        gt_m_organization_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).organization_id;            -- ‘gDID
+        gt_m_item_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).item_id;                    -- OPM•i–ÚID
+        gt_m_item_code(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).item_code;                  -- •i–Ú
+        gt_m_request_qty(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).request_qty;                -- ˆË—Š”—Ê
+        gt_m_pallet_quantity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).pallet_quantity;            -- ƒpƒŒƒbƒg”
+        gt_m_layer_quantity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).layer_quantity;             -- ’i”
+        gt_m_case_quantity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).case_quantity;              -- ƒP[ƒX”
+        gt_m_instruct_qty(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).instruct_qty;               -- w¦”—Ê
+        gt_m_reserved_quantity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).reserved_quantity;          -- ˆø“–”
+        gt_m_uom_code(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).uom_code;                   -- ’PˆÊ
+        gt_m_designated_pdt_date(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).designated_production_date; -- w’è»‘¢“ú
+        gt_m_pallet_qty(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).pallet_qty;                 -- ƒpƒŒƒbƒg–‡”
+        gt_m_move_num(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).move_num;                   -- QÆˆÚ“®”Ô†
+        gt_m_po_num(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).po_num;                     -- QÆ”­’”Ô†
+        gt_m_first_instruct_qty(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).first_instruct_qty;         -- ‰‰ñw¦”—Ê
+        gt_m_shipped_quantity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).shipped_quantity;           -- oŒÉÀÑ”—Ê
+        gt_m_ship_to_quantity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).ship_to_quantity;           -- “üŒÉÀÑ”—Ê
+        gt_m_weight(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).weight;                     -- d—Ê
+        gt_m_capacity(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).capacity;                   -- —eÏ
+        gt_m_pallet_weight(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).pallet_weight;              -- ƒpƒŒƒbƒgd—Ê
+        gt_m_automanual_reserve_class(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).automanual_reserve_class;   -- ©“®è“®ˆø“–‹æ•ª
+        gt_m_delete_flg(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).delete_flg;                 -- æÁƒtƒ‰ƒO
+        gt_m_warning_date(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).warning_date;               -- Œx“ú•t
+        gt_m_warning_class(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).warning_class;              -- Œx‹æ•ª
+        gt_m_created_by(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).created_by;                 -- ì¬Ò
+        gt_m_creation_date(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).creation_date;              -- ì¬“ú
+        gt_m_last_updated_by(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).last_updated_by;            -- ÅIXVÒ
+        gt_m_last_update_date(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).last_update_date;           -- ÅIXV“ú
+        gt_m_last_update_login(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).last_update_login;          -- ÅIXVƒƒOƒCƒ“
+        gt_m_request_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).request_id;                 -- —v‹ID
+        gt_m_program_application_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).program_application_id;
+                                                       -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+        gt_m_program_id(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).program_id;                -- ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€ID
+        gt_m_program_update_date(ln_ml_ins_data_cnt) :=
+                gr_move_lines_tbl(ln_ml_data_cnt).program_update_date;       -- ƒvƒƒOƒ‰ƒ€XV“ú
+--
+      END IF;
+--
       lv_line_ins_flg := gv_cons_flg_off;
-    END IF;
-    END LOOP ln_ins_cnt_loop;
+--
+    END LOOP ln_ml_ins_cnt_loop;
+--
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×“o˜^Œ” = ' || TO_CHAR(ln_ml_ins_data_cnt));
 --
     -- FORALL‚É‚ÄˆÚ“®ˆË—Š/w¦–¾×‚ğINSERT‚·‚é
-    FORALL ln_data_cnt IN 1..gn_ins_data_cnt_ml
+    FORALL ln_data_cnt IN 1..ln_ml_ins_data_cnt
+--
       INSERT INTO xxinv_mov_req_instr_lines(
         mov_line_id,                -- ˆÚ“®–¾×ID
         mov_hdr_id,                 -- ˆÚ“®ƒwƒbƒ_ID
@@ -6135,68 +6672,76 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_move_lines_tbl(ln_data_cnt).mov_line
         gt_m_program_update_date(ln_data_cnt)         -- ƒvƒƒOƒ‰ƒ€XV“ú
       );
 --
-    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é
-    <<ln_ins_cnt_loop>>
-    FOR ln_data_cnt IN 1..gn_ins_data_cnt_oh LOOP
-      gt_rh_requisition_header_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).requisition_header_id;-- ”­’ˆË—Šƒwƒbƒ_ID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)ln_data_cnt(oh) = ' || ln_data_cnt);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_requisition_header_tbl(ln_data_cnt).requisition_header_id = ' || gr_requisition_header_tbl(ln_data_cnt).requisition_header_id);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_requisition_header_tbl(ln_data_cnt).created_by = ' || gr_requisition_header_tbl(ln_data_cnt).created_by);
--- DEBUG
-      gt_rh_po_header_number(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).po_header_number;     -- ”­’”Ô†
-      gt_rh_status(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).status;               -- ƒXƒe[ƒ^ƒX
-      gt_rh_vendor_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).vendor_id;            -- d“üæID
-      gt_rh_vendor_code(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).vendor_code;          -- d“üæƒR[ƒh
-      gt_rh_vendor_site_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).vendor_site_id;       -- d“üæƒTƒCƒgID
-      gt_rh_promised_date(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).promised_date;        -- ”[“ü“ú
-      gt_rh_location_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).location_id;          -- ”[“üæID
-      gt_rh_location_code(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).location_code;        -- ”[“üæƒR[ƒh
-      gt_rh_drop_ship_type(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).drop_ship_type;       -- ’¼‘—‹æ•ª
-      gt_rh_delivery_code(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).delivery_code;        -- ”z‘—æƒR[ƒh
-      gt_rh_requested_by_code(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).requested_by_code;    -- ˆË—ŠÒƒR[ƒh
-      gt_rh_requested_dept_code(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).requested_dept_code;  -- ˆË—ŠÒ•”ƒR[ƒh
-      gt_rh_requested_to_dpt_code(ln_data_cnt) :=
-           gr_requisition_header_tbl(ln_data_cnt).requested_to_department_code;-- ˆË—Šæ•”ƒR[ƒh
-      gt_rh_description(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).description;          -- “E—v
-      gt_rh_change_flag(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).change_flag;          -- •ÏXƒtƒ‰ƒO
-      gt_rh_created_by(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).created_by;            -- ì¬Ò
-      gt_rh_creation_date(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).creation_date;         -- ì¬“ú
-      gt_rh_last_updated_by(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).last_updated_by;       -- ÅIXVÒ
-      gt_rh_last_update_date(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).last_update_date;      -- ÅIXV“ú
-      gt_rh_last_update_login(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).last_update_login;     -- ÅIXVƒƒOƒCƒ“
-      gt_rh_request_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).request_id;            -- —v‹ID
-      gt_rh_program_application_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).program_application_id;-- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gt_rh_program_id(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).program_id;            -- ƒvƒƒOƒ‰ƒ€ID
-      gt_rh_program_update_date(ln_data_cnt) :=
-                gr_requisition_header_tbl(ln_data_cnt).program_update_date;   -- ƒvƒƒOƒ‰ƒ€XV“ú
-    END LOOP ln_ins_cnt_loop;
+--
+    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é  ”­’ˆË—Šƒwƒbƒ_
+    <<ln_ph_ins_cnt_loop>>
+    FOR ln_ph_data_cnt IN 1..gn_ins_data_cnt_ph LOOP
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ID = '
+                        || gr_requisition_header_tbl(ln_ph_data_cnt).requisition_header_id);
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Š”Ô† = '
+                        || gr_requisition_header_tbl(ln_ph_data_cnt).po_header_number);
+--
+        -- ƒwƒbƒ_ƒCƒ“ƒT[ƒg—p•Ï”‚ÌƒCƒ“ƒNƒŠƒƒ“ƒg
+        ln_ph_ins_data_cnt := ln_ph_ins_data_cnt + 1;
+--
+      gt_rh_requisition_header_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).requisition_header_id;-- ”­’ˆË—Šƒwƒbƒ_ID
+      gt_rh_po_header_number(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).po_header_number;     -- ”­’”Ô†
+      gt_rh_status(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).status;               -- ƒXƒe[ƒ^ƒX
+      gt_rh_vendor_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).vendor_id;            -- d“üæID
+      gt_rh_vendor_code(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).vendor_code;          -- d“üæƒR[ƒh
+      gt_rh_vendor_site_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).vendor_site_id;       -- d“üæƒTƒCƒgID
+      gt_rh_promised_date(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).promised_date;        -- ”[“ü“ú
+      gt_rh_location_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).location_id;          -- ”[“üæID
+      gt_rh_location_code(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).location_code;        -- ”[“üæƒR[ƒh
+      gt_rh_drop_ship_type(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).drop_ship_type;       -- ’¼‘—‹æ•ª
+      gt_rh_delivery_code(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).delivery_code;        -- ”z‘—æƒR[ƒh
+      gt_rh_requested_by_code(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).requested_by_code;    -- ˆË—ŠÒƒR[ƒh
+      gt_rh_requested_dept_code(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).requested_dept_code;  -- ˆË—ŠÒ•”ƒR[ƒh
+      gt_rh_requested_to_dpt_code(ln_ph_ins_data_cnt) :=
+           gr_requisition_header_tbl(ln_ph_data_cnt).requested_to_department_code;-- ˆË—Šæ•”ƒR[ƒh
+      gt_rh_description(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).description;          -- “E—v
+      gt_rh_change_flag(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).change_flag;          -- •ÏXƒtƒ‰ƒO
+      gt_rh_created_by(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).created_by;            -- ì¬Ò
+      gt_rh_creation_date(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).creation_date;         -- ì¬“ú
+      gt_rh_last_updated_by(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).last_updated_by;       -- ÅIXVÒ
+      gt_rh_last_update_date(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).last_update_date;      -- ÅIXV“ú
+      gt_rh_last_update_login(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).last_update_login;     -- ÅIXVƒƒOƒCƒ“
+      gt_rh_request_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).request_id;            -- —v‹ID
+      gt_rh_program_application_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).program_application_id;-- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      gt_rh_program_id(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).program_id;            -- ƒvƒƒOƒ‰ƒ€ID
+      gt_rh_program_update_date(ln_ph_ins_data_cnt) :=
+                gr_requisition_header_tbl(ln_ph_data_cnt).program_update_date;   -- ƒvƒƒOƒ‰ƒ€XV“ú
+    END LOOP ln_ph_ins_cnt_loop;
+--
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_“o˜^Œ” = ' || TO_CHAR(ln_ph_ins_data_cnt));
 --
     -- FORALL‚É‚Ä”­’ˆË—Šƒwƒbƒ_‚ğINSERT‚·‚é
-    FORALL ln_data_cnt IN 1..gn_ins_data_cnt_oh
+    FORALL ln_data_cnt IN 1..ln_ph_ins_data_cnt
       INSERT INTO xxpo_requisition_headers(
         requisition_header_id,         -- ”­’ˆË—Šƒwƒbƒ_ID
         po_header_number,              -- ”­’”Ô†
@@ -6251,59 +6796,68 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_requisition_header_tbl(ln_data_cnt).
         gt_rh_program_update_date(ln_data_cnt)            -- ƒvƒƒOƒ‰ƒ€XV“ú
       );
 --
-    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é 
-    <<ln_ins_cnt_loop>>
-    FOR ln_data_cnt IN 1..gn_ins_data_cnt_ol LOOP
-      gt_rl_requisition_line_id(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).requisition_line_id;    -- ”­’ˆË—Š–¾×ID
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)ln_data_cnt(ol) = ' || ln_data_cnt);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_requisition_lines_tbl(ln_data_cnt).requisition_line_id = ' || gr_requisition_lines_tbl(ln_data_cnt).requisition_line_id);
--- DEBUG
-      gt_rl_requisition_header_id(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).requisition_header_id;  -- ”­’ˆË—Šƒwƒbƒ_ID
-      gt_rl_requisition_line_number(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).requisition_line_number;-- –¾×”Ô†
-      gt_rl_item_id(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).item_id;                -- •i–ÚID
-      gt_rl_item_code(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).item_code;              -- •i–ÚƒR[ƒh
-      gt_rl_pack_quantity(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).pack_quantity;          -- İŒÉ“ü”
-      gt_rl_requested_quantity(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).requested_quantity;     -- ˆË—Š”—Ê
-      gt_rl_requested_quantity_uom(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).requested_quantity_uom; -- ˆË—Š”—Ê’PˆÊƒR[ƒh
-      gt_rl_requested_date(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).requested_date;         -- “ú•tw’è
-      gt_rl_ordered_quantity(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).ordered_quantity;       -- ”­’”—Ê
-      gt_rl_description(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).description;            -- “E—v
-      gt_rl_cancelled_flg(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).cancelled_flg;          -- æÁƒtƒ‰ƒO
-      gt_rl_created_by(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).created_by;             -- ì¬Ò
-      gt_rl_creation_date(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).creation_date;          -- ì¬“ú
-      gt_rl_last_updated_by(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).last_updated_by;        -- ÅIXVÒ
-      gt_rl_last_update_date(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).last_update_date;       -- ÅIXV“ú
-      gt_rl_last_update_login(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).last_update_login;      -- ÅIXVƒƒOƒCƒ“
-      gt_rl_request_id(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).request_id;             -- —v‹ID
-      gt_rl_program_application_id(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).program_application_id; -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-      gt_rl_program_id(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).program_id;             -- ƒvƒƒOƒ‰ƒ€ID
-      gt_rl_program_update_date(ln_data_cnt) :=
-              gr_requisition_lines_tbl(ln_data_cnt).program_update_date;    -- ƒvƒƒOƒ‰ƒ€XV“ú
-    END LOOP ln_ins_cnt_loop;
+    -- FORALL‚Åg—p‚Å‚«‚é‚æ‚¤‚ÉƒŒƒR[ƒh•Ï”‚ğ•ªŠ„Ši”[‚·‚é  ”­’ˆË—Š–¾×
+    <<ln_pl_ins_cnt_loop>>
+    FOR ln_pl_data_cnt IN 1..gn_ins_data_cnt_pl LOOP
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Šƒwƒbƒ_ID = '
+                        || gr_requisition_lines_tbl(ln_pl_data_cnt).requisition_header_id);
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Š–¾×ID = '
+                        || gr_requisition_lines_tbl(ln_pl_data_cnt).requisition_line_id);
+debug_log(FND_FILE.LOG,'  •i–ÚƒR[ƒh = ' || gr_requisition_lines_tbl(ln_pl_data_cnt).item_code);
+--
+        -- –¾×ƒCƒ“ƒT[ƒg—p•Ï”‚ÌƒCƒ“ƒNƒŠƒƒ“ƒg
+        ln_pl_ins_data_cnt := ln_pl_ins_data_cnt + 1;
+--
+      gt_rl_requisition_line_id(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).requisition_line_id;    -- ”­’ˆË—Š–¾×ID
+      gt_rl_requisition_header_id(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).requisition_header_id;  -- ”­’ˆË—Šƒwƒbƒ_ID
+      gt_rl_requisition_line_number(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).requisition_line_number;-- –¾×”Ô†
+      gt_rl_item_id(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).item_id;                -- •i–ÚID
+      gt_rl_item_code(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).item_code;              -- •i–ÚƒR[ƒh
+      gt_rl_pack_quantity(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).pack_quantity;          -- İŒÉ“ü”
+      gt_rl_requested_quantity(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).requested_quantity;     -- ˆË—Š”—Ê
+      gt_rl_requested_quantity_uom(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).requested_quantity_uom; -- ˆË—Š”—Ê’PˆÊƒR[ƒh
+      gt_rl_requested_date(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).requested_date;         -- “ú•tw’è
+      gt_rl_ordered_quantity(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).ordered_quantity;       -- ”­’”—Ê
+      gt_rl_description(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).description;            -- “E—v
+      gt_rl_cancelled_flg(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).cancelled_flg;          -- æÁƒtƒ‰ƒO
+      gt_rl_created_by(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).created_by;             -- ì¬Ò
+      gt_rl_creation_date(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).creation_date;          -- ì¬“ú
+      gt_rl_last_updated_by(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).last_updated_by;        -- ÅIXVÒ
+      gt_rl_last_update_date(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).last_update_date;       -- ÅIXV“ú
+      gt_rl_last_update_login(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).last_update_login;      -- ÅIXVƒƒOƒCƒ“
+      gt_rl_request_id(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).request_id;             -- —v‹ID
+      gt_rl_program_application_id(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).program_application_id; -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      gt_rl_program_id(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).program_id;             -- ƒvƒƒOƒ‰ƒ€ID
+      gt_rl_program_update_date(ln_pl_ins_data_cnt) :=
+              gr_requisition_lines_tbl(ln_pl_data_cnt).program_update_date;    -- ƒvƒƒOƒ‰ƒ€XV“ú
+    END LOOP ln_pl_ins_cnt_loop;
+--
+--
+debug_log(FND_FILE.LOG,'  ”­’ˆË—Š–¾×“o˜^Œ” = ' || TO_CHAR(ln_pl_ins_data_cnt));
 --
     -- FORALL‚É‚Ä”­’ˆË—Š–¾×‚ğINSERT‚·‚é
-    FORALL ln_data_cnt IN 1..gn_ins_data_cnt_ol
+    FORALL ln_data_cnt IN 1..ln_pl_ins_data_cnt
       INSERT INTO xxpo_requisition_lines(
         requisition_line_id,    -- ”­’ˆË—Š–¾×ID
         requisition_header_id,  -- ”­’ˆË—Šƒwƒbƒ_ID
@@ -6350,9 +6904,8 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)gr_requisition_lines_tbl(ln_data_cnt).r
         gt_rl_program_update_date(ln_data_cnt)     -- ƒvƒƒOƒ‰ƒ€XV“ú
       );
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_data_cnt_ol);
--- DEBUG
+debug_log(FND_FILE.LOG,'  ó’–¾×XVŒ”l = ' || gn_upd_data_cnt_ol);
+--
     -- FORALL‚É‚Äó’–¾×‚ğUPDATE‚·‚é
     FORALL ln_data_cnt IN 1..gn_upd_data_cnt_ol
       UPDATE xxwsh_order_lines_all xola
@@ -6363,7 +6916,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
             xola.last_update_login      = gt_ol_last_update_login(ln_data_cnt), -- ÅIXVƒƒOƒCƒ“
             xola.request_id             = gt_ol_request_id(ln_data_cnt),        -- —v‹ID
             xola.program_application_id = gt_ol_program_application_id(ln_data_cnt),
-                                                                              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+                                                                            --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
             xola.program_id             = gt_ol_program_id(ln_data_cnt),        -- ƒvƒƒOƒ‰ƒ€ID
             xola.program_update_date    = gt_ol_program_update_date(ln_data_cnt)-- ƒvƒƒOƒ‰ƒ€XV“ú
       WHERE xola.shipping_item_code   = gt_ol_shipping_item_code(ln_data_cnt)   -- •i–ÚƒR[ƒh
@@ -6373,6 +6926,10 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
              WHERE xoha.order_header_id = xola.order_header_id
                AND xoha.latest_external_flag   = gv_cons_flg_y                  -- ÅVƒtƒ‰ƒO 'Y'
                AND xoha.request_no = gt_ol_request_no(ln_data_cnt));            -- ˆË—ŠNo
+--
+--
+--
+debug_log(FND_FILE.LOG,'  ˆÚ“®–¾×XVŒ”l = ' || gn_upd_data_cnt_ml);
 --
     -- FORALL‚É‚ÄˆÚ“®ˆË—Š/w¦–¾×‚ğUPDATE‚·‚é
     FORALL ln_data_cnt IN 1..gn_upd_data_cnt_ml
@@ -6393,6 +6950,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
              FROM  xxinv_mov_req_instr_headers xmrih
              WHERE xmrih.mov_hdr_id = xmril.mov_hdr_id
                AND xmrih.mov_num = gt_ml_mov_num(ln_data_cnt));                  -- ˆÚ“®”Ô†
+--
+debug_log(FND_FILE.LOG,'(C-14)' || cv_prg_name || ' End¥¥¥¥¥');
+--
 --
   EXCEPTION
 --
@@ -6415,6 +6975,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
 --#####################################  ŒÅ’è•” END   ##########################################
 --
   END insert_tables;
+--
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -6463,27 +7024,6 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
     ln_max_cnt              NUMBER := 0;      -- ƒ‹[ƒvÅ‘åƒJƒEƒ“ƒg
     lv_move_number          xxwsh_order_lines_all.move_number%TYPE;
     lv_po_number            xxwsh_order_lines_all.po_number%TYPE;
-    ln_tmp_tbl_cnt          NUMBER := 0;      -- ’†ŠÔƒe[ƒuƒ‹ƒf[ƒ^Œ”
-    ln_cnt                  NUMBER := 0;
-    ln_line_cnt             NUMBER := 0;
-    ln_mov_hdr_id           xxinv_mov_req_instr_headers.mov_hdr_id%TYPE;
-    ln_weight               NUMBER := 0;       --–¾×d—Ê‡ŒvWŒv—p
-    ln_p_weight             NUMBER := 0;       --–¾×ƒpƒŒƒbƒgd—ÊWŒv—p
-    ln_sum_weight           NUMBER := 0;       --ƒwƒbƒ_d—ÊWŒv—p
-    ln_sum_p_weight         NUMBER := 0;       --ƒwƒbƒ_ƒpƒŒƒbƒgd—ÊWŒv—p
-    ln_capacity             NUMBER := 0;       --–¾×—eÏWŒv—p
-    ln_sum_capacity         NUMBER := 0;       --ƒwƒbƒ_—eÏWŒv—p
-    lv_item_code            xxinv_mov_req_instr_lines.item_code%TYPE; --d—Ê‡ŒvZo‘ÎÛ•i–Ú
-    ln_instruct_qty         xxinv_mov_req_instr_lines.instruct_qty%TYPE; --d—Ê‡ŒvZo‘ÎÛ”—Ê
---
-    lv_loading_over_class          VARCHAR2(1); -- ÏÚƒI[ƒo[‹æ•ª
-    lv_ship_methods                xxcmn_ship_methods.ship_method%TYPE;        -- o‰×•û–@
-    ln_load_efficiency_weight      NUMBER;      -- d—ÊÏÚŒø—¦
-    ln_load_efficiency_capacity    NUMBER;      -- —eÏÏÚŒø—¦
-    lv_mixed_ship_method     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE; -- ¬Ú”z‘—‹æ•ª
---DEBUG
-    i                       NUMBER;
---DEBUG
 --
     -- ===============================
     -- ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹
@@ -6502,7 +7042,10 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
     --***      •ªŠò‚Æˆ—•”‚ÌŒÄ‚Ño‚µ‚ğs‚¤     ***
     --*********************************************
 --
-    -- “ü—Íƒpƒ‰ƒ[ƒ^‚ğ‡‘Ì‚µ‚Äo—Í
+--
+debug_log(FND_FILE.LOG,'(Submain)' || cv_prg_name || ' Start¥¥¥');
+--
+    -- “ü—Íƒpƒ‰ƒ[ƒ^‚ğŒ‹‡‚µ‚Äo—Í
     lc_out_param := gv_cons_input_param || gv_msg_part ||
                     iv_action_type      || gv_msg_pnt || iv_req_mov_no     || gv_msg_pnt ||
                     iv_deliver_from     || gv_msg_pnt || iv_deliver_type   || gv_msg_pnt ||
@@ -6511,9 +7054,6 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
                     iv_instruction_post_code;
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lc_out_param);
 --
--- DEBUG
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)check_parameter call...');
--- DEBUG
     -- ===============================================
     -- C-1  ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN check_parameter
     -- ===============================================
@@ -6529,9 +7069,17 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
                     lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                     lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                     lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-    -- ƒGƒ‰[ˆ— 
+--
+    -- ƒGƒ‰[ˆ—
     IF (lv_retcode = gv_status_error) THEN
-        RAISE global_process_expt;
+--
+      RAISE global_process_expt;
+--
+    -- ƒ[ƒjƒ“ƒOˆ—
+    ELSIF (lv_retcode = gv_status_warn) THEN
+--
+      ov_retcode := gv_status_warn;
+--
     END IF;
 --
     -- ===============================================
@@ -6543,6 +7091,12 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
     -- ƒGƒ‰[ˆ—
     IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--
+    -- ƒ[ƒjƒ“ƒOˆ—
+    ELSIF (lv_retcode = gv_status_warn) THEN
+--
+      ov_retcode := gv_status_warn;
+--
     END IF;
 --
     -- ===============================================
@@ -6552,10 +7106,17 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
                 lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                 lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                 lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-    -- ƒGƒ‰[ˆ— 
+    -- ƒGƒ‰[ˆ—
     IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--
+    -- ƒ[ƒjƒ“ƒOˆ—
+    ELSIF (lv_retcode = gv_status_warn) THEN
+--
+      ov_retcode := gv_status_warn;
+--
     END IF;
+--
 --
     -- ===============================================
     -- C-4   î•ñ’Šo get_data
@@ -6570,41 +7131,56 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-14)upd gn_upd_data_cnt_ol = ' || gn_upd_da
               lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
               lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
               lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-    -- ƒGƒ‰[ˆ— 
+    -- ƒGƒ‰[ˆ—
     IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--
+    -- ƒ[ƒjƒ“ƒOˆ—
+    ELSIF (lv_retcode = gv_status_warn) THEN
+--
+      ov_retcode := gv_status_warn;
+--
     END IF;
+--
 --
     <<get_data_loop>> -- ’Šoƒ‹[ƒv
     FOR ln_get_data_loop_cnt IN 1..gn_target_cnt LOOP
+--
       -- ===============================================
       -- C-5   ƒ‹[ƒ‹æ“¾ get_rule
       -- ===============================================
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)get_data_loop_in____' || to_char(ln_get_data_loop_cnt));
--- DEBUG
       get_rule(ln_get_data_loop_cnt,      -- ˆ—ƒJƒEƒ“ƒ^
                iv_action_type,            -- ˆ—í•Ê
                iv_arrival_date,           -- ’…“úw’è
                lv_errbuf,                 -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                lv_retcode,                -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                lv_errmsg);                -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)get_data_loop_out___' || to_char(ln_get_data_loop_cnt));
--- DEBUG
-      -- ƒGƒ‰[ˆ— 
+--
+      -- ƒGƒ‰[ˆ—
       IF (lv_retcode = gv_status_error) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)get_data_loop_out_and_err' || to_char(ln_get_data_loop_cnt));
--- DEBUG
+--
+debug_log(FND_FILE.LOG,'(submain)get_data_loop_out' || to_char(ln_get_data_loop_cnt));
+debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
           RAISE global_process_expt;
+--
+      -- Œxˆ—
+      ELSIF (lv_retcode = gv_status_warn) THEN
+--
+debug_log(FND_FILE.LOG,'(submain)get_data_loop_out' || to_char(ln_get_data_loop_cnt));
+debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errbuf);
+          ov_retcode := gv_status_warn;
+--
       END IF;
 --
     END LOOP get_data_loop;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'#####before ins_ints_table' || to_char(ln_get_data_loop_cnt));
--- DEBUG
+--
     -- ˆ—í•Ê‚ªuo‰×v‚Ìê‡
     IF (iv_action_type = gv_cons_t_deliv) THEN
       -- ===============================================
@@ -6613,10 +7189,16 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'#####before ins_ints_table' || to_char(ln_get
       ins_ints_table(lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                      lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                      lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-      -- ƒGƒ‰[ˆ— 
+      -- ƒGƒ‰[ˆ—
       IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
-      END IF;
+--
+      -- ƒ[ƒjƒ“ƒOˆ—
+      ELSIF (lv_retcode = gv_status_warn) THEN
+--
+        ov_retcode := gv_status_warn;
+--
+        END IF;
 --
     -- ˆ—í•Ê‚ªuˆÚ“®v‚Ìê‡
     ELSIF (iv_action_type = gv_cons_t_move) THEN
@@ -6626,19 +7208,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'#####before ins_ints_table' || to_char(ln_get
       ins_intm_table(lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                      lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                      lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-      -- ƒGƒ‰[ˆ— 
+      -- ƒGƒ‰[ˆ—
       IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
+--
+      -- ƒ[ƒjƒ“ƒOˆ—
+      ELSIF (lv_retcode = gv_status_warn) THEN
+--
+        ov_retcode := gv_status_warn;
+--
       END IF;
 --
     END IF;
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)get_data_loop out !');
--- DEBUG
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-8 or C-9 ‚É‚Ä’†ŠÔƒe[ƒuƒ‹’Šo....');
--- DEBUG
+--
     -- ˆ—í•Ê‚ªuo‰×v‚Ìê‡
     IF (iv_action_type = gv_cons_t_deliv) THEN
       -- ===============================================
@@ -6647,20 +7230,18 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-8 or C-9 ‚É‚Ä’†ŠÔƒe[ƒuƒ‹’Šo....'
       get_ints_data(lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                     lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                     lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-      -- ƒGƒ‰[ˆ— 
+      -- ƒGƒ‰[ˆ—
       IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
-      END IF;
-      ln_max_cnt := gn_target_cnt_deliv;
 --
--- DEBUG
-for i IN 1..ln_max_cnt LOOP
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)======================================');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)deliv_tbl(' || i || ').request_no = ' || gr_deliv_data_tbl(i).request_no);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)deliv_tbl(' || i || ').shipping_item_code = ' || gr_deliv_data_tbl(i).shipping_item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)deliv_tbl(' || i || ').quantity = ' || gr_deliv_data_tbl(i).quantity);
-end loop;
--- DEBUG
+      -- ƒ[ƒjƒ“ƒOˆ—
+      ELSIF (lv_retcode = gv_status_warn) THEN
+--
+        ov_retcode := gv_status_warn;
+--
+      END IF;
+--
+      ln_max_cnt := gn_target_cnt_deliv;
 --
     -- ˆ—í•Ê‚ªuˆÚ“®v‚Ìê‡
     ELSE
@@ -6670,22 +7251,21 @@ end loop;
       get_intm_data(lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                     lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                     lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-      -- ƒGƒ‰[ˆ— 
+      -- ƒGƒ‰[ˆ—
       IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
+--
+      -- ƒ[ƒjƒ“ƒOˆ—
+      ELSIF (lv_retcode = gv_status_warn) THEN
+--
+        ov_retcode := gv_status_warn;
+--
       END IF;
+--
       ln_max_cnt := gn_target_cnt_move;
 --
--- DEBUG
-for i IN 1..ln_max_cnt LOOP
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)======================================');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)move_tbl(' || i || ').mov_num = ' || gr_move_data_tbl(i).mov_num);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)move_tbl(' || i || ').item_code = ' || gr_move_data_tbl(i).item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)move_tbl(' || i || ').instruct_qty = ' || gr_move_data_tbl(i).instruct_qty);
-end loop;
--- DEBUG
---
     END IF;
+--
 --
     <<get_zaiko_loop>> -- İŒÉ•â[Œ³æ“¾ƒ‹[ƒv
     FOR ln_get_zaiko_loop_cnt IN 1..ln_max_cnt LOOP
@@ -6714,27 +7294,42 @@ end loop;
                        lv_errbuf,                 -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                        lv_ret_code,                -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                        lv_errmsg);                -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-10 after .... ' || lv_ret_code);
--- DEBUG
-        -- ƒGƒ‰[ˆ— 
-        IF (lv_ret_code = gv_status_error) THEN
-            RAISE global_process_expt;
-        END IF;
-        -- ŒxƒŠƒ^[ƒ“‚µ‚Ä‚«‚½‚çŒx—L‚ğƒŠƒ^[ƒ“—p•Ï”‚ÉƒZƒbƒg‚µ‚Ä‚¨‚­
-        -- ƒGƒ‰[‚É‚È‚Á‚½‚ç—áŠO‚É‚Äã‘‚«‚³‚ê‚é‚Ì‚Å‚»‚Ì‚Ü‚Ü‚ÅOK
-        IF (lv_ret_code = gv_status_warn) THEN
+--
+        -- ƒGƒ‰[ˆ—
+        IF (lv_retcode = gv_status_error) THEN
+--
+debug_log(FND_FILE.LOG,'(submain)regi_move_data  ' || to_char(ln_get_zaiko_loop_cnt) || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
+--
+          RAISE global_process_expt;
+--
+        -- Œxˆ—(ƒƒO‚ğo—Í‚µAŸƒŒƒR[ƒh‚Öj
+        ELSIF (lv_retcode = gv_status_warn) THEN
+--
           ov_retcode := gv_status_warn;
+--
+debug_log(FND_FILE.LOG,'(submain)regi_move_data  ' || to_char(ln_get_zaiko_loop_cnt) || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errbuf);
+--
         ELSE
+--
           lv_move_number := gr_move_header_tbl(gn_ins_data_cnt_mh).mov_num;
+--
         END IF;
+--
 --
       -- İŒÉ•â[ƒ‹[ƒ‹‚ªu”­’v
       ELSE
         -- ===============================================
-        -- C-11  ”­’ˆË—Š“o˜^ regi_order_data
+        -- C-11  ”­’ˆË—Š“o˜^ regi_po_data
         -- ===============================================
-        regi_order_data(ln_get_zaiko_loop_cnt,     -- ˆ—ƒJƒEƒ“ƒ^
+        regi_poreq_data(ln_get_zaiko_loop_cnt,     -- ˆ—ƒJƒEƒ“ƒ^
                         iv_action_type,            -- ˆ—í•Ê
                         iv_shipped_date,           -- oŒÉ“úw’è
                         iv_arrival_date,           -- ’…“úw’è
@@ -6742,20 +7337,35 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-10 after .... ' || lv_ret_code);
                         lv_errbuf,                 -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                         lv_ret_code,               -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                         lv_errmsg);                -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-11 after .... ' || lv_ret_code);
--- DEBUG
-        -- ƒGƒ‰[ˆ— 
-        IF (lv_ret_code = gv_status_error) THEN
-            RAISE global_process_expt;
-        END IF;
-        -- ŒxƒŠƒ^[ƒ“‚µ‚Ä‚«‚½‚çŒx—L‚ğƒŠƒ^[ƒ“—p•Ï”‚ÉƒZƒbƒg‚µ‚Ä‚¨‚­
-        -- ƒGƒ‰[‚É‚È‚Á‚½‚ç—áŠO‚É‚Äã‘‚«‚³‚ê‚é‚Ì‚Å‚»‚Ì‚Ü‚Ü‚ÅOK
-        IF (lv_ret_code = gv_status_warn) THEN
+--
+        -- ƒGƒ‰[ˆ—
+        IF (lv_retcode = gv_status_error) THEN
+--
+debug_log(FND_FILE.LOG,'(submain)regi_poreq_data  ' || to_char(ln_get_zaiko_loop_cnt) || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
+--
+          RAISE global_process_expt;
+--
+        -- Œxˆ—(ƒƒO‚ğo—Í‚µAŸƒŒƒR[ƒh‚Öj
+        ELSIF (lv_retcode = gv_status_warn) THEN
+--
           ov_retcode := gv_status_warn;
+--
+debug_log(FND_FILE.LOG,'(submain)regi_poreq_data  ' || to_char(ln_get_zaiko_loop_cnt) || 'Œ–Ú');
+debug_log(FND_FILE.LOG,'  ' || lv_ret_code);
+debug_log(FND_FILE.LOG,'  ' || lv_errmsg);
+debug_log(FND_FILE.LOG,'  ' || lv_errbuf);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errbuf);
+--
         ELSE
-          lv_po_number := gr_requisition_header_tbl(gn_ins_data_cnt_oh).po_header_number;
+--
+          lv_po_number := gr_requisition_header_tbl(gn_ins_data_cnt_ph).po_header_number;
+--
         END IF;
+--
       END IF;
 --
       -- ˆ—í•Ê‚ªuo‰×v‚Ìê‡
@@ -6769,14 +7379,20 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-11 after .... ' || lv_ret_code);
                           lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                           lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                           lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-        -- ƒGƒ‰[ˆ— 
+        -- ƒGƒ‰[ˆ—
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
+--
+        -- ƒ[ƒjƒ“ƒOˆ—
+        ELSIF (lv_retcode = gv_status_warn) THEN
+--
+          ov_retcode := gv_status_warn;
+--
         END IF;
-      END IF;
+--
 --
       -- ˆ—í•Ê‚ªuˆÚ“®v‚Ìê‡
-      IF ((iv_action_type = gv_cons_t_move) AND (lv_ret_code = gv_status_normal)) THEN
+      ELSIF ((iv_action_type = gv_cons_t_move) AND (lv_ret_code = gv_status_normal)) THEN
         -- ===============================================
         -- C-13  ˆÚ“®w¦/w¦–¾×XV regi_move_detail
         -- ===============================================
@@ -6786,444 +7402,62 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-11 after .... ' || lv_ret_code);
                         lv_errbuf,              -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                         lv_retcode,             -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                         lv_errmsg);             -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-        -- ƒGƒ‰[ˆ— 
+        -- ƒGƒ‰[ˆ—
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_process_expt;
-        END IF;
-      END IF;
 --
-      -- ˆÚ“®”Ô†A”­’”Ô†‚Ì‰Šú‰»
---      lv_move_number := NULL;
---      lv_po_number   := NULL;
+        -- ƒ[ƒjƒ“ƒOˆ—
+        ELSIF (lv_retcode = gv_status_warn) THEN
+--
+          ov_retcode := gv_status_warn;
+--
+        END IF;
+--
+      END IF;
 --
     END LOOP get_zaiko_loop;
 --
--- ############################################################################################
--- ˆÚ“®–¾×d—Ê•âŠ®ƒ‹[ƒv
--- ############################################################################################
-    <<move_line_weight_loop>>
-    FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
-      ln_weight := 0;
-      ln_capacity := 0;
-      ln_p_weight := 0;
 --
-      --Še–¾×‚Ìd—ÊZo‘ÎÛ‚Ì•i–ÚƒR[ƒh‚ğŠi”[
-      lv_item_code := gr_move_lines_tbl(ln_line_cnt).item_code;
-      --Še–¾×‚Ìd—ÊZo‘ÎÛ‚Ì”—Ê‚ğŠi”[
-      ln_instruct_qty := gr_move_lines_tbl(ln_line_cnt).instruct_qty;
+    -- ======================================================
+    -- C-15  d—Ê—eÏŒvZ/ÏÚŒø—¦Zo calc_weight_capacity
+    -- ======================================================
+    calc_weight_capacity(iv_arrival_date,        -- ’…“úw’è
+                         lv_errbuf,              -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+                         lv_retcode,             -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+                         lv_errmsg);             -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+    -- ƒGƒ‰[ˆ—
+    IF (lv_retcode = gv_status_error) THEN
 --
-      -- ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)
-      xxwsh_common910_pkg.calc_total_value(
-                                         lv_item_code,        -- 1.•i–ÚƒR[ƒh I
-                                         ln_instruct_qty,     -- 2.”—Ê I
-                                         lv_retcode,          -- 3.ƒŠƒ^[ƒ“ƒR[ƒh O
-                                         lv_errbuf,           -- 4.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
-                                         lv_errmsg,           -- 5.ƒGƒ‰[ƒƒbƒZ[ƒW O
-                                         ln_weight,           -- 6.‡Œvd—Ê O
-                                         ln_capacity,         -- 7.‡Œv—eÏ O
-                                         ln_p_weight);        -- 8.‡ŒvƒpƒŒƒbƒgd—Ê O
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()---------------------------------------------');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value in lv_item_code  = ' || lv_item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value in ln_instruct_qty = ' || ln_instruct_qty);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out lv_retcode = ' || lv_retcode);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out lv_errbuf = ' || lv_errbuf);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out lv_errmsg = ' || lv_errmsg);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out ln_weight = ' || ln_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out ln_capacity = ' || ln_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out ln_p_weight = ' || ln_p_weight);
--- DEBUG
+      RAISE global_process_expt;
 --
-      -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
-      IF (lv_retcode <> gv_status_normal) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                                   ,gv_msg_wsh_13124     -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
-                                                   ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                   ,gv_cons_mov_hdr_tbl  -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
-                                                   ,gv_tkn_param1        -- ƒg[ƒNƒ“'PARAM1'
-                                                   ,lv_item_code         -- •i–ÚƒR[ƒh
-                                                   ,gv_tkn_param2        -- ƒg[ƒNƒ“'PARAM2'
-                                                   ,ln_instruct_qty          -- ‡Œv”—Ê
-                                                   ,gv_tkn_param3        -- ƒg[ƒNƒ“'PARAM3'
-                                                   ,lv_errbuf            -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
-                                                   ,gv_tkn_param4        -- ƒg[ƒNƒ“'PARAM4'
-                                                   ,lv_errmsg            -- ƒGƒ‰[ƒƒbƒZ[ƒW
-                                                   )
-                                                   ,1
-                                                   ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+    -- ƒ[ƒjƒ“ƒOˆ—
+    ELSIF (lv_retcode = gv_status_warn) THEN
 --
-        -- ŒxŒ”‚ÌƒJƒEƒ“ƒg
-        gn_warn_cnt := gn_warn_cnt + 1;
-        --ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)ŠÖ”‚ÌƒGƒ‰[‚ÌƒŠƒ^[ƒ“
-        RAISE common_warn_expt;
-      END IF;
+      ov_retcode := gv_status_warn;
 --
-      --–¾×–ˆ‚Ìd—Ê‚ğƒZƒbƒg
-      gr_move_lines_tbl(ln_line_cnt).weight := ln_weight;
-      --–¾×–ˆ‚ÌƒpƒŒƒbƒgd—Ê‚ğƒZƒbƒg
-      gr_move_lines_tbl(ln_line_cnt).pallet_weight := ln_p_weight;
---
-    END LOOP;
---
--- ############################################################################################
--- ˆÚ“®–¾×—eÏ•âŠ®ƒ‹[ƒv
--- ############################################################################################
-    <<move_line_weight_loop>>
-    FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
-      ln_weight := 0;
-      ln_capacity := 0;
-      ln_p_weight := 0;
---
-      --Še–¾×‚Ì—eÏZo‘ÎÛ‚Ì•i–ÚƒR[ƒh‚ğŠi”[
-      lv_item_code := gr_move_lines_tbl(ln_line_cnt).item_code;
-      --Še–¾×‚Ì—eÏZo‘ÎÛ‚Ì”—Ê‚ğŠi”[
-      ln_instruct_qty := gr_move_lines_tbl(ln_line_cnt).instruct_qty;
---
-      -- ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)
-      xxwsh_common910_pkg.calc_total_value(
-                                         lv_item_code,        -- 1.•i–ÚƒR[ƒh I
-                                         ln_instruct_qty,     -- 2.”—Ê I
-                                         lv_retcode,          -- 3.ƒŠƒ^[ƒ“ƒR[ƒh O
-                                         lv_errbuf,           -- 4.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
-                                         lv_errmsg,           -- 5.ƒGƒ‰[ƒƒbƒZ[ƒW O
-                                         ln_weight,           -- 6.‡Œvd—Ê O
-                                         ln_capacity,         -- 7.‡Œv—eÏ O
-                                         ln_p_weight);        -- 8.‡ŒvƒpƒŒƒbƒgd—Ê O
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()---------------------------------------------');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value in lv_item_code  = ' || lv_item_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value in ln_instruct_qty = ' || ln_instruct_qty);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out lv_retcode = ' || lv_retcode);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out lv_errbuf = ' || lv_errbuf);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out lv_errmsg = ' || lv_errmsg);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out ln_weight = ' || ln_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out ln_capacity = ' || ln_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'()calc_total_value out ln_p_weight = ' || ln_p_weight);
--- DEBUG
---
-      -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
-      IF (lv_retcode <> gv_status_normal) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                                                   ,gv_msg_wsh_13124     -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
-                                                   ,gv_tkn_table_name    -- ƒg[ƒNƒ“'TABLE_NAME'
-                                                   ,gv_cons_mov_hdr_tbl  -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
-                                                   ,gv_tkn_param1        -- ƒg[ƒNƒ“'PARAM1'
-                                                   ,lv_item_code         -- •i–ÚƒR[ƒh
-                                                   ,gv_tkn_param2        -- ƒg[ƒNƒ“'PARAM2'
-                                                   ,ln_instruct_qty          -- ‡Œv”—Ê
-                                                   ,gv_tkn_param3        -- ƒg[ƒNƒ“'PARAM3'
-                                                   ,lv_errbuf            -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
-                                                   ,gv_tkn_param4        -- ƒg[ƒNƒ“'PARAM4'
-                                                   ,lv_errmsg            -- ƒGƒ‰[ƒƒbƒZ[ƒW
-                                                   )
-                                                   ,1
-                                                   ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
---
-        -- ŒxŒ”‚ÌƒJƒEƒ“ƒg
-        gn_warn_cnt := gn_warn_cnt + 1;
-        --ÏÚŒø—¦ƒ`ƒFƒbƒN(‡Œv’lZo)ŠÖ”‚ÌƒGƒ‰[‚ÌƒŠƒ^[ƒ“
-        RAISE common_warn_expt;
-      END IF;
---
-      --–¾×–ˆ‚Ì—eÏ‚ğƒZƒbƒg
-      gr_move_lines_tbl(ln_line_cnt).capacity := ln_capacity;
---
-    END LOOP;
+    END IF;
 --
 --
--- ############################################################################################
--- ˆÚ“®ƒwƒbƒ_d—Ê•âŠ®ƒ‹[ƒv
--- ############################################################################################
-    <<move_header_weight_loop>>
-    FOR ln_hdr_cnt IN 1..gr_move_header_tbl.COUNT LOOP
-      ln_sum_weight := 0;
-      ln_sum_p_weight := 0;
-      FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
-        -- “¯‚¶ƒwƒbƒ_ID‚È‚ç‚Î‡Z‚·‚é
-        IF (gr_move_header_tbl(ln_hdr_cnt).mov_hdr_id =
-            gr_move_lines_tbl(ln_line_cnt).mov_hdr_id) 
-        THEN
-          ln_sum_weight := ln_sum_weight + gr_move_lines_tbl(ln_line_cnt).weight;
-          ln_sum_p_weight := ln_sum_p_weight + gr_move_lines_tbl(ln_line_cnt).pallet_weight;
-        END IF;
-      END LOOP;
-      gr_move_header_tbl(ln_hdr_cnt).sum_weight := ln_sum_weight;
-      gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight := ln_sum_p_weight;
-    END LOOP;
---
--- ############################################################################################
--- ˆÚ“®ƒwƒbƒ_—eÏ•âŠ®ƒ‹[ƒv
--- ############################################################################################
-    <<move_header_capacity_loop>>
-    FOR ln_hdr_cnt IN 1..gr_move_header_tbl.COUNT LOOP
-      ln_sum_capacity := 0;
-      FOR ln_line_cnt IN 1..gr_move_lines_tbl.COUNT LOOP
-        -- “¯‚¶ƒwƒbƒ_ID‚È‚ç‚Î‡Z‚·‚é
-        IF (gr_move_header_tbl(ln_hdr_cnt).mov_hdr_id =
-            gr_move_lines_tbl(ln_line_cnt).mov_hdr_id) 
-        THEN
-          ln_sum_capacity := ln_sum_capacity + gr_move_lines_tbl(ln_line_cnt).capacity;
-        END IF;
-      END LOOP;
-      gr_move_header_tbl(ln_hdr_cnt).sum_capacity := ln_sum_capacity;
-    END LOOP;
---
--- ############################################################################################
--- ˆÚ“®ƒwƒbƒ_ÏÚŒø—¦•âŠ®ƒ‹[ƒv
--- ############################################################################################
-    ln_mov_hdr_id := NULL;
-    <<move_header_le_loop>>
-    FOR ln_hdr_cnt IN 1..gr_move_header_tbl.COUNT LOOP
---
-      ln_sum_weight := 0;
-      ln_sum_capacity := 0;
-      ln_load_efficiency_weight := 0;
-      ln_load_efficiency_capacity := 0;
---
-      -- d—Ê—eÏ‹æ•ª=d—Ê‚Ìê‡‚ÉAd—ÊÏÚŒø—¦‚ğZo‚·‚é
-      IF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_weight THEN
---
-        --d—ÊZo‚Ì‚½‚ßA‡Œvd—Ê‚ÉƒpƒŒƒbƒgd—Ê‚ğ‰ÁZ‚·‚é
-        ln_sum_weight := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_weight,0) +
-                         NVL(gr_move_header_tbl(ln_hdr_cnt).sum_pallet_weight,0);
---
-        -- ‚Pƒwƒbƒ_‚ ‚½‚è‚ÌÏÚŒø—¦‚ğZo‚µ‚Äƒwƒbƒ_‚ÉƒZƒbƒg‚·‚é
-        -- ÏÚŒø—¦ƒ`ƒFƒbƒN(ÏÚŒø—¦Zo)
-        xxwsh_common910_pkg.calc_load_efficiency(
-             ln_sum_weight,                                       -- 1.‡Œvd—Ê I
-             NULL,                                                -- 2.‡Œv—eÏ I
-             gv_cons_wh,                                          -- 3.ƒR[ƒh‹æ•ª‚P I '4'
-             gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.“üoŒÉêŠƒR[ƒh‚P I
-               gv_cons_wh,                                          -- 5.ƒR[ƒh‹æ•ª‚Q I '4'
-             gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.“üoŒÉêŠƒR[ƒh‚Q I
-             gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.o‰×•û–@ I
-             gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.¤•i‹æ•ª I
-             NULL,                                                -- 9.©“®”zÔ‘ÎÛ‹æ•ª I
-             TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.Šî€“ú(“K—p“úŠî€“ú) I
-             lv_retcode,                                          -- 11.ƒŠƒ^[ƒ“ƒR[ƒh O
-             lv_errbuf,                                           -- 12.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
-             lv_errmsg,                                           -- 13.ƒGƒ‰[ƒƒbƒZ[ƒW O
-             lv_loading_over_class,                               -- 14.ÏÚƒI[ƒo[‹æ•ª O
-             lv_ship_methods,                                     -- 15.o‰×•û–@ O
-             ln_load_efficiency_weight,                           -- 16.d—ÊÏÚŒø—¦ O
-             ln_load_efficiency_capacity,                         -- 17.—eÏÏÚŒø—¦ O
-             lv_mixed_ship_method);                               -- 18.¬Ú”z‘—‹æ•ª O
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)----ˆÚ“®ƒwƒbƒ_ÏÚŒø—¦•âŠ®ƒ‹[ƒv----------------');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).sum_weight = ' || gr_move_header_tbl(ln_hdr_cnt).sum_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code = ' || gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code = ' || gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).shipping_method_code = ' || gr_move_header_tbl(ln_hdr_cnt).shipping_method_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in  gr_move_header_tbl(ln_hdr_cnt)item_class = ' ||  gr_move_header_tbl(ln_hdr_cnt).item_class);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_retcode = ' || lv_retcode);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_errbuf = ' || lv_errbuf);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_errmsg = ' || lv_errmsg);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_loading_over_class = ' || lv_loading_over_class);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_ship_methods = ' || lv_ship_methods);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out ln_load_efficiency_weight = ' || ln_load_efficiency_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out ln_load_efficiency_capacity = ' || ln_load_efficiency_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_mixed_ship_method = ' || lv_mixed_ship_method);
--- DEBUG
-        -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
-        IF (lv_retcode <> gv_status_normal) THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                        ,gv_msg_wsh_13172                                   -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
-                        ,gv_tkn_table_name                                  -- ƒg[ƒNƒ“'TABLE_NAME'
-                        ,gv_cons_mov_hdr_tbl                                -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
-                        ,gv_tkn_param1                                      -- ƒg[ƒNƒ“'PARAM1'
-                        ,gr_move_header_tbl(ln_hdr_cnt).sum_weight          -- ‡Œvd—Ê
-                        ,gv_tkn_param2                                      -- ƒg[ƒNƒ“'PARAM2'
-                        ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
-                        ,gv_tkn_param3                                      -- ƒg[ƒNƒ“'PARAM3'
-                        ,gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code  -- “üoŒÉêŠƒR[ƒh
-                        ,gv_tkn_param4                                      -- ƒg[ƒNƒ“'PARAM4'
-                        ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
-                        ,gv_tkn_param5                                      -- ƒg[ƒNƒ“'PARAM5'
-                        ,gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code  -- “üoŒÉêŠƒR[ƒh
-                        ,gv_tkn_param6                                      -- ƒg[ƒNƒ“'PARAM6'
-                        ,gr_move_header_tbl(ln_hdr_cnt).shipping_method_code -- o‰×•û–@
-                        ,gv_tkn_param7                                      -- ƒg[ƒNƒ“'PARAM7'
-                        ,gr_move_header_tbl(ln_hdr_cnt).item_class          -- ¤•i‹æ•ª
-                        ,gv_tkn_param8                                      -- ƒg[ƒNƒ“'PARAM8'
-                        ,lv_errbuf                                    -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
-                        ,gv_tkn_param9                                      -- ƒg[ƒNƒ“'PARAM9'
-                        ,lv_errmsg                                          -- ƒGƒ‰[ƒƒbƒZ[ƒW
-                        )
-                        ,1
-                        ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
---
-/*          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
-          -- ‚»‚Ìƒwƒbƒ_‚Íinsert‚µ‚È‚¢ƒtƒ‰ƒO‚ğON‚·‚é¨Forall‘O‚Ì•ªŠ„Ši”[‚É“Ç‚İ”ò‚Î‚·
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
-        ELSE
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
-        END IF;
-        -- ÏÚƒI[ƒo[‹æ•ª‚ª'1'‚¾‚Á‚½‚ç
-        IF (lv_loading_over_class = gv_cons_over_1y) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ÏÚƒI[ƒo[(header‡Œvd—Ê)');
--- DEBUG
-          -- Å‘åÏÚŒø—¦100%ƒI[ƒo[ƒtƒ‰ƒO‚ğON
-          gv_loading_over_flg := gv_cons_flg_y;
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
-        END IF;
-*/
---
-          --ŒxI—¹‚·‚éê‡
-          IF (lv_retcode = gv_status_warn) THEN
-            gn_warn_cnt := gn_warn_cnt + 1;
-            ov_retcode := gv_status_warn;
---
-          --ˆÙíI—¹‚Ìê‡
-          ELSIF (lv_retcode = gv_status_error) THEN
-            gn_error_cnt := gn_error_cnt + 1;
-            ov_retcode := gv_status_error;
---
---          ƒGƒ‰[‚Ìê‡‚ÉRAISE ‚·‚é•K—v‚ ‚èB
---
-          END IF;
-          -- ‚»‚Ìƒwƒbƒ_‚Íinsert‚µ‚È‚¢ƒtƒ‰ƒO‚ğON‚·‚é¨Forall‘O‚Ì•ªŠ„Ši”[‚É“Ç‚İ”ò‚Î‚·
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
-        ELSE
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
-        END IF;
-        -- ÏÚƒI[ƒo[‹æ•ª‚ª'1'‚¾‚Á‚½‚ç
-        IF (lv_loading_over_class = gv_cons_over_1y) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ÏÚƒI[ƒo[(header‡Œvd—Ê)');
--- DEBUG
-          -- Å‘åÏÚŒø—¦100%ƒI[ƒo[ƒtƒ‰ƒO‚ğON
-          gv_loading_over_flg := gv_cons_flg_y;
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
-        END IF;
---
-      -- d—Ê—eÏ‹æ•ª=—eÏ‚Ìê‡‚ÉA—eÏÏÚŒø—¦‚ğZo‚·‚é
-      ELSIF gr_move_header_tbl(ln_hdr_cnt).weight_capacity_class = gv_cons_capacity THEN
---
-        --—eÏ‚Ìæ“¾
-        ln_sum_capacity := NVL(gr_move_header_tbl(ln_hdr_cnt).sum_capacity,0);
---
-        -- ‚Pƒwƒbƒ_‚ ‚½‚è‚ÌÏÚŒø—¦‚ğZo‚µ‚Äƒwƒbƒ_‚ÉƒZƒbƒg‚·‚é
-        -- ÏÚŒø—¦ƒ`ƒFƒbƒN(ÏÚŒø—¦Zo)
-        xxwsh_common910_pkg.calc_load_efficiency(
-             NULL,                                                -- 1.‡Œvd—Ê I
-             ln_sum_capacity,                                     -- 2.‡Œv—eÏ I
-             gv_cons_wh,                                          -- 3.ƒR[ƒh‹æ•ª‚P I '4'
-             gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code,   -- 4.“üoŒÉêŠƒR[ƒh‚P I
-             gv_cons_wh,                                          -- 5.ƒR[ƒh‹æ•ª‚Q I '4'
-             gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code,   -- 6.“üoŒÉêŠƒR[ƒh‚Q I
-             gr_move_header_tbl(ln_hdr_cnt).shipping_method_code, -- 7.o‰×•û–@ I
-             gr_move_header_tbl(ln_hdr_cnt).item_class,           -- 8.¤•i‹æ•ª I
-             NULL,                                                -- 9.©“®”zÔ‘ÎÛ‹æ•ª I
-             TO_DATE(iv_arrival_date,'YYYY/MM/DD'),               -- 10.Šî€“ú(“K—p“úŠî€“ú) I
-             lv_retcode,                                          -- 11.ƒŠƒ^[ƒ“ƒR[ƒh O
-             lv_errbuf,                                           -- 12.ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh O
-             lv_errmsg,                                           -- 13.ƒGƒ‰[ƒƒbƒZ[ƒW O
-             lv_loading_over_class,                               -- 14.ÏÚƒI[ƒo[‹æ•ª O
-             lv_ship_methods,                                     -- 15.o‰×•û–@ O
-             ln_load_efficiency_weight,                           -- 16.d—ÊÏÚŒø—¦ O
-             ln_load_efficiency_capacity,                         -- 17.—eÏÏÚŒø—¦ O
-             lv_mixed_ship_method);                               -- 18.¬Ú”z‘—‹æ•ª O
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)----ˆÚ“®ƒwƒbƒ_ÏÚŒø—¦•âŠ®ƒ‹[ƒv----------------');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).sum_capacity = ' || gr_move_header_tbl(ln_hdr_cnt).sum_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code = ' || gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code = ' || gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in gr_move_header_tbl(ln_hdr_cnt).shipping_method_code = ' || gr_move_header_tbl(ln_hdr_cnt).shipping_method_code);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency in  gr_move_header_tbl(ln_hdr_cnt)item_class = ' ||  gr_move_header_tbl(ln_hdr_cnt).item_class);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_retcode = ' || lv_retcode);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_errbuf = ' || lv_errbuf);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_errmsg = ' || lv_errmsg);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_loading_over_class = ' || lv_loading_over_class);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_ship_methods = ' || lv_ship_methods);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out ln_load_efficiency_weight = ' || ln_load_efficiency_weight);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out ln_load_efficiency_capacity = ' || ln_load_efficiency_capacity);
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)calc_load_efficiency out lv_mixed_ship_method = ' || lv_mixed_ship_method);
--- DEBUG
-        -- ƒGƒ‰[‚Ìê‡  ‚½‚¾‚µˆ—‚ÍŒp‘±‚µAŒxI—¹‚Æ‚È‚é #######################3
-        IF (lv_retcode <> gv_status_normal) THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
-                          ,gv_msg_wsh_13172                                   -- ÏÚŒø—¦ŠÖ”ƒGƒ‰[
-                          ,gv_tkn_table_name                                  -- ƒg[ƒNƒ“'TABLE_NAME'
-                          ,gv_cons_mov_hdr_tbl                                -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_
-                          ,gv_tkn_param1                                      -- ƒg[ƒNƒ“'PARAM1'
-                          ,gr_move_header_tbl(ln_hdr_cnt).sum_capacity        -- ‡Œv—eÏ
-                          ,gv_tkn_param2                                      -- ƒg[ƒNƒ“'PARAM2'
-                          ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
-                          ,gv_tkn_param3                                      -- ƒg[ƒNƒ“'PARAM3'
-                          ,gr_move_header_tbl(ln_hdr_cnt).shipped_locat_code  -- “üoŒÉêŠƒR[ƒh
-                          ,gv_tkn_param4                                      -- ƒg[ƒNƒ“'PARAM4'
-                          ,gv_cons_wh                                         -- ƒR[ƒh‹æ•ª
-                          ,gv_tkn_param5                                      -- ƒg[ƒNƒ“'PARAM5'
-                          ,gr_move_header_tbl(ln_hdr_cnt).ship_to_locat_code  -- “üoŒÉêŠƒR[ƒh
-                          ,gv_tkn_param6                                      -- ƒg[ƒNƒ“'PARAM6'
-                          ,gr_move_header_tbl(ln_hdr_cnt).shipping_method_code -- o‰×•û–@
-                          ,gv_tkn_param7                                      -- ƒg[ƒNƒ“'PARAM7'
-                          ,gr_move_header_tbl(ln_hdr_cnt).item_class          -- ¤•i‹æ•ª
-                          ,gv_tkn_param8                                      -- ƒg[ƒNƒ“'PARAM8'
-                          ,lv_errbuf                                    -- ƒGƒ‰[ƒƒbƒZ[ƒWƒR[ƒh
-                          ,gv_tkn_param9                                      -- ƒg[ƒNƒ“'PARAM9'
-                          ,lv_errmsg                                          -- ƒGƒ‰[ƒƒbƒZ[ƒW
-                          )
-                          ,1
-                          ,5000);
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
---
-          --ŒxI—¹‚·‚éê‡
-          IF (lv_retcode = gv_status_warn) THEN
-            gn_warn_cnt := gn_warn_cnt + 1;
-            ov_retcode := gv_status_warn;
---
-          --ˆÙíI—¹‚Ìê‡
-          ELSIF (lv_retcode = gv_status_error) THEN
-            gn_error_cnt := gn_error_cnt + 1;
-            ov_retcode := gv_status_error;
---
---          ƒGƒ‰[‚Ìê‡‚ÉRAISE ‚·‚é•K—v‚ ‚èB
---
-          END IF;
-          -- ‚»‚Ìƒwƒbƒ_‚Íinsert‚µ‚È‚¢ƒtƒ‰ƒO‚ğON‚·‚é¨Forall‘O‚Ì•ªŠ„Ši”[‚É“Ç‚İ”ò‚Î‚·
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_on;
-        ELSE
-          gr_move_header_tbl(ln_hdr_cnt).not_insert_flg := gv_cons_flg_off;
-        END IF;
-        -- ÏÚƒI[ƒo[‹æ•ª‚ª'1'‚¾‚Á‚½‚ç
-        IF (lv_loading_over_class = gv_cons_over_1y) THEN
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(C-10)ÏÚƒI[ƒo[(header‡Œvd—Ê)');
--- DEBUG
-          -- Å‘åÏÚŒø—¦100%ƒI[ƒo[ƒtƒ‰ƒO‚ğON
-          gv_loading_over_flg := gv_cons_flg_y;
-          gn_warn_cnt := gn_warn_cnt + 1;
-          ov_retcode := gv_status_warn;
-        END IF;
-      END IF;
---
-      -- ƒwƒbƒ_‚ÉƒZƒbƒg
-      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_weight := ln_load_efficiency_weight;
-      gr_move_header_tbl(ln_hdr_cnt).loading_efficiency_capacity := ln_load_efficiency_capacity;
---
-    END LOOP;
---
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-14 call.......!');
--- DEBUG
     -- ===============================================
     -- C-14  “o˜^XVˆ— insert_tables
     -- ===============================================
     insert_tables(lv_errbuf,             -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
                   lv_retcode,            -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
                   lv_errmsg);            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
-    -- ƒGƒ‰[ˆ— 
+    -- ƒGƒ‰[ˆ—
     IF (lv_retcode = gv_status_error) THEN
-        RAISE global_process_expt;
+--
+      RAISE global_process_expt;
+--
+    -- ƒ[ƒjƒ“ƒOˆ—
+    ELSIF (lv_retcode = gv_status_warn) THEN
+--
+      ov_retcode := gv_status_warn;
+--
     END IF;
+--
+--
+debug_log(FND_FILE.LOG,'(Submain)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
       -- *** ”CˆÓ‚Å—áŠOˆ—‚ğ‹Lq‚·‚é ****
@@ -7259,7 +7493,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-14 call.......!');
     retcode                  OUT NOCOPY VARCHAR2,   -- ƒŠƒ^[ƒ“EƒR[ƒh    --# ŒÅ’è #
     iv_action_type           IN         VARCHAR2,   -- ˆ—í•Ê
     iv_req_mov_no            IN         VARCHAR2,   -- ˆË—Š/ˆÚ“®No
-    iv_deliver_from_id       IN         VARCHAR2,   -- oŒÉŒ³
+    iv_deliver_from          IN         VARCHAR2,   -- oŒÉŒ³
     iv_deliver_type          IN         VARCHAR2,   -- oŒÉŒ`‘Ô
     iv_object_date_from      IN         VARCHAR2,   -- ‘ÎÛŠúŠÔFrom
     iv_object_date_to        IN         VARCHAR2,   -- ‘ÎÛŠúŠÔTo
@@ -7284,11 +7518,14 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-14 call.......!');
 --
   BEGIN
 --
+  -- ƒfƒoƒbƒOo—Í—v”Û”»’f
+  set_debug_switch;
+debug_log(FND_FILE.LOG,'(Main)' || cv_prg_name || ' Start¥¥¥');
+--
+--
 --###########################  ŒÅ’è•” START   #####################################################
 --
--- DEBUG
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(main)START...');
--- DEBUG
+--
     -- ======================
     -- ŒÅ’èo—Í—p•Ï”ƒZƒbƒg
     -- ======================
@@ -7336,13 +7573,10 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-14 call.......!');
     gn_warn_cnt   := 0;   -- ŒxŒ”
     gn_error_cnt  := 0;   -- ƒGƒ‰[Œ”
 --
--- DEBUG
---FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(main)submain call...');
--- DEBUG
     submain(
       iv_action_type,           -- ˆ—í•Ê
       iv_req_mov_no,            -- ˆË—Š/ˆÚ“®No
-      iv_deliver_from_id,       -- oŒÉŒ³
+      iv_deliver_from,          -- oŒÉŒ³
       iv_deliver_type,          -- oŒÉŒ`‘Ô
       iv_object_date_from,      -- ‘ÎÛŠúŠÔFrom
       iv_object_date_to,        -- ‘ÎÛŠúŠÔTo
@@ -7353,11 +7587,6 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(submain)C-14 call.......!');
       lv_retcode,               -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
       lv_errmsg);               -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
 --
--- DEBUG
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'######(main)submain after0....');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'(main)submain after....');
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'######(main)submain after2....');
--- DEBUG
     -- ˆ—Œ”‚ÌƒZƒbƒg
     -- ˆ—Œ”‚Í’†ŠÔƒe[ƒuƒ‹‚Ì‘Œ”
     IF (iv_action_type = gv_cons_t_deliv) THEN
@@ -7369,7 +7598,7 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'######(main)submain after2....');
     IF (lv_retcode = gv_status_error) THEN
       gn_normal_cnt := 0;
     ELSE
-      gn_normal_cnt   := gn_ins_data_cnt_ml + gn_ins_data_cnt_oh;
+      gn_normal_cnt   := gn_ins_data_cnt_mh + gn_ins_data_cnt_ph;
     END IF;
 --
 --###########################  ŒÅ’è•” START   #####################################################
@@ -7408,18 +7637,13 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'######(main)submain after2....');
     gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00011','CNT',TO_CHAR(gn_warn_cnt));
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
-    -- ÏÚŒø—¦ƒI[ƒo[ƒtƒ‰ƒO‚ªON‚¾‚Á‚½‚ç
-    IF ((lv_retcode <> gv_status_error) AND (gv_loading_over_flg = gv_cons_flg_y)) THEN
-      lv_retcode := gv_status_warn;
-    END IF;
-
     --ƒXƒe[ƒ^ƒXo—Í
     SELECT flv.meaning
     INTO   gv_conc_status
     FROM   fnd_lookup_values flv
     WHERE  flv.language            = userenv('LANG')
     AND    flv.view_application_id = 0
-    AND    flv.security_group_id   = fnd_global.lookup_security_group(flv.lookup_type, 
+    AND    flv.security_group_id   = fnd_global.lookup_security_group(flv.lookup_type,
                                                                       flv.view_application_id)
     AND    flv.lookup_type         = 'CP_STATUS_CODE'
     AND    flv.lookup_code         = DECODE(lv_retcode,
@@ -7438,6 +7662,9 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'######(main)submain after2....');
     IF (retcode = gv_status_error) THEN
       ROLLBACK;
     END IF;
+--
+--
+debug_log(FND_FILE.LOG,'(C-xx)' || cv_prg_name || ' End¥¥¥¥¥');
 --
   EXCEPTION
     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***

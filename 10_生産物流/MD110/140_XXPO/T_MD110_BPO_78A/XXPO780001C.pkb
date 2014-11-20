@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    計算書                                (T_MD070_BPO_78A)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *                                         品目マスタを仲介する。
  *                                       ・メッセージコードを修正
  *  2008/03/10    1.2   Masayuki Ikeda   ・変更要求No.81対応
+ *  2008/06/20    1.3  Yasuhisa Yamamoto ST不具合対応#135
  *
  *****************************************************************************************/
 --
@@ -1022,7 +1023,10 @@ AS
       -- 個別計算項目
       ln_amount   := ROUND( gt_main_data(i).quantity * gt_main_data(i).unit_price ) ;
       ln_tax      := ROUND( ln_amount * gt_main_data(i).tax_rate / 100 ) ;
-      ln_balance  := ln_amount - ln_tax ;
+-- 2008/06/20 v1.3 Y.Yamamoto Update Start
+--      ln_balance  := ln_amount - ln_tax ;
+      ln_balance  := ln_amount + ln_tax ;
+-- 2008/06/20 v1.3 Y.Yamamoto Update End
 --
       -- 集計項目
       ln_ttl_amount  := ln_ttl_amount  + ln_amount ;  -- 今回有償金額
