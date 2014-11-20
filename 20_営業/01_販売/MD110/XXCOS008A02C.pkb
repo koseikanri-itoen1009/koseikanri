@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                       [T1_1206] ヘッダ単位で一番大きい本体金額の条件を絶対値に修正
  *  2009/06/01    1.8   N.Maeda          [T1_1269] 消費税区分3(内税(単価込み)):税抜基準単価算出方法修正
  *  2009/06/09    1.9   K.Kiriu          [T1_1368] 消費税金額合計のDB精度対応
+ *  2009/07/08    1.10  K.Kiriu          [0000484] 品目不一致障害対応
  *
  *****************************************************************************************/
 --
@@ -1131,7 +1132,10 @@ AS
     , oola.attribute6                       AS child_item_code            -- 品目子コード
     , oola.packing_instructions             AS packing_instructions       -- 依頼No
     , xola.request_no                       AS request_no                 -- 出荷依頼No
-    , xola.shipping_item_code               AS shipping_item_code         -- 出荷品目
+/* 2009/07/08 Ver1.10 Mod Start */
+--    , xola.shipping_item_code               AS shipping_item_code         -- 出荷品目
+    , xola.request_item_code                AS shipping_item_code         -- 依頼品目
+/* 2009/07/08 Ver1.10 Mod End   */
     , xoha.arrival_date                     AS arrival_date               -- 着荷日
     , xola.shipped_quantity                 AS shipped_quantity           -- 出荷実績数量
     , cn_check_status_normal                AS check_status               -- チェックステータス
@@ -1150,7 +1154,10 @@ AS
       LEFT JOIN xxwsh_order_lines_all     xola    
         ON  xoha.order_header_id = xola.order_header_id -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ﾍｯﾀﾞID＝受注明細ｱﾄﾞｵﾝ.ﾍｯﾀﾞID
         -- NVL(受注明細.品目子コード，受注明細.受注品目)＝受注明細ｱﾄﾞｵﾝ.出荷品目
-        AND NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
+/* 2009/07/08 Ver1.10 Mod Start */
+--        AND NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
+        AND NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
+/* 2009/07/08 Ver1.10 Mod End   */
         AND NVL( xola.delete_flag, ct_no_flg ) = ct_no_flg  -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
     , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
     , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
