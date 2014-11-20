@@ -1,0 +1,9 @@
+CREATE INDEX XXWIP.XXWIP_DELI_CHAR_IF_N02 ON XXWIP.XXWIP_DELIVERY_CHARGES_IF(p_b_classe
+                                                                            ,goods_classe
+                                                                            ,delivery_company_code
+                                                                            ,shipping_address_classe
+                                                                            ,delivery_distance
+                                                                            ,delivery_weight
+                                                                            ,start_date_active
+                                                                             )
+ TABLESPACE XXIDX;

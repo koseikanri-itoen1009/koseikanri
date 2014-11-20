@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_sh_n05 ON xxwsh.xxwsh_shipping_headers_if( data_type,eos_data_type,report_post_code,location_code ) TABLESPACE xxidx;
