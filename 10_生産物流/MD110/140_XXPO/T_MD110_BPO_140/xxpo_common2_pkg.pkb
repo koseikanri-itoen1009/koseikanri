@@ -6,7 +6,7 @@ AS
  * Package Name           : xxpo_common2_pkg(BODY)
  * Description            : 共通関数(有償支給用)(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_140_共通関数（補足資料）.xls
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -21,7 +21,8 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/03/12   1.0   D.Nihei         新規作成
- *  2008/05/29   1.1   D.Nihei         結合テスト不具合対応(全数出庫時ステータス更新誤り)
+ *  2008/05/29   1.0   D.Nihei         結合テスト不具合対応(全数出庫時ステータス更新誤り)
+ *  2008/07/18   1.1   D.Nihei         ST#445対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -157,7 +158,10 @@ AS
           ,xola.last_update_date        = id_last_update_date                      -- 最終更新日
           ,xola.last_update_login       = in_last_update_login                     -- 最終更新ログイン
     WHERE  xola.order_header_id         = in_order_header_id
-    AND    NVL( xola.delete_flag, 'N' ) = 'N'                                      -- 削除フラグOFF
+-- 2008/07/18 D.Nihei MOD START
+--    AND    NVL( xola.delete_flag, 'N' ) = 'N'                                      -- 削除フラグOFF
+    AND    xola.delete_flag = 'N'                                      -- 削除フラグOFF
+-- 2008/07/18 D.Nihei MOD END
     ;
 --
     -- ===============================
@@ -177,6 +181,17 @@ AS
           ,xoha.arrival_date            = DECODE( iv_record_type_code
                                                  ,'30', xoha.schedule_arrival_date -- 着荷日を着荷予定日で更新
                                                  ,xoha.arrival_date )
+-- 2008/07/18 D.Nihei ADD START
+          ,xoha.result_freight_carrier_id   = DECODE( iv_record_type_code
+                                                     ,'20', xoha.career_id                      -- 全数出庫の場合、運送業者_実績IDを運送業者IDで更新
+                                                     ,xoha.result_freight_carrier_id )          -- 全数入庫の場合、更新対象外
+          ,xoha.result_freight_carrier_code = DECODE( iv_record_type_code
+                                                     ,'20', xoha.freight_carrier_code           -- 全数出庫の場合、運送業者_実績を運送業者で更新
+                                                     ,xoha.result_freight_carrier_code )        -- 全数入庫の場合、更新対象外
+          ,xoha.result_shipping_method_code = DECODE( iv_record_type_code
+                                                     ,'20', xoha.shipping_method_code           -- 全数出庫の場合、配送区分_実績を配送区分で更新
+                                                     ,xoha.result_shipping_method_code )        -- 全数入庫の場合、更新対象外
+-- 2008/07/18 D.Nihei ADD START
           ,xoha.last_updated_by         = in_last_updated_by                       -- 最終更新者
           ,xoha.last_update_date        = id_last_update_date                      -- 最終更新日
           ,xoha.last_update_login       = in_last_update_login                     -- 最終更新ログイン
