@@ -7,7 +7,7 @@ AS
  * Description      : 積込指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 積込指示書 T_MD070_BPO_62J
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/07/15    1.4   Masayoshi Uehara   入数の小数部を切り捨てて、整数で表示
  *  2008/10/27    1.5   Yuko Kawano        統合指摘#133、課題#32,#62、内部変更#183対応
  *  2009/01/19    1.6   Yasuhisa Yamamoto  本番障害#1039対応
+ *  2009/02/04    1.7   Yukari Kanami      本番障害#41対応
  *
  *****************************************************************************************/
 --
@@ -112,6 +113,10 @@ AS
 -- 2008/10/27 Y.Kawano Add Start
   gc_class_y                    CONSTANT VARCHAR2(1)  :=  'Y';  -- 区分値'Y'
 -- 2008/10/27 Y.Kawano Add End
+-- 2009/02/04 Y.Kanami 本番#41対応 Start --
+  -- ロット管理
+  gc_lot_ctl_manage             CONSTANT  VARCHAR2(1)  := '1' ;   -- ロット管理されている
+-- 2009/02/04 Y.Kanami 本番#41対応 End ----
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -593,11 +598,16 @@ AS
                   -- 製品の場合
 -- 2008/10/27 Y.Kawano Mod Start #183
 --                  WHEN ((xic4v1.item_class_code = lc_code_seihin) 
-                  WHEN ((xic5v1.item_class_code = lc_code_seihin) 
+-- 2009/02/04 Y.Kanami 本番障害#41対応 Start --
+                  WHEN (xic5v1.item_class_code = lc_code_seihin) THEN
+--                  WHEN ((xic5v1.item_class_code = lc_code_seihin) 
+-- 2009/02/04 Y.Kanami 本番障害#41対応 End   --
 -- 2008/10/27 Y.Kawano Mod End #183
-                         AND 
-                        (ilm.attribute6 IS NOT NULL)) THEN 
-                          xim2v1.num_of_cases
+-- 2009/02/04 Y.Kanami 本番障害#41対応 Start --
+--                         AND 
+--                        (ilm.attribute6 IS NOT NULL)) THEN 
+-- 2009/02/04 Y.Kanami 本番障害#41対応 End   --
+                      xim2v1.num_of_cases
                   -- その他の品目の場合
 -- 2008/10/27 Y.Kawano Mod Start #183
 --                  WHEN (((xic4v1.item_class_code = lc_code_genryou) 
@@ -611,7 +621,12 @@ AS
                         (ilm.attribute6 IS NOT NULL)) THEN 
                          TO_CHAR(TRUNC(ilm.attribute6))
                   -- 在庫入数が設定されていない,資材他,ロット管理していない場合
-                  WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
+-- 2009/02/04 Y.Kanami 本番障害#41対応 Start --
+                  WHEN (( ilm.attribute6 IS NULL )
+                      OR ( xim2v1.lot_ctl <> gc_lot_ctl_manage )) THEN  -- ロット管理されていない
+                        TO_CHAR(TRUNC(xim2v1.frequent_qty))
+--                  WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
+-- 2009/02/04 Y.Kanami 本番障害#41対応 End   --
                 END                               AS qty            -- 入数
                 ,CASE
                   WHEN  xmldt.mov_line_id IS NULL THEN
@@ -934,10 +949,16 @@ AS
                   -- 製品の場合
 -- 2008/10/27 Y.Kawano Mod Start #183
 --                  WHEN ((xic4v1.item_class_code = lc_code_seihin) 
-                  WHEN ((xic5v1.item_class_code = lc_code_seihin) 
+-- 2009/02/04 Y.Kanami 本番障害#41対応 Start --
+                  WHEN (xic5v1.item_class_code = lc_code_seihin) THEN
+--                  WHEN ((xic5v1.item_class_code = lc_code_seihin) 
+-- 2009/02/04 Y.Kanami 本番障害#41対応 End   --
 -- 2008/10/27 Y.Kawano Mod End   #183
-                        AND 
-                        (ilm.attribute6 IS NOT NULL)) THEN xim2v1.num_of_cases
+-- 2009/02/04 Y.Kanami 本番障害#41対応 Start --
+                    xim2v1.num_of_cases
+--                        AND 
+--                        (ilm.attribute6 IS NOT NULL)) THEN xim2v1.num_of_cases
+-- 2009/02/04 Y.Kanami 本番障害#41対応 End   --
                   -- その他の品目の場合
 -- 2008/10/27 Y.Kawano Mod Start #183
 --                  WHEN (((xic4v1.item_class_code = lc_code_genryou) 
@@ -949,7 +970,12 @@ AS
 -- 2008/10/27 Y.Kawano Mod End   #183
                         AND (ilm.attribute6 IS NOT NULL)) THEN TO_CHAR(TRUNC(ilm.attribute6))
                   -- 在庫入数が設定されていない,資材他,ロット管理していない場合
-                  WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
+-- 2009/02/04 Y.Kanami 本番障害#41対応 Start --
+                  WHEN (( ilm.attribute6 IS NULL )
+                      OR ( xim2v1.lot_ctl <> gc_lot_ctl_manage )) THEN    -- ロット管理されていない
+                        TO_CHAR(TRUNC(xim2v1.frequent_qty))
+--                  WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
+-- 2009/02/04 Y.Kanami 本番障害#41対応 End   --
                 END                               AS qty            -- 入数
                 ,CASE
                   WHEN  xmldt.mov_line_id IS NULL THEN

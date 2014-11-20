@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *  2008/11/20    1.16  Y.Yamamoto       統合指摘#464、#686対応
  *  2008/11/27    1.17  A.Shiina         本番#185対応
  *  2009/01/23    1.18  N.Yoshida        本番#765対応
+ *  2009/02/04    1.19  Y.Kanami         本番#41対応
+ *                                       重量容積の計算でパレット重量加算を削除する
  *
  *****************************************************************************************/
 --
@@ -191,6 +193,10 @@ AS
 -- 2008/11/13 Y.Yamamoto v1.15 add start
   gc_no_instr_actual_class_y  CONSTANT  VARCHAR2(1)   := 'Y' ;              -- 指示なし実績区分
 -- 2008/11/13 Y.Yamamoto v1.15 add end
+-- 2009/02/04 Y.Kanami 本番#41対応 Start --
+  -- ロット管理
+  gc_lot_ctl_manage          CONSTANT  VARCHAR2(1)  := '1' ;                -- ロット管理されている
+-- 2009/02/04 Y.Kanami 本番#41対応 End ----
   ------------------------------
   -- プロファイル関連
   ------------------------------
@@ -893,7 +899,10 @@ AS
     || ' NVL(xoha.sum_pallet_weight, 0) + xoha.sum_weight' 
     || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN' 
 --    || ' xola.pallet_weight + xoha.sum_capacity' 
-    || ' NVL(xoha.sum_pallet_weight, 0) + xoha.sum_capacity' 
+-- 2009/02/04 Y.Kanami 本番#41対応 Start --
+    || ' xoha.sum_capacity' 
+--    || ' NVL(xoha.sum_pallet_weight, 0) + xoha.sum_capacity' 
+-- 2009/02/04 Y.Kanami 本番#41対応 End   --
 -- 2009/01/23 v1.18 N.Yoshida UPDATE END
     || ' END' 
     || ' END AS sum_weightm_capacity' 
@@ -925,9 +934,18 @@ AS
     || ' ,CASE' 
     || ' WHEN ( xic4v.item_class_code = '''|| gc_item_cd_prdct ||''' ) THEN' 
     || ' xim2v.num_of_cases' 
-    || ' WHEN ( ilm.attribute6 IS NOT NULL ) THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 Start
+    || ' WHEN ( ( xic4v.item_class_code = '''|| gc_item_cd_material ||''' '
+    || ' OR xic4v.item_class_code = '''|| gc_item_cd_prdct_half ||''' )' 
+    || ' AND ilm.attribute6 IS NOT NULL ) THEN' 
+--    || ' WHEN ( ilm.attribute6 IS NOT NULL ) THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 End ----
     || ' ilm.attribute6' 
-    || ' WHEN ( ilm.attribute6 IS NULL ) THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 Start
+    || ' WHEN (( ilm.attribute6 IS NULL )'
+    || ' OR (xim2v.lot_ctl <> '''|| gc_lot_ctl_manage ||''')) THEN'     -- ロット管理されていない
+--    || ' WHEN ( ilm.attribute6 IS NULL ) THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 End ----
     || ' xim2v.frequent_qty' 
     || ' END  AS num_of_cases' 
     || ' ,xim2v.net AS net' 
@@ -1403,7 +1421,11 @@ AS
     || ' OR xic4v.item_class_code = '''|| gc_item_cd_prdct_half ||''' )' 
     || ' AND ilm.attribute6 IS NOT NULL ) THEN' 
     || ' ilm.attribute6' 
-    || ' WHEN ilm.attribute6 IS NULL THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 Start --
+    || ' WHEN ((ilm.attribute6 IS NULL)'
+    || ' OR (xim2v.lot_ctl <> '''|| gc_lot_ctl_manage ||''')) THEN'     -- ロット管理されていない
+--    || ' WHEN ilm.attribute6 IS NULL THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 End ----    
     || ' xim2v.frequent_qty' 
     || ' END  AS num_of_cases' 
     || ' ,xim2v.net  AS net' 
@@ -1795,7 +1817,10 @@ AS
     || ' NVL(xmrih.sum_pallet_weight, 0) + xmrih.sum_weight' 
     || ' WHEN ( xmrih.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN' 
 --    || ' xmril.pallet_weight + xmrih.sum_capacity' 
-    || ' NVL(xmrih.sum_pallet_weight, 0) + xmrih.sum_capacity' 
+-- 2009/02/04 Y.Kanami 本番#41対応 Start --
+    || ' xmrih.sum_capacity' 
+--    || ' NVL(xmrih.sum_pallet_weight, 0) + xmrih.sum_capacity' 
+-- 2009/02/04 Y.Kanami 本番#41対応 End   --
 -- 2009/01/23 v1.18 N.Yoshida UPDATE END
     || ' END' 
     || ' END AS sum_weightm_capacity' 
@@ -1831,7 +1856,11 @@ AS
     || ' OR xic4v.item_class_code = '''|| gc_item_cd_prdct_half ||''' )' 
     || ' AND ilm.attribute6 IS NOT NULL ) THEN' 
     || ' ilm.attribute6' 
-    || ' WHEN ( ilm.attribute6 IS NULL ) THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 Start --
+    || ' WHEN ((ilm.attribute6 IS NULL)'
+    || ' OR (xim2v.lot_ctl <> '''|| gc_lot_ctl_manage ||''' )) THEN'     -- ロット管理されていない
+--    || ' WHEN ( ilm.attribute6 IS NULL ) THEN' 
+-- 2009/02/04 Y.Kanami 本番#41対応 End ----
     || ' xim2v.frequent_qty' 
     || ' END AS num_of_cases' 
     || ' ,xim2v.net AS net' 
