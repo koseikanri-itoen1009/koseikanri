@@ -19,6 +19,7 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/04/08   1.0   H.Itou          新規作成
+ *  2008/12/06   1.1   T.Miyata        コピー作成時、出荷実績インタフェース済フラグをN(固定)とする。
  *
  *****************************************************************************************/
 --
@@ -550,7 +551,10 @@ AS
         ,order_line_rec.line_description              -- 摘要
         ,order_line_rec.rm_if_flg                     -- 倉替返品インタフェース済フラグ
         ,order_line_rec.shipping_request_if_flg       -- 出荷依頼インタフェース済フラグ
-        ,order_line_rec.shipping_result_if_flg        -- 出荷実績インタフェース済フラグ
+-- 2008/12/06 T.Miyata Modify Start #484 コピー作成時にはIFされていないため、出荷実績インタフェース済フラグをNとする。
+--        ,order_line_rec.shipping_result_if_flg        -- 出荷実績インタフェース済フラグ
+        ,'N'                         -- 出荷実績インタフェース済フラグ
+-- 2008/12/06 T.Miyata Modify End #484
         ,FND_GLOBAL.USER_ID          -- 作成者
         ,SYSDATE                     -- 作成日
         ,FND_GLOBAL.USER_ID          -- 最終更新者
