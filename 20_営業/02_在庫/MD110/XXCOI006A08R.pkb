@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、品目毎の明細および棚卸数量を帳票に出力します。
  *                    帳票に出力した棚卸結果データには処理済フラグ"Y"を設定します。
  * MD.050           : 棚卸チェックリスト    MD050_COI_006_A08
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/03/23    1.4   H.Sasaki         [障害T1_0107] 抽出条件の修正
  *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
  *  2009/07/14    1.6   H.Sasaki         [0000461]帳票ワークテーブルに取込順を設定
+ *  2009/08/07    1.7   N.Abe            [0000945]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -547,11 +548,20 @@ AS
     -- 拠点名取得
     IF (iv_base_code IS NOT NULL) THEN
       BEGIN
-        SELECT base_short_name
+-- == 2009/08/07 V1.7 Modified START ===============================================================
+--        SELECT base_short_name
+--        INTO   lv_base_name
+--        FROM   xxcoi_base_info2_v       -- 拠点情報ビュー
+--        WHERE  base_code       = iv_base_code
+--        AND    focus_base_code = gv_user_basecode;
+        SELECT SUBSTRB(hca.account_name, 1, 8)
         INTO   lv_base_name
-        FROM   xxcoi_base_info2_v       -- 拠点情報ビュー
-        WHERE  base_code       = iv_base_code
-        AND    focus_base_code = gv_user_basecode;
+        FROM   hz_cust_accounts    hca
+        WHERE  hca.account_number       =  iv_base_code
+        AND    hca.status               =  'A'
+        AND    hca.customer_class_code  =  '1'
+        ;
+-- == 2009/08/07 V1.7 Modified END   ===============================================================
       EXCEPTION
         WHEN OTHERS THEN
           lv_base_name := NULL;

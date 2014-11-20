@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A05R(body)
  * Description      : 入庫差異確認リスト
  * MD.050           : 入庫差異確認リスト MD050_COI_003_A05
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0   SCS.Tsuboi       新規作成
+ *  2009/08/06    1.1   N.ABe            [0000945]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -804,9 +805,30 @@ AS
           WHERE xhit.stock_balance_list_div IN (cv_flg_o,cv_flg_i)
             AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
             AND xhit.status = cn_status
-            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
-                        WHERE xbiv.focus_base_code = gr_param.base_code
-                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+-- == 2009/08/06 V1.1 Modified START ===============================================================
+--            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
+--                        WHERE xbiv.focus_base_code = gr_param.base_code
+--                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+            AND EXISTS (SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  xca.management_base_code =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               =  'A'
+                        AND    hca.customer_class_code  =  '1'
+                        AND    hca.cust_account_id      =  xca.customer_id
+                        UNION ALL
+                        SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  hca.account_number       =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               = 'A'
+                        AND    hca.customer_class_code  = '1'
+                        AND    hca.cust_account_id      = xca.customer_id
+                        AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+                       )
+-- == 2009/08/06 V1.1 Modified END   ===============================================================
          ) hht2
          GROUP BY 
                hht2.base_code   
@@ -1009,9 +1031,30 @@ AS
         WHERE xhit.stock_balance_list_div = cv_flg_o
           AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
           AND  xhit.status = cn_status
-          AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
-                      WHERE xbiv.focus_base_code = gr_param.base_code
-                      AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+-- == 2009/08/06 V1.1 Modified START ===============================================================
+--            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
+--                        WHERE xbiv.focus_base_code = gr_param.base_code
+--                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+            AND EXISTS (SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  xca.management_base_code =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               =  'A'
+                        AND    hca.customer_class_code  =  '1'
+                        AND    hca.cust_account_id      =  xca.customer_id
+                        UNION ALL
+                        SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  hca.account_number       =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               = 'A'
+                        AND    hca.customer_class_code  = '1'
+                        AND    hca.cust_account_id      = xca.customer_id
+                        AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+                       )
+-- == 2009/08/06 V1.1 Modified END   ===============================================================
         GROUP BY
               xhit.base_code
              ,xhit.outside_base_code
@@ -1046,9 +1089,30 @@ AS
         WHERE xhit.stock_balance_list_div = cv_flg_i
          AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
           AND  xhit.status = cn_status
-         AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
-                      WHERE xbiv.focus_base_code = gr_param.base_code
-                      AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+-- == 2009/08/06 V1.1 Modified START ===============================================================
+--            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
+--                        WHERE xbiv.focus_base_code = gr_param.base_code
+--                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+            AND EXISTS (SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  xca.management_base_code =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               =  'A'
+                        AND    hca.customer_class_code  =  '1'
+                        AND    hca.cust_account_id      =  xca.customer_id
+                        UNION ALL
+                        SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  hca.account_number       =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               = 'A'
+                        AND    hca.customer_class_code  = '1'
+                        AND    hca.cust_account_id      = xca.customer_id
+                        AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+                       )
+-- == 2009/08/06 V1.1 Modified END   ===============================================================
        GROUP BY
              xhit.base_code
             ,xhit.outside_base_code
@@ -1281,9 +1345,30 @@ AS
           WHERE xhit.stock_balance_list_div IN (cv_flg_o,cv_flg_i)
             AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
             AND xhit.status = cn_status
-            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
-                        WHERE xbiv.focus_base_code = gr_param.base_code
-                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+-- == 2009/08/06 V1.1 Modified START ===============================================================
+--            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
+--                        WHERE xbiv.focus_base_code = gr_param.base_code
+--                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+            AND EXISTS (SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  xca.management_base_code =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               =  'A'
+                        AND    hca.customer_class_code  =  '1'
+                        AND    hca.cust_account_id      =  xca.customer_id
+                        UNION ALL
+                        SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  hca.account_number       =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               = 'A'
+                        AND    hca.customer_class_code  = '1'
+                        AND    hca.cust_account_id      = xca.customer_id
+                        AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+                       )
+-- == 2009/08/06 V1.1 Modified END   ===============================================================
          ) hht2
          GROUP BY 
                hht2.base_code   
@@ -1339,9 +1424,30 @@ AS
           WHERE xhit.stock_balance_list_div = cv_flg_o
             AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
             AND  xhit.status = 1
-            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
-                        WHERE xbiv.focus_base_code = gr_param.base_code
-                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+-- == 2009/08/06 V1.1 Modified START ===============================================================
+--            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
+--                        WHERE xbiv.focus_base_code = gr_param.base_code
+--                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+            AND EXISTS (SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  xca.management_base_code =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               =  'A'
+                        AND    hca.customer_class_code  =  '1'
+                        AND    hca.cust_account_id      =  xca.customer_id
+                        UNION ALL
+                        SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  hca.account_number       =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               = 'A'
+                        AND    hca.customer_class_code  = '1'
+                        AND    hca.cust_account_id      = xca.customer_id
+                        AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+                       )
+-- == 2009/08/06 V1.1 Modified END   ===============================================================
          GROUP BY
                xhit.base_code
               ,xhit.outside_base_code
@@ -1379,9 +1485,30 @@ AS
          WHERE xhit.stock_balance_list_div = cv_flg_i
            AND (xhit.invoice_date BETWEEN gd_target_date_start AND gd_target_date_end)
            AND  xhit.status = 1
-           AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
-                       WHERE xbiv.focus_base_code = gr_param.base_code
-                       AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+-- == 2009/08/06 V1.1 Modified START ===============================================================
+--            AND EXISTS (SELECT 1 FROM xxcoi_base_info2_v  xbiv 
+--                        WHERE xbiv.focus_base_code = gr_param.base_code
+--                        AND   xbiv.base_code IN(xhit.outside_base_code,xhit.inside_base_code))
+            AND EXISTS (SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  xca.management_base_code =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               =  'A'
+                        AND    hca.customer_class_code  =  '1'
+                        AND    hca.cust_account_id      =  xca.customer_id
+                        UNION ALL
+                        SELECT 1
+                        FROM   hz_cust_accounts    hca
+                              ,xxcmm_cust_accounts xca
+                        WHERE  hca.account_number       =  gr_param.base_code
+                        AND    hca.account_number       IN (xhit.outside_base_code, xhit.inside_base_code)
+                        AND    hca.status               = 'A'
+                        AND    hca.customer_class_code  = '1'
+                        AND    hca.cust_account_id      = xca.customer_id
+                        AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+                       )
+-- == 2009/08/06 V1.1 Modified END   ===============================================================
         GROUP BY
               xhit.base_code
              ,xhit.outside_base_code

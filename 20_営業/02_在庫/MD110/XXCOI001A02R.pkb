@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/04/15    1.2   H.Sasaki         [T1_0397]拠点情報取得Viewの変更
  *  2009/04/23    1.3   H.Sasaki         [T1_0385]出庫拠点名の整形（8byte切捨て）
  *  2009/07/02    1.4   H.Sasaki         [0000273]パフォーマンス改善
+ *  2009/08/07    1.5   N.Abe            [0000945]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -144,8 +145,12 @@ AS
 -- == 2009/04/15 V1.2 Modified START ===============================================================
 --      base_code              xxcoi_base_info_v.base_code%TYPE
 --    , base_name              xxcoi_base_info_v.base_short_name%TYPE
-      base_code              xxcoi_base_info2_v.base_code%TYPE
-    , base_name              xxcoi_base_info2_v.base_short_name%TYPE
+-- == 2009/08/07 V1.5 Modified START ===============================================================
+--      base_code              xxcoi_base_info2_v.base_code%TYPE
+--    , base_name              xxcoi_base_info2_v.base_short_name%TYPE
+      base_code              hz_cust_accounts.account_number%TYPE
+    , base_name              hz_cust_accounts.account_name%TYPE
+-- == 2009/08/07 V1.5 Modified END   ===============================================================
 -- == 2009/04/15 V1.2 Modified END   ===============================================================
   );
   TYPE gt_output_base_ttype                                           -- 出力対象拠点格納用テーブル変数
@@ -166,7 +171,10 @@ AS
   gt_base_code              xxcoi_storage_information.base_code%TYPE; -- 拠点コード
 -- == 2009/04/15 V1.2 Modified START ===============================================================
 --  gt_base_name              xxcoi_base_info_v.base_short_name%TYPE;   -- 拠点名
-  gt_base_name              xxcoi_base_info2_v.base_short_name%TYPE;   -- 拠点名
+-- == 2009/08/07 V1.5 Modified START ===============================================================
+--  gt_base_name              xxcoi_base_info2_v.base_short_name%TYPE;   -- 拠点名
+  gt_base_name              hz_cust_accounts.account_name%TYPE;         -- 拠点名
+-- == 2009/08/07 V1.5 Modified END   ===============================================================
 -- == 2009/04/15 V1.2 Modified END   ===============================================================
   gv_zero_message           VARCHAR2(200);                            -- 0件メッセージ格納
 --
@@ -550,14 +558,39 @@ AS
       gt_base_code := iv_base_code;
     END IF;
 --
-    SELECT xbiv.base_code
-          ,xbiv.base_short_name
-    BULK COLLECT INTO gt_base_tab
+-- == 2009/08/07 V1.5 Modified START ===============================================================
+--    SELECT xbiv.base_code
+--          ,xbiv.base_short_name
+--    BULK COLLECT INTO gt_base_tab
 -- == 2009/04/15 V1.2 Modified START ===============================================================
 --    FROM   xxcoi_base_info_v xbiv
-    FROM   xxcoi_base_info2_v xbiv
+--    FROM   xxcoi_base_info2_v xbiv
 -- == 2009/04/15 V1.2 Modified END   ===============================================================
-    WHERE  xbiv.focus_base_code = gt_base_code;
+--    WHERE  xbiv.focus_base_code = gt_base_code;
+    SELECT  acc.account_number
+           ,SUBSTRB(acc.account_name, 1, 8)
+    BULK COLLECT INTO gt_base_tab
+    FROM   (SELECT hca.account_number                                 -- 拠点コード
+                  ,hca.account_name                                   -- 拠点略称
+            FROM   hz_cust_accounts hca                               -- 顧客マスタ
+                  ,xxcmm_cust_accounts xca                            -- 顧客追加情報
+            WHERE  xca.management_base_code = gt_base_code
+            AND    hca.status               = 'A'
+            AND    hca.customer_class_code  = '1'
+            AND    hca.cust_account_id      = xca.customer_id
+            UNION ALL
+            SELECT hca.account_number                                 -- 拠点コード
+                  ,hca.account_name                                   -- 拠点略称
+            FROM   hz_cust_accounts hca                               -- 顧客マスタ
+                  ,xxcmm_cust_accounts xca                            -- 顧客追加情報
+            WHERE  hca.account_number       = gt_base_code
+            AND    hca.status               = 'A'
+            AND    hca.customer_class_code  = '1'
+            AND    hca.cust_account_id      = xca.customer_id
+            AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+           ) acc
+    ;
+-- == 2009/08/07 V1.5 Modified END   ===============================================================
 --
     gn_output_base_num := gt_base_tab.COUNT;
 --
