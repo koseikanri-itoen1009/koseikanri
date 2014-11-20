@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.16
+ * Version          : 3.17
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2012/02/23    3.14  S.Niki           [E_本稼動_09144] 売上金額（税込）に変動電気代を加算しないよう修正
  *  2012/09/14    3.15  S.Niki           [E_本稼動_08751] パフォーマンス改善対応
  *  2012/10/01    3.16  K.Kiriu          [E_本稼動_10133] パフォーマンス改善対応(ヒント句固定化)
+ *  2012/10/18    3.17  K.Kiriu          [E_本稼動_10133] パフォーマンス改善追加対応(ヒント句固定化)
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -2683,7 +2684,14 @@ GROUP BY CASE
 -- 2009/12/21 Ver.3.6 [E_本稼動_00460] SCS K.Yamaguchi REPAIR END
   -- 販売実績情報・入金値引率
   CURSOR get_sales_data_cur6 IS
-    SELECT /*+ LEADING(xt0c xcbi xseh xsel) */
+-- 2012/10/18 Ver.3.17 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--    SELECT /*+ LEADING(xt0c xcbi xseh xsel) */
+    SELECT /*+
+             LEADING( xt0c xcbi xseh xsel hca xca )
+             USE_NL( xt0c xcbi xseh xsel hca xca )
+             INDEX( xseh XXCOS_SALES_EXP_HEADERS_N08 )
+           */
+-- 2012/10/18 Ver.3.17 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR START
 --           xseh.sales_base_code                                                                  AS base_code                -- 拠点コード
 --         , xseh.results_employee_code                                                            AS emp_code                 -- 担当者コード
