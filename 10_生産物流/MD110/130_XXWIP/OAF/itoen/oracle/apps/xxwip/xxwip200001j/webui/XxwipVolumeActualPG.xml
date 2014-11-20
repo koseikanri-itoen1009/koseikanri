@@ -342,7 +342,7 @@
                               </oa:cellFormat>
                               <oa:cellFormat id="cell92" columnSpan="8">
                                  <ui:contents>
-                                    <oa:messageTextInput id="MaterialDesc" viewName="XxwipBatchHeaderVO1" viewAttr="MaterialDesc" shortDesc="摘要" maximumLength="200" columns="178" styleClass="LegendText" serverUnvalidated="true"/>
+                                    <oa:messageTextInput id="MaterialDesc" viewName="XxwipBatchHeaderVO1" viewAttr="MaterialDesc" shortDesc="摘要" maximumLength="40" columns="178" styleClass="LegendText" serverUnvalidated="true"/>
                                  </ui:contents>
                               </oa:cellFormat>
                            </ui:contents>

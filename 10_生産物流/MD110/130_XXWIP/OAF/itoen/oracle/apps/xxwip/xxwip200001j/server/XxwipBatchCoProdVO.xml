@@ -75,6 +75,7 @@ AND    gmd.line_type          = 2 -- •›ŽY•¨
 AND    gmd.attribute24        IS NULL
 AND    itp.reverse_id(+)      IS NULL
 AND    itp.lot_id(+)          > 0
+AND    itp.doc_type(+)        = 'PROD'
 AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
 AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
    ]]></SQLQuery>

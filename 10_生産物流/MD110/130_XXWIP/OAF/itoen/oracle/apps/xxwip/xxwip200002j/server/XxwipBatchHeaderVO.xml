@@ -144,6 +144,7 @@ AND    gmd.line_type          = 1 -- 完成品
 AND    itp.lot_id(+)          > 0 -- デフォルトロット
 AND    itp.reverse_id(+)      IS NULL
 AND    itp.delete_mark(+)     = 0
+AND    itp.doc_type(+)        = 'PROD'
 AND    xlvv1.lookup_type(+)   = 'LINE_TYPE'
 AND    xlvv2.lookup_type(+)   = 'XXWIP_DUTY_STATUS'
 AND    xlvv3.lookup_type(+)   = 'XXCMN_L10'
@@ -386,7 +387,7 @@ AND    ximv.end_date_active    >= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, '
    <ViewAttribute
       Name="MaterialDesc"
       IsPersistent="false"
-      Precision="200"
+      Precision="40"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="MATERIAL_DESC"

@@ -101,6 +101,7 @@ FROM   (SELECT 1                         record_type         -- 更新
         AND    gmd.attribute5         = 'Y'
         AND    xmd.plan_type          = '4' -- 投入
         AND    itp.reverse_id         IS NULL
+        AND    itp.doc_type           = 'PROD'
       UNION
         SELECT 0                       record_type         -- 挿入
               ,gmd.batch_id            batch_id            -- バッチID
