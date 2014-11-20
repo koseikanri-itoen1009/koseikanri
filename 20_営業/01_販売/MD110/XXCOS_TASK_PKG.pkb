@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_TASK_PKG(spec)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -22,6 +22,7 @@ AS
  *  2009/02/18    1.1   T.kitajima       [COS_091]消化VD対応
  *  2009/05/18    1.2   T.kitajima       [T1_0652]入金情報時の登録元ソース番号必須解除
  *  2009/11/24    1.3   S.Miyakoshi      TASKデータ取得時の日付の条件変更
+ *  2010/11/15    1.4   K.Kiriu          [E_本稼動_05129]タスク作成PT対応
  *
  ****************************************************************************************/
 --
@@ -138,8 +139,10 @@ AS
   --ソース文書
   cv_source_party                 CONSTANT  VARCHAR2(5)   := 'PARTY';              -- PARTY
   cv_own_typ                      CONSTANT  VARCHAR2(15)  := 'RS_EMPLOYEE';        -- RS_EMPLOYEE
-  --フォーマット
-  cv_trunc_format_dd              CONSTANT  VARCHAR2(2)   := 'DD';                 -- 日
+/* 2010/11/15 Ver1.4 Del Start */
+--  --フォーマット
+--  cv_trunc_format_dd              CONSTANT  VARCHAR2(2)   := 'DD';                 -- 日
+/* 2010/11/15 Ver1.4 Del End   */
   --入力区分
   cv_input_division_0             CONSTANT  VARCHAR2(1)   := '0';                  -- ダミー
   cv_input_division_1             CONSTANT  VARCHAR2(1)   := '1';                  -- 納品入力・EOS伝票入力
@@ -220,6 +223,9 @@ AS
     lt_task_effective_visi jtf_tasks_b.attribute11%TYPE;           --TASK有効訪問区分
     lt_task_id             jtf_tasks_b.task_id%TYPE;               --タスクID
     lt_ovn                 jtf_tasks_b.object_version_number%TYPE; --オブジェクトヴァージョンNo
+/* 2010/11/15 Ver1.4 Add Start */
+    ld_visit_date          DATE;                                   --訪問日(有効訪問区分チェック条件用)
+/* 2010/11/15 Ver1.4 Add End   */
 --
     -- ================
     -- ユーザー定義例外
@@ -382,9 +388,20 @@ AS
     IF ( lv_effective_visi IS NULL ) THEN
       NULL;
     ELSE
+/* 2010/11/15 Ver1.4 Add Start */
+      --条件用訪問日の設定
+      ld_visit_date := TRUNC(id_visit_date);
+/* 2010/11/15 Ver1.4 Add End   */
       --TASKデータ取得(有効訪問区分)
       BEGIN
-        SELECT jtb.attribute11,           -- 有効訪問区分
+/* 2010/11/15 Ver1.4 Mod Start */
+--        SELECT jtb.attribute11,           -- 有効訪問区分
+        SELECT
+               /*+
+                 INDEX( jtb xxcso_jtf_tasks_b_n18 )
+               */
+               jtb.attribute11,           -- 有効訪問区分
+/* 2010/11/15 Ver1.4 Mod End   */
                jtb.task_id,               -- TASK ID
                jtb.object_version_number  -- オブジェクトヴァージョンNo
         INTO   lt_task_effective_visi,
@@ -396,7 +413,10 @@ AS
         AND    jtb.source_object_type_code                   = cv_source_party
 --****************************** 2009/11/24 1.3 S.Miyakoshi MOD START ******************************--
 --        AND    jtb.actual_end_date BETWEEN TRUNC(id_visit_date,cv_trunc_format_dd) AND TRUNC(id_visit_date + 1 ,cv_trunc_format_dd)
-        AND    TRUNC(jtb.actual_end_date,cv_trunc_format_dd) = TRUNC(id_visit_date,cv_trunc_format_dd)
+/* 2010/11/15 Ver1.4 Mod Start */
+--        AND    TRUNC(jtb.actual_end_date,cv_trunc_format_dd) = TRUNC(id_visit_date,cv_trunc_format_dd)
+        AND    TRUNC(jtb.actual_end_date) = ld_visit_date
+/* 2010/11/15 Ver1.4 Mod End   */
 --****************************** 2009/11/24 1.3 S.Miyakoshi MOD END ********************************--
         AND    jtb.attribute12     IN (cv_registration_division_3,cv_registration_division_4,cv_registration_division_5)
         AND    jtb.deleted_flag    = cd_del_flg_n
