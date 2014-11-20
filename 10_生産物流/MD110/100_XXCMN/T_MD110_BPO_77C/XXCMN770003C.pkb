@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/12/08    1.13  H.Marushita      本番数値検証受注ヘッダ最新フラグおよび標準原価計算修正
  *  2008/12/08    1.14  A.Shiina         本番#562対応
+ *  2008/12/11    1.15  N.Yoshida        本番障害580対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -831,7 +832,16 @@ AS
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              whse_code
             ,iwm.whse_name              whse_name
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+            ,CASE WHEN xrpm.rcv_pay_div = cv_min
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+                  WHEN xrpm.rcv_pay_div = cv_one AND itc.reason_code = cv_reason_911
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) * cn_min
+                  ELSE NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
             ,xrpm.rcv_pay_div           pay_div
@@ -980,13 +990,17 @@ AS
       SELECT /*+ leading (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              whse_code
             ,iwm.whse_name              whse_name
-            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+-- 2008/12/11 v1.15 UPDATE START
+--            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+            ,NVL(itc.trans_qty,0)       trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
 --            ,xrpm.rcv_pay_div           pay_div
-            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+--            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+            ,xrpm.rcv_pay_div           pay_div
 -- 2008/12/08 v1.14 UPDATE END
+-- 2008/12/11 v1.15 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -1046,13 +1060,17 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
+-- 2008/12/11 v1.15 UPDATE START
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_one
                                          THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_min
+                                         THEN cv_one
                                          ELSE xrpm.rcv_pay_div
                                        END
+-- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    mcb3.segment1           = lt_crowd_code
@@ -1553,7 +1571,16 @@ AS
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              h_whse_code
             ,iwm.whse_name              h_whse_name
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+            ,CASE WHEN xrpm.rcv_pay_div = cv_min
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+                  WHEN xrpm.rcv_pay_div = cv_one AND itc.reason_code = cv_reason_911
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) * cn_min
+                  ELSE NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
             ,xrpm.rcv_pay_div           pay_div
@@ -1700,13 +1727,17 @@ AS
       SELECT /*+ leading (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              h_whse_code
             ,iwm.whse_name              h_whse_name
-            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+-- 2008/12/11 v1.15 UPDATE START
+--            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+            ,NVL(itc.trans_qty,0)       trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
 --            ,xrpm.rcv_pay_div           pay_div
-            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+--            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+            ,xrpm.rcv_pay_div           pay_div
 -- 2008/12/08 v1.14 UPDATE END
+-- 2008/12/11 v1.15 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -1766,13 +1797,17 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
+-- 2008/12/11 v1.15 UPDATE START
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_one
                                          THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_min
+                                         THEN cv_one
                                          ELSE xrpm.rcv_pay_div
                                        END
+-- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       UNION ALL
@@ -2272,7 +2307,16 @@ AS
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              h_whse_code
             ,iwm.whse_name              h_whse_name
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+            ,CASE WHEN xrpm.rcv_pay_div = cv_min
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+                  WHEN xrpm.rcv_pay_div = cv_one AND itc.reason_code = cv_reason_911
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) * cn_min
+                  ELSE NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
             ,xrpm.rcv_pay_div           pay_div
@@ -2423,13 +2467,17 @@ AS
       SELECT /*+ leading (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              h_whse_code
             ,iwm.whse_name              h_whse_name
-            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+-- 2008/12/11 v1.15 UPDATE START
+--            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+            ,NVL(itc.trans_qty,0)       trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
 --            ,xrpm.rcv_pay_div           pay_div
-            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+--            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+            ,xrpm.rcv_pay_div           pay_div
 -- 2008/12/08 v1.14 UPDATE END
+-- 2008/12/11 v1.15 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -2489,13 +2537,17 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
+-- 2008/12/11 v1.15 UPDATE START
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_one
                                          THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_min
+                                         THEN cv_one
                                          ELSE xrpm.rcv_pay_div
                                        END
+-- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
@@ -3003,7 +3055,16 @@ AS
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              h_whse_code
             ,iwm.whse_name              h_whse_name
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+            ,CASE WHEN xrpm.rcv_pay_div = cv_min
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+                  WHEN xrpm.rcv_pay_div = cv_one AND itc.reason_code = cv_reason_911
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) * cn_min
+                  ELSE NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
             ,xrpm.rcv_pay_div           pay_div
@@ -3152,13 +3213,17 @@ AS
       SELECT /*+ leading (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code              h_whse_code
             ,iwm.whse_name              h_whse_name
-            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+-- 2008/12/11 v1.15 UPDATE START
+--            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+            ,NVL(itc.trans_qty,0)       trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
 --            ,xrpm.rcv_pay_div           pay_div
-            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+--            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+            ,xrpm.rcv_pay_div           pay_div
 -- 2008/12/08 v1.14 UPDATE END
+-- 2008/12/11 v1.15 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -3218,13 +3283,17 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
+-- 2008/12/11 v1.15 UPDATE START
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_one
                                          THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_min
+                                         THEN cv_one
                                          ELSE xrpm.rcv_pay_div
                                        END
+-- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
@@ -3723,7 +3792,16 @@ AS
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              NULL                       whse_code
             ,NULL                       whse_name
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+            ,CASE WHEN xrpm.rcv_pay_div = cv_min
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+                  WHEN xrpm.rcv_pay_div = cv_one AND itc.reason_code = cv_reason_911
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) * cn_min
+                  ELSE NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
             ,xrpm.rcv_pay_div           pay_div
@@ -3868,13 +3946,17 @@ AS
       SELECT /*+ leading (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              NULL                       whse_code
             ,NULL                       whse_name
-            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+-- 2008/12/11 v1.15 UPDATE START
+--            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+            ,NVL(itc.trans_qty,0)       trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
 --            ,xrpm.rcv_pay_div           pay_div
-            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+--            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+            ,xrpm.rcv_pay_div           pay_div
 -- 2008/12/08 v1.14 UPDATE END
+-- 2008/12/11 v1.15 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -3933,13 +4015,17 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
+-- 2008/12/11 v1.15 UPDATE START
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_one
                                          THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_min
+                                         THEN cv_one
                                          ELSE xrpm.rcv_pay_div
                                        END
+-- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -4427,7 +4513,16 @@ AS
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              NULL                       whse_code
             ,NULL                       whse_name
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+            ,CASE WHEN xrpm.rcv_pay_div = cv_min
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+                  WHEN xrpm.rcv_pay_div = cv_one AND itc.reason_code = cv_reason_911
+                  THEN NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) * cn_min
+                  ELSE NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)
+             END                        trans_qty
+-- 2008/12/11 v1.15 N.Yoshida mod start
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
             ,xrpm.rcv_pay_div           pay_div
@@ -4570,13 +4665,17 @@ AS
       SELECT /*+ leading (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrih xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              NULL                       whse_code
             ,NULL                       whse_name
-            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+-- 2008/12/11 v1.15 UPDATE START
+--            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
+            ,NVL(itc.trans_qty,0)       trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
 --            ,xrpm.rcv_pay_div           pay_div
-            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+--            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+            ,xrpm.rcv_pay_div           pay_div
 -- 2008/12/08 v1.14 UPDATE END
+-- 2008/12/11 v1.15 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -4635,13 +4734,17 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
+-- 2008/12/11 v1.15 UPDATE START
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itc.trans_qty >= cn_zero
-                                         THEN cv_one
-                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_one
                                          THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+--                                         THEN cv_min
+                                         THEN cv_one
                                          ELSE xrpm.rcv_pay_div
                                        END
+-- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       UNION ALL
       -- ----------------------------------------------------
