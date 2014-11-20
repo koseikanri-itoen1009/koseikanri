@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,8 @@ AS
  *  2009/09/25    1.13  N.Maeda          [0001306]伝票計集計単位修正
  *                                       [0001307]出荷数量取得元テーブル修正
  *  2009/10/05    1.14  N.Maeda          [0001464]受注明細分割による影響対応
+ *  2010/03/01    1.15  S.Karikomi       [E_本稼働_01635]ヘッダ出力拠点修正
+ *                                                       件数カウント単位の同期対応
  *
  *****************************************************************************************/
 --
@@ -2800,19 +2802,25 @@ AS
       AND     hca.party_id        = hp.party_id           -- 結合(拠点(顧客) = 拠点(パーティ))
       AND     hcas.org_id         = gn_org_id             -- 営業単位
       AND     hca.account_number  =
-                ( SELECT  xca1.delivery_base_code
-                  FROM    hz_cust_accounts     hca1  -- 顧客
-                         ,hz_parties           hp1   -- パーティ
-                         ,xxcmm_cust_accounts  xca1  -- 顧客追加情報
-                  WHERE   hp1.duns_number_c       IN (cv_cust_status_30   -- 顧客ステータス(承認済)
-                                                     ,cv_cust_status_40)  -- 顧客ステータス(顧客)
-                  AND     hca1.party_id            =  hp1.party_id        -- 結合(顧客 = パーティ)
-                  AND     hca1.status              =  cv_status_a         -- ステータス(顧客有効)
-                  AND     hca1.customer_class_code =  cv_cust_code_cust   -- 顧客区分(顧客)
-                  AND     hca1.cust_account_id     =  xca1.customer_id    -- 結合(顧客 = 顧客追加)
-                  AND     xca1.chain_store_code    =  iv_edi_c_code       -- EDIチェーン店コード
-                  AND     ROWNUM                   =  cn_1
+/* 2010/02/26 Ver1.15 Mod Start */
+--                ( SELECT  xca1.delivery_base_code
+--                  FROM    hz_cust_accounts     hca1  -- 顧客
+--                         ,hz_parties           hp1   -- パーティ
+--                         ,xxcmm_cust_accounts  xca1  -- 顧客追加情報
+--                  WHERE   hp1.duns_number_c       IN (cv_cust_status_30   -- 顧客ステータス(承認済)
+--                                                     ,cv_cust_status_40)  -- 顧客ステータス(顧客)
+--                  AND     hca1.party_id            =  hp1.party_id        -- 結合(顧客 = パーティ)
+--                  AND     hca1.status              =  cv_status_a         -- ステータス(顧客有効)
+--                  AND     hca1.customer_class_code =  cv_cust_code_cust   -- 顧客区分(顧客)
+--                  AND     hca1.cust_account_id     =  xca1.customer_id    -- 結合(顧客 = 顧客追加)
+--                  AND     xca1.chain_store_code    =  iv_edi_c_code       -- EDIチェーン店コード
+--                  AND     ROWNUM                   =  cn_1
+--                )
+                ( SELECT xuif.base_code  AS base_code     -- ログインユーザーの拠点コード(新)
+                  FROM   xxcos_user_info_v xuif           -- ユーザ情報ビュー
+                  WHERE  xuif.user_id = cn_created_by     -- ログインユーザー
                 )
+/* 2010/02/26 Ver1.15 Mod  End  */
       ;
     -- EDIチェーン店情報
     CURSOR edi_chain_cur
@@ -5037,9 +5045,24 @@ AS
 --    FETCH edi_header_lock_cur INTO lt_edi_header_lock;
     FETCH edi_header_lock_cur BULK COLLECT INTO lt_update_header_id;
     -- 抽出件数取得
-    gn_target_cnt := edi_header_lock_cur%ROWCOUNT;
+/* 2010/03/01 Ver1.15 Del Start */
+--    gn_target_cnt := edi_header_lock_cur%ROWCOUNT;
+/* 2010/03/01 Ver1.15 Del  End  */
 /* 2009/05/12 Ver1.8 Mod End */
     CLOSE edi_header_lock_cur;
+/* 2010/03/01 Ver1.15 Add Start */
+    SELECT COUNT(1)                                                                 -- 明細件数
+    INTO   gn_target_cnt                                                            -- 対象件数
+    FROM   xxcos_edi_lines  xel                                                     -- EDI明細情報テーブル
+    WHERE  xel.edi_header_info_id IN (
+                                       SELECT xeh.edi_header_info_id  edi_header_info_id                              -- EDIヘッダ情報.EDIヘッダ情報ID
+                                       FROM   xxcos_edi_headers       xeh                                             -- EDIヘッダ情報
+                                       WHERE  TRUNC(xeh.process_date)        = TO_DATE(iv_proc_date, cv_date_format)  -- 入力パラメータの処理日
+                                       AND    xeh.process_time               = iv_proc_time                           -- 入力パラメータの処理時刻
+                                       AND    xeh.edi_chain_code             = iv_edi_c_code                          -- 入力パラメータのEDIチェーン店コード
+                                       AND    xeh.edi_delivery_schedule_flag = cv_y                                   -- 送信済
+                                     );                                              -- EDIヘッダ情報ID = ロックを取得したEDIヘッダ情報ID
+/* 2010/03/01 Ver1.15 Add  End  */
 --
     -- EDIヘッダ情報テーブルを更新
     BEGIN
