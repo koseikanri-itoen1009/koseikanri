@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  output_footer          ファイル終了処理(A-8)
  *  upd_sale_exp_head_send 販売実績ヘッダTBLフラグ更新（作成）(A-9)
  *  upd_sale_exp_head_rep  販売実績ヘッダTBLフラグ更新（解除）(A-11)
+ *  upd_no_target          販売実績抽出対象外更新(A-12)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -45,6 +46,9 @@ AS
  *                                      [E_T4_00142]顧客使用目的（請求先）のセット項目修正
  *  2009/11/24    1.8   K.Atsushiba     [E_本番_00348]PT対応
  *  2009/11/27    1.9   K.Kiriu         [E_本番_00114]相手先発注番号設定対応
+ *  2010/03/16    1.10  K.Kiriu         [E_本稼動_01153]EDI販売実績対象顧客追加時の対応
+ *                                      [E_本稼動_01301]PT対応(対象外データの更新追加）
+ *                                                      顧客マスタモデルの対応
  *
  *****************************************************************************************/
 --
@@ -123,6 +127,11 @@ AS
   cv_prf_orga_code1     CONSTANT VARCHAR2(50)  := 'XXCOI1_ORGANIZATION_CODE';     -- XXCOI:在庫組織コード
   cv_prf_def_item_rate  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_DEFAULT_ITEM_RATE'; -- XXCOS:EDIデフォルト歩率
   cv_prf_org_id         CONSTANT VARCHAR2(50)  := 'ORG_ID';                       -- MO:営業単位
+/* 2010/03/16 Ver1.10 Add Start */
+  cv_prf_max_date       CONSTANT VARCHAR2(50)  := 'XXCOS1_MAX_DATE';              -- XXCOS:MAX日付
+  cv_prf_min_date       CONSTANT VARCHAR2(50)  := 'XXCOS1_MIN_DATE';              -- XXCOS:MIN日付
+  cv_prf_trg_hold_m     CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_TARGET_HOLD_MONTH'; -- XXCOS:EDI販売実績対象保持月数
+/* 2010/03/16 Ver1.10 Add End   */
   -- メッセージコード
   cv_msg_param_create   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12368';  -- パラメーター出力(作成)
   cv_msg_param_cancel   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12352';  -- パラメーター出力(解除)
@@ -166,6 +175,12 @@ AS
   cv_msg_edi_m_class_n  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00110';  -- EDI媒体区分(文言)
   cv_msg_in_file_name   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00109';  -- ファイル名(文言)
   cv_msg_layout         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12367';  -- レイアウト定義情報(文言)
+/* 2010/03/16 Ver1.10 Add Start */
+  cv_msg_prf_min_d      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00120';  -- XXCOS:MIN日付(文言)
+  cv_msg_prf_max_d      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00056';  -- XXCOS:MAX日付(文言)
+  cv_msg_prf_hold_m     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12370';  -- XXCOS:EDI販売実績対象保持月数(文言)
+  cv_msg_param_update   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12371';  -- パラメーター出力(対象外更新)
+/* 2010/03/16 Ver1.10 Add End   */
   -- トークンコード
   cv_tkn_parame1        CONSTANT VARCHAR2(20)  := 'PARAME1';           -- パラメーター１
   cv_tkn_parame2        CONSTANT VARCHAR2(20)  := 'PARAME2';           -- パラメーター２
@@ -184,7 +199,7 @@ AS
   cv_base_code1         CONSTANT VARCHAR2(20)  := 'CODE';              -- 拠点情報取得
   cv_tkn_org_code       CONSTANT VARCHAR2(50)  := 'ORG_CODE_TOK';      -- 在庫組織コード（在庫組織ID）
   cv_tkn_profile        CONSTANT VARCHAR2(50)  := 'PROFILE';           --プロファイル
-
+--
   -- 顧客マスタ取得用固定値
   cv_cust_code_chain    CONSTANT VARCHAR2(2)   := '18';                -- 顧客区分(チェーン店)
   cv_status_a           CONSTANT VARCHAR2(1)   := 'A';                 -- ステータス
@@ -208,6 +223,10 @@ AS
   -- その他固定値
   cv_date_format        CONSTANT VARCHAR2(10)  := 'YYYYMMDD';          -- 日付フォーマット(年月日)
   cv_d_format_yyyymm    CONSTANT VARCHAR2(10)  := 'YYYYMM';            -- 日付フォーマット(月)
+/* 2010/03/16 Ver1.10 Add Start */
+  cv_date_format_sl     CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';        -- 日付フォーマット(年月日スラッシュ付き)
+  cv_d_format_mm        CONSTANT VARCHAR2(10)  := 'MM';                -- TRUNC用日付フォーマット(月)
+/* 2010/03/16 Ver1.10 Add End   */
   cv_d_format_dd        CONSTANT VARCHAR2(10)  := 'DD';                -- 日付フォーマット(日)
   cv_time_format        CONSTANT VARCHAR2(10)  := 'HH24MISS';          -- 日付フォーマット(時間)
   cn_0                  CONSTANT NUMBER        := 0;                   -- 固定値:0(NUMBER)
@@ -230,6 +249,12 @@ AS
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- 固定値:N
   cv_w                  CONSTANT VARCHAR2(1)   := 'W';                 -- 固定値:W
   cv_0000               CONSTANT VARCHAR2(4)   := '0000';              -- 倉直区分判定用
+/* 2010/03/16 Ver1.10 Add Start */
+  cv_s                  CONSTANT VARCHAR2(1)   := 'S';                 -- 固定値:S
+  gv_run_class_cd_create CONSTANT VARCHAR2(1)  := '0';                 -- 実行区分：「作成」コード
+  gv_run_class_cd_cancel CONSTANT VARCHAR2(1)  := '1';                 -- 実行区分：「解除」コード
+  gv_run_class_cd_update CONSTANT VARCHAR2(1)  := '2';                 -- 実行区分：「対象外更新」コード
+/* 2010/03/16 Ver1.10 Add End   */
   -- データ成型共通関数用
   cv_medium_class             CONSTANT VARCHAR2(50)  := 'MEDIUM_CLASS';                  --媒体区分
   cv_data_type_code           CONSTANT VARCHAR2(50)  := 'DATA_TYPE_CODE';                --データ種コード
@@ -615,10 +640,17 @@ AS
   gv_dept_code                VARCHAR2(100) DEFAULT NULL;              -- 業務管理部コード
   gv_prf_def_item_rate        VARCHAR2(100) DEFAULT NULL;              -- XXCOS:EDIデフォルト歩率
   gv_in_file_name             VARCHAR2(240) DEFAULT NULL;              -- ファイル名
-  gv_run_class_create         VARCHAR2(50)  DEFAULT NULL;              -- 実行区分：「作成」文言
-  gv_run_class_cancel         VARCHAR2(50)  DEFAULT NULL;              -- 実行区分：「解除」文言
-  gv_run_class_cd_create      VARCHAR2(2)   DEFAULT NULL;              -- 実行区分：「作成」コード
-  gv_run_class_cd_cancel      VARCHAR2(2)   DEFAULT NULL;              -- 実行区分：「解除」コード
+/* 2010/03/16 Ver1.10 Del Start */
+--  gv_run_class_create         VARCHAR2(50)  DEFAULT NULL;              -- 実行区分：「作成」文言
+--  gv_run_class_cancel         VARCHAR2(50)  DEFAULT NULL;              -- 実行区分：「解除」文言
+--  gv_run_class_cd_create      VARCHAR2(2)   DEFAULT NULL;              -- 実行区分：「作成」コード
+--  gv_run_class_cd_cancel      VARCHAR2(2)   DEFAULT NULL;              -- 実行区分：「解除」コード
+/* 2010/03/16 Ver1.10 Del End   */
+/* 2010/03/16 Ver1.10 Add Start */
+  gd_min_date                 DATE;                                    -- MIN日付
+  gd_max_date                 DATE;                                    -- MAX日付
+  gn_edi_trg_hold_m           NUMBER;                                  -- EDI販売実績対象保持月数
+/* 2010/03/16 Ver1.10 Add End   */
   --ファイルヘッダ情報
   gt_sales_base_name          hz_parties.party_name%TYPE;                   --拠点名
   gt_edi_chain_name           hz_parties.party_name%TYPE;                   --EDIチェーン店名
@@ -719,7 +751,7 @@ AS
    * Description      : 入力パラメタチェック処理(A-1)
    ***********************************************************************************/
   PROCEDURE input_param_check(
-    iv_run_class        IN  VARCHAR2,  --   実行区分：「0:作成」「1:解除」
+    iv_run_class        IN  VARCHAR2,  --   実行区分：「0:作成」「1:解除」「2:対象外更新」
     iv_inv_cust_code    IN  VARCHAR2,  --   請求先顧客コード
     iv_send_date        IN  VARCHAR2,  --   送信日(YYYYMMDD)
 /* 2009/04/15 Add Start */
@@ -752,6 +784,9 @@ AS
     lv_param_msg      VARCHAR2(5000)  DEFAULT NULL;  --パラメーター出力用
     lv_tkn_name       VARCHAR2(50)    DEFAULT NULL;  --トークン取得用
     ld_date_value     DATE;
+/* 2010/03/16 Ver1.10 Add Start */
+    lv_run_class_chk  VARCHAR2(1);                   --実行区分チェック用
+/* 2010/03/16 Ver1.10 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -802,6 +837,18 @@ AS
                         ,iv_token_name3  => cv_tkn_parame3       --トークンコード３
                         ,iv_token_value3 => iv_send_date         --送信日(YYYYMMDD)
                      );
+/* 2010/03/16 Ver1.10 Add Start */
+    ELSIF ( iv_run_class = cv_2 ) THEN
+      --* -------------------------------------------------------------
+      -- 実行区分：「対象外更新」
+      --* ------------------------------------------------------------- 
+      lv_param_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application       --アプリケーション
+                        ,iv_name         => cv_msg_param_update  --パラメーター出力(対象外更新)
+                        ,iv_token_name1  => cv_tkn_parame1       --トークンコード１
+                        ,iv_token_value1 => iv_run_class         --実行区分
+                     );
+/* 2010/03/16 Ver1.10 Add End   */
     END IF;
     --パラメータをメッセージに出力
     FND_FILE.PUT_LINE(
@@ -838,25 +885,34 @@ AS
                 );
       RAISE global_api_expt;
     END IF;
-    --* -------------------------------------------------------------
-    --  取得したEDI販売実績作成実行区分とパラメータのチェック
-    --* -------------------------------------------------------------
-    --文言取得
-    gv_run_class_create := xxccp_common_pkg.get_msg(
-                              iv_application  =>  cv_application
-                             ,iv_name         =>  cv_msg_create  --「作成」
-                           );
-    gv_run_class_cancel := xxccp_common_pkg.get_msg(
-                              iv_application  =>  cv_application --アプリケーション
-                             ,iv_name         =>  cv_msg_cancel  --「解除」
-                           );
-    -- EDI販売実績作成実行区分取得(作成)
+/* 2010/03/16 Ver1.10 Del Start */
+--    --* -------------------------------------------------------------
+--    --  取得したEDI販売実績作成実行区分とパラメータのチェック
+--    --* -------------------------------------------------------------
+--    --文言取得
+--    gv_run_class_create := xxccp_common_pkg.get_msg(
+--                              iv_application  =>  cv_application
+--                             ,iv_name         =>  cv_msg_create  --「作成」
+--                           );
+--    gv_run_class_cancel := xxccp_common_pkg.get_msg(
+--                              iv_application  =>  cv_application --アプリケーション
+--                             ,iv_name         =>  cv_msg_cancel  --「解除」
+--                           );
+/* 2010/03/16 Ver1.10 Del End   */
+    -- EDI販売実績作成実行区分チェック
     BEGIN
-      SELECT xlvv.lookup_code lookup_code
-      INTO   gv_run_class_cd_create
+/* 2010/03/16 Ver1.10 Mod Start */
+--      SELECT xlvv.lookup_code lookup_code
+--      INTO   gv_run_class_cd_create
+      SELECT 'X'
+      INTO   lv_run_class_chk
+/* 2010/03/16 Ver1.10 Mod End   */
       FROM   xxcos_lookup_values_v  xlvv
       WHERE  xlvv.lookup_type   = cv_lkt_edi_s_exe_type -- EDI販売実績作成実行区分
-      AND    xlvv.meaning       = gv_run_class_create   --「作成」
+/* 2010/03/16 Ver1.10 Mod Start */
+--      AND    xlvv.meaning       = gv_run_class_create   --「作成」
+      AND    xlvv.lookup_code   = iv_run_class          -- 実行区分
+/* 2010/03/16 Ver1.10 Mod End   */
       AND    (
                ( xlvv.start_date_active IS NULL )
                OR
@@ -883,56 +939,58 @@ AS
         lv_errbuf  := SQLERRM;
         RAISE global_api_expt;
     END;
-    -- EDI販売実績作成実行区分取得(解除)
-    BEGIN
-      SELECT xlvv.lookup_code lookup_code
-      INTO   gv_run_class_cd_cancel
-      FROM   xxcos_lookup_values_v  xlvv
-      WHERE  xlvv.lookup_type   = cv_lkt_edi_s_exe_type  -- EDI販売実績作成実行区分
-      AND    xlvv.meaning       = gv_run_class_cancel    --「解除」
-      AND    (
-               ( xlvv.start_date_active IS NULL )
-               OR
-               ( xlvv.start_date_active <= cd_process_date )
-             )
-      AND    (
-               ( xlvv.end_date_active   IS NULL )
-               OR
-               ( xlvv.end_date_active   >= cd_process_date )
-             )  -- 業務日付がFROM-TO内
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        lv_tkn_name := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_application
-                         ,iv_name         => cv_msg_run_class  --「実行区分」
-                       );
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   =>  cv_application
-                       ,iv_name          =>  cv_msg_in_param_err  --入力パラメータ不正エラー
-                       ,iv_token_name1   =>  cv_tkn_in_param
-                       ,iv_token_value1  =>  lv_tkn_name
-                     );
-        lv_errbuf  := SQLERRM;
-        RAISE global_api_expt;
-    END;
-    -- チェック処理
-    IF ( ( iv_run_class <> gv_run_class_cd_create )
-      AND ( iv_run_class <> gv_run_class_cd_cancel ) )
-    THEN
-      lv_tkn_name := xxccp_common_pkg.get_msg(
-                        iv_application  =>  cv_application
-                       ,iv_name         =>  cv_msg_run_class  --「実行区分」
-                     );
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                       iv_application   =>  cv_application
-                      ,iv_name          =>  cv_msg_in_param_err  --入力パラメータ不正エラー
-                      ,iv_token_name1   =>  cv_tkn_in_param
-                      ,iv_token_value1  =>  lv_tkn_name
-                    );
-      RAISE global_api_expt;
-    END IF;
+/* 2010/03/16 Ver1.10 Del Start */
+--    -- EDI販売実績作成実行区分取得(解除)
+--    BEGIN
+--      SELECT xlvv.lookup_code lookup_code
+--      INTO   gv_run_class_cd_cancel
+--      FROM   xxcos_lookup_values_v  xlvv
+--      WHERE  xlvv.lookup_type   = cv_lkt_edi_s_exe_type  -- EDI販売実績作成実行区分
+--      AND    xlvv.meaning       = gv_run_class_cancel    --「解除」
+--      AND    (
+--               ( xlvv.start_date_active IS NULL )
+--               OR
+--               ( xlvv.start_date_active <= cd_process_date )
+--             )
+--      AND    (
+--               ( xlvv.end_date_active   IS NULL )
+--               OR
+--               ( xlvv.end_date_active   >= cd_process_date )
+--             )  -- 業務日付がFROM-TO内
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        lv_tkn_name := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_application
+--                         ,iv_name         => cv_msg_run_class  --「実行区分」
+--                       );
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application   =>  cv_application
+--                       ,iv_name          =>  cv_msg_in_param_err  --入力パラメータ不正エラー
+--                       ,iv_token_name1   =>  cv_tkn_in_param
+--                       ,iv_token_value1  =>  lv_tkn_name
+--                     );
+--        lv_errbuf  := SQLERRM;
+--        RAISE global_api_expt;
+--    END;
+--    -- チェック処理
+--    IF ( ( iv_run_class <> gv_run_class_cd_create )
+--      AND ( iv_run_class <> gv_run_class_cd_cancel ) )
+--    THEN
+--      lv_tkn_name := xxccp_common_pkg.get_msg(
+--                        iv_application  =>  cv_application
+--                       ,iv_name         =>  cv_msg_run_class  --「実行区分」
+--                     );
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                       iv_application   =>  cv_application
+--                      ,iv_name          =>  cv_msg_in_param_err  --入力パラメータ不正エラー
+--                      ,iv_token_name1   =>  cv_tkn_in_param
+--                      ,iv_token_value1  =>  lv_tkn_name
+--                    );
+--      RAISE global_api_expt;
+--    END IF;
 --
+/* 2010/03/16 Ver1.10 Del End  */
     --「解除」の場合
     IF  ( iv_run_class = gv_run_class_cd_cancel ) THEN
       --* -------------------------------------------------------------
@@ -1152,6 +1210,9 @@ AS
    * Description      : 初期処理(A-3)
    ***********************************************************************************/
   PROCEDURE init(
+/* 2010/03/16 Ver1.10 Add Start */
+    iv_run_class        IN  VARCHAR2,     --   実行区分
+/* 2010/03/16 Ver1.10 Add End   */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1189,9 +1250,17 @@ AS
     CURSOR no_inv_item_cur
     IS
       SELECT   xlvv.lookup_code lookup_code
-      FROM     fnd_lookup_values_vl  xlvv
+/* 2010/03/16 Ver1.10 Mod Start */
+--      FROM     fnd_lookup_values_vl  xlvv
+      FROM     xxcos_lookup_values_v  xlvv
+/* 2010/03/16 Ver1.10 Mod End   */
       WHERE    xlvv.lookup_type  = cv_lkt_no_inv_item
       AND      xlvv.attribute1   = cv_n  --エラー品目以外
+/* 2010/03/16 Ver1.10 Add Start */
+      AND      cd_process_date   BETWEEN NVL( xlvv.start_date_active, gd_min_date )
+                                 AND     NVL( xlvv.end_date_active,   gd_max_date )
+                                         -- 業務日付がFROM-TO内
+/* 2010/03/16 Ver1.10 Add End   */
       ;
 --
     -- *** ローカル・レコード ***
@@ -1227,422 +1296,513 @@ AS
     gv_prf_def_item_rate     := FND_PROFILE.VALUE( cv_prf_def_item_rate );  --EDIデフォルト歩率
     gv_prf_organization_code := FND_PROFILE.VALUE( cv_prf_orga_code1  );    --在庫組織コードの取得
     gn_org_id                := FND_PROFILE.VALUE( cv_prf_org_id );         --営業単位の取得
-    --==================================
-    --プロファイル情報のチェック
-    --==================================
-    --ヘッダレコード区分のチェック
-    IF ( gv_if_header IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_if_h  --「XXCCP:IFレコード区分_ヘッダ」
+/* 2010/03/16 Ver1.10 Add Start */
+    gd_min_date              := TO_DATE( FND_PROFILE.VALUE( cv_prf_min_date ), cv_date_format_sl ); --MAX日付
+    gd_max_date              := TO_DATE( FND_PROFILE.VALUE( cv_prf_max_date ), cv_date_format_sl ); --MAX日付
+    gn_edi_trg_hold_m        := ABS( TO_NUMBER( FND_PROFILE.VALUE( cv_prf_trg_hold_m ) ) ); --EDI販売実績対象保持月数
+--
+    --実行区分 「作成」の場合
+    IF ( iv_run_class = gv_run_class_cd_create ) THEN
+/* 2010/03/16 Ver1.10 Add End   */
+      --==================================
+      --プロファイル情報のチェック
+      --==================================
+      --ヘッダレコード区分のチェック
+      IF ( gv_if_header IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_if_h  --「XXCCP:IFレコード区分_ヘッダ」
+                        );
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                        ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                       );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --データレコード区分のチェック
-    IF ( gv_if_data IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_if_d  --「XXCCP:IFレコード区分_データ」
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --データレコード区分のチェック
+      IF ( gv_if_data IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_if_d  --「XXCCP:IFレコード区分_データ」
+                        );
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                        ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                       );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --フッタレコード区分のチェック
-    IF ( gv_if_footer IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_if_f  --「XXCCP:IFレコード区分_フッタ」
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --フッタレコード区分のチェック
+      IF ( gv_if_footer IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_if_f  --「XXCCP:IFレコード区分_フッタ」
+                        );
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                        ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                       );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --EDI最大レコード長のチェック
-    IF ( gv_utl_m_line IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_utl_m  --「XXCOS:UTL_MAX行サイズ」
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --EDI最大レコード長のチェック
+      IF ( gv_utl_m_line IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_utl_m  --「XXCOS:UTL_MAX行サイズ」
+                        );
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                        ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                       );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --ディレクトリパスのチェック
-    IF ( gv_outbound_d IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_out_d  --「XXCOS:受注系アウトバウンド用ディレクトリパス」
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --ディレクトリパスのチェック
+      IF ( gv_outbound_d IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_out_d  --「XXCOS:受注系アウトバウンド用ディレクトリパス」
+                        );
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                        ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                       );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --業務管理部コードのチェック
-    IF ( gv_dept_code IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_dept_c  --「XXCOS:業務管理部コード」
-                      );
-      --メッセージ取得
-      lv_err_msg   := xxccp_common_pkg.get_msg(
-                   iv_application  => cv_application  --アプリケーション
-                  ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                  ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                  ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                 );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    -- 在庫組織コードのチェック
-    IF ( gv_prf_organization_code IS NULL ) THEN
-      -- 在庫組織コード
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application => cv_application
-                        ,iv_name        => cv_msg_orga_code  --「XXCOI:在庫組織コード」
-                      );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                      iv_application  =>  cv_application  --アプリケーション
-                     ,iv_name         =>  cv_msg_prf_err  --プロファイル取得エラー
-                     ,iv_token_name1  =>  cv_tkn_prf      --トークンコード１
-                     ,iv_token_value1 =>  lv_tkn_name1    --プロファイル名
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --業務管理部コードのチェック
+      IF ( gv_dept_code IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_dept_c  --「XXCOS:業務管理部コード」
+                        );
+        --メッセージ取得
+        lv_err_msg   := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_application  --アプリケーション
+                    ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                    ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                    ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --EDIデフォルト歩率のチェック
-    IF ( gv_prf_def_item_rate IS NULL ) THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_prf_edi_r  --「XXCOS:EDIデフォルト歩率」
-                      );
-      --メッセージ取得
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application  --アプリケーション
-                      ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_prf      --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1    --プロファイル名
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --営業単位のチェック
-    IF  ( gn_org_id IS NULL )   THEN
-      --トークン取得
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  =>  cv_application
-                        ,iv_name         =>  cv_msg_org_id
-                      );
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application   =>  cv_application
-                      ,iv_name          =>  cv_msg_prf_err
-                      ,iv_token_name1   =>  cv_tkn_profile
-                      ,iv_token_value1  =>  lv_tkn_name1
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --==================================
-    -- データ種情報(マスタ情報取得)
-    --==================================
-    BEGIN
-      SELECT  xlvv.meaning     meaning     --データ種
-             ,xlvv.attribute1  attribute1  --IF元業務系列コード
-      INTO    gt_data_type_code
-             ,gt_from_series
-      FROM    xxcos_lookup_values_v xlvv
-      WHERE   xlvv.lookup_type  = cv_lkt_data_type_code  --データ種
-      AND     xlvv.lookup_code  = cv_lkc_data_type_code  --「180」
-      AND     (
-                ( xlvv.start_date_active IS NULL )
-                OR
-                ( xlvv.start_date_active <= cd_process_date )
-              )
-      AND     (
-                ( xlvv.end_date_active   IS NULL )
-                OR
-                ( xlvv.end_date_active >= cd_process_date )
-              )  -- 業務日付がFROM-TO内
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      -- 在庫組織コードのチェック
+      IF ( gv_prf_organization_code IS NULL ) THEN
+        -- 在庫組織コード
         lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                           iv_application =>  cv_application
-                          ,iv_name        =>  cv_msg_data_type_c  --「データ種コード」
+                           iv_application => cv_application
+                          ,iv_name        => cv_msg_orga_code  --「XXCOI:在庫組織コード」
                         );
-        lv_tkn_name2 := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                          ,iv_name         => cv_msg_table_tkn1   --「クイックコード」
-                        );
+        --メッセージ取得
         lv_err_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application     --アプリケーション
-                        ,iv_name         => cv_msg_mst_chk_err --マスタチェックエラー
-                        ,iv_token_name1  => cv_tkn_column      --トークンコード１
-                        ,iv_token_value1 => lv_tkn_name1       --データ種コード
-                        ,iv_token_name2  => cv_tkn_table       --トークンコード２
-                        ,iv_token_value2 => lv_tkn_name2       --クイックコードテーブル
-                      );
-        --メッセージに出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => lv_err_msg
-        );
-        ln_err_chk := cn_1;  --エラー有り
-    END;
-    --==================================
-    -- EDI媒体区分
-    --==================================
-    BEGIN
-      --メッセージより内容を取得
-      lv_l_meaning := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_edi_m_class_c  --クイックコード取得条件(EDI媒体区分)
-                      );
-      --クイックコード取得
-      SELECT xlvv.lookup_code lookup_code
-      INTO   gt_edi_media_class
-      FROM   xxcos_lookup_values_v xlvv
-      WHERE  xlvv.lookup_type   = cv_lkt_edi_m_class  --EDI媒体区分
-      AND    xlvv.meaning       = lv_l_meaning        --「EDI」
-      AND    (
-               ( xlvv.start_date_active IS NULL )
-               OR
-               ( xlvv.start_date_active <= cd_process_date )
-             )
-      AND    (
-               ( xlvv.end_date_active IS NULL )
-               OR
-               ( xlvv.end_date_active >= cd_process_date )
-             )  -- 業務日付がFROM-TO内
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                          ,iv_name         => cv_msg_edi_m_class_n  --「EDI媒体区分」
-                        );
-        lv_tkn_name2 := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                          ,iv_name         => cv_msg_table_tkn1     --「クイックコード」
-                        );
-        lv_err_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application     --アプリケーション
-                        ,iv_name         => cv_msg_mst_chk_err --マスタチェックエラー
-                        ,iv_token_name1  => cv_tkn_column      --トークンコード１
-                        ,iv_token_value1 => lv_tkn_name1       --データ種コード
-                        ,iv_token_name2  => cv_tkn_table       --トークンコード２
-                        ,iv_token_value2 => lv_tkn_name2       --クイックコードテーブル
-                      );
-        --メッセージに出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => lv_err_msg
-        );
-        ln_err_chk := cn_1;  --エラー有り
-    END;
-    --==================================
-    -- 売上区分（協賛＝５）取得
-    --==================================
-    BEGIN
-      --メッセージより内容を取得
-      lv_l_meaning := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                        ,iv_name         => cv_msg_sales_class_c  --クイックコード取得条件(売上区分)
-                      );
-      --クイックコード取得
-      SELECT xlvv.lookup_code lookup_code
-      INTO   gt_edi_seales_class
-      FROM   fnd_lookup_values_vl xlvv
-      WHERE  xlvv.lookup_type   = cv_lkt_edi_sale_class  --売上区分
-      AND    xlvv.meaning       = lv_l_meaning           --「協賛」
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                          ,iv_name         => cv_msg_sales_class  --「売上区分」
-                        );
-        lv_tkn_name2 := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                          ,iv_name         => cv_msg_table_tkn1   --「クイックコード」
-                        );
-        lv_err_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application      --アプリケーション
-                        ,iv_name         => cv_msg_mst_chk_err  --マスタチェックエラー
-                        ,iv_token_name1  => cv_tkn_column       --トークンコード１
-                        ,iv_token_value1 => lv_tkn_name1        --クイックコード
-                        ,iv_token_name2  => cv_tkn_table        --トークンコード２
-                        ,iv_token_value2 => lv_tkn_name2        --売上区分
-                      );
-        --メッセージに出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => lv_err_msg
-        );
-        ln_err_chk := cn_1;  --エラー有り
-    END;
-    --==================================
-    -- 非在庫品取得
-    --==================================
-    OPEN no_inv_item_cur;
-    FETCH no_inv_item_cur BULK COLLECT INTO gt_no_inv_item;
-    gn_no_inv_item_cnt := no_inv_item_cur%ROWCOUNT;
-    CLOSE no_inv_item_cur;
-    --==================================
-    --拠点情報の取得
-    --==================================
-    BEGIN
-      SELECT  hp.party_name  sales_base_name --拠点名
-      INTO    gt_sales_base_name
-      FROM    hz_cust_accounts  hca  --拠点(顧客)
-             ,hz_parties        hp   --拠点(パーティ)
-      WHERE   hca.party_id             = hp.party_id   --結合(拠点(顧客) = 拠点(パーティ))
-      AND     hca.account_number       = gv_dept_code  --業務管理部コード
-      AND     hca.customer_class_code  = cv_1          --顧客区分=1
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        --メッセージ編集
-        lv_err_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application        --アプリケーション
-                        ,iv_name         => cv_msg_base_code_err --拠点情報取得エラー
-                        ,iv_token_name1  => cv_base_code1        --トークンコード１
-                        ,iv_token_value1 => gv_dept_code         --業務管理部コード
-                      );
-        --メッセージに出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => lv_err_msg
-        );
-        ln_err_chk := cn_1;  --エラー有り
-    END;
-    --==================================
-    -- 在庫組織ＩＤの取得
-    --==================================
-    --取得
-    gv_prf_organization_id := xxcoi_common_pkg.get_organization_id( gv_prf_organization_code );
-    --取得チェック
-    IF ( gv_prf_organization_id  IS NULL )   THEN
-      lv_err_msg :=  xxccp_common_pkg.get_msg(
-                        iv_application  =>  cv_application            --アプリケーション
-                       ,iv_name         =>  gv_msg_orga_id_err        --在庫組織ID取得エラー
-                       ,iv_token_name1  =>  cv_tkn_org_code           --トークンコード１
-                       ,iv_token_value1 =>  gv_prf_organization_code  --在庫組織コード
+                        iv_application  =>  cv_application  --アプリケーション
+                       ,iv_name         =>  cv_msg_prf_err  --プロファイル取得エラー
+                       ,iv_token_name1  =>  cv_tkn_prf      --トークンコード１
+                       ,iv_token_value1 =>  lv_tkn_name1    --プロファイル名
                      );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
-      );
-      ln_err_chk := cn_1;  --エラー有り
-    END IF;
-    --==============================================================
-    --ファイルレイアウト情報の取得
-    --==============================================================
-    xxcos_common2_pkg.get_layout_info(
-       iv_file_type        => cv_0                --ファイル形式(固定長)
-      ,iv_layout_class     => cv_0                --情報区分(受注系)
-      ,ov_data_type_table  => gt_data_type_table  --データ型表
-      ,ov_csv_header       => lv_dummy            --CSVヘッダ
-      ,ov_errbuf           => lv_errbuf           --エラーメッセージ
-      ,ov_retcode          => lv_retcode          --リターンコード
-      ,ov_errmsg           => lv_errmsg           --ユーザー・エラー・メッセージ
-    );
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      lv_tkn_name1 := xxccp_common_pkg.get_msg(
-                         iv_application  =>  cv_application
-                        ,iv_name         =>  cv_msg_layout    --「レイアウト定義情報」
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --EDIデフォルト歩率のチェック
+      IF ( gv_prf_def_item_rate IS NULL ) THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_prf_edi_r  --「XXCOS:EDIデフォルト歩率」
+                        );
+        --メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application  --アプリケーション
+                        ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                        ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1    --プロファイル名
                       );
-        --メッセージ編集
-      lv_err_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application       --アプリケーション
-                      ,iv_name         => cv_msg_file_inf_err  --レイアウト定義情報エラー
-                      ,iv_token_name1  => cv_tkn_file_l        --トークンコード１
-                      ,iv_token_value1 => lv_tkn_name1         --レイアウト定義情報
-                    );
-      --メッセージに出力
-      FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-       ,buff   => lv_err_msg
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --営業単位のチェック
+      IF  ( gn_org_id IS NULL )   THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_application
+                          ,iv_name         =>  cv_msg_org_id
+                        );
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application   =>  cv_application
+                        ,iv_name          =>  cv_msg_prf_err
+                        ,iv_token_name1   =>  cv_tkn_profile
+                        ,iv_token_value1  =>  lv_tkn_name1
+                      );
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+/* 2010/03/16 Ver1.10 Add Start */
+      -- MIN日付
+      IF ( gd_min_date IS NULL ) THEN
+        -- トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_application 
+                           ,iv_name         => cv_msg_prf_min_d
+                         );
+        -- メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                        ,iv_name         => cv_msg_prf_err
+                        ,iv_token_name1  => cv_tkn_profile
+                        ,iv_token_value1 => lv_tkn_name1
+                      );
+        -- メッセージに出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  -- エラー有り
+      END IF;
+      -- MAX日付
+      IF ( gd_max_date IS NULL ) THEN
+        -- トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_application
+                           ,iv_name         => cv_msg_prf_max_d
+                         );
+        -- メッセージ取得
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                        ,iv_name         => cv_msg_prf_err
+                        ,iv_token_name1  => cv_tkn_profile
+                        ,iv_token_value1 => lv_tkn_name1
+                      );
+        -- メッセージに出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  -- エラー有り
+      END IF;
+/* 2010/03/16 Ver1.10 Add End   */
+      --==================================
+      -- データ種情報(マスタ情報取得)
+      --==================================
+      BEGIN
+        SELECT  xlvv.meaning     meaning     --データ種
+               ,xlvv.attribute1  attribute1  --IF元業務系列コード
+        INTO    gt_data_type_code
+               ,gt_from_series
+        FROM    xxcos_lookup_values_v xlvv
+        WHERE   xlvv.lookup_type  = cv_lkt_data_type_code  --データ種
+        AND     xlvv.lookup_code  = cv_lkc_data_type_code  --「180」
+        AND     (
+                  ( xlvv.start_date_active IS NULL )
+                  OR
+                  ( xlvv.start_date_active <= cd_process_date )
+                )
+        AND     (
+                  ( xlvv.end_date_active   IS NULL )
+                  OR
+                  ( xlvv.end_date_active >= cd_process_date )
+                )  -- 業務日付がFROM-TO内
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                             iv_application =>  cv_application
+                            ,iv_name        =>  cv_msg_data_type_c  --「データ種コード」
+                          );
+          lv_tkn_name2 := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_msg_table_tkn1   --「クイックコード」
+                          );
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application     --アプリケーション
+                          ,iv_name         => cv_msg_mst_chk_err --マスタチェックエラー
+                          ,iv_token_name1  => cv_tkn_column      --トークンコード１
+                          ,iv_token_value1 => lv_tkn_name1       --データ種コード
+                          ,iv_token_name2  => cv_tkn_table       --トークンコード２
+                          ,iv_token_value2 => lv_tkn_name2       --クイックコードテーブル
+                        );
+          --メッセージに出力
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_err_msg
+          );
+          ln_err_chk := cn_1;  --エラー有り
+      END;
+      --==================================
+      -- EDI媒体区分
+      --==================================
+      BEGIN
+        --メッセージより内容を取得
+        lv_l_meaning := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_edi_m_class_c  --クイックコード取得条件(EDI媒体区分)
+                        );
+        --クイックコード取得
+        SELECT xlvv.lookup_code lookup_code
+        INTO   gt_edi_media_class
+        FROM   xxcos_lookup_values_v xlvv
+        WHERE  xlvv.lookup_type   = cv_lkt_edi_m_class  --EDI媒体区分
+        AND    xlvv.meaning       = lv_l_meaning        --「EDI」
+        AND    (
+                 ( xlvv.start_date_active IS NULL )
+                 OR
+                 ( xlvv.start_date_active <= cd_process_date )
+               )
+        AND    (
+                 ( xlvv.end_date_active IS NULL )
+                 OR
+                 ( xlvv.end_date_active >= cd_process_date )
+               )  -- 業務日付がFROM-TO内
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_msg_edi_m_class_n  --「EDI媒体区分」
+                          );
+          lv_tkn_name2 := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_msg_table_tkn1     --「クイックコード」
+                          );
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application     --アプリケーション
+                          ,iv_name         => cv_msg_mst_chk_err --マスタチェックエラー
+                          ,iv_token_name1  => cv_tkn_column      --トークンコード１
+                          ,iv_token_value1 => lv_tkn_name1       --データ種コード
+                          ,iv_token_name2  => cv_tkn_table       --トークンコード２
+                          ,iv_token_value2 => lv_tkn_name2       --クイックコードテーブル
+                        );
+          --メッセージに出力
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_err_msg
+          );
+          ln_err_chk := cn_1;  --エラー有り
+      END;
+      --==================================
+      -- 売上区分（協賛＝５）取得
+      --==================================
+      BEGIN
+        --メッセージより内容を取得
+        lv_l_meaning := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_sales_class_c  --クイックコード取得条件(売上区分)
+                        );
+        --クイックコード取得
+        SELECT xlvv.lookup_code lookup_code
+        INTO   gt_edi_seales_class
+/* 2010/03/16 Ver1.10 Mod Start */
+--      FROM   fnd_lookup_values_vl xlvv
+        FROM   xxcos_lookup_values_v xlvv
+/* 2010/03/16 Ver1.10 Mod End   */
+        WHERE  xlvv.lookup_type   = cv_lkt_edi_sale_class  --売上区分
+        AND    xlvv.meaning       = lv_l_meaning           --「協賛」
+/* 2010/03/16 Ver1.10 Add Start */
+        AND     (
+                  ( xlvv.start_date_active IS NULL )
+                  OR
+                  ( xlvv.start_date_active <= cd_process_date )
+                )
+        AND     (
+                  ( xlvv.end_date_active   IS NULL )
+                  OR
+                  ( xlvv.end_date_active >= cd_process_date )
+                )  -- 業務日付がFROM-TO内
+/* 2010/03/16 Ver1.10 Add End   */
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_msg_sales_class  --「売上区分」
+                          );
+          lv_tkn_name2 := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_msg_table_tkn1   --「クイックコード」
+                          );
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application      --アプリケーション
+                          ,iv_name         => cv_msg_mst_chk_err  --マスタチェックエラー
+                          ,iv_token_name1  => cv_tkn_column       --トークンコード１
+                          ,iv_token_value1 => lv_tkn_name1        --クイックコード
+                          ,iv_token_name2  => cv_tkn_table        --トークンコード２
+                          ,iv_token_value2 => lv_tkn_name2        --売上区分
+                        );
+          --メッセージに出力
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_err_msg
+          );
+          ln_err_chk := cn_1;  --エラー有り
+      END;
+      --==================================
+      -- 非在庫品取得
+      --==================================
+      OPEN no_inv_item_cur;
+      FETCH no_inv_item_cur BULK COLLECT INTO gt_no_inv_item;
+      gn_no_inv_item_cnt := no_inv_item_cur%ROWCOUNT;
+      CLOSE no_inv_item_cur;
+      --==================================
+      --拠点情報の取得
+      --==================================
+      BEGIN
+        SELECT  hp.party_name  sales_base_name --拠点名
+        INTO    gt_sales_base_name
+        FROM    hz_cust_accounts  hca  --拠点(顧客)
+               ,hz_parties        hp   --拠点(パーティ)
+        WHERE   hca.party_id             = hp.party_id   --結合(拠点(顧客) = 拠点(パーティ))
+        AND     hca.account_number       = gv_dept_code  --業務管理部コード
+        AND     hca.customer_class_code  = cv_1          --顧客区分=1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          --メッセージ編集
+          lv_err_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application        --アプリケーション
+                          ,iv_name         => cv_msg_base_code_err --拠点情報取得エラー
+                          ,iv_token_name1  => cv_base_code1        --トークンコード１
+                          ,iv_token_value1 => gv_dept_code         --業務管理部コード
+                        );
+          --メッセージに出力
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_err_msg
+          );
+          ln_err_chk := cn_1;  --エラー有り
+      END;
+      --==================================
+      -- 在庫組織ＩＤの取得
+      --==================================
+      --取得
+      gv_prf_organization_id := xxcoi_common_pkg.get_organization_id( gv_prf_organization_code );
+      --取得チェック
+      IF ( gv_prf_organization_id  IS NULL )   THEN
+        lv_err_msg :=  xxccp_common_pkg.get_msg(
+                          iv_application  =>  cv_application            --アプリケーション
+                         ,iv_name         =>  gv_msg_orga_id_err        --在庫組織ID取得エラー
+                         ,iv_token_name1  =>  cv_tkn_org_code           --トークンコード１
+                         ,iv_token_value1 =>  gv_prf_organization_code  --在庫組織コード
+                       );
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+      --==============================================================
+      --ファイルレイアウト情報の取得
+      --==============================================================
+      xxcos_common2_pkg.get_layout_info(
+         iv_file_type        => cv_0                --ファイル形式(固定長)
+        ,iv_layout_class     => cv_0                --情報区分(受注系)
+        ,ov_data_type_table  => gt_data_type_table  --データ型表
+        ,ov_csv_header       => lv_dummy            --CSVヘッダ
+        ,ov_errbuf           => lv_errbuf           --エラーメッセージ
+        ,ov_retcode          => lv_retcode          --リターンコード
+        ,ov_errmsg           => lv_errmsg           --ユーザー・エラー・メッセージ
       );
-      ln_err_chk := cn_1;  --エラー有り
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_application
+                          ,iv_name         =>  cv_msg_layout    --「レイアウト定義情報」
+                        );
+          --メッセージ編集
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application       --アプリケーション
+                        ,iv_name         => cv_msg_file_inf_err  --レイアウト定義情報エラー
+                        ,iv_token_name1  => cv_tkn_file_l        --トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1         --レイアウト定義情報
+                      );
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
+/* 2010/03/16 Ver1.10 Add Start */
+    ELSIF ( iv_run_class = gv_run_class_cd_update ) THEN
+      --EDI販売実績保持月数のチェック
+      IF  ( gn_edi_trg_hold_m IS NULL )   THEN
+        --トークン取得
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_application
+                          ,iv_name         =>  cv_msg_prf_hold_m
+                        );
+        lv_err_msg := xxccp_common_pkg.get_msg(
+                         iv_application   =>  cv_application
+                        ,iv_name          =>  cv_msg_prf_err
+                        ,iv_token_name1   =>  cv_tkn_profile
+                        ,iv_token_value1  =>  lv_tkn_name1
+                      );
+        --メッセージに出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_err_msg
+        );
+        ln_err_chk := cn_1;  --エラー有り
+      END IF;
     END IF;
+/* 2010/03/16 Ver1.10 Add End   */
     -- エラー判定
     IF ( ln_err_chk = cn_1 ) THEN
       RAISE global_data_check_expt;
@@ -1998,8 +2158,13 @@ AS
                      , hz_cust_site_uses     ship_hsua                             --顧客使用目的
                 WHERE  ship_hasa.cust_account_id   = xcchv.ship_account_id
                 AND    ship_hsua.cust_acct_site_id = ship_hasa.cust_acct_site_id
-                AND    ship_hsua.site_use_code     = cv_bill_to --'SHIP_TO'
+                AND    ship_hsua.site_use_code     = cv_bill_to --'BILL_TO'
                 AND    ship_hsua.primary_flag      = cv_y       --'Y'
+/* 2010/03/16 Ver1.10 Add Start */
+                AND    ship_hasa.org_id            = gn_org_id
+                AND    ship_hasa.status            = cv_status_a  --'A'
+                AND    ship_hsua.status            = cv_status_a  --'A'
+/* 2010/03/16 Ver1.10 Add End   */
               )                                       bill_cred_rec_code2          --売掛コード２（事業所）
 /* 2009/11/05 Ver1.7 Add End   */
              ,xsel.dlv_invoice_line_number            dlv_invoice_line_number      --納品明細番号
@@ -2068,6 +2233,11 @@ AS
 --****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
                 AND     xca_2.customer_id         =  hca.cust_account_id
 --****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
+/* 2010/03/16 Ver1.10 Add Start */
+                AND     hcsua.primary_flag      = cv_y         --'Y'
+                AND     hcsua.status            = cv_status_a  --'A'
+                AND     hcasa.status            = cv_status_a  --'A'
+/* 2010/03/16 Ver1.10 Add End   */
               )                         hcan   --納品顧客
 /* 2009/11/24 Ver1.8 Mod Start */
              ,( SELECT  /*+ 
@@ -2086,11 +2256,18 @@ AS
                 AND     hca.customer_class_code =  cv_1                 --売上拠点(顧客) 顧客区分=1
                 AND     hca.cust_account_id     =  xca1.customer_id     --結合(顧客 = 顧客追加)
               )                          hcam  --売上拠点
+/* 2010/03/16 Ver1.10 Mod Start */
 /* 2009/11/24 Ver1.8 Mod Start */
-             ,( SELECT  /*+ 
+--             ,( SELECT  /*+ 
+--                          INDEX(xseh XXCOS_SALES_EXP_HEADERS_N03)
+--                          USE_NL(xseh xsel xlvv)
+--                        */
+             ,( SELECT  /*+
+                          LEADING(xlvv2 xcchv xseh xsel xlvv)
                           INDEX(xseh XXCOS_SALES_EXP_HEADERS_N03)
-                          USE_NL(xseh xsel xlvv)
+                          USE_NL(xlvv2 xcchv xseh xsel xlvv)
                         */
+/* 2010/03/16 Ver1.10 Mod End   */
                         xseh.ship_to_customer_code   ship_to_customer_code
 --             ,( SELECT  xseh.ship_to_customer_code   ship_to_customer_code
 /* 2009/11/24 Ver1.8 Mod End */
@@ -2102,11 +2279,29 @@ AS
                        ,SUM( xsel.sale_amount )      sum_sale_amount      --売上金額サマリー
                 FROM    xxcos_sales_exp_headers  xseh
                        ,xxcos_sales_exp_lines    xsel
-                       ,fnd_lookup_values_vl     xlvv
+/* 2010/03/16 Ver1.10 Mod Start */
+--                       ,fnd_lookup_values_vl     xlvv
+                       ,xxcos_lookup_values_v    xlvv
+                       ,xxcos_lookup_values_v    xlvv2   --請求先顧客コード(顧客単位)
+                       ,xxcfr_cust_hierarchy_v   xcchv   --顧客マスタ階層ビュー
+/* 2010/03/16 Ver1.10 Mod End   */
                 WHERE   xseh.sales_exp_header_id = xsel.sales_exp_header_id
-                AND     xseh.edi_interface_flag  = cv_n                  --未送信のみ
+                AND     xseh.edi_interface_flag  = cv_n                         --未送信のみ
                 AND     xlvv.lookup_type(+)      = cv_lkt_no_inv_item
                 AND     xlvv.lookup_code(+)      = xsel.item_code
+/* 2010/03/16 Ver1.10 Add Start */
+                AND     cd_process_date BETWEEN NVL( xlvv.start_date_active(+), gd_min_date )
+                                        AND     NVL( xlvv.end_date_active(+),   gd_max_date )
+                AND     TRUNC( xseh.orig_delivery_date ) BETWEEN TO_DATE( xlvv2.attribute2, cv_date_format_sl )
+                                                         AND     TO_DATE( xlvv2.attribute3, cv_date_format_sl )
+                                                                                --オリジナル納品日がデータ取得日付範囲内
+                AND     xcchv.ship_account_number = xseh.ship_to_customer_code
+                AND     xlvv2.lookup_code         = xcchv.bill_account_number
+                AND     TRUNC( xseh.orig_delivery_date ) BETWEEN NVL( xlvv2.start_date_active, gd_min_date )
+                                                         AND     NVL( xlvv2.end_date_active,   gd_max_date )
+                AND     xlvv2.lookup_type         = cv_lkt_sales_edi_cust       --クイックコードの請求先顧客コード
+                AND     xlvv2.description         = iv_chain_store_code         --パラメータのチェーン店コード
+/* 2010/03/16 Ver1.10 Add End   */
                 GROUP BY
                         xseh.ship_to_customer_code
                        ,xseh.dlv_invoice_number
@@ -2132,6 +2327,13 @@ AS
       AND     xseh.dlv_invoice_number    = xsel1.dlv_invoice_number    --結合(ヘッダ=明細サマリー2)
       AND     xseh.sales_base_code       = hcam.sales_base_code        --結合(ヘッダ=売上拠点)
       AND     xseh.ship_to_customer_code = hcan.account_number         --結合(ヘッダ=納品顧客)
+/* 2010/03/16 Ver1.10 Add Start */
+      AND     TRUNC( xseh.orig_delivery_date )  BETWEEN TO_DATE( xlvv.attribute2, cv_date_format_sl )
+                                                AND     TO_DATE( xlvv.attribute3, cv_date_format_sl )
+                                                                       --オリジナル納品日がデータ取得日付範囲内
+      AND     TRUNC( xseh.orig_delivery_date )  BETWEEN NVL( xlvv.start_date_active, gd_min_date )
+                                                AND     NVL( xlvv.end_date_active,   gd_max_date )
+/* 2010/03/16 Ver1.10 Add End   */
       AND     xseh.edi_interface_flag    = cv_n                        --EDI送信済フラグ(未送信)
       AND     xcchv.ship_account_number  = xseh.ship_to_customer_code  --結合(顧客階層=ヘッダ)
       AND     xcchv.bill_payment_term_id = rtv.term_id                 --結合(顧客階層=支払条件)
@@ -2567,6 +2769,14 @@ AS
           AND     xlvv2.lookup_code           = xca.delivery_chain_code
           AND     xlvv3.lookup_type(+)        = cv_lkt_pb_item
           AND     xlvv3.lookup_code(+)        = xsel.item_code
+/* 2010/03/16 Ver1.10 Add Start */
+          AND     TRUNC( gt_edi_sales_data(i).orig_delivery_date ) BETWEEN NVL( xlvv1.start_date_active, gd_min_date    )
+                                                                   AND     NVL( xlvv1.end_date_active,   gd_max_date    )
+          AND     TRUNC( gt_edi_sales_data(i).orig_delivery_date ) BETWEEN NVL( xlvv2.start_date_active, gd_min_date    )
+                                                                   AND     NVL( xlvv2.end_date_active,   gd_max_date    )
+          AND     TRUNC( gt_edi_sales_data(i).orig_delivery_date ) BETWEEN NVL( xlvv3.start_date_active(+), gd_min_date )
+                                                                   AND     NVL( xlvv3.end_date_active(+),   gd_max_date )
+/* 2010/03/16 Ver1.10 Add End   */
           ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
@@ -3503,13 +3713,171 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END upd_sale_exp_head_rep;
+/* 2010/03/16 Ver1.10 Add Start */
+--
+  /**********************************************************************************
+   * Procedure Name   : upd_no_target
+   * Description      : 販売実績抽出対象外更新(A-12)
+   ***********************************************************************************/
+  PROCEDURE upd_no_target(
+    ov_errbuf           OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_no_target'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_data_chk   NUMBER(1)     := 0; --存在チェック用
+    lv_tkn_name   VARCHAR2(50);       --トークン取得用
+--
+    -- *** ローカル・カーソル ***
+    --抽出対象外の販売実績情報
+    CURSOR no_taget_cur
+    IS
+      SELECT  /*+
+                INDEX(xseh xxcos_sales_exp_headers_n03)
+              */
+              1                         data_chk    --存在チェック
+      FROM    xxcos_sales_exp_headers   xseh        --販売実績ヘッダ
+      WHERE   xseh.edi_interface_flag  = cv_n       --EDI送信済フラグ(未送信)
+      AND     xseh.business_date       < TRUNC( ADD_MONTHS( cd_process_date, - gn_edi_trg_hold_m ), cv_d_format_mm )
+                                                    --登録業務日付が保持期間より前
+      FOR UPDATE OF
+        xseh.sales_exp_header_id
+      NOWAIT
+      ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- ロック取得、データ取得
+    OPEN no_taget_cur;
+    FETCH no_taget_cur INTO ln_data_chk;
+    CLOSE no_taget_cur;
+--
+    IF  ( ln_data_chk <> cn_0 ) THEN
+      BEGIN
+        ----------------------
+        --販売実績ヘッダ更新
+        ----------------------
+        UPDATE  /*+
+                  INDEX(xseh xxcos_sales_exp_headers_n03)
+                */
+                xxcos_sales_exp_headers   xseh  --販売実績ヘッダ
+        SET     xseh.edi_interface_flag      = cv_s                       --EDI送信済みフラグ(対象外)
+               ,xseh.last_updated_by         = cn_last_updated_by         --最終更新者
+               ,xseh.last_update_date        = cd_last_update_date        --最終更新日
+               ,xseh.last_update_login       = cn_last_update_login       --最終更新ログイン
+               ,xseh.request_id              = cn_request_id              --要求ID
+               ,xseh.program_application_id  = cn_program_application_id  --コンカレント・プログラム・アプリケーションID
+               ,xseh.program_id              = cn_program_id              --コンカレント・プログラムID
+               ,xseh.program_update_date     = cd_program_update_date     --プログラム更新日
+       WHERE    xseh.edi_interface_flag      = cv_n                       --EDI送信済フラグ(未送信)
+       AND      xseh.business_date           < TRUNC( ADD_MONTHS( cd_process_date, - gn_edi_trg_hold_m ), cv_d_format_mm )
+       ;
+       --件数取得
+       gn_target_cnt := SQL%ROWCOUNT;
+      EXCEPTION
+        WHEN OTHERS THEN
+          --トークン取得
+          lv_tkn_name := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_application
+                          ,iv_name          => cv_msg_table_tkn2  --販売実績ヘッダテーブル
+                         );
+          --メッセージ編集
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application  --アプリケーション
+                         ,iv_name         => cv_msg_upd_err  --データ更新エラー
+                         ,iv_token_name1  => cv_tkn_table_n  --トークンコード１
+                         ,iv_token_value1 => lv_tkn_name     --販売実績ヘッダ
+                         ,iv_token_name2  => cv_tkn_key      --トークンコード２
+                         ,iv_token_value2 => NULL            --NULL
+                       );
+          lv_errbuf := SQLERRM;
+          RAISE global_api_expt;
+      END;
+    END IF;
+--
+    ----------------------
+    --正常件数の設定
+    ----------------------
+    gn_normal_cnt := gn_target_cnt;
+--
+  EXCEPTION
+    -- *** ロックエラー ***
+    WHEN lock_expt THEN
+      --カーソルクローズ
+      IF ( no_taget_cur%ISOPEN ) THEN
+        CLOSE no_taget_cur;
+      END IF;
+      --トークン取得
+      lv_tkn_name := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_application
+                       ,iv_name         => cv_msg_table_tkn2  --販売実績ヘッダテーブル
+                     );
+      --メッセージ取得
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application     --アプリケーション
+                     ,iv_name         => cv_msg_lock_err    --ロックエラー
+                     ,iv_token_name1  => cv_tkn_table       --トークンコード１
+                     ,iv_token_value1 => lv_tkn_name        --販売実績ヘッダテーブル
+                   );
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_no_target;
+/* 2010/03/16 Ver1.10 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    iv_run_class      IN VARCHAR2,   -- 実行区分：「0:作成」「1:解除」
+    iv_run_class      IN VARCHAR2,   -- 実行区分：「0:作成」「1:解除」「2:対象外更新」
     iv_inv_cust_code  IN VARCHAR2,   -- 請求先顧客コード
     iv_send_date      IN VARCHAR2,   -- 送信日(YYYYMMDD)
 /* 2009/04/15 Add Start */
@@ -3567,7 +3935,7 @@ AS
     -- 入力パラメタチェック処理(A-1)
     -- ===============================
     input_param_check(
-      iv_run_class     -- 実行区分：「0:作成」「1:解除」
+      iv_run_class     -- 実行区分：「0:作成」「1:解除」「2:対象外更新」
      ,iv_inv_cust_code -- 請求先顧客コード
      ,iv_send_date     -- 送信日(YYYYMMDD)
 /* 2009/04/15 Add Start */
@@ -3580,37 +3948,59 @@ AS
     IF ( lv_retcode <> cv_status_normal ) THEN
       RAISE global_process_expt;
     END IF;
-    -- ===============================
-    -- 処理対象顧客取得処理(A-2)
-    -- ===============================
-    get_custom_data(
-      iv_inv_cust_code -- 請求先顧客コード
+/* 2010/03/16 Ver1.10 Add Start */
+    --対象外更新処理以外の場合の請求先取得、存在チェックを実行
+    IF ( iv_run_class <> gv_run_class_cd_update ) THEN
+/* 2010/03/16 Ver1.10 Add End   */
+      -- ===============================
+      -- 処理対象顧客取得処理(A-2)
+      -- ===============================
+      get_custom_data(
+        iv_inv_cust_code -- 請求先顧客コード
 /* 2009/04/15 Add Start */
-     ,iv_sales_exp_ptn -- EDI販売実績処理パターン
+       ,iv_sales_exp_ptn -- EDI販売実績処理パターン
 /* 2009/04/15 Add End   */
-     ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
-     ,lv_retcode       -- リターン・コード             --# 固定 #
-     ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      RAISE global_process_expt;
+       ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode       -- リターン・コード             --# 固定 #
+       ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+/* 2010/03/16 Ver1.10 Add Start */
     END IF;
+/* 2010/03/16 Ver1.10 Add End   */
 --
-    --==============================================================
-    --  作成処理の場合
-    --==============================================================
-    IF ( iv_run_class = gv_run_class_cd_create ) THEN
+/* 2010/03/16 Ver1.10 Mod Start */
+--    --==============================================================
+--    --  作成処理の場合
+--    --==============================================================
+--    IF ( iv_run_class = gv_run_class_cd_create ) THEN
+    IF ( iv_run_class <> gv_run_class_cd_cancel ) THEN
+/* 2010/03/16 Ver1.10 Mod End   */
       -- ===============================
       -- 初期処理(A-3)
       -- ===============================
       init(
-        lv_errbuf        -- エラー・メッセージ           --# 固定 #
+/* 2010/03/16 Ver1.10 Mod Start */
+--        lv_errbuf        -- エラー・メッセージ           --# 固定 #
+        iv_run_class     -- 実行区分
+       ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
+/* 2010/03/16 Ver1.10 Mod End   */
        ,lv_retcode       -- リターン・コード             --# 固定 #
        ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
       );
       IF  ( lv_retcode <> cv_status_normal ) THEN
         RAISE global_process_expt;
       END IF;
+/* 2010/03/16 Ver1.10 Add Start */
+    END IF;
+--
+    --==============================================================
+    --  作成処理の場合
+    --==============================================================
+    IF ( iv_run_class = gv_run_class_cd_create ) THEN
+/* 2010/03/16 Ver1.10 Add End   */
       --処理対象顧客(チェーン店単位)ループ
       <<chain_store_loop>>
       FOR i IN 1.. gn_chain_store_cnt LOOP
@@ -3783,6 +4173,23 @@ AS
       IF ( lv_retcode <> cv_status_normal ) THEN
         RAISE global_process_expt;
       END IF;
+/* 2010/03/16 Ver1.10 Add Start */
+    --==============================================================
+    --  対象外更新処理
+    --==============================================================
+    ELSIF ( iv_run_class = gv_run_class_cd_update ) THEN
+      -- ==========================================
+      -- 販売実績抽出対象外更新(A-12)
+      -- ==========================================
+      upd_no_target(
+        lv_errbuf        -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode       -- リターン・コード             --# 固定 #
+       ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+       );
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+/* 2010/03/16 Ver1.10 Add End   */
     END IF;
 --
   EXCEPTION
@@ -3815,7 +4222,7 @@ AS
   PROCEDURE main(
     errbuf            OUT  VARCHAR2,     --   エラー・メッセージ  --# 固定 #
     retcode           OUT  VARCHAR2,     --   リターン・コード    --# 固定 #
-    iv_run_class      IN   VARCHAR2,     --   実行区分：「0:作成」「1:解除」
+    iv_run_class      IN   VARCHAR2,     --   実行区分：「0:作成」「1:解除」「2:対象外更新」
     iv_inv_cust_code  IN   VARCHAR2,     --   請求先顧客コード
 /* 2009/04/15 Mod Start */
 --    iv_send_date      IN   VARCHAR2      --   送信日(YYYYMMDD)
@@ -3876,7 +4283,7 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_run_class     -- 実行区分：「0:作成」「1:解除」
+       iv_run_class     -- 実行区分：「0:作成」「1:解除」「2:対象外更新」
       ,iv_inv_cust_code -- 請求先顧客コード
       ,iv_send_date     -- 送信日(YYYYMMDD)
 /* 2009/04/15 Add Start */
