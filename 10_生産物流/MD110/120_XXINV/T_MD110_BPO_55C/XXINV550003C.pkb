@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.16
+ * Version          : 1.17
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -52,6 +52,7 @@ AS
  *  2008/12/26    1.14 Takao Ohashi     本番#809,867対応
  *  2009/01/09    1.15 Takao Ohashi     I_S_50対応(履歴全削除)
  *  2009/01/15    1.16 Natsuki Yoshida  I_S_50対応(帳票タイトル対応)、本番#972対応
+ *  2009/01/16    1.17 Takao Ohashi     I_S_50対応(予実区分値修正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -159,8 +160,12 @@ AS
   gc_routing_class_separate CONSTANT VARCHAR2(29) := 'XXINV_DUMMY_ROUTING_SEPARATE' ; -- 解体半製品
   gc_item_class             CONSTANT VARCHAR2(31) := 'XXCMN_ITEM_CATEGORY_ITEM_CLASS' ;
   -- 予実区分
-  gc_target_schedule        CONSTANT VARCHAR2(2)  := '10'; -- 予定
-  gc_target_result          CONSTANT VARCHAR2(2)  := '20'; -- 実績
+-- mod start ver1.17
+--  gc_target_schedule        CONSTANT VARCHAR2(2)  := '10'; -- 予定
+  gc_target_schedule        CONSTANT VARCHAR2(2)  := '1'; -- 予定
+--  gc_target_result          CONSTANT VARCHAR2(2)  := '20'; -- 実績
+  gc_target_result          CONSTANT VARCHAR2(2)  := '2'; -- 実績
+-- mod end ver1.17
 --
   gc_ukeire                 CONSTANT VARCHAR2(1)  := 'Y' ;              -- 受入
   gc_x977                   CONSTANT VARCHAR2(4)  := 'X977' ;           -- 相手先在庫
@@ -778,13 +783,19 @@ AS
     END IF ;
     -- 更新時間FROM
     IF (gr_param.creation_date_from IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date >= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_from,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
     -- 更新時間TO
     IF (gr_param.creation_date_to IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date <= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_to,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
@@ -996,13 +1007,19 @@ AS
     END IF ;
     -- 更新時間FROM
     IF (gr_param.creation_date_from IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date >= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_from,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
     -- 更新時間TO
     IF (gr_param.creation_date_to IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date <= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_to,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
@@ -1410,13 +1427,19 @@ AS
     END IF ;
     -- 更新時間FROM
     IF (gr_param.creation_date_from IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date >= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_from,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
     -- 更新時間TO
     IF (gr_param.creation_date_to IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date <= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_to,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
@@ -1626,13 +1649,19 @@ AS
     END IF ;
     -- 更新時間FROM
     IF (gr_param.creation_date_from IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date >= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date >= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_from,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
     -- 更新時間TO
     IF (gr_param.creation_date_to IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+-- mod start ver1.17
+--      lv_sql_body := lv_sql_body || ' AND gbh.creation_date <= FND_DATE.STRING_TO_DATE(';
+      lv_sql_body := lv_sql_body || ' AND itp.last_update_date <= FND_DATE.STRING_TO_DATE(';
+-- mod end ver1.17
       lv_sql_body := lv_sql_body || ''''  || TO_CHAR(gr_param.creation_date_to,gc_date_mask) || '''' ;
       lv_sql_body := lv_sql_body || ',''' || gc_date_mask || ''')' ;
     END IF ;
