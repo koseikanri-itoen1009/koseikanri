@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A07C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新 MD050_COI_001_A07
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/04/28    1.2   T.Nakamura       システムテスト障害T1_0640対応
  *  2009/05/18    1.3   T.Nakamura       システムテスト障害T1_0640対応
  *  2009/11/13    1.4   N.Abe            [E_T4_00189]品目1桁目が5,6を資材として処理
+ *  2010/01/21    1.5   H.Sasaki         [E_本稼動_00859]専門店の資材の取引タイプを変更
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
   cv_slip_type_10                CONSTANT VARCHAR2(2)   := '10';           -- 伝票区分 10:工場入庫
   cv_slip_type_20                CONSTANT VARCHAR2(2)   := '20';           -- 伝票区分 20:拠点間入庫
   cv_segment1                    CONSTANT VARCHAR2(1)   := '2';            -- 品目区分  2:資材
+-- == 2010/01/21 V1.5 Added START =============================================================
+  cv_active_1                     CONSTANT VARCHAR2(1)  :=  '1';            -- 売上対象区分（有効）
+-- == 2010/01/21 V1.5 Added END   =============================================================
   -- メッセージ
   cv_no_para_msg                 CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなしメッセージ
   cv_org_code_get_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
@@ -125,6 +129,9 @@ AS
   cv_table_lock_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10029'; -- ロックエラーメッセージ（入庫情報一時表サマリ行）
   cv_table_lock_err_2_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10325'; -- ロックエラーメッセージ（入庫情報一時表）
   cv_no_data_inside_info_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10350'; -- 入庫情報一時表データ取得エラーメッセージ
+-- == 2010/01/21 V1.5 Added START =============================================================
+  cv_msg_xxcoi1_00032             CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-00032'; -- プロファイル値取得エラー
+-- == 2010/01/21 V1.5 Added END   =============================================================
   -- トークン
   cv_tkn_item_code               CONSTANT VARCHAR2(20)  := 'ITEM_CODE';            -- 親品目コード
   cv_tkn_org_code                CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';         -- 在庫組織コード
@@ -141,6 +148,9 @@ AS
   cv_tkn_lookup_code             CONSTANT VARCHAR2(20)  := 'LOOKUP_CODE';          -- 参照コード
   cv_tkn_item_status             CONSTANT VARCHAR2(20)  := 'ITEM_STATUS';          -- 品目ステータス
   cv_tkn_tran_id                 CONSTANT VARCHAR2(20)  := 'TRANSACTION_ID';       -- 取引ID
+-- == 2010/01/21 V1.5 Added START =============================================================
+  cv_tkn_msg_xxcoi1_00032         CONSTANT VARCHAR2(30) :=  'PRO_TOK';              -- プロファイル名
+-- == 2010/01/21 V1.5 Added END   =============================================================
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -165,6 +175,9 @@ AS
     , slip_type                           xxcoi_storage_information.slip_type%TYPE                      -- 伝票区分
     , segment1                            mtl_categories_b.segment1%TYPE                                -- 品目区分
     , ship_base_code                      xxcoi_storage_information.ship_base_code%TYPE                 -- 出庫拠点コード
+-- == 2010/01/21 V1.5 Added START =============================================================
+    , management_base_code                xxcmm_cust_accounts.management_base_code%TYPE                 -- 管理元拠点コード
+-- == 2010/01/21 V1.5 Added END   =============================================================
   );
 --
   TYPE gt_inside_info_ttype IS TABLE OF gr_inside_info_rec INDEX BY BINARY_INTEGER;
@@ -188,6 +201,12 @@ AS
   gt_sec_inv_nm_2                mtl_secondary_inventories.secondary_inventory_name%TYPE; -- 保管場所コード(伝票区分が「20」)
   gn_disposition_id              mtl_generic_dispositions.disposition_id%TYPE;            -- 勘定科目別名ID
   gn_disposition_id_2            mtl_generic_dispositions.disposition_id%TYPE;            -- 勘定科目別名ID(梱包材料原価振替)
+-- == 2010/01/21 V1.5 Added START =============================================================
+  gt_sp_management_code           xxcmm_cust_accounts.management_base_code%TYPE;          -- 専門店管理元拠点コード
+-- == 2010/01/21 V1.5 Added END   =============================================================
+-- == 2010/01/21 V1.5 Modified START =============================================================
+  gt_sales_class                  ic_item_mst_b.attribute26%TYPE;                         -- 売上対象区分
+-- == 2010/01/21 V1.5 Modified END   =============================================================
   -- カウンタ
   gn_slip_loop_cnt               NUMBER; -- 伝票単位ループカウンタ
   gn_inside_info_loop_cnt        NUMBER; -- 取引ID単位ループカウンタ
@@ -225,19 +244,22 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     -- プロファイル
-    cv_prf_org_code                CONSTANT VARCHAR2(30) := 'XXCOI1_ORGANIZATION_CODE';   -- 在庫組織コード
-    cv_prf_acc_dept_code           CONSTANT VARCHAR2(30) := 'XXCOI1_ACCOUT_DEPT_CODE';    -- 経理部用部門コード
-    cv_prf_item_category_class     CONSTANT VARCHAR2(30) := 'XXCOI1_ITEM_CATEGORY_CLASS'; -- 品目区分カテゴリセット名
+    cv_prf_org_code                 CONSTANT VARCHAR2(30) :=  'XXCOI1_ORGANIZATION_CODE';   -- 在庫組織コード
+    cv_prf_acc_dept_code            CONSTANT VARCHAR2(30) :=  'XXCOI1_ACCOUT_DEPT_CODE';    -- 経理部用部門コード
+    cv_prf_item_category_class      CONSTANT VARCHAR2(30) :=  'XXCOI1_ITEM_CATEGORY_CLASS'; -- 品目区分カテゴリセット名
+-- == 2010/01/21 V1.5 Added START =============================================================
+    cv_prf_sp_management_code       CONSTANT VARCHAR2(30) :=  'XXCOI1_SP_MANAGEMENT';       -- 専門店管理課コード
+-- == 2010/01/21 V1.5 Added END   =============================================================
     -- 参照タイプ ユーザー定義取引タイプ名称
-    cv_tran_type                   CONSTANT VARCHAR2(30) := 'XXCOI1_TRANSACTION_TYPE_NAME';
+    cv_tran_type                    CONSTANT VARCHAR2(30) :=  'XXCOI1_TRANSACTION_TYPE_NAME';
     -- 参照コード
-    cv_tran_type_factory_stock     CONSTANT VARCHAR2(3)  := '150'; -- 取引タイプ コード 工場入庫
-    cv_tran_type_factory_stock_b   CONSTANT VARCHAR2(3)  := '160'; -- 取引タイプ コード 工場入庫振戻
-    cv_tran_type_inout             CONSTANT VARCHAR2(3)  := '10';  -- 取引タイプ コード 入出庫
-    cv_tran_type_pack_receive      CONSTANT VARCHAR2(3)  := '250'; -- 取引タイプ コード 梱包材料一時受入
-    cv_tran_type_pack_receive_b    CONSTANT VARCHAR2(3)  := '260'; -- 取引タイプ コード 梱包材料一時受入振戻
-    cv_tran_type_transfer_cost     CONSTANT VARCHAR2(3)  := '270'; -- 取引タイプ コード 梱包材料原価振替
-    cv_tran_type_transfer_cost_b   CONSTANT VARCHAR2(3)  := '280'; -- 取引タイプ コード 梱包材料原価振替振戻
+    cv_tran_type_factory_stock      CONSTANT VARCHAR2(3)  :=  '150'; -- 取引タイプ コード 工場入庫
+    cv_tran_type_factory_stock_b    CONSTANT VARCHAR2(3)  :=  '160'; -- 取引タイプ コード 工場入庫振戻
+    cv_tran_type_inout              CONSTANT VARCHAR2(3)  :=  '10';  -- 取引タイプ コード 入出庫
+    cv_tran_type_pack_receive       CONSTANT VARCHAR2(3)  :=  '250'; -- 取引タイプ コード 梱包材料一時受入
+    cv_tran_type_pack_receive_b     CONSTANT VARCHAR2(3)  :=  '260'; -- 取引タイプ コード 梱包材料一時受入振戻
+    cv_tran_type_transfer_cost      CONSTANT VARCHAR2(3)  :=  '270'; -- 取引タイプ コード 梱包材料原価振替
+    cv_tran_type_transfer_cost_b    CONSTANT VARCHAR2(3)  :=  '280'; -- 取引タイプ コード 梱包材料原価振替振戻
 --
     -- *** ローカル変数 ***
     lt_org_code                    mtl_parameters.organization_code%TYPE;            -- 在庫組織コード
@@ -595,6 +617,23 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2010/01/21 V1.5 Added START =============================================================
+    -- ===============================
+    -- プロファイル取得：専門店管理課コード
+    -- ===============================
+    gt_sp_management_code   :=  fnd_profile.value(cv_prf_sp_management_code);
+    -- プロファイルが取得できない場合
+    IF ( gt_sp_management_code IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application_short_name
+                     , iv_name         => cv_msg_xxcoi1_00032
+                     , iv_token_name1  => cv_tkn_msg_xxcoi1_00032
+                     , iv_token_value1 => cv_prf_sp_management_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- == 2010/01/21 V1.5 Added END   =============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -759,30 +798,36 @@ AS
     CURSOR inside_info_cur
     IS
       SELECT
-              xsi.transaction_id                 AS transaction_id                               -- 取引ID
-            , xsi.slip_num                       AS slip_num                                     -- 伝票No
-            , xsi.slip_date                      AS slip_date                                    -- 伝票日付
-            , xsi.base_code                      AS base_code                                    -- 拠点コード
-            , xsi.check_warehouse_code           AS check_warehouse_code                         -- 確認倉庫コード
-            , xsi.ship_warehouse_code            AS ship_warehouse_code                          -- 転送先倉庫コード
-            , xsi.parent_item_code               AS parent_item_code                             -- 親品目コード
-            , msib.inventory_item_id             AS inventory_item_id                            -- 品目ID
-            , xsi.item_code                      AS item_code                                    -- 子品目コード
-            , xsi.material_transaction_unset_qty AS material_transaction_unset_qty               -- 資材取引未連携数量 
-            , xsi.slip_type                      AS slip_type                                    -- 伝票区分
+              xsi.transaction_id                  AS  transaction_id                              -- 取引ID
+            , xsi.slip_num                        AS  slip_num                                    -- 伝票No
+            , xsi.slip_date                       AS  slip_date                                   -- 伝票日付
+            , xsi.base_code                       AS  base_code                                   -- 拠点コード
+            , xsi.check_warehouse_code            AS  check_warehouse_code                        -- 確認倉庫コード
+            , xsi.ship_warehouse_code             AS  ship_warehouse_code                         -- 転送先倉庫コード
+            , xsi.parent_item_code                AS  parent_item_code                            -- 親品目コード
+            , msib.inventory_item_id              AS  inventory_item_id                           -- 品目ID
+            , xsi.item_code                       AS  item_code                                   -- 子品目コード
+            , xsi.material_transaction_unset_qty  AS  material_transaction_unset_qty              -- 資材取引未連携数量 
+            , xsi.slip_type                       AS  slip_type                                   -- 伝票区分
 -- == 2009/11/13 V1.4 Modified START =============================================================
---            , mcb.segment1                       AS segment1                                     -- 品目区分
+--            , mcb.segment1                       AS segment1                                    -- 品目区分
             , DECODE(SUBSTRB(xsi.parent_item_code, 1, 1), '5', '2'
                                                         , '6', '2'
-                                                        , mcb.segment1) AS segment1              -- 品目区分
+                                                        , mcb.segment1) AS segment1               -- 品目区分
 -- == 2009/11/13 V1.4 Modified END   =============================================================
-            , xsi.ship_base_code                 AS ship_base_code                               -- 出庫拠点コード
+            , xsi.ship_base_code                  AS  ship_base_code                              -- 出庫拠点コード
+-- == 2010/01/21 V1.5 Added START =============================================================
+            , xca.management_base_code            AS  management_base_code                        -- 管理元拠点コード
+-- == 2010/01/21 V1.5 Added END   =============================================================
       FROM
-              xxcoi_storage_information          xsi                                             -- 入庫情報一時表
-            , mtl_system_items_b                 msib                                            -- Disc品目マスタ
-            , mtl_category_sets_tl               mcst                                            -- 品目カテゴリセット
-            , mtl_item_categories                mic                                             -- 品目カテゴリ割当
-            , mtl_categories_b                   mcb                                             -- 品目カテゴリ
+              xxcoi_storage_information         xsi                                             -- 入庫情報一時表
+            , mtl_system_items_b                msib                                            -- Disc品目マスタ
+            , mtl_category_sets_tl              mcst                                            -- 品目カテゴリセット
+            , mtl_item_categories               mic                                             -- 品目カテゴリ割当
+            , mtl_categories_b                  mcb                                             -- 品目カテゴリ
+-- == 2010/01/21 V1.5 Added START =============================================================
+            , xxcmm_cust_accounts               xca                                             -- 顧客アドオン
+-- == 2010/01/21 V1.5 Added END   =============================================================
       WHERE
               xsi.slip_num                       = gt_slip_num_tab( gn_slip_loop_cnt )           -- 伝票No
       AND     xsi.store_check_flag               = cv_flag_on                                    -- 入庫確認フラグが「Y」
@@ -800,6 +845,9 @@ AS
       AND     mcb.category_id                    = mic.category_id                               -- カテゴリID
       AND     mcb.enabled_flag                   = cv_flag_on                                    -- 使用可能フラグ
       AND     gd_date                            < NVL( TRUNC( mcb.disable_date ), gd_date + 1 ) -- 無効日
+-- == 2010/01/21 V1.5 Added START =============================================================
+      AND     xsi.base_code                      =  xca.customer_code
+-- == 2010/01/21 V1.5 Added END   =============================================================
 -- == 2009/11/13 V1.4 Added START =============================================================
       UNION
       SELECT
@@ -816,9 +864,15 @@ AS
             , xsi.slip_type                      AS slip_type                                    -- 伝票区分
             , '2'                                AS segment1                                     -- 品目区分
             , xsi.ship_base_code                 AS ship_base_code                               -- 出庫拠点コード
+-- == 2010/01/21 V1.5 Added START =============================================================
+            , xca.management_base_code            AS  management_base_code                        -- 管理元拠点コード
+-- == 2010/01/21 V1.5 Added END   =============================================================
       FROM
               xxcoi_storage_information          xsi                                             -- 入庫情報一時表
             , mtl_system_items_b                 msib                                            -- Disc品目マスタ
+-- == 2010/01/21 V1.5 Added START =============================================================
+            , xxcmm_cust_accounts               xca                                             -- 顧客アドオン
+-- == 2010/01/21 V1.5 Added END   =============================================================
       WHERE
               xsi.slip_num                       = gt_slip_num_tab( gn_slip_loop_cnt )           -- 伝票No
       AND     xsi.store_check_flag               = cv_flag_on                                    -- 入庫確認フラグが「Y」
@@ -830,6 +884,9 @@ AS
       AND     msib.organization_id               = gt_org_id                                     -- 在庫組織ID
       AND   ( msib.segment1                      LIKE '5%'
       OR      msib.segment1                      LIKE '6%' )
+-- == 2010/01/21 V1.5 Added START =============================================================
+      AND     xsi.base_code                      =  xca.customer_code
+-- == 2010/01/21 V1.5 Added END   =============================================================
 -- == 2009/11/13 V1.4 Added END   =============================================================
 -- == 2009/04/28 V1.2 Added START ===============================================================
 -- == 2009/05/18 V1.3 Deleted START =============================================================
@@ -999,7 +1056,10 @@ AS
       , ov_transaction_enable => lt_transaction_enable                                          -- 取引可能
       , ov_stock_enabled_flg  => lt_stock_enabled_flg                                           -- 在庫保有可能フラグ
       , ov_return_enable      => lt_return_enable                                               -- 返品可能
-      , ov_sales_class        => lt_sales_class                                                 -- 売上対象区分(使用しない)
+-- == 2010/01/21 V1.5 Modified START =============================================================
+--      , ov_sales_class        => lt_sales_class                                                 -- 売上対象区分(使用しない)
+      , ov_sales_class        => gt_sales_class                                                 -- 売上対象区分
+-- == 2010/01/21 V1.5 Modified END   =============================================================
       , ov_primary_unit       => lt_primary_unit                                                -- 基準単位(使用しない)
       , on_inventory_item_id  => lt_inventory_item_id                                           -- 品目ID(使用しない)
       , ov_primary_uom_code   => gt_primary_uom_code                                            -- 基準単位コード
@@ -1030,13 +1090,22 @@ AS
       );
     END IF;
 --
-    -- 戻り値の品目ステータスが「Inactive」且つ顧客受注可能フラグが「Y」且つ取引可能が「Y」且つ
-    -- 在庫保有可能フラグが「Y」且つ返品可能が「Y」以外の場合
-    IF ( ( lt_item_status         =  cv_inactive )
-      AND ( lt_cust_order_flg     =  cv_flag_on )
-      AND ( lt_transaction_enable =  cv_flag_on )
-      AND ( lt_stock_enabled_flg  =  cv_flag_on )
-      AND ( lt_return_enable      <> cv_flag_on ) ) THEN
+    -- 品目チェックの戻り値のうち、以下の何れか満たす場合、該当レコードをスキップ
+    -- ステータス:Inactive、顧客受注可能、取引可能、在庫保有可能、返品可能の何れかが N
+-- == 2010/01/21 V1.5 Modified START =============================================================
+--    IF ( ( lt_item_status         =  cv_inactive )
+--      AND ( lt_cust_order_flg     =  cv_flag_on )
+--      AND ( lt_transaction_enable =  cv_flag_on )
+--      AND ( lt_stock_enabled_flg  =  cv_flag_on )
+--      AND ( lt_return_enable      <> cv_flag_on ) ) THEN
+    IF (    ( lt_item_status          =   cv_inactive )
+        OR  ( lt_cust_order_flg       =   cv_flag_off )
+        OR  ( lt_transaction_enable   =   cv_flag_off )
+        OR  ( lt_stock_enabled_flg    =   cv_flag_off )
+        OR  ( lt_return_enable        =   cv_flag_off )
+       )
+    THEN
+-- == 2010/01/21 V1.5 Modified END   =============================================================
       -- 品目ステータス有効チェックエラー
       lv_errmsg  := xxccp_common_pkg.get_msg(
                         iv_application  => cv_application_short_name
@@ -1429,9 +1498,25 @@ AS
     -- ===============================
     -- 勘定科目別名存在チェック
     -- ===============================
-    -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）以外の場合
-    IF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
-      AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 ) ) THEN
+-- == 2010/01/21 V1.5 Modified START =============================================================
+--    -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）以外
+--    IF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+--      AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 ) ) THEN
+--
+    -- 伝票区分:10（工場入庫）で資材以外、または、
+    -- 伝票区分:10（工場入庫）で、専門店、売上対象となっている資材品目の場合
+    IF( (     ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+          AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 )
+        )
+        OR
+        (     ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+          AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1  = cv_segment1 )
+          AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).management_base_code = gt_sp_management_code )
+          AND ( gt_sales_class  =   cv_active_1 )
+        )
+      )
+    THEN
+-- == 2010/01/21 V1.5 Modified END   =============================================================
 --
       -- 勘定科目別名IDの取得
       gn_disposition_id := xxcoi_common_pkg.get_disposition_id_2(
@@ -1467,6 +1552,7 @@ AS
       END IF;
 --
     -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）の場合
+    -- （専門店で売上対象となっている資材品目は除く）
     ELSIF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
       AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 ) ) THEN
 --
@@ -1548,9 +1634,25 @@ AS
       gn_disposition_id   := NULL; -- 勘定科目別名ID
       gn_disposition_id_2 := NULL; -- 勘定科目別名ID(梱包材料原価振替)
 --
-      -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）以外場合
-      IF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10
-        AND gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 ) THEN
+-- == 2010/01/21 V1.5 Modified START =============================================================
+--      -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）以外場合
+--      IF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10
+--        AND gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 ) THEN
+--
+      -- 伝票区分:10（工場入庫）で資材以外、または、
+      -- 伝票区分:10（工場入庫）で、専門店、売上対象となっている資材品目の場合
+      IF( (     ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 )
+          )
+          OR
+          (     ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1  = cv_segment1 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).management_base_code = gt_sp_management_code )
+            AND ( gt_sales_class  =   cv_active_1 )
+          )
+        )
+      THEN
+-- == 2010/01/21 V1.5 Modified END   =============================================================
 --
         -- 勘定科目別名IDの取得
         gn_disposition_id := xxcoi_common_pkg.get_disposition_id(
@@ -1584,6 +1686,7 @@ AS
         END IF;
 --
       -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）の場合
+      -- （専門店で売上対象となっている資材品目は除く）
       ELSIF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
         AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 ) ) THEN
 --
@@ -1786,19 +1889,44 @@ AS
 --
       -- 品目区分が「2」（資材）以外且つ取引数量 > 0の場合
       IF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 )
-        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty > 0 ) ) THEN
+        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty > 0 ) )
+      THEN
         lv_transaction_type_id := gt_tran_type_factory_stock;   -- 取引タイプID 工場入庫
       -- 品目区分が「2」（資材）以外且つ取引数量 < 0の場合
       ELSIF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 <> cv_segment1 )
-        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty < 0 ) ) THEN
+        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty < 0 ) )
+      THEN
         lv_transaction_type_id := gt_tran_type_factory_stock_b; -- 取引タイプID 工場入庫振戻
+        --
+-- == 2010/01/21 V1.5 Modified START =============================================================
+      -- 品目区分が「2」（資材）且つ、専門店、売上対象となっており、取引数量 > 0の場合で
+      ELSIF(    ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1  = cv_segment1 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).management_base_code = gt_sp_management_code )
+            AND ( gt_sales_class  =   cv_active_1 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty > 0 )
+        )
+      THEN
+        lv_transaction_type_id := gt_tran_type_factory_stock;   -- 取引タイプID 工場入庫
+        --
+      -- 品目区分が「2」（資材）且つ、専門店、売上対象となっており、取引数量 < 0の場合で
+      ELSIF(    ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1  = cv_segment1 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).management_base_code = gt_sp_management_code )
+            AND ( gt_sales_class  =   cv_active_1 )
+            AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty < 0 )
+        )
+      THEN
+        lv_transaction_type_id := gt_tran_type_factory_stock_b; -- 取引タイプID 工場入庫振戻
+        --
+-- == 2010/01/21 V1.5 Modified END   =============================================================
       -- 品目区分が「2」（資材）且つ取引数量 > 0の場合
       ELSIF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 )
-        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty > 0 ) ) THEN
+        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty > 0 ) )
+      THEN
         lv_transaction_type_id := gt_tran_type_pack_receive;    -- 取引タイプID 梱包材料一時受入
       -- 品目区分が「2」（資材）且つ取引数量 < 0の場合
       ELSIF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 )
-        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty < 0 ) ) THEN
+        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty < 0 ) )
+      THEN
         lv_transaction_type_id := gt_tran_type_pack_receive_b;  -- 取引タイプID 梱包材料一時受入振戻
       END IF;
 --
@@ -1912,9 +2040,21 @@ AS
     );
 --
     -- 値の設定
+-- == 2010/01/21 V1.5 Modified START =============================================================
+--    -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）の場合
+--    IF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+--      AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 ) ) THEN
+--
     -- 伝票区分が「10」（工場入庫）且つ品目区分が「2」（資材）の場合
-    IF ( ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
-      AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 ) ) THEN
+    -- ただし、専門店で売上対象となっている資材品目の場合は除く
+    IF(     ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_10 )
+        AND ( gt_inside_info_tab( gn_inside_info_loop_cnt ).segment1 = cv_segment1 )
+        AND NOT(    ( gt_inside_info_tab( gn_inside_info_loop_cnt ).management_base_code = gt_sp_management_code )
+                AND ( gt_sales_class  =   cv_active_1 )
+            )
+      )
+    THEN
+-- == 2010/01/21 V1.5 Modified END   =============================================================
 --
       -- 取引数量 > 0の場合
       IF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty > 0 ) THEN
