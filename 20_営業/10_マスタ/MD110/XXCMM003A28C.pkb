@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/10/08    1.2   仁木 重人        障害I_E_542、E_T3_00469対応
  *  2009/10/20    1.3   久保島 豊        障害0001350対応
  *  2010/04/16    1.4   久保島 豊        障害E_本稼動_02295対応 出荷元保管場所の項目追加
+ *  2011/11/28    1.5   窪 和重          障害E_本稼動_07553対応 EDI関連の項目追加
  *
  *****************************************************************************************/
 --
@@ -488,6 +489,18 @@ AS
 -- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
               ,xca.ship_storage_code                  ship_storage_code     --出荷元保管場所
 -- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
+-- 2011/11/28 Ver1.5 add start by K.Kubo
+              ,xca.delivery_order                     delivery_order        --配送順（EDI）
+              ,xca.edi_district_code                  edi_district_code     --EDI地区コード（EDI)
+              ,xca.edi_district_name                  edi_district_name     --EDI地区名（EDI）
+              ,xca.edi_district_kana                  edi_district_kana     --EDI地区名カナ（EDI）
+              ,xca.tsukagatazaiko_div                 tsukagatazaiko_div    --通過在庫型区分（EDI）
+              ,xca.deli_center_code                   deli_center_code      --EDI納品センターコード
+              ,xca.deli_center_name                   deli_center_name      --EDI納品センター名
+              ,xca.edi_forward_number                 edi_forward_number    --EDI伝送追番
+              ,xca.cust_store_name                    cust_store_name       --顧客店舗名称
+              ,xca.torihikisaki_code                  torihikisaki_code     --取引先コード
+-- 2011/11/28 Ver1.5 add end by K.Kubo
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -874,6 +887,18 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ship_storage_code,1,10);   --出荷元保管場所
 -- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
+-- 2011/11/28 Ver1.5 add start by K.Kubo
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_order,1,14);      --配送順（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_code,1,8);    --EDI地区コード（EDI)
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_name,1,40);   --EDI地区名（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_kana,1,20);   --EDI地区名カナ（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.tsukagatazaiko_div,1,2);   --通過在庫型区分（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_code,1,8);     --EDI納品センターコード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_name,1,20);    --EDI納品センター名
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_forward_number,1,2);   --EDI伝送追番
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cust_store_name,1,30);     --顧客店舗名称
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.torihikisaki_code,1,8);    --取引先コード
+-- 2011/11/28 Ver1.5 add end by K.Kubo
 --
         --文字列出力
         BEGIN

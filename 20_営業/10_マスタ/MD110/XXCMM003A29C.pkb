@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2010/04/23    1.6   Yutaka.Kuboshima 障害E_本稼動_02295 出荷元保管場所の項目追加
  *                                                          CSV項目数のチェックを追加
  *                                                          実行した職責によるセキュリティを追加
+ *  2011/11/28    1.7   窪 和重          障害E_本稼動_07553対応 EDI関連の項目追加
  *
  *****************************************************************************************/
 --
@@ -297,6 +298,19 @@ AS
   cv_count_token              CONSTANT VARCHAR2(30)  := 'COUNT';                           --件数トークン
   cv_xxcmm_003_a29c_name      CONSTANT VARCHAR2(30)  := '顧客一括更新';                    --顧客一括更新名
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+  cv_delivery_order           CONSTANT VARCHAR2(13)  := '配送順（EDI）';                   --配送順（EDI）
+  cv_edi_district_code        CONSTANT VARCHAR2(20)  := 'EDI地区コード（EDI）';            --EDI地区コード（EDI）
+  cv_edi_district_name        CONSTANT VARCHAR2(16)  := 'EDI地区名（EDI）';                --EDI地区名（EDI）
+  cv_edi_district_kana        CONSTANT VARCHAR2(20)  := 'EDI地区名カナ（EDI）';            --EDI地区名カナ（EDI）
+  cv_tsukagatazaiko_div       CONSTANT VARCHAR2(21)  := '通過在庫型区分（EDI）';           --通過在庫型区分（EDI）
+  cv_deli_center_code         CONSTANT VARCHAR2(21)  := 'EDI納品センターコード';           --EDI納品センターコード
+  cv_deli_center_name         CONSTANT VARCHAR2(17)  := 'EDI納品センター名';               --EDI納品センター名
+  cv_edi_forward_number       CONSTANT VARCHAR2(11)  := 'EDI伝送追番';                     --EDI伝送追番
+  cv_cust_store_name          CONSTANT VARCHAR2(12)  := '顧客店舗名称';                    --顧客店舗名称
+  cv_torihikisaki_code        CONSTANT VARCHAR2(12)  := '取引先コード';                    --取引先コード
+  cv_tsukagatazaiko_kbn       CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_TSUKAGATAZAIKO_KBN';   --参照コード・通過在庫型区分
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -460,6 +474,22 @@ AS
     lv_ship_storage_code_mst    VARCHAR2(100)   := NULL;                  --出荷元保管場所
     ln_item_num                 NUMBER;                                   --CSV項目数
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+    lv_delivery_order           VARCHAR2(100)   := NULL;                  --ローカル変数・配送順（EDI）
+    lv_edi_district_code        VARCHAR2(100)   := NULL;                  --ローカル変数・EDI地区コード（EDI）
+    lv_edi_district_name        VARCHAR2(100)   := NULL;                  --ローカル変数・EDI地区名（EDI）
+    lv_edi_district_kana        VARCHAR2(100)   := NULL;                  --ローカル変数・EDI地区名カナ（EDI）
+    lv_tsukagatazaiko_div       VARCHAR2(100)   := NULL;                  --ローカル変数・通過在庫型区分（EDI）
+    lv_tsukagatazaiko_div_mst   xxcmm_cust_accounts.tsukagatazaiko_div%TYPE;  --通過在庫型区分（EDI）確認用変数
+    lv_deli_center_code         VARCHAR2(100)   := NULL;                  --ローカル変数・EDI納品センターコード
+    lv_deli_center_name         VARCHAR2(100)   := NULL;                  --ローカル変数・EDI納品センター名
+    lv_edi_forward_number       VARCHAR2(100)   := NULL;                  --ローカル変数・EDI伝送追番
+    lv_cust_store_name          VARCHAR2(100)   := NULL;                  --ローカル変数・顧客店舗名称
+    lv_torihikisaki_code        VARCHAR2(100)   := NULL;                  --ローカル変数・取引先コード
+    lv_tsukagatazaiko_flag      VARCHAR2(1)     := NULL;                  --通過在庫型区分（EDI）入力チェック用
+    lv_chain_store_db           xxcmm_cust_accounts.chain_store_code%TYPE;    --顧客追加情報存在確認用変数
+    lv_tsukagatazaiko_div_db    xxcmm_cust_accounts.tsukagatazaiko_div%TYPE;  --顧客追加情報存在確認用変数
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -821,6 +851,21 @@ AS
     -- 出荷元保管場所チェックレコード
     check_ship_storage_code_rec check_ship_storage_code_cur%ROWTYPE;
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+    -- 顧客追加情報チェックカーソル
+    CURSOR check_db_customer_cur(
+      iv_customer_code IN VARCHAR2)
+    IS
+      SELECT xca.chain_store_code     chain_store_code
+            ,xca.tsukagatazaiko_div   tsukagatazaiko_div
+      FROM   hz_cust_accounts     hca,
+             xxcmm_cust_accounts  xca
+      WHERE  hca.cust_account_id     = xca.customer_id
+      AND    hca.account_number      = iv_customer_code 
+      ;
+    -- 顧客追加情報チェックカーソルレコード型
+    check_db_customer_rec  check_db_customer_cur%ROWTYPE;
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
 --
   BEGIN
 --
@@ -4226,6 +4271,624 @@ AS
         END IF;
         --
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+        -- ===========================================
+        -- 配送順（EDI）の取得・チェック
+        -- ===========================================
+        -- 配送順（EDI） 取得
+        lv_delivery_order := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                    ,cv_comma
+                                                                    ,48);
+        --配送順（EDI） 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_delivery_order        --配送順（EDI）
+                                            ,lv_delivery_order        --配送順（EDI）
+                                            ,14                       --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --配送順（EDI） 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --配送順（EDI） エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_delivery_order
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_delivery_order
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        -- ===========================================
+        -- EDI地区コード（EDI）の取得・チェック
+        -- ===========================================
+        -- EDI地区コード（EDI） 取得
+        lv_edi_district_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,49);
+        --EDI地区コード（EDI） 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_edi_district_code     --EDI地区コード（EDI）
+                                            ,lv_edi_district_code     --EDI地区コード（EDI）
+                                            ,8                        --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --EDI地区コード（EDI） 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --EDI地区コード（EDI） エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_district_code
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_district_code
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        --EDI地区コード（EDI）の半角文字チェック
+        IF (NVL(xxccp_common_pkg.chk_single_byte(lv_edi_district_code), TRUE) = FALSE) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --半角文字チェックエラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_single_byte_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_district_code
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_district_code
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+--
+        -- ===========================================
+        -- EDI地区名（EDI）の取得・チェック
+        -- ===========================================
+        -- EDI地区名（EDI） 取得
+        lv_edi_district_name := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,50);
+        --EDI地区名（EDI） 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_edi_district_name     --EDI地区名（EDI）
+                                            ,lv_edi_district_name     --EDI地区名（EDI）
+                                            ,40                       --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --EDI地区名（EDI） 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --EDI地区名（EDI） エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_district_name
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_district_name
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        -- 全角文字チェック（ただし'-'は除く）
+        IF (NVL(xxccp_common_pkg.chk_double_byte(lv_edi_district_name), TRUE) = FALSE)
+          AND (lv_edi_district_name <> cv_null_bar)
+        THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --全角文字チェックエラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_double_byte_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_district_name
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_district_name
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+--
+        -- ===========================================
+        -- EDI地区名カナ（EDI）の取得・チェック
+        -- ===========================================
+        -- EDI地区名カナ（EDI） 取得
+        lv_edi_district_kana := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,51);
+        --EDI地区名カナ（EDI） 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_edi_district_kana     --EDI地区名カナ（EDI）
+                                            ,lv_edi_district_kana     --EDI地区名カナ（EDI）
+                                            ,20                       --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --EDI地区名カナ（EDI） 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --EDI地区名カナ（EDI） エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_district_kana
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_district_kana
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        --半角文字チェック
+        IF (NVL(xxccp_common_pkg.chk_single_byte(lv_edi_district_kana), TRUE) = FALSE) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --半角文字チェックエラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_single_byte_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_district_kana
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_district_kana
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+--
+        -- ===========================================
+        -- 通過在庫型区分（EDI）の取得・チェック
+        -- ===========================================
+        -- 通過在庫型区分（EDI） 取得
+        lv_tsukagatazaiko_div := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                        ,cv_comma
+                                                                        ,52);
+        --通過在庫型区分（EDI） 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_tsukagatazaiko_div    --通過在庫型区分（EDI）
+                                            ,lv_tsukagatazaiko_div    --通過在庫型区分（EDI）
+                                            ,2                        --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --通過在庫型区分（EDI） 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --通過在庫型区分（EDI） エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_tsukagatazaiko_div
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_tsukagatazaiko_div
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        --通過在庫型区分（EDI）に'-'以外の値が入っている場合
+        IF (NVL(lv_tsukagatazaiko_div , cv_null_bar) <> cv_null_bar) THEN
+          --参照タイプ 通過在庫型区分（EDI）存在チェック
+          << check_tsukagatazaiko_div_loop >>
+          FOR check_lookup_type_rec IN check_lookup_type_cur( lv_tsukagatazaiko_div , cv_tsukagatazaiko_kbn )
+          LOOP
+            lv_tsukagatazaiko_div_mst  := check_lookup_type_rec.lookup_code;
+          END LOOP check_tsukagatazaiko_div_loop;
+          IF (lv_tsukagatazaiko_div_mst IS NULL) THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --通過在庫型区分（EDI）存在チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_lookup_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_tsukagatazaiko_div
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_tsukagatazaiko_div
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+--
+          --通過在庫型区分（EDI） を入力する場合、チェーン店コード(EDI)の入力必須
+          --CSVに設定されたチェーン店コード(EDI)が'-'の場合
+          IF (lv_edi_chain_code = cv_null_bar) THEN
+            --エラー対象
+            lv_tsukagatazaiko_flag := cv_yes;
+          --
+          --CSVに設定されたチェーン店コード(EDI)がNULLの場合
+          ELSIF (lv_edi_chain_code IS NULL) THEN
+            --顧客追加情報のチェーン店コード(EDI)存在チェック
+            << check_db_chain_store_loop >>
+            FOR check_db_customer_rec IN check_db_customer_cur( lv_customer_code )
+            LOOP
+              lv_chain_store_db  := check_db_customer_rec.chain_store_code;
+            END LOOP check_db_chain_store_loop;
+            --顧客追加情報のチェーン店コード(EDI)が'Y'の場合
+            IF (lv_chain_store_db IS NULL) THEN
+              --エラー対象
+              lv_tsukagatazaiko_flag := cv_yes;
+            END IF;
+          END IF;
+--
+        END IF;
+--
+        --通過在庫型区分（EDI） を入力する場合、チェーン店コード(EDI)の入力必須
+        --通過在庫型区分（EDI）がNULL の場合
+        IF (lv_tsukagatazaiko_div IS NULL) THEN
+          --顧客追加情報の通過在庫型区分（EDI）存在チェック
+          << check_db_tsukagatazaiko_loop >>
+          FOR check_db_customer_rec IN check_db_customer_cur( lv_customer_code )
+          LOOP
+            lv_tsukagatazaiko_div_db  := check_db_customer_rec.tsukagatazaiko_div;
+          END LOOP check_db_tsukagatazaiko_loop;
+          --顧客追加情報の通過在庫型区分（EDI）がNULLでない
+          --かつ、チェーン店コード(EDI)が'-' の場合
+          IF (lv_tsukagatazaiko_div_db IS NOT NULL)
+            AND (lv_edi_chain_code = cv_null_bar)
+          THEN
+            --エラー対象
+            lv_tsukagatazaiko_flag := cv_yes;
+          END IF;
+        END IF;
+--
+        --上記でエラー対象となった場合、項目設定チェックエラー
+        IF (lv_tsukagatazaiko_flag = cv_yes) THEN
+          --エラーメッセージの設定
+          lv_check_status   := cv_status_error;
+          lv_retcode        := cv_status_error;
+          --通過在庫型区分（EDI）存在チェックエラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_set_item_err_msg
+                          ,iv_token_name1  => cv_col_name
+                          ,iv_token_value1 => cv_tsukagatazaiko_div
+                          ,iv_token_name2  => cv_cond_col_name
+                          ,iv_token_value2 => cv_edi_chain
+                          ,iv_token_name3  => cv_cond_col_val
+                          ,iv_token_value3 => 'NULL'
+                          ,iv_token_name4  => cv_cust_code
+                          ,iv_token_value4 => lv_customer_code
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+--
+        -- ===========================================
+        -- EDI納品センターコードの取得・チェック
+        -- ===========================================
+        -- EDI納品センターコード 取得
+        lv_deli_center_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                      ,cv_comma
+                                                                      ,53);
+        --EDI納品センターコード 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_deli_center_code      --EDI納品センターコード
+                                            ,lv_deli_center_code      --EDI納品センターコード
+                                            ,8                        --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --EDI納品センターコード 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --EDI納品センターコード エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_deli_center_code
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_deli_center_code
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        -- ===========================================
+        -- EDI納品センター名の取得・チェック
+        -- ===========================================
+        -- EDI納品センター名 取得
+        lv_deli_center_name := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                      ,cv_comma
+                                                                      ,54);
+        --EDI納品センター名 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_deli_center_name      --EDI納品センター名
+                                            ,lv_deli_center_name      --EDI納品センター名
+                                            ,20                       --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --EDI納品センター名 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --EDI納品センター名 エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_deli_center_name
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_deli_center_name
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        -- ===========================================
+        -- EDI伝送追番の取得・チェック
+        -- ===========================================
+        -- EDI伝送追番 取得
+        lv_edi_forward_number := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                        ,cv_comma
+                                                                        ,55);
+        --EDI伝送追番 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_edi_forward_number    --EDI伝送追番
+                                            ,lv_edi_forward_number    --EDI伝送追番
+                                            ,2                        --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --EDI伝送追番 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --EDI伝送追番 エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_edi_forward_number
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_edi_forward_number
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        -- ===========================================
+        -- 顧客店舗名称の取得・チェック
+        -- ===========================================
+        -- 顧客店舗名称 取得
+        lv_cust_store_name := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                     ,cv_comma
+                                                                     ,56);
+        --顧客店舗名称 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_cust_store_name       --顧客店舗名称
+                                            ,lv_cust_store_name       --顧客店舗名称
+                                            ,30                       --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --顧客店舗名称 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --顧客店舗名称 エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_cust_store_name
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_cust_store_name
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        -- 全角文字チェック（ただし'-'は除く）
+        IF (NVL(xxccp_common_pkg.chk_double_byte(lv_cust_store_name), TRUE) = FALSE)
+          AND (lv_cust_store_name <> cv_null_bar)
+        THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --全角文字チェックエラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_double_byte_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_cust_store_name
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_cust_store_name
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+--
+        -- ===========================================
+        -- 取引先コードの取得・チェック
+        -- ===========================================
+        -- 取引先コード 取得
+        lv_torihikisaki_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,57);
+        --取引先コード 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_torihikisaki_code     --取引先コード
+                                            ,lv_torihikisaki_code     --取引先コード
+                                            ,8                        --項目長
+                                            ,NULL                     --項目長（小数点以下）
+                                            ,cv_null_ok               --必須フラグ
+                                            ,cv_element_vc2           --属性（0・検証なし、1、数値、2、日付）
+                                            ,lv_item_errbuf           --エラーバッファ
+                                            ,lv_item_retcode          --エラーコード
+                                            ,lv_item_errmsg);         --エラーメッセージ
+        --取引先コード 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --取引先コード エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_torihikisaki_code
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_torihikisaki_code
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        END IF;
+--
+        --取引先コードの半角文字チェック
+        IF (NVL(xxccp_common_pkg.chk_single_byte(lv_torihikisaki_code), TRUE) = FALSE) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --半角文字チェックエラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_single_byte_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_torihikisaki_code
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_torihikisaki_code
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+--
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -4276,6 +4939,18 @@ AS
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
               ,ship_storage_code
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+              ,delivery_order
+              ,edi_district_code
+              ,edi_district_name
+              ,edi_district_kana
+              ,tsukagatazaiko_div
+              ,deli_center_code
+              ,deli_center_name
+              ,edi_forward_number
+              ,cust_store_name
+              ,torihikisaki_code
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -4332,6 +5007,18 @@ AS
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
               ,lv_ship_storage_code
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+              ,lv_delivery_order
+              ,lv_edi_district_code
+              ,lv_edi_district_name
+              ,lv_edi_district_kana
+              ,lv_tsukagatazaiko_div
+              ,lv_deli_center_code
+              ,lv_deli_center_name
+              ,lv_edi_forward_number
+              ,lv_cust_store_name
+              ,lv_torihikisaki_code
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -4413,6 +5100,20 @@ AS
       lv_ship_storage_code        := NULL;
       lv_ship_storage_code_mst    := NULL;
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+      lv_delivery_order           := NULL;
+      lv_edi_district_code        := NULL;
+      lv_edi_district_name        := NULL;
+      lv_edi_district_kana        := NULL;
+      lv_tsukagatazaiko_div       := NULL;
+      lv_tsukagatazaiko_div_mst   := NULL;
+      lv_deli_center_code         := NULL;
+      lv_deli_center_name         := NULL;
+      lv_edi_forward_number       := NULL;
+      lv_cust_store_name          := NULL;
+      lv_torihikisaki_code        := NULL;
+      lv_tsukagatazaiko_flag      := NULL;
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -4661,6 +5362,28 @@ AS
              ,xwcbr.ship_storage_code     ship_storage_code           --出荷元保管場所
              ,xca.ship_storage_code       addon_ship_storage_code     --顧客追加情報・出荷元保管場所
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+             ,xwcbr.delivery_order        delivery_order              --配送順（EDI）
+             ,xca.delivery_order          addon_delivery_order        --顧客追加情報・配送順（EDI）
+             ,xwcbr.edi_district_code     edi_district_code           --EDI地区コード（EDI）
+             ,xca.edi_district_code       addon_edi_district_code     --顧客追加情報・EDI地区コード（EDI）
+             ,xwcbr.edi_district_name     edi_district_name           --EDI地区名（EDI）
+             ,xca.edi_district_name       addon_edi_district_name     --顧客追加情報・EDI地区名（EDI）
+             ,xwcbr.edi_district_kana     edi_district_kana           --EDI地区名カナ（EDI）
+             ,xca.edi_district_kana       addon_edi_district_kana     --顧客追加情報・EDI地区名カナ（EDI）
+             ,xwcbr.tsukagatazaiko_div    tsukagatazaiko_div          --通過在庫型区分（EDI）
+             ,xca.tsukagatazaiko_div      addon_tsukagatazaiko_div    --顧客追加情報・通過在庫型区分（EDI）
+             ,xwcbr.deli_center_code      deli_center_code            --EDI納品センターコード
+             ,xca.deli_center_code        addon_deli_center_code      --顧客追加情報・EDI納品センターコード
+             ,xwcbr.deli_center_name      deli_center_name            --EDI納品センター名
+             ,xca.deli_center_name        addon_deli_center_name      --顧客追加情報・EDI納品センター名
+             ,xwcbr.edi_forward_number    edi_forward_number          --EDI伝送追番
+             ,xca.edi_forward_number      addon_edi_forward_number    --顧客追加情報・EDI伝送追番
+             ,xwcbr.cust_store_name       cust_store_name             --顧客店舗名称
+             ,xca.cust_store_name         addon_cust_store_name       --顧客追加情報・顧客店舗名称
+             ,xwcbr.torihikisaki_code     torihikisaki_code           --取引先コード
+             ,xca.torihikisaki_code       addon_torihikisaki_code     --顧客追加情報・取引先コード
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -5504,6 +6227,168 @@ AS
     END IF;
     --
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+    -- ===============================
+    -- 配送順（EDI）
+    -- ===============================
+    -- 配送順（EDI）が'-'の場合
+    IF (cust_data_rec.delivery_order = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.delivery_order := NULL;
+    -- 配送順（EDI）がNULLの場合
+    ELSIF (cust_data_rec.delivery_order IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.delivery_order := cust_data_rec.addon_delivery_order;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.delivery_order := cust_data_rec.delivery_order;
+    END IF;
+    --
+    -- ===============================
+    -- EDI地区コード（EDI）
+    -- ===============================
+    -- EDI地区コード（EDI）が'-'の場合
+    IF (cust_data_rec.edi_district_code = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.edi_district_code := NULL;
+    -- EDI地区コード（EDI）がNULLの場合
+    ELSIF (cust_data_rec.edi_district_code IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.edi_district_code := cust_data_rec.addon_edi_district_code;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.edi_district_code := cust_data_rec.edi_district_code;
+    END IF;
+    --
+    -- ===============================
+    -- EDI地区名（EDI）
+    -- ===============================
+    -- EDI地区名（EDI）が'-'の場合
+    IF (cust_data_rec.edi_district_name = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.edi_district_name := NULL;
+    -- EDI地区名（EDI）がNULLの場合
+    ELSIF (cust_data_rec.edi_district_name IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.edi_district_name := cust_data_rec.addon_edi_district_name;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.edi_district_name := cust_data_rec.edi_district_name;
+    END IF;
+    --
+    -- ===============================
+    -- EDI地区名カナ（EDI）
+    -- ===============================
+    -- EDI地区名カナ（EDI）が'-'の場合
+    IF (cust_data_rec.edi_district_kana = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.edi_district_kana := NULL;
+    -- EDI地区名カナ（EDI）がNULLの場合
+    ELSIF (cust_data_rec.edi_district_kana IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.edi_district_kana := cust_data_rec.addon_edi_district_kana;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.edi_district_kana := cust_data_rec.edi_district_kana;
+    END IF;
+    --
+    -- ===============================
+    -- 通過在庫型区分（EDI）
+    -- ===============================
+    -- 通過在庫型区分（EDI）が'-'の場合
+    IF (cust_data_rec.tsukagatazaiko_div = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.tsukagatazaiko_div := NULL;
+    -- 通過在庫型区分（EDI）がNULLの場合
+    ELSIF (cust_data_rec.tsukagatazaiko_div IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.tsukagatazaiko_div := cust_data_rec.addon_tsukagatazaiko_div;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.tsukagatazaiko_div := cust_data_rec.tsukagatazaiko_div;
+    END IF;
+    --
+    -- ===============================
+    -- EDI納品センターコード
+    -- ===============================
+    -- EDI納品センターコードが'-'の場合
+    IF (cust_data_rec.deli_center_code = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.deli_center_code := NULL;
+    -- EDI納品センターコードがNULLの場合
+    ELSIF (cust_data_rec.deli_center_code IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.deli_center_code := cust_data_rec.addon_deli_center_code;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.deli_center_code := cust_data_rec.deli_center_code;
+    END IF;
+    --
+    -- ===============================
+    -- EDI納品センター名
+    -- ===============================
+    -- EDI納品センター名が'-'の場合
+    IF (cust_data_rec.deli_center_name = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.deli_center_name := NULL;
+    -- EDI納品センター名がNULLの場合
+    ELSIF (cust_data_rec.deli_center_name IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.deli_center_name := cust_data_rec.addon_deli_center_name;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.deli_center_name := cust_data_rec.deli_center_name;
+    END IF;
+    --
+    -- ===============================
+    -- EDI伝送追番
+    -- ===============================
+    -- EDI伝送追番が'-'の場合
+    IF (cust_data_rec.edi_forward_number = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.edi_forward_number := NULL;
+    -- EDI伝送追番がNULLの場合
+    ELSIF (cust_data_rec.edi_forward_number IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.edi_forward_number := cust_data_rec.addon_edi_forward_number;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.edi_forward_number := cust_data_rec.edi_forward_number;
+    END IF;
+    --
+    -- ===============================
+    -- 顧客店舗名称
+    -- ===============================
+    -- 顧客店舗名称が'-'の場合
+    IF (cust_data_rec.cust_store_name = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.cust_store_name := NULL;
+    -- 顧客店舗名称がNULLの場合
+    ELSIF (cust_data_rec.cust_store_name IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.cust_store_name := cust_data_rec.addon_cust_store_name;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.cust_store_name := cust_data_rec.cust_store_name;
+    END IF;
+    --
+    -- ===============================
+    -- 取引先コード
+    -- ===============================
+    -- 取引先コードが'-'の場合
+    IF (cust_data_rec.torihikisaki_code = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.torihikisaki_code := NULL;
+    -- 取引先コードがNULLの場合
+    ELSIF (cust_data_rec.torihikisaki_code IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.torihikisaki_code := cust_data_rec.addon_torihikisaki_code;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.torihikisaki_code := cust_data_rec.torihikisaki_code;
+    END IF;
+--
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -5532,6 +6417,18 @@ AS
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
           ,xca.ship_storage_code      = l_xxcmm_cust_accounts.ship_storage_code          --出荷元保管場所
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
+          ,xca.delivery_order         = l_xxcmm_cust_accounts.delivery_order             --配送順（EDI）
+          ,xca.edi_district_code      = l_xxcmm_cust_accounts.edi_district_code          --EDI地区コード（EDI）
+          ,xca.edi_district_name      = l_xxcmm_cust_accounts.edi_district_name          --EDI地区名（EDI）
+          ,xca.edi_district_kana      = l_xxcmm_cust_accounts.edi_district_kana          --EDI地区名カナ（EDI）
+          ,xca.tsukagatazaiko_div     = l_xxcmm_cust_accounts.tsukagatazaiko_div         --通過在庫型区分（EDI）
+          ,xca.deli_center_code       = l_xxcmm_cust_accounts.deli_center_code           --EDI納品センターコード
+          ,xca.deli_center_name       = l_xxcmm_cust_accounts.deli_center_name           --EDI納品センター名
+          ,xca.edi_forward_number     = l_xxcmm_cust_accounts.edi_forward_number         --EDI伝送追番
+          ,xca.cust_store_name        = l_xxcmm_cust_accounts.cust_store_name            --顧客店舗名称
+          ,xca.torihikisaki_code      = l_xxcmm_cust_accounts.torihikisaki_code          --取引先コード
+-- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
