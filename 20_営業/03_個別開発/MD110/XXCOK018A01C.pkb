@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                                    明細伝票番号に'1'を設定する。
  *  2009/4/24     1.6   M.Hiruta         [障害T1_0736]取引タイプにより請求書保留ステータスを設定
  *  2009/10/05    1.7   K.Yamaguchi      [仕様変更I_E_566] 取引タイプを業態（小分類）毎に設定可能に変更
+ *  2009/10/19    1.8   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *
  *****************************************************************************************/
 --
@@ -811,7 +812,11 @@ AS
         AND    avtab.tax_code             = i_discnt_amount_rec.tax_code -- 税コード
         AND    avtab.validate_flag       <> cv_validate_flag             -- 有効フラグ
         AND    avtab.org_id               = gn_org_id                    -- 営業単位ID
-        AND    gd_operation_date BETWEEN avtab.start_date AND NVL( avtab.end_date, ( gd_operation_date ) )
+-- 2009/10/19 Ver.1.8 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--        AND    gd_operation_date BETWEEN avtab.start_date AND NVL( avtab.end_date, ( gd_operation_date ) )
+        AND    i_discnt_amount_rec.closing_date BETWEEN avtab.start_date
+                                                    AND NVL( avtab.end_date, i_discnt_amount_rec.closing_date )
+-- 2009/10/19 Ver.1.8 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
         ;
       END;
 -- 2009/3/24     ver1.2   T.Taniguchi  ADD STR

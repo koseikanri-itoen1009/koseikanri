@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                                    顧客名の取得元をパーティマスタへ修正
  *  2009/10/16    1.8   S.Moriyama       [障害E_T3_00632]伝票入力者対応により売上実績情報へ
  *                                                       売上振替元顧客コードを設定するように変更
+ *  2009/10/19    1.9   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *
  *****************************************************************************************/
   -- =========================
@@ -136,7 +137,14 @@ AS
   cv_token_create_date        CONSTANT VARCHAR2(15) := 'CREATE_DATE';             --トークン名(CREATE_DATE)
   cv_token_count              CONSTANT VARCHAR2(5)  := 'COUNT';                   --トークン名(COUNT)
   --文字列
-  cv_lookup_type              CONSTANT VARCHAR2(50) := 'XXCOK1_CONSUMPTION_TAX_CLASS';   --値セット名
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--  cv_lookup_type              CONSTANT VARCHAR2(50) := 'XXCOK1_CONSUMPTION_TAX_CLASS';   --値セット名
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+  -- 顧客使用目的
+  cv_site_use_code_ship       CONSTANT VARCHAR2(10) := 'SHIP_TO'; -- 出荷先
+  cv_site_use_code_bill       CONSTANT VARCHAR2(10) := 'BILL_TO'; -- 請求先
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   cv_00                       CONSTANT VARCHAR2(2)  := '00';                             --文字列:00
   cv_0                        CONSTANT VARCHAR2(1)  := '0';                              --文字列:0
   cv_1                        CONSTANT VARCHAR2(1)  := '1';                              --文字列:1
@@ -248,7 +256,10 @@ AS
     IS
       SELECT  xwest.creation_date AS creation_date
       FROM    xxcok_wk_edi_selling_trns xwest
-      WHERE   xwest.creation_date <= gd_prdate - gv_purge_term
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--      WHERE   xwest.creation_date <= gd_prdate - gv_purge_term
+      WHERE   xwest.creation_date <= gd_prdate - TO_NUMBER( gv_purge_term )
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
       FOR UPDATE NOWAIT;
     -- =======================
     -- ローカルレコード
@@ -257,40 +268,71 @@ AS
 --
   BEGIN
     ov_retcode := cv_status_normal;
-    -- *** カーソルオープン ***
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--    -- *** カーソルオープン ***
+--    OPEN  edi_tbl_cur;
+--    <<del_loop>>
+--    LOOP
+--      FETCH edi_tbl_cur INTO edi_tbl_rec;
+--      EXIT WHEN edi_tbl_cur%NOTFOUND;
+--      FETCH edi_tbl_cur INTO edi_tbl_rec;
+--      ld_creation_date := edi_tbl_rec.creation_date;
+--      -- =============================================================================
+--      -- EDI売上実績振替情報ワークテーブルよりレコードを削除
+--      -- =============================================================================
+--      BEGIN
+--        DELETE FROM xxcok_wk_edi_selling_trns xwest
+--        WHERE  xwest.creation_date <= gd_prdate - gv_purge_term;
+--      EXCEPTION
+--        -- *** 削除に失敗した場合 ***
+--        WHEN OTHERS THEN
+--        lv_creation_date := TO_CHAR ( ld_creation_date, cv_date_format );
+--        lv_msg := xxccp_common_pkg.get_msg(
+--                    iv_application  => cv_xxcok_appl_name
+--                  , iv_name         => cv_message_10091
+--                  , iv_token_name1  => cv_token_create_date
+--                  , iv_token_value1 => lv_creation_date
+--                  );
+--        lb_retcode := xxcok_common_pkg.put_message_f(
+--                        in_which    => FND_FILE.OUTPUT     --出力区分
+--                      , iv_message  => lv_msg              --メッセージ
+--                      , in_new_line => 0                   --改行
+--                      );
+--        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
+--        ov_retcode := cv_status_error;
+--      END;
+--    END LOOP del_loop;
+--    CLOSE edi_tbl_cur;
+    -- =============================================================================
+    -- ロック取得
+    -- =============================================================================
     OPEN  edi_tbl_cur;
-    <<del_loop>>
-    LOOP
-      FETCH edi_tbl_cur INTO edi_tbl_rec;
-      EXIT WHEN edi_tbl_cur%NOTFOUND;
-      FETCH edi_tbl_cur INTO edi_tbl_rec;
-      ld_creation_date := edi_tbl_rec.creation_date;
-      -- =============================================================================
-      -- EDI売上実績振替情報ワークテーブルよりレコードを削除
-      -- =============================================================================
-      BEGIN
-        DELETE FROM xxcok_wk_edi_selling_trns xwest
-        WHERE  xwest.creation_date <= gd_prdate - gv_purge_term;
-      EXCEPTION
-        -- *** 削除に失敗した場合 ***
-        WHEN OTHERS THEN
-        lv_creation_date := TO_CHAR ( ld_creation_date, cv_date_format );
-        lv_msg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_xxcok_appl_name
-                  , iv_name         => cv_message_10091
-                  , iv_token_name1  => cv_token_create_date
-                  , iv_token_value1 => lv_creation_date
-                  );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.OUTPUT     --出力区分
-                      , iv_message  => lv_msg              --メッセージ
-                      , in_new_line => 0                   --改行
-                      );
-        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
-        ov_retcode := cv_status_error;
-      END;
-    END LOOP del_loop;
     CLOSE edi_tbl_cur;
+    -- =============================================================================
+    -- EDI売上実績振替情報ワークテーブルよりレコードを削除
+    -- =============================================================================
+    BEGIN
+      DELETE FROM xxcok_wk_edi_selling_trns xwest
+      WHERE  xwest.creation_date <= gd_prdate - TO_NUMBER( gv_purge_term );
+    EXCEPTION
+      -- *** 削除に失敗した場合 ***
+      WHEN OTHERS THEN
+      lv_creation_date := TO_CHAR( gd_prdate - TO_NUMBER( gv_purge_term ), cv_date_format );
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_message_10091
+                , iv_token_name1  => cv_token_create_date
+                , iv_token_value1 => lv_creation_date
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT     --出力区分
+                    , iv_message  => lv_msg              --メッセージ
+                    , in_new_line => 0                   --改行
+                    );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    END;
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
   EXCEPTION
     -- ***ロックに失敗した場合 ***
     WHEN global_lock_fail THEN
@@ -593,7 +635,13 @@ AS
   , iv_edi_chain_store_code    IN  VARCHAR2    --EDIチェーン店コード
   , iv_delivery_to_center_code IN  VARCHAR2    --納入先センターコード
   , iv_store_code              IN  VARCHAR2    --店コード
-  , iv_goods_code              IN  VARCHAR2)   --商品コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--  , iv_goods_code              IN  VARCHAR2)   --商品コード
+  , iv_goods_code              IN  VARCHAR2    --商品コード
+  , iv_bill_cust_code          IN  VARCHAR2    --請求先顧客コード
+  , iv_tax_code                IN  VARCHAR2    --税コード
+  )
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
   IS
     -- =======================
     -- ローカル定数
@@ -607,7 +655,9 @@ AS
     lv_errmsg                VARCHAR2(5000) DEFAULT NULL;   --ユーザー・エラー・メッセージ
     lv_msg                   VARCHAR2(5000) DEFAULT NULL;   --メッセージ取得変数
     lv_slip_no               VARCHAR2(9)    DEFAULT NULL;   --伝票番号
-    lv_tax_code              VARCHAR2(4)    DEFAULT NULL;   --消費税コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--    lv_tax_code              VARCHAR2(4)    DEFAULT NULL;   --消費税コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
     ln_selling_trns_info_s02 NUMBER;                        --伝票番号
     lb_retcode               BOOLEAN        DEFAULT NULL;   --メッセージ出力の戻り値
 --
@@ -645,18 +695,20 @@ AS
       -- *** 納品単価を保持 ***
       gn_delivery_unit_price := in_delivery_unit_price;
     END IF;
-    -- =============================================================================
-    -- 消費税区分を消費税コードに変換
-    -- =============================================================================
-    SELECT flv.attribute1 AS tax_code
-    INTO   lv_tax_code
-    FROM   fnd_lookup_values flv
-    WHERE  flv.lookup_type   = cv_lookup_type
-    AND    flv.lookup_code   = iv_tax_type
-    AND    flv.enabled_flag  = cv_flag_y
-    AND    gd_prdate BETWEEN flv.start_date_active
-                         AND NVL( flv.end_date_active, gd_prdate )
-    AND    flv.language      = USERENV('LANG');
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--    -- =============================================================================
+--    -- 消費税区分を消費税コードに変換
+--    -- =============================================================================
+--    SELECT flv.attribute1 AS tax_code
+--    INTO   lv_tax_code
+--    FROM   fnd_lookup_values flv
+--    WHERE  flv.lookup_type   = cv_lookup_type
+--    AND    flv.lookup_code   = iv_tax_type
+--    AND    flv.enabled_flag  = cv_flag_y
+--    AND    gd_prdate BETWEEN flv.start_date_active
+--                         AND NVL( flv.end_date_active, gd_prdate )
+--    AND    flv.language      = USERENV('LANG');
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
     -- =============================================================================
     -- 売上実績振替情報を作成
     -- =============================================================================
@@ -727,7 +779,10 @@ AS
       , cv_article_code                       --article_code
       , cv_0                                  --card_selling_type
       , NULL                                  --checking_date
-      , iv_selling_from_cust_code             --demand_to_cust_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--      , iv_selling_from_cust_code             --demand_to_cust_code
+      , iv_bill_cust_code                     --demand_to_cust_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
       , cv_1                                  --h_c
       , cv_00                                 --column_no
       , iv_item_code                          --item_code
@@ -741,7 +796,10 @@ AS
 --      , in_shipment_cost_amt                  --selling_cost_amt
       , in_order_cost_amt                     --selling_cost_amt
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
-      , lv_tax_code                           --tax_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--      , lv_tax_code                           --tax_code
+      , iv_tax_code                           --tax_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
       , in_tax_rate                           --tax_rate
       , iv_selling_from_base_code             --delivery_base_code
       , gd_prdate                             --registration_date
@@ -852,6 +910,10 @@ AS
               , xtest.delivery_to_center_code  AS delivery_to_center_code   --納入先センターコード
               , xtest.store_code               AS store_code                --店コード
               , xtest.goods_code               AS goods_code                --商品コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+              , xtest.bill_cust_code           AS bill_cust_code            --請求先顧客コード
+              , xtest.tax_code                 AS tax_code                  --税コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
       FROM      xxcok_tmp_edi_selling_trns xtest
       GROUP BY  selling_date
               , base_code
@@ -873,6 +935,10 @@ AS
               , delivery_to_center_code
               , store_code
               , goods_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+              , xtest.bill_cust_code
+              , xtest.tax_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
       ORDER BY  base_code
               , cust_code
               , item_code
@@ -923,6 +989,10 @@ AS
       , iv_delivery_to_center_code => l_tmp_edi_cur_tab( ln_idx ).delivery_to_center_code   --納入先センターコード
       , iv_store_code              => l_tmp_edi_cur_tab( ln_idx ).store_code                --店コード
       , iv_goods_code              => l_tmp_edi_cur_tab( ln_idx ).goods_code                --商品コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+      , iv_bill_cust_code          => l_tmp_edi_cur_tab( ln_idx ).bill_cust_code            --請求先顧客コード
+      , iv_tax_code                => l_tmp_edi_cur_tab( ln_idx ).tax_code                  --税コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
       );
       IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
@@ -998,6 +1068,10 @@ AS
     , delivery_to_center_code                    --納入先センターコード
     , store_code                                 --店コード
     , goods_code                                 --商品コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+    , bill_cust_code                             --請求先顧客コード
+    , tax_code                                   --税コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
     ) VALUES (
       it_from_cust_rec.selling_date              --selling_date
     , it_from_cust_rec.base_code                 --base_code
@@ -1027,6 +1101,10 @@ AS
     , it_from_cust_rec.delivery_to_center_code   --delivery_to_center_code
     , it_from_cust_rec.store_code                --store_code
     , it_from_cust_rec.goods_code                --goods_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+    , it_from_cust_rec.bill_cust_code            --bill_cust_code
+    , it_from_cust_rec.tax_code                  --tax_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
     );
     -- =============================================================================
     -- 売上振替先顧客コードをキーとし、一時表を作成
@@ -1056,6 +1134,10 @@ AS
     , delivery_to_center_code                  --納入先センターコード
     , store_code                               --店コード
     , goods_code                               --商品コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+    , bill_cust_code                             --請求先顧客コード
+    , tax_code                                   --税コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
     ) VALUES (
       it_to_cust_rec.selling_date              --selling_date
     , it_to_cust_rec.base_code                 --base_code
@@ -1085,6 +1167,10 @@ AS
     , it_to_cust_rec.delivery_to_center_code   --delivery_to_center_code
     , it_to_cust_rec.store_code                --store_code
     , it_to_cust_rec.goods_code                --goods_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+    , it_to_cust_rec.bill_cust_code            --bill_cust_code
+    , it_to_cust_rec.tax_code                  --tax_code
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
     );
   EXCEPTION
     -- *** 共通関数OTHERS例外ハンドラ ***
@@ -1345,6 +1431,10 @@ AS
     ln_unit_price                   NUMBER         DEFAULT 0;      --単価(共通関数で取得したもの)
     ln_trading_cost                 NUMBER         DEFAULT 0;      --算出した営業原価
     ln_tax_rate                     NUMBER;                        --消費税率
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+    lv_tax_code                     ar_vat_tax_all_b.tax_code%TYPE       DEFAULT NULL; -- 税コード
+    lv_bill_cust_code               hz_cust_accounts.account_number%TYPE DEFAULT NULL; -- 請求先顧客コード
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
     ln_selling_amt                  NUMBER         DEFAULT 0;      --算出した売上金額
     ln_selling_amt_no_tax           NUMBER         DEFAULT 0;      --算出した売上金額(税抜き)
     lv_store_delivery_date          VARCHAR2(10)   DEFAULT NULL;   --店舗納品日(YYYY/MM/DD変換後)
@@ -2079,16 +2169,52 @@ AS
     -- =============================================================================
     -- 8.消費税の計算
     -- =============================================================================
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--    -- =========================================
+--    -- (1)消費税区分を取得
+--    -- =========================================
+--    BEGIN
+--      SELECT  xca.tax_div AS tax_div
+--      INTO    lv_tax_type
+--      FROM    hz_cust_accounts    hca    --顧客マスタ
+--            , xxcmm_cust_accounts xca    --顧客追加情報
+--      WHERE   hca.account_number  = lv_to_account_number
+--      AND     hca.cust_account_id = xca.customer_id;
     -- =========================================
     -- (1)消費税区分を取得
     -- =========================================
     BEGIN
-      SELECT  xca.tax_div AS tax_div
-      INTO    lv_tax_type
-      FROM    hz_cust_accounts    hca    --顧客マスタ
-            , xxcmm_cust_accounts xca    --顧客追加情報
-      WHERE   hca.account_number  = lv_to_account_number
-      AND     hca.cust_account_id = xca.customer_id;
+      SELECT bill_hca.account_number    AS bill_cust_code
+           , bill_xca.tax_div           AS tax_div
+           , bill_xtv.tax_rate          AS tax_rate
+           , bill_xtv.tax_code          AS tax_code
+      INTO lv_bill_cust_code
+         , lv_tax_type
+         , ln_tax_rate
+         , lv_tax_code
+      FROM hz_cust_accounts        ship_hca
+         , hz_cust_acct_sites      ship_hcas
+         , hz_cust_site_uses       ship_hcsu
+         , hz_cust_site_uses       bill_hcsu
+         , hz_cust_acct_sites      bill_hcas
+         , hz_cust_accounts        bill_hca
+         , xxcmm_cust_accounts     bill_xca
+         , xxcos_tax_v             bill_xtv
+      WHERE ship_hca.account_number          = lv_from_account_number
+        AND ship_hca.cust_account_id         = ship_hcas.cust_account_id
+        AND ship_hcas.cust_acct_site_id      = ship_hcsu.cust_acct_site_id
+        AND ship_hcsu.site_use_code          = cv_site_use_code_ship
+        AND ship_hcsu.bill_to_site_use_id    = bill_hcsu.site_use_id
+        AND bill_hcsu.site_use_code          = cv_site_use_code_bill
+        AND bill_hcsu.cust_acct_site_id      = bill_hcas.cust_acct_site_id
+        AND bill_hcas.cust_account_id        = bill_hca.cust_account_id
+        AND bill_hca.cust_account_id         = bill_xca.customer_id
+        AND bill_xca.tax_div                 = bill_xtv.tax_class
+        AND bill_xtv.set_of_books_id         = gn_set_of_books_id
+        AND id_store_delivery_date     BETWEEN NVL( bill_xtv.start_date_active, id_store_delivery_date )
+                                           AND NVL( bill_xtv.end_date_active  , id_store_delivery_date )
+      ;
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
 --
       IF ( lv_tax_type IS NULL ) THEN
         RAISE NO_DATA_FOUND;
@@ -2101,45 +2227,47 @@ AS
             ) THEN
         RAISE NO_DATA_FOUND;
       END IF;
-      -- ==================================================================================
-      -- (2)消費税区分 = '2'(内税(伝票課税))、'3'(内税(単価込み))の場合、消費税率を取得
-      -- ==================================================================================
-      IF (   ( lv_tax_type = cv_2 )
-          OR ( lv_tax_type = cv_3 )
-         ) THEN
--- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta REPAIR
---        SELECT  atca.tax_rate AS tax_rate
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--      -- ==================================================================================
+--      -- (2)消費税区分 = '2'(内税(伝票課税))、'3'(内税(単価込み))の場合、消費税率を取得
+--      -- ==================================================================================
+--      IF (   ( lv_tax_type = cv_2 )
+--          OR ( lv_tax_type = cv_3 )
+--         ) THEN
+---- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta REPAIR
+----        SELECT  atca.tax_rate AS tax_rate
+----        INTO    ln_tax_rate
+----        FROM    ap_tax_codes_all  atca     --税コードマスタ
+----              , fnd_lookup_values flv      --参照タイプ
+----        WHERE   flv.lookup_type  = cv_lookup_type
+----        AND     flv.lookup_code  = lv_tax_type
+----        AND     flv.enabled_flag = cv_flag_y
+----        AND     gd_prdate BETWEEN flv.start_date_active
+----                          AND     NVL( flv.end_date_active, gd_prdate )
+----        AND     flv.language     = USERENV('LANG')
+------ Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+----        AND     atca.org_id      = gn_org_id
+------ End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+----        AND     atca.name        = flv.attribute1;
+--        SELECT  avtab.tax_rate AS tax_rate
 --        INTO    ln_tax_rate
---        FROM    ap_tax_codes_all  atca     --税コードマスタ
+--        FROM    ar_vat_tax_all_b  avtab    --税コードマスタ
 --              , fnd_lookup_values flv      --参照タイプ
---        WHERE   flv.lookup_type  = cv_lookup_type
---        AND     flv.lookup_code  = lv_tax_type
---        AND     flv.enabled_flag = cv_flag_y
---        AND     gd_prdate BETWEEN flv.start_date_active
---                          AND     NVL( flv.end_date_active, gd_prdate )
---        AND     flv.language     = USERENV('LANG')
----- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
---        AND     atca.org_id      = gn_org_id
----- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
---        AND     atca.name        = flv.attribute1;
-        SELECT  avtab.tax_rate AS tax_rate
-        INTO    ln_tax_rate
-        FROM    ar_vat_tax_all_b  avtab    --税コードマスタ
-              , fnd_lookup_values flv      --参照タイプ
-        WHERE   flv.lookup_type       = cv_lookup_type
-        AND     flv.lookup_code       = lv_tax_type
-        AND     flv.enabled_flag      = cv_flag_y
-        AND     gd_prdate      BETWEEN flv.start_date_active
-                               AND     NVL( flv.end_date_active, gd_prdate )
-        AND     flv.language          = USERENV('LANG')
-        AND     avtab.enabled_flag    = cv_flag_y
-        AND     gd_prdate      BETWEEN avtab.start_date
-                               AND     NVL( avtab.end_date, gd_prdate )
-        AND     avtab.set_of_books_id = gn_set_of_books_id
-        AND     avtab.org_id          = gn_org_id
-        AND     avtab.tax_code        = flv.attribute1;
--- End   2009/07/29 Ver_1.6 0000514 M.Hiruta REPAIR
-      END IF;
+--        WHERE   flv.lookup_type       = cv_lookup_type
+--        AND     flv.lookup_code       = lv_tax_type
+--        AND     flv.enabled_flag      = cv_flag_y
+--        AND     gd_prdate      BETWEEN flv.start_date_active
+--                               AND     NVL( flv.end_date_active, gd_prdate )
+--        AND     flv.language          = USERENV('LANG')
+--        AND     avtab.enabled_flag    = cv_flag_y
+--        AND     gd_prdate      BETWEEN avtab.start_date
+--                               AND     NVL( avtab.end_date, gd_prdate )
+--        AND     avtab.set_of_books_id = gn_set_of_books_id
+--        AND     avtab.org_id          = gn_org_id
+--        AND     avtab.tax_code        = flv.attribute1;
+---- End   2009/07/29 Ver_1.6 0000514 M.Hiruta REPAIR
+--      END IF;
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
     EXCEPTION
       -- *** 上記で消費税区分、または、消費税率が取得できなかった場合、例外処理 ***
       WHEN NO_DATA_FOUND THEN
@@ -2190,6 +2318,14 @@ AS
     -- *** レコード型に値をセット(売上金額(消費税率)) ***
     ot_from_cust_rec.tax_rate := ln_tax_rate;
     ot_to_cust_rec.tax_rate   := ln_tax_rate;
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+    -- *** レコード型に値をセット(請求先顧客コード) ***
+    ot_from_cust_rec.bill_cust_code := lv_bill_cust_code;
+    ot_to_cust_rec.bill_cust_code   := lv_bill_cust_code;
+    -- *** レコード型に値をセット(税コード) ***
+    ot_from_cust_rec.tax_code := lv_tax_code;
+    ot_to_cust_rec.tax_code   := lv_tax_code;
+-- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   EXCEPTION
     -- *** データチェックエラー ***
     WHEN chk_data_expt THEN

@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_TMP_EDI_SELLING_TRNS
  * Description : EDI売上実績振替情報一時表
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/08/13    1.1   M.Hiruta         [障害0000997]原価金額（出荷）を原価金額（発注）へ修正
+ *  2009/10/19    1.2   S.Moriyama       [障害E_T3_00631]税コード取得方変更に伴い請求先顧客コードを追加
  *
  **************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_EDI_SELLING_TRNS
@@ -35,6 +36,10 @@ CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_EDI_SELLING_TRNS
 -- End   2009/08/13 Ver.1.1 0000997 M.Hiruta REPAIR
    SELLING_FROM_BASE_CODE   VARCHAR2(4),
    SELLING_FROM_CUST_CODE   VARCHAR2(9),
+-- 2009/10/19 Ver.1.2 [障害E_T3_00631] SCS S.Moriyama ADD START
+   BILL_CUST_CODE           VARCHAR2(9),
+   TAX_CODE                 VARCHAR2(4),
+-- 2009/10/19 Ver.1.2 [障害E_T3_00631] SCS S.Moriyama ADD END
    EDI_CHAIN_STORE_CODE     VARCHAR2(4),
    DELIVERY_TO_CENTER_CODE  VARCHAR2(8),
    STORE_CODE               VARCHAR2(10),
@@ -81,6 +86,12 @@ COMMENT ON COLUMN XXCOK.XXCOK_TMP_EDI_SELLING_TRNS.SELLING_FROM_BASE_CODE   IS '
 /
 COMMENT ON COLUMN XXCOK.XXCOK_TMP_EDI_SELLING_TRNS.SELLING_FROM_CUST_CODE   IS '売上振替元顧客コード'
 /
+-- 2009/10/19 Ver.1.2 [障害E_T3_00631] SCS S.Moriyama ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_EDI_SELLING_TRNS.BILL_CUST_CODE           IS '請求先顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_EDI_SELLING_TRNS.TAX_CODE                 IS '税コード'
+/
+-- 2009/10/19 Ver.1.2 [障害E_T3_00631] SCS S.Moriyama ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_TMP_EDI_SELLING_TRNS.EDI_CHAIN_STORE_CODE     IS 'EDIチェーン店コード'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_TMP_EDI_SELLING_TRNS.DELIVERY_TO_CENTER_CODE  IS '納入先センターコード'

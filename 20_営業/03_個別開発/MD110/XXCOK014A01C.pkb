@@ -6,13 +6,14 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.1
+ * Version          : 3.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
  *  get_operating_day_f  稼働日取得                                   (A-16)
+ *  get_tax_rate         消費税コード・税率取得                       (A-17)
  *  update_xcbi          販手計算済顧客情報データの更新               (A-15)
  *  update_xsel          販売実績連携結果の更新                       (A-12)
  *  insert_xbce          販手条件エラーテーブルへの登録               (A-11)
@@ -60,6 +61,7 @@ AS
  *  2009/07/28    2.4   K.Yamaguchi      [障害0000879] パフォーマンスを向上させるためテーブルを追加
  *  2009/08/06    3.0   K.Yamaguchi      [障害0000940] パフォーマンスを向上させるためSQLを修正・修正履歴の削除
  *  2009/10/02    3.1   K.Yamaguchi      [仕様変更I_E_566] 納品VD・消化VDを処理対象に追加
+ *  2009/10/19    3.2   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *
  *****************************************************************************************/
   --==================================================
@@ -101,6 +103,9 @@ AS
   cv_msg_cok_00080                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00080';
   cv_msg_cok_00081                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00081';
   cv_msg_cok_00086                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00086';
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+  cv_msg_cok_00104                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00104';
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   cv_msg_cok_10398                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10398';
   cv_msg_cok_10401                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10401';
   cv_msg_cok_10402                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10402';
@@ -124,6 +129,9 @@ AS
   cv_tkn_proc_type                 CONSTANT VARCHAR2(30)    := 'PROC_TYPE';
   cv_tkn_profile                   CONSTANT VARCHAR2(30)    := 'PROFILE';
   cv_tkn_sales_amt                 CONSTANT VARCHAR2(30)    := 'SALES_AMT';
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+  cv_tkn_tax_div                   CONSTANT VARCHAR2(30)    := 'TAX_DIV';
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   cv_tkn_vendor_code               CONSTANT VARCHAR2(30)    := 'VENDOR_CODE';
   cv_tkn_business_date             CONSTANT VARCHAR2(30)    := 'BUSINESS_DATE';
   -- セパレータ
@@ -142,7 +150,9 @@ AS
   cv_profile_name_10               CONSTANT VARCHAR2(50)    := 'XXCOK1_ORG_CODE_SALES';             -- 在庫組織コード_営業組織
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_DISTRICT_PARA_MST';       -- 販手販協計算実行区分
-  cv_lookup_type_02                CONSTANT VARCHAR2(30)    := 'XXCOK1_CONSUMPTION_TAX_CLASS';      -- 消費税区分
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--  cv_lookup_type_02                CONSTANT VARCHAR2(30)    := 'XXCOK1_CONSUMPTION_TAX_CLASS';      -- 消費税区分
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
   cv_lookup_type_03                CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_SHO';             -- 業態（小分類）
   cv_lookup_type_04                CONSTANT VARCHAR2(30)    := 'XXCMM_ITM_YOKIGUN';                 -- 容器群
   cv_lookup_type_05                CONSTANT VARCHAR2(30)    := 'XXCOS1_NO_INV_ITEM_CODE';           -- 非在庫品目
@@ -201,6 +211,11 @@ AS
   cv_tax_rounding_rule_nearest     CONSTANT VARCHAR2(10)    :=  'NEAREST'; -- 四捨五入
   cv_tax_rounding_rule_up          CONSTANT VARCHAR2(10)    :=  'UP';      -- 切り上げ
   cv_tax_rounding_rule_down        CONSTANT VARCHAR2(10)    :=  'DOWN';    -- 切り捨て
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+  -- 税コードダミー
+  ct_tax_code_dummy                CONSTANT ar_vat_tax_b.tax_code%TYPE := NULL;
+  ct_tax_rate_dummy                CONSTANT ar_vat_tax_b.tax_rate%TYPE := NULL;
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -323,8 +338,12 @@ AS
             END
            )                                           AS settle_amount_cycle        -- 金額確定サイクル
          , bill_xca.tax_div                            AS tax_div                    -- 消費税区分
-         , bill_avtb.tax_code                          AS tax_code                   -- 税金コード
-         , bill_avtb.tax_rate                          AS tax_rate                   -- 税率
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
+--         , bill_avtb.tax_code                          AS tax_code                   -- 税金コード
+--         , bill_avtb.tax_rate                          AS tax_rate                   -- 税率
+         , ct_tax_code_dummy                           AS tax_code                   -- 税金コード（ダミー値NULL）
+         , ct_tax_rate_dummy                           AS tax_rate                   -- 税率（ダミー値NULL）
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
          , bill_hcsu.tax_rounding_rule                 AS tax_rounding_rule          -- 端数処理区分
          , ( CASE
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
@@ -460,8 +479,10 @@ AS
        , xxcmm_cust_accounts       bill_xca
        , fnd_lookup_values_vl      gyotai_sho_flvv
        , fnd_lookup_values_vl      gyotai_chu_flvv
-       , fnd_lookup_values_vl      tax_flvv
-       , ar_vat_tax_b              bill_avtb
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--       , fnd_lookup_values_vl      tax_flvv
+--       , ar_vat_tax_b              bill_avtb
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
     WHERE proc_flvv.lookup_type        = cv_lookup_type_01
       AND proc_flvv.attribute1         = gv_param_proc_type
       AND proc_flvv.enabled_flag       = cv_enable
@@ -509,15 +530,17 @@ AS
             OR ( gyotai_chu_flvv.lookup_code <> cv_gyotai_tyu_vd     )
           )
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
-      AND tax_flvv.lookup_type         = cv_lookup_type_02
-      AND tax_flvv.lookup_code         = bill_xca.tax_div
-      AND tax_flvv.enabled_flag        = cv_enable
-      AND gd_process_date        BETWEEN NVL( tax_flvv.start_date_active, gd_process_date )
-                                     AND NVL( tax_flvv.end_date_active  , gd_process_date )
-      AND bill_avtb.tax_code           = tax_flvv.attribute1
-      AND bill_avtb.validate_flag      = cv_enable
-      AND gd_process_date        BETWEEN NVL( bill_avtb.start_date, gd_process_date )
-                                     AND NVL( bill_avtb.end_date  , gd_process_date )
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
+--      AND tax_flvv.lookup_type         = cv_lookup_type_02
+--      AND tax_flvv.lookup_code         = bill_xca.tax_div
+--      AND tax_flvv.enabled_flag        = cv_enable
+--      AND gd_process_date        BETWEEN NVL( tax_flvv.start_date_active, gd_process_date )
+--                                     AND NVL( tax_flvv.end_date_active  , gd_process_date )
+--      AND bill_avtb.tax_code           = tax_flvv.attribute1
+--      AND bill_avtb.validate_flag      = cv_enable
+--      AND gd_process_date        BETWEEN NVL( bill_avtb.start_date, gd_process_date )
+--                                     AND NVL( bill_avtb.end_date  , gd_process_date )
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
   ;
   -- 販売実績情報・売価別条件
   CURSOR get_sales_data_cur1 IS
@@ -1882,6 +1905,91 @@ AS
 --
   END get_operating_day_f;
 --
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+  /**********************************************************************************
+   * Procedure Name   : get_tax_rate
+   * Description      : 消費税コード・税率取得
+   ***********************************************************************************/
+  PROCEDURE get_tax_rate(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  , it_tax_div                     IN  xxcmm_cust_accounts.tax_div%TYPE  -- 消費税区分
+  , id_target_date                 IN  DATE                              -- 基準日
+  , ot_tax_code                    OUT ar_vat_tax_b.tax_code%TYPE        -- 税金コード
+  , ot_tax_rate                    OUT ar_vat_tax_b.tax_rate%TYPE        -- 税率
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'get_tax_rate';      -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    lt_tax_code                    ar_vat_tax_b.tax_code%TYPE DEFAULT NULL;     -- 税金コード
+    lt_tax_rate                    ar_vat_tax_b.tax_rate%TYPE DEFAULT NULL;     -- 税率
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 消費税コード・税率取得
+    --==================================================
+    SELECT xtv.tax_code       AS tax_code
+         , xtv.tax_rate       AS tax_rate
+    INTO lt_tax_code
+       , lt_tax_rate
+    FROM xxcos_tax_v     xtv
+    WHERE xtv.set_of_books_id      = gn_set_of_books_id
+      AND xtv.tax_class            = it_tax_div
+      AND id_target_date     BETWEEN NVL( xtv.start_date_active, id_target_date )
+                                 AND NVL( xtv.end_date_active  , id_target_date )
+    ;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf    := NULL;
+    ov_errmsg    := NULL;
+    ov_retcode   := lv_end_retcode;
+    ot_tax_code  := lt_tax_code;
+    ot_tax_rate  := lt_tax_rate;
+--
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00104
+                    , iv_token_name1          => cv_tkn_tax_div
+                    , iv_token_value1         => it_tax_div
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'tax_div' || '【' || it_tax_div || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END get_tax_rate;
+--
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
   /**********************************************************************************
    * Procedure Name   : update_xcbi
    * Description      : 販手計算済顧客情報データの更新(A-15)
@@ -4485,6 +4593,29 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
         -- 条件別販手販協計算顧客情報一時表への登録
         --==================================================
         IF( gd_process_date BETWEEN ld_bm_support_period_from AND ld_bm_support_period_to ) THEN
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
+          --==================================================
+          -- 税コード・税率取得
+          --==================================================
+          get_tax_rate(
+            ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+          , ov_retcode                  => lv_retcode                 -- リターン・コード
+          , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          , it_tax_div                  => get_cust_data_rec.tax_div  -- 消費税区分
+          , id_target_date              => ld_close_date              -- 基準日（締め日）
+          , ot_tax_code                 => get_cust_data_rec.tax_code -- 税金コード
+          , ot_tax_rate                 => get_cust_data_rec.tax_rate -- 税率
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            lv_end_retcode := cv_status_error;
+            RAISE global_process_expt;
+          ELSIF( lv_retcode = cv_status_warn ) THEN
+            RAISE warning_skip_expt;
+          END IF;
+-- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
+          --==================================================
+          -- 条件別販手販協計算顧客情報一時表登録
+          --==================================================
           insert_xt0c(
             ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
           , ov_retcode                  => lv_retcode                 -- リターン・コード
