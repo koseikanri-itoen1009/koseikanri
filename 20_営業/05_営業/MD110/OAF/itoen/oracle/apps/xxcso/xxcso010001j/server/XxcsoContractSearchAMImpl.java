@@ -189,10 +189,17 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
    * @return returnValue
    *****************************************************************************
    */
-  public void executeSearch()
+// 2009-06-10 [ST障害T1_1317] Mod Start
+//  public void executeSearch()
+  public OAException executeSearch()
+// 2009-06-10 [ST障害T1_1317] Mod End
   {
     OADBTransaction txn = getOADBTransaction();
     XxcsoUtils.debug(txn, "[START]");
+
+// 2009-06-10 [ST障害T1_1317] Add Start
+  OAException oaMessage = null;
+// 2009-06-10 [ST障害T1_1317] Add End
 
     // 検索条件取得
     XxcsoContractQueryTermsVOImpl termsVo = getXxcsoContractQueryTermsVO1();
@@ -240,23 +247,43 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
        ,termsRow.getInstallpartyName()
       );
 
-     // 件数チェック(firstでnullチェック)
-     XxcsoContractSummaryVORowImpl summaryRow
-      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+      // 件数チェック(firstでnullチェック)
+      XxcsoContractSummaryVORowImpl summaryRow
+        = (XxcsoContractSummaryVORowImpl)summaryVo.first();
 
-     if ( summaryRow != null )
-     {
-      //検索結果がある場合はボタンを使用可にする
-      setButtonAttribute( XxcsoContractConstants.CONSTANT_COM_KBN1 );
-     }
-     else
-     {
-      //それ以外はボタンを使用不可にする
-      setButtonAttribute( XxcsoContractConstants.CONSTANT_COM_KBN2 );
-     }
+      if ( summaryRow != null )
+      {
+        //検索結果がある場合はボタンを使用可にする
+        setButtonAttribute( XxcsoContractConstants.CONSTANT_COM_KBN1 );
+// 2009-06-10 [ST障害T1_1317] Add Start
+        // 最大表示件数チェック
+        int maxFetchSize = getVoMaxFetchSize(getOADBTransaction());
+        int searchCnt    = summaryRow.getLineCount().intValue();
+        if (searchCnt > maxFetchSize)
+        {
+          // 検索件数がFND:ビューオブジェクト最大フェッチサイズを
+          // 超えている場合
+          oaMessage =
+            XxcsoMessage.createWarningMessage(
+                XxcsoConstants.APP_XXCSO1_00479
+               ,XxcsoConstants.TOKEN_MAX_SIZE
+               ,String.valueOf(maxFetchSize)
+              );
+        }
+// 2009-06-10 [ST障害T1_1317] Add End
+      }
+      else
+      {
+        //それ以外はボタンを使用不可にする
+        setButtonAttribute( XxcsoContractConstants.CONSTANT_COM_KBN2 );
+      }
+
     }
 
     XxcsoUtils.debug(txn, "[END]");
+// 2009-06-10 [ST障害T1_1317] Add Start
+    return oaMessage;
+// 2009-06-10 [ST障害T1_1317] Add End
   }
 
   /*****************************************************************************
@@ -487,21 +514,10 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
     }
 
-// 2009-06-10 [ST障害T1_1317] Add Start
-    int maxFetchSize = getVoMaxFetchSize(getOADBTransaction());
-    int chkCnt     = 1;
-// 2009-06-10 [ST障害T1_1317] Add End
-
     // 選択行のListを作成
     List selList = new ArrayList();
     while ( sumRow != null )
     {
-// 2009-06-10 [ST障害T1_1317] Add Start
-      if ( chkCnt >= maxFetchSize )
-      {
-        break;
-      }
-// 2009-06-10 [ST障害T1_1317] Add End
       if ( "Y".equals( sumRow.getSelectFlag() ) )
       {
         HashMap map = new HashMap(3);
@@ -513,9 +529,6 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
         map.put( COOPERATE_FLAG,        sumRow.getCooperateFlag()             );
         selList.add( map );
       }
-// 2009-06-10 [ST障害T1_1317] Add Start
-      chkCnt++;
-// 2009-06-10 [ST障害T1_1317] Add End
       sumRow = (XxcsoContractSummaryVORowImpl) sumVo.next();
     }
 
@@ -770,19 +783,9 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
       = (XxcsoContractSummaryVORowImpl)summaryVo.first();
 
     HashMap params = new HashMap();
-// 2009-06-10 [ST障害T1_1317] Add Start
-    int maxFetchSize = getVoMaxFetchSize(getOADBTransaction());
-    int chkCnt     = 1;
-// 2009-06-10 [ST障害T1_1317] Add End
 
     while ( summaryRow != null )
     {
-// 2009-06-10 [ST障害T1_1317] Add Start
-      if ( chkCnt >= maxFetchSize )
-      {
-        break;
-      }
-// 2009-06-10 [ST障害T1_1317] Add End
       if ( "Y".equals(summaryRow.getSelectFlag()) )
       {
         // XxcsoContractAuthorityCheckVO1インスタンスの取得
@@ -811,9 +814,6 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
          ,summaryRow.getContractManagementId()
         );
       }
-// 2009-06-10 [ST障害T1_1317] Add Start
-      chkCnt++;
-// 2009-06-10 [ST障害T1_1317] Add End
       summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
     }
 
@@ -845,19 +845,9 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
       = (XxcsoContractSummaryVORowImpl)summaryVo.first();
 
     HashMap params = new HashMap();
-// 2009-06-10 [ST障害T1_1317] Add Start
-    int maxFetchSize = getVoMaxFetchSize(getOADBTransaction());
-    int chkCnt     = 1;
-// 2009-06-10 [ST障害T1_1317] Add End
 
     while ( summaryRow != null )
     {
-// 2009-06-10 [ST障害T1_1317] Add Start
-      if ( chkCnt >= maxFetchSize )
-      {
-        break;
-      }
-// 2009-06-10 [ST障害T1_1317] Add End
 
       if ( "Y".equals(summaryRow.getSelectFlag()) )
       {
@@ -887,9 +877,6 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
          ,summaryRow.getContractManagementId()
         );
       }
-// 2009-06-10 [ST障害T1_1317] Add Start
-      chkCnt++;
-// 2009-06-10 [ST障害T1_1317] Add End
       summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
     }
     XxcsoUtils.debug(txn, "[END]");
@@ -925,19 +912,9 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
 
     NUMBER requestId = null;
     OracleCallableStatement stmt = null;
-// 2009-06-10 [ST障害T1_1317] Add Start
-    int maxFetchSize = getVoMaxFetchSize(getOADBTransaction());
-    int chkCnt     = 1;
-// 2009-06-10 [ST障害T1_1317] Add End
 
     while ( summaryRow != null )
     {
-// 2009-06-10 [ST障害T1_1317] Add Start
-      if ( chkCnt >= maxFetchSize )
-      {
-        break;
-      }
-// 2009-06-10 [ST障害T1_1317] Add End
       if ( "Y".equals(summaryRow.getSelectFlag()) )
       {
         // 見積書印刷PGをCALL
@@ -1059,9 +1036,6 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
         errorList.add(error);
 
       }
-// 2009-06-10 [ST障害T1_1317] Add Start
-      chkCnt++;
-// 2009-06-10 [ST障害T1_1317] Add End
       summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
     }
 
@@ -1107,20 +1081,10 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
     }
-// 2009-06-10 [ST障害T1_1317] Add Start
-    int maxFetchSize = getVoMaxFetchSize(getOADBTransaction());
-    int chkCnt     = 1;
-// 2009-06-10 [ST障害T1_1317] Add End
 
     //明細選択チェック
     while ( summaryRow != null )
     {
-// 2009-06-10 [ST障害T1_1317] Add Start
-      if ( chkCnt >= maxFetchSize )
-      {
-        break;
-      }
-// 2009-06-10 [ST障害T1_1317] Add End
       if ( "Y".equals(summaryRow.getSelectFlag()) )
       {
         // マスタ連携チェック
@@ -1138,9 +1102,6 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
           returnValue = Boolean.FALSE;
         }
       }
-// 2009-06-10 [ST障害T1_1317] Add Start
-      chkCnt++;
-// 2009-06-10 [ST障害T1_1317] Add End
       summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
     }
 

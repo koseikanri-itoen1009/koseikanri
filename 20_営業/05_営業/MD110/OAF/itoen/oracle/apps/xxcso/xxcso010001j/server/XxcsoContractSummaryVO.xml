@@ -3,7 +3,6 @@
 
 <ViewObject
    Name="XxcsoContractSummaryVO"
-   OrderBy="CONTRACT_NUMBER"
    BindingStyle="Oracle"
    CustomQuery="true"
    RowClass="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSummaryVORowImpl"
@@ -11,60 +10,82 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT xcm.contract_management_id   AS contract_management_id
-      ,xcm.contract_number          AS contract_number
-      ,xcm.contract_format          AS contract_format
-      ,xcm.status                   AS statuscd
-      ,xxcso_util_common_pkg.get_lookup_meaning(
-         'XXCSO1_CONTRACT_STATUS'
-        ,xcm.status
-        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-       )                            AS status
-      ,xcm.install_account_number   AS install_account_number
-      ,xcm.install_party_name       AS install_party_name
-      ,xcm.cooperate_flag           AS cooperate_flag
-      ,xcm.last_update_date         AS last_update_date
-      ,xsdh.sp_decision_header_id   AS sp_decision_header_id
-      ,xsdh.sp_decision_number      AS sp_decision_header_num
-      ,NULL                         AS select_flag
-FROM   xxcso_contract_managements xcm
-      ,xxcso_sp_decision_headers xsdh
-WHERE  (
-        (
-         (:1 IS NOT NULL)
-         AND
-         (xcm.contract_number LIKE :2)
-        )
-        OR
-        (
-         (:3 IS NULL)
-        )
-       )
-       AND
-       (
-        (
-         (:4 IS NOT NULL)
-         AND
-         (xcm.install_account_number LIKE :5)
-        )
-        OR
-        (
-         (:6 IS NULL)
-        )
-       )
-       AND
-       (
-        (
-         (:7 IS NOT NULL)
-         AND
-         (xcm.install_party_name LIKE :8)
-        )
-        OR
-        (
-         (:9 IS NULL)
-        )
-       )
-AND  xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+WITH
+  line_data AS
+  (SELECT xcm.contract_management_id   AS contract_management_id
+         ,xcm.contract_number          AS contract_number
+         ,xcm.contract_format          AS contract_format
+         ,xcm.status                   AS statuscd
+         ,xxcso_util_common_pkg.get_lookup_meaning(
+            'XXCSO1_CONTRACT_STATUS'
+           ,xcm.status
+           ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+          )                            AS status
+         ,xcm.install_account_number   AS install_account_number
+         ,xcm.install_party_name       AS install_party_name
+         ,xcm.cooperate_flag           AS cooperate_flag
+         ,xcm.last_update_date         AS last_update_date
+         ,xsdh.sp_decision_header_id   AS sp_decision_header_id
+         ,xsdh.sp_decision_number      AS sp_decision_header_num
+         ,NULL                         AS select_flag
+   FROM   xxcso_contract_managements xcm
+         ,xxcso_sp_decision_headers xsdh
+   WHERE  (
+           (
+            (:1 IS NOT NULL)
+            AND
+            (xcm.contract_number LIKE :2)
+           )
+           OR
+           (
+            (:3 IS NULL)
+           )
+          )
+          AND
+          (
+           (
+            (:4 IS NOT NULL)
+            AND
+            (xcm.install_account_number LIKE :5)
+           )
+           OR
+           (
+            (:6 IS NULL)
+           )
+          )
+          AND
+          (
+           (
+            (:7 IS NOT NULL)
+            AND
+            (xcm.install_party_name LIKE :8)
+           )
+           OR
+           (
+            (:9 IS NULL)
+           )
+          )
+   AND  xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+   ORDER BY xcm.contract_number
+  )
+SELECT line_data.contract_management_id
+      ,line_data.contract_number
+      ,line_data.contract_format
+      ,line_data.statuscd
+      ,line_data.status
+      ,line_data.install_account_number
+      ,line_data.install_party_name
+      ,line_data.cooperate_flag
+      ,line_data.last_update_date
+      ,line_data.sp_decision_header_id
+      ,line_data.sp_decision_header_num
+      ,line_data.select_flag
+      ,(
+        SELECT COUNT('X')
+        FROM   line_data
+       ) AS line_count
+FROM   line_data
+WHERE  ROWNUM <= FND_PROFILE.VALUE('VO_MAX_FETCH_SIZE')
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
@@ -187,5 +208,17 @@ AND  xsdh.sp_decision_header_id = xcm.sp_decision_header_id
       AliasName="SELECT_FLAG"
       Expression="SELECT_FLAG"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineCount"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LINE_COUNT"
+      Expression="LINE_COUNT"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
    </ViewAttribute>
 </ViewObject>

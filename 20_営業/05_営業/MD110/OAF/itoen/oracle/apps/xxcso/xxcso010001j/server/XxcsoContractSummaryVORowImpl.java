@@ -36,6 +36,7 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
   protected static final int SPDECISIONHEADERID = 9;
   protected static final int SPDECISIONHEADERNUM = 10;
   protected static final int SELECTFLAG = 11;
+  protected static final int LINECOUNT = 12;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -167,6 +168,8 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
         return getSpDecisionHeaderNum();
       case SELECTFLAG:
         return getSelectFlag();
+      case LINECOUNT:
+        return getLineCount();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -212,6 +215,9 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
         return;
       case SELECTFLAG:
         setSelectFlag((String)value);
+        return;
+      case LINECOUNT:
+        setLineCount((Number)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -345,6 +351,24 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
   public void setSpDecisionHeaderId(Number value)
   {
     setAttributeInternal(SPDECISIONHEADERID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute LineCount
+   */
+  public Number getLineCount()
+  {
+    return (Number)getAttributeInternal(LINECOUNT);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute LineCount
+   */
+  public void setLineCount(Number value)
+  {
+    setAttributeInternal(LINECOUNT, value);
   }
 
 
