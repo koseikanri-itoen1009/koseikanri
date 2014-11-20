@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/03/03    1.0   SCS M.Ohtsuki    新規作成
  *  2009/04/06    1.1   SCS M.Ohtsuki    [障害T1_0241]開始日取得NVL対応
  *  2009/04/09    1.2   SCS M.Ohtsuki    [障害T1_0416]業務日付とシステム日付比較の不具合
+ *  2009/04/14    1.3   SCS M.Ohtsuki    [障害T1_0500]年月チェック条件の不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +116,9 @@ AS
   cv_csm_msg_149            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10149';                           -- 什器ポイントデータフォーマットチェックエラーメッセージ
   cv_csm_msg_151            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10151';                           -- 什器ポイント項目属性チェックエラーメッセージ
   cv_csm_msg_152            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10152';                           -- 登録データ0件メッセージ
+--//+ADD START 2009/04/14 T1_0500 M.Ohtsuki
+  cv_csm_msg_021            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00021';                           -- 年度取得エラーメッセージ
+--//+ADD END   2009/04/14 T1_0500 M.Ohtsuki
 --
   --トークンコード
   cv_tkn_prf_nm             CONSTANT VARCHAR2(100) := 'PROF_NAME';                                  -- プロファイル名
@@ -580,6 +584,10 @@ AS
     lv_year_month   VARCHAR2(1000);                                                                 -- 年月格納用
     ln_cnt          NUMBER;                                                                         -- 件数確認用
     ld_year_month   DATE;                                                                           -- フォーマットチェック用
+--//+ADD START 2009/04/14 T1_0500 M.Ohtsuki
+    lv_year         VARCHAR2(10);                                                                   -- 年度格納用
+    lv_month        VARCHAR2(10);                                                                   -- 月格納用
+--//+ADD END   2009/04/14 T1_0500 M.Ohtsuki
 --
     check_err_expt  EXCEPTION;                                                                      -- チェックエラー例外
 --
@@ -616,14 +624,45 @@ AS
     END;
 --
     --年月が登録・修正可能な会計期間である事。それ以外はエラー
+--//+ADD START 2009/04/14 T1_0500 M.Ohtsuki
+    xxcsm_common_pkg.get_year_month(iv_process_years => lv_year_month                               -- 年月
+                                   ,ov_year          => lv_year                                     -- 年度
+                                   ,ov_month         => lv_month                                    -- 月
+                                   ,ov_retcode       => lv_retcode                                  -- リターン・コード
+                                   ,ov_errbuf        => lv_errbuf                                   -- エラー・メッセージ
+                                   ,ov_errmsg        => lv_errmsg                                   -- ユーザー・エラー・メッセージ
+                                   );
+    IF (lv_retcode <> cv_status_normal ) THEN                                                        -- 処理結果が(異常 = 1)の場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                                  iv_application     => cv_xxcsm                                    -- アプリケーション短縮名
+                                 ,iv_name            => cv_csm_msg_021                              -- メッセージコード
+                                 ,iv_token_name1     => cv_tkn_yyyymm                               -- トークンコード1
+                                 ,iv_token_value1    => lv_year_month                               -- トークン値1
+                                 );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--//+ADD END   2009/04/14 T1_0500 M.Ohtsuki
+--
+--//+UPD START 2009/04/14 T1_0500 M.Ohtsuki
+--    BEGIN
+--      SELECT  gps.period_year                                                                       -- 対象年度
+--      INTO    gv_subject_year
+--      FROM     gl_period_statuses   gps                                                             -- 会計期間ステータステーブル
+--      WHERE    gps.set_of_books_id = gn_set_of_bks_id                                               -- 会計帳簿ID
+--        AND    gps.application_id  = gv_appl_ar                                                     -- アプリケーションID
+--        AND    gps.closing_status  = cv_open                                                        -- ステータス = オープン
+--        AND    gps.period_name     = TO_CHAR(ld_year_month,'YYYY-MM');                                               -- 年月
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
     BEGIN
-      SELECT  gps.period_year                                                                       -- 対象年度
-      INTO    gv_subject_year
+      SELECT   DISTINCT gps.period_year                                                             -- 対象年度
+      INTO     gv_subject_year
       FROM     gl_period_statuses   gps                                                             -- 会計期間ステータステーブル
       WHERE    gps.set_of_books_id = gn_set_of_bks_id                                               -- 会計帳簿ID
         AND    gps.application_id  = gv_appl_ar                                                     -- アプリケーションID
         AND    gps.closing_status  = cv_open                                                        -- ステータス = オープン
-        AND    gps.period_name     = TO_CHAR(ld_year_month,'YYYY-MM');                                               -- 年月
+        AND    gps.period_year     = lv_year;                                                       -- 年度
+--//+UPD END 2009/04/14 T1_0500 M.Ohtsuki
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
