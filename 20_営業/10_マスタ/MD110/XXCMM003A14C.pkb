@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmm003a14c
+CREATE OR REPLACE PACKAGE BODY XXCMM003A14C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -8,7 +8,7 @@ AS
  *                    保持する必要があります。
  *                    当機能を日次で稼動させ、最新の最終訪問日を自動更新します。
  * MD.050           : 最終訪問日更新 MD050_CMM_003_A14
- * Version          : Draft3A
+ * Version          : Issue3.4
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/05/20    1.3   Yutaka.Kuboshima 障害T1_0476,T1_1098の対応
  *  2009/08/27    1.4   Yutaka.Kuboshima 障害0001193の対応 担当営業員の取得条件を修正
  *                                       (アサイメント番号 -> 従業員番号)
+ *  2009/11/09    1.5   Shigeto.Niki     障害E_T4_00135の対応 エラー終了 -> 警告終了に修正
  *
  *****************************************************************************************/
 --
@@ -343,7 +344,10 @@ AS
       ov_errbuf   := lv_errbuf || cv_msg_bracket_f || 
                      cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM || cv_msg_bracket_t;
       -- 処理ステータスセット
-      ov_retcode  :=  cv_status_error;
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod start by Shigeto.Niki
+--      ov_retcode  :=  cv_status_error;
+      ov_retcode  :=  cv_status_warn;      
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod end by Shigeto.Niki
 -- 2009/02/27 add end
 --
 --#################################  固定例外処理部 START   ####################################
@@ -693,7 +697,10 @@ AS
       ov_errmsg   :=  lv_errmsg;
       ov_errbuf   :=  cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf;
       -- 処理ステータスセット
-      ov_retcode  :=  cv_status_error;
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod start by Shigeto.Niki
+--      ov_retcode  :=  cv_status_error;
+      ov_retcode  :=  cv_status_warn;      
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod end by Shigeto.Niki
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -825,7 +832,10 @@ AS
       ov_errbuf   := lv_errbuf || cv_msg_bracket_f || 
                      cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM || cv_msg_bracket_t;
       -- 処理ステータスセット
-      ov_retcode  :=  cv_status_error;
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod start by Shigeto.Niki
+--      ov_retcode  :=  cv_status_error;
+      ov_retcode  :=  cv_status_warn;      
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod end by Shigeto.Niki
 --
 --#####################################  固定部 END   ##########################################
 --
@@ -1276,7 +1286,10 @@ AS
       IF (ln_err_cnt = 0) THEN
         gn_normal_cnt := gn_normal_cnt + 1;
       ELSE
-        gn_error_cnt := gn_error_cnt + ln_err_cnt;
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod start by Shigeto.Niki
+--        gn_error_cnt := gn_error_cnt + ln_err_cnt;
+        gn_warn_cnt := gn_warn_cnt + ln_err_cnt;
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod end by Shigeto.Niki
       END IF;
       --
       -- エラー検出時、SAVEPOINTまでROLLBACK
@@ -1313,7 +1326,10 @@ AS
       END IF;
     ELSE
       -- 更新エラーが発生している為、エラーをセット
-      ov_retcode := cv_status_error;
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod start by Shigeto.Niki
+--      ov_retcode  :=  cv_status_error;
+      ov_retcode  :=  cv_status_warn;      
+-- 2009/11/09 Ver1.5 障害E_T4_00135 mod end by Shigeto.Niki
     END IF;
 --
   EXCEPTION
@@ -1398,6 +1414,9 @@ AS
     cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000'; -- 対象件数メッセージ
     cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- 成功件数メッセージ
     cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- エラー件数メッセージ
+-- 2009/11/09 Ver1.5 障害E_T4_00135 add start by Shigeto.Niki
+    cv_skip_rec_msg   CONSTANT VARCHAR2(100)  := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+-- 2009/11/09 Ver1.5 障害E_T4_00135 add end by Shigeto.Niki
     cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
@@ -1568,6 +1587,24 @@ AS
       which  => fnd_file.log,
       buff   => gv_out_msg
     );
+-- 2009/11/09 Ver1.5 障害E_T4_00135 add start by Shigeto.Niki
+    --
+    --警告件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name,
+                     iv_name         => cv_skip_rec_msg,
+                     iv_token_name1  => cv_cnt_token,
+                     iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    fnd_file.put_line(
+      which  => fnd_file.output,
+      buff   => gv_out_msg
+    );
+    fnd_file.put_line(
+      which  => fnd_file.log,
+      buff   => gv_out_msg
+    );
+-- 2009/11/09 Ver1.5 障害E_T4_00135 add end by Shigeto.Niki
     --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
