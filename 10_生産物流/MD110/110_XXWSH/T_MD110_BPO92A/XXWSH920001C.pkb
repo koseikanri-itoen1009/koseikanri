@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/06/02   1.4   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/06/05   1.5   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/06/12   1.6   Oracle 北寒寺 正夫 結合テスト不具合対応
+ *  2008/07/15   1.7   Oracle 北寒寺 正夫 ST#449対応
  *
  *****************************************************************************************/
 --
@@ -2397,13 +2398,16 @@ AS
       END IF;
     END IF;
 --
+-- Ver1.7 M.Hokkanji Start
+-- ロットステータス情報VIEWのフラグを見るようになったため削除
     -- 需要が「出荷」で供給のロットステータスが「未判定」の場合
-    IF (  (gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_deliv)
-      AND (gr_supply_tbl(in_s_cnt).lot_status = gv_cons_no_judge) )
-    THEN
+--    IF (  (gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_deliv)
+--      AND (gr_supply_tbl(in_s_cnt).lot_status = gv_cons_no_judge) )
+--    THEN
       -- 引当はおこなわない
-      RETURN 1;
-    END IF;
+--      RETURN 1;
+--    END IF;
+-- Ver1.7 M.Hokkanji End
 --
     -- 引当可能数が０以下の場合
     IF (gr_supply_tbl(in_s_cnt).r_quantity <= 0) THEN
@@ -2599,19 +2603,27 @@ AS
     gr_supply_tbl(in_s_cnt).r_quantity        :=
           NVL(gr_supply_tbl(in_s_cnt).r_quantity,0) -
               gr_move_tbl(gn_move_rec_cnt).actual_quantity;
+-- Ver1.7 M.Hokkanji Start
+-- 引当残数量を減算する処理を常に行うように修正
+-- 供給情報のループを抜ける条件が間違っていたため修正
     -- 今回のロットで全部引き当てられなかった場合、引当残数量から減算する
-    IF( gr_demand_tbl(in_d_cnt).ordered_quantity > gr_move_tbl(gn_move_rec_cnt).actual_quantity)
-    THEN
---
-      gr_demand_tbl(in_d_cnt).rest_quantity     :=
-          NVL(gr_demand_tbl(in_d_cnt).ordered_quantity,0) -
-              gr_move_tbl(gn_move_rec_cnt).actual_quantity;
+--    IF( gr_demand_tbl(in_d_cnt).ordered_quantity > gr_move_tbl(gn_move_rec_cnt).actual_quantity)
+--    THEN
+--    gr_demand_tbl(in_d_cnt).rest_quantity     :=
+--          NVL(gr_demand_tbl(in_d_cnt).ordered_quantity,0) -
+--              gr_move_tbl(gn_move_rec_cnt).actual_quantity;
+    -- 引当残数量 = 引当残数量 - 実績数量（今回引当数)
+    gr_demand_tbl(in_d_cnt).rest_quantity     := NVL(gr_demand_tbl(in_d_cnt).rest_quantity,0) -
+                                                 gr_move_tbl(gn_move_rec_cnt).actual_quantity;
+    -- 指示数量が引当数(合計)より大きい場合
+    IF ( gr_demand_tbl(in_d_cnt).ordered_quantity > gr_demand_tbl(in_d_cnt).reserved_quantity) THEN
       ov_exit_flg := gv_cons_flg_no;
     -- 今回のロットで全部引き当てられた場合、供給情報のループを抜ける
     ELSE
 --
       ov_exit_flg := gv_cons_flg_yes;
     END IF;
+-- Ver1.7 M.Hokkanji End
 --
   EXCEPTION
 --
