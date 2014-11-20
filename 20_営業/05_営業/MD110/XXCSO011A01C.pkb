@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -110,6 +110,8 @@ AS
  *                                        ・新台設置、新台代替のときにAPPS_SOURCE_CODEがNULLかどうかチェックするように変更
  *  2013-12-05    1.33 T.Nakano          【E_本稼動_11082】
  *                                        ・自販機、ショーケース廃棄決済申請チェックを追加
+ *  2014-04-30    1.34 T.Nakano          【E_本稼動_11770】
+ *                                        ・自販機、ショーケース廃棄決済申請チェックの条件変更
  *
  *****************************************************************************************/
   --
@@ -276,7 +278,7 @@ AS
   /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
   cv_tkn_number_67  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00657';  -- 廃棄決済申請チェックエラー
   cv_tkn_number_68  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00658';  -- 償却チェックデータ抽出エラー
-  cv_tkn_number_69  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00659';  -- メッセージ用文字列(リース開始日)
+  cv_tkn_number_69  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00659';  -- メッセージ用文字列(リース契約情報)
   cv_tkn_number_70  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00660';  -- メッセージ用文字列(償却日)
   /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
   --
@@ -3544,9 +3546,11 @@ AS
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     , iv_process_kbn   IN         VARCHAR2
     /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-    , id_process_date  IN         DATE                                    -- 業務処理日付
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--    , id_process_date  IN         DATE                                    -- 業務処理日付
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -3567,12 +3571,14 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-    cv_zero                   CONSTANT VARCHAR2(1)  := '0';           -- リース種類「Finリース」
-    cv_flag_yes               CONSTANT VARCHAR2(1)  := 'Y';           -- 参照タイプ使用可能フラグ「YES」
-    cv_date_fmt               CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';  -- DATE型フォーマット
-    cv_lookup_deprn_year      CONSTANT VARCHAR2(30) := 'XXCSO1_DEPRN_YEAR';  -- 参照タイプ「償却年数」
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--    cv_zero                   CONSTANT VARCHAR2(1)  := '0';           -- リース種類「Finリース」
+--    cv_flag_yes               CONSTANT VARCHAR2(1)  := 'Y';           -- 参照タイプ使用可能フラグ「YES」
+--    cv_date_fmt               CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';  -- DATE型フォーマット
+--    cv_lookup_deprn_year      CONSTANT VARCHAR2(30) := 'XXCSO1_DEPRN_YEAR';  -- 参照タイプ「償却年数」
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
@@ -3580,20 +3586,24 @@ AS
     /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
     lb_stts_chk_flg BOOLEAN;        -- 購買依頼ステータスチェック処理 戻り値
     /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-    lv_msg                    VARCHAR2(5000);  -- ユーザー・メッセージ(ノート)
-    ld_deprn_date             DATE;            -- 償却日
-    lv_end_deprn_date         VARCHAR2(10);    -- 償却期間終了日(メッセージ出力用)
-    lt_lease_start_date       xxcff_contract_headers.lease_start_date%TYPE;  -- リース開始日
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--    lv_msg                    VARCHAR2(5000);  -- ユーザー・メッセージ(ノート)
+--    ld_deprn_date             DATE;            -- 償却日
+--    lv_end_deprn_date         VARCHAR2(10);    -- 償却期間終了日(メッセージ出力用)
+--    lt_lease_start_date       xxcff_contract_headers.lease_start_date%TYPE;  -- リース開始日
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
     -- *** ローカル例外 ***
     /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
     chk_status_expt       EXCEPTION;
     /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-    chk_target_data_expt  EXCEPTION;
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--    chk_target_data_expt  EXCEPTION;
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
   BEGIN
     --
@@ -3719,105 +3729,107 @@ AS
       --
     END IF;
     --
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
-    -- 処理区分が「発注依頼申請」の場合
-    --
-      -- 物件コードのリース開始日を取得
-      BEGIN
-        SELECT
-               /*+ USE_NL(xxoh xxcl xxch) 
-               INDEX(xxoh XXCFF_OBJECT_HEADERS_U01) */
-               xxch.lease_start_date  lease_start_date --リース開始日
-        INTO
-               lt_lease_start_date
-        FROM   
-               xxcff_object_headers    xxoh  --リース物件
-              ,xxcff_contract_lines    xxcl  --リース契約明細
-              ,xxcff_contract_headers  xxch  --リース契約ヘッダ
-        WHERE
-               xxoh.object_code      = iv_install_code            --物件コード
-        AND    xxoh.object_header_id = xxcl.object_header_id      --物件内部ID
-        AND    xxcl.lease_kind       = cv_zero                    --リース種類(Fin)
-        AND    xxch.contract_header_id = xxcl.contract_header_id  --契約内部ID
-        ;
-      EXCEPTION
-        -- 該当データが存在しない場合
-        WHEN NO_DATA_FOUND THEN
-          NULL;
-        -- 抽出に失敗した場合
-        WHEN OTHERS THEN
-          lv_msg := xxccp_common_pkg.get_msg(
-                          iv_application => cv_sales_appl_short_name   -- アプリケーション短縮名
-                         ,iv_name        => cv_tkn_number_69           -- メッセージ
-                       );
-          lv_errbuf := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_68          -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
-                         ,iv_token_value1 => lv_msg                    -- トークン値1
-                         ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
-                         ,iv_token_value2 => SQLERRM                   -- トークン値2
-                       );
-        RAISE chk_target_data_expt;
-      END;
-      --
-      -- リース開始日を取得した場合、償却日を抽出する
-      IF ( lt_lease_start_date IS NOT NULL ) THEN
-      --
-        -- リース開始日から償却日を取得
-        BEGIN
-          SELECT 
-                 ADD_MONTHS( lt_lease_start_date , flvv.attribute1 * 12 ) deprn_date  --償却日
-          INTO
-                 ld_deprn_date
-          FROM   fnd_lookup_values_vl flvv
-          WHERE  flvv.lookup_type  = cv_lookup_deprn_year
-          AND    flvv.enabled_flag = cv_flag_yes
-          AND    flvv.start_date_active <= lt_lease_start_date  --有効開始日
-          AND    flvv.end_date_active   >= lt_lease_start_date  --有効終了日
-          ;
-        EXCEPTION
-          -- 該当データが存在しない場合
-          WHEN NO_DATA_FOUND THEN
-            NULL;
-          -- 抽出に失敗した場合
-          WHEN OTHERS THEN
-            lv_msg := xxccp_common_pkg.get_msg(
-                            iv_application => cv_sales_appl_short_name   -- アプリケーション短縮名
-                           ,iv_name        => cv_tkn_number_70           -- メッセージ
-                         );
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_68          -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
-                           ,iv_token_value1 => lv_msg                    -- トークン値1
-                           ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
-                           ,iv_token_value2 => SQLERRM                   -- トークン値2
-                         );
-          RAISE chk_target_data_expt;
-        END;
-      --
-      END IF;
-      --
-      -- 業務日付がリース開始日以上、かつ償却日未満の場合、チェックエラーとする
-      IF ( lt_lease_start_date <= id_process_date ) 
-        AND ( id_process_date < ld_deprn_date ) THEN
-        --
-        lv_end_deprn_date := TO_CHAR(ld_deprn_date - 1, cv_date_fmt);
-        lv_errbuf2 := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                        ,iv_name         => cv_tkn_number_67         -- メッセージコード
-                        ,iv_token_name1  => cv_tkn_date              -- トークンコード1
-                        ,iv_token_value1 => lv_end_deprn_date        -- トークン値1
-                      );
-        --
-        lv_errbuf  := lv_errbuf2;
-        ov_retcode := cv_status_error;
-        --
-      END IF;
-    END IF;
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+--    -- 処理区分が「発注依頼申請」の場合
+--    --
+--      -- 物件コードのリース開始日を取得
+--      BEGIN
+--        SELECT
+--               /*+ USE_NL(xxoh xxcl xxch) 
+--               INDEX(xxoh XXCFF_OBJECT_HEADERS_U01) */
+--               xxch.lease_start_date  lease_start_date --リース開始日
+--        INTO
+--               lt_lease_start_date
+--        FROM   
+--               xxcff_object_headers    xxoh  --リース物件
+--              ,xxcff_contract_lines    xxcl  --リース契約明細
+--              ,xxcff_contract_headers  xxch  --リース契約ヘッダ
+--        WHERE
+--               xxoh.object_code      = iv_install_code            --物件コード
+--        AND    xxoh.object_header_id = xxcl.object_header_id      --物件内部ID
+--        AND    xxcl.lease_kind       = cv_zero                    --リース種類(Fin)
+--        AND    xxch.contract_header_id = xxcl.contract_header_id  --契約内部ID
+--        ;
+--      EXCEPTION
+--        -- 該当データが存在しない場合
+--        WHEN NO_DATA_FOUND THEN
+--          NULL;
+--        -- 抽出に失敗した場合
+--        WHEN OTHERS THEN
+--          lv_msg := xxccp_common_pkg.get_msg(
+--                          iv_application => cv_sales_appl_short_name   -- アプリケーション短縮名
+--                         ,iv_name        => cv_tkn_number_69           -- メッセージ
+--                       );
+--          lv_errbuf := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_68          -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+--                         ,iv_token_value1 => lv_msg                    -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+--                         ,iv_token_value2 => SQLERRM                   -- トークン値2
+--                       );
+--        RAISE chk_target_data_expt;
+--      END;
+--      --
+--      -- リース開始日を取得した場合、償却日を抽出する
+--      IF ( lt_lease_start_date IS NOT NULL ) THEN
+--      --
+--        -- リース開始日から償却日を取得
+--        BEGIN
+--          SELECT 
+--                 ADD_MONTHS( lt_lease_start_date , flvv.attribute1 * 12 ) deprn_date  --償却日
+--          INTO
+--                 ld_deprn_date
+--          FROM   fnd_lookup_values_vl flvv
+--          WHERE  flvv.lookup_type  = cv_lookup_deprn_year
+--          AND    flvv.enabled_flag = cv_flag_yes
+--          AND    flvv.start_date_active <= lt_lease_start_date  --有効開始日
+--          AND    flvv.end_date_active   >= lt_lease_start_date  --有効終了日
+--          ;
+--        EXCEPTION
+--          -- 該当データが存在しない場合
+--          WHEN NO_DATA_FOUND THEN
+--            NULL;
+--          -- 抽出に失敗した場合
+--          WHEN OTHERS THEN
+--            lv_msg := xxccp_common_pkg.get_msg(
+--                            iv_application => cv_sales_appl_short_name   -- アプリケーション短縮名
+--                           ,iv_name        => cv_tkn_number_70           -- メッセージ
+--                         );
+--            lv_errbuf := xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+--                           ,iv_name         => cv_tkn_number_68          -- メッセージコード
+--                           ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+--                           ,iv_token_value1 => lv_msg                    -- トークン値1
+--                           ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+--                           ,iv_token_value2 => SQLERRM                   -- トークン値2
+--                         );
+--          RAISE chk_target_data_expt;
+--        END;
+--      --
+--      END IF;
+--      --
+--      -- 業務日付がリース開始日以上、かつ償却日未満の場合、チェックエラーとする
+--      IF ( lt_lease_start_date <= id_process_date ) 
+--        AND ( id_process_date < ld_deprn_date ) THEN
+--        --
+--        lv_end_deprn_date := TO_CHAR(ld_deprn_date - 1, cv_date_fmt);
+--        lv_errbuf2 := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+--                        ,iv_name         => cv_tkn_number_67         -- メッセージコード
+--                        ,iv_token_name1  => cv_tkn_date              -- トークンコード1
+--                        ,iv_token_value1 => lv_end_deprn_date        -- トークン値1
+--                      );
+--        --
+--        lv_errbuf  := lv_errbuf2;
+--        ov_retcode := cv_status_error;
+--        --
+--      END IF;
+--    END IF;
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
     -- チェックでエラーがあった場合
     IF ( ov_retcode = cv_status_error ) THEN
@@ -3832,12 +3844,14 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;    
     /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-    WHEN chk_target_data_expt THEN
-      -- *** 対象データ抽出例外 ***
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_error;
-    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--    WHEN chk_target_data_expt THEN
+--      -- *** 対象データ抽出例外 ***
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_error;
+--    /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
     --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -4015,6 +4029,10 @@ AS
   PROCEDURE check_object_status(
       iv_chk_kbn       IN         VARCHAR2                                -- チェック区分
     , iv_install_code  IN         xxcso_install_base_v.install_code%TYPE  -- 物件コード
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+    , id_process_date  IN         DATE                                    -- 業務処理日付
+    , iv_process_kbn   IN         VARCHAR2                                -- 処理区分
+    /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -4054,6 +4072,12 @@ AS
     --
     cv_yes                         CONSTANT VARCHAR2(1) := 'Y';
 /* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+    cv_zero                        CONSTANT VARCHAR2(1)  := '0';           -- リース種類「Finリース」
+    cv_flag_yes                    CONSTANT VARCHAR2(1)  := 'Y';           -- 参照タイプ使用可能フラグ「YES」
+    cv_date_fmt                    CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';  -- DATE型フォーマット
+    cv_lookup_deprn_year           CONSTANT VARCHAR2(30) := 'XXCSO1_DEPRN_YEAR';  -- 参照タイプ「償却年数」
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
     -- *** ローカル変数 ***
     lv_object_status    xxcff_object_headers.object_status%TYPE;    -- 物件ステータス
@@ -4062,9 +4086,21 @@ AS
     lt_bond_acceptance_flag  xxcff_object_headers.bond_acceptance_flag%TYPE;    -- 証書受領フラグ
     lv_no_data_flg           VARCHAR2(1) DEFAULT 'N';
 /* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+    lv_msg                   VARCHAR2(5000);      -- ユーザー・メッセージ(ノート)
+    ld_deprn_date            DATE;                -- 償却日
+    lv_end_deprn_date        VARCHAR2(10);        -- 償却期間終了日(メッセージ出力用)
+    lv_no_chk_flag           VARCHAR2(1) := 'N';  -- 償却チェックフラグ
+    lt_lease_start_date      xxcff_contract_headers.lease_start_date%TYPE;  -- リース開始日
+    lt_lease_class           xxcff_contract_headers.lease_class%TYPE;       -- リース種別
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
     -- *** ローカル例外 ***
     sql_expt      EXCEPTION;
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+    chk_target_data_expt  EXCEPTION;
+    chk_deprn_date_expt   EXCEPTION;
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     --
   BEGIN
     --
@@ -4196,6 +4232,122 @@ AS
           --
       END IF;
       --
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+      -- 処理区分が「発注依頼申請」の場合
+      IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+        -- 『リース区分が「原契約」かつ物件ステータスが「中途解約(自己都合)」かつ証書受領フラグが「受領済」』か、
+        -- 『リース区分が「原契約」かつ物件ステータスが「中途解約(保険対応)」かつ証書受領フラグが「受領済」』
+        IF (
+            (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd     )
+              AND ( lv_object_status        = cv_obj_sts_canceled_cnvnnc )
+              AND ( lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd    ) )
+          OR
+            (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd        )
+              AND ( lv_object_status        = cv_obj_sts_canceled_insurance )
+              AND ( lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd       ) )
+            ) THEN
+              lv_no_chk_flag := 'Y'; -- 償却期間チェック対象外
+        END IF;
+        --
+        IF lv_no_chk_flag = 'N' THEN
+          -- 物件コードのリース契約情報を取得
+          BEGIN
+            SELECT
+                   /*+ USE_NL(xxoh xxcl xxch) 
+                   INDEX(xxoh XXCFF_OBJECT_HEADERS_U01) */
+                   xxch.lease_start_date  lease_start_date -- リース開始日
+                  ,xxch.lease_class       lease_class      -- リース種別
+            INTO
+                   lt_lease_start_date
+                  ,lt_lease_class
+            FROM   
+                   xxcff_object_headers    xxoh  --リース物件
+                  ,xxcff_contract_lines    xxcl  --リース契約明細
+                  ,xxcff_contract_headers  xxch  --リース契約ヘッダ
+            WHERE
+                   xxoh.object_code      = iv_install_code            -- 物件コード
+            AND    xxoh.object_header_id = xxcl.object_header_id      -- 物件内部ID
+            AND    xxcl.lease_kind       = cv_zero                    -- リース種類(Fin)
+            AND    xxch.contract_header_id = xxcl.contract_header_id  -- 契約内部ID
+            ;
+          EXCEPTION
+            -- 該当データが存在しない場合
+            WHEN NO_DATA_FOUND THEN
+              NULL;
+            -- 抽出に失敗した場合
+            WHEN OTHERS THEN
+              lv_msg := xxccp_common_pkg.get_msg(
+                              iv_application => cv_sales_appl_short_name   -- アプリケーション短縮名
+                             ,iv_name        => cv_tkn_number_69           -- メッセージ
+                        );
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_68          -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                             ,iv_token_value1 => lv_msg                    -- トークン値1
+                             ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+                             ,iv_token_value2 => SQLERRM                   -- トークン値2
+                           );
+              RAISE chk_target_data_expt;
+          END;
+          --
+          -- リース開始日を取得した場合、償却日を抽出する
+          IF ( lt_lease_start_date IS NOT NULL ) THEN
+          --
+            -- リース開始日から償却日を取得
+            BEGIN
+              SELECT 
+                     ADD_MONTHS( lt_lease_start_date , flvv.attribute1 * 12 ) deprn_date  -- 償却日
+              INTO
+                     ld_deprn_date
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type  = cv_lookup_deprn_year
+              AND    flvv.enabled_flag = cv_flag_yes
+              AND    flvv.attribute2   = lt_lease_class
+              AND    flvv.start_date_active <= lt_lease_start_date  -- 有効開始日
+              AND    flvv.end_date_active   >= lt_lease_start_date  -- 有効終了日
+              ;
+            EXCEPTION
+              -- 該当データが存在しない場合
+              WHEN NO_DATA_FOUND THEN
+                NULL;
+              -- 抽出に失敗した場合
+              WHEN OTHERS THEN
+                lv_msg := xxccp_common_pkg.get_msg(
+                                iv_application => cv_sales_appl_short_name   -- アプリケーション短縮名
+                               ,iv_name        => cv_tkn_number_70           -- メッセージ
+                          );
+                lv_errbuf := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_68          -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                               ,iv_token_value1 => lv_msg                    -- トークン値1
+                               ,iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+                               ,iv_token_value2 => SQLERRM                   -- トークン値2
+                             );
+                RAISE chk_target_data_expt;
+            END;
+          --
+          END IF;
+          --
+          -- 業務日付がリース開始日以上、かつ償却日未満の場合、チェックエラーとする
+          IF ( lt_lease_start_date <= id_process_date ) 
+            AND ( id_process_date < ld_deprn_date ) THEN
+            --
+            lv_end_deprn_date := TO_CHAR(ld_deprn_date - 1, cv_date_fmt);
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                            ,iv_name         => cv_tkn_number_67         -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_date              -- トークンコード1
+                            ,iv_token_value1 => lv_end_deprn_date        -- トークン値1
+                         );
+            RAISE chk_deprn_date_expt;
+          END IF;
+        --
+        END IF;
+      --
+      END IF;
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
     END IF;
     --
   EXCEPTION
@@ -4204,6 +4356,18 @@ AS
       -- *** SQLデータ抽出例外＆チェックエラーハンドラ ***
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
+      --
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+      WHEN chk_target_data_expt THEN
+        -- *** 対象データ抽出例外 ***
+        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+        ov_retcode := cv_status_error;
+      --
+      WHEN chk_deprn_date_expt THEN
+        -- *** 対象データ抽出例外 ***
+        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+        ov_retcode := cv_status_error;
+/* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
       --
     --#################################  固定例外処理部 START   ####################################
     --
@@ -8136,6 +8300,10 @@ AS
           check_object_status(
               iv_chk_kbn      => cv_obj_sts_chk_kbn_01           -- チェック区分（チェック対象：設置用物件）
             , iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+            /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+            , id_process_date => ld_process_date                 -- 業務処理日付
+            , iv_process_kbn  => iv_process_kbn                  -- 処理区分
+            /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
             , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
             , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
           );
@@ -8500,6 +8668,10 @@ AS
           check_object_status(
               iv_chk_kbn      => cv_obj_sts_chk_kbn_01           -- チェック区分（チェック対象：設置用物件）
             , iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+            /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+            , id_process_date => ld_process_date                 -- 業務処理日付
+            , iv_process_kbn  => iv_process_kbn                  -- 処理区分
+            /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
             , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
             , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
           );
@@ -9176,9 +9348,11 @@ AS
           /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
           , iv_process_kbn  => iv_process_kbn                              -- 処理区分
           /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
-          /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
-          , id_process_date => ld_process_date                             -- 業務処理日付
-          /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+          /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+--          /* 2013.12.05 T.Nakano E_本稼動_11082対応 START */
+--          , id_process_date => ld_process_date                             -- 業務処理日付
+--          /* 2013.12.05 T.Nakano E_本稼動_11082対応 END */
+          /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
           , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -9198,6 +9372,10 @@ AS
           check_object_status(
               iv_chk_kbn      => cv_obj_sts_chk_kbn_02                       -- チェック区分（チェック対象：廃棄用物件）
             , iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
+            /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
+            , id_process_date => ld_process_date                             -- 業務処理日付
+            , iv_process_kbn  => iv_process_kbn                              -- 処理区分
+            /* 2014.04.30 T.Nakano E_本稼動_11770対応 END */
             , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
             , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
           );
