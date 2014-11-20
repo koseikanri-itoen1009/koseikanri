@@ -1958,7 +1958,10 @@ AS
   AND    itp_in_pr_e70.lot_id                   = ilm_in_pr_e70.lot_id
   AND    itp_in_pr_e70.location                 = mil_in_pr_e70.segment1
   AND    mil_in_pr_e70.organization_id          = iwm_in_pr_e70.mtl_organization_id
-  AND    grb_in_pr_e70.attribute9               = mil_in_pr_e70.segment1
+-- 2009/02/13 Y.Kawano Upd Start
+--  AND    grb_in_pr_e70.attribute9               = mil_in_pr_e70.segment1
+  AND    itp_in_pr_e70.reverse_id              IS NULL
+-- 2009/02/13 Y.Kawano Upd End
   AND    grb_in_pr_e70.routing_id               = gbh_in_pr_e70.routing_id
   AND    xrpm.routing_class                     = grb_in_pr_e70.routing_class
   AND    xrpm.line_type                         = gmd_in_pr_e70.line_type
@@ -2873,7 +2876,10 @@ AS
   AND    itp_out_pr_e70.whse_code                = iwm_out_pr_e70.whse_code
   AND    itp_out_pr_e70.location                 = mil_out_pr_e70.segment1
   AND    iwm_out_pr_e70.mtl_organization_id      = mil_out_pr_e70.organization_id
-  AND    grb_out_pr_e70.attribute9               = mil_out_pr_e70.segment1
+-- 2009/02/13 Y.Kawano Upd Start
+--  AND    grb_out_pr_e70.attribute9               = mil_out_pr_e70.segment1
+  AND    itp_out_pr_e70.reverse_id              IS NULL
+-- 2009/02/13 Y.Kawano Upd End
   AND    grb_out_pr_e70.routing_id               = gbh_out_pr_e70.routing_id
   AND    xrpm.routing_class                      = grb_out_pr_e70.routing_class
   AND    xrpm.line_type                          = gmd_out_pr_e70.line_type
