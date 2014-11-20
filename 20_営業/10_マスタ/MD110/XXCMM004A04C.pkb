@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.5
+ * Version          : Issue3.9
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -49,23 +49,25 @@ AS
  *  2009/01/30    1.4   H.Yoshikawa      原価組織変更による修正
  *  2009/02/19    1.5   H.Yoshikawa      品目ステータスチェックを追加
  *  2009/02/20                           検索対象更新日に業務日付を設定するよう修正
- *  2009/03/23    1.6   H.Yoshikawa      障害NoT1_0037対応 重量/容積・重量容積区分の設定を追加
- *                                       障害NoT1_0039対応 マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
- *  2009/04/03    1.7   K.Ito            障害対応(T1_0295) 品目OIF作成時にロット管理(LOT_CONTROL_CODE)に「1」(管理なし)を追加
- *  2009/05/27    1.7   H.Yoshikawa      障害対応(T1_0906) 親品目継承項目の追加【case_conv_inc_num(ケース換算入数)】
- *  2009/06/11    1.8   H.Yoshikawa      障害対応(T1_1366) 政策群変更時、群コードも変更するよう修正
- *  2009/07/07    1.9   H.Yoshikawa      障害対応(0000364) 標準原価_コンポーネント区分不足対応
- *                                       障害対応(0000365) 新規適用時の旧値(定価・営業原価・政策群)設定対応
- *  2009/07/15    1.10  H.Yoshikawa      障害対応(0000463) 保管棚管理の設定値に『管理なし』を設定
- *  2009/08/10    1.11  Y.Kuboshima      障害対応(0000862) 標準原価チェック処理を追加
- *                                       障害対応(0000894) 日付項目の修正(SYSDATE -> 業務日付)
- *  2009/09/11    1.12  Y.Kuboshima      障害対応(0000948) 単位換算を作成するタイミングを変更
- *                                                         (基準単位が本でケース入数が設定されている場合 -> 本登録時)
- *                                       障害対応(0001130) 在庫組織の修正(S01 -> Z99)
- *                                       障害対応(0001258) 品目カテゴリ割当(Disc)の対象カテゴリを追加
- *                                                         (品目区分,内外区分,商品区分,品質区分,工場群コード,経理部用群コード)
- *  2009/10/16    1.13  Y.Kuboshima      障害対応(0001423) 子品目を本登録にする時、親品目が本登録以外の場合はエラーとするよう修正
- *                                                         標準原価継承条件を変更
+ *  2009/03/23    1.6   H.Yoshikawa      障害NoT1_0037対応      重量/容積・重量容積区分の設定を追加
+ *                                       障害NoT1_0039対応      マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
+ *  2009/04/03    1.7   K.Ito            障害対応(T1_0295)      品目OIF作成時にロット管理(LOT_CONTROL_CODE)に「1」(管理なし)を追加
+ *  2009/05/27    1.7   H.Yoshikawa      障害対応(T1_0906)      親品目継承項目の追加【case_conv_inc_num(ケース換算入数)】
+ *  2009/06/11    1.8   H.Yoshikawa      障害対応(T1_1366)      政策群変更時、群コードも変更するよう修正
+ *  2009/07/07    1.9   H.Yoshikawa      障害対応(0000364)      標準原価_コンポーネント区分不足対応
+ *                                       障害対応(0000365)      新規適用時の旧値(定価・営業原価・政策群)設定対応
+ *  2009/07/15    1.10  H.Yoshikawa      障害対応(0000463)      保管棚管理の設定値に『管理なし』を設定
+ *  2009/08/10    1.11  Y.Kuboshima      障害対応(0000862)      標準原価チェック処理を追加
+ *                                       障害対応(0000894)      日付項目の修正(SYSDATE -> 業務日付)
+ *  2009/09/11    1.12  Y.Kuboshima      障害対応(0000948)      単位換算を作成するタイミングを変更
+ *                                                              (基準単位が本でケース入数が設定されている場合 -> 本登録時)
+ *                                       障害対応(0001130)      在庫組織の修正(S01 -> Z99)
+ *                                       障害対応(0001258)      品目カテゴリ割当(Disc)の対象カテゴリを追加
+ *                                                              (品目区分,内外区分,商品区分,品質区分,工場群コード,経理部用群コード)
+ *  2009/10/16    1.13  Y.Kuboshima      障害対応(0001423)      子品目を本登録にする時、親品目が本登録以外の場合はエラーとするよう修正
+ *                                                              標準原価継承条件を変更
+ *  2009/12/24    1.14  Shigeto.Niki     障害対応(本稼動_00577) 新規品目登録時は、保管棚管理に『1:管理なし』を設定
+ *                                                              既存品目更新時は、保管棚管理に『組織レベル値』を設定
  *
  *****************************************************************************************/
 --
@@ -3413,11 +3415,15 @@ AS
     lv_msg_errm                  VARCHAR2(4000);
     --
     lv_transaction_type          mtl_system_items_interface.transaction_type%TYPE;
+
     ln_exsits_count              NUMBER;
     --
 -- Ver1.9  2009/07/06  Add  障害対応(0000364)
     ln_cmp_cost_index            NUMBER;
 -- END1.9
+-- 2009/12/24 Ver1.14 障害E_本稼動_00577 add start by Shigeto.Niki
+    ln_location_control_code     mtl_system_items_interface.location_control_code%TYPE;
+-- 2009/12/24 Ver1.14 障害E_本稼動_00577 add end by Shigeto.Niki
     --
     -- ===============================
     -- ローカル・カーソル
@@ -3703,24 +3709,45 @@ AS
         --A-5.3 営業組織：Z99への品目割当確認
         --==============================================================
         lv_step := 'STEP-06080';
+-- 2009/12/24 Ver1.14 障害E_本稼動_00577 modify start by Shigeto.Niki
         -- 営業組織に品目が割り当たっているか取得
-        SELECT      COUNT( msib.ROWID )
-        INTO        ln_exsits_count
-        FROM        mtl_system_items_b    msib
-        WHERE       msib.inventory_item_id = i_update_item_rec.inventory_item_id
-        AND         msib.organization_id   = gn_bus_org_id
-        AND         ROWNUM                 = 1;
+--        SELECT      COUNT( msib.ROWID )
+--        INTO        ln_exsits_count
+--        FROM        mtl_system_items_b    msib
+--        WHERE       msib.inventory_item_id = i_update_item_rec.inventory_item_id
+--        AND         msib.organization_id   = gn_bus_org_id
+--        AND         ROWNUM                 = 1;
+--        --
+--        IF ( ln_exsits_count = 0 ) THEN
+--          -- 営業組織に品目が割当っていない場合、登録
+--          lv_step := 'STEP-06090';
+--          lv_transaction_type := cv_tran_type_create;
+--        ELSE
+--          -- 営業組織に品目が割当っている場合、更新
+--          lv_step := 'STEP-06100';
+--          lv_transaction_type := cv_tran_type_update;
+--        END IF;
         --
-        IF ( ln_exsits_count = 0 ) THEN
-          -- 営業組織に品目が割当っていない場合、登録
-          lv_step := 'STEP-06090';
-          lv_transaction_type := cv_tran_type_create;
-        ELSE
-          -- 営業組織に品目が割当っている場合、更新
+        BEGIN 
+          -- 営業組織の保管棚管理を取得
+          SELECT      msib.location_control_code
+          INTO        ln_location_control_code
+          FROM        mtl_system_items_b    msib
+          WHERE       msib.inventory_item_id = i_update_item_rec.inventory_item_id
+          AND         msib.organization_id   = gn_bus_org_id
+          AND         ROWNUM                 = 1;
+          -- 営業組織の保管棚管理が取得できた場合、更新
           lv_step := 'STEP-06100';
           lv_transaction_type := cv_tran_type_update;
-        END IF;
-        --
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- 営業組織の保管棚管理が取得できない場合、登録
+            lv_step := 'STEP-06090';
+            lv_transaction_type := cv_tran_type_create;
+            ln_location_control_code := cn_location_control_code_no;
+            --
+        END;
+-- 2009/12/24 Ver1.14 障害E_本稼動_00577 modify end by Shigeto.Niki
         --==============================================================
         --A-5.4 Disc品目マスタインタフェース登録
         --==============================================================
@@ -3767,7 +3794,10 @@ AS
            ,cn_lot_control_code_no
 -- Ver1.7  2009/04/03 Add End
 -- Ver1.10 2009/07/15 Add  保管棚管理(LOCATION_CONTROL_CODE)追加
-           ,cn_location_control_code_no
+-- 2009/12/24 Ver1.14 障害E_本稼動_00577 add start by Shigeto.Niki
+--           ,cn_location_control_code_no
+           ,ln_location_control_code
+-- 2009/12/24 Ver1.14 障害E_本稼動_00577 end start by Shigeto.Niki
 -- End1.10
            ,cn_process_flag
            ,lv_transaction_type );
