@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_IPO_CSO_014_A10_HHT-EBSインターフェース：(OUT)訪問予定ファイル
  *                    
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  init                        初期処理 (A-1)
  *  chk_parm_date               パラメータチェック (A-2)
  *  get_profile_info            プロファイル値取得 (A-3)
+ *  ins_task_info               タスク情報抽出処理 (A-10)
  *  open_csv_file               CSVファイルオープン (A-4)
  *  get_csv_data                CSVファイルに出力する関連情報取得 (A-6)
  *  create_csv_rec              訪問予定データCSV出力 (A-7)
@@ -34,6 +35,7 @@ AS
  *  2009-03-18    1.1   K.Boku           【結合障害069】抽出期間設定箇所修正
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2010-01-15    1.3   Kazuyo.Hosoi     E_本稼動_01179対応
+ *  2012-02-29    1.4   SCSK A.Shirakawa E_本稼動_08894対応
  *
  *****************************************************************************************/
 --
@@ -81,6 +83,11 @@ AS
 --
   PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
 --
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+  --*** データエラー例外 ***
+  global_data_expt          EXCEPTION;
+--
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
 --################################  固定部 END   ##################################
 --
   -- ===============================
@@ -115,6 +122,11 @@ AS
   cv_tkn_number_12    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00018';     -- CSVファイルクローズエラー
   cv_tkn_number_13    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00147';     -- パラメータ処理実行日
   cv_tkn_number_14    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00152';     -- インターフェースファイル名
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+  cv_tkn_number_15    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00072';     -- データ削除エラー
+  cv_tkn_number_16    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00431';     -- データ登録エラー
+  cv_tkn_number_17    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00638';     -- テーブル登録件数メッセージ
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
   -- トークンコード
   cv_tkn_prof_name       CONSTANT VARCHAR2(20) := 'PROF_NAME';          -- プロファイル名
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';            -- SQLエラーメッセージ
@@ -130,6 +142,9 @@ AS
   cv_tkn_proc_name       CONSTANT VARCHAR2(20) := 'PROCESSING_NAME';    -- 抽出処理名
   cv_tkn_count           CONSTANT VARCHAR2(20) := 'COUNT';              -- 処理件数
   cv_tkn_table           CONSTANT VARCHAR2(20) := 'TABLE';              -- テーブル名
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+  cv_tkn_err_message     CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';        -- SQLエラーメッセージ
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
 --
   cb_true                CONSTANT BOOLEAN := TRUE;
   cb_false               CONSTANT BOOLEAN := FALSE;
@@ -176,6 +191,11 @@ AS
   -- ファイル・ハンドルの宣言
   gf_file_hand    UTL_FILE.FILE_TYPE;
 --
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+   gd_gv_value_7_from  DATE;  --タスク取得期間FROM
+   gd_gv_value_7_to    DATE;  --タスク取得期間TO
+--
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -557,6 +577,353 @@ AS
 --
   END get_profile_info;
 --
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+  /**********************************************************************************
+   * Procedure Name   : ins_task_info
+   * Description      : タスク情報抽出処理 (A-10)
+   ***********************************************************************************/
+  PROCEDURE ins_task_info(
+     ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード              --# 固定 #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ    --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_task_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_xxcso_task_info  CONSTANT VARCHAR2(100) := 'タスク情報保持テーブル';
+--
+    -- *** ローカル変数 ***
+    ln_ins_task_count  NUMBER;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==================================
+    -- 1.削除処理
+    --==================================
+    BEGIN
+--
+      -- 対象テーブルを全件削除
+      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcso.xxcso_task_info';
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- データ削除エラーメッセージ
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name               -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_15          -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                        ,iv_token_value1 => cv_xxcso_task_info        -- トークン値1パラメータ
+                        ,iv_token_name2  => cv_tkn_err_message        -- トークンコード2
+                        ,iv_token_value2 => SQLERRM                   -- トークン値2パラメータ
+        );
+        lv_errbuf  := lv_errmsg;
+        RAISE global_data_expt;
+    END;
+--
+    --==================================
+    -- 2.登録処理
+    --==================================
+    BEGIN
+      -- タスク情報保持テーブルにタスクデータを登録
+      INSERT INTO xxcso_task_info(
+        task_id,                              -- タスクID
+        created_by,                           -- 作成者
+        creation_date,                        -- 作成日
+        last_updated_by,                      -- 最終更新者
+        last_update_date,                     -- 最終更新日
+        last_update_login,                    -- 最終更新ログイン
+        object_version_number,                -- オブジェクトバージョン番号
+        task_number,                          -- タスク番号
+        task_type_id,                         -- タスクタイプID
+        task_status_id,                       -- タスクステータスID
+        task_priority_id,                     -- タスク優先ID
+        owner_id,                             -- 所有者ID
+        owner_type_code,                      -- 所有者タイプコード
+        owner_territory_id,                   -- 所有者区域ID
+        assigned_by_id,                       -- 割当者ID
+        cust_account_id,                      -- アカウントID
+        customer_id,                          -- 顧客ID
+        address_id,                           -- アドレスID
+        planned_start_date,                   -- 計画開始日
+        planned_end_date,                     -- 計画終了日
+        scheduled_start_date,                 -- 予定開始日
+        scheduled_end_date,                   -- 予定終了日
+        actual_start_date,                    -- 実績開始日
+        actual_end_date,                      -- 実績終了日
+        source_object_type_code,              -- ソースオブジェクトタイプコード
+        timezone_id,                          -- 時差ID
+        source_object_id,                     -- ソースオブジェクトID
+        source_object_name,                   -- ソースオブジェクト名
+        duration,                             -- 持続
+        duration_uom,                         -- 持続単位
+        planned_effort,                       -- 活動計画
+        planned_effort_uom,                   -- 活動計画単位
+        actual_effort,                        -- 活動実績
+        actual_effort_uom,                    -- 活動実績単位
+        percentage_complete,                  -- 進捗率
+        reason_code,                          -- 理由コード
+        private_flag,                         -- プライベートフラグ
+        publish_flag,                         -- 発行フラグ
+        restrict_closure_flag,                -- 閉鎖制限フラグ
+        multi_booked_flag,                    -- マルチ予約フラグ
+        milestone_flag,                       -- マイルストーンフラグ
+        holiday_flag,                         -- 休日フラグ
+        billable_flag,                        -- 請求可能フラグ
+        bound_mode_code,                      -- バウンドモードコード
+        soft_bound_flag,                      -- ソフトバウンドフラグ
+        workflow_process_id,                  -- ワークフロープロセスID
+        notification_flag,                    -- 通知フラグ
+        notification_period,                  -- 通知期間
+        notification_period_uom,              -- 通知期間単位
+        parent_task_id,                       -- 親タスクID
+        recurrence_rule_id,                   -- 再発規則ID
+        alarm_start,                          -- 警告開始
+        alarm_start_uom,                      -- 警告開始単位
+        alarm_on,                             -- 警告中
+        alarm_count,                          -- 警告カウント
+        alarm_fired_count,                    -- 解雇警告カウント
+        alarm_interval,                       -- 警告間隔
+        alarm_interval_uom,                   -- 警告間隔単位
+        deleted_flag,                         -- 削除済フラグ
+        palm_flag,                            -- 扁平フラグ
+        wince_flag,                           -- ウィンスフラグ
+        laptop_flag,                          -- ラップトップフラグ
+        device1_flag,                         -- デバイス１
+        device2_flag,                         -- デバイス２
+        device3_flag,                         -- デバイス３
+        costs,                                -- 経費
+        currency_code,                        -- 通貨コード
+        org_id,                               -- 組織ID
+        escalation_level,                     -- エスカレーションレベル
+        attribute1,                           -- 訪問区分１
+        attribute2,                           -- 訪問区分２
+        attribute3,                           -- 訪問区分３
+        attribute4,                           -- 訪問区分４
+        attribute5,                           -- 訪問区分５
+        attribute6,                           -- 訪問区分６
+        attribute7,                           -- 訪問区分７
+        attribute8,                           -- 訪問区分８
+        attribute9,                           -- 訪問区分９
+        attribute10,                          -- 訪問区分１０
+        attribute11,                          -- 有効訪問区分
+        attribute12,                          -- 登録元区分
+        attribute13,                          -- 登録元ソース番号
+        attribute14,                          -- 顧客ステータス
+        attribute15,                          --
+        attribute_category,                   -- 属性分類
+        security_group_id,                    -- セキュリティグループID
+        orig_system_reference,                -- オリジナルシステムリファレンス
+        orig_system_reference_id,             -- オリジナルシステムリファレンスID
+        update_status_flag,                   -- ステータス更新フラグ
+        calendar_start_date,                  -- カレンダー開始日
+        calendar_end_date,                    -- カレンダー終了日
+        date_selected,                        -- 選択日
+        template_id,                          -- テンプレートID
+        template_group_id,                    -- テンプレートグループID
+        object_changed_date,                  -- オブジェクト変更日
+        task_confirmation_status,             -- タスク確認開始
+        task_confirmation_counter,            -- タスク確認カウンター
+        task_split_flag,                      -- タスク分割フラグ
+        open_flag,                            -- オープンフラグ
+        entity,                               -- 実体
+        child_position,                       -- 子ポジション
+        child_sequence_num                    -- 子シーケンス番号
+      )
+      (SELECT 
+              jtb.task_id,                        -- タスクID
+              jtb.created_by,                     -- 作成者
+              jtb.creation_date,                  -- 作成日
+              jtb.last_updated_by,                -- 最終更新者
+              jtb.last_update_date,               -- 最終更新日
+              jtb.last_update_login,              -- 最終更新ログイン
+              jtb.object_version_number,          -- オブジェクトバージョン番号
+              jtb.task_number,                    -- タスク番号
+              jtb.task_type_id,                   -- タスクタイプID
+              jtb.task_status_id,                 -- タスクステータスID
+              jtb.task_priority_id,               -- タスク優先ID
+              jtb.owner_id,                       -- 所有者ID
+              jtb.owner_type_code,                -- 所有者タイプコード
+              jtb.owner_territory_id,             -- 所有者区域ID
+              jtb.assigned_by_id,                 -- 割当者ID
+              jtb.cust_account_id,                -- アカウントID
+              jtb.customer_id,                    -- 顧客ID
+              jtb.address_id,                     -- アドレスID
+              jtb.planned_start_date,             -- 計画開始日
+              jtb.planned_end_date,               -- 計画終了日
+              jtb.scheduled_start_date,           -- 予定開始日
+              jtb.scheduled_end_date,             -- 予定終了日
+              jtb.actual_start_date,              -- 実績開始日
+              jtb.actual_end_date,                -- 実績終了日
+              jtb.source_object_type_code,        -- ソースオブジェクトタイプコード
+              jtb.timezone_id,                    -- 時差ID
+              jtb.source_object_id,               -- ソースオブジェクトID
+              jtb.source_object_name,             -- ソースオブジェクト名
+              jtb.duration,                       -- 持続
+              jtb.duration_uom,                   -- 持続単位
+              jtb.planned_effort,                 -- 活動計画
+              jtb.planned_effort_uom,             -- 活動計画単位
+              jtb.actual_effort,                  -- 活動実績
+              jtb.actual_effort_uom,              -- 活動実績単位
+              jtb.percentage_complete,            -- 進捗率
+              jtb.reason_code,                    -- 理由コード
+              jtb.private_flag,                   -- プライベートフラグ
+              jtb.publish_flag,                   -- 発行フラグ
+              jtb.restrict_closure_flag,          -- 閉鎖制限フラグ
+              jtb.multi_booked_flag,              -- マルチ予約フラグ
+              jtb.milestone_flag,                 -- マイルストーンフラグ
+              jtb.holiday_flag,                   -- 休日フラグ
+              jtb.billable_flag,                  -- 請求可能フラグ
+              jtb.bound_mode_code,                -- バウンドモードコード
+              jtb.soft_bound_flag,                -- ソフトバウンドフラグ
+              jtb.workflow_process_id,            -- ワークフロープロセスID
+              jtb.notification_flag,              -- 通知フラグ
+              jtb.notification_period,            -- 通知期間
+              jtb.notification_period_uom,        -- 通知期間単位
+              jtb.parent_task_id,                 -- 親タスクID
+              jtb.recurrence_rule_id,             -- 再発規則ID
+              jtb.alarm_start,                    -- 警告開始
+              jtb.alarm_start_uom,                -- 警告開始単位
+              jtb.alarm_on,                       -- 警告中
+              jtb.alarm_count,                    -- 警告カウント
+              jtb.alarm_fired_count,              -- 解雇警告カウント
+              jtb.alarm_interval,                 -- 警告間隔
+              jtb.alarm_interval_uom,             -- 警告間隔単位
+              jtb.deleted_flag,                   -- 削除済フラグ
+              jtb.palm_flag,                      -- 扁平フラグ
+              jtb.wince_flag,                     -- ウィンスフラグ
+              jtb.laptop_flag,                    -- ラップトップフラグ
+              jtb.device1_flag,                   -- デバイス１
+              jtb.device2_flag,                   -- デバイス２
+              jtb.device3_flag,                   -- デバイス３
+              jtb.costs,                          -- 経費
+              jtb.currency_code,                  -- 通貨コード
+              jtb.org_id,                         -- 組織ID
+              jtb.escalation_level,               -- エスカレーションレベル
+              jtb.attribute1,                     -- 訪問区分１
+              jtb.attribute2,                     -- 訪問区分２
+              jtb.attribute3,                     -- 訪問区分３
+              jtb.attribute4,                     -- 訪問区分４
+              jtb.attribute5,                     -- 訪問区分５
+              jtb.attribute6,                     -- 訪問区分６
+              jtb.attribute7,                     -- 訪問区分７
+              jtb.attribute8,                     -- 訪問区分８
+              jtb.attribute9,                     -- 訪問区分９
+              jtb.attribute10,                    -- 訪問区分１０
+              jtb.attribute11,                    -- 有効訪問区分
+              jtb.attribute12,                    -- 登録元区分
+              jtb.attribute13,                    -- 登録元ソース番号
+              jtb.attribute14,                    -- 顧客ステータス
+              jtb.attribute15,                    --
+              jtb.attribute_category,             -- 属性分類
+              jtb.security_group_id,              -- セキュリティグループID
+              jtb.orig_system_reference,          -- オリジナルシステムリファレンス
+              jtb.orig_system_reference_id,       -- オリジナルシステムリファレンスID
+              jtb.update_status_flag,             -- ステータス更新フラグ
+              jtb.calendar_start_date,            -- カレンダー開始日
+              jtb.calendar_end_date,              -- カレンダー終了日
+              jtb.date_selected,                  -- 選択日
+              jtb.template_id,                    -- テンプレートID
+              jtb.template_group_id,              -- テンプレートグループID
+              jtb.object_changed_date,            -- オブジェクト変更日
+              jtb.task_confirmation_status,       -- タスク確認開始
+              jtb.task_confirmation_counter,      -- タスク確認カウンター
+              jtb.task_split_flag,                -- タスク分割フラグ
+              jtb.open_flag,                      -- オープンフラグ
+              jtb.entity,                         -- 実体
+              jtb.child_position,                 -- 子ポジション
+              jtb.child_sequence_num              -- 子シーケンス番号
+        FROM  jtf_tasks_b jtb                 -- タスクテーブル
+        WHERE TRUNC(jtb.actual_end_date) >= TRUNC(gd_gv_value_7_from)  --メインデータ取得開始日から7日前
+        AND   TRUNC(jtb.actual_end_date) <= TRUNC(gd_gv_value_7_to)    --メインデータ取得終了日から7日前
+      );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- データ登録エラーメッセージ
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name               -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_16          -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                        ,iv_token_value1 => cv_xxcso_task_info        -- トークン値1パラメータ
+                        ,iv_token_name2  => cv_tkn_err_message        -- トークンコード2
+                        ,iv_token_value2 => SQLERRM                   -- トークン値2パラメータ
+        );
+        lv_errbuf  := lv_errmsg;
+        RAISE global_data_expt;
+    END;
+--
+    --登録件数カウント
+    ln_ins_task_count := SQL%ROWCOUNT;
+--
+    --  処理件数メッセージ編集（タスク抽出処理件数）
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name               -- アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_17          -- メッセージコード
+                    ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                    ,iv_token_value1 => cv_xxcso_task_info        -- トークン値1パラメータ
+                    ,iv_token_name2  => cv_tkn_count              -- トークンコード2
+                    ,iv_token_value2 => ln_ins_task_count         -- トークン値2パラメータ
+    );
+--
+    --  テーブル登録件数メッセージ
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  lv_errmsg
+    );
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  ''
+    );
+--
+  EXCEPTION
+    -- *** データ例外ハンドラ ***
+    WHEN global_data_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_task_info;
+--
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
   /**********************************************************************************
    * Procedure Name   : open_csv_file
    * Description      : CSVファイルオープン (A-4)
@@ -794,6 +1161,9 @@ AS
     io_get_rec      IN OUT NOCOPY g_value_rtype,       -- 訪問予定情報データ
     id_process_date IN DATE,                           -- 業務処理日
     iv_task_id      IN VARCHAR2,                       -- タスクステータスID(クローズ)
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+    in_party_id     IN NUMBER,                         -- パーティID
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
     ov_errbuf       OUT NOCOPY VARCHAR2,               -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT NOCOPY VARCHAR2,               -- リターン・コード             --# 固定 #
     ov_errmsg       OUT NOCOPY VARCHAR2                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -827,7 +1197,10 @@ AS
     -- *** ローカル変数 ***
     ld_process_date        DATE;              -- 業務処理日
     lv_visite_p_week_date  VARCHAR2(100);     -- 前週訪問時刻
-    lv_task_id             VARCHAR2(1000);    -- タスクステータスID(クローズ)
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--    lv_task_id             VARCHAR2(1000);    -- タスクステータスID(クローズ)
+    ln_task_id             NUMBER;            -- タスクステータスID(クローズ)
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
     ld_year_month_01       DATE;              -- 年月||'01'
     ld_plan_date           DATE;              -- 年月日
     ld_plan_date_7         DATE;              -- 年月日-7
@@ -854,7 +1227,10 @@ AS
 --
     -- INパラメータをローカル変数に代入
     ld_process_date   := id_process_date;     -- 業務処理日
-    lv_task_id        := iv_task_id;          -- タスクステータスID(クローズ)
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--    lv_task_id        := iv_task_id;          -- タスクステータスID(クローズ)
+    ln_task_id        := TO_NUMBER(iv_task_id); -- タスクステータスID(クローズ)
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
     l_get_rec         := io_get_rec;          -- 訪問予定を格納するレコード
     ld_plan_date_7    := TO_DATE(l_get_rec.plan_date,'YYYYMMDD')-7;            -- 年月日-7
     ld_plan_date      := TO_DATE(l_get_rec.plan_date,'YYYYMMDD');              -- 年月日
@@ -892,18 +1268,34 @@ AS
     -- 前週訪問時刻を抽出
     BEGIN
 --
-      SELECT TO_CHAR(MAX(jtb.actual_end_date),'HH24MI')
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--      SELECT TO_CHAR(MAX(jtb.actual_end_date),'HH24MI')
+      SELECT /*+
+               INDEX( jtb XXCSO_TASK_INFO_N01 )
+             */
+             TO_CHAR(MAX(jtb.actual_end_date),'HH24MI')
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
       INTO   lv_visite_p_week_date                          -- 前週訪問時刻
-      FROM   jtf_tasks_b jtb
-            ,xxcso_cust_accounts_v xcav
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--      FROM   jtf_tasks_b jtb
+--            ,xxcso_cust_accounts_v xcav
+      FROM   xxcso_task_info jtb
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
       WHERE  jtb.source_object_type_code = cv_source_obj_type_cd
-        AND  xcav.account_number = l_get_rec.account_number
-        AND  jtb.source_object_id = xcav.party_id
-        AND  jtb.task_status_id = lv_task_id
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--        AND  xcav.account_number = l_get_rec.account_number
+--        AND  jtb.source_object_id = xcav.party_id
+--        AND  jtb.task_status_id = lv_task_id
+        AND  jtb.source_object_id = in_party_id
+        AND  jtb.task_status_id   = ln_task_id
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
         AND  jtb.deleted_flag = cv_delete_flg
         AND  TRUNC(jtb.actual_end_date) = ld_plan_date_7
-        AND  xcav.account_status = cv_active_status
-        AND  xcav.party_status = cv_active_status;
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--        AND  xcav.account_status = cv_active_status
+--        AND  xcav.party_status = cv_active_status;
+        ;
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1418,13 +1810,23 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR xsasp_xcav_data_cur
     IS
-      SELECT xsasp.base_code base_code                                 -- 売上拠点コード
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD Start
+--      SELECT xsasp.base_code base_code                                 -- 売上拠点コード
+      SELECT /*+
+               LEADING(xsasp)
+               USE_NL(xcav.hca xcav.hp xcav.xca)
+             */
+             xsasp.base_code base_code                                 -- 売上拠点コード
+-- 2012-02-29 Ver.1.4 A.Shirakawa MOD End
             ,xsasp.account_number account_number                       -- 顧客コード
             ,xsasp.year_month year_month                               -- 年月
             ,xsasp.plan_day plan_day                                   -- 日
             ,xsasp.plan_date plan_date                                 -- 年月日
             ,xsasp.sales_plan_day_amt sales_plan_day_amt               -- 日別売上計画
             ,TO_CHAR(xcav.final_call_date,'YYYYMMDD') final_call_date  -- 最終訪問日
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+            ,xcav.party_id party_id                                    -- パーティID
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
       FROM   xxcso_cust_accounts_v xcav                                -- 顧客マスタビュー
             ,xxcso_account_sales_plans xsasp                           -- 顧客別売上計画テーブル
       WHERE  xcav.account_number = xsasp.account_number
@@ -1511,6 +1913,27 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+    -- =================================================
+    -- A-10.タスク情報抽出処理
+    -- =================================================
+--
+    --対象期間取得
+    gd_gv_value_7_from  :=  TO_DATE(lv_gv_value_1,'YYYYMMDD') -7;  --メインデータ取得開始から7日前
+    gd_gv_value_7_to    :=  TO_DATE(lv_gv_value_8,'YYYYMMDD') -7;  --メインデータ取得終了から7日前
+--
+    --タスク情報抽出処理
+    ins_task_info(
+      ov_errbuf           => lv_errbuf,         -- エラー・メッセージ            --# 固定 #
+      ov_retcode          => lv_retcode,        -- リターン・コード              --# 固定 #
+      ov_errmsg           => lv_errmsg          -- ユーザー・エラー・メッセージ    --# 固定 #
+    );
+--
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
     -- =================================================
     -- A-4.CSVファイルオープン 
     -- =================================================
@@ -1592,6 +2015,9 @@ AS
            io_get_rec       => l_get_rec        -- 訪問予定情報データ
           ,id_process_date  => ld_process_date  -- 業務処理日
           ,iv_task_id       => lv_task_id       -- タスクステータスID(クローズ)
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD Start
+          ,in_party_id      => l_xsasp_xcav_data_rec.party_id  -- パーティID
+-- 2012-02-29 Ver.1.4 A.Shirakawa ADD End
           ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
           ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
           ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ    --# 固定 #
