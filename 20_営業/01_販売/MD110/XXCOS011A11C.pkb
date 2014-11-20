@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A11C (body)
  * Description      : 個別商品販売実績ＥＤＩデータ作成
  * MD.050           : 個別商品販売実績ＥＤＩデータ作成 MD050_COS_011_A11
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2011/03/25    1.1   Oukou            [E_本稼動_06945]個別商品販売実績作成の内容の対応
  *  2011/04/07    1.2   Oukou            [E_本稼動_07120]見本データを対象外にする対応
  *  2011/04/12    1.3   Oukou            [E_本稼動_07032]指定業種小分類の販売実績抽出対応
+ *  2011/07/15    1.4   S.Niki           [E_本稼動_07905]販売実績ヘッダ更新のパフォーマンス改善対応
  *****************************************************************************************/
 --
 --
@@ -217,7 +218,11 @@ AS
   -- ===================================
   -- 販売実績情報
   TYPE g_sales_data_rtype IS RECORD(
-     orig_delivery_date          xxcos_sales_exp_headers.orig_delivery_date%TYPE
+/* 2011/07/15 Ver1.4 MOD Start */
+--     orig_delivery_date          xxcos_sales_exp_headers.orig_delivery_date%TYPE
+     sales_exp_header_id         xxcos_sales_exp_headers.sales_exp_header_id%TYPE
+    ,orig_delivery_date          xxcos_sales_exp_headers.orig_delivery_date%TYPE
+/* 2011/07/15 Ver1.4 MOD End */
     ,ship_to_customer_code       xxcos_sales_exp_headers.ship_to_customer_code%TYPE
     ,item_code                   xxcos_sales_exp_lines.item_code%TYPE
     ,standard_qty                xxcos_sales_exp_lines.standard_qty%TYPE
@@ -228,7 +233,11 @@ AS
     );
   -- 販売実績情報（更新）
   TYPE g_sales_update_rtype IS RECORD(
-     orig_delivery_date          xxcos_sales_exp_headers.orig_delivery_date%TYPE
+/* 2011/07/15 Ver1.4 MOD Start */
+--     orig_delivery_date          xxcos_sales_exp_headers.orig_delivery_date%TYPE
+     sales_exp_header_id         xxcos_sales_exp_headers.sales_exp_header_id%TYPE
+    ,orig_delivery_date          xxcos_sales_exp_headers.orig_delivery_date%TYPE
+/* 2011/07/15 Ver1.4 MOD End */
     ,ship_to_customer_code       xxcos_sales_exp_headers.ship_to_customer_code%TYPE
     );
 --
@@ -241,6 +250,10 @@ AS
   TYPE g_sales_update_ttype  IS TABLE OF g_sales_update_rtype INDEX BY BINARY_INTEGER;
   TYPE g_header_id_ttype     IS TABLE OF xxcos_sales_exp_headers.sales_exp_header_id%TYPE INDEX BY BINARY_INTEGER;
   TYPE g_cust_code_ttype     IS TABLE OF xxcos_sales_exp_headers.ship_to_customer_code%TYPE INDEX BY BINARY_INTEGER;
+/* 2011/07/15 Ver1.4 ADD Start */
+  -- 販売実績ヘッダ更新用ID
+  TYPE g_sales_exp_header_id IS TABLE OF xxcos_sales_exp_headers.sales_exp_header_id%TYPE INDEX BY BINARY_INTEGER;
+/* 2011/07/15 Ver1.4 ADD End */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -272,6 +285,10 @@ AS
   gt_data_type_code               xxcos_lookup_values_v.lookup_code%TYPE;                   -- データ種コード
   gt_from_series                  xxcos_lookup_values_v.attribute1%TYPE;                    -- IF元業務系列コード
 /* 2011/03/25 Ver1.1 ADD End   */
+--
+/* 2011/07/15 Ver1.4 ADD Start */
+  gt_sales_exp_header_id          g_sales_exp_header_id;                                    -- 販売実績ヘッダ更新用
+/* 2011/07/15 Ver1.4 ADD End */
 --
   -- ===============================
   -- ユーザー定義例外
@@ -1022,7 +1039,11 @@ AS
              USE_NL(xseh xsel flv)
              USE_NL(xseh hca)
              USE_NL(hca xca hcas hps hpa hlo flv1) */
-             xseh.orig_delivery_date            orig_delivery_date         -- 納品日
+/* 2011/07/15 Ver1.4 MOD Start */
+--             xseh.orig_delivery_date            orig_delivery_date         -- 納品日
+             xseh.sales_exp_header_id           sales_exp_header_id        -- 販売実績ヘッダID
+            ,xseh.orig_delivery_date            orig_delivery_date         -- 納品日
+/* 2011/07/15 Ver1.4 MOD End */
             ,xseh.ship_to_customer_code         ship_to_customer_code      -- 顧客コード
             ,xsel.item_code                     item_code                  -- 品目コード
             ,NVL(xsel.standard_qty, cn_0)       standard_qty               -- 数量
@@ -1118,7 +1139,11 @@ AS
              USE_NL(xseh xsel flv)
              USE_NL(xseh hca)
              USE_NL(hca xca hcas hps hpa hlo flv1) */
-             xseh.orig_delivery_date            orig_delivery_date         -- 納品日
+/* 2011/07/15 Ver1.4 MOD Start */
+--             xseh.orig_delivery_date            orig_delivery_date         -- 納品日
+             xseh.sales_exp_header_id           sales_exp_header_id        -- 販売実績ヘッダID
+            ,xseh.orig_delivery_date            orig_delivery_date         -- 納品日
+/* 2011/07/15 Ver1.4 MOD End */
             ,xseh.ship_to_customer_code         ship_to_customer_code      -- 顧客コード
             ,xsel.item_code                     item_code                  -- 品目コード
             ,NVL(xsel.standard_qty, cn_0)       standard_qty               -- 数量
@@ -1394,6 +1419,9 @@ AS
     -- *** ローカル変数 ***
     ln_quantity      NUMBER;                              -- 合計数量
     ln_seq           NUMBER;                              -- 添字用(A-8の処理用)
+/* 2011/07/15 Ver1.4 ADD Start */
+    ln_seq2          NUMBER;                              -- 添字用(A-8の処理用)
+/* 2011/07/15 Ver1.4 ADD End */
     ln_cnt           NUMBER;                              -- 更新顧客件数
     ln_normal_cnt    NUMBER;                              -- 成功件数
     ln_warn_cnt      NUMBER;                              -- 警告件数
@@ -1415,6 +1443,9 @@ AS
 --###########################  固定部 END   ############################
 --
     ln_seq        := cn_0;
+/* 2011/07/15 Ver1.4 ADD Start */
+    ln_seq2       := cn_0;
+/* 2011/07/15 Ver1.4 ADD End */
     ln_normal_cnt := cn_0;
     ln_warn_cnt   := cn_0;
     l_date_rec    := gt_sale_data_tbl(cn_1);
@@ -1524,6 +1555,10 @@ AS
             --
             -- 成功件数加算
             ln_normal_cnt := ln_normal_cnt + cn_1;
+/* 2011/07/15 Ver1.4 ADD Start */
+            ln_seq2 := ln_seq2 + cn_1;
+            gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+/* 2011/07/15 Ver1.4 ADD End */
             --
           END IF;
           --
@@ -1619,6 +1654,10 @@ AS
         );
         -- 成功件数加算
         ln_normal_cnt := ln_normal_cnt + cn_1;
+/* 2011/07/15 Ver1.4 ADD Start */
+        ln_seq2 := ln_seq2 + cn_1;
+        gt_sales_exp_header_id(ln_seq2) := l_date_rec.sales_exp_header_id;
+/* 2011/07/15 Ver1.4 ADD End */
         --
       END IF;
       --
@@ -1792,8 +1831,11 @@ AS
 --
     BEGIN
       -- 販売実績ヘッダTBLフラグ更新（送信済）
-      <<sale_update>>
-      FOR i IN  1.. gt_sale_update_tbl.COUNT LOOP
+/* 2011/07/15 Ver1.4 MOD Start */
+--      <<sale_update>>
+--      FOR i IN  1.. gt_sale_update_tbl.COUNT LOOP
+      FORALL i IN  1.. gt_sales_exp_header_id.COUNT
+/* 2011/07/15 Ver1.4 MOD End */
         UPDATE  xxcos_sales_exp_headers         xseh  --販売実績ヘッダ
         SET     xseh.item_sales_send_date       = DECODE(iv_act_mode,
                                                          cv_run_class_cd_create, gd_business_date,
@@ -1807,14 +1849,19 @@ AS
                ,xseh.program_application_id     = cn_program_application_id  -- コンカレント・プログラム・アプリケーションID
                ,xseh.program_id                 = cn_program_id              -- コンカレント・プログラムID
                ,xseh.program_update_date        = cd_program_update_date     -- プログラム更新日
-        WHERE   xseh.item_sales_send_flag       IS NULL
-        AND     xseh.ship_to_customer_code      = gt_sale_update_tbl(i).ship_to_customer_code
-        AND     xseh.orig_delivery_date         = gt_sale_update_tbl(i).orig_delivery_date
-        AND     xseh.business_date              >= gd_business_date_start
-        AND     xseh.business_date              <= gd_business_date_end
-        AND     xseh.orig_delivery_date         >= TO_DATE(gt_start_date, cv_date_format_sl)
+/* 2011/07/15 Ver1.4 MOD Start */
+--        WHERE   xseh.item_sales_send_flag       IS NULL
+--        AND     xseh.ship_to_customer_code      = gt_sale_update_tbl(i).ship_to_customer_code
+--        AND     xseh.orig_delivery_date         = gt_sale_update_tbl(i).orig_delivery_date
+--        AND     xseh.business_date              >= gd_business_date_start
+--        AND     xseh.business_date              <= gd_business_date_end
+--        AND     xseh.orig_delivery_date         >= TO_DATE(gt_start_date, cv_date_format_sl)
+        WHERE   xseh.sales_exp_header_id        = gt_sales_exp_header_id(i)
+/* 2011/07/15 Ver1.4 MOD End */
         ;
-      END LOOP sale_update;
+/* 2011/07/15 Ver1.4 DEL Start */
+--      END LOOP sale_update;
+/* 2011/07/15 Ver1.4 DEL End */
     EXCEPTION
       WHEN OTHERS THEN
         --トークン取得
