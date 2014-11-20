@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/05/14    1.3   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
  *  2009/05/28    1.4   H.Sasaki         [T1_1234]累計テーブルの作成方法修正
  *  2009/06/04    1.5   H.Sasaki         [T1_1324]当日取引データにて消化VDを対象外とする
+ *  2009/06/05    1.6   H.Sasaki         [T1_1123]入出庫０の場合、累計データを作成しない
  *
  *****************************************************************************************/
 --
@@ -1804,7 +1805,10 @@ AS
            )
         THEN
           -- 全項目０の場合、日時在庫受払表を作成しない
-          NULL;
+-- == 2009/06/05 V1.6 Added START ===============================================================
+          -- 累計テーブル作成用年月を設定
+          lt_practice_date  :=  NULL;
+-- == 2009/06/05 V1.6 Added START ===============================================================
           --
         ELSIF (lv_transaction_month = TO_CHAR(gd_f_business_date, cv_month)) THEN
           -- 取引日が業務年月と同一の場合、当日データとして処理
@@ -2361,65 +2365,72 @@ AS
         END IF;
         --
 -- == 2009/05/28 V1.4 Added START ===============================================================
-        -- ==============================================
-        --  A-8.累計受払データ出力
-        -- ==============================================
-        set_reception_sum(
-          it_base_code                =>  lt_base_code                          -- 01.拠点コード
-         ,it_subinventory_code        =>  lt_subinventory_code                  -- 03.保管場所
-         ,it_practice_date            =>  lt_practice_date                      -- 04.年月日
-         ,it_inventory_item_id        =>  lt_inventory_item_id                  -- 05.品目ID
-         ,it_subinventory_type        =>  lt_subinventory_type                  -- 06.保管場所区分
-         ,it_operation_cost           =>  lt_operation_cost                     -- 07.営業原価
-         ,it_standard_cost            =>  lt_standard_cost                      -- 08.標準原価
-         ,it_sales_shipped            =>  lt_sales_shipped                      -- 10.売上出庫
-         ,it_sales_shipped_b          =>  lt_sales_shipped_b                    -- 11.売上出庫振戻
-         ,it_return_goods             =>  lt_return_goods                       -- 12.返品
-         ,it_return_goods_b           =>  lt_return_goods_b                     -- 13.返品振戻
-         ,it_warehouse_ship           =>  lt_warehouse_ship                     -- 14.倉庫へ返庫
-         ,it_truck_ship               =>  lt_truck_ship                         -- 15.営業車へ出庫
-         ,it_others_ship              =>  lt_others_ship                        -- 16.入出庫＿その他出庫
-         ,it_warehouse_stock          =>  lt_warehouse_stock                    -- 17.倉庫より入庫
-         ,it_truck_stock              =>  lt_truck_stock                        -- 18.営業車より入庫
-         ,it_others_stock             =>  lt_others_stock                       -- 19.入出庫＿その他入庫
-         ,it_change_stock             =>  lt_change_stock                       -- 20.倉替入庫
-         ,it_change_ship              =>  lt_change_ship                        -- 21.倉替出庫
-         ,it_goods_transfer_old       =>  lt_goods_transfer_old                 -- 22.商品振替（旧商品）
-         ,it_goods_transfer_new       =>  lt_goods_transfer_new                 -- 23.商品振替（新商品）
-         ,it_sample_quantity          =>  lt_sample_quantity                    -- 24.見本出庫
-         ,it_sample_quantity_b        =>  lt_sample_quantity_b                  -- 25.見本出庫振戻
-         ,it_customer_sample_ship     =>  lt_customer_sample_ship               -- 26.顧客見本出庫
-         ,it_customer_sample_ship_b   =>  lt_customer_sample_ship_b             -- 27.顧客見本出庫振戻
-         ,it_customer_support_ss      =>  lt_customer_support_ss                -- 28.顧客協賛見本出庫
-         ,it_customer_support_ss_b    =>  lt_customer_support_ss_b              -- 29.顧客協賛見本出庫振戻
-         ,it_vd_supplement_stock      =>  lt_vd_supplement_stock                -- 32.消化VD補充入庫
-         ,it_vd_supplement_ship       =>  lt_vd_supplement_ship                 -- 33.消化VD補充出庫
-         ,it_inventory_change_in      =>  lt_inventory_change_in                -- 34.基準在庫変更入庫
-         ,it_inventory_change_out     =>  lt_inventory_change_out               -- 35.基準在庫変更出庫
-         ,it_factory_return           =>  lt_factory_return                     -- 36.工場返品
-         ,it_factory_return_b         =>  lt_factory_return_b                   -- 37.工場返品振戻
-         ,it_factory_change           =>  lt_factory_change                     -- 38.工場倉替
-         ,it_factory_change_b         =>  lt_factory_change_b                   -- 39.工場倉替振戻
-         ,it_removed_goods            =>  lt_removed_goods                      -- 40.廃却
-         ,it_removed_goods_b          =>  lt_removed_goods_b                    -- 41.廃却振戻
-         ,it_factory_stock            =>  lt_factory_stock                      -- 42.工場入庫
-         ,it_factory_stock_b          =>  lt_factory_stock_b                    -- 43.工場入庫振戻
-         ,it_ccm_sample_ship          =>  lt_ccm_sample_ship                    -- 30.顧客広告宣伝費A自社商品
-         ,it_ccm_sample_ship_b        =>  lt_ccm_sample_ship_b                  -- 31.顧客広告宣伝費A自社商品振戻
-         ,it_wear_decrease            =>  lt_wear_decrease                      -- 44.棚卸減耗増
-         ,it_wear_increase            =>  lt_wear_increase                      -- 45.棚卸減耗減
-         ,it_selfbase_ship            =>  lt_selfbase_ship                      -- 46.保管場所移動＿自拠点出庫
-         ,it_selfbase_stock           =>  lt_selfbase_stock                     -- 47.保管場所移動＿自拠点入庫
-         ,it_book_inventory_quantity  =>  lt_book_inventory_quantity            -- 48.帳簿在庫数
-         ,ib_chk_result               =>  lb_chk_result                         -- 49.在庫会計期間OPEN判定
-         ,ov_errbuf                   =>  lv_errbuf       --   エラー・メッセージ           --# 固定 #
-         ,ov_retcode                  =>  lv_retcode      --   リターン・コード             --# 固定 #
-         ,ov_errmsg                   =>  lv_errmsg       --   ユーザー・エラー・メッセージ --# 固定 #
-        );
-        -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
+-- == 2009/06/05 V1.6 Added START ===============================================================
+          -- 累計テーブル作成用年月が設定されている場合、累計情報を作成
+        IF (lt_practice_date  IS NOT NULL)  THEN
+-- == 2009/06/05 V1.6 Added START ===============================================================
+          -- ==============================================
+          --  A-8.累計受払データ出力
+          -- ==============================================
+          set_reception_sum(
+            it_base_code                =>  lt_base_code                          -- 01.拠点コード
+           ,it_subinventory_code        =>  lt_subinventory_code                  -- 03.保管場所
+           ,it_practice_date            =>  lt_practice_date                      -- 04.年月日
+           ,it_inventory_item_id        =>  lt_inventory_item_id                  -- 05.品目ID
+           ,it_subinventory_type        =>  lt_subinventory_type                  -- 06.保管場所区分
+           ,it_operation_cost           =>  lt_operation_cost                     -- 07.営業原価
+           ,it_standard_cost            =>  lt_standard_cost                      -- 08.標準原価
+           ,it_sales_shipped            =>  lt_sales_shipped                      -- 10.売上出庫
+           ,it_sales_shipped_b          =>  lt_sales_shipped_b                    -- 11.売上出庫振戻
+           ,it_return_goods             =>  lt_return_goods                       -- 12.返品
+           ,it_return_goods_b           =>  lt_return_goods_b                     -- 13.返品振戻
+           ,it_warehouse_ship           =>  lt_warehouse_ship                     -- 14.倉庫へ返庫
+           ,it_truck_ship               =>  lt_truck_ship                         -- 15.営業車へ出庫
+           ,it_others_ship              =>  lt_others_ship                        -- 16.入出庫＿その他出庫
+           ,it_warehouse_stock          =>  lt_warehouse_stock                    -- 17.倉庫より入庫
+           ,it_truck_stock              =>  lt_truck_stock                        -- 18.営業車より入庫
+           ,it_others_stock             =>  lt_others_stock                       -- 19.入出庫＿その他入庫
+           ,it_change_stock             =>  lt_change_stock                       -- 20.倉替入庫
+           ,it_change_ship              =>  lt_change_ship                        -- 21.倉替出庫
+           ,it_goods_transfer_old       =>  lt_goods_transfer_old                 -- 22.商品振替（旧商品）
+           ,it_goods_transfer_new       =>  lt_goods_transfer_new                 -- 23.商品振替（新商品）
+           ,it_sample_quantity          =>  lt_sample_quantity                    -- 24.見本出庫
+           ,it_sample_quantity_b        =>  lt_sample_quantity_b                  -- 25.見本出庫振戻
+           ,it_customer_sample_ship     =>  lt_customer_sample_ship               -- 26.顧客見本出庫
+           ,it_customer_sample_ship_b   =>  lt_customer_sample_ship_b             -- 27.顧客見本出庫振戻
+           ,it_customer_support_ss      =>  lt_customer_support_ss                -- 28.顧客協賛見本出庫
+           ,it_customer_support_ss_b    =>  lt_customer_support_ss_b              -- 29.顧客協賛見本出庫振戻
+           ,it_vd_supplement_stock      =>  lt_vd_supplement_stock                -- 32.消化VD補充入庫
+           ,it_vd_supplement_ship       =>  lt_vd_supplement_ship                 -- 33.消化VD補充出庫
+           ,it_inventory_change_in      =>  lt_inventory_change_in                -- 34.基準在庫変更入庫
+           ,it_inventory_change_out     =>  lt_inventory_change_out               -- 35.基準在庫変更出庫
+           ,it_factory_return           =>  lt_factory_return                     -- 36.工場返品
+           ,it_factory_return_b         =>  lt_factory_return_b                   -- 37.工場返品振戻
+           ,it_factory_change           =>  lt_factory_change                     -- 38.工場倉替
+           ,it_factory_change_b         =>  lt_factory_change_b                   -- 39.工場倉替振戻
+           ,it_removed_goods            =>  lt_removed_goods                      -- 40.廃却
+           ,it_removed_goods_b          =>  lt_removed_goods_b                    -- 41.廃却振戻
+           ,it_factory_stock            =>  lt_factory_stock                      -- 42.工場入庫
+           ,it_factory_stock_b          =>  lt_factory_stock_b                    -- 43.工場入庫振戻
+           ,it_ccm_sample_ship          =>  lt_ccm_sample_ship                    -- 30.顧客広告宣伝費A自社商品
+           ,it_ccm_sample_ship_b        =>  lt_ccm_sample_ship_b                  -- 31.顧客広告宣伝費A自社商品振戻
+           ,it_wear_decrease            =>  lt_wear_decrease                      -- 44.棚卸減耗増
+           ,it_wear_increase            =>  lt_wear_increase                      -- 45.棚卸減耗減
+           ,it_selfbase_ship            =>  lt_selfbase_ship                      -- 46.保管場所移動＿自拠点出庫
+           ,it_selfbase_stock           =>  lt_selfbase_stock                     -- 47.保管場所移動＿自拠点入庫
+           ,it_book_inventory_quantity  =>  lt_book_inventory_quantity            -- 48.帳簿在庫数
+           ,ib_chk_result               =>  lb_chk_result                         -- 49.在庫会計期間OPEN判定
+           ,ov_errbuf                   =>  lv_errbuf       --   エラー・メッセージ           --# 固定 #
+           ,ov_retcode                  =>  lv_retcode      --   リターン・コード             --# 固定 #
+           ,ov_errmsg                   =>  lv_errmsg       --   ユーザー・エラー・メッセージ --# 固定 #
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+-- == 2009/06/05 V1.6 Added START ===============================================================
         END IF;
+-- == 2009/06/05 V1.6 Added START ===============================================================
 -- == 2009/05/28 V1.4 Added END   ===============================================================
         -- 集計項目初期化
         FOR i IN  1 .. 38 LOOP
