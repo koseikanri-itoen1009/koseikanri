@@ -7,7 +7,7 @@ AS
  * Description      : 販売計画表
  * MD.050/070       : 販売計画・引取計画 (T_MD050_BPO_100)
  *                    販売計画表         (T_MD070_BPO_10B)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -28,14 +28,14 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/01/18    1.0   Tatsuya Kurata   新規作成
- *  2008/04/22    1.1   Masanobu Kimura  内部変更要求#27
- *  2008/04/28    1.2   Sumie Nakamura   仕入･標準単価ヘッダ(アドオン)抽出条件漏れ対応
- *  2008/04/28    1.3   Yuko Kawano      内部変更要求#62,76
- *  2008/04/30    1.4   Tatsuya Kurata   内部変更要求#76
- *  2008/07/02    1.5   Satoshi Yunba    禁則文字対応
- *  2009/03/23    1.6   Hajime Iida      本番障害#1334対応
- *
+ *  2008/01/18   1.0   Tatsuya Kurata   新規作成
+ *  2008/04/22   1.1   Masanobu Kimura  内部変更要求#27
+ *  2008/04/28   1.2   Sumie Nakamura   仕入･標準単価ヘッダ(アドオン)抽出条件漏れ対応
+ *  2008/04/28   1.3   Yuko Kawano      内部変更要求#62,76
+ *  2008/04/30   1.4   Tatsuya Kurata   内部変更要求#76
+ *  2008/07/02   1.5   Satoshi Yunba    禁則文字対応
+ *  2009/03/23   1.6   Hajime Iida      本番障害#1334対応
+ *  2009/04/14   1.7   吉元 強樹        本番障害#1409対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -166,8 +166,12 @@ AS
   gn_org_id             NUMBER;            -- マスタ組織ID
 --2008.04.28 Y.Kawano add end
 -- ＳＱＬ作成用
-  gv_sql_sel            VARCHAR2(9000);    -- SQL組合せ用
-  gv_sql_select         VARCHAR2(2000);    -- SELECT句
+-- 2009/04/13 v1.7 T.Yoshimoto Mod Start 修正時のコメント増加によりバッファオーバー発生
+  --gv_sql_sel            VARCHAR2(9000);    -- SQL組合せ用
+  gv_sql_sel            VARCHAR2(20000);    -- SQL組合せ用
+  --gv_sql_select         VARCHAR2(2000);    -- SELECT句
+  gv_sql_select         VARCHAR2(5000);    -- SELECT句
+-- 2009/04/13 v1.7 T.Yoshimoto Mod End 修正時のコメント増加によりバッファオーバー発生
   gv_sql_from           VARCHAR2(1000);    -- FROM句
   gv_sql_where          VARCHAR2(6000);    -- WHERE句
   gv_sql_order_by       VARCHAR2(1000);    -- ORDER BY句
@@ -377,13 +381,18 @@ AS
 --                            ,ximv.new_price         AS n_amount     -- 新・定価
 -- 2009/03/23 v1.6 H.Iida Mod Start 統合テスト指摘311
 --                            ,SUM(ximv.num_of_cases) AS case_quant   -- 入数
-                            ,ximv.num_of_cases        AS case_quant   -- 入数
+                            ,ximv.num_of_cases      AS case_quant   -- 入数
 -- 2009/03/23 v1.6 H.Iida Mod End
                             ,SUM(mfd.attribute4)    AS quant        -- 数量
                             ,SUM(mfd.attribute2)    AS amount       -- 金額
-                            ,SUM(xph.total_amount)                  -- 内訳合計
-                            ,SUM(ximv.old_price)    AS o_amount     -- 旧・定価
-                            ,SUM(ximv.new_price)    AS n_amount     -- 新・定価
+-- 2009/04/13 v1.7 T.Yoshimoto Mod Start 本番#1409
+                            --,SUM(xph.total_amount)                  -- 内訳合計
+                            --,SUM(ximv.old_price)    AS o_amount     -- 旧・定価
+                            --,SUM(ximv.new_price)    AS n_amount     -- 新・定価
+                            ,xph.total_amount                       -- 内訳合計
+                            ,ximv.old_price         AS o_amount     -- 旧・定価
+                            ,ximv.new_price         AS n_amount     -- 新・定価
+-- 2009/04/13 v1.7 T.Yoshimoto Mod End 本番#1409
 --2008.04.28 Y.Kawano modify end
                             ,ximv.price_start_date  AS price_st     -- 定価適用開始日
                             ';
@@ -446,12 +455,17 @@ AS
 --
 --2008.04.28 Y.Kawano add start
     -- GROUP BY句
-    gv_sql_group_by      := ' GROUP BY xicv1.segment1   -- 商品区分
-                                      ,xicv.segment1    -- 群コード
-                                      ,ximv.item_no     -- 品目
+    gv_sql_group_by      := ' GROUP BY xicv1.segment1     -- 商品区分
+                                      ,xicv.segment1      -- 群コード
+                                      ,ximv.item_no       -- 品目
 -- 2009/03/23 v1.6 H.Iida Add Start 統合テスト指摘311
                                       ,ximv.num_of_cases  -- 入数
 -- 2009/03/23 v1.6 H.Iida Add End
+-- 2009/04/13 v1.7 T.Yoshimoto Mod Start 本番#1409
+                                      ,xph.total_amount   -- 内訳合計
+                                      ,ximv.old_price     -- 旧・定価
+                                      ,ximv.new_price     -- 新・定価
+-- 2009/04/13 v1.7 T.Yoshimoto Mod End 本番#1409
                                       ,ximv.item_short_name
                                       ,ximv.price_start_date';
 
@@ -713,9 +727,14 @@ AS
 --                            ,xph.total_amount                       -- 内訳合計
 --                            ,ximv.old_price         AS o_amount     -- 旧・定価
 --                            ,ximv.new_price         AS n_amount     -- 新・定価
-                            ,SUM(xph.total_amount)                  -- 内訳合計
-                            ,SUM(ximv.old_price)    AS o_amount     -- 旧・定価
-                            ,SUM(ximv.new_price)    AS n_amount     -- 新・定価
+-- 2009/04/13 v1.7 T.Yoshimoto Mod Start 本番#1409
+                            --,SUM(xph.total_amount)                  -- 内訳合計
+                            --,SUM(ximv.old_price)    AS o_amount     -- 旧・定価
+                            --,SUM(ximv.new_price)    AS n_amount     -- 新・定価
+                            ,xph.total_amount                       -- 内訳合計
+                            ,ximv.old_price         AS o_amount     -- 旧・定価
+                            ,ximv.new_price         AS n_amount     -- 新・定価
+-- 2009/04/13 v1.7 T.Yoshimoto Mod End 本番#1409
 --2008.04.28 Y.Kawano modify end
                             ,ximv.price_start_date  AS price_st     -- 定価適用開始日
                             ';
@@ -793,13 +812,18 @@ AS
 --
 --2008.04.28 Y.Kawano add start
     -- GROUP BY句
-    gv_sql_group_by      := ' GROUP BY xicv1.segment1   -- 商品区分
+    gv_sql_group_by      := ' GROUP BY xicv1.segment1     -- 商品区分
                                       ,mfd.attribute5
-                                      ,xicv.segment1    -- 群コード
-                                      ,ximv.item_no     -- 品目
+                                      ,xicv.segment1      -- 群コード
+                                      ,ximv.item_no       -- 品目
 -- 2009/03/23 v1.6 H.Iida Add Start 統合テスト指摘311
                                       ,ximv.num_of_cases  -- 入数
 -- 2009/03/23 v1.6 H.Iida Add End
+-- 2009/04/13 v1.7 T.Yoshimoto Mod Start 本番#1409
+                                      ,xph.total_amount   -- 内訳合計
+                                      ,ximv.old_price     -- 旧・定価
+                                      ,ximv.new_price     -- 新・定価
+-- 2009/04/13 v1.7 T.Yoshimoto Mod End 本番#1409
                                       ,xpv.party_short_name 
                                       ,ximv.item_short_name
                                       ,ximv.price_start_date';
