@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/09/14    1.1   H.Sasaki         [0001348]PT対応
  *  2009/11/23    1.2   T.Kojima         [E_本稼動_00006]空コラムIF
  *  2010/05/13    1.3   H.Sasaki         [E_本稼動_02654]顧客移行情報のステータスを検索条件に追加
+ *  2010/12/28    1.4   H.Sekine         [E_本稼動_05846]基準在庫数がNULLの場合、満タン数に'0'をセットするように変更
  *
  *****************************************************************************************/
 --
@@ -37,6 +38,9 @@ AS
 --
   --ステータス・コード
   cv_status_normal          CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal; --正常:0
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+  cv_status_warn            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --警告:1
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
   cv_status_error           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --異常:2
   --WHOカラム
   cn_created_by             CONSTANT NUMBER      := fnd_global.user_id;         --CREATED_BY
@@ -59,6 +63,9 @@ AS
   gv_out_msg       VARCHAR2(2000);
   gn_target_cnt    NUMBER;                    -- 対象件数
   gn_normal_cnt    NUMBER;                    -- 正常件数
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+  gn_warn_cnt      NUMBER;                    -- 警告件数
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
   gn_error_cnt     NUMBER;                    -- エラー件数
 --
 --################################  固定部 END   ##################################
@@ -96,12 +103,19 @@ AS
   cv_last_coop_d_get_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10010'; -- 最終連携日時取得エラーメッセージ
   cv_table_lock_err_msg       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10001'; -- ロック取得エラーメッセージ
   cv_file_remain_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00027'; -- ファイル存在チェックエラーメッセージ
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+  cv_qty_null_err_msg         CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10429'; -- 基準在庫数NULLメッセージ
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
   -- トークン
   cv_tkn_p_flag               CONSTANT VARCHAR2(20)  := 'P_FLAG';           -- 夜間実行フラグ
   cv_tkn_program_id           CONSTANT VARCHAR2(20)  := 'PROGRAM_ID';       -- プログラムID
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20)  := 'PRO_TOK';          -- プロファイル名
   cv_tkn_file_name            CONSTANT VARCHAR2(20)  := 'FILE_NAME';        -- ファイル名
   cv_tkn_dir_tok              CONSTANT VARCHAR2(20)  := 'DIR_TOK';          -- ディレクトリ名
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+  cv_tkn_cust_code            CONSTANT VARCHAR2(20)  := 'CUST_CODE';        -- 顧客コード
+  cv_tkn_column_no            CONSTANT VARCHAR2(20)  := 'COLUMN_NO';        -- コラムNO
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
 --
   cv_night_exec_flag_y        CONSTANT VARCHAR2(1)   := 'Y';                -- 夜間実行フラグ：'Y'
   cv_night_exec_flag_n        CONSTANT VARCHAR2(1)   := 'N';                -- 夜間実行フラグ：'N'
@@ -117,6 +131,9 @@ AS
 -- == 2010/05/13 V1.3 Added START ===============================================================
   cv_status_a                 CONSTANT VARCHAR2(1)   := 'A';                --  ステータスA:確定
 -- == 2010/05/13 V1.3 Added END   ===============================================================
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+  cv_qty_zero                 CONSTANT VARCHAR2(1)   := '0';                -- 満タン数:'0'
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -858,6 +875,28 @@ AS
         lv_inventory_quantity := TO_CHAR( get_xmvc_tbl_rec.inventory_quantity );                       -- 満タン数
         lv_last_update_date   := TO_CHAR( get_xmvc_tbl_rec.last_update_date, 'YYYY/MM/DD HH24:MI:SS' );-- 更新日時
   --
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+        IF (lv_inventory_quantity IS NULL) THEN
+          lv_inventory_quantity := cv_qty_zero;
+          --
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_appl_short_name_xxcoi
+                          , iv_name         => cv_qty_null_err_msg
+                          , iv_token_name1  => cv_tkn_cust_code
+                          , iv_token_value1 => get_xmvc_tbl_rec.cust_code
+                          , iv_token_name2  => cv_tkn_column_no
+                          , iv_token_value2 => lv_column_no
+                        );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+            , buff   => gv_out_msg
+          );
+          --
+          -- 警告件数カウント
+          gn_warn_cnt := gn_warn_cnt + 1 ;
+        END IF;
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
         -- CSVデータを作成
         lv_csv_file := (
           cv_encloser || get_xmvc_tbl_rec.cust_code || cv_encloser || cv_delimiter ||  -- 顧客コード
@@ -1068,6 +1107,9 @@ AS
     -- グローバル変数の初期化
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+    gn_warn_cnt   := 0;
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
     gn_error_cnt  := 0;
 --
     --*********************************************
@@ -1246,6 +1288,10 @@ AS
     cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+    cv_warn_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-00001'; -- 警告件数メッセージ
+    cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -1326,12 +1372,28 @@ AS
                       iv_application  => cv_appl_short_name_xxccp
                     , iv_name         => cv_success_rec_msg
                     , iv_token_name1  => cv_cnt_token
-                    , iv_token_value1 => TO_CHAR( gn_normal_cnt )
+-- == 2010/12/28 V1.4 MOD START  ===============================================================
+--                    , iv_token_value1 => TO_CHAR( gn_normal_cnt )
+                    , iv_token_value1 => TO_CHAR( gn_normal_cnt - gn_warn_cnt )
+-- == 2010/12/28 V1.4 MOD END    ===============================================================
                   );
     FND_FILE.PUT_LINE(
         which  => FND_FILE.OUTPUT
       , buff   => gv_out_msg
     );
+-- == 2010/12/28 V1.4 ADD START  ===============================================================
+    --警告件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name_xxccp
+                    , iv_name         => cv_warn_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR( gn_warn_cnt )
+                  );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+-- == 2010/12/28 V1.4 ADD END    ===============================================================
 --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
@@ -1352,7 +1414,14 @@ AS
 --
     --終了メッセージ
     IF ( lv_retcode = cv_status_normal ) THEN
-      lv_message_code := cv_normal_msg;
+-- == 2010/12/28 V1.4 MOD START  ===============================================================
+      IF ( gn_warn_cnt <> 0 ) THEN
+        lv_message_code := cv_warn_msg;
+        lv_retcode := cv_status_warn;
+      ELSE
+        lv_message_code := cv_normal_msg;
+      END IF;
+-- == 2010/12/28 V1.4 MOD END    ===============================================================
     ELSIF ( lv_retcode = cv_status_error ) THEN
       lv_message_code := cv_error_msg;
     END IF;
