@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A03C(body)
  * Description      : 販手残高計算処理
  * MD.050           : 販売手数料（自販機）の支払予定額（未払残高）を計算 MD050_COK_014_A03
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/01/13    1.0   A.Yano           新規作成
  *  2009/02/17    1.1   T.Abe            [障害COK_041] 販手残高計算データの取得件数が0件の場合、正常終了するように修正
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
+ *  2009/05/28    1.3   M.Hiruta         [障害T1_1138] 販手残高保留情報の初期化で正しく保留情報を初期化できるよう変更
  *
  *****************************************************************************************/
 --
@@ -81,10 +82,16 @@ AS
   cv_msg_xxcok_10305        CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10305';         -- 条件別販手販協登録結果更新エラー
   cv_msg_xxcok_10306        CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10306';         -- 販手残高保留情報ロックエラー
   cv_msg_xxcok_10307        CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10307';         -- 販手残高保留情報更新エラー
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  cv_msg_xxcok_10454        CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10454';         -- 締め・支払日取得エラー
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- トークン
   cv_tkn_count              CONSTANT VARCHAR2(10)  := 'COUNT';                    -- 件数メッセージ用
   cv_tkn_profile_name       CONSTANT VARCHAR2(10)  := 'PROFILE';                  -- プロファイル名
   cv_tkn_business_date      CONSTANT VARCHAR2(20)  := 'BUSINESS_DATE';            -- 業務処理日付
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  cv_tkn_cust_code          CONSTANT VARCHAR2(10)  := 'CUST_CODE';                -- 顧客コード
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- プロファイル名
   -- XXCOK:条件別販手販協計算処理期間（From）
   cv_bm_support_period_from CONSTANT VARCHAR2(30)  := 'XXCOK1_BM_SUPPORT_PERIOD_FROM';
@@ -92,6 +99,10 @@ AS
   cv_bm_support_period_to   CONSTANT VARCHAR2(30)  := 'XXCOK1_BM_SUPPORT_PERIOD_TO';
   -- XXCOK:販手販協計算結果保持期間
   cv_sales_retention_period CONSTANT VARCHAR2(30)  := 'XXCOK1_SALES_RETENTION_PERIOD';
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  -- XXCOK:支払条件_デフォルト
+  cv_default_term_name      CONSTANT VARCHAR2(30)  := 'XXCOK1_DEFAULT_TERM_NAME';
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- 連携ステータス
   cv_interface_status_0     CONSTANT VARCHAR2(1)   := '0';                        -- 未処理
   cv_interface_status_1     CONSTANT VARCHAR2(1)   := '1';                        -- 処理済
@@ -100,8 +111,23 @@ AS
   cv_flag_n                 CONSTANT VARCHAR2(1)   := 'N';                        -- 保留解除
   -- 処理区分
   cn_proc_type              CONSTANT NUMBER        := 1;                          -- 前
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  cn_proc_type_after        CONSTANT NUMBER        := 2;                          -- 後
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- 販手残高テーブル登録データ
   cn_payment_amt_tax        CONSTANT NUMBER        := 0;                          -- 支払額（税込）
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  -- 契約管理情報
+  cv_status_1               CONSTANT VARCHAR2(1)   := '1';                        -- 確定
+  -- 支払条件用区切文字
+  cv_underbar               CONSTANT VARCHAR2(1)   := '_';                        -- アンダーバー
+  -- 支払条件_支払月_契約管理抽出値
+  cv_term_this_month        CONSTANT VARCHAR2(2)   := '40';                       -- 当月
+  cv_term_next_month        CONSTANT VARCHAR2(2)   := '50';                       -- 翌月
+  -- 支払条件_支払月_契約管理変換後
+  cv_term_this_month_concat CONSTANT VARCHAR2(2)   := '00';                       -- 当月
+  cv_term_next_month_concat CONSTANT VARCHAR2(2)   := '01';                       -- 翌月
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- ===============================
   -- グローバル変数
   -- ===============================
@@ -115,11 +141,19 @@ AS
   gn_bm_support_period_from   NUMBER   DEFAULT NULL;  -- 条件別販手販協計算処理期間（From）
   gn_bm_support_period_to     NUMBER   DEFAULT NULL;  -- 条件別販手販協計算処理期間（To）
   gn_sales_retention_period   NUMBER   DEFAULT NULL;  -- 販手販協計算結果保持期間
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  gv_default_term_name        VARCHAR2(10) DEFAULT NULL;  -- 支払条件_デフォルト
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- ===============================
   -- グローバルカーソル
   -- ===============================
   -- 販手残高保留データ
-  CURSOR g_bm_bal_resv_cur
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--  CURSOR g_bm_bal_resv_cur
+  CURSOR g_bm_bal_resv_cur (
+         iv_cust_code IN xxcok_backmargin_balance.cust_code%TYPE -- 顧客コード
+         )
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   IS
     SELECT  xbb.base_code              AS base_code              -- 拠点コード
            ,xbb.supplier_code          AS supplier_code          -- 仕入先コード
@@ -145,9 +179,15 @@ AS
            ,xbb.gl_interface_status    AS gl_interface_status    -- 連携ステータス（GL）
            ,xbb.gl_interface_date      AS gl_interface_date      -- 連携日（GL）
     FROM    xxcok_backmargin_balance  xbb
-    WHERE  ( ( xbb.resv_flag   = cv_flag_y )
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--    WHERE  ( ( xbb.resv_flag   = cv_flag_y )
+--           OR( xbb.return_flag = cv_flag_y ) )
+    WHERE  xbb.cust_code = iv_cust_code
+    AND    ( ( xbb.resv_flag   = cv_flag_y )
            OR( xbb.return_flag = cv_flag_y ) )
   ;
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--
   -- 販手残高計算データ
   CURSOR g_cond_bm_cur
   IS
@@ -173,6 +213,37 @@ AS
             ,xcbs.expect_payment_date
             ,xcbs.tax_code
   ;
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+  -- 契約管理テーブル情報取得ループ
+  CURSOR g_managements_cur
+  IS
+    SELECT xcm.install_account_number AS cust_code           -- 設置先顧客コード
+          ,xcm.close_day_code         AS close_day_code      -- 締め日
+          ,xcm.transfer_day_code      AS transfer_day_code   -- 支払日
+          ,xcm.transfer_month_code    AS transfer_month_code -- 支払月
+    FROM   xxcso_contract_managements xcm
+          ,(
+           SELECT MAX( xcm_2.contract_number ) AS contract_number -- 契約書番号
+                 ,xcm_2.install_account_id     AS cust_id         -- 設置先顧客ID
+           FROM   xxcso_contract_managements xcm_2 -- 契約管理テーブル
+           WHERE  xcm_2.status = cv_status_1 -- 確定済
+           AND EXISTS (
+                      SELECT 'X'
+                      FROM   xxcok_backmargin_balance xbb
+                            ,hz_cust_accounts         hca
+                      WHERE  xbb.cust_code       = hca.account_number
+                      AND    hca.cust_account_id = xcm_2.install_account_id
+                      AND    ( ( xbb.resv_flag   = cv_flag_y )
+                             OR( xbb.return_flag = cv_flag_y ) )
+                      )
+           GROUP BY
+                  xcm_2.install_account_id
+           ) xcm_max
+    WHERE  xcm.contract_number    = xcm_max.contract_number
+    AND    xcm.install_account_id = xcm_max.cust_id
+    AND    xcm.status             = cv_status_1 -- 確定済
+  ;
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   -- ===============================
   -- グローバルTABLE型
   -- ===============================
@@ -930,14 +1001,16 @@ AS
      ov_errbuf              OUT VARCHAR2                                          -- エラー・メッセージ
     ,ov_retcode             OUT VARCHAR2                                          -- リターン・コード
     ,ov_errmsg              OUT VARCHAR2                                          -- ユーザー・エラー・メッセージ
-    ,it_base_code           IN  xxcok_backmargin_balance.base_code%TYPE           -- 販手残高保留.拠点コード
-    ,it_supplier_code       IN  xxcok_backmargin_balance.supplier_code%TYPE       -- 販手残高保留.仕入先コード
-    ,it_supplier_site_code  IN  xxcok_backmargin_balance.supplier_site_code%TYPE  -- 販手残高保留.仕入先サイトコード
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
     ,it_cust_code           IN  xxcok_backmargin_balance.cust_code%TYPE           -- 販手残高保留.顧客コード
-    ,it_expect_payment_date IN  xxcok_backmargin_balance.expect_payment_date%TYPE -- 販手残高保留.支払予定日
-    ,it_resv_flag           IN  xxcok_backmargin_balance.resv_flag%TYPE           -- 販手残高保留.保留フラグ
-    ,it_return_flag         IN  xxcok_backmargin_balance.return_flag%TYPE         -- 販手残高保留.組み戻しフラグ
-    ,id_calc_start_date     IN  DATE                                              -- 販手残高計算開始日（営業日）
+--    ,it_base_code           IN  xxcok_backmargin_balance.base_code%TYPE           -- 販手残高保留.拠点コード
+--    ,it_supplier_code       IN  xxcok_backmargin_balance.supplier_code%TYPE       -- 販手残高保留.仕入先コード
+--    ,it_supplier_site_code  IN  xxcok_backmargin_balance.supplier_site_code%TYPE  -- 販手残高保留.仕入先サイトコード
+--    ,it_expect_payment_date IN  xxcok_backmargin_balance.expect_payment_date%TYPE -- 販手残高保留.支払予定日
+--    ,it_resv_flag           IN  xxcok_backmargin_balance.resv_flag%TYPE           -- 販手残高保留.保留フラグ
+--    ,it_return_flag         IN  xxcok_backmargin_balance.return_flag%TYPE         -- 販手残高保留.組み戻しフラグ
+--    ,id_calc_start_date     IN  DATE                                              -- 販手残高計算開始日（営業日）
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
   )
   IS
     -- ===============================
@@ -957,14 +1030,19 @@ AS
     IS
       SELECT 'X'
       FROM   xxcok_backmargin_balance xbb
-      WHERE  xbb.base_code            =  it_base_code
-      AND    xbb.supplier_code        =  it_supplier_code
-      AND    xbb.supplier_site_code   =  it_supplier_site_code
-      AND    xbb.cust_code            =  it_cust_code
-      AND    xbb.closing_date         <  id_calc_start_date
-      AND    xbb.expect_payment_date  =  it_expect_payment_date
-      AND    ( ( xbb.resv_flag        =  it_resv_flag   )
-             OR( xbb.return_flag      =  it_return_flag ) )
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--      WHERE  xbb.base_code            =  it_base_code
+--      AND    xbb.supplier_code        =  it_supplier_code
+--      AND    xbb.supplier_site_code   =  it_supplier_site_code
+--      AND    xbb.cust_code            =  it_cust_code
+--      AND    xbb.closing_date         <  id_calc_start_date
+--      AND    xbb.expect_payment_date  =  it_expect_payment_date
+--      AND    ( ( xbb.resv_flag        =  it_resv_flag   )
+--             OR( xbb.return_flag      =  it_return_flag ) )
+      WHERE  xbb.cust_code    = it_cust_code
+      AND    ( ( xbb.resv_flag   = cv_flag_y )
+             OR( xbb.return_flag = cv_flag_y ) )
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
       FOR UPDATE OF xbb.bm_balance_id NOWAIT
     ;
 --
@@ -990,14 +1068,19 @@ AS
             ,program_application_id = cn_program_application_id
             ,program_id             = cn_program_id
             ,program_update_date    = SYSDATE
-      WHERE  base_code            =  it_base_code
-      AND    supplier_code        =  it_supplier_code
-      AND    supplier_site_code   =  it_supplier_site_code
-      AND    cust_code            =  it_cust_code
-      AND    closing_date         <  id_calc_start_date
-      AND    expect_payment_date  =  it_expect_payment_date
-      AND    ( ( resv_flag        =  it_resv_flag   )
-             OR( return_flag      =  it_return_flag ) )
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--      WHERE  base_code            =  it_base_code
+--      AND    supplier_code        =  it_supplier_code
+--      AND    supplier_site_code   =  it_supplier_site_code
+--      AND    cust_code            =  it_cust_code
+--      AND    closing_date         <  id_calc_start_date
+--      AND    expect_payment_date  =  it_expect_payment_date
+--      AND    ( ( resv_flag        =  it_resv_flag   )
+--             OR( return_flag      =  it_return_flag ) )
+      WHERE  cust_code            =  it_cust_code
+      AND    ( ( resv_flag   = cv_flag_y )
+             OR( return_flag = cv_flag_y ) )
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
       ;
 --
     EXCEPTION
@@ -1077,7 +1160,10 @@ AS
     ld_operating_day := xxcok_common_pkg.get_operating_day_f(
                            it_closing_date              -- 処理日
                           ,gn_bm_support_period_from    -- 日数
-                          ,cn_proc_type                 -- 処理区分
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--                          ,cn_proc_type                 -- 処理区分
+                          ,cn_proc_type_after           -- 処理区分
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
                         );
     IF( ld_operating_day IS NULL ) THEN
       RAISE operating_day_expt;
@@ -1121,7 +1207,7 @@ AS
      ov_errbuf             OUT VARCHAR2      -- エラー・メッセージ
     ,ov_retcode            OUT VARCHAR2      -- リターン・コード
     ,ov_errmsg             OUT VARCHAR2      -- ユーザー・エラー・メッセージ
-    ,ov_resv_update_flag   OUT VARCHAR2      --
+    ,ov_resv_update_flag   OUT VARCHAR2      -- 販手残高保留情報の初期化済フラグ
   )
   IS
     -- ===============================
@@ -1138,24 +1224,148 @@ AS
     ld_calc_start_date        DATE           DEFAULT NULL;                 -- 販手残高計算開始日（営業日）
     ln_index                  NUMBER         DEFAULT 0;                    -- インデックス
     lv_resv_update_flag       VARCHAR2(1)    DEFAULT cv_flag_y;            -- 販手残高保留データ更新フラグ
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+    lv_pay_cond               VARCHAR2(10)   DEFAULT NULL;                 -- 支払条件
+    lv_term_month             VARCHAR2(2)    DEFAULT NULL;                 -- 支払条件_支払月
+    ld_close_date             DATE           DEFAULT NULL;                 -- 締め日
+    ld_pay_date               DATE           DEFAULT NULL;                 -- 支払日（取得するだけで未使用）
+    -- *** ローカル例外 ***
+    close_date_err_expt       EXCEPTION;                                   -- 締め・支払日取得取得エラー
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
 --
   BEGIN
 --
     ov_retcode := cv_status_normal;
+--
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--    -- ===============================================
+--    -- 販手残高保留データの取得
+--    -- ===============================================
+--    <<bm_bal_resv_loop>>
+--    FOR l_bm_bal_resv_rec IN g_bm_bal_resv_cur LOOP
+--      -- ===============================================
+--      -- 販手残高計算開始日の取得（A-4）
+--      -- ===============================================
+--      get_bm_calc_start_date(
+--         ov_errbuf          =>   lv_errbuf                      -- エラー・メッセージ
+--        ,ov_retcode         =>   lv_retcode                     -- リターン・コード
+--        ,ov_errmsg          =>   lv_errmsg                      -- ユーザー・エラー・メッセージ
+--        ,it_closing_date    =>   l_bm_bal_resv_rec.closing_date -- 販手残高保留データ.締め日
+--        ,od_calc_start_date =>   ld_calc_start_date             -- 販手残高計算開始日（営業日）
+--      );
+--      IF( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================================
+--      -- 業務処理日付と販手残高計算開始日が一致した場合
+--      -- ===============================================
+--      IF( gd_process_date = ld_calc_start_date ) THEN
+--        -- ===============================================
+--        -- 販手残高保留情報の初期化（A-5）
+--        -- ===============================================
+--        update_bm_resv_init(
+--           ov_errbuf                =>   lv_errbuf                             -- エラー・メッセージ
+--          ,ov_retcode               =>   lv_retcode                            -- リターン・コード
+--          ,ov_errmsg                =>   lv_errmsg                             -- ユーザー・エラー・メッセージ
+--          ,it_base_code             =>   l_bm_bal_resv_rec.base_code           -- 販手残高保留データ.拠点コード
+--          ,it_supplier_code         =>   l_bm_bal_resv_rec.supplier_code       -- 販手残高保留データ.仕入先コード
+--          ,it_supplier_site_code    =>   l_bm_bal_resv_rec.supplier_site_code  -- 販手残高保留データ.仕入先サイトコード
+--          ,it_cust_code             =>   l_bm_bal_resv_rec.cust_code           -- 販手残高保留データ.顧客コード
+--          ,it_expect_payment_date   =>   l_bm_bal_resv_rec.expect_payment_date -- 販手残高保留データ.支払予定日
+--          ,it_resv_flag             =>   l_bm_bal_resv_rec.resv_flag           -- 販手残高保留データ.保留フラグ
+--          ,it_return_flag           =>   l_bm_bal_resv_rec.return_flag         -- 販手残高保留データ.組み戻しフラグ
+--          ,id_calc_start_date       =>   ld_calc_start_date                    -- 販手残高計算開始日（営業日）
+--        );
+--        IF( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        -- ===============================================
+--        -- 販手残高保留情報の初期化をした場合
+--        -- ===============================================
+--        lv_resv_update_flag := cv_flag_n;
+----
+--      -- ===============================================
+--      -- 業務処理日付と販手残高計算開始日が一致しない場合
+--      -- ===============================================
+--      ELSE
+--        -- ===============================================
+--        -- 販手残高保留情報の退避（A-6）
+--        -- ===============================================
+--        set_bm_bal_resv(
+--           ov_errbuf                =>   lv_errbuf             -- エラー・メッセージ
+--          ,ov_retcode               =>   lv_retcode            -- リターン・コード
+--          ,ov_errmsg                =>   lv_errmsg             -- ユーザー・エラー・メッセージ
+--          ,i_bm_bal_resv_rec        =>   l_bm_bal_resv_rec     -- 販手残高保留データ
+--          ,in_index                 =>   ln_index              -- インデックス
+--        );
+--        IF( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--        ln_index := ln_index + 1;
+--      END IF;
+----
+--    END LOOP bm_bal_resv_loop;
+--
     -- ===============================================
-    -- 販手残高保留データの取得
+    -- 契約管理テーブル情報の取得
     -- ===============================================
-    <<bm_bal_resv_loop>>
-    FOR l_bm_bal_resv_rec IN g_bm_bal_resv_cur LOOP
+    <<managements_loop>>
+    FOR l_managements_rec IN g_managements_cur LOOP
+      -- ===============================================
+      -- 支払条件チェック
+      -- ===============================================
+      -- 契約管理テーブル情報から取得した支払条件「締め日」「支払日」「支払月」のいずれかがNULLである場合、
+      -- 締め日取得時にデフォルト値を使用する。
+      IF ( ( l_managements_rec.close_day_code      IS NULL ) OR
+           ( l_managements_rec.transfer_day_code   IS NULL ) OR
+           ( l_managements_rec.transfer_month_code IS NULL ) )
+      THEN
+        lv_pay_cond := gv_default_term_name;
+      ELSE
+        -- 取得した支払月を変換する。
+        IF ( l_managements_rec.transfer_month_code = cv_term_this_month ) THEN
+          lv_term_month := cv_term_this_month_concat; -- 当月
+        ELSE
+          lv_term_month := cv_term_next_month_concat; -- 翌月
+        END IF;
+--
+        lv_pay_cond := l_managements_rec.close_day_code      || cv_underbar ||
+                       l_managements_rec.transfer_day_code   || cv_underbar ||
+                       lv_term_month;
+      END IF;
+      -- ===============================================
+      -- 締め日取得
+      -- ===============================================
+      xxcok_common_pkg.get_close_date_p(
+         ov_errbuf     => lv_errbuf                                 -- エラーメッセージ
+        ,ov_retcode    => lv_retcode                                -- リターン・コード
+        ,ov_errmsg     => lv_errmsg                                 -- ユーザー・エラーメッセージ
+        ,id_proc_date  => gd_process_date - gn_bm_support_period_to -- 処理日
+        ,iv_pay_cond   => lv_pay_cond                               -- 支払条件
+        ,od_close_date => ld_close_date                             -- 締め日
+        ,od_pay_date   => ld_pay_date                               -- 支払日
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        -- メッセージ取得
+        lv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name_cok
+                        ,iv_name         => cv_msg_xxcok_10454
+                        ,iv_token_name1  => cv_tkn_cust_code
+                        ,iv_token_value1 => l_managements_rec.cust_code
+                      );
+        RAISE close_date_err_expt;
+      END IF;
+--
       -- ===============================================
       -- 販手残高計算開始日の取得（A-4）
       -- ===============================================
       get_bm_calc_start_date(
-         ov_errbuf          =>   lv_errbuf                      -- エラー・メッセージ
-        ,ov_retcode         =>   lv_retcode                     -- リターン・コード
-        ,ov_errmsg          =>   lv_errmsg                      -- ユーザー・エラー・メッセージ
-        ,it_closing_date    =>   l_bm_bal_resv_rec.closing_date -- 販手残高保留データ.締め日
-        ,od_calc_start_date =>   ld_calc_start_date             -- 販手残高計算開始日（営業日）
+         ov_errbuf          => lv_errbuf          -- エラー・メッセージ
+        ,ov_retcode         => lv_retcode         -- リターン・コード
+        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ
+        ,it_closing_date    => ld_close_date      -- 販手残高保留データ.締め日
+        ,od_calc_start_date => ld_calc_start_date -- 販手残高計算開始日（営業日）
       );
       IF( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
@@ -1169,17 +1379,10 @@ AS
         -- 販手残高保留情報の初期化（A-5）
         -- ===============================================
         update_bm_resv_init(
-           ov_errbuf                =>   lv_errbuf                             -- エラー・メッセージ
-          ,ov_retcode               =>   lv_retcode                            -- リターン・コード
-          ,ov_errmsg                =>   lv_errmsg                             -- ユーザー・エラー・メッセージ
-          ,it_base_code             =>   l_bm_bal_resv_rec.base_code           -- 販手残高保留データ.拠点コード
-          ,it_supplier_code         =>   l_bm_bal_resv_rec.supplier_code       -- 販手残高保留データ.仕入先コード
-          ,it_supplier_site_code    =>   l_bm_bal_resv_rec.supplier_site_code  -- 販手残高保留データ.仕入先サイトコード
-          ,it_cust_code             =>   l_bm_bal_resv_rec.cust_code           -- 販手残高保留データ.顧客コード
-          ,it_expect_payment_date   =>   l_bm_bal_resv_rec.expect_payment_date -- 販手残高保留データ.支払予定日
-          ,it_resv_flag             =>   l_bm_bal_resv_rec.resv_flag           -- 販手残高保留データ.保留フラグ
-          ,it_return_flag           =>   l_bm_bal_resv_rec.return_flag         -- 販手残高保留データ.組み戻しフラグ
-          ,id_calc_start_date       =>   ld_calc_start_date                    -- 販手残高計算開始日（営業日）
+           ov_errbuf          => lv_errbuf                   -- エラー・メッセージ
+          ,ov_retcode         => lv_retcode                  -- リターン・コード
+          ,ov_errmsg          => lv_errmsg                   -- ユーザー・エラー・メッセージ
+          ,it_cust_code       => l_managements_rec.cust_code -- 契約管理テーブル情報.顧客コード
         );
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -1196,26 +1399,50 @@ AS
         -- ===============================================
         -- 販手残高保留情報の退避（A-6）
         -- ===============================================
-        set_bm_bal_resv(
-           ov_errbuf                =>   lv_errbuf             -- エラー・メッセージ
-          ,ov_retcode               =>   lv_retcode            -- リターン・コード
-          ,ov_errmsg                =>   lv_errmsg             -- ユーザー・エラー・メッセージ
-          ,i_bm_bal_resv_rec        =>   l_bm_bal_resv_rec     -- 販手残高保留データ
-          ,in_index                 =>   ln_index              -- インデックス
-        );
-        IF( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        ln_index := ln_index + 1;
+        <<bm_bal_resv_loop>>
+        FOR l_bm_bal_resv_rec IN g_bm_bal_resv_cur (
+                                    iv_cust_code => l_managements_rec.cust_code -- 顧客コード
+                                 )
+        LOOP
+          set_bm_bal_resv(
+             ov_errbuf          => lv_errbuf             -- エラー・メッセージ
+            ,ov_retcode         => lv_retcode            -- リターン・コード
+            ,ov_errmsg          => lv_errmsg             -- ユーザー・エラー・メッセージ
+            ,i_bm_bal_resv_rec  => l_bm_bal_resv_rec     -- 販手残高保留データ
+            ,in_index           => ln_index              -- インデックス
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          ln_index := ln_index + 1;
+        END LOOP bm_bal_resv_loop;
       END IF;
+    END LOOP managements_loop;
 --
-    END LOOP bm_bal_resv_loop;
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
     -- ===============================================
     -- OUTパラメータ設定
     -- ===============================================
     ov_resv_update_flag := lv_resv_update_flag;
 --
   EXCEPTION
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+    -- *** 締め・支払日取得取得例外ハンドラ ***
+    WHEN close_date_err_expt THEN
+      -- メッセージ出力
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                       FND_FILE.OUTPUT -- 出力区分
+                      ,lv_out_msg      -- メッセージ
+                      ,0               -- 改行
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000 );
+      ov_retcode := cv_status_error;
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -1437,8 +1664,19 @@ AS
       RAISE nodata_profile_expt;
     END IF;
 --
+-- Start 2009/05/28 Ver_1.3 T1_1138 M.Hiruta
     -- ===============================================
-    -- 7. 販手販協保持期限日を取得
+    -- 7. プロファイル：支払条件_デフォルトを取得
+    -- ===============================================
+    gv_default_term_name := FND_PROFILE.VALUE( cv_default_term_name );
+    IF( gv_default_term_name IS NULL ) THEN
+      lv_nodata_profile := cv_default_term_name;
+      RAISE nodata_profile_expt;
+    END IF;
+-- End   2009/05/28 Ver_1.3 T1_1138 M.Hiruta
+--
+    -- ===============================================
+    -- 8. 販手販協保持期限日を取得
     -- ===============================================
     gd_bm_hold_period_date := ADD_MONTHS( TRUNC( gd_process_date, 'MM' ), -gn_sales_retention_period );
 --
