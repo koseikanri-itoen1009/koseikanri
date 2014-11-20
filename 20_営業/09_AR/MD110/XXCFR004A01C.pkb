@@ -7,7 +7,7 @@ AS
  * Description      : 支払通知データ抽出
  * MD.050           : MD050_CFR_004_A01_支払通知データ抽出
  * MD.070           : MD050_CFR_004_A01_支払通知データ抽出
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,7 +32,7 @@ AS
  *  2009/02/24    1.1  SCS T.KANEDA     [障害COK_016] 顧客コード読替不具合対応
  *  2009/04/10    1.2  SCS S.KAYAHARA   T1_0129対応
  *  2009/04/24    1.3  SCS S.KAYAHARA   T1_0128対応
- *
+ *  2009/05/14    1.4  SCS S.KAYAHARA   T1_0955対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -983,7 +983,10 @@ AS
 --          WHEN 14 THEN
           WHEN 13 THEN
 -- Modify 2009.04.22 Ver1.3 End
-            gt_pn_site_month(ln_target_cnt)              := TO_NUMBER(lv_col_value);
+-- Modify 2009.05.14 Ver1.4 Start
+--            gt_pn_site_month(ln_target_cnt)              := TO_NUMBER(lv_col_value);
+            gt_pn_site_month(ln_target_cnt)              := TO_NUMBER(RTRIM(lv_col_value));
+-- Modify 2009.05.14 Ver1.4 End            
 -- Modify 2009.04.22 Ver1.3 Start
 --          WHEN 15 THEN
           WHEN 14 THEN
@@ -1138,7 +1141,10 @@ AS
 --          WHEN 45 THEN
           WHEN 44 THEN
 -- Modify 2009.04.22 Ver1.3 End
-            gt_pn_return_type(ln_target_cnt)             := TO_NUMBER(lv_col_value);
+-- Modify 2009.05.14 Ver1.4 Start
+--            gt_pn_return_type(ln_target_cnt)             := TO_NUMBER(lv_col_value);
+          gt_pn_return_type(ln_target_cnt)             := TO_NUMBER(RTRIM(lv_col_value));
+-- Modify 2009.05.14 Ver1.4 End
 -- Modify 2009.04.22 Ver1.3 Start
 --          WHEN 46 THEN
           WHEN 45 THEN
