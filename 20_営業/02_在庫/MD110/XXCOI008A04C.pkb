@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A04C(body)
  * Description      : 情報系システムへの連携の為、EBSの保管場所(標準)をCSVファイルに出力
  * MD.050           : 保管場所情報系連携 <MD050_COI_008_A04>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/16    1.0   S.Kanda          新規作成
  *  2009/03/30    1.1   T.Nakamura       [障害T1_0121]保管場所情報の抽出条件を追加
+ *  2010/05/02    1.2   H.Sasaki         [E_本稼動_02545]保管場所コードの全角文字チェックを追加
  *
  *****************************************************************************************/
 --
@@ -61,6 +62,10 @@ AS
   gn_target_cnt    NUMBER;                    -- 対象件数
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
+-- == 2010/05/02 V1.2 Added START ===============================================================
+  gn_warn_cnt      NUMBER;                    -- 警告件数
+-- == 2010/05/02 V1.2 Added END   ===============================================================
+
 --
 --################################  固定部 END   ##################################
 --
@@ -101,6 +106,9 @@ AS
   cv_msg_xxcoi_00027        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00027';
   cv_msg_xxcoi_00028        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00028';
   cv_msg_xxcoi_00029        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00029';
+-- == 2010/05/02 V1.2 Added START ===============================================================
+  cv_msg_xxcoi_10427        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10427';
+-- == 2010/05/02 V1.2 Added END   ===============================================================
   --
   --トークン
   cv_tkn_pro                CONSTANT VARCHAR2(10)  := 'PRO_TOK';       -- プロファイル名用
@@ -110,6 +118,9 @@ AS
 -- == 2009/03/30 V1.1 Added START ===============================================================
   cv_tkn_org_code           CONSTANT VARCHAR2(15)  := 'ORG_CODE_TOK';  -- 在庫組織コード用
 -- == 2009/03/30 V1.1 Added END   ===============================================================
+-- == 2010/05/02 V1.2 Added START ===============================================================
+  cv_tkn_10427              CONSTANT VARCHAR2(15)  := 'SUBINV_CODE';
+-- == 2010/05/02 V1.2 Added END   ===============================================================
   --
   --ファイルオープンモード
   cv_file_mode              CONSTANT VARCHAR2(2)   := 'W';             -- オープンモード
@@ -579,29 +590,57 @@ AS
         --対象件数加算
         gn_target_cnt := gn_target_cnt + 1;
 --
-        -- ===============================
-        -- A-4．保管場所マスタCSVの作成
-        -- ===============================
-        create_csv_p(
-            iv_sec_inv_name => sec_inv_rec.secondary_inventory_name -- 保管場所コード
-          , iv_description  => sec_inv_rec.description              -- 保管場所名称
-          , iv_disable_date => sec_inv_rec.disable_date             -- 無効日
-          , iv_attribute1   => sec_inv_rec.attribute1               -- 保管場所区分(DFF1)
-          , iv_attribute3   => sec_inv_rec.attribute3               -- 従業員コード(DFF3)
-          , iv_attribute4   => sec_inv_rec.attribute4               -- 顧客コード(DFF4)
-          , iv_attribute7   => sec_inv_rec.attribute7               -- 拠点コード(DFF7)
-          , ov_errbuf       => lv_errbuf                          -- エラー・メッセージ           --# 固定 #
-          , ov_retcode      => lv_retcode                         -- リターン・コード             --# 固定 #
-          , ov_errmsg       => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+-- == 2010/05/02 V1.2 Added START ===============================================================
+        IF (LENGTH(sec_inv_rec.secondary_inventory_name) = LENGTHB(sec_inv_rec.secondary_inventory_name)) THEN
+          -- 文字数と文字バイト数が一致する場合CSVファイルを作成
+-- == 2010/05/02 V1.2 Added END   ===============================================================
+          -- ===============================
+          -- A-4．保管場所マスタCSVの作成
+          -- ===============================
+          create_csv_p(
+              iv_sec_inv_name => sec_inv_rec.secondary_inventory_name -- 保管場所コード
+            , iv_description  => sec_inv_rec.description              -- 保管場所名称
+            , iv_disable_date => sec_inv_rec.disable_date             -- 無効日
+            , iv_attribute1   => sec_inv_rec.attribute1               -- 保管場所区分(DFF1)
+            , iv_attribute3   => sec_inv_rec.attribute3               -- 従業員コード(DFF3)
+            , iv_attribute4   => sec_inv_rec.attribute4               -- 顧客コード(DFF4)
+            , iv_attribute7   => sec_inv_rec.attribute7               -- 拠点コード(DFF7)
+            , ov_errbuf       => lv_errbuf                          -- エラー・メッセージ           --# 固定 #
+            , ov_retcode      => lv_retcode                         -- リターン・コード             --# 固定 #
+            , ov_errmsg       => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+  --
+          IF (lv_retcode = cv_status_error) THEN
+            -- エラー処理
+            RAISE global_process_expt;
+          END IF;
+  --
+          -- 正常件数に加算
+          gn_normal_cnt := gn_normal_cnt + 1;
+-- == 2010/05/02 V1.2 Added START ===============================================================
+      ELSE
+        -- 文字数と文字バイト数が不一致の場合スキップ
+        -- 処理は正常終了。保管場所不正件数をカウント
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                          iv_application    =>  cv_appl_short_name
+                        , iv_name           =>  cv_msg_xxcoi_10427
+                        , iv_token_name1    =>  cv_tkn_10427
+                        , iv_token_value1   =>  sec_inv_rec.secondary_inventory_name
+                        );
+        lv_errbuf   := lv_errmsg;
+        --
+        FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+          , buff   => lv_errmsg --ユーザー・エラーメッセージ
         );
---
-        IF (lv_retcode = cv_status_error) THEN
-          -- エラー処理
-          RAISE global_process_expt;
-        END IF;
---
-        -- 正常件数に加算
-        gn_normal_cnt := gn_normal_cnt + 1;
+        FND_FILE.PUT_LINE(
+            which  => FND_FILE.LOG
+          , buff   => lv_errbuf --エラーメッセージ
+        );
+        --
+        gn_warn_cnt  :=  gn_warn_cnt + 1;
+      END IF;
+-- == 2010/05/02 V1.2 Added END   ===============================================================
       --
       --ループの終了
       END LOOP sec_inv_loop;
@@ -738,6 +777,9 @@ AS
     gn_target_cnt    := 0;
     gn_normal_cnt    := 0;
     gn_error_cnt     := 0;
+-- == 2010/05/02 V1.2 Added START ===============================================================
+    gn_warn_cnt      := 0;
+-- == 2010/05/02 V1.2 Added END   ===============================================================
     gv_activ_file_h  := NULL;            -- ファイルハンドル
 --
     --*********************************************
@@ -892,6 +934,9 @@ AS
     cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000'; -- 対象件数メッセージ
     cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- 成功件数メッセージ
     cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- エラー件数メッセージ
+-- == 2010/05/02 V1.2 Added START ===============================================================
+    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+-- == 2010/05/02 V1.2 Added END   ===============================================================
     cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
@@ -1004,6 +1049,19 @@ AS
       , buff   => gv_out_msg
     );
     --
+-- == 2010/05/02 V1.2 Added START ===============================================================
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- == 2010/05/02 V1.2 Added START ===============================================================
     --空行挿入
     FND_FILE.PUT_LINE(
         which  => FND_FILE.OUTPUT
