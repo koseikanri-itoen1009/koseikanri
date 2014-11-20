@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/09/02    1.8   K.Kiriu          [0000900]PT対応
  *                                       [0001273]集金のみの抽出条件不正対応
  *  2009/10/30    1.9   M.Sano           [0001373]参照ビュー変更：XXCOS_RS_INFO_V⇒XXCOS_RS_INFO2_V
+ *  2009/12/17    1.10  S.Miyakoshi      [E_本稼動_00500](A-2)集約項目に「納品者」を追加
  *
  *****************************************************************************************/
 --
@@ -471,6 +472,9 @@ AS
 --    OR      SUM(paym.payment_amount)  <>      0
 --****************************** 2009/07/22 1.7 T.Tominaga DEL START ******************************--
     ORDER BY
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  START  **************************--
+            saeh.dlv_by_code,
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  END  ****************************--
             saeh.dlv_invoice_number,
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
             saeh.ship_to_customer_code,
@@ -828,6 +832,9 @@ AS
     lt_visit_time                         xxcos_sales_exp_headers.hht_dlv_input_date%TYPE;
     ln_pretax_payment                     xxcos_payment.payment_amount%TYPE;
 --****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  START  **************************--
+    lt_dlv_by_code                         xxcos_sales_exp_headers.dlv_by_code%TYPE;
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  END  ****************************--
     --  配列index定義
     lp_idx                                PLS_INTEGER;
     lp_idx_rep                            PLS_INTEGER;
@@ -898,6 +905,9 @@ AS
     lt_visit_time             :=  NULL;
     ln_pretax_payment         :=  NULL;
 --****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  START  **************************--
+    lt_dlv_by_code            :=  NULL;
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  END  ****************************--
     lp_line_count             :=  cn_line_no_default - 1;
 --
     --  0件の場合登録処理をスキップ
@@ -910,6 +920,9 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima MOD START ******************************--
 --        IF  ( lt_hht_invoice_no <>  l_delivery_data_tab(lp_idx).hht_invoice_no  )
         IF  (lt_hht_invoice_no <>  l_delivery_data_tab(lp_idx).hht_invoice_no  )
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  START  **************************--
+        OR  (lt_dlv_by_code    <>  l_delivery_data_tab(lp_idx).employee_num    )
+--****************************** 2009/12/17 1.10 S.Miyakoshi ADD  END  ****************************--
         OR  (lt_party_num      <>  l_delivery_data_tab(lp_idx).party_num       )
 --****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
 --****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
