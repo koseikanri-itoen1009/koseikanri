@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/04/21    1.3   H.Sasaki         [T1_0654]取込データの前後スペース削除
  *  2009/05/07    1.4   T.Nakamura       [T1_0556]品目存在チェックエラー処理を追加
  *  2009/06/02    1.5   H.Sasaki         [T1_1300]棚卸場所の編集処理を追加
+ *  2009/07/14    1.6   H.Sasaki         [0000461]棚卸しデータ取込順の採番方法修正
  *
  *****************************************************************************************/
 --
@@ -2275,7 +2276,13 @@ AS
 --      ;
 --
       SELECT    ilv.interface_id                  --  1.インターフェースID
-               ,ilv.input_order                   --  2.取込順
+-- == 2009/07/14 V1.6 Modified START ===============================================================
+--               ,ilv.input_order                   --  2.取込順
+               ,ROW_NUMBER() OVER
+                          (PARTITION BY ilv.base_code, ilv.inventory_place
+                           ORDER BY     ilv.base_code, ilv.inventory_place, ilv.creation_date
+                          ) input_order           --  2.取込順
+-- == 2009/07/14 V1.6 Modified END   ===============================================================
                ,ilv.base_code                     --  3.拠点コード
                ,ilv.inventory_kbn                 --  4.棚卸区分
                ,ilv.inventory_date                --  5.棚卸日
@@ -2307,6 +2314,9 @@ AS
                          ,xirfi.slip_no                         -- 伝票№
                          ,xirfi.quality_goods_kbn               -- 良品区分
                          ,xirfi.receive_date                    -- 受信日時
+-- == 2009/07/14 V1.6 Added START ===============================================================
+                         ,xirfi.creation_date                   -- 作成日
+-- == 2009/07/14 V1.6 Added END   ===============================================================
                  FROM     xxcoi_in_inv_result_file_if  xirfi    -- 棚卸結果ファイルIF
                 )                         ilv                   -- 棚卸結果ファイルIF情報
                ,xxcoi_inv_control         xic                   -- 棚卸管理
@@ -2338,7 +2348,7 @@ AS
                ,xirt.slip_no            slip_no             --11.伝票№
                ,xirt.quality_goods_kbn  quality_goods_kbn   --12.良品区分
                ,xirt.receive_date       receive_date        --13.受信日時
-      FROM      xxcoi_tmp_inv_result  xirt  --ファイルアップロード一時表
+      FROM      xxcoi_tmp_inv_result  xirt                  --ファイルアップロード一時表
       WHERE     xirt.file_id = in_file_id
       ORDER BY  xirt.sort_no
       ;
