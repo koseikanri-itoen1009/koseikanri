@@ -7,7 +7,7 @@ AS
  * Description      : ¶Y•¨—¬(ˆø“–A”zÔ)
  * MD.050           : o‰×EˆÚ“®ƒCƒ“ƒ^ƒtƒF[ƒX         T_MD050_BPO_930
  * MD.070           : ŠO•”‘qŒÉ“üoŒÉÀÑƒCƒ“ƒ^ƒtƒF[ƒX T_MD070_BPO_93A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -87,6 +87,12 @@ AS
  *  2008/08/01    1.13 Oracle ’Å–¼ ºŒ\  ¢o‰×æ£ƒ}ƒXƒ^ƒ`ƒFƒbƒNƒGƒ‰[ƒƒbƒZ[ƒW€–Ú–¼C³
  *  2008/08/06    1.14 Oracle •Ÿ“c ’¼÷  Å‘å”z‘—‹æ•ªZoŠÖ”(get_max_ship_method)“ü—Íƒpƒ‰ƒ[ƒ^ƒR[ƒh‹æ•ª‚Q
  *                                       x‹‹‚Ìê‡‚Ìİ’è’l•s³(³‚µ‚­‚Í11‚È‚Ì‚É9‚ğƒZƒbƒg‚µ‚Ä‚¢‚é)
+ *  2008/08/13    1.15 Oracle •Ÿ“c ’¼÷  Œ‹‡ƒeƒXƒg•s‹ï‡‘Î‰
+ *                                       ˆÚ“®‚Ìê‡‚Í•i¿ƒ`ƒFƒbƒN(ƒƒbƒgƒXƒe[ƒ^ƒX‚ª‡Ši‚©”Û‚©)‚ğ
+ *                                       s‚í‚È‚¢‚æ‚¤‚É‚·‚é(o‰×‚Ìê‡‚Ì‚İs‚¤‚æ‚¤‚É‚·‚é)
+ *  2008/08/13    1.15 Oracle •Ÿ“c ’¼÷  “à•”•ÏX#176‘Î‰(o‰×/x‹‹‚Ì‚Æ‚«’…‰×“ú‚Ì–¢—ˆ“úƒ`ƒFƒbƒN‚Í‚µ‚È‚¢)
+ *  2008/08/13    1.15 Oracle •Ÿ“c ’¼÷  “à•”•ÏX#177‘Î‰(o‰×“ú/’…‰×“ú‚Ì‹t“]ƒ`ƒFƒbƒN’Ç‰Á‘Î‰)
+ *  2008/08/18    1.15 Oracle •Ÿ“c ’¼÷  TE080_930w“E#32‘Î‰(w¦‚É‚ ‚Á‚ÄÀÑ‚É‚È‚¢•i–Ú‚ÍÀÑ0‚ÅXV‚·‚é)
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -245,6 +251,10 @@ AS
   gv_msg_93a_153                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13153';
   -- ÀÑŒvã^’ù³•s‰ÂƒGƒ‰[ƒƒbƒZ[ƒW
   gv_msg_93a_154                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13154';
+  -- 2008/08/13 “à•”•ÏX#177‘Î‰ Start ----------------------------------------
+  -- o‰×“ú‚Æ’…‰×“ú‚Ì“ú•t‹t“]ƒGƒ‰[ƒƒbƒZ[ƒW
+  gv_msg_93a_155                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13155';
+  -- 2008/08/13 “à•”•ÏX#177‘Î‰ End ------------------------------------------
   -- d—Ê—eÏ¬ŒûŒÂ”XVŠÖ”ƒGƒ‰[ƒƒbƒZ[ƒW
   gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   -- ‚o‚f‚Å‚ÌƒRƒ“ƒJƒŒƒ“ƒgŒÄ‚Ño‚µƒGƒ‰[
@@ -937,6 +947,13 @@ AS
   TYPE ship_order_source_ref
     IS TABLE OF xxwsh_shipping_headers_if.order_source_ref%TYPE INDEX BY BINARY_INTEGER; --IF_H.ó’ƒ\[ƒXQÆiƒƒbƒZ[ƒW•\¦—pj
 --
+  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ----------------------------------------
+  TYPE typ_shipping_item_code
+    IS TABLE OF xxwsh_order_lines_all.shipping_item_code%TYPE INDEX BY BINARY_INTEGER; -- o‰×•i–Ú(ó’—p)
+  TYPE typ_mov_item_code
+    IS TABLE OF xxinv_mov_req_instr_lines.item_code%TYPE INDEX BY BINARY_INTEGER;      -- •i–Ú(ˆÚ“®—p)
+  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End ------------------------------------------
+--
   -- ===============================
   -- ƒ†[ƒU[’è‹`ƒOƒ[ƒoƒ‹•Ï”
   -- ===============================
@@ -999,6 +1016,8 @@ AS
 --*  gn_error_cnt          NUMBER;               -- ˆÙíŒ”
 --********** 2008/07/07 ********** DELETE END   ***
 --
+  gn_zero_updt_idx      NUMBER;  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add
+--
   gr_interface_info_rec    interface_tbl;             -- ƒCƒ“ƒ^[ƒtƒF[ƒXƒe[ƒuƒ‹‚Ìƒf[ƒ^
   gr_movlot_detail_rec     movlot_detail_rec;         -- ˆÚ“®ƒƒbƒgÚ×‚Ìƒf[ƒ^
   gr_mov_req_instr_h_rec   mov_req_instr_h_rec;       -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_‚Ìƒf[ƒ^
@@ -1024,6 +1043,11 @@ AS
   -- ’ŠoŒ³•Û—¯ƒŒƒR[ƒhXV—p
   gr_line_id_upd           ship_line_id_upd;          -- IF–¾×.–¾×ID
   gr_reserv_sts            ship_reserv_sts;           -- IF–¾×.•Û—¯ƒXƒe[ƒ^ƒX
+--
+  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start---------------
+  gt_shipping_item_code    typ_shipping_item_code;    -- o‰×•i–Ú(ó’—p)
+  gt_mov_item_code         typ_mov_item_code;         -- •i–Ú(ˆÚ“®—p)
+  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End ----------------
 --
   gb_mov_header_flg       BOOLEAN;      -- ˆÚ“®(A-7) ŠO•”‘qŒÉ(w¦‚È‚µ)”»’è ƒwƒbƒ_—p
   gb_mov_line_flg         BOOLEAN;      -- ˆÚ“®(A-7) ŠO•”‘qŒÉ(w¦‚È‚µ)”»’è –¾×—p
@@ -2482,6 +2506,577 @@ AS
 --#####################################  ŒÅ’è•” END   ##########################################
 --
   END ord_results_quantity_set;
+--
+-- TE080_930w“E#32‘Î‰ Add Start --------------------------------------------------
+  /**********************************************************************************
+   * F Name   :order_zero_updt
+   * Description      : w¦‚É‚ ‚Á‚ÄÀÑ‚É‚È‚¢•i–Ú‚ÍÀÑ0‚ÅXV‚·‚é
+   *                  : (2008/08/18 TE080_930w“E#32‘Î‰)
+   ***********************************************************************************/
+  PROCEDURE order_zero_updt(
+    in_idx                  IN  NUMBER,              -- ƒf[ƒ^index
+    ov_errbuf               OUT NOCOPY VARCHAR2,     -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode              OUT NOCOPY VARCHAR2,     -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg               OUT NOCOPY VARCHAR2      -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+  )
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'order_zero_updt'; -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+--
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    lb_item_cd_found_flg    BOOLEAN;
+    ln_mov_lot_seq          NUMBER;   --ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“).ƒƒbƒgÚ×IDseq
+    lt_document_type_code      xxinv_mov_lot_details.document_type_code%TYPE;        --•¶‘ƒ^ƒCƒv
+--
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR order_data_get_cur
+      (
+        in_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- ó’ƒ\[ƒXQÆ
+      )
+    IS
+      SELECT   xola.order_line_id               -- ó’–¾×ƒAƒhƒIƒ“ID
+              ,xola.shipping_item_code          -- o‰×•i–Ú
+      FROM    xxwsh_order_headers_all   xoha    -- ó’ƒwƒbƒ_(ƒAƒhƒIƒ“)
+            , xxwsh_order_lines_all     xola    -- ó’–¾×(ƒAƒhƒIƒ“)
+      WHERE   xoha.request_no           = in_order_source_ref
+      AND     xoha.order_header_id      = xola.order_header_id
+      AND     xoha.latest_external_flag = gv_yesno_y
+      AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
+      ORDER BY xola.shipping_item_code
+    ;
+--
+    CURSOR lot_data_get_cur
+      (
+        in_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- ó’ƒ\[ƒXQÆ
+       ,in_item_code           xxinv_mov_lot_details.item_code%TYPE            -- •i–Ú
+       ,in_document_type       xxinv_mov_lot_details.document_type_code%TYPE   -- •¶‘ƒ^ƒCƒv
+      )
+    IS
+        SELECT  xmld.mov_lot_dtl_id               -- ƒƒbƒgÚ×ID
+              , xmld.mov_line_id                  -- –¾×ID
+              , xmld.document_type_code           -- •¶‘ƒ^ƒCƒv
+              , xmld.record_type_code             -- ƒŒƒR[ƒhƒ^ƒCƒv
+              , xmld.item_id                      -- OPM•i–ÚID
+              , xmld.item_code                    -- •i–Ú
+              , xmld.lot_id                       -- ƒƒbƒgID
+              , xmld.lot_no                       -- ƒƒbƒgNO
+              , xmld.automanual_reserve_class     -- ©“®è“®ˆø“–‹æ•ª
+        FROM    xxwsh_order_headers_all   xoha    -- ó’ƒwƒbƒ_(ƒAƒhƒIƒ“)
+              , xxwsh_order_lines_all     xola    -- ó’–¾×(ƒAƒhƒIƒ“)
+              , xxinv_mov_lot_details     xmld    -- ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)
+        WHERE   xoha.request_no           = in_order_source_ref  -- ó’ƒ\[ƒXQÆ
+        AND     xoha.order_header_id      = xola.order_header_id
+        AND     xoha.latest_external_flag = gv_yesno_y
+        AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
+        AND     xola.order_line_id        = xmld.mov_line_id
+        AND     xmld.document_type_code   = in_document_type      -- •¶‘ƒ^ƒCƒv
+        AND     xmld.record_type_code     = gv_record_type_10     -- ƒŒƒR[ƒhƒ^ƒCƒv=w¦
+        AND     xmld.item_code            = in_item_code          -- •i–Ú
+        ORDER BY xmld.mov_lot_dtl_id
+        ;
+--
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+    TYPE rec_data IS RECORD
+      (
+        order_line_id         xxwsh_order_lines_all.order_line_id%TYPE           -- ó’–¾×ƒAƒhƒIƒ“ID
+       ,shipping_item_code    xxwsh_order_lines_all.shipping_item_code%TYPE      -- o‰×•i–Ú
+      );
+--
+    TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
+--
+    lr_tab_data               tab_data;
+--
+    TYPE lot_rec_data IS RECORD
+      (
+        mov_lot_dtl_id          xxinv_mov_lot_details.mov_lot_dtl_id%TYPE            --ƒƒbƒgÚ×ID
+       ,mov_line_id             xxinv_mov_lot_details.mov_line_id%TYPE               --–¾×ID
+       ,document_type_code      xxinv_mov_lot_details.document_type_code%TYPE        --•¶‘ƒ^ƒCƒv
+       ,record_type_code        xxinv_mov_lot_details.record_type_code%TYPE          --ƒŒƒR[ƒhƒ^ƒCƒv
+       ,item_id                 xxinv_mov_lot_details.item_id%TYPE                   --OPM•i–ÚID
+       ,item_code               xxinv_mov_lot_details.item_code%TYPE                 --•i–Ú
+       ,lot_id                  xxinv_mov_lot_details.lot_id%TYPE                    --ƒƒbƒgID
+       ,lot_no                  xxinv_mov_lot_details.lot_no%TYPE                    --ƒƒbƒgNO
+       ,automanual_reserve_class xxinv_mov_lot_details.automanual_reserve_class%TYPE --©“®è“®ˆø“–‹æ•ª
+      );
+--
+    TYPE lot_tab_data IS TABLE OF lot_rec_data INDEX BY BINARY_INTEGER ;
+--
+    lr_lot_tab_data               lot_tab_data;
+--
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+    -- ***************************************
+    -- ***        Àˆ—‚Ì‹Lq             ***
+    -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
+    -- ***************************************
+--
+    -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+    OPEN order_data_get_cur
+      (
+        gr_interface_info_rec(in_idx).order_source_ref   -- ó’ƒ\[ƒXQÆ
+      );
+--
+    --ƒtƒFƒbƒ`
+    FETCH order_data_get_cur BULK COLLECT INTO lr_tab_data;
+--
+    --ƒNƒ[ƒY
+    CLOSE order_data_get_cur;
+--
+    <<order_data_get_loop>>
+    FOR i IN 1 .. lr_tab_data.count LOOP
+--
+      lb_item_cd_found_flg := FALSE;  -- ƒtƒ‰ƒO‚ğ‰Šú‰»
+--
+      <<search_item_code_loop>>
+      FOR j IN 1 .. gn_zero_updt_idx LOOP  -- “¯‚¶•i–Ú‚ª‚ ‚é‚©ŒŸõ‚·‚é
+--
+        IF ( lr_tab_data(i).shipping_item_code = gt_shipping_item_code(j) ) THEN
+          lb_item_cd_found_flg := TRUE;   -- “¯‚¶•i–Ú‚ª‚ ‚Á‚½ê‡‚Íƒtƒ‰ƒO‚ğON
+        END IF;
+--
+      END LOOP search_item_code_loop;
+--
+      IF ( lb_item_cd_found_flg = FALSE ) THEN  -- “¯‚¶•i–Ú‚ª‚È‚¢ê‡
+--
+        -- **************************************************
+        -- *** ó’–¾×(ƒAƒhƒIƒ“)‚Ì0XV‚ğs‚¤
+        -- **************************************************
+        UPDATE
+          xxwsh_order_lines_all    xola    -- ó’–¾×(ƒAƒhƒIƒ“)
+        SET
+           xola.shipped_quantity        = 0                          -- oŒÉÀÑ”—Ê
+          ,xola.last_updated_by         = gt_user_id                 -- ÅIXVÒ
+          ,xola.last_update_date        = gt_sysdate                 -- ÅIXV“ú
+          ,xola.last_update_login       = gt_login_id                -- ÅIXVƒƒOƒCƒ“
+          ,xola.request_id              = gt_conc_request_id         -- —v‹ID
+          ,xola.program_application_id  = gt_prog_appl_id            -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+          ,xola.program_id              = gt_conc_program_id         -- ƒvƒƒOƒ‰ƒ€ID
+          ,xola.program_update_date     = gt_sysdate                 -- ƒvƒƒOƒ‰ƒ€XV“ú
+        WHERE xola.order_line_id = lr_tab_data(i).order_line_id      -- ó’–¾×ƒAƒhƒIƒ“ID
+        AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
+        ;
+--
+        -- **********************************************************************
+        -- *** w¦‚ÌˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)‚ğŒ³‚É”—Ê0‚ÌÀÑƒƒbƒg‚ğì¬‚·‚é
+        -- **********************************************************************
+--
+        -- EOSƒf[ƒ^í•Ê = ‹’“_o‰×Šm’è•ñ –”‚Í ’ëæo‰×Šm’è•ñ‚Ìê‡
+        IF ((gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_210)  OR
+            (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_215))
+        THEN
+          lt_document_type_code := gv_document_type_10; -- •¶‘ƒ^ƒCƒv=o‰×ˆË—Š
+        -- EOSƒf[ƒ^í•Ê = 200 —Lo‰×•ñ
+        ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200) THEN
+          lt_document_type_code := gv_document_type_30; -- •¶‘ƒ^ƒCƒv=x‹‹w¦
+        END IF;
+--
+        -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+        OPEN lot_data_get_cur
+          (
+            gr_interface_info_rec(in_idx).order_source_ref   -- ó’ƒ\[ƒXQÆ
+           ,lr_tab_data(i).shipping_item_code                -- •i–Ú
+           ,lt_document_type_code                            -- •¶‘ƒ^ƒCƒv
+          );
+--
+        --ƒtƒFƒbƒ`
+        FETCH lot_data_get_cur BULK COLLECT INTO lr_lot_tab_data;
+--
+        --ƒNƒ[ƒY
+        CLOSE lot_data_get_cur;
+--
+        <<lot_data_get_loop>>
+        FOR k IN 1 .. lr_lot_tab_data.count LOOP
+--
+          -- ƒƒbƒgÚ×IDæ“¾
+          SELECT xxinv_mov_lot_s1.nextval
+          INTO   ln_mov_lot_seq
+          FROM   dual
+          ;
+--
+          -- ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)“o˜^‚ğs‚¤
+          INSERT INTO xxinv_mov_lot_details                   -- ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)
+            (mov_lot_dtl_id                                   -- ƒƒbƒgÚ×ID
+            ,mov_line_id                                      -- –¾×ID
+            ,document_type_code                               -- •¶‘ƒ^ƒCƒv
+            ,record_type_code                                 -- ƒŒƒR[ƒhƒ^ƒCƒv
+            ,item_id                                          -- opm•i–ÚID
+            ,item_code                                        -- •i–Ú
+            ,lot_id                                           -- ƒƒbƒgID
+            ,lot_no                                           -- ƒƒbƒgNO
+            ,actual_date                                      -- ÀÑ“ú
+            ,actual_quantity                                  -- ÀÑ”—Ê
+            ,created_by                                       -- ì¬Ò
+            ,creation_date                                    -- ì¬“ú
+            ,last_updated_by                                  -- ÅIXVÒ
+            ,last_update_date                                 -- ÅIXV“ú
+            ,last_update_login                                -- ÅIXVƒƒOƒCƒ“
+            ,request_id                                       -- —v‹ID
+            ,program_application_id                           -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+            ,program_id                                       -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+            ,program_update_date                              -- ƒvƒƒOƒ‰ƒ€XV“ú
+            )
+          VALUES
+           ( ln_mov_lot_seq                                   -- ƒƒbƒgÚ×ID
+            ,lr_lot_tab_data(k).mov_line_id                   -- –¾×ID
+            ,lr_lot_tab_data(k).document_type_code            -- •¶‘ƒ^ƒCƒv
+            ,gv_record_type_20                              -- ƒŒƒR[ƒhƒ^ƒCƒv=oŒÉÀÑ
+            ,lr_lot_tab_data(k).item_id                       -- OPM•i–Úid
+            ,lr_lot_tab_data(k).item_code                     -- •i–Ú
+            ,lr_lot_tab_data(k).lot_id                        -- ƒƒbƒgID
+            ,lr_lot_tab_data(k).lot_no                        -- ƒƒbƒgno
+            ,NULL                                             -- ÀÑ“ú
+            ,0                                                -- ÀÑ”—Ê
+            ,gt_user_id                                       -- ì¬Ò
+            ,gt_sysdate                                       -- ì¬“ú
+            ,gt_user_id                                       -- ÅIXVÒ
+            ,gt_sysdate                                       -- ÅIXV“ú
+            ,gt_login_id                                      -- ÅIXVƒƒOƒCƒ“
+            ,gt_conc_request_id                               -- —v‹ID
+            ,gt_prog_appl_id                                  -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+            ,gt_conc_program_id                               -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+            ,gt_sysdate                                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+           );
+--
+        END LOOP lot_data_get_loop;
+--
+      END IF;
+--
+    END LOOP order_data_get_loop;
+--
+    --==============================================================
+    --ƒƒbƒZ[ƒWo—Í(ƒGƒ‰[ˆÈŠO)‚ğ‚·‚é•K—v‚ª‚ ‚éê‡‚Íˆ—‚ğ‹Lq
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END order_zero_updt;
+-- 2008/08/18 TE080_930w“E#32‘Î‰ Add End -----------------------------------------------------
+--
+-- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start --------------------------------------------------
+  /**********************************************************************************
+   * F Name   :mov_zero_updt
+   * Description      : w¦‚É‚ ‚Á‚ÄÀÑ‚É‚È‚¢•i–Ú‚ÍÀÑ0‚ÅXV‚·‚é
+   *                  : (2008/08/18 TE080_930w“E#32‘Î‰)
+   ***********************************************************************************/
+  PROCEDURE mov_zero_updt(
+    in_idx                  IN  NUMBER,              -- ƒf[ƒ^index
+    ov_errbuf               OUT NOCOPY VARCHAR2,     -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode              OUT NOCOPY VARCHAR2,     -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg               OUT NOCOPY VARCHAR2      -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+  )
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'mov_zero_updt'; -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+--
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    lb_item_cd_found_flg       BOOLEAN;
+    ln_mov_lot_seq             NUMBER;      --ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“).ƒƒbƒgÚ×IDseq
+    lt_record_type             xxinv_mov_lot_details.record_type_code%TYPE;          --ƒŒƒR[ƒhƒ^ƒCƒv
+--
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR order_data_get_cur
+      (
+        in_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- ó’ƒ\[ƒXQÆ
+      )
+    IS
+      SELECT   xmrql.mov_line_id                -- ˆÚ“®–¾×ID
+              ,xmrql.item_code                  -- •i–Ú
+      FROM    xxinv_mov_req_instr_headers xmrif    -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_(ƒAƒhƒIƒ“)
+            , xxinv_mov_req_instr_lines   xmrql    -- ˆÚ“®ˆË—Š/w¦–¾×(ƒAƒhƒIƒ“)
+      WHERE   xmrif.mov_num          = in_order_source_ref  -- ˆË—ŠNo=ó’ƒ\[ƒXQÆ
+      AND     xmrif.mov_hdr_id       = xmrql.mov_hdr_id     -- ˆÚ“®ƒwƒbƒ_ƒAƒhƒIƒ“ID=ˆÚ“®ƒwƒbƒ_ƒAƒhƒIƒ“ID
+      AND     xmrif.status          <> gv_mov_status_99     -- ƒXƒe[ƒ^ƒX<>æÁ
+      AND     ((xmrql.delete_flg     = gv_yesno_n)          -- íœƒtƒ‰ƒO=–¢íœ
+       OR      (xmrql.delete_flg IS NULL))
+      ORDER BY
+              xmrql.item_code
+    ;
+--
+    CURSOR lot_data_get_cur
+      (
+        in_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- ó’ƒ\[ƒXQÆ
+       ,in_item_code           xxinv_mov_lot_details.item_code%TYPE            -- •i–Ú
+      )
+    IS
+        SELECT  xmld.mov_lot_dtl_id               -- ƒƒbƒgÚ×ID
+              , xmld.mov_line_id                  -- –¾×ID
+              , xmld.document_type_code           -- •¶‘ƒ^ƒCƒv
+              , xmld.record_type_code             -- ƒŒƒR[ƒhƒ^ƒCƒv
+              , xmld.item_id                      -- OPM•i–ÚID
+              , xmld.item_code                    -- •i–Ú
+              , xmld.lot_id                       -- ƒƒbƒgID
+              , xmld.lot_no                       -- ƒƒbƒgNO
+              , xmld.automanual_reserve_class     -- ©“®è“®ˆø“–‹æ•ª
+        FROM    xxinv_mov_req_instr_headers xmrih   -- ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_(ƒAƒhƒIƒ“)
+              , xxinv_mov_req_instr_lines   xmrql   -- ˆÚ“®ˆË—Š/w¦–¾×(ƒAƒhƒIƒ“)
+              , xxinv_mov_lot_details       xmld    -- ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)
+              
+        WHERE   xmrih.mov_num             = in_order_source_ref  -- ó’ƒ\[ƒXQÆ
+        AND     xmrih.mov_hdr_id          = xmrql.mov_hdr_id
+        
+        AND     xmrih.status             <> gv_mov_status_99     -- ƒXƒe[ƒ^ƒX<>æÁ
+        AND     ((xmrql.delete_flg     = gv_yesno_n)             -- íœƒtƒ‰ƒO=–¢íœ
+         OR      (xmrql.delete_flg IS NULL))
+        AND     xmrql.mov_line_id         = xmld.mov_line_id
+        AND     xmld.document_type_code   = gv_document_type_20   -- •¶‘ƒ^ƒCƒv=ˆÚ“®
+        AND     xmld.record_type_code     = gv_record_type_10     -- ƒŒƒR[ƒhƒ^ƒCƒv=w¦
+        AND     xmld.item_code            = in_item_code          -- •i–Ú
+        ORDER BY xmld.mov_lot_dtl_id
+        ;
+--
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+    TYPE rec_data IS RECORD
+      (
+        mov_line_id     xxinv_mov_req_instr_lines.mov_line_id%TYPE        -- ˆÚ“®–¾×ID
+       ,item_code       xxinv_mov_req_instr_lines.item_code%TYPE          -- •i–Ú
+      );
+--
+    TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
+--
+    lr_tab_data               tab_data;
+--
+    TYPE lot_rec_data IS RECORD
+      (
+        mov_lot_dtl_id          xxinv_mov_lot_details.mov_lot_dtl_id%TYPE            --ƒƒbƒgÚ×ID
+       ,mov_line_id             xxinv_mov_lot_details.mov_line_id%TYPE               --–¾×ID
+       ,document_type_code      xxinv_mov_lot_details.document_type_code%TYPE        --•¶‘ƒ^ƒCƒv
+       ,record_type_code        xxinv_mov_lot_details.record_type_code%TYPE          --ƒŒƒR[ƒhƒ^ƒCƒv
+       ,item_id                 xxinv_mov_lot_details.item_id%TYPE                   --OPM•i–ÚID
+       ,item_code               xxinv_mov_lot_details.item_code%TYPE                 --•i–Ú
+       ,lot_id                  xxinv_mov_lot_details.lot_id%TYPE                    --ƒƒbƒgID
+       ,lot_no                  xxinv_mov_lot_details.lot_no%TYPE                    --ƒƒbƒgNO
+       ,automanual_reserve_class xxinv_mov_lot_details.automanual_reserve_class%TYPE --©“®è“®ˆø“–‹æ•ª
+      );
+--
+    TYPE lot_tab_data IS TABLE OF lot_rec_data INDEX BY BINARY_INTEGER ;
+--
+    lr_lot_tab_data               lot_tab_data;
+--
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+    -- ***************************************
+    -- ***        Àˆ—‚Ì‹Lq             ***
+    -- ***       ‹¤’ÊŠÖ”‚ÌŒÄ‚Ño‚µ        ***
+    -- ***************************************
+--
+    -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+    OPEN order_data_get_cur
+      (
+        gr_interface_info_rec(in_idx).order_source_ref   -- ó’ƒ\[ƒXQÆ
+      );
+--
+    --ƒtƒFƒbƒ`
+    FETCH order_data_get_cur BULK COLLECT INTO lr_tab_data;
+--
+    --ƒNƒ[ƒY
+    CLOSE order_data_get_cur;
+--
+    <<mov_data_get_loop>>
+    FOR i IN 1 .. lr_tab_data.count LOOP
+--
+      lb_item_cd_found_flg := FALSE;  -- ƒtƒ‰ƒO‚ğ‰Šú‰»
+--
+      <<search_item_code_loop>>
+      FOR j IN 1 .. gn_zero_updt_idx LOOP  -- “¯‚¶•i–Ú‚ª‚ ‚é‚©ŒŸõ‚·‚é
+--
+        IF ( lr_tab_data(i).item_code = gt_mov_item_code(j) ) THEN
+          lb_item_cd_found_flg := TRUE;   -- “¯‚¶•i–Ú‚ª‚ ‚Á‚½ê‡‚Íƒtƒ‰ƒO‚ğON
+        END IF;
+--
+      END LOOP search_item_code_loop;
+--
+      IF ( lb_item_cd_found_flg = FALSE ) THEN  -- “¯‚¶•i–Ú‚ª‚È‚¢ê‡
+--
+        -- **************************************************
+        -- *** ˆÚ“®ˆË—Š/w¦–¾×(ƒAƒhƒIƒ“)XV‚Ì0XV‚ğs‚¤
+        -- **************************************************
+        UPDATE
+          xxinv_mov_req_instr_lines    xmrl     -- ˆÚ“®ˆË—Š/w¦–¾×(ƒAƒhƒIƒ“)
+        SET
+           xmrl.shipped_quantity        = 0                               -- oŒÉÀÑ”—Ê
+          ,xmrl.ship_to_quantity        = 0                               -- “üŒÉÀÑ”—Ê
+          ,xmrl.last_updated_by         = gt_user_id                      -- ÅIXVÒ
+          ,xmrl.last_update_date        = gt_sysdate                      -- ÅIXV“ú
+          ,xmrl.last_update_login       = gt_login_id                     -- ÅIXVƒƒOƒCƒ“
+          ,xmrl.request_id              = gt_conc_request_id              -- —v‹ID
+          ,xmrl.program_application_id  = gt_prog_appl_id                 -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+          ,xmrl.program_id              = gt_conc_program_id              -- ƒvƒƒOƒ‰ƒ€ID
+          ,xmrl.program_update_date     = gt_sysdate                      -- ƒvƒƒOƒ‰ƒ€XV“ú
+        WHERE
+            xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- ˆÚ“®–¾×ID
+        AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)) -- íœƒtƒ‰ƒO=–¢íœ
+        ;
+--
+        -- ***********************************************************************
+        -- *** w¦‚ÌˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)‚ğŒ³‚É”—Ê0‚ÌÀÑƒƒbƒg‚ğì¬‚·‚é
+        -- ***********************************************************************
+--
+        -- EOSƒf[ƒ^í•Ê = ˆÚ“®oŒÉŠm’è•ñ‚Ìê‡
+        IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
+          lt_record_type := gv_record_type_20;   -- ƒŒƒR[ƒhƒ^ƒCƒv=oŒÉÀÑ
+        -- EOSƒf[ƒ^í•Ê = ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
+        ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
+          lt_record_type := gv_record_type_30;   -- ƒŒƒR[ƒhƒ^ƒCƒv=“üŒÉÀÑ
+        END IF;
+--
+        -- ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+        OPEN lot_data_get_cur
+          (
+            gr_interface_info_rec(in_idx).order_source_ref   -- ó’ƒ\[ƒXQÆ
+           ,lr_tab_data(i).item_code                         -- •i–Ú
+          );
+--
+        --ƒtƒFƒbƒ`
+        FETCH lot_data_get_cur BULK COLLECT INTO lr_lot_tab_data;
+--
+        --ƒNƒ[ƒY
+        CLOSE lot_data_get_cur;
+--
+        <<lot_data_get_loop>>
+        FOR k IN 1 .. lr_lot_tab_data.count LOOP
+--
+          -- ƒƒbƒgÚ×IDæ“¾
+          SELECT xxinv_mov_lot_s1.nextval
+          INTO   ln_mov_lot_seq
+          FROM   dual
+          ;
+--
+          -- ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)“o˜^‚ğs‚¤
+          INSERT INTO xxinv_mov_lot_details                   -- ˆÚ“®ƒƒbƒgÚ×(ƒAƒhƒIƒ“)
+            (mov_lot_dtl_id                                   -- ƒƒbƒgÚ×ID
+            ,mov_line_id                                      -- –¾×ID
+            ,document_type_code                               -- •¶‘ƒ^ƒCƒv
+            ,record_type_code                                 -- ƒŒƒR[ƒhƒ^ƒCƒv
+            ,item_id                                          -- opm•i–ÚID
+            ,item_code                                        -- •i–Ú
+            ,lot_id                                           -- ƒƒbƒgID
+            ,lot_no                                           -- ƒƒbƒgNO
+            ,actual_date                                      -- ÀÑ“ú
+            ,actual_quantity                                  -- ÀÑ”—Ê
+            ,created_by                                       -- ì¬Ò
+            ,creation_date                                    -- ì¬“ú
+            ,last_updated_by                                  -- ÅIXVÒ
+            ,last_update_date                                 -- ÅIXV“ú
+            ,last_update_login                                -- ÅIXVƒƒOƒCƒ“
+            ,request_id                                       -- —v‹ID
+            ,program_application_id                           -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+            ,program_id                                       -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+            ,program_update_date                              -- ƒvƒƒOƒ‰ƒ€XV“ú
+            )
+          VALUES
+           ( ln_mov_lot_seq                                   -- ƒƒbƒgÚ×ID
+            ,lr_lot_tab_data(k).mov_line_id                   -- –¾×ID
+            ,lr_lot_tab_data(k).document_type_code            -- •¶‘ƒ^ƒCƒv
+            ,lt_record_type                                   -- ƒŒƒR[ƒhƒ^ƒCƒv
+            ,lr_lot_tab_data(k).item_id                       -- OPM•i–Úid
+            ,lr_lot_tab_data(k).item_code                     -- •i–Ú
+            ,lr_lot_tab_data(k).lot_id                        -- ƒƒbƒgID
+            ,lr_lot_tab_data(k).lot_no                        -- ƒƒbƒgno
+            ,NULL                                             -- ÀÑ“ú
+            ,0                                                -- ÀÑ”—Ê
+            ,gt_user_id                                       -- ì¬Ò
+            ,gt_sysdate                                       -- ì¬“ú
+            ,gt_user_id                                       -- ÅIXVÒ
+            ,gt_sysdate                                       -- ÅIXV“ú
+            ,gt_login_id                                      -- ÅIXVƒƒOƒCƒ“
+            ,gt_conc_request_id                               -- —v‹ID
+            ,gt_prog_appl_id                                  -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+            ,gt_conc_program_id                               -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+            ,gt_sysdate                                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+           );
+--
+        END LOOP lot_data_get_loop;
+--
+      END IF;
+--
+    END LOOP mov_data_get_loop;
+--
+    --==============================================================
+    --ƒƒbƒZ[ƒWo—Í(ƒGƒ‰[ˆÈŠO)‚ğ‚·‚é•K—v‚ª‚ ‚éê‡‚Íˆ—‚ğ‹Lq
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END mov_zero_updt;
+-- 2008/08/18 TE080_930w“E#32‘Î‰ Add End -----------------------------------------------------
 --
   /**********************************************************************************
    * F Name   : mov_results_quantity_set
@@ -4322,24 +4917,54 @@ AS
 --
       END IF;
 --
+--
+--
       --o‰×“ú^’…‰×“ú‚Ì–¢—ˆ“ú•tƒ`ƒFƒbƒN
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
-        ln_err_flg := 0;
+        -- 2008/08/13 “à•”•ÏX#176‘Î‰ Del Start -------------------------------------------------
+        --ln_err_flg := 0;
+        --
+        --IF ((TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) AND (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate))) THEN
+        --
+        --  lv_dterr_flg := gv_date_chk_3;
+        --
+        --ELSIF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN
+        --
+        --  lv_dterr_flg := gv_date_chk_1;
+        --
+        --ELSIF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN
+        --
+        --  lv_dterr_flg := gv_date_chk_2;
+        --
+        --END IF;
+        -- 2008/08/13 “à•”•ÏX#176‘Î‰ Del End -------------------------------------------------
+        --
+        -- 2008/08/13 “à•”•ÏX#176‘Î‰ Add Start -----------------------------------------------
+        -- o‰×/x‹‹‚Ì‚Æ‚«‚Í’…‰×“ú‚Ì–¢—ˆ“úƒ`ƒFƒbƒN‚Í‚µ‚È‚¢(o‰×“ú‚Ì‚İƒ`ƒFƒbƒN‚·‚é)
+        IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR  -- —Lo‰×•ñ
+            (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR  -- ‹’“_o‰×Šm’è•ñ
+            (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))    -- ’ëæo‰×Šm’è•ñ
+        THEN
 --
-        IF ((TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) AND (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate))) THEN
+          IF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN    -- o‰×“ú‚Ì‚İƒ`ƒFƒbƒN
+            lv_dterr_flg := gv_date_chk_1;
+          END IF;
 --
-          lv_dterr_flg := gv_date_chk_3;
+        -- ˆÚ“®‚Ì‚Æ‚«‚Ío‰×“ú/’…‰×“ú‹¤‚É–¢—ˆ“úƒ`ƒFƒbƒN‚ğ‚·‚é
+        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220) OR     -- ˆÚ“®oŒÉŠm’è•ñ
+               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230)) THEN  -- ˆÚ“®“üŒÉŠm’è•ñ
 --
-        ELSIF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN
---
-          lv_dterr_flg := gv_date_chk_1;
---
-        ELSIF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN
---
-          lv_dterr_flg := gv_date_chk_2;
+          IF ((TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) AND (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate))) THEN
+            lv_dterr_flg := gv_date_chk_3;
+          ELSIF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN
+            lv_dterr_flg := gv_date_chk_1;
+          ELSIF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN
+            lv_dterr_flg := gv_date_chk_2;
+          END IF;
 --
         END IF;
+        -- 2008/08/13 “à•”•ÏX#176‘Î‰ Add End -----------------------------------------------
 --
         IF (lv_dterr_flg <> gv_date_chk_0) THEN
 --
@@ -4388,6 +5013,50 @@ AS
         END IF;
 --
       END IF;
+--
+--
+--
+      -- 2008/08/13 “à•”•ÏX#177‘Î‰ Start -----------------------------------------------
+      -- o‰×“ú‚Æ’…‰×“ú‚Ì“ú•t‹t“]ƒ`ƒFƒbƒN
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
+        IF (TRUNC(lt_shipped_date) > TRUNC(lt_arrival_date)) THEN
+--
+          lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                         gv_msg_kbn         -- 'XXWSH'
+                        ,gv_msg_93a_155     -- “ú•t‹t“]ƒGƒ‰[ƒƒbƒZ[ƒW
+                        ,gv_param1_token
+                        ,gr_interface_info_rec(i).delivery_no           --IF_H.”z‘—No
+                        ,gv_param2_token
+                        ,gr_interface_info_rec(i).order_source_ref      --IF_H.ó’ƒ\[ƒXQÆ
+                        ,gv_param3_token
+                        ,TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD')  --IF_H.o‰×“ú
+                        ,gv_param4_token
+                        ,TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD')  --IF_H.’…‰×“ú
+                                                           )
+                                                           ,1
+                                                           ,5000);
+--
+          --”z‘—NO-EOSƒf[ƒ^í•Ê’PˆÊ‚ÉƒGƒ‰[flagƒZƒbƒg
+          set_deliveryno_unit_errflg(
+            lt_delivery_no,         -- ”z‘—No
+            gr_interface_info_rec(i).eos_data_type,  -- EOSƒf[ƒ^í•Ê
+            gv_err_class,           -- ƒGƒ‰[í•ÊFƒGƒ‰[
+            lv_msg_buff,            -- ƒGƒ‰[EƒƒbƒZ[ƒW(o—Í—p)
+            lv_errbuf,              -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+            lv_retcode,             -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+            lv_errmsg               -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+          );
+--
+          -- ƒGƒ‰[ƒtƒ‰ƒO
+          ln_err_flg := 1;
+          -- ˆ—ƒXƒe[ƒ^ƒXFŒx
+          ov_retcode := gv_status_warn;
+--
+        END IF;
+--
+      END IF;
+      -- 2008/08/13 “à•”•ÏX#177‘Î‰ End --------------------------------------------------
 --
 --
 --
@@ -7073,15 +7742,17 @@ AS
                           ln_lot_err_flg := 1;
                         END IF;
 --
-                      -- ˆÚ“®oŒÉŠm’è•ñ/ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
-                      ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                             (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                      THEN
---
-                        -- •Û—¯İ’è
-                        IF (lt_move_inst_rel = gv_yesno_n) THEN
-                          ln_lot_err_flg := 1;
-                        END IF;
+                      -- 2008/08/13 Del Start ˆÚ“®‚Ìê‡‚Í•i¿ƒ`ƒFƒbƒN‚ğs‚í‚È‚¢ ---------------------
+                      ---- ˆÚ“®oŒÉŠm’è•ñ/ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
+                      --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                      --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                      --THEN
+                      --
+                      --  -- •Û—¯İ’è
+                      --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                      --    ln_lot_err_flg := 1;
+                      --  END IF;
+                      -- 2008/08/13 Del End ----------------------------------------------------------
 --
                       END IF;
 --
@@ -7498,15 +8169,17 @@ AS
                             ln_lot_err_flg := 1;
                           END IF;
 --
-                        -- ˆÚ“®oŒÉŠm’è•ñ/ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
-                        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                        THEN
---
-                          -- •Û—¯İ’è
-                          IF (lt_move_inst_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
-                          END IF;
+                        -- 2008/08/13 Del Start ˆÚ“®‚Ìê‡‚Í•i¿ƒ`ƒFƒbƒN‚ğs‚í‚È‚¢ ---------------------
+                        ---- ˆÚ“®oŒÉŠm’è•ñ/ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
+                        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                        --THEN
+                        --
+                        --  -- •Û—¯İ’è
+                        --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                        --    ln_lot_err_flg := 1;
+                        --  END IF;
+                        -- 2008/08/13 Del End ----------------------------------------------------------
 --
                         END IF;
 --
@@ -7731,15 +8404,17 @@ AS
                           ln_lot_err_flg := 1;
                         END IF;
 --
-                      -- ˆÚ“®oŒÉŠm’è•ñ/ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
-                      ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                             (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                      THEN
---
-                        -- •Û—¯İ’è
-                        IF (lt_move_inst_rel = gv_yesno_n) THEN
-                          ln_lot_err_flg := 1;
-                        END IF;
+                      -- 2008/08/13 Del Start ˆÚ“®‚Ìê‡‚Í•i¿ƒ`ƒFƒbƒN‚ğs‚í‚È‚¢ ---------------------
+                      ---- ˆÚ“®oŒÉŠm’è•ñ/ˆÚ“®“üŒÉŠm’è•ñ‚Ìê‡
+                      --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                      --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                      --THEN
+                      --
+                      --  -- •Û—¯İ’è
+                      --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                      --    ln_lot_err_flg := 1;
+                      --  END IF;
+                      -- 2008/08/13 Del End ----------------------------------------------------------
 --
                       END IF;
 --
@@ -13164,7 +13839,7 @@ debug_log(FND_FILE.LOG,'yˆÚ“®ˆ—@ŠJnzF' || in_idx || 'Œ–Ú');
 debug_log(FND_FILE.LOG,'@@”z‘—NoF' || gr_interface_info_rec(in_idx).delivery_no);
 debug_log(FND_FILE.LOG,'@@ˆÚ“®NoF' || gr_interface_info_rec(in_idx).order_source_ref);
 --********** debug_log ********** END   ***
-
+--
 --
     ov_retcode := gv_status_normal;
 --
@@ -13286,6 +13961,11 @@ debug_log(FND_FILE.LOG,'@@@ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_ƒAƒhƒIƒ“ (A-7-3)À{Fmov_req_i
               IF (lr_tab_data(i).comp_actual_flg = gv_yesno_n) OR
                  (lr_tab_data(i).comp_actual_flg IS NULL) THEN
 --
+                -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+                gn_zero_updt_idx := gn_zero_updt_idx + 1;
+                gt_mov_item_code(gn_zero_updt_idx) := lr_tab_data(i).item_code;  --•i–Ú
+                -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
+--
                 -- ˆÚ“®ˆË—Š/w¦–¾×ƒAƒhƒIƒ“ (A-7-5) À{
                 mov_req_instr_lines_upd(
                   in_idx,                     -- ƒf[ƒ^index
@@ -13308,6 +13988,11 @@ debug_log(FND_FILE.LOG,'@@@ˆÚ“®ˆË—Š/w¦–¾×ƒAƒhƒIƒ“ (A-7-5) À{Fmov_req_in
                 gb_mov_line_data_flg := TRUE; --ˆÚ“®ˆË—Š/w¦–¾×‚ğˆ—Ï‚Éİ’è
 --
               ELSIF  (lt_actual_confirm_class = gv_yesno_y) THEN
+--
+                -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+                gn_zero_updt_idx := gn_zero_updt_idx + 1;
+                gt_mov_item_code(gn_zero_updt_idx) := lr_tab_data(i).item_code;  --•i–Ú
+                -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
 --
                 -- ˆÚ“®ˆË—Š/w¦–¾×ƒAƒhƒIƒ“ (A-7-5) À{
                 mov_req_instr_lines_upd(
@@ -13479,6 +14164,11 @@ debug_log(FND_FILE.LOG,'@@@ˆÚ“®ƒƒbƒgÚ×UPDATE ƒvƒƒV[ƒWƒƒ (A-7-7) À{Fmo
             END IF;
           END IF;
 --
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+          gn_zero_updt_idx := gn_zero_updt_idx + 1;
+          gt_mov_item_code(gn_zero_updt_idx) := gr_interface_info_rec(in_idx).orderd_item_code;  --•i–Ú
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
+--
           -- ˆÚ“®ˆË—Š/w¦–¾×ƒAƒhƒIƒ“ (A-7-4)À{ (INSERT)
           mov_req_instr_lines_ins(
             in_idx,                   -- ƒf[ƒ^index
@@ -13587,6 +14277,12 @@ debug_log(FND_FILE.LOG,'@@@ˆÚ“®ˆË—Š/w¦ƒwƒbƒ_ƒAƒhƒIƒ“(ŠO•”‘qŒÉ•ÒW) (A-7-1)
           --------------------------------------
           -- ˆÚ“®ˆË—Š/w¦–¾×(ƒAƒhƒIƒ“)‚Ì“o˜^
           --------------------------------------
+--
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+          gn_zero_updt_idx := gn_zero_updt_idx + 1;
+          gt_mov_item_code(gn_zero_updt_idx) := gr_interface_info_rec(in_idx).orderd_item_code;  --•i–Ú
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
+--
           ln_cnt_kbn := gv_cnt_kbn_3; -- ƒf[ƒ^‹æ•ªİ’èFŠO•”‘qŒÉ(w¦‚È‚µ)
 --
           -- ˆÚ“®ˆË—Š/w¦–¾×ƒAƒhƒIƒ“ (A-7-4)À{(INSERT)
@@ -13746,6 +14442,20 @@ debug_log(FND_FILE.LOG,'@@@o‰×ˆË—ŠÀÑ”—Ê‚Ìİ’è ƒvƒƒV[ƒWƒƒFmov_results_q
     END IF;
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
+--
+      -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start -------------------------------
+      -- ó’ƒ\[ƒXQÆ‚ªƒuƒŒƒCƒN‚µ‚½‚çAw¦‚É‚ ‚Á‚ÄÀÑ‚É‚È‚¢•i–Ú‚ğÀÑ0‚ÅXV‚·‚é
+      mov_zero_updt(
+        in_idx,                   -- ƒf[ƒ^index
+        lv_errbuf,                -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+        lv_retcode,               -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+        lv_errmsg                 -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+      -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End ---------------------------------
 --
       IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --ƒGƒ‰[flagF0(³í)
           (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --•Û—¯flag  F0(³í)
@@ -14060,6 +14770,11 @@ debug_log(FND_FILE.LOG,'@@@ó’ƒwƒbƒ_ƒAƒhƒIƒ“ ÀÑ’ù³ (A-8-3,4)À{Forder_h
                      (lr_tab_data(i).actual_confirm_class IS NULL))
                 THEN
 --
+                  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+                  gn_zero_updt_idx := gn_zero_updt_idx + 1;
+                  gt_shipping_item_code(gn_zero_updt_idx) := lr_tab_data(i).shipping_item_code; --o‰×•i–Ú
+                  -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
+--
                   -- ó’–¾×ƒAƒhƒIƒ“ w¦•i–ÚÀÑ•i–Ú (A-8-5)À{(UPDATE)
                   order_lines_upd(
                     in_idx,                       -- ƒf[ƒ^index
@@ -14175,6 +14890,11 @@ debug_log(FND_FILE.LOG,'@@@ó’ƒf[ƒ^ˆÚ“®ƒƒbƒgÚ×UPDATE ƒvƒƒV[ƒWƒƒ (A-8-8
             END IF;
           END IF;
 --
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+          gn_zero_updt_idx := gn_zero_updt_idx + 1;
+          gt_shipping_item_code(gn_zero_updt_idx) := gr_interface_info_rec(in_idx).orderd_item_code;  --o‰×•i–Ú
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
+--
           -- ó’–¾×ƒAƒhƒIƒ“ w¦•i–Ú‚ÀÑ•i–Ú (A-8-6)À{ (INSERT)
           order_lines_ins(
             in_idx,                                   -- ƒf[ƒ^index
@@ -14283,6 +15003,12 @@ debug_log(FND_FILE.LOG,'@@@ó’ƒwƒbƒ_ƒAƒhƒIƒ“ ŠO•”‘qŒÉ(w¦‚È‚µ) (A-8-2)À{(
           --------------------------------------
           -- ó’–¾×ƒAƒhƒIƒ“(ƒAƒhƒIƒ“)‚Ì“o˜^
           --------------------------------------
+--
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start ------------------------------------
+          gn_zero_updt_idx := gn_zero_updt_idx + 1;
+          gt_shipping_item_code(gn_zero_updt_idx) := gr_interface_info_rec(in_idx).orderd_item_code;  --o‰×•i–Ú
+          -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End --------------------------------------
+--
           ln_cnt_kbn := gv_cnt_kbn_3; -- ƒf[ƒ^‹æ•ªİ’èFŠO•”‘qŒÉ(w¦‚È‚µ)
 --
           -- ó’–¾×ƒAƒhƒIƒ“ ÀÑC³ (A-8-6)À{(INSERT)
@@ -14439,6 +15165,20 @@ debug_log(FND_FILE.LOG,'@@@ó’ÀÑ”—Ê‚Ìİ’è ƒvƒƒV[ƒWƒƒFord_results_quant
     END IF;
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
+--
+      -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start -------------------------------
+      -- ó’ƒ\[ƒXQÆ‚ªƒuƒŒƒCƒN‚µ‚½‚çAw¦‚É‚ ‚Á‚ÄÀÑ‚É‚È‚¢•i–Ú‚ğÀÑ0‚ÅXV‚·‚é
+      order_zero_updt(
+        in_idx,                   -- ƒf[ƒ^index
+        lv_errbuf,                -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+        lv_retcode,               -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+        lv_errmsg                 -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+      -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End ---------------------------------
 --
       IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --ƒGƒ‰[flagF0(³í)
           (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --•Û—¯flag  F0(³í)
@@ -15976,6 +16716,11 @@ debug_log(FND_FILE.LOG,'@@@ó’ÀÑ”—Ê‚Ìİ’è ƒvƒƒV[ƒWƒƒFord_results_quant
 --
     gb_mov_cnt_a7_flg      := FALSE;      -- ˆÚ“®(A-7) Œ”•\¦‚ÅŒvã‚©’ù³‚©”»’f‚·‚é‚Ì‚½‚ß‚Ìƒtƒ‰ƒO
 --
+    -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start -----------------
+    gn_zero_updt_idx := 0;
+    gt_mov_item_code.delete;      -- •i–Ú
+    -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End -------------------
+--
   <<mov_gr_interface_info_rec_loop>>
     FOR i IN gr_interface_info_rec.FIRST .. gr_interface_info_rec.LAST LOOP
 --
@@ -16042,6 +16787,11 @@ debug_log(FND_FILE.LOG,'@@@ó’ÀÑ”—Ê‚Ìİ’è ƒvƒƒV[ƒWƒƒFord_results_quant
     gb_ord_line_data_flg   := FALSE;      -- ó’(A-8) –¾×ˆ—Ï”»’è
 --
     gb_ord_cnt_a8_flg      := FALSE;      -- ó’(A-8) Œ”•\¦‚ÅŒvã‚©’ù³‚©”»’f‚·‚é‚Ì‚½‚ß‚Ìƒtƒ‰ƒO
+--
+    -- 2008/08/18 TE080_930w“E#32‘Î‰ Add Start -----------------
+    gn_zero_updt_idx := 0;
+    gt_shipping_item_code.delete;      -- o‰×•i–Ú
+    -- 2008/08/18 TE080_930w“E#32‘Î‰ Add End -------------------
 --
     <<ord_gr_interface_info_rec_loop>>
     FOR i IN gr_interface_info_rec.FIRST .. gr_interface_info_rec.LAST LOOP
