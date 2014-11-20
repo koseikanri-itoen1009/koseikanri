@@ -7,7 +7,7 @@ AS
  * Description      : 帳合問屋用見積入力画面から、見積番号、版毎に見積書を	
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A04_見積書（帳合問屋用）PDF出力
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009-04-03    1.2   Kazuo.Satomura   ＳＴ障害対応(T1_0294,0301)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-07    1.4   Kazuo.Satomura   ＳＴ障害対応(T1_0889)
+ *  2009-05-13    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0972,T1_0974)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -140,6 +141,9 @@ AS
     ,deliv_place                   xxcso_rep_quote_list.deliv_place%TYPE                -- 納入場所
     ,header_payment_condition      xxcso_rep_quote_list.header_payment_condition%TYPE   -- ヘッダー支払条件
     ,base_code                     xxcso_quote_headers.base_code%TYPE                   -- 拠点コード
+    /* 2009.05.13 K.Satomura T1_0972対応 START */
+    ,base_zip                      xxcso_rep_quote_list.base_zip%TYPE                   -- 拠点郵便番号
+    /* 2009.05.13 K.Satomura T1_0972対応 END */
     ,base_addr                     xxcso_rep_quote_list.base_addr%TYPE                  -- 拠点住所
     ,base_name                     xxcso_rep_quote_list.base_name%TYPE                  -- 拠点名
     ,base_phone_no                 xxcso_rep_quote_list.base_phone_no%TYPE              -- 拠点電話番号
@@ -328,7 +332,10 @@ AS
     cv_quote_div             CONSTANT VARCHAR2(1)  := '4';                  -- 見積区分 4:原価割れ(特別販売)
     /* 2009.05.07 K.Satomura T1_0889対応 START */
     --cv_fmt                   CONSTANT VARCHAR2(7)  := 'FM9,999';            -- 規格編集用フォーマット
-    cv_fmt                   CONSTANT VARCHAR2(9)  := 'FM9,999.9';            -- 規格編集用フォーマット
+    /* 2009.05.13 K.Satomura T1_0974対応 START */
+    --cv_fmt                   CONSTANT VARCHAR2(9)  := 'FM9,999.9';            -- 規格編集用フォーマット
+    cv_fmt                   CONSTANT VARCHAR2(9)  := 'FM9,990.0';            -- 規格編集用フォーマット
+    /* 2009.05.13 K.Satomura T1_0974対応 END */
     /* 2009.05.07 K.Satomura T1_0889対応 END */
     cv_unit_type_hs          CONSTANT VARCHAR2(1)  := '1';                  -- 単価区分:1(本数)
     cv_unit_type_cs          CONSTANT VARCHAR2(1)  := '2';                  -- 単価区分:2(C/S)
@@ -660,7 +667,11 @@ AS
     io_rp_qte_lst_dt_rec.customer_name     := NVL(io_rp_qte_lst_dt_rec.quote_submit_name,
                                                 lt_party_name);                              -- 顧客名
     io_rp_qte_lst_dt_rec.sales_name        := lt_sales_name;                                 -- 販売先名
-    io_rp_qte_lst_dt_rec.base_addr         := lt_zip || cv_space || lt_address_line1;        -- 拠点住所
+    /* 2009.05.13 K.Satomura T1_0972対応 START */
+    --io_rp_qte_lst_dt_rec.base_addr         := lt_zip || cv_space || lt_address_line1;        -- 拠点住所
+    io_rp_qte_lst_dt_rec.base_zip          := lt_zip;                                        -- 拠点郵便番号
+    io_rp_qte_lst_dt_rec.base_addr         := lt_address_line1;                              -- 拠点住所
+    /* 2009.05.13 K.Satomura T1_0972対応 END */
     io_rp_qte_lst_dt_rec.base_name         := lt_location_name;                              -- 拠点名
     io_rp_qte_lst_dt_rec.base_phone_no     := lt_phone;                                      -- 拠点電話番号
     io_rp_qte_lst_dt_rec.dliv_prce_tx_t_nm := lt_mean_dlv_prce_tx_tp;                        -- 店納価格税区分名
@@ -770,6 +781,9 @@ AS
          ,sales_name                   -- 販売先名
          ,deliv_place                  -- 納入場所
          ,header_payment_condition     -- ヘッダー支払条件
+         /* 2009.05.13 K.Satomura T1_0972対応 START */
+         ,base_zip                     -- 拠点郵便番号
+         /* 2009.05.13 K.Satomura T1_0972対応 END */
          ,base_addr                    -- 拠点住所
          ,base_name                    -- 拠点名
          ,base_phone_no                -- 拠点電話番号
@@ -816,6 +830,9 @@ AS
          ,i_rp_qte_lst_data_rec.sales_name                     -- 販売先名
          ,i_rp_qte_lst_data_rec.deliv_place                    -- 納入場所
          ,i_rp_qte_lst_data_rec.header_payment_condition       -- ヘッダー支払条件
+         /* 2009.05.13 K.Satomura T1_0972対応 START */
+         ,i_rp_qte_lst_data_rec.base_zip                       -- 拠点郵便番号
+         /* 2009.05.13 K.Satomura T1_0972対応 END */
          ,i_rp_qte_lst_data_rec.base_addr                      -- 拠点住所
          ,i_rp_qte_lst_data_rec.base_name                      -- 拠点名
          ,i_rp_qte_lst_data_rec.base_phone_no                  -- 拠点電話番号
@@ -950,6 +967,9 @@ AS
          ,sales_name                   -- 販売先名
          ,deliv_place                  -- 納入場所
          ,header_payment_condition     -- ヘッダー支払条件
+         /* 2009.05.13 K.Satomura T1_0972対応 START */
+         ,base_zip                     -- 拠点郵便番号
+         /* 2009.05.13 K.Satomura T1_0972対応 END */
          ,base_addr                    -- 拠点住所
          ,base_name                    -- 拠点名
          ,base_phone_no                -- 拠点電話番号
@@ -977,6 +997,9 @@ AS
          ,i_rp_qte_lst_data_rec.sales_name                     -- 販売先名
          ,i_rp_qte_lst_data_rec.deliv_place                    -- 納入場所
          ,i_rp_qte_lst_data_rec.header_payment_condition       -- ヘッダー支払条件
+         /* 2009.05.13 K.Satomura T1_0972対応 START */
+         ,i_rp_qte_lst_data_rec.base_zip                       -- 拠点郵便番号
+         /* 2009.05.13 K.Satomura T1_0972対応 END */
          ,i_rp_qte_lst_data_rec.base_addr                      -- 拠点住所
          ,i_rp_qte_lst_data_rec.base_name                      -- 拠点名
          ,i_rp_qte_lst_data_rec.base_phone_no                  -- 拠点電話番号
