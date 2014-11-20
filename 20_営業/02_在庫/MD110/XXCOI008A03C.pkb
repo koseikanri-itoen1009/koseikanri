@@ -35,6 +35,7 @@ AS
  *                                                        棚卸情報の送信を追加
  *  2010/02/03    1.3   H.Sasaki         [E_本稼動_01424] 数量項目が全て０のレコードは
  *                                                        連携しないよう修正
+ *  2010/03/10    1.4   H.Sasaki         [E_本稼動_01856] 月初数量が取得できない場合0を設定
  *
  *****************************************************************************************/
 --
@@ -1291,23 +1292,30 @@ AS
           ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-          -- 前月分棚卸情報取得エラーメッセージ
-          -- 「前月分棚卸情報が取得できませんでした。月次在庫受払情報を確認して下さい。」
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name
-                           , iv_name         => cv_msg_xxcoi_10377
-                           , iv_token_name1  => cv_tkn_month
-                           , iv_token_value1 => ir_recept_month_rec.practice_date
-                           , iv_token_name2  => cv_tkn_base_code
-                           , iv_token_value2 => ir_recept_month_rec.base_code
-                           , iv_token_name3  => cv_tkn_subinventory
-                           , iv_token_value3 => ir_recept_month_rec.subinventory_code
-                           , iv_token_name4  => cv_tkn_item_code
-                           , iv_token_value4 => ir_recept_month_rec.inventory_item_id
-                         );
-            lv_errbuf := lv_errmsg;
-            --
-            RAISE global_api_expt;
+-- == 2010/03/10 V1.4 Modified START ===============================================================
+--          -- 前月分棚卸情報取得エラーメッセージ
+--          -- 「前月分棚卸情報が取得できませんでした。月次在庫受払情報を確認して下さい。」
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_appl_short_name
+--                           , iv_name         => cv_msg_xxcoi_10377
+--                           , iv_token_name1  => cv_tkn_month
+--                           , iv_token_value1 => ir_recept_month_rec.practice_date
+--                           , iv_token_name2  => cv_tkn_base_code
+--                           , iv_token_value2 => ir_recept_month_rec.base_code
+--                           , iv_token_name3  => cv_tkn_subinventory
+--                           , iv_token_value3 => ir_recept_month_rec.subinventory_code
+--                           , iv_token_name4  => cv_tkn_item_code
+--                           , iv_token_value4 => ir_recept_month_rec.inventory_item_id
+--                         );
+--            lv_errbuf := lv_errmsg;
+--            --
+--            RAISE global_api_expt;
+--
+            gn_month_begin_quantity := 0;
+            gn_inv_result           := 0;
+            gn_inv_result_bad       := 0;
+            gn_inv_wear             := 0;
+-- == 2010/03/10 V1.4 Modified END   ===============================================================
         END;
 --
       -- 月次在庫受払表(累計)の年月＝業務日付の年月の場合
