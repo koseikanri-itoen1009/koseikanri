@@ -80,13 +80,14 @@ AS
  *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
  *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
  *  2008/10/23   1.28  Oracle 二瓶大輔  [配車解除関数] TE080_BPO_600 No22対応
- *  2008/11/13   1.29  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘311対応
- *  2008/11/25   1.30  Oracle 北寒寺正夫[配車解除関数] 本番障害#84対応
- *  2008/11/27   1.31  Oracle 椎名昭圭  [依頼Noコンバート関数] 本番障害#179対応
- *  2008/12/02   1.32  Oracle 野村正幸  本番#318対応
- *  2008/12/13   1.33  Oracle 二瓶大輔  本番#568対応(配車解除関数ログ出力追加)
- *  2008/12/15   1.34  Oracle 伊藤ひとみ[重量容積小口個数関数]メッセージ格納変数の桁を増やす対応
- *  2008/12/16   1.35  Oracle 二瓶大輔  本番#568対応(配車解除関数変数定義修正)
+ *  2008/11/13   1.29  SCS    伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘311対応
+ *  2008/11/25   1.30  SCS    北寒寺正夫[配車解除関数] 本番障害#84対応
+ *  2008/11/27   1.31  SCS    椎名昭圭  [依頼Noコンバート関数] 本番障害#179対応
+ *  2008/12/02   1.32  SCS    野村正幸  本番#318対応
+ *  2008/12/13   1.33  SCS    二瓶大輔  本番#568対応(配車解除関数ログ出力追加)
+ *  2008/12/15   1.34  SCS    伊藤ひとみ[重量容積小口個数関数]メッセージ格納変数の桁を増やす対応
+ *  2008/12/16   1.35  SCS    二瓶大輔  本番#568対応(配車解除関数変数定義修正)
+ *  2008/12/16   1.36  SCS    菅原大輔  本番#744対応(パレット重量計算不正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2609,8 +2610,11 @@ AS
               --【ヘッダ更新項目】
               ln_update_sum_weight        :=  NVL(ln_update_sum_weight, 0)        + ln_sum_weight;
               ln_update_sum_capacity      :=  NVL(ln_update_sum_capacity, 0)      + ln_sum_capacity;
-              ln_update_sum_pallet_weight :=  NVL(ln_update_sum_pallet_weight, 0)
-                                              + (ln_real_pallet_quantity * ln_pallet_waight);
+--2008/12/16 1.36 Mod Start 明細数分加算しているのを修正
+--              ln_update_sum_pallet_weight :=  NVL(ln_update_sum_pallet_weight, 0)
+--                                              + (ln_real_pallet_quantity * ln_pallet_waight);
+              ln_update_sum_pallet_weight := (NVL(ln_real_pallet_quantity,0) * NVL(ln_pallet_waight,0));
+--2008/12/16 1.36 Mod End
 --
               -- ①(3)で取得した出荷実績数量が0の場合
               IF (lt_ship_tab(ln_counter).shipped_quantity = 0) THEN
@@ -3586,8 +3590,12 @@ AS
               --【ヘッダ更新項目】
               ln_update_sum_weight        :=  NVL(ln_update_sum_weight, 0)   + ln_sum_weight;
               ln_update_sum_capacity      :=  NVL(ln_update_sum_capacity, 0) + ln_sum_capacity;
-              ln_update_sum_pallet_weight :=  NVL(ln_update_sum_pallet_weight, 0)
-                                              + (ln_out_pallet_qty * ln_pallet_waight);
+--2008/12/16 1.36 Mod Start 明細数分加算しているのを修正
+--              ln_update_sum_pallet_weight :=  NVL(ln_update_sum_pallet_weight, 0)
+--                                              + (ln_out_pallet_qty * ln_pallet_waight);
+              ln_update_sum_pallet_weight := (NVL(ln_out_pallet_qty,0) * NVL(ln_pallet_waight,0));
+--2008/12/16 1.36 Mod End
+
 --
               -- ①(1)で取得した製品識別区分が｢製品｣以外の場合
               IF (lv_product_flg <> cv_product) THEN
