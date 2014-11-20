@@ -136,6 +136,7 @@ SELECT ilm.lot_no                            lot_no,                            
        xxcmn_vendors2_v      xvv,     -- 仕入先情報VIEW2
        xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
 WHERE  ilm.item_id                = :12
+  AND  ilm.lot_id                 = 0 -- 2009/04/14 ADD 本番障害#1405
   AND  xlsv.lot_status(+)         = ilm.attribute23
   AND  xlsv.prod_class_code(+)    = :13
   AND  xmld.mov_line_id(+)        = :14
