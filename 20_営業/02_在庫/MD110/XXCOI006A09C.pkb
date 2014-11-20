@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/05/28    1.4   H.Sasaki         [T1_1234]累計テーブルの作成方法修正
  *  2009/06/04    1.5   H.Sasaki         [T1_1324]当日取引データにて消化VDを対象外とする
  *  2009/06/05    1.6   H.Sasaki         [T1_1123]入出庫０の場合、累計データを作成しない
+ *  2009/07/30    1.7   N.Abe            [0000638]数量の取得項目修正
  *
  *****************************************************************************************/
 --
@@ -1562,7 +1563,10 @@ AS
              ,mmt.inventory_item_id                   inventory_item_id           -- 品目ID
              ,TO_CHAR(mmt.transaction_date, cv_month) transaction_month           -- 取引年月
              ,TRUNC(mmt.transaction_date)             transaction_date            -- 取引日
-             ,mmt.transaction_quantity                transaction_qty             -- 取引数量
+-- == 2009/07/30 V1.7 Modified START ===============================================================
+--             ,mmt.transaction_quantity                transaction_qty             -- 取引数量
+             ,mmt.primary_quantity                    transaction_qty             -- 基準単位数量
+-- == 2009/07/30 V1.7 Modified END   ===============================================================
              ,xird_last.book_inventory_quantity       last_book_inv_quantity      -- 帳簿在庫数（前月）
              ,xird_today.book_inventory_quantity      today_book_inv_quantity     -- 帳簿在庫数（当日）
 -- == 2009/06/04 V1.5 Added START ===============================================================
