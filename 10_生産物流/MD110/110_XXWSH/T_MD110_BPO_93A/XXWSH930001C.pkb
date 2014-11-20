@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2008/06/05    1.2  Oracle 宮田 隆史  結合テスト実施に伴う改修
  *  2008/06/13    1.3  Oracle 宮田 隆史  結合テスト実施に伴う改修
  *  2008/06/23    1.4  Oracle 宮田 隆史  ST不具合#230対応
+ *  2008/06/24    1.5  Oracle 宮田 隆史  ST不具合#230対応(2)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -218,6 +219,8 @@ AS
   gv_msg_93a_150                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13150';
   -- ロットマスタ取得複数件エラー
   gv_msg_93a_151                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13151';
+  -- 最大配送区分算出関数エラー
+  gv_msg_93a_152                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13152';
   -- 重量容積小口個数更新関数エラーメッセージ
   gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   -- ＰＧでのコンカレント呼び出しエラー
@@ -478,6 +481,8 @@ AS
   -- 運賃形態
   gv_frt_chrg_type_set           CONSTANT VARCHAR2(1)  := '1';  -- 設定振替
   gv_frt_chrg_type_act           CONSTANT VARCHAR2(1)  := '2';  -- 実費振替
+--
+  gv_delivery_no_null            CONSTANT VARCHAR2(1)  := 'X';  -- 配送No＝NULL時の変換文字
 --
   gn_normal                      NUMBER := 0;
   gn_warn                        NUMBER := 1;
@@ -998,7 +1003,6 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_delivery_no_null   CONSTANT VARCHAR2(1) := 'X'; -- 配送No＝NULL時の変換文字
 --
     -- *** ローカル変数 ***
 --
@@ -1022,7 +1026,7 @@ AS
     <<deliveryno_unit_errflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
 --
-      IF ((NVL(iv_delivery_no,cv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,cv_delivery_no_null)) AND
+      IF ((NVL(iv_delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,gv_delivery_no_null)) AND
           (iv_eos_data_type = gr_interface_info_rec(j).eos_data_type))
       THEN
 --
@@ -1096,7 +1100,6 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_delivery_no_null   CONSTANT VARCHAR2(1) := 'X'; -- 配送No＝NULL時の変換文字
 --
     -- *** ローカル変数 ***
 --
@@ -1120,7 +1123,7 @@ AS
     <<header_unit_reserveflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
 --
-      IF ((NVL(iv_delivery_no,cv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,cv_delivery_no_null)) AND
+      IF ((NVL(iv_delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,gv_delivery_no_null)) AND
           (iv_movreqno = gr_interface_info_rec(j).order_source_ref)  AND
           (iv_eos_data_type = gr_interface_info_rec(j).eos_data_type))
       THEN
@@ -2918,7 +2921,7 @@ AS
                       ,xshi.eos_data_type               --IF_H.EOSデータ種別
             ) xshi_b
     WHERE   xshi_a.header_id = xsli_a.header_id
-    AND     xshi_a.delivery_no = xshi_b.delivery_no
+    AND     NVL(xshi_a.delivery_no,gv_delivery_no_null) = NVL(xshi_b.delivery_no,gv_delivery_no_null)
     AND     xshi_a.order_source_ref = xshi_b.order_source_ref
     AND     xshi_a.eos_data_type = xshi_b.eos_data_type
     AND     xshi_a.request_id <> xshi_b.max_request_id
@@ -5834,7 +5837,7 @@ AS
             END IF;
 --
             -- 配送区分、抽出項目:配送区分、配送区分_実績の比較
-            IF (lt_mov_shipping_code <> gr_interface_info_rec(i).shipping_method_code) THEN
+            IF (NVL(lt_mov_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
 --
               ln_errflg := 1;
 --
@@ -5993,7 +5996,7 @@ AS
               END IF;
 --
               -- 配送区分、抽出項目:配送区分、配送区分_実績の比較
-              IF (lt_req_shipping_code <> gr_interface_info_rec(i).shipping_method_code) THEN
+              IF (NVL(lt_req_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
 --
                 ln_errflg := 1;
 --
@@ -7971,84 +7974,147 @@ AS
     -- 着荷時間to
     gr_order_h_rec.arrival_time_to         := lv_arrival_time_to;
 --
-    -- 基本重量
-    -- パラメータ情報取得
-    -- 1.コード区分１
-    lv_code_class1                := gv_code_class_04;
-    -- 2.入出庫場所コード１
-    lv_entering_despatching_code1 := gr_interface_info_rec(in_index).location_code;
-    -- 3.コード区分２
-    lv_code_class2                := gv_code_class_09;
-    -- 4.入出庫場所コード２
-    lv_entering_despatching_code2 := gr_interface_info_rec(in_index).party_site_code;
-    -- 5.基準日(適用日基準日)
-    ld_standard_date := gr_interface_info_rec(in_index).shipped_date;
-    -- 6.配送区分
-    lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
---
-    ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
-                              lv_code_class1,                 -- 1.コード区分１
-                              lv_entering_despatching_code1,  -- 2.入出庫場所コード１
-                              lv_code_class2,                 -- 3.コード区分２
-                              lv_entering_despatching_code2,  -- 4.入出庫場所コード２
-                              ld_standard_date,               -- 5.基準日(適用日基準日)
-                              lv_ship_methods,                -- 6.配送区分
-                              on_drink_deadweight,            -- 7.ドリンク積載重量
-                              on_leaf_deadweight,             -- 8.リーフ積載重量
-                              on_drink_loading_capacity,      -- 9.ドリンク積載容積
-                              on_leaf_loading_capacity,       -- 10.リーフ積載容積
-                              on_palette_max_qty);            -- 11.パレット最大枚数
---
-    IF (ln_ret_code = gn_warn) THEN
---
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                     gv_msg_kbn                       -- 'XXWSH'
-                    ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
-                    ,gv_param7_token
-                    ,gr_interface_info_rec(in_index).delivery_no      --配送No
-                    ,gv_param8_token
-                    ,gr_interface_info_rec(in_index).order_source_ref --受注ソース参照
-                    ,gv_table_token                   -- トークン：TABLE_NAME
-                    ,gv_table_token01_nm              -- テーブル名：受注ヘッダ(アドオン)
-                    ,gv_param1_token
-                    ,lv_code_class1                   -- パラメータ：コード区分１
-                    ,gv_param2_token
-                    ,lv_entering_despatching_code1    -- パラメータ：入出庫場所コード１
-                    ,gv_param3_token
-                    ,lv_code_class2                   -- パラメータ：コード区分２
-                    ,gv_param4_token
-                    ,lv_entering_despatching_code2    -- パラメータ：入出庫場所コード２
-                    ,gv_param5_token
-                    ,TO_CHAR(ld_standard_date,'YYYY/MM/DD') -- パラメータ：基準日
-                    ,gv_param6_token
-                    ,lv_ship_methods                  -- パラメータ：配送区分
-                    )
-                    ,1
-                    ,5000);
---
-      RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
---
-    ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
+    -- 出荷の場合、最大パレット枚数を取得します。
+    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
     THEN
-      -- ドリンク積載
-      gr_order_h_rec.based_weight              := on_drink_deadweight;
 --
-    ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
-    THEN
-      -- リーフ積載
-      gr_order_h_rec.based_weight              := on_leaf_deadweight;
-    END IF;
+      -- 基本重量
+      -- パラメータ情報取得
+      -- 1.コード区分１
+      lv_code_class1                := gv_code_class_04;
+      -- 2.入出庫場所コード１
+      lv_entering_despatching_code1 := gr_interface_info_rec(in_index).location_code;
+      -- 3.コード区分２
+      lv_code_class2                := gv_code_class_09;
+      -- 4.入出庫場所コード２
+      lv_entering_despatching_code2 := gr_interface_info_rec(in_index).party_site_code;
+      -- 5.基準日(適用日基準日)
+      ld_standard_date := gr_interface_info_rec(in_index).shipped_date;
+      -- 6.配送区分
+      lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
 --
-    -- 基本容積
-    IF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
-    THEN
-      -- ドリンク容積
-      gr_order_h_rec.based_capacity            := on_drink_loading_capacity;
+      -- 配送区分がNULLの場合、最大配送区分を取得して最大パレット枚数を取得する。
+      IF (lv_ship_methods IS NULL) THEN
 --
-    ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
-    THEN
-      -- リーフ容積
-      gr_order_h_rec.based_capacity            := on_leaf_loading_capacity;
+        -- 最大配送区分算出関数
+        ln_ret_code := xxwsh_common_pkg.get_max_ship_method(
+                                   lv_code_class1                                        -- IN:コード区分1
+                                  ,lv_entering_despatching_code1                         -- IN:入出庫場所コード1
+                                  ,lv_code_class2                                        -- IN:コード区分2
+                                  ,lv_entering_despatching_code2                         -- IN:入出庫場所コード2
+                                  ,gr_interface_info_rec(in_index).prod_kbn_cd           -- IN:商品区分
+                                  ,gr_interface_info_rec(in_index).weight_capacity_class -- IN:重量容積区分
+                                  ,NULL                                                  -- IN:自動配車対象区分
+                                  ,ld_standard_date                                      -- IN:基準日
+                                  ,lv_ship_methods                -- OUT:最大配送区分
+                                  ,on_drink_deadweight            -- OUT:ドリンク積載重量
+                                  ,on_leaf_deadweight             -- OUT:リーフ積載重量
+                                  ,on_drink_loading_capacity      -- OUT:ドリンク積載容積
+                                  ,on_leaf_loading_capacity       -- OUT:リーフ積載容積
+                                  ,on_palette_max_qty);           -- OUT:パレット最大枚数
+--
+        IF (ln_ret_code = gn_warn) THEN
+--
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                         gv_msg_kbn                       -- 'XXWSH'
+                        ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
+                        ,gv_param1_token
+                        ,gr_interface_info_rec(in_index).delivery_no           --配送No
+                        ,gv_param2_token
+                        ,gr_interface_info_rec(in_index).order_source_ref      --受注ソース参照
+                        ,gv_table_token                                        -- トークン：TABLE_NAME
+                        ,gv_table_token01_nm                                   -- テーブル名：受注ヘッダ(アドオン)
+                        ,gv_param3_token
+                        ,lv_code_class1                                        -- パラメータ：コード区分１
+                        ,gv_param4_token
+                        ,lv_entering_despatching_code1                         -- パラメータ：入出庫場所コード１
+                        ,gv_param5_token
+                        ,lv_code_class2                                        -- パラメータ：コード区分２
+                        ,gv_param6_token
+                        ,lv_entering_despatching_code2                         -- パラメータ：入出庫場所コード２
+                        ,gv_param7_token
+                        ,gr_interface_info_rec(in_index).prod_kbn_cd           -- パラメータ：商品区分
+                        ,gv_param8_token
+                        ,gr_interface_info_rec(in_index).weight_capacity_class -- パラメータ：重量容積区分
+                        ,gv_param9_token
+                        ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                -- パラメータ：基準日
+                        )
+                        ,1
+                        ,5000);
+--
+          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+        END IF;
+--
+      END IF;
+--
+      -- 最大パレット枚数取得
+      ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
+                                lv_code_class1,                 -- 1.コード区分１
+                                lv_entering_despatching_code1,  -- 2.入出庫場所コード１
+                                lv_code_class2,                 -- 3.コード区分２
+                                lv_entering_despatching_code2,  -- 4.入出庫場所コード２
+                                ld_standard_date,               -- 5.基準日(適用日基準日)
+                                lv_ship_methods,                -- 6.配送区分
+                                on_drink_deadweight,            -- 7.ドリンク積載重量
+                                on_leaf_deadweight,             -- 8.リーフ積載重量
+                                on_drink_loading_capacity,      -- 9.ドリンク積載容積
+                                on_leaf_loading_capacity,       -- 10.リーフ積載容積
+                                on_palette_max_qty);            -- 11.パレット最大枚数
+--
+      IF (ln_ret_code = gn_warn) THEN
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                       gv_msg_kbn                       -- 'XXWSH'
+                      ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
+                      ,gv_param7_token
+                      ,gr_interface_info_rec(in_index).delivery_no      --配送No
+                      ,gv_param8_token
+                      ,gr_interface_info_rec(in_index).order_source_ref --受注ソース参照
+                      ,gv_table_token                   -- トークン：TABLE_NAME
+                      ,gv_table_token01_nm              -- テーブル名：受注ヘッダ(アドオン)
+                      ,gv_param1_token
+                      ,lv_code_class1                   -- パラメータ：コード区分１
+                      ,gv_param2_token
+                      ,lv_entering_despatching_code1    -- パラメータ：入出庫場所コード１
+                      ,gv_param3_token
+                      ,lv_code_class2                   -- パラメータ：コード区分２
+                      ,gv_param4_token
+                      ,lv_entering_despatching_code2    -- パラメータ：入出庫場所コード２
+                      ,gv_param5_token
+                      ,TO_CHAR(ld_standard_date,'YYYY/MM/DD') -- パラメータ：基準日
+                      ,gv_param6_token
+                      ,lv_ship_methods                  -- パラメータ：配送区分
+                      )
+                      ,1
+                      ,5000);
+--
+        RAISE global_api_expt;   -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+      ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
+      THEN
+        -- ドリンク積載
+        gr_order_h_rec.based_weight              := on_drink_deadweight;
+--
+      ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
+      THEN
+        -- リーフ積載
+        gr_order_h_rec.based_weight              := on_leaf_deadweight;
+      END IF;
+--
+      -- 基本容積
+      IF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
+      THEN
+        -- ドリンク容積
+        gr_order_h_rec.based_capacity            := on_drink_loading_capacity;
+--
+      ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
+      THEN
+        -- リーフ容積
+        gr_order_h_rec.based_capacity            := on_leaf_loading_capacity;
+--
+      END IF;
 --
     END IF;
 --
@@ -8378,86 +8444,145 @@ AS
     END IF;
     -- パレット回収枚数
     gr_order_h_rec.collected_pallet_qty := gr_interface_info_rec(in_index).collected_pallet_qty;
-    -- 基本重量
-    -- パラメータ情報取得
-    -- 1.コード区分１
-    lv_code_class1                := gv_code_class_04;
-    -- 2.入出庫場所コード１
-    lv_entering_despatching_code1 := gr_interface_info_rec(in_index).location_code;
 --
-    -- 3.コード区分２
-    IF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200) THEN
-      --「有償出荷報告」の場合、支給先
-      lv_code_class2                := gv_code_class_11;
-    ELSE
-      --「有償出荷報告」以外の場合、配送先
+    -- 出荷の場合、最大パレット枚数を取得します。
+    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+    THEN
+      -- 基本重量
+      -- パラメータ情報取得
+      -- 1.コード区分１
+      lv_code_class1                := gv_code_class_04;
+      -- 2.入出庫場所コード１
+      lv_entering_despatching_code1 := gr_interface_info_rec(in_index).location_code;
+--
+      -- 3.コード区分２
       lv_code_class2                := gv_code_class_09;
+--
+      -- 4.入出庫場所コード２
+      lv_entering_despatching_code2 := gr_interface_info_rec(in_index).party_site_code;
+      -- 5.基準日(適用日基準日)
+      ld_standard_date := gr_interface_info_rec(in_index).shipped_date;
+      -- 6.配送区分
+      lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
+--
+      -- 配送区分がNULLの場合、最大配送区分を取得して最大パレット枚数を取得する。
+      IF (lv_ship_methods IS NULL) THEN
+--
+        -- 最大配送区分算出関数
+        ln_ret_code := xxwsh_common_pkg.get_max_ship_method(
+                                   lv_code_class1                                        -- IN:コード区分1
+                                  ,lv_entering_despatching_code1                         -- IN:入出庫場所コード1
+                                  ,lv_code_class2                                        -- IN:コード区分2
+                                  ,lv_entering_despatching_code2                         -- IN:入出庫場所コード2
+                                  ,gr_interface_info_rec(in_index).prod_kbn_cd           -- IN:商品区分
+                                  ,gr_interface_info_rec(in_index).weight_capacity_class -- IN:重量容積区分
+                                  ,NULL                                                  -- IN:自動配車対象区分
+                                  ,ld_standard_date                                      -- IN:基準日
+                                  ,lv_ship_methods                -- OUT:最大配送区分
+                                  ,on_drink_deadweight            -- OUT:ドリンク積載重量
+                                  ,on_leaf_deadweight             -- OUT:リーフ積載重量
+                                  ,on_drink_loading_capacity      -- OUT:ドリンク積載容積
+                                  ,on_leaf_loading_capacity       -- OUT:リーフ積載容積
+                                  ,on_palette_max_qty);           -- OUT:パレット最大枚数
+--
+        IF (ln_ret_code = gn_warn) THEN
+--
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                         gv_msg_kbn                       -- 'XXWSH'
+                        ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
+                        ,gv_param1_token
+                        ,gr_interface_info_rec(in_index).delivery_no           --配送No
+                        ,gv_param2_token
+                        ,gr_interface_info_rec(in_index).order_source_ref      --受注ソース参照
+                        ,gv_table_token                                        -- トークン：TABLE_NAME
+                        ,gv_table_token01_nm                                   -- テーブル名：受注ヘッダ(アドオン)
+                        ,gv_param3_token
+                        ,lv_code_class1                                        -- パラメータ：コード区分１
+                        ,gv_param4_token
+                        ,lv_entering_despatching_code1                         -- パラメータ：入出庫場所コード１
+                        ,gv_param5_token
+                        ,lv_code_class2                                        -- パラメータ：コード区分２
+                        ,gv_param6_token
+                        ,lv_entering_despatching_code2                         -- パラメータ：入出庫場所コード２
+                        ,gv_param7_token
+                        ,gr_interface_info_rec(in_index).prod_kbn_cd           -- パラメータ：商品区分
+                        ,gv_param8_token
+                        ,gr_interface_info_rec(in_index).weight_capacity_class -- パラメータ：重量容積区分
+                        ,gv_param9_token
+                        ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                -- パラメータ：基準日
+                        )
+                        ,1
+                        ,5000);
+--
+          RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+        END IF;
+--
+      END IF;
+--
+      -- 最大パレット枚数取得
+      ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
+                                lv_code_class1,                 -- 1.コード区分１
+                                lv_entering_despatching_code1,  -- 2.入出庫場所コード１
+                                lv_code_class2,                 -- 3.コード区分２
+                                lv_entering_despatching_code2,  -- 4.入出庫場所コード２
+                                ld_standard_date,               -- 5.基準日(適用日基準日)
+                                lv_ship_methods,                -- 6.配送区分
+                                on_drink_deadweight,            -- 7.ドリンク積載重量
+                                on_leaf_deadweight,             -- 8.リーフ積載重量
+                                on_drink_loading_capacity,      -- 9.ドリンク積載容積
+                                on_leaf_loading_capacity,       -- 10.リーフ積載容積
+                                on_palette_max_qty);            -- 11.パレット最大枚数
+--
+      IF (ln_ret_code = gn_warn) THEN
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                       gv_msg_kbn                       -- 'XXWSH'
+                      ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
+                      ,gv_param7_token
+                      ,gr_interface_info_rec(in_index).delivery_no      --配送No
+                      ,gv_param8_token
+                      ,gr_interface_info_rec(in_index).order_source_ref --受注ソース参照
+                      ,gv_table_token                   -- トークン：TABLE_NAME
+                      ,gv_table_token01_nm              -- テーブル名：受注ヘッダ(アドオン)
+                      ,gv_param1_token
+                      ,lv_code_class1                   -- パラメータ：コード区分１
+                      ,gv_param2_token
+                      ,lv_entering_despatching_code1    -- パラメータ：入出庫場所コード１
+                      ,gv_param3_token
+                      ,lv_code_class2                   -- パラメータ：コード区分２
+                      ,gv_param4_token
+                      ,lv_entering_despatching_code2    -- パラメータ：入出庫場所コード２
+                      ,gv_param5_token
+                      ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                 -- パラメータ：基準日
+                      ,gv_param6_token
+                      ,lv_ship_methods                  -- パラメータ：配送区分
+                      )
+                      ,1
+                      ,5000);
+--
+        RAISE global_api_expt;    -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+      ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
+      THEN
+        gr_order_h_rec.based_weight       := on_drink_deadweight;
+      ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
+      THEN
+        gr_order_h_rec.based_weight       := on_leaf_deadweight;
+      END IF;
+--
+      -- 基本容積
+      IF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
+      THEN
+        gr_order_h_rec.based_capacity     := on_drink_loading_capacity;
+      ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
+      THEN
+        gr_order_h_rec.based_capacity     := on_leaf_loading_capacity;
+      END IF;
+--
     END IF;
 --
-    -- 4.入出庫場所コード２
-    lv_entering_despatching_code2 := gr_interface_info_rec(in_index).party_site_code;
-    -- 5.基準日(適用日基準日)
-    ld_standard_date := gr_interface_info_rec(in_index).shipped_date;
-    -- 6.配送区分
-    lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
---
-    ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
-                              lv_code_class1,                 -- 1.コード区分１
-                              lv_entering_despatching_code1,  -- 2.入出庫場所コード１
-                              lv_code_class2,                 -- 3.コード区分２
-                              lv_entering_despatching_code2,  -- 4.入出庫場所コード２
-                              ld_standard_date,               -- 5.基準日(適用日基準日)
-                              lv_ship_methods,                -- 6.配送区分
-                              on_drink_deadweight,            -- 7.ドリンク積載重量
-                              on_leaf_deadweight,             -- 8.リーフ積載重量
-                              on_drink_loading_capacity,      -- 9.ドリンク積載容積
-                              on_leaf_loading_capacity,       -- 10.リーフ積載容積
-                              on_palette_max_qty);            -- 11.パレット最大枚数
---
-    IF (ln_ret_code = gn_warn) THEN
---
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                     gv_msg_kbn                       -- 'XXWSH'
-                    ,gv_msg_93a_025                   -- 最大パレット枚数算出関数エラー
-                    ,gv_param7_token
-                    ,gr_interface_info_rec(in_index).delivery_no      --配送No
-                    ,gv_param8_token
-                    ,gr_interface_info_rec(in_index).order_source_ref --受注ソース参照
-                    ,gv_table_token                   -- トークン：TABLE_NAME
-                    ,gv_table_token01_nm              -- テーブル名：受注ヘッダ(アドオン)
-                    ,gv_param1_token
-                    ,lv_code_class1                   -- パラメータ：コード区分１
-                    ,gv_param2_token
-                    ,lv_entering_despatching_code1    -- パラメータ：入出庫場所コード１
-                    ,gv_param3_token
-                    ,lv_code_class2                   -- パラメータ：コード区分２
-                    ,gv_param4_token
-                    ,lv_entering_despatching_code2    -- パラメータ：入出庫場所コード２
-                    ,gv_param5_token
-                    ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                 -- パラメータ：基準日
-                    ,gv_param6_token
-                    ,lv_ship_methods                  -- パラメータ：配送区分
-                    )
-                    ,1
-                    ,5000);
---
-      RAISE global_api_expt;    -- 最大パレット枚数算出関数エラーの場合はABENDさせてすべてROLLBACKする
---
-    ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
-    THEN
-      gr_order_h_rec.based_weight       := on_drink_deadweight;
-    ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
-    THEN
-      gr_order_h_rec.based_weight       := on_leaf_deadweight;
-    END IF;
-    -- 基本容積
-    IF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_2))
-    THEN
-      gr_order_h_rec.based_capacity     := on_drink_loading_capacity;
-    ELSIF ((ln_ret_code = gn_normal) AND (gr_interface_info_rec(in_index).prod_kbn_cd = gv_prod_kbn_cd_1))
-    THEN
-      gr_order_h_rec.based_capacity     := on_leaf_loading_capacity;
-    END IF;
     -- パレット実績枚数
     gr_order_h_rec.real_pallet_quantity := gr_interface_info_rec(in_index).used_pallet_qty;
     -- 運送業者_ID_実績
@@ -8531,7 +8656,7 @@ AS
          ,xoha.program_id                   = gt_conc_program_id
          ,xoha.program_update_date          = gt_sysdate
       WHERE xoha.request_no           = gr_order_h_rec.request_no
-      AND   xoha.delivery_no          = gr_order_h_rec.delivery_no
+      AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null)
       AND   xoha.latest_external_flag = gv_yesno_y;
 --
      -- (210)拠点出荷確定報告・(215)庭先出荷確定報告の場合で、成績管理部署がある場合
@@ -8558,7 +8683,7 @@ AS
          ,xoha.program_id                   = gt_conc_program_id
          ,xoha.program_update_date          = gt_sysdate
       WHERE xoha.request_no           = gr_order_h_rec.request_no
-      AND   xoha.delivery_no          = gr_order_h_rec.delivery_no
+      AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null)
       AND   xoha.latest_external_flag = gv_yesno_y;
 --
     END IF;
@@ -8568,7 +8693,7 @@ AS
     INTO lt_order_header_id
     FROM xxwsh_order_headers_all xoha
     WHERE xoha.request_no           = gr_order_h_rec.request_no
-    AND   xoha.delivery_no          = gr_order_h_rec.delivery_no
+    AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null)
     AND   xoha.latest_external_flag = gv_yesno_y;
 --
     gr_order_h_rec.order_header_id := lt_order_header_id;
@@ -8773,7 +8898,7 @@ AS
     INTO  lr_order_h_rec_ins
     FROM  xxwsh_order_headers_all xoha
     WHERE xoha.request_no           = gr_order_h_rec_up2(in_index).request_no
-    AND   xoha.delivery_no          = gr_order_h_rec_up2(in_index).delivery_no
+    AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec_up2(in_index).delivery_no,gv_delivery_no_null)
     AND   xoha.latest_external_flag = gv_yesno_y;
 --    WHERE xoha.request_no           = gr_order_h_rec.request_no
 --    AND   xoha.delivery_no          = gr_order_h_rec.delivery_no
@@ -8789,7 +8914,7 @@ AS
        ,xoha.program_id             = gt_conc_program_id
        ,xoha.program_update_date    = gt_sysdate
     WHERE xoha.request_no           = gr_order_h_rec_up2(in_index).request_no
-    AND   xoha.delivery_no          = gr_order_h_rec_up2(in_index).delivery_no
+    AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec_up2(in_index).delivery_no,gv_delivery_no_null)
     AND   xoha.latest_external_flag = gv_yesno_y;
 --
     -- 受注ヘッダID取得(シーケンス)
@@ -9867,6 +9992,62 @@ AS
     -- 6.配送区分
     lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
 --
+    -- 配送区分がNULLの場合、最大配送区分を取得して最大パレット枚数を取得する。
+    IF (lv_ship_methods IS NULL) THEN
+--
+      -- 最大配送区分算出関数
+      ln_ret_code := xxwsh_common_pkg.get_max_ship_method(
+                                 lv_code_class1                                        -- IN:コード区分1
+                                ,lv_entering_despatching_code1                         -- IN:入出庫場所コード1
+                                ,lv_code_class2                                        -- IN:コード区分2
+                                ,lv_entering_despatching_code2                         -- IN:入出庫場所コード2
+                                ,gr_interface_info_rec(in_index).prod_kbn_cd           -- IN:商品区分
+                                ,gr_interface_info_rec(in_index).weight_capacity_class -- IN:重量容積区分
+                                ,NULL                                                  -- IN:自動配車対象区分
+                                ,ld_standard_date                                      -- IN:基準日
+                                ,lv_ship_methods                -- OUT:最大配送区分
+                                ,on_drink_deadweight            -- OUT:ドリンク積載重量
+                                ,on_leaf_deadweight             -- OUT:リーフ積載重量
+                                ,on_drink_loading_capacity      -- OUT:ドリンク積載容積
+                                ,on_leaf_loading_capacity       -- OUT:リーフ積載容積
+                                ,on_palette_max_qty);           -- OUT:パレット最大枚数
+--
+      IF (ln_ret_code = gn_warn) THEN
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                       gv_msg_kbn                       -- 'XXWSH'
+                      ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
+                      ,gv_param1_token
+                      ,gr_interface_info_rec(in_index).delivery_no           --配送No
+                      ,gv_param2_token
+                      ,gr_interface_info_rec(in_index).order_source_ref      --受注ソース参照
+                      ,gv_table_token                                        -- トークン：TABLE_NAME
+                      ,gv_table_token02_nm                                   -- テーブル名：移動依頼/指示ヘッダ(アドオン)
+                      ,gv_param3_token
+                      ,lv_code_class1                                        -- パラメータ：コード区分１
+                      ,gv_param4_token
+                      ,lv_entering_despatching_code1                         -- パラメータ：入出庫場所コード１
+                      ,gv_param5_token
+                      ,lv_code_class2                                        -- パラメータ：コード区分２
+                      ,gv_param6_token
+                      ,lv_entering_despatching_code2                         -- パラメータ：入出庫場所コード２
+                      ,gv_param7_token
+                      ,gr_interface_info_rec(in_index).prod_kbn_cd           -- パラメータ：商品区分
+                      ,gv_param8_token
+                      ,gr_interface_info_rec(in_index).weight_capacity_class -- パラメータ：重量容積区分
+                      ,gv_param9_token
+                      ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                -- パラメータ：基準日
+                      )
+                      ,1
+                      ,5000);
+--
+        RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+      END IF;
+--
+    END IF;
+--
+    -- 最大パレット枚数取得
     ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
                               lv_code_class1,                 -- 1.コード区分１
                               lv_entering_despatching_code1,  -- 2.入出庫場所コード１
@@ -10236,6 +10417,62 @@ AS
     -- 6.配送区分
     lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
 --
+    -- 配送区分がNULLの場合、最大配送区分を取得して最大パレット枚数を取得する。
+    IF (lv_ship_methods IS NULL) THEN
+--
+      -- 最大配送区分算出関数
+      ln_ret_code := xxwsh_common_pkg.get_max_ship_method(
+                                 lv_code_class1                                        -- IN:コード区分1
+                                ,lv_entering_despatching_code1                         -- IN:入出庫場所コード1
+                                ,lv_code_class2                                        -- IN:コード区分2
+                                ,lv_entering_despatching_code2                         -- IN:入出庫場所コード2
+                                ,gr_interface_info_rec(in_index).prod_kbn_cd           -- IN:商品区分
+                                ,gr_interface_info_rec(in_index).weight_capacity_class -- IN:重量容積区分
+                                ,NULL                                                  -- IN:自動配車対象区分
+                                ,ld_standard_date                                      -- IN:基準日
+                                ,lv_ship_methods                -- OUT:最大配送区分
+                                ,on_drink_deadweight            -- OUT:ドリンク積載重量
+                                ,on_leaf_deadweight             -- OUT:リーフ積載重量
+                                ,on_drink_loading_capacity      -- OUT:ドリンク積載容積
+                                ,on_leaf_loading_capacity       -- OUT:リーフ積載容積
+                                ,on_palette_max_qty);           -- OUT:パレット最大枚数
+--
+      IF (ln_ret_code = gn_warn) THEN
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                       gv_msg_kbn                       -- 'XXWSH'
+                      ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
+                      ,gv_param1_token
+                      ,gr_interface_info_rec(in_index).delivery_no           --配送No
+                      ,gv_param2_token
+                      ,gr_interface_info_rec(in_index).order_source_ref      --受注ソース参照
+                      ,gv_table_token                                        -- トークン：TABLE_NAME
+                      ,gv_table_token02_nm                                   -- テーブル名：移動依頼/指示ヘッダ(アドオン)
+                      ,gv_param3_token
+                      ,lv_code_class1                                        -- パラメータ：コード区分１
+                      ,gv_param4_token
+                      ,lv_entering_despatching_code1                         -- パラメータ：入出庫場所コード１
+                      ,gv_param5_token
+                      ,lv_code_class2                                        -- パラメータ：コード区分２
+                      ,gv_param6_token
+                      ,lv_entering_despatching_code2                         -- パラメータ：入出庫場所コード２
+                      ,gv_param7_token
+                      ,gr_interface_info_rec(in_index).prod_kbn_cd           -- パラメータ：商品区分
+                      ,gv_param8_token
+                      ,gr_interface_info_rec(in_index).weight_capacity_class -- パラメータ：重量容積区分
+                      ,gv_param9_token
+                      ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                -- パラメータ：基準日
+                      )
+                      ,1
+                      ,5000);
+--
+        RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+      END IF;
+--
+    END IF;
+--
+    -- 最大パレット枚数取得
     ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
                               lv_code_class1,                 -- 1.コード区分１
                               lv_entering_despatching_code1,  -- 2.入出庫場所コード１
@@ -10322,7 +10559,7 @@ AS
        ,xmrih.program_id                  = gt_conc_program_id
        ,xmrih.program_update_date         = gt_sysdate
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   xmrih.delivery_no = gr_mov_req_instr_h_rec.delivery_no  -- 配送No
+    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
 --
@@ -10331,7 +10568,7 @@ AS
     INTO lt_mov_hdr_id
     FROM xxinv_mov_req_instr_headers xmrih
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   xmrih.delivery_no = gr_mov_req_instr_h_rec.delivery_no  -- 配送No
+    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
 --
@@ -10470,6 +10707,62 @@ AS
     -- 6.配送区分
     lv_ship_methods               := gr_interface_info_rec(in_index).shipping_method_code;
 --
+    -- 配送区分がNULLの場合、最大配送区分を取得して最大パレット枚数を取得する。
+    IF (lv_ship_methods IS NULL) THEN
+--
+      -- 最大配送区分算出関数
+      ln_ret_code := xxwsh_common_pkg.get_max_ship_method(
+                                 lv_code_class1                                        -- IN:コード区分1
+                                ,lv_entering_despatching_code1                         -- IN:入出庫場所コード1
+                                ,lv_code_class2                                        -- IN:コード区分2
+                                ,lv_entering_despatching_code2                         -- IN:入出庫場所コード2
+                                ,gr_interface_info_rec(in_index).prod_kbn_cd           -- IN:商品区分
+                                ,gr_interface_info_rec(in_index).weight_capacity_class -- IN:重量容積区分
+                                ,NULL                                                  -- IN:自動配車対象区分
+                                ,ld_standard_date                                      -- IN:基準日
+                                ,lv_ship_methods                -- OUT:最大配送区分
+                                ,on_drink_deadweight            -- OUT:ドリンク積載重量
+                                ,on_leaf_deadweight             -- OUT:リーフ積載重量
+                                ,on_drink_loading_capacity      -- OUT:ドリンク積載容積
+                                ,on_leaf_loading_capacity       -- OUT:リーフ積載容積
+                                ,on_palette_max_qty);           -- OUT:パレット最大枚数
+--
+      IF (ln_ret_code = gn_warn) THEN
+--
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                       gv_msg_kbn                       -- 'XXWSH'
+                      ,gv_msg_93a_152                   -- 最大配送区分算出関数エラー
+                      ,gv_param1_token
+                      ,gr_interface_info_rec(in_index).delivery_no           --配送No
+                      ,gv_param2_token
+                      ,gr_interface_info_rec(in_index).order_source_ref      --受注ソース参照
+                      ,gv_table_token                                        -- トークン：TABLE_NAME
+                      ,gv_table_token02_nm                                   -- テーブル名：移動依頼/指示ヘッダ(アドオン)
+                      ,gv_param3_token
+                      ,lv_code_class1                                        -- パラメータ：コード区分１
+                      ,gv_param4_token
+                      ,lv_entering_despatching_code1                         -- パラメータ：入出庫場所コード１
+                      ,gv_param5_token
+                      ,lv_code_class2                                        -- パラメータ：コード区分２
+                      ,gv_param6_token
+                      ,lv_entering_despatching_code2                         -- パラメータ：入出庫場所コード２
+                      ,gv_param7_token
+                      ,gr_interface_info_rec(in_index).prod_kbn_cd           -- パラメータ：商品区分
+                      ,gv_param8_token
+                      ,gr_interface_info_rec(in_index).weight_capacity_class -- パラメータ：重量容積区分
+                      ,gv_param9_token
+                      ,TO_CHAR(ld_standard_date,'YYYY/MM/DD')                -- パラメータ：基準日
+                      )
+                      ,1
+                      ,5000);
+--
+        RAISE global_api_expt;   -- 最大配送区分算出関数エラーの場合はABENDさせてすべてROLLBACKする
+--
+      END IF;
+--
+    END IF;
+--
+    -- 最大パレット枚数取得
     ln_ret_code := xxwsh_common_pkg.get_max_pallet_qty(
                               lv_code_class1,                 -- 1.コード区分１
                               lv_entering_despatching_code1,  -- 2.入出庫場所コード１
@@ -10545,7 +10838,7 @@ AS
        ,xmrih.program_id                  = gt_conc_program_id
        ,xmrih.program_update_date         = gt_sysdate
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   xmrih.delivery_no = gr_mov_req_instr_h_rec.delivery_no  -- 配送No
+    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
     --==============================================================
@@ -10557,7 +10850,7 @@ AS
     INTO lt_mov_hdr_id
     FROM xxinv_mov_req_instr_headers xmrih
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   xmrih.delivery_no = gr_mov_req_instr_h_rec.delivery_no  -- 配送No
+    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
 --
@@ -11777,7 +12070,7 @@ AS
       FROM    xxinv_mov_req_instr_headers xmrif    -- 移動依頼/指示ヘッダ(アドオン)
             , xxinv_mov_req_instr_lines   xmrql    -- 移動依頼/指示明細(アドオン)
             , xxinv_mov_lot_details       xmld     -- 移動ロット詳細(アドオン)
-      WHERE   xmrif.delivery_no      = in_delivery_no       -- 配送No=配送No
+      WHERE   NVL(xmrif.delivery_no,gv_delivery_no_null) = NVL(in_delivery_no,gv_delivery_no_null) -- 配送No=配送No
       AND     xmrif.mov_num          = in_order_source_ref  -- 依頼No=受注ソース参照
       AND     xmrif.mov_hdr_id       = xmrql.mov_hdr_id     -- 移動ヘッダアドオンID=移動ヘッダアドオンID
       AND     xmrif.status          <> gv_mov_status_99     -- ステータス<>取消
@@ -12225,11 +12518,11 @@ AS
         lb_break_flg := TRUE;
     ELSE
 --
-      IF ((gr_interface_info_rec(in_idx).delivery_no <> gr_interface_info_rec(in_idx + 1).delivery_no) OR
+      IF ((NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) <> NVL(gr_interface_info_rec(in_idx + 1).delivery_no,gv_delivery_no_null)) OR
           (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref) OR
           (gr_interface_info_rec(in_idx).eos_data_type <> gr_interface_info_rec(in_idx + 1).eos_data_type))
       OR
-         ((gr_interface_info_rec(in_idx).delivery_no = gr_interface_info_rec(in_idx + 1).delivery_no) AND
+         ((NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx + 1).delivery_no,gv_delivery_no_null)) AND
           (gr_interface_info_rec(in_idx).order_source_ref = gr_interface_info_rec(in_idx + 1).order_source_ref) AND
           (gr_interface_info_rec(in_idx).eos_data_type = gr_interface_info_rec(in_idx + 1).eos_data_type) AND
           (gr_interface_info_rec(in_idx).orderd_item_code <> gr_interface_info_rec(in_idx + 1).orderd_item_code))
@@ -12284,7 +12577,7 @@ AS
 --
     ELSE
 --
-      IF ((gr_interface_info_rec(in_idx).delivery_no <> gr_interface_info_rec(in_idx + 1).delivery_no) OR
+      IF ((NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) <> NVL(gr_interface_info_rec(in_idx + 1).delivery_no,gv_delivery_no_null)) OR
           (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref) OR
           (gr_interface_info_rec(in_idx).eos_data_type <> gr_interface_info_rec(in_idx + 1).eos_data_type))
       THEN
@@ -12436,7 +12729,7 @@ AS
       FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
             , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
             , xxinv_mov_lot_details     xmld    -- 移動ロット詳細(アドオン)
-      WHERE   xoha.delivery_no          = in_delivery_no
+      WHERE   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(in_delivery_no,gv_delivery_no_null)
       AND     xoha.request_no           = in_order_source_ref
       AND     xoha.order_header_id      = xola.order_header_id
       AND     xoha.latest_external_flag = gv_yesno_y
@@ -12802,10 +13095,10 @@ AS
         lb_break_flg := TRUE;
     ELSE
 --
-      IF ((gr_interface_info_rec(in_idx).delivery_no <> gr_interface_info_rec(in_idx + 1).delivery_no) OR
+      IF ((NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) <> NVL(gr_interface_info_rec(in_idx + 1).delivery_no,gv_delivery_no_null)) OR
           (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref))
       OR
-         ((gr_interface_info_rec(in_idx).delivery_no = gr_interface_info_rec(in_idx + 1).delivery_no) AND
+         ((NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx + 1).delivery_no,gv_delivery_no_null)) AND
           (gr_interface_info_rec(in_idx).order_source_ref = gr_interface_info_rec(in_idx + 1).order_source_ref) AND
           (gr_interface_info_rec(in_idx).orderd_item_code <> gr_interface_info_rec(in_idx + 1).orderd_item_code))
       THEN
@@ -12857,7 +13150,7 @@ AS
 --
     ELSE
 --
-      IF ((gr_interface_info_rec(in_idx).delivery_no <> gr_interface_info_rec(in_idx + 1).delivery_no) OR
+      IF ((NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) <> NVL(gr_interface_info_rec(in_idx + 1).delivery_no,gv_delivery_no_null)) OR
          (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref))
       THEN
         lb_break_flg := TRUE;

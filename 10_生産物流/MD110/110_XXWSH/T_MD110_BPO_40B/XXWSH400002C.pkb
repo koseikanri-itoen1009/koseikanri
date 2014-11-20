@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *                                       明細重量の計算方法を修正
  *  2008/06/17    1.8   石渡  賢和       基本重量・基本容積のセット判断を修正
  *  2008/06/19    1.9   新藤  義勝       内部変更要求#143対応
+ *  2008/06/24    1.10  石渡  賢和       ST不具合#247、#284対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3234,6 +3236,7 @@ AS
     -- (3).パレット合計枚数の算出
     gn_pallet_t_c_am  := gn_pallet_t_c_am + gn_pallet_co_am;
 --
+--
     -- ｢数量｣が｢配数｣の整数倍ではない場合。ワーニング
     ln_mod_chk := MOD(gn_item_amount,TO_NUMBER(gr_del_qty));
     IF (ln_mod_chk <> 0) THEN
@@ -3470,7 +3473,8 @@ AS
 --###########################  固定部 END   ############################
 --
     -- 「パレット最大枚数」と「パレット合計枚数」の比較
-    IF (gn_prt_max > gn_pallet_t_c_am) THEN
+    --  出荷方法(アドオン)のパレット最大枚数を超えた場合エラーとする
+    IF (gn_prt_max < gn_pallet_t_c_am) THEN
       pro_err_list_make
         (
           iv_kind         => gv_msg_war                     --  in 種別   '警告'
@@ -3771,6 +3775,7 @@ AS
     ord_h_all.schedule_ship_date           := gt_head_line(gn_i).ship_date;    -- 出荷予定日
     ord_h_all.schedule_arrival_date        := gt_head_line(gn_i).arr_date;     -- 着荷予定日
     ord_h_all.confirm_request_class        := gv_0;                            -- 物流担当確認依頼区分
+    ord_h_all.freight_charge_class         := gv_1;                            -- 運賃区分
     ord_h_all.deliver_from_id              := gr_ship_id;                      -- 出荷元ID
     ord_h_all.deliver_from                 := gt_head_line(gn_i).lo_code;      -- 出荷元保管場所
     ord_h_all.Head_sales_branch            := gt_head_line(gn_i).h_s_branch;   -- 管轄拠点
@@ -3972,6 +3977,7 @@ AS
       END IF;
     END IF;
 --
+--
     ----------------------------------------------------------------------------
     -- 3.受注ヘッダアドオン・受注明細アドオンへデータ登録                     --
     ----------------------------------------------------------------------------
@@ -3998,6 +4004,7 @@ AS
        ,schedule_ship_date
        ,schedule_arrival_date
        ,confirm_request_class
+       ,freight_charge_class
        ,deliver_from_id
        ,deliver_from
        ,head_sales_branch
@@ -4050,6 +4057,7 @@ AS
        ,ord_h_all.schedule_ship_date
        ,ord_h_all.schedule_arrival_date
        ,ord_h_all.confirm_request_class
+       ,ord_h_all.freight_charge_class
        ,ord_h_all.deliver_from_id
        ,ord_h_all.deliver_from
        ,ord_h_all.Head_sales_branch

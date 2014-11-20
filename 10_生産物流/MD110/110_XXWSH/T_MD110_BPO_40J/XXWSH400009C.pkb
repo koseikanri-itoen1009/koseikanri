@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/04/11    1.0   Masanobu Kimura  新規作成
  *  2008/06/10    1.1   石渡  賢和       ヘッダ「出力日付」の書式を変更
  *  2008/06/13    1.2   石渡  賢和       不具合対応
+ *  2008/06/23    1.3   石渡  賢和       ST不具合対応#106
  *
  *****************************************************************************************/
 --
@@ -147,7 +148,8 @@ AS
                                                     -- 顧客コード
      ,party_short_name           xxcmn_cust_accounts2_v.party_short_name%TYPE
                                                     -- 顧客
-     ,address                    xxcmn_cust_acct_sites2_v.address_line1%TYPE
+     --,address                    xxcmn_cust_acct_sites2_v.address_line1%TYPE
+     ,address                    VARCHAR2(60)
                                                     -- 配送先住所
      ,address_line1              xxwsh_order_headers_all.head_sales_branch%TYPE
                                                     -- 管轄拠点コード
