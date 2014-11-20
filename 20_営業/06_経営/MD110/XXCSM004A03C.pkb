@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/07/07    1.3   M.Ohtsuki       ［SCS障害管理番号0000254］部署コード取得条件の不具合
  *  2009/07/14    1.4   M.Ohtsuki       ［SCS障害管理番号0000663］想定外エラー発生時の不具合
  *  2009/07/27    1.5   T.Tsukino       ［SCS障害管理番号0000786］パフォーマンス障害
+ *  2009/08/24    1.6   T.Tsukino       ［SCS障害管理番号0001150］障害№0001150対応(発令日の判定方法の不備）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -905,6 +906,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cn_shikaku_point           CONSTANT NUMBER      := 0;                             -- 資格ポイント:ポイント0
+--//+ADD START 2009/08/24 0001150 T.Tsukino
+    cv_tougetsu_date           CONSTANT VARCHAR2(2) := '01';                          -- 当月比較用一日日付
+--//ADD END 2009/08/24 0001150 T.Tsukino   
 --
     -- *** ローカル変数 ***
     lv_kyoten_cd               PER_ALL_ASSIGNMENTS_F.ASS_ATTRIBUTE5%TYPE;              --  拠点コード
@@ -1042,7 +1046,11 @@ AS
       --従業員の職種が新・旧部署ともに営業員のケース
       SELECT
                ppf.employee_number                            employee_number     --従業員コード
-              ,SUBSTRB(paaf.ass_attribute2,1,6)               hatsureibi          --発令日(YYYYMMDD⇒YYYYMM）
+--//+ADD START 2009/08/24 0001150 T.Tsukino
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--              ,SUBSTRB(paaf.ass_attribute2,1,6)               hatsureibi          --発令日(YYYYMMDD⇒YYYYMM）
+              ,paaf.ass_attribute2                            hatsureibi          --発令日(YYYYMMDD）
+--//+ADD END 2009/08/24 0001150 T.Tsukino
               ,ppf.attribute7                                 new_shikaku_cd      --資格コード（新）
               ,ppf.attribute9                                 old_shikaku_cd      --資格コード（旧）
               ,ppf.attribute15                                new_syokumu_cd      --職務コード（新）
@@ -1135,11 +1143,101 @@ AS
         IF (get_eigyo_date_rec.hatsureibi IS NULL) THEN
           RAISE no_data_hatsurei;
         END IF;
-        IF (get_eigyo_date_rec.hatsureibi = gv_inprocess_date) THEN               --発令日=入力日付'YYYYMM
+--//+UPD START 2009/08/24 0001150 T.Tsukino        
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--        IF (get_eigyo_date_rec.hatsureibi = gv_inprocess_date) THEN               --発令日=入力日付'YYYYMM
+          IF (SUBSTRB(get_eigyo_date_rec.hatsureibi,1,6) = gv_inprocess_date) THEN               --発令日=入力日付'YYYYMM
+--//+UPD END 2009/08/24 0001150 T.Tsukino 
            IF(get_eigyo_date_rec.new_syokusyu_cd IS NOT NULL
             AND get_eigyo_date_rec.old_syokusyu_cd IS NOT NULL)
           THEN
-            --新のデータ取得
+--//+ADD START 2009/08/24 0001150 T.Tsukino
+            IF (SUBSTRB(get_eigyo_date_rec.hatsureibi,7,2) = cv_tougetsu_date) THEN
+            --新データでデータを作る処理
+        -- ◇================================◇
+        --  新の処理にて、
+        --  ①部署コード抽出/資格ポイントの算出
+        --  ②レコードの削除
+        --  ③レコードの新規追加を行う
+        -- ◇================================◇
+            --新データの代入
+         -- ================================================
+         -- （新データ)部署データの抽出処理
+         -- ================================================
+              get_dept_data(
+                 iv_employee_cd      =>   get_eigyo_date_rec.employee_number
+                ,iv_kyoten_cd        =>   get_eigyo_date_rec.new_kyoten_cd
+                ,ov_busyo_cd         =>   lv_busyo_cd
+                ,ov_errbuf           =>   lv_errbuf
+                ,ov_retcode          =>   lv_retcode
+                ,ov_errmsg           =>   lv_errmsg
+                );
+                -- エラーならば、処理をスキップする。
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                IF (lv_retcode = cv_status_warn) THEN
+                  RAISE global_skip_expt;
+                END IF;
+         -- ================================================
+         -- (新データ)資格ポイント算出処理
+         -- ================================================
+              get_point_data(
+                 iv_employee_cd      =>   get_eigyo_date_rec.employee_number
+                ,iv_busyo_cd         =>   lv_busyo_cd
+                ,iv_shikaku_cd       =>   get_eigyo_date_rec.new_shikaku_cd
+                ,iv_syokumu_cd       =>   get_eigyo_date_rec.new_syokumu_cd
+                ,on_shikaku_point    =>   ln_shikaku_point
+                ,ov_errbuf           =>   lv_errbuf
+                ,ov_retcode          =>   lv_retcode
+                ,ov_errmsg           =>   lv_errmsg
+                );
+                -- エラーならば、処理をスキップする。
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                IF (lv_retcode = cv_status_warn) THEN
+                  RAISE global_skip_expt;
+                END IF;
+        -- ======================================
+        -- レコード削除処理
+        -- ======================================
+              del_rireki_tbl_data(
+                 iv_employee_num      => get_eigyo_date_rec.employee_number              -- 従業員№
+                ,ov_errbuf            => lv_errbuf                                       -- エラー・メッセージ
+                ,ov_retcode           => lv_retcode                                      -- リターン・コード
+                ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
+                );
+                -- エラーならば、処理をスキップする。
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                IF (lv_retcode = cv_status_warn) THEN
+                  RAISE global_skip_expt;
+                END IF;
+        -- ======================================
+        -- レコード新規追加処理
+        -- ======================================
+              insert_rireki_tbl_data (
+                 iv_employee_num      => get_eigyo_date_rec.employee_number              -- 従業員№
+                ,in_shikaku_point     => ln_shikaku_point                                -- 資格ポイント
+                ,iv_busyo_cd          => lv_busyo_cd                                     -- 部署コード
+                ,iv_syokumu_cd        => get_eigyo_date_rec.new_syokumu_cd               -- 職務コード
+                ,iv_shikaku_cd        => get_eigyo_date_rec.new_shikaku_cd               -- 資格コード
+                ,iv_kyoten_cd         => get_eigyo_date_rec.new_kyoten_cd                -- 拠点コード
+                ,ov_errbuf            => lv_errbuf                                       -- エラー・メッセージ
+                ,ov_retcode           => lv_retcode                                      -- リターン・コード
+                ,ov_errmsg            => lv_errmsg                                       -- ユーザー・エラー・メッセージ
+                );
+                -- エラーならば、処理をスキップする。
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                IF (lv_retcode = cv_status_warn) THEN
+                  RAISE global_skip_expt;
+                END IF;
+            ELSE
+--//+ADD END 2009/08/24 0001150 T.Tsukino
             -- ================================================
             -- (新データ)部署データの抽出処理
             -- ================================================
@@ -1307,6 +1405,9 @@ AS
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
+--//+ADD START 2009/08/24 0001150 T.Tsukino
+            END IF;
+--//+ADD END 2009/08/24 0001150 T.Tsukino
           --資格ポイント抽出    処理不要の場合①
           --新データのみ取得
           ELSIF (get_eigyo_date_rec.new_syokusyu_cd IS NOT NULL
@@ -1476,7 +1577,11 @@ AS
               RAISE global_skip_expt;
             END IF;
           END IF;
-        ELSIF (get_eigyo_date_rec.hatsureibi > gv_inprocess_date) THEN            -- 発令日＞入力日付'YYYYMM'
+--//+UPD START 2009/08/24 0001150 T.Tsukino        
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--        ELSIF (get_eigyo_date_rec.hatsureibi > gv_inprocess_date) THEN            -- 発令日＞入力日付'YYYYMM'
+        ELSIF (SUBSTRB(get_eigyo_date_rec.hatsureibi,1,6) > gv_inprocess_date) THEN            -- 発令日＞入力日付'YYYYMM'
+--//+UPD END 2009/08/24 0001150 T.Tsukino          
         -- ◇================================◇
         --  旧の処理にて、
         --  ①部署コード抽出/資格ポイントの算出
@@ -1583,7 +1688,11 @@ AS
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
-        ELSIF (get_eigyo_date_rec.hatsureibi < gv_inprocess_date) THEN            -- 発令日＜入力日付'YYYYMM'
+--//+UPD START 2009/08/24 0001150 T.Tsukino        
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--        ELSIF (get_eigyo_date_rec.hatsureibi < gv_inprocess_date) THEN            -- 発令日＜入力日付'YYYYMM'
+        ELSIF (SUBSTRB(get_eigyo_date_rec.hatsureibi,1,6) < gv_inprocess_date) THEN            -- 発令日＜入力日付'YYYYMM'
+--//+UPD END 2009/08/24 0001150 T.Tsukino
         -- ◇================================◇
         --  新の処理にて、
         --  ①部署コード抽出/資格ポイントの算出
