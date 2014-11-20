@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A12C(body)
  * Description      : 商品計画リスト(時系列)出力
  * MD.050           : 商品計画リスト(時系列)出力 MD050_CSM_002_A12
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/02/17    1.4   M.Ohtsuki       ［障害CT_025］SQL条件不備の修正
  *  2009/02/20    1.5   T.Tsukino        [障害CT_052] CSV出力の日付フォーマット不正対応
  *  2009/05/07    1.6   M.Ohtsuki        [障害T1_0858] 共通関数修正に伴うパラメータの追加
+ *  2009/05/25    1.7   A.Sakawa         [障害T1_1169] 商品群名称同一時の出力レイアウト不正対応
  *
  *****************************************************************************************/
 --
@@ -2123,6 +2124,9 @@ AS
     lv_warnmsg             VARCHAR2(4000);                                                          -- ユーザー・警告・メッセージ
     lv_location_cd         VARCHAR2(100);                                                           -- 判断用拠点コード
     lv_item_nm             VARCHAR2(100);                                                           -- 判断用名称
+    --//+ADD START 2009/05/25 T1_1169 A.Sakawa
+    lv_item_cd             VARCHAR2(100);                                                           -- 判断用商品群コード
+    --//+ADD END 2009/05/25 T1_1169 A.Sakawa
     lv_data_head           VARCHAR2(4000);                                                          -- ヘッダーデータ格納用
 --
     lv_out_amount          VARCHAR2(4000);                                                          -- 数量出力用
@@ -2261,7 +2265,13 @@ AS
                       || cv_msg_duble || gv_prf_amount                   || cv_msg_duble;
 --
       ELSE
-        IF (lv_item_nm <> get_output_data_rec.item_nm) THEN                                         -- 名称ブレイク時
+        --//+UPD START 2009/05/25 T1_1169 A.Sakawa
+        --IF (lv_item_nm <> get_output_data_rec.item_nm) THEN                                         -- 名称ブレイク時
+        IF (lv_item_cd <> get_output_data_rec.item_cd)
+          OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_item_discount AND lv_item_nm <> get_output_data_rec.item_nm )
+          OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_item_sum AND lv_item_nm <> get_output_data_rec.item_nm ) 
+          OR (get_output_data_rec.item_cd IS NULL AND get_output_data_rec.item_nm = gv_prf_foothold_sum AND lv_item_nm <> get_output_data_rec.item_nm) THEN                                         -- 商品群コードブレイク時
+        --//+UPD END 2009/05/25 T1_1169 A.Sakawa
           IF (lv_item_nm = gv_prf_item_discount) THEN  
             fnd_file.put_line(
                               which  => FND_FILE.OUTPUT
@@ -2373,6 +2383,9 @@ AS
 --
       lv_location_cd  := get_output_data_rec.location_cd;                                           -- 判断用拠点コードを格納
       lv_item_nm      := get_output_data_rec.item_nm;                                               -- 判断用名称を格納
+      --//+ADD START 2009/05/25 T1_1169 A.Sakawa
+      lv_item_cd      := get_output_data_rec.item_cd;                                               -- 判断用商品群コードを格納
+      --//+ADD END 2009/05/25 T1_1169 A.Sakawa
 --
     END LOOP get_output_data_loop;
 --
