@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/07/02    1.2   Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
  *  2008/07/15    1.3   Masayuki Nomura  ST障害対応#444
  *  2008/07/15    1.4   Masayuki Nomura  ST障害対応#444（記号対応）
+ *  2008/07/17    1.5   Satoshi Takemoto ST障害対応#456
  *
  *****************************************************************************************/
 --
@@ -587,7 +588,11 @@ AS
       -- 条件
       AND   xd2.p_b_classe  = gc_code_p_b_classe_p
       -- パラメータ条件
-      AND   xd2.return_flag = gr_param.return_flag -- 確定後変更
+-- S 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- S --
+--      AND   xd2.return_flag = gr_param.return_flag -- 確定後変更
+      AND  ( (xd2.return_flag            = gr_param.return_flag)             -- 確定後変更
+          OR (gr_param.return_flag = gc_return_flag_n))     -- パラメータ.確定後変更:Nの場合はすべて
+-- E 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- E --
       AND   xd2.output_flag = gr_param.output_flag -- 差異
       -- 結合条件
       AND   xd1.delivery_no = xd2.delivery_no

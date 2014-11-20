@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/07/02    1.2   Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
  *  2008/07/15    1.3   Masayuki Nomura  ST障害対応#444
  *  2008/07/15    1.4   Masayuki Nomura  ST障害対応#444（記号対応）
+ *  2008/07/17    1.5   Satoshi Takemoto ST障害対応#456
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,12 @@ AS
   gc_item_div_sei         CONSTANT VARCHAR2(1)  := '5' ;  -- 製品
   gc_min_date_char        CONSTANT VARCHAR2(10) := '1900/01/01' ;
   gc_max_date_char        CONSTANT VARCHAR2(10) := '4712/12/31' ;
+-- S 2008/07/17 1.5 ADD BY S.Takemoto---------------------------------------------------------- S --
+  -- 差異
+  gc_output_flag_n        CONSTANT VARCHAR2(1) := 'N' ;
+  -- 支払請求区分
+  gc_p_b_classe_1         CONSTANT VARCHAR2(1) := '1' ;  -- 支払
+-- E 2008/07/17 1.5 ADD BY S.Takemoto---------------------------------------------------------- E --
 --
   -- ===============================================================================================
   -- レコード型宣言
@@ -582,6 +589,9 @@ AS
       AND   xd.judgement_date         BETWEEN xcar.start_date_active
                                       AND     NVL( xcar.end_date_active, xd.judgement_date )
       AND   xd.delivery_company_code  = xcar.party_number
+-- S 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- S --
+      AND   xd.p_b_classe             = gc_p_b_classe_1
+-- E 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- E --
       ----------------------------------------------------------------------------------------------
       -- パラメータ条件
       ----------------------------------------------------------------------------------------------
@@ -667,8 +677,14 @@ AS
       AND   xd.weight_capacity_class  = NVL( gr_param.wc_class        , xd.weight_capacity_class)
       AND   xd.outside_contract       = NVL( gr_param.outside_contract, xd.outside_contract )
 -- E 2008/05/23 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
-      AND   xd.return_flag            = gr_param.return_flag              -- 確定後変更
-      AND   xd.output_flag            = gr_param.output_flag              -- 差異
+-- S 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- S --
+--      AND   xd.return_flag            = gr_param.return_flag              -- 確定後変更
+--      AND   xd.output_flag            = gr_param.output_flag              -- 差異
+      AND  ( (xd.return_flag            = gr_param.return_flag)             -- 確定後変更
+          OR (gr_param.return_flag = gc_return_flag_n))     -- パラメータ.確定後変更:Nの場合はすべて
+      AND  ( (xd.output_flag            = gr_param.output_flag)             -- 差異
+          OR (gr_param.output_flag = gc_output_flag_n))     -- パラメータ.差異:Nの場合はすべて
+-- E 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- E --
       ORDER BY xcat.segment1
               ,xcar.party_number
               ,xd.judgement_date
