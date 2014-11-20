@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_oh_n07 ON xxwsh.xxwsh_order_headers_all( req_status,freight_charge_class,prod_class,latest_external_flag ) TABLESPACE xxidx;

@@ -39,8 +39,13 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
       ,xoha.amount_fix_class              fix_class             -- Šm’è
       ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                           xoha_last_update_date -- ÅIXV“ú(ó’ƒwƒbƒ_ƒAƒhƒIƒ“)
-      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
-                                          xola_last_update_date -- ÅIXV“ú(ó’–¾×ƒAƒhƒIƒ“)
+-- 2008-08-21 D.Nihei Mod Start
+--      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS') xola_last_update_date -- ÅIXV“ú(ó’–¾×ƒAƒhƒIƒ“)
+      ,TO_CHAR((SELECT MAX(xol.last_update_date) last_update_date
+        FROM   xxwsh_order_lines_all xol
+        WHERE  xol.order_header_id = xoha.order_header_id
+        GROUP BY xol.order_header_id) , 'YYYY/MM/DD HH24:MI:SS') xola_last_update_date -- ÅIXV“ú(ó’–¾×ƒAƒhƒIƒ“)
+-- 2008-08-21 D.Nihei Mod End
       ,xottv.auto_create_po_class         auto_create_po_class  -- ©“®”­’ì¬‹æ•ª
       ,xoha.freight_charge_class          freight_charge_class  -- ‰^’À‹æ•ª
       ,xlvvs.lookup_code exe_type -- ‹N“®ƒ^ƒCƒv
@@ -51,10 +56,12 @@ FROM   xxwsh_order_headers_all        xoha  -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxcmn_vendors2_v               xvv   -- d“üæî•ñVIEW2
       ,xxcmn_vendor_sites2_v          xvsv  -- d“üæƒTƒCƒgî•ñVIEW2
       ,xxcmn_item_locations2_v        xilv  -- OPM•ÛŠÇêŠî•ñVIEW
-      ,(SELECT xol.order_header_id       order_header_id
-              ,MAX(xol.last_update_date) last_update_date
-        FROM   xxwsh_order_lines_all xol
-        GROUP BY xol.order_header_id) xola  -- ó’–¾×ƒAƒhƒIƒ“
+-- 2008-08-21 D.Nihei Del Start
+--      ,(SELECT xol.order_header_id       order_header_id
+--              ,MAX(xol.last_update_date) last_update_date
+--        FROM   xxwsh_order_lines_all xol
+--        GROUP BY xol.order_header_id) xola  -- ó’–¾×ƒAƒhƒIƒ“
+-- 2008-08-21 D.Nihei Del End
       ,xxpo_security_supply_v xssv -- ƒZƒLƒ…ƒŠƒeƒBview
       ,xxcmn_lookup_values_v xlvvs -- ƒNƒCƒbƒNƒR[ƒhî•ñview(ƒZƒLƒ…ƒŠƒeƒBview—p)
 WHERE  
@@ -65,7 +72,9 @@ AND    xoha.notif_status         = xlvv2.lookup_code
 AND    xoha.vendor_id            = xvv.vendor_id(+)
 AND    xoha.vendor_site_id       = xvsv.vendor_site_id(+)
 AND    xoha.deliver_from_id      = xilv.inventory_location_id(+)
-AND    xoha.order_header_id      = xola.order_header_id(+)
+-- 2008-08-21 D.Nihei Del Start
+--AND    xoha.order_header_id      = xola.order_header_id(+)
+-- 2008-08-21 D.Nihei Del End
 /* ’ŠoğŒ */
 AND    xoha.latest_external_flag    = 'Y'  -- ÅV
 AND    xoha.prod_class              = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') -- ¤•i‹æ•ª
@@ -74,6 +83,10 @@ AND    xlvv2.lookup_type            = 'XXWSH_NOTIF_STATUS'      -- ’Ê’mƒXƒe[ƒ^ƒ
 AND    xottv.shipping_shikyu_class  = '2'  -- x‹‹ˆË—Š
 AND    xottv.ship_sikyu_rcv_pay_ctg = '05' -- —Lo‰×
 AND    xottv.used_disp_flg          = 'Y'  -- ‰æ–Êg—p
+-- 2008-08-21 D.Nihei Add Start
+AND    xottv.auto_create_po_class   = 0
+AND    xottv.transaction_type_name  = 'x‹‹ˆË—Š'
+-- 2008-08-21 D.Nihei Add End
 AND    xoha.req_status              IN ('07','08')
 AND    xoha.notif_status            = '40' -- Šm’è’Ê’mÏ
 --ƒZƒLƒ…ƒŠƒeƒBview’ŠoğŒ

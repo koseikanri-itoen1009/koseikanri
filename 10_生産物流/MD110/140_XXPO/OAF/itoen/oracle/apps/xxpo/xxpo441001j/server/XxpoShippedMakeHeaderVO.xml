@@ -65,10 +65,17 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
       ,xoha.shipping_instructions         shipping_instructions -- “E—v(o‰×w¦)
       ,xoha.shikyu_inst_rcv_class         rcv_class             -- ó—Ì
       ,xoha.amount_fix_class              fix_class             -- Šm’è
-      ,TO_CHAR(xoha.last_update_date,  'YYYY/MM/DD HH24:MI:SS')
-                                          xoha_last_update_date -- ÅIXV“ú(ó’ƒwƒbƒ_ƒAƒhƒIƒ“)
-      ,TO_CHAR(xola2.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
-                                          xola_last_update_date -- ÅIXV“ú(ó’–¾×ƒAƒhƒIƒ“)
+      ,TO_CHAR(xoha.last_update_date,  'YYYY/MM/DD HH24:MI:SS') xoha_last_update_date -- ÅIXV“ú(ó’ƒwƒbƒ_ƒAƒhƒIƒ“)
+-- 2008-08-21 D.Nihei Mod Start
+--      ,TO_CHAR(xola2.last_update_date, 'YYYY/MM/DD HH24:MI:SS') xola_last_update_date -- ÅIXV“ú(ó’–¾×ƒAƒhƒIƒ“)
+      ,TO_CHAR((
+       (SELECT MAX(xol2.last_update_date) last_update_date       -- ÅIXV“ú
+        FROM   xxwsh_order_lines_all   xol2
+        WHERE  xol2.order_header_id = xoha.order_header_id
+        GROUP BY xol2.order_header_id
+       )  -- ó’–¾×ƒAƒhƒIƒ“(ÅIXV“ú—p)
+      ), 'YYYY/MM/DD HH24:MI:SS') xola_last_update_date -- ÅIXV“ú(ó’–¾×ƒAƒhƒIƒ“)
+-- 2008-08-21 D.Nihei Mod End
       ,xoha.designated_item_id            designated_item_id    -- »‘¢•i–ÚID
       ,xottv.transaction_type_name        order_type_name       -- ”­¶‹æ•ª–¼(ó’ƒ^ƒCƒv–¼)
       ,'N'                                new_flag              -- V‹Kƒtƒ‰ƒO(XV‚Ìê‡AuNvŒÅ’è)
@@ -124,16 +131,23 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
       ,xoha.amount_fix_class              db_fix_class             -- Šm’è
       ,xoha.shipped_date                  db_result_shipped_date   -- oŒÉ“ú(ÀÑ)
       ,xoha.arrival_date                  db_result_arrival_date   -- “üŒÉ“ú(ÀÑ)
-      ,CASE 
+-- 2008-08-21 D.Nihei Mod Start
+      ,(SELECT
+        CASE
          WHEN xoha.req_status = '07' THEN -- ó—ÌÏ
-           CASE  
-             WHEN xola.actual_count = 0 THEN -- oŒÉE“üŒÉ—¼•û‚ÌÀÑ‚ğ‰Á–¡
+           CASE
+             WHEN (MAX(NVL((SELECT COUNT(mov_line_id)     actual_count
+                FROM   xxinv_mov_lot_details dtl
+                WHERE  document_type_code = '30'
+                AND    record_type_code   IN('20', '30')
+                AND    dtl.mov_line_id = xol.order_line_id
+                GROUP BY mov_line_id), 0)))      = 0 THEN -- oŒÉE“üŒÉ—¼•û‚ÌÀÑ‚ğ‰Á–¡
                -- ÀÑ‚È‚µ
                CASE WHEN xoha.delivery_no IS NULL THEN -- ”z‘—No
                  -- –¢”zÔ
                  CASE
-                   WHEN xola.reserved_quantity_sum = 0 THEN -- ˆø“–”
-                     CASE 
+                   WHEN SUM(NVL(xol.reserved_quantity,0)) = 0 THEN -- ˆø“–”
+                     CASE
                        WHEN xoha.po_no IS NULL THEN -- ”­’No
                                 '0'
                        ELSE     '1'
@@ -142,7 +156,7 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
                  END
                ELSE
                  CASE
-                   WHEN xola.reserved_quantity_sum = 0 THEN -- ˆø“–”
+                   WHEN SUM(NVL(xol.reserved_quantity,0)) = 0 THEN -- ˆø“–”
                                 '3'
                    ELSE         '4'
                  END
@@ -151,6 +165,38 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
            END
          ELSE                   NULL
        END                                rcv_type                 -- ó—Ìƒ^ƒCƒv
+        FROM   xxwsh_order_lines_all   xol
+        WHERE    xol.order_header_id = xoha.order_header_id
+        GROUP BY xol.order_header_id
+       ) rcv_type --   xola  -- ó’–¾×ƒAƒhƒIƒ“
+--      ,CASE 
+--         WHEN xoha.req_status = '07' THEN -- ó—ÌÏ
+--           CASE  
+--             WHEN xola.actual_count = 0 THEN -- oŒÉE“üŒÉ—¼•û‚ÌÀÑ‚ğ‰Á–¡
+--               -- ÀÑ‚È‚µ
+--               CASE WHEN xoha.delivery_no IS NULL THEN -- ”z‘—No
+--                 -- –¢”zÔ
+--                 CASE
+--                   WHEN xola.reserved_quantity_sum = 0 THEN -- ˆø“–”
+--                     CASE 
+--                       WHEN xoha.po_no IS NULL THEN -- ”­’No
+--                                '0'
+--                       ELSE     '1'
+--                     END
+--                   ELSE         '2'
+--                 END
+--               ELSE
+--                 CASE
+--                   WHEN xola.reserved_quantity_sum = 0 THEN -- ˆø“–”
+--                                '3'
+--                   ELSE         '4'
+--                 END
+--              END
+--           ELSE                 '5'
+--           END
+--         ELSE                   NULL
+--       END                                rcv_type                 -- ó—Ìƒ^ƒCƒv
+-- 2008-08-21 D.Nihei Mod End
       ,xlvv6.meaning                      freight_charge_class_name -- ‰^’À‹æ•ª(–¼Ì)
       ,xlvv7.meaning                      takeback_class_name   -- ˆøæ‹æ•ª(–¼Ì)
       ,xlvv8.meaning                      weight_capacity_class_name -- d—Ê—eÏ‹æ•ª
@@ -177,24 +223,26 @@ FROM   xxwsh_order_headers_all        xoha  -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxcmn_lookup_values_v          xlvv8 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(d—Ê—eÏ‹æ•ª—p)
       ,xxcmn_item_mst2_v              ximv  -- OPM•i–Úî•ñVIEW2
       ,xxcmn_item_locations2_v        xilv  -- OPM•ÛŠÇêŠî•ñVIEW
-      ,(SELECT xol.order_header_id                order_header_id
-              ,SUM(NVL(xol.reserved_quantity,0))  reserved_quantity_sum  -- ˆø“–”
-              ,MAX(NVL(xmld.actual_count, 0))     actual_count
-        FROM   xxwsh_order_lines_all   xol
-              ,(SELECT mov_line_id  mov_line_id
-                      ,COUNT(mov_line_id)     actual_count
-                FROM   xxinv_mov_lot_details
-                WHERE  document_type_code = '30'
-                AND    record_type_code   IN('20', '30')
-                GROUP BY mov_line_id) xmld
-        WHERE  xol.order_line_id  = xmld.mov_line_id(+)
-        GROUP BY xol.order_header_id
-       )    xola  -- ó’–¾×ƒAƒhƒIƒ“
-      ,(SELECT xol2.order_header_id       order_header_id
-              ,MAX(xol2.last_update_date) last_update_date       -- ÅIXV“ú
-        FROM   xxwsh_order_lines_all   xol2
-        GROUP BY xol2.order_header_id
-       )    xola2  -- ó’–¾×ƒAƒhƒIƒ“(ÅIXV“ú—p)
+-- 2008-08-21 D.Nihei Del Start
+--      ,(SELECT xol.order_header_id                order_header_id
+--              ,SUM(NVL(xol.reserved_quantity,0))  reserved_quantity_sum  -- ˆø“–”
+--              ,MAX(NVL(xmld.actual_count, 0))     actual_count
+--        FROM   xxwsh_order_lines_all   xol
+--              ,(SELECT mov_line_id  mov_line_id
+--                      ,COUNT(mov_line_id)     actual_count
+--                FROM   xxinv_mov_lot_details
+--                WHERE  document_type_code = '30'
+--                AND    record_type_code   IN('20', '30')
+--                GROUP BY mov_line_id) xmld
+--        WHERE  xol.order_line_id  = xmld.mov_line_id(+)
+--        GROUP BY xol.order_header_id
+--       )    xola  -- ó’–¾×ƒAƒhƒIƒ“
+--      ,(SELECT xol2.order_header_id       order_header_id
+--              ,MAX(xol2.last_update_date) last_update_date       -- ÅIXV“ú
+--        FROM   xxwsh_order_lines_all   xol2
+--        GROUP BY xol2.order_header_id
+--       )    xola2  -- ó’–¾×ƒAƒhƒIƒ“(ÅIXV“ú—p)
+-- 2008-08-21 D.Nihei Del Start
 WHERE  
 /* Œ‹‡ğŒ */
        xoha.order_type_id               = xottv.transaction_type_id
@@ -216,8 +264,10 @@ AND    xoha.takeback_class              = xlvv7.lookup_code(+)
 AND    xoha.weight_capacity_class       = xlvv8.lookup_code(+)
 AND    xoha.designated_item_id          = ximv.inventory_item_id(+)
 AND    xoha.deliver_from_id             = xilv.inventory_location_id(+)
-AND    xoha.order_header_id             = xola.order_header_id
-AND    xoha.order_header_id             = xola2.order_header_id
+-- 2008-08-21 D.Nihei Del Start
+--AND    xoha.order_header_id             = xola.order_header_id
+--AND    xoha.order_header_id             = xola2.order_header_id
+-- 2008-08-21 D.Nihei Del Start
 /* ’ŠoğŒ */
 AND    xoha.latest_external_flag    = 'Y'  -- ÅV
 AND    xlvv1.lookup_type            = 'XXPO_TRANSACTION_STATUS' -- x‹‹ˆË—ŠƒXƒe[ƒ^ƒX
