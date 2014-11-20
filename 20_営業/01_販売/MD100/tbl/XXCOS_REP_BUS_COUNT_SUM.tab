@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_BUS_COUNT_SUM
  * Description : 営業成績表 営業件数集計テーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS T.Nakabayashi新規作成
  *  2009/06/03    1.1   SCS T.Kitajima   COUNTER(NUMBER(6)→NUMBER(6,2))
+ *  2009/09/29    1.2   SCS S.Miyakoshi  [0001378]桁あふれ対応 COUNTER(NUMBER(6,2)→NUMBER(13,2))
  *
  ****************************************************************************************/
 CREATE TABLE  XXCOS.XXCOS_REP_BUS_COUNT_SUM(
@@ -21,7 +22,7 @@ CREATE TABLE  XXCOS.XXCOS_REP_BUS_COUNT_SUM(
  ,EMPLOYEE_NUM                    VARCHAR2(5)         NULL                              -- 営業員コード
  ,COUNTER_CLASS                   NUMBER(2)           NULL                              -- 件数区分
  ,BUSINESS_LOW_TYPE               VARCHAR2(2)         NULL                              -- 業態大分類
- ,COUNTER                         NUMBER(6,2)         NULL                              -- 営業件数
+ ,COUNTER                         NUMBER(13,2)        NULL                              -- 営業件数
  ,CREATED_BY                      NUMBER(15)          NOT NULL                          -- 作成者
  ,CREATION_DATE                   DATE                NOT NULL                          -- 作成日
  ,LAST_UPDATED_BY                 NUMBER(15)          NOT NULL                          -- 最終更新者
