@@ -1,4 +1,5 @@
-CREATE OR REPLACE PACKAGE BODY XXCFF010A16C
+create or replace
+PACKAGE BODY XXCFF010A16C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -20,14 +21,14 @@ AS
  *  get_lease_class_aff_info     リース種別毎のAFF情報取得              (A-6)
  *  get_lease_jnl_pattern        リース仕訳パターン情報取得             (A-7)
  *  get_les_trn_data             仕訳元データ(リース取引)抽出           (A-8)
- *  ctrl_jnl_ptn_les_trn         仕訳パターン制御(リース取引)           (A-9) ～ (A-12)
+ *  ctrl_jnl_ptn_les_trn         仕訳パターン制御(リース取引)           (A-9) ? (A-12)
  *  proc_ptn_tax                 【仕訳パターン】新規追加               (A-9)
  *  proc_ptn_move_to_sagara      【仕訳パターン】振替(本社⇒工場)       (A-10)
  *  proc_ptn_move_to_itoen       【仕訳パターン】振替(工場⇒本社)       (A-11)
  *  proc_ptn_retire              【仕訳パターン】解約                   (A-12)
  *  update_les_trns_gl_if_flag   リース取引 仕訳連携フラグ更新          (A-13)
  *  get_pay_plan_data            仕訳元データ(支払計画)抽出             (A-14)
- *  ctrl_jnl_ptn_pay_plan        仕訳パターン制御(支払計画)             (A-15) ～ (A-17)
+ *  ctrl_jnl_ptn_pay_plan        仕訳パターン制御(支払計画)             (A-15) ? (A-17)
  *  proc_ptn_debt_trsf           【仕訳パターン】リース債務振替         (A-15)
  *  proc_ptn_dept_dist_itoen     【仕訳パターン】リース料部門賦課(本社) (A-16)
  *  proc_ptn_dept_dist_sagara    【仕訳パターン】リース料部門賦課(工場) (A-17)
@@ -45,6 +46,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/01    1.0   SCS渡辺学        新規作成
  *  2008/02/18    1.1   SCS渡辺学        [障害CFF_038]仕訳元データ(リース取引)抽出条件不具合対応
+ *  2009/04/17    1.2   SCS礒崎祐次      [障害T1_0356]リース料部門賦課仕訳の配賦先部門の取得先変更対応
  *
  *****************************************************************************************/
 --
@@ -104,6 +106,10 @@ AS
   get_login_info_expt       EXCEPTION;
   --*** 会計帳簿名取得エラー
   get_sob_name_expt         EXCEPTION;
+-- T1_0356 2009/04/17 ADD START --
+  --*** 営業日日付取得エラー
+  get_working_day_expt      EXCEPTION;
+-- T1_0356 2009/04/17 ADD END   --
 --
   PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
 --
@@ -139,6 +145,9 @@ AS
   cv_msg_013a20_m_018 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00114'; --リース仕訳テーブル(仕訳元=支払計画)作成メッセージ
   cv_msg_013a20_m_019 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00115'; --一般会計OIF作成メッセージ
   cv_msg_013a20_m_020 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00181'; --取得エラー
+-- T1_0356 2009/04/17 ADD START --
+  cv_msg_013a20_m_021 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00094'; --共通関数エラー
+-- T1_0356 2009/04/17 ADD END   --
 --
   -- ***メッセージ名(トークン)
   cv_msg_013a20_t_010 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50076'; --XXCFF:会社コード_本社
@@ -158,9 +167,12 @@ AS
   cv_msg_013a20_t_024 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50168'; --会計帳簿ID=
   cv_msg_013a20_t_025 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50171'; --リース種別AFF値(リース種別ビュー)情報
   cv_msg_013a20_t_026 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50172'; --リース種別=
+-- T1_0356 2009/04/17 ADD START --
+  cv_msg_013a20_t_027 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50188'; --XXCFF:オンライン終了時間
+  cv_msg_013a20_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50189'; --営業日日付
+-- T1_0356 2009/04/17 ADD END   --
 --
   -- ***トークン名
-  -- プロファイル名
   cv_tkn_prof     CONSTANT VARCHAR2(20) := 'PROF_NAME';
   cv_tkn_bk_type  CONSTANT VARCHAR2(20) := 'BOOK_TYPE_CODE';
   cv_tkn_period   CONSTANT VARCHAR2(20) := 'PERIOD_NAME';
@@ -168,6 +180,9 @@ AS
   cv_tkn_key_name CONSTANT VARCHAR2(20) := 'KEY_NAME';
   cv_tkn_key_val  CONSTANT VARCHAR2(20) := 'KEY_VAL';
   cv_tkn_get_data CONSTANT VARCHAR2(20) := 'GET_DATA';
+-- T1_0356 2009/04/17 ADD START --
+  cv_tkn_func_name CONSTANT VARCHAR2(20) := 'FUNC_NAME';
+-- T1_0356 2009/04/17 ADD END   --
 --
   -- ***プロファイル
 --
@@ -183,6 +198,10 @@ AS
   cv_own_comp_sagara      CONSTANT VARCHAR2(30) := 'XXCFF1_OWN_COMP_SAGARA';
   -- 伝票番号_リース
   cv_slip_num_lease       CONSTANT VARCHAR2(30) := 'XXCFF1_SLIP_NUM_LEASE';
+-- T1_0356 2009/04/17 ADD START --
+  -- オンライン終了時間
+  cv_prof_online_end_time CONSTANT VARCHAR2(30) := 'XXCFF1_ONLINE_END_TIME';
+-- T1_0356 2009/04/17 ADD END   --
 --
   -- ***ファイル出力
 --
@@ -221,6 +240,14 @@ AS
 --
   -- ***リース区分
   cv_original  CONSTANT VARCHAR2(1) := '1';  -- 原契約
+--
+-- T1_0356 2009/04/17 ADD START --
+  -- ***物件ステータス
+  cv_object_status_105  CONSTANT VARCHAR2(3) := '105';  -- 移動
+--
+  -- ***オンライン終了時間
+  cv_online_end_time  CONSTANT VARCHAR2(8) := '24:00:00';  
+-- T1_0356 2009/04/17 ADD END   --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -313,6 +340,10 @@ AS
   gt_category_id  fa_categories.category_id%TYPE;
   -- 事業所CCID
   gt_location_id  fa_locations.location_id%TYPE;
+-- T1_0356 2009/04/17 ADD START --
+  -- 基準日
+  gd_base_date   DATE;
+-- T1_0356 2009/04/17 ADD END   --
 --
   -- ***ループカウンタ
   gn_main_loop_cnt NUMBER := 0;
@@ -342,6 +373,10 @@ AS
   gv_own_comp_sagara       VARCHAR2(100);
   -- 伝票番号_リース
   gv_slip_num_lease        VARCHAR2(100);
+-- T1_0356 2009/04/17 ADD START --
+  -- オンライン終了時間
+  gv_online_end_time       VARCHAR2(100);
+-- T1_0356 2009/04/17 ADD END   --
   -- ***カーソル定義
   -- リース種別毎AFF情報取得カーソル
   CURSOR lease_class_cur
@@ -2035,7 +2070,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : ctrl_jnl_ptn_pay_plan
-   * Description      : 仕訳パターン制御(支払計画) (A-15) ～ (A-17)
+   * Description      : 仕訳パターン制御(支払計画) (A-15) ? (A-17)
    ***********************************************************************************/
   PROCEDURE ctrl_jnl_ptn_pay_plan(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
@@ -2221,6 +2256,9 @@ AS
     lv_warnmsg VARCHAR2(5000);
 --
     -- *** ローカル変数 ***
+-- T1_0356 2009/04/17 ADD START --
+    lv_department_code  xxcff_object_histories.department_code%TYPE;  --管理部門
+-- T1_0356 2009/04/17 ADD END   --
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2247,34 +2285,96 @@ AS
       ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
+-- T1_0356 2009/04/17 ADD START --
+    --==============================================================
+    --月末営業日の判定
+    --==============================================================
+    -- オンライン終了日を比較する。
+    IF (gv_online_end_time >= cv_online_end_time) THEN
+      --月末営業日に１日加算する。
+      gd_base_date := gd_base_date + 1;
+    END IF;
+-- T1_0356 2009/04/17 ADD END   --
+--
     --==============================================================
     --仕訳元データ(支払計画)抽出
     --==============================================================
     OPEN  get_pay_plan_data_cur;
-    FETCH get_pay_plan_data_cur
-    BULK COLLECT INTO 
-                      g_contract_header_id_tab -- 契約内部ID
-                     ,g_contract_line_id_tab   -- 契約明細内部ID
-                     ,g_object_header_id_tab   -- 物件内部ID
-                     ,g_payment_frequency_tab  -- 支払回数
-                     ,g_period_name_tab        -- 会計期間名
-                     ,g_lease_kind_tab         -- リース種類
-                     ,g_lease_class_tab        -- リース種別
-                     ,g_vdsh_flag_tab          -- 自販機SHフラグ
-                     ,g_lease_type_tab         -- リース区分
-                     ,g_department_code_tab    -- 管理部門
-                     ,g_owner_company_tab      -- 本社／工場
-                     ,g_customer_code_tab      -- 顧客コード
-                     ,g_pay_interest_tab       -- 支払利息
-                     ,g_liab_amt_tab           -- リース債務額
-                     ,g_liab_tax_amt_tab       -- リース債務額_消費税
-                     ,g_deduction_tab          -- リース控除額
-                     ,g_charge_tab             -- リース料
-                     ,g_charge_tax_tab         -- リース料_消費税
-                     ,g_tax_code_tab           -- 税コード
-                     ;
-    --対象件数カウント
-    gn_pay_plan_target_cnt := g_contract_header_id_tab.COUNT;
+-- T1_0356 2009/04/17 MOD START --
+--  FETCH get_pay_plan_data_cur
+--  BULK COLLECT INTO 
+--                    g_contract_header_id_tab -- 契約内部ID
+--                   ,g_contract_line_id_tab   -- 契約明細内部ID
+--                   ,g_object_header_id_tab   -- 物件内部ID
+--                   ,g_payment_frequency_tab  -- 支払回数
+--                   ,g_period_name_tab        -- 会計期間名
+--                   ,g_lease_kind_tab         -- リース種類
+--                   ,g_lease_class_tab        -- リース種別
+--                   ,g_vdsh_flag_tab          -- 自販機SHフラグ
+--                   ,g_lease_type_tab         -- リース区分
+--                   ,g_department_code_tab    -- 管理部門
+--                   ,g_owner_company_tab      -- 本社／工場
+--                   ,g_customer_code_tab      -- 顧客コード
+--                   ,g_pay_interest_tab       -- 支払利息
+--                   ,g_liab_amt_tab           -- リース債務額
+--                   ,g_liab_tax_amt_tab       -- リース債務額_消費税
+--                   ,g_deduction_tab          -- リース控除額
+--                   ,g_charge_tab             -- リース料
+--                   ,g_charge_tax_tab         -- リース料_消費税
+--                   ,g_tax_code_tab           -- 税コード
+--                   ;
+--
+--  --対象件数カウント
+--  gn_pay_plan_target_cnt := g_contract_header_id_tab.COUNT;
+--
+    --対象件数の初期化
+    gn_pay_plan_target_cnt := 0;
+--
+    LOOP
+      FETCH get_pay_plan_data_cur INTO g_get_pay_plan_data_rec;
+      EXIT WHEN get_pay_plan_data_cur%NOTFOUND;
+      --対象件数のカウント
+      gn_pay_plan_target_cnt := gn_pay_plan_target_cnt + 1;
+--
+      g_contract_header_id_tab(gn_pay_plan_target_cnt) := g_get_pay_plan_data_rec.contract_header_id;  -- 契約内部ID
+      g_contract_line_id_tab(gn_pay_plan_target_cnt)   := g_get_pay_plan_data_rec.contract_line_id;    -- 契約明細内部ID
+      g_object_header_id_tab(gn_pay_plan_target_cnt)   := g_get_pay_plan_data_rec.object_header_id;    -- 物件内部ID
+      g_payment_frequency_tab(gn_pay_plan_target_cnt)  := g_get_pay_plan_data_rec.payment_frequency;   -- 支払回数
+      g_period_name_tab(gn_pay_plan_target_cnt)        := g_get_pay_plan_data_rec.period_name;         -- 会計期間名
+      g_lease_kind_tab(gn_pay_plan_target_cnt)         := g_get_pay_plan_data_rec.lease_kind;          -- リース種類
+      g_lease_class_tab(gn_pay_plan_target_cnt)        := g_get_pay_plan_data_rec.lease_class;         -- リース種別
+      g_vdsh_flag_tab(gn_pay_plan_target_cnt)          := g_get_pay_plan_data_rec.vdsh_flag;           -- 自販機SHフラグ
+      g_lease_type_tab(gn_pay_plan_target_cnt)         := g_get_pay_plan_data_rec.lease_type;          -- リース区分
+      g_department_code_tab(gn_pay_plan_target_cnt)    := g_get_pay_plan_data_rec.department_code;     -- 管理部門
+      g_owner_company_tab(gn_pay_plan_target_cnt)      := g_get_pay_plan_data_rec.owner_company;       -- 本社／工場
+      g_customer_code_tab(gn_pay_plan_target_cnt)      := g_get_pay_plan_data_rec.customer_code;       -- 顧客コード
+      g_pay_interest_tab(gn_pay_plan_target_cnt)       := g_get_pay_plan_data_rec.pay_interest;        -- 支払利息
+      g_liab_amt_tab(gn_pay_plan_target_cnt)           := g_get_pay_plan_data_rec.liab_amt;            -- リース債務額
+      g_liab_tax_amt_tab(gn_pay_plan_target_cnt)       := g_get_pay_plan_data_rec.liab_tax_amt;        -- リース債務額_消費税
+      g_deduction_tab(gn_pay_plan_target_cnt)          := g_get_pay_plan_data_rec.deduction;           -- リース控除額
+      g_charge_tab(gn_pay_plan_target_cnt)             := g_get_pay_plan_data_rec.charge;              -- リース料
+      g_charge_tax_tab(gn_pay_plan_target_cnt)         := g_get_pay_plan_data_rec.charge_tax;          -- リース料_消費税
+      g_tax_code_tab(gn_pay_plan_target_cnt)           := g_get_pay_plan_data_rec.tax_code;            -- 税コード
+--
+      --リース物件履歴が取得できる場合はリース物件履歴の移動元管理部門を設定する。
+      BEGIN
+        SELECT   xoh.m_department_code
+        INTO     lv_department_code
+        FROM     xxcff_object_histories xoh
+        WHERE    xoh.object_header_id =  g_get_pay_plan_data_rec.object_header_id
+        AND      xoh.creation_date    >  gd_base_date
+        AND      xoh.object_status    =  cv_object_status_105
+        AND      rownum = 1
+        ORDER BY creation_date ASC;
+      --該当データが存在しない場合はリース物件の管理部門を設定する。
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_department_code := g_get_pay_plan_data_rec.department_code; 
+      END;
+      g_department_code_tab(gn_pay_plan_target_cnt) := lv_department_code; --管理部門を再設定する。
+    END LOOP;
+-- T1_0356 2009/04/17 END  --
+--
     CLOSE get_pay_plan_data_cur;
 --
     IF ( gn_pay_plan_target_cnt = 0 ) THEN
@@ -2310,9 +2410,11 @@ AS
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- T1_0356 2009/04/17 ADD START --
       IF (get_pay_plan_data_cur%ISOPEN) THEN
         CLOSE get_pay_plan_data_cur;
       END IF;
+-- T1_0356 2009/04/17 ADD END   --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -2946,7 +3048,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : ctrl_jnl_ptn_les_trn
-   * Description      : 仕訳パターン制御(リース取引) (A-9) ～ (A-12)
+   * Description      : 仕訳パターン制御(リース取引) (A-9) ? (A-12)
    ***********************************************************************************/
   PROCEDURE ctrl_jnl_ptn_les_trn(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
@@ -4165,6 +4267,23 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- T1_0356 2009/04/17 ADD START --
+--
+    -- XXCFF:オンライン終了時間
+    gv_online_end_time := FND_PROFILE.VALUE(cv_prof_online_end_time);
+    IF (gv_online_end_time IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_027) -- XXCFF:オンライン終了時間
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- T1_0356 2009/04/17 ADD END   --
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -4215,6 +4334,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- T1_0356 2009/04/17 ADD START --
+    ld_base_date  date;         --基準日
+-- T1_0356 2009/04/17 ADD END   --
 --
     -- *** ローカル・カーソル ***
 --
@@ -4303,6 +4425,26 @@ AS
         RAISE get_sob_name_expt;
     END;
 --
+-- T1_0356 2009/04/17 ADD START --
+    --===========================================
+    -- 基準日取得
+    --===========================================
+    -- 会計年度より基準日を生成する。
+    ld_base_date := TO_DATE(SUBSTR(gv_period_name,1,4) || SUBSTR(gv_period_name,6,2) || '01','YYYY/MM/DD');
+--
+    -- 営業日日付取得関数を呼び出し月末営業日を取得する。  
+    ld_base_date := ADD_MONTHS(ld_base_date,1);
+    -- 営業日日付取得関数の呼び出し  
+    gd_base_date := xxccp_common_pkg2.get_working_day(
+                      id_date          => ld_base_date
+                     ,in_working_day   => -1
+                     ,iv_calendar_code => NULL
+                    );
+    IF (gd_base_date IS NULL) THEN
+      RAISE get_working_day_expt;
+    END IF;
+-- T1_0356 2009/04/17 ADD END   --
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -4343,6 +4485,22 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
+--
+-- T1_0356 2009/04/17 ADD START --
+    -- *** 営業日日付取得エラーハンドラ ***
+    WHEN get_working_day_expt THEN
+--
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(  cv_msg_kbn_cff              -- XXCFF
+                                                     ,cv_msg_013a20_m_021         -- 共通関数エラー
+                                                     ,cv_tkn_func_name            -- トークン'FUNC_NAME'
+                                                     ,cv_msg_013a20_t_028)        -- 営業日日付
+                                                     ,1
+                                                     ,5000);
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+-- T1_0356 2009/04/17 ADD END   --
 --
     WHEN global_api_expt THEN                           --*** 共通関数コメント ***
       -- *** 任意で例外処理を記述する ****
@@ -4529,7 +4687,7 @@ AS
     END IF;
 --
     -- =============================================
-    -- 仕訳パターン制御(リース取引) (A-9) ～ (A-12)
+    -- 仕訳パターン制御(リース取引) (A-9) ? (A-12)
     -- =============================================
     ctrl_jnl_ptn_les_trn(
        lv_errbuf         -- エラー・メッセージ           --# 固定 #
@@ -4565,7 +4723,7 @@ AS
     END IF;
 --
     -- =============================================
-    -- 仕訳パターン制御(支払計画) (A-15) ～ (A-17)
+    -- 仕訳パターン制御(支払計画) (A-15) ? (A-17)
     -- =============================================
     ctrl_jnl_ptn_pay_plan(
        lv_errbuf         -- エラー・メッセージ           --# 固定 #
