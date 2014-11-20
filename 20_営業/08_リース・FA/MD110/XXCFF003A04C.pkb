@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A04C(body)
  * Description      : リース契約アップロード
  * MD.050           : MD050_CFF_003_A04_リース契約アップロード.doc
- * Version          : 1.5X 【暫定対応版】
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *                                      移行漏れ登録のため、チェックをはずす。
  *                                      ・契約番号の半角チェック
  *                                      ・終了日と最終支払日の大小チェック
+ *  2013/07/04    1.6   SCSK中野徹也    【E_本稼動_10871】(消費税増税対応)
   *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3901,7 +3902,10 @@ AS
   -- 費用計上会計会計期間
     gr_cont_hed_rec.start_period_name       := TO_CHAR(gr_contract_info_rec.first_payment_date,'YYYY-MM');
     gr_cont_hed_rec.lease_payment_flag      := cv_lease_payment_flag_1;                   -- 支払計画完了フラグ
-    gr_cont_hed_rec.tax_code                := gr_contract_info_rec.tax_code;             -- 税コード
+-- 2013/07/04 Ver.1.6 T.Nakano ADD Start
+--    gr_cont_hed_rec.tax_code                := gr_contract_info_rec.tax_code;             -- 税コード
+    gr_cont_hed_rec.tax_code                := NULL;                                      -- 税金コード
+-- 2013/07/04 Ver.1.6 T.Nakano ADD End
   -- WHOカラム
     gr_cont_hed_rec.created_by              := cn_created_by;                             -- 作成者
     gr_cont_hed_rec.creation_date           := cd_creation_date;                          -- 作成日
@@ -3919,6 +3923,9 @@ AS
     gr_cont_line_rec.contract_line_id       := NULL;                                      -- 契約内部ID
     gr_cont_line_rec.contract_header_id     := NULL;                                      -- 契約内部明細ID
     gr_cont_line_rec.contract_line_num      := gr_contract_info_rec.contract_line_num;    -- 契約枝番
+-- 2013/07/04 Ver.1.6 T.Nakano ADD Start
+    gr_cont_line_rec.tax_code               := gr_contract_info_rec.tax_code;             -- 税金コード
+-- 2013/07/04 Ver.1.6 T.Nakano ADD End
   -- 契約ステータス
     gr_cont_line_rec.contract_status        := cv_cont_status_201;
   --
