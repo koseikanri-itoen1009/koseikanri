@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/04/22    1.2   M.Ohtsuki      ［障害T1_0713］情報確定判定処理の不具合
  *  2009/07/07    1.3   M.Ohtsuki      ［SCS障害管理番号0000254］部署コード取得条件の不具合
  *  2009/07/14    1.4   M.Ohtsuki      ［SCS障害管理番号0000663］想定外エラー発生時の不具合
+ *  2009/07/29    1.5   T.Tsukino      ［SCS障害管理番号0000815］パフォーマンス障害対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1093,8 +1094,13 @@ AS
                WHERE  gsob.set_of_books_id = it_set_of_bks_id
                AND    gsob.period_set_name = gp.period_set_name
                AND    gp.period_year       = it_year)   gpv
-       WHERE  TRUNC(xca.cnvs_date) >= gpv.year_start_date                                           -- 顧客獲得日 >= 会計期間開始日
-         AND  TRUNC(xca.cnvs_date) <= gpv.year_end_date                                             -- 顧客獲得日 <= 会計期間終了日
+--//+UPD START 2009/07/29 0000815 T.Tsukino
+--       WHERE  TRUNC(xca.cnvs_date) >= gpv.year_start_date                                           -- 顧客獲得日 >= 会計期間開始日
+--         AND  TRUNC(xca.cnvs_date) <= gpv.year_end_date                                             -- 顧客獲得日 <= 会計期間終了日
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+       WHERE  xca.cnvs_date >= gpv.year_start_date                                                -- 顧客獲得日 >= 会計期間開始日
+         AND  xca.cnvs_date <= gpv.year_end_date                                             -- 顧客獲得日 <= 会計期間終了日
+--//+UPD END 2009/07/29 0000815 T.Tsukino         
          AND  hca.cust_account_id = xca.customer_id
          AND  hca.party_id = hp.party_id
          AND  xca.new_point_div = cv_new_point                                                      -- 新規ポイント区分が新規
