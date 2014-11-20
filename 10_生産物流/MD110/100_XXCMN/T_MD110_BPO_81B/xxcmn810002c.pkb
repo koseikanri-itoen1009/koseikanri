@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2007/12/12    1.0   T.Iwasa          main新規作成
  *  2008/05/02    1.1   H.Marushita      内部変更要求No.81対応
  *  2008/05/20    1.2   H.Marushita      内部変更要求No.105対応
+ *  2008/09/11    1.3   Oracle 山根一浩  指摘115対応
  *
  *****************************************************************************************/
 --
@@ -1097,7 +1098,13 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2008/09/11 Mod ↓
+/*
     cv_reservable_type_def  CONSTANT VARCHAR2(1)    := '0';                     -- 予約フラグOFF
+*/
+    cv_reservable_type_on   CONSTANT NUMBER    := 1;                     -- 予約フラグON
+    cv_reservable_type_off  CONSTANT NUMBER    := 0;                     -- 予約フラグOFF
+-- 2008/09/11 Mod ↑
 --
     -- *** ローカル変数 ***
 --
@@ -1116,6 +1123,8 @@ AS
     -- ***************************************
     -- ***        品目マスタ一括更新       ***
     -- ***************************************
+-- 2008/09/11 Mod ↓
+/*
       <<update_item_loop>>
       FORALL item_cnt IN 1 .. gt_mt_invflg_item_id.COUNT
         -- 品目マスタ更新(予約フラグOFF)
@@ -1129,6 +1138,20 @@ AS
             msib.program_id             = TO_NUMBER(gv_program_id),
             msib.program_update_date    = gd_program_update_date
         WHERE msib.inventory_item_id = gt_mt_invflg_item_id(item_cnt);
+*/
+    -- 品目マスタ更新(予約フラグOFF)
+    UPDATE mtl_system_items_b msib
+    SET msib.reservable_type        = cv_reservable_type_off,
+        msib.last_updated_by        = TO_NUMBER(gv_last_update_by),
+        msib.last_update_date       = gd_last_update_date,
+        msib.last_update_login      = TO_NUMBER(gv_last_update_login),
+        msib.request_id             = TO_NUMBER(gv_request_id),
+        msib.program_application_id = TO_NUMBER(gv_program_application_id),
+        msib.program_id             = TO_NUMBER(gv_program_id),
+        msib.program_update_date    = gd_program_update_date
+    WHERE msib.reservable_type = 1;
+--    WHERE msib.reservable_type = cv_reservable_type_on;   -- 2008/09/11 Del
+-- 2008/09/11 Mod ↑
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1447,6 +1470,8 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2008/09/11 Del ↓
+/*
     -- ===============================
     -- B-9.品目マスタ取得
     -- ===============================
@@ -1461,11 +1486,16 @@ AS
       lv_ret     := lv_retcode;
       lv_retcode := gv_status_normal;
     END IF;
+*/
+-- 2008/09/11 Del ↑
 --
     -- ===============================
     -- B-10.品目マスタ反映(予約可能)
     -- ===============================
+/* 2008/09/11 Del ↓
     IF (lv_ret = gv_status_normal) THEN
+2008/09/11 Del ↑ */
+    IF (lv_retcode = gv_status_normal) THEN
       update_mtl_item_f(
         lv_errbuf,              -- エラー・メッセージ           --# 固定 #
         lv_retcode,             -- リターン・コード             --# 固定 #
