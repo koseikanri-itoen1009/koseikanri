@@ -24,8 +24,8 @@ FROM    xxcso_cust_accounts_v   xcav
 WHERE   xcav.rsv_sale_base_code IS NOT NULL
 AND     xcav.rsv_sale_base_act_date >= TRUNC(xxcso_util_common_pkg.get_online_sysdate + 1)
 AND     xcav.rsv_sale_base_act_date <= TRUNC(LAST_DAY(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 1)))
-AND     NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
-          ('10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+AND     NVL(xcav.customer_class_code, '00') || '-' || NVL(xcav.customer_status, '  ') IN
+          ('00-10', '00-20','10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '16-99', '17-99')
 AND     rsrc.account_number(+)       = xcav.account_number
 AND     rtn.account_number(+)        = xcav.account_number
 UNION
@@ -39,8 +39,8 @@ SELECT  xcav.account_number
 FROM    xxcso_cust_accounts_v   xcav
        ,xxcso_cust_resources_v2 rsrc
        ,xxcso_cust_routes_v2    rtn
-WHERE   NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
-          ('10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+WHERE   NVL(xcav.customer_class_code, '00') || '-' || NVL(xcav.customer_status, '  ') IN
+          ('00-10', '00-20','10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '16-99', '17-99')
 AND     rsrc.account_number(+)       = xcav.account_number
 AND     rtn.account_number(+)        = xcav.account_number
    ]]></SQLQuery>

@@ -51,8 +51,8 @@ AND   (
        (:4 IS NULL)
       )
 AND   xcav.account_number = XxcsoRtnRsrcVEO.account_number
-AND   NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
-        ('10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+AND   NVL(xcav.customer_class_code, '00') || '-' || NVL(xcav.customer_status, '  ') IN
+        ('00-10', '00-20', '10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '16-99', '17-99')
 UNION ALL
 SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER, 
        XxcsoRtnRsrcVEO.CUST_ACCOUNT_ID, 
@@ -88,8 +88,8 @@ AND    xcav.rsv_sale_base_code = :6
 AND    xcav.rsv_sale_base_act_date >= TRUNC(xxcso_util_common_pkg.get_online_sysdate + 1)
 AND    xcav.rsv_sale_base_act_date <= TRUNC(LAST_DAY(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 1)))
 AND    xcav.account_number = XxcsoRtnRsrcVEO.ACCOUNT_NUMBER
-AND    NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
-         ('10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+AND    NVL(xcav.customer_class_code, '00') || '-' || NVL(xcav.customer_status, '  ') IN
+         ('00-10', '00-20', '10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '16-99', '17-99')
 AND   (
        (
         (:7 IS NOT NULL)

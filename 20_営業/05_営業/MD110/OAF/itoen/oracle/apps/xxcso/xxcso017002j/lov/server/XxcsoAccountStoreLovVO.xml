@@ -13,7 +13,7 @@
    <SQLQuery><![CDATA[
 SELECT  xcav.account_number
        ,xcav.party_name
-       ,xcav.customer_class_name
+       ,NVL(xcav.customer_class_name, 'ŒÚ‹q') AS customer_class_name
        ,xcav.cust_account_id
 FROM    xxcso_employees_v2       xev
        ,xxcso_resource_custs_V2  xrcv
@@ -24,7 +24,7 @@ AND     xcav.account_number  = xrcv.account_number
 AND     (
           (
               xcav.customer_status IN ('20','25','30','40','50')
-          AND xcav.customer_class_code = '10'
+          AND NVL(xcav.customer_class_code, '10') = '10'
           )
         OR
           (

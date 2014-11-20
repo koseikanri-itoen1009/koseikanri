@@ -11,8 +11,7 @@
    FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT  DISTINCT
-        xcav.account_number
+SELECT  xcav.account_number
        ,xcav.party_name
 FROM    xxcso_resources_v2  xrv
        ,xxcso_resource_custs_v xrcv
@@ -28,7 +27,7 @@ WHERE   xrv.user_id         = fnd_global.user_id
          ,'DD'
         ) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate, 'DD')
   AND   NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
-         ('10-25', '10-30', '10-40', '10-50', '16-99', '17-99')
+         ('10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '17-99')
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />

@@ -52,7 +52,7 @@ SELECT xxcsoacctmonthlyplansveo.base_code
    AND xxcsoacctmonthlyplansveo.account_number  = xcav.account_number
    AND xxcsoacctmonthlyplansveo.employee_number = :3
    AND NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
-         ('10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+         ('10-25', '10-30', '10-40', '10-50', '12-30', '12-40', '15-99', '17-99')
    AND xcrv.account_number(+)                   = xxcsoacctmonthlyplansveo.account_number
    AND xcrv.employee_number(+)                  = xxcsoacctmonthlyplansveo.employee_number
    AND TRUNC(
