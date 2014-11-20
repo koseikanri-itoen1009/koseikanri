@@ -517,7 +517,10 @@ AS
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
         ,xoha_out_om.request_no                        AS voucher_no
-        ,hpat_out_om.attribute19                       AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano Start
+--        ,hpat_out_om.attribute19                       AS ukebaraisaki_name
+        ,xp_out_om.party_name                          AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano End
         ,xpas_out_om.party_site_name                   AS deliver_to_name
         ,0                                             AS stock_quantity
         ,xmld_out_om.actual_quantity                   AS leaving_quantity
@@ -551,6 +554,9 @@ AS
           AND    xrpm_out_om.item_div_origin          = '5'
           AND    xrpm_out_om.item_div_ahead           = '5'
          ) xrpm
+-- 2008/12/01 Upd Y.Kawano Start
+        ,xxcmn_parties                xp_out_om
+-- 2008/12/01 Upd Y.Kawano End
   WHERE  xoha_out_om.order_header_id                  = xola_out_om.order_header_id
   AND    xoha_out_om.deliver_from_id                  = mil_out_om.inventory_location_id
   AND    iwm_out_om.mtl_organization_id               = mil_out_om.organization_id
@@ -588,6 +594,11 @@ AS
   AND    hpas_out_om.status                           = 'A'
   AND    xpas_out_om.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om.end_date_active                 >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano Start
+  AND    hpat_out_om.party_id                         = xp_out_om.party_id
+  AND    xp_out_om.start_date_active                 <= TRUNC(SYSDATE)
+  AND    xp_out_om.end_date_active                   >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 有償出荷予定
   SELECT iwm_out_om2.attribute1                        AS ownership_code
@@ -1480,7 +1491,10 @@ AS
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
         ,xoha_in_po_e_rma.request_no                   AS voucher_no
-        ,hpat_in_po_e_rma.attribute19                  AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano Start
+--        ,hpat_in_po_e_rma.attribute19                  AS ukebaraisaki_name
+        ,xp_in_po_e_rma.party_name                     AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano End
         ,xpas_in_po_e_rma.party_site_name              AS deliver_to_name
         ,xmld_in_po_e_rma.actual_quantity              AS stock_quantity
         ,0                                             AS leaving_quantity
@@ -1509,6 +1523,9 @@ AS
           AND    xrpm_in_po_e_rma.use_div_invent              = 'Y'
           AND    xrpm_in_po_e_rma.rcv_pay_div                 = '1'            -- 受入
          ) xrpm
+-- 2008/12/01 Upd Y.Kawano Start
+        ,xxcmn_parties                xp_in_po_e_rma
+-- 2008/12/01 Upd Y.Kawano End
   WHERE  xoha_in_po_e_rma.order_header_id             = xola_in_po_e_rma.order_header_id
   AND    xola_in_po_e_rma.order_line_id               = xmld_in_po_e_rma.mov_line_id
   AND    xoha_in_po_e_rma.deliver_from_id             = mil_in_po_e_rma.inventory_location_id
@@ -1538,6 +1555,11 @@ AS
   AND    hpas_in_po_e_rma.status                      = 'A'
   AND    xpas_in_po_e_rma.start_date_active          <= TRUNC(SYSDATE)
   AND    xpas_in_po_e_rma.end_date_active            >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano Start
+  AND    hpat_in_po_e_rma.party_id                    = xp_in_po_e_rma.party_id
+  AND    xp_in_po_e_rma.start_date_active            <= TRUNC(SYSDATE)
+  AND    xp_in_po_e_rma.end_date_active              >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 在庫調整 入庫実績(相手先在庫)
   SELECT iwm_in_ad_e_x97.attribute1                    AS ownership_code
@@ -2194,7 +2216,10 @@ AS
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
         ,xoha_out_om_e.request_no                      AS voucher_no
-        ,hpat_out_om_e.attribute19                     AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano Start
+--        ,hpat_out_om_e.attribute19                     AS ukebaraisaki_name
+        ,xp_out_om_e.party_name                        AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano End
         ,xpas_out_om_e.party_site_name                 AS deliver_to_name
         ,0                                             AS stock_quantity
         ,xmld_out_om_e.actual_quantity                 AS leaving_quantity
@@ -2230,6 +2255,9 @@ AS
           AND    xrpm_out_om_e.item_div_origin                  = '5'
           AND    xrpm_out_om_e.item_div_ahead                   = '5'
          ) xrpm
+-- 2008/12/01 Upd Y.Kawano Start
+        ,xxcmn_parties                xp_out_om_e
+-- 2008/12/01 Upd Y.Kawano End
   WHERE  otta_out_om_e.order_category_code              = 'ORDER'
   AND    xoha_out_om_e.order_header_id                  = xola_out_om_e.order_header_id
   AND    xoha_out_om_e.deliver_from_id                  = mil_out_om_e.inventory_location_id
@@ -2266,6 +2294,11 @@ AS
   AND    xpas_out_om_e.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om_e.end_date_active                 >= TRUNC(SYSDATE)
   AND    xrpm.stock_adjustment_div                      = otta_out_om_e.attribute4
+-- 2008/12/01 Upd Y.Kawano Start
+  AND    hpat_out_om_e.party_id                         = xp_out_om_e.party_id
+  AND    xp_out_om_e.start_date_active                 <= TRUNC(SYSDATE)
+  AND    xp_out_om_e.end_date_active                   >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 有償出荷実績
   SELECT iwm_out_om2_e.attribute1                      AS ownership_code
@@ -2913,7 +2946,10 @@ AS
         ,xrpm.new_div_invent                           AS reason_code
         ,xrpm.meaning                                  AS reason_code_name
         ,xoha_out_om3_e.request_no                     AS voucher_no
-        ,hpat_out_om3_e.attribute19                    AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano Start
+--        ,hpat_out_om3_e.attribute19                    AS ukebaraisaki_name
+        ,xp_out_om3_e.party_name                       AS ukebaraisaki_name
+-- 2008/12/01 Upd Y.Kawano End
         ,xpas_out_om3_e.party_site_name                AS deliver_to_name
         ,0                                             AS stock_quantity
         ,xmld_out_om3_e.actual_quantity                AS leaving_quantity
@@ -2942,6 +2978,9 @@ AS
           AND    xrpm_out_om3_e.doc_type                         = 'OMSO'
           AND    xrpm_out_om3_e.use_div_invent                   = 'Y'
          ) xrpm
+-- 2008/12/01 Upd Y.Kawano Start
+        ,xxcmn_parties                xp_out_om3_e
+-- 2008/12/01 Upd Y.Kawano End
   WHERE  otta_out_om3_e.order_category_code              = 'ORDER'
   AND    xoha_out_om3_e.order_header_id                  = xola_out_om3_e.order_header_id
   AND    xoha_out_om3_e.deliver_from_id                  = mil_out_om3_e.inventory_location_id
@@ -2974,6 +3013,11 @@ AS
   AND    hpas_out_om3_e.status                           = 'A'
   AND    xpas_out_om3_e.start_date_active               <= TRUNC(SYSDATE)
   AND    xpas_out_om3_e.end_date_active                 >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano Start
+  AND    hpat_out_om3_e.party_id                         = xp_out_om3_e.party_id
+  AND    xp_out_om3_e.start_date_active                 <= TRUNC(SYSDATE)
+  AND    xp_out_om3_e.end_date_active                   >= TRUNC(SYSDATE)
+-- 2008/12/01 Upd Y.Kawano End
   UNION ALL
   -- 在庫調整 出庫実績(相手先在庫)
   SELECT iwm_out_ad_e_x97.attribute1                   AS ownership_code
