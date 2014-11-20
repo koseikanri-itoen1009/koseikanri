@@ -7,7 +7,7 @@ AS
  * Description     : 発注書データ出力処理
  * MD.050          : MD050_CFO_016_A02_発注書データ出力処理
  * MD.070          : MD050_CFO_016_A02_発注書データ出力処理
- * Version         : 1.5
+ * Version         : 1.6
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -36,7 +36,8 @@ AS
  *  2009-03-16    1.3  SCS 嵐田勇人  [障害T1_0050]エラーログ対応
  *  2009-03-17    1.4  SCS 嵐田勇人  [障害T1_0051]共通関数エラー時対応
  *  2009-03-23    1.5  SCS 開原拓也  [障害T1_0059]機種コードの変更対応
- ************************************************************************/
+ *  2009-11-25    1.6  SCS 寺内真紀  [障害E_本稼動_00063]顧客情報取得エラー対応
+  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
 --
@@ -954,9 +955,17 @@ AS
            hz_party_sites       hps,    -- パーティサイトマスタ
            hz_cust_accounts     hca,    -- 顧客マスタ
            hz_locations         hl      -- 顧客事業所マスタ
+---- == 2009/11/25 V1.6 Added START =================================
+          ,hz_cust_acct_sites_all hcasa -- 顧客サイトマスタ
+---- == 2009/11/25 V1.6 Added END ===================================
      WHERE hp.party_id        = hca.party_id
        AND hca.account_number = gt_account_number
        AND hp.party_id        = hps.party_id
+---- == 2009/11/25 V1.6 Added START =================================
+       AND hca.cust_account_id  = hcasa.cust_account_id
+       AND hcasa.org_id       = gn_org_id
+       AND hps.party_site_id  = hcasa.party_site_id
+---- == 2009/11/25 V1.6 Added END ===================================
        AND hl.location_id     = hps.location_id;
 --
   EXCEPTION
