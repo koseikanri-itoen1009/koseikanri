@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.xxinv530001c
+create or replace PACKAGE BODY xxinv530001c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.9
+ * Version          : 1.11
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -43,7 +43,8 @@ AS
  *  2008/10/15    1.8   T.Ikehara        修正(不具合ID8対応：重複削除対象データを
  *                                                           妥当性チェック対象外に修正 )
  *  2008/12/06    1.9   H.Itou           修正(本番障害#510対応：日付は変換して比較)
- *  2008/12/08    2.0   K.Kumamoto       修正(本番障害対応#570対応：棚卸連番をTO_NUMBER)
+ *  2008/12/08    1.10  K.Kumamoto       修正(本番障害#570対応：棚卸連番をTO_NUMBER)
+ *  2008/12/11    1.11  H.Itou           修正(本番障害#632対応：#570修正漏れ)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -569,12 +570,12 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
 -- 2008/12/06 H.Itou Mod Start
 --             ,if_rec.maker_date       -- 製造日
 --             ,if_rec.limit_date       -- 賞味期限
-             ,CASE 
+             ,CASE
                 WHEN if_rec.maker_date IS NULL THEN '*'  -- NULLならダミーコード
                 WHEN if_rec.maker_date = '0'   THEN '0'  -- 0なら0のまま
                 ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.maker_date, gc_char_d_format), gc_char_d_format), if_rec.maker_date) -- 正しいフォーマットの場合、日付変換してチェック
               END -- 製造日
-             ,CASE 
+             ,CASE
                 WHEN if_rec.limit_date IS NULL THEN '*'  -- NULLならダミーコード
                 WHEN if_rec.limit_date = '0'   THEN '0'  -- 0なら0のまま
                 ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.limit_date, gc_char_d_format), gc_char_d_format), if_rec.limit_date) -- 正しいフォーマットの場合、日付変換してチェック
@@ -620,7 +621,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
 --        ||  '  AND xsi.item_code         = '''  ||  if_rec.item_code         || '''';-- 品目
         ||  '      xsi.report_post_code  = :report_post_code  ' -- 報告部署
         ||  '  AND xsi.invent_whse_code  = :invent_whse_code  ' -- 棚卸倉庫
-        ||  '  AND xsi.invent_seq        = :invent_seq        ' -- 棚卸連番
+--2008/12/11 mod start
+--        ||  '  AND xsi.invent_seq        = :invent_seq        ' -- 棚卸連番
+        ||  '  AND TO_NUMBER(xsi.invent_seq) = TO_NUMBER(:invent_seq) ' -- 棚卸連番
+--2008/12/11 mod end
         ||  '  AND xsi.item_code         = :item_code         ';-- 品目
 -- 2008/09/04 H.Itou Mod End
 --
@@ -670,7 +674,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
         ||  ' GROUP BY '
         ||  ' xsi.report_post_code  '    -- 報告部署
         ||  ',xsi.invent_whse_code  '    -- 棚卸倉庫
-        ||  ',xsi.invent_seq  '          -- 棚卸連番
+--2008/12/11 mod start
+--        ||  ',xsi.invent_seq  '          -- 棚卸連番
+        ||  ',TO_NUMBER(xsi.invent_seq)  ' -- 棚卸連番
+--2008/12/11 mod end
         ||  ',xsi.item_code  ';          -- 品目
 --
       --品目区分が製品の場合
@@ -715,12 +722,12 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
 -- 2008/12/06 H.Itou Mod Start
 --             ,if_rec.maker_date       -- 製造日
 --             ,if_rec.limit_date       -- 賞味期限
-             ,CASE 
+             ,CASE
                 WHEN if_rec.maker_date IS NULL THEN '*'  -- NULLならダミーコード
                 WHEN if_rec.maker_date = '0'   THEN '0'  -- 0なら0のまま
                 ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.maker_date, gc_char_d_format), gc_char_d_format), if_rec.maker_date) -- 正しいフォーマットの場合、日付変換してチェック
               END -- 製造日
-             ,CASE 
+             ,CASE
                 WHEN if_rec.limit_date IS NULL THEN '*'  -- NULLならダミーコード
                 WHEN if_rec.limit_date = '0'   THEN '0'  -- 0なら0のまま
                 ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.limit_date, gc_char_d_format), gc_char_d_format), if_rec.limit_date) -- 正しいフォーマットの場合、日付変換してチェック
@@ -1603,7 +1610,7 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
         END;
 --
 --
-    --  品目マスタが存在する場合のみチェックする(4-9～4-30)
+    --  品目マスタが存在する場合のみチェックする(4-904-30)
         IF  (lv_item_type IS  NOT NULL) THEN
           -- ===============================
           -- ロット№マスタに存在するかチェック
