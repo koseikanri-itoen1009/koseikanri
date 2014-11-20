@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2009/08/13    1.7   M.Hiruta         [障害0000997]EDIワークテーブルから納品単価と原価金額を取得する際の
  *                                                    取得箇所を修正
  *                                                    顧客名の取得元をパーティマスタへ修正
+ *  2009/10/16    1.8   S.Moriyama       [障害E_T3_00632]伝票入力者対応により売上実績情報へ
+ *                                                       売上振替元顧客コードを設定するように変更
  *
  *****************************************************************************************/
   -- =========================
@@ -696,6 +698,9 @@ AS
       , info_interface_flag                   --情報系I/Fフラグ
       , gl_interface_flag                     --仕訳作成フラグ
       , org_slip_number                       --元伝票番号
+-- 2009/10/16 Ver.1.8 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , selling_from_cust_code                --売上振替元顧客コード
+-- 2009/10/16 Ver.1.8 [障害E_T3_00632] SCS S.Moriyama ADD END
       , created_by                            --作成者
       , creation_date                         --作成日
       , last_updated_by                       --最終更新者
@@ -745,6 +750,9 @@ AS
       , cv_0                                  --info_interface_flag
       , cv_0                                  --gl_interface_flag
       , NULL                                  --org_slip_number
+-- 2009/10/16 Ver.1.8 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_selling_from_cust_code             --selling_from_cust_code
+-- 2009/10/16 Ver.1.8 [障害E_T3_00632] SCS S.Moriyama ADD END
       , cn_created_by                         --created_by
       , SYSDATE                               --creation_date
       , cn_last_updated_by                    --last_updated_by

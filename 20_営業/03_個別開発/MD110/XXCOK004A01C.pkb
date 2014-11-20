@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK004A01C(body)
  * Description      : 顧客移行日に顧客マスタの釣銭金額に基づき仕訳情報を作成します。
  * MD.050           : VD釣銭の振替仕訳作成 (MD050_COK_004_A01)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ----------------------- ----------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  2008/12/18    1.0   K.Motohashi      新規作成
  *  2009/02/02    1.1   K.Suenaga        [障害COK_002]夜バッチ対応/言語取得
  *  2009/06/09    1.2   K.Yamaguchi      [障害T1_1335]貸借逆修正
+ *  2009/10/06    1.3   S.Moriyama       [障害E_T3_00632]伝票入力者対応
+ * 
  *****************************************************************************************/
 -- ====================
 -- グローバル定数宣言部
@@ -201,6 +203,9 @@ AS
          , xcsi.cust_code         AS xcsi_cust_code             -- 顧客コード
          , xcsi.cust_shift_date   AS xcsi_cust_shift_date       -- 顧客移行日
          , xca.change_amount      AS xca_change_amount          -- 釣銭
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD START
+         , xcsi.emp_code          AS xcsi_emp_code              -- 顧客移行登録従業員
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD END
       FROM xxcok_cust_shift_info  xcsi                          -- 顧客移行情報テーブル
          , hz_cust_accounts       hca                           -- 顧客マスタ
          , xxcmm_cust_accounts    xca                           -- 顧客マスタアドオン
@@ -378,7 +383,10 @@ AS
     , NULL                                            -- 税区分
     , iv_slip_number                                  -- 伝票番号
     , gv_prof_aff2_dept_fin                           -- 財務経理部の部門コード
-    , TO_CHAR( cn_last_updated_by )                   -- ログイン情報のユーザID
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama UPD START
+--    , TO_CHAR( cn_last_updated_by )                   -- ログイン情報のユーザID
+    , g_cust_info_tab( in_idx ).xcsi_emp_code         -- 顧客移行登録従業員
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama UPD START
     , gv_set_of_books_name )                          -- 会計帳簿名
     -- =======================
     -- 一般会計OIF(貸方)の登録
@@ -442,7 +450,10 @@ AS
     , NULL                                            -- 税区分
     , iv_slip_number                                  -- 伝票番号
     , gv_prof_aff2_dept_fin                           -- 財務経理部の部門コード
-    , TO_CHAR( cn_last_updated_by )                   -- ログイン情報のユーザID
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama UPD START
+--    , TO_CHAR( cn_last_updated_by )                   -- ログイン情報のユーザID
+    , g_cust_info_tab( in_idx ).xcsi_emp_code         -- 顧客移行登録従業員
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama UPD START
     , gv_set_of_books_name )                          -- 会計帳簿名
     SELECT 'X' FROM DUAL;
 --
@@ -1588,7 +1599,6 @@ AS
       ROLLBACK;
 --
   END main;
---
 --
 END XXCOK004A01C;
 /

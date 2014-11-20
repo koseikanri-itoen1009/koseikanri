@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.1
+ * Version          : 2.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/08/13    2.0   K.Yamaguchi      [障害0000952]パフォーマンス改善（再作成）
  *  2009/09/28    2.1   K.Yamaguchi      [E_T3_00590]振替割合が100％でない場合の対応
  *                                                   納品数量がゼロの場合の対応
+ *  2009/10/15    2.2   S.Moriyama       [E_T3_00632]売上実績振替情報登録時に売上振替元顧客コードを設定するように変更
  *
  *****************************************************************************************/
   --==================================================
@@ -646,6 +647,9 @@ AS
     , info_interface_flag                         -- 情報系I/Fフラグ
     , gl_interface_flag                           -- 仕訳作成フラグ
     , org_slip_number                             -- 元伝票番号
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD START
+    , selling_from_cust_code                      -- 売上振替元顧客コード
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD END
     , created_by                                  -- 作成者
     , creation_date                               -- 作成日
     , last_updated_by                             -- 最終更新者
@@ -703,6 +707,9 @@ AS
     , cv_xsti_info_if_flag_no                     -- info_interface_flag
     , cv_xsti_gl_if_flag_no                       -- gl_interface_flag
     , NULL                                        -- org_slip_number
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD START
+    , i_selling_from_rec.ship_cust_code           -- selling_from_cust_code
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD END
     , cn_created_by                               -- created_by
     , SYSDATE                                     -- creation_date
     , cn_last_updated_by                          -- last_updated_by
@@ -1304,6 +1311,9 @@ AS
            , xsti.delivery_base_code         AS delivery_base_code         -- 納品拠点コード
            , xsti.report_decision_flag       AS report_decision_flag       -- 速報確定フラグ
            , xsti.org_slip_number            AS org_slip_number            -- 元伝票番号
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD START
+           , xsti.selling_from_cust_code     AS selling_from_cust_code     -- 売上振替元顧客コード
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD END
       FROM xxcok_selling_trns_info      xsti
       WHERE xsti.selling_date     BETWEEN gd_target_date_from
                                       AND gd_target_date_to
@@ -1362,6 +1372,9 @@ AS
       , info_interface_flag                            -- 情報系IFフラグ
       , gl_interface_flag                              -- 仕訳作成フラグ
       , org_slip_number                                -- 元伝票番号
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , selling_from_cust_code                         -- 売上振替元顧客コード
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD END
       , created_by                                     -- 作成者
       , creation_date                                  -- 作成日
       , last_updated_by                                -- 最終更新者
@@ -1416,6 +1429,9 @@ AS
       , cv_xsti_info_if_flag_no                        -- info_interface_flag
       , cv_xsti_gl_if_flag_no                          -- gl_interface_flag
       , get_xsti_lock_rec.org_slip_number              -- org_slip_number
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , get_xsti_lock_rec.selling_from_cust_code       -- selling_from_cust_code
+-- 2009/10/15 Ver.2.2 [障害E_T3_00632] SCS S.Moriyama ADD END
       , cn_created_by                                  -- created_by
       , SYSDATE                                        -- creation_date
       , cn_last_updated_by                             -- last_updated_by

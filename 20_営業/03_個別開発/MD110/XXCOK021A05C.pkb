@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/01/14    1.0   S.Tozawa         新規作成
  *  2009/02/02    1.1   S.Tozawa         [障害COK_006]結合テスト時修正対応
  *  2009/02/12    1.2   K.Iwabuchi       [障害COK_030]結合テスト時修正対応
+ *  2009/10/06    1.3   S.Moriyama       [障害E_T3_00632]仕訳伝票入力者を処理実行ユーザーの従業員番号へ変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -77,6 +78,9 @@ AS
   cv_msg_code_10407          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10407';  -- データ登録エラー(明細・消費税)
   cv_msg_code_10416          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10416';  -- 請求書番号取得エラー
   cv_msg_code_00089          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00089';  -- 消費税取得エラー
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD START
+  cv_msg_code_00005          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00005';  -- 従業員取得エラー
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD END
   -- トークン
   cv_token_profile           CONSTANT VARCHAR2(20)  := 'PROFILE';
   cv_token_proc_date         CONSTANT VARCHAR2(20)  := 'PROC_DATE';
@@ -127,7 +131,9 @@ AS
   cn_number_1                CONSTANT NUMBER        := 1;                          -- メッセージ出力後空白行1行追加
   -- AP請求書OIF登録用
   cv_invoice_type_standard   CONSTANT VARCHAR(30)   := 'STANDARD';          -- 取引タイプ：標準
-  cn_slip_input_user         CONSTANT NUMBER        := fnd_global.user_id;  -- ログイン情報：ユーザID
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama DEL START
+--  cn_slip_input_user         CONSTANT NUMBER        := fnd_global.user_id;  -- ログイン情報：ユーザID
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama DEL END
   -- AP連携ステータス
   cv_payment_uncooperate     CONSTANT VARCHAR2(1)   := '0';                 -- 未連携(問屋支払テーブル)
   cv_payment_cooperate       CONSTANT VARCHAR2(1)   := '1';                 -- 連携済(問屋支払テーブル)
@@ -172,6 +178,9 @@ AS
   gn_header_amt              NUMBER       DEFAULT 0;
   -- 出力ファイル初回フラグ
   gb_outfile_first_flag      BOOLEAN      DEFAULT TRUE;
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD START
+  gt_employee_number         per_all_people_f.employee_number%TYPE;  -- 従業員番号
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD END
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
@@ -1275,7 +1284,10 @@ AS
       , gv_prof_org_id                          -- 組織ID(initで取得)
       , lv_invoice_num                          -- 請求書番号(直前で取得)
       , ir_sell_head_data_rec.base_code         -- 拠点コード
-      , cn_slip_input_user                      -- 伝票入力者(ログインユーザID)
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama UPD START
+--      , cn_slip_input_user                      -- 伝票入力者(ログインユーザID)
+      , gt_employee_number                      -- 伝票入力者(従業員No)
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama UPD END
       , gv_prof_invoice_source                  -- 請求書ソース(initで取得)
       , gv_prof_pay_group                       -- 支払グループ
       , gd_prof_process_date                    -- 業務処理日付(initで取得)
@@ -1803,6 +1815,29 @@ AS
                     );
       RAISE get_data_err_expt;
     END IF;
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD START
+    -- ===============================================
+    -- 仕訳伝票入力者の取得
+    -- ===============================================
+    BEGIN
+      SELECT  papf.employee_number AS employee_number     -- 従業員No
+        INTO  gt_employee_number
+        FROM  fnd_user         fu    -- ユーザーマスタ
+            , per_all_people_f papf  -- 従業員マスタ
+       WHERE  fu.user_id           = fnd_global.user_id
+         AND  papf.person_id       = fu.employee_id
+         AND  gd_prof_process_date BETWEEN NVL( TRUNC( papf.effective_start_date ), gd_prof_process_date )
+                                       AND NVL( TRUNC( papf.effective_end_date   ), gd_prof_process_date )
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_00005
+                      );
+        RAISE get_data_err_expt;
+    END;
+-- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD END
 --
   EXCEPTION
     -- *** 取得データエラー例外 ***

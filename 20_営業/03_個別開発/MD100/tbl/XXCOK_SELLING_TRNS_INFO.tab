@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_SELLING_TRNS_INFO
  * Description : îÑè„é¿ê—êUë÷èÓïÒÉeÅ[ÉuÉã
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          êVãKçÏê¨
  *  2009/07/09    1.1   K.Yamaguchi      [è·äQ0000515]STORAGEãÂí«â¡
+ *  2009/10/16    1.2   S.Moriyama       [è·äQE_T3_00632]îÑè„êUë÷å≥å⁄ãqÉRÅ[ÉhÇí«â¡
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_SELLING_TRNS_INFO
@@ -51,6 +52,9 @@ CREATE TABLE XXCOK.XXCOK_SELLING_TRNS_INFO
     INFO_INTERFACE_FLAG      VARCHAR2(1),
     GL_INTERFACE_FLAG        VARCHAR2(1),
     ORG_SLIP_NUMBER          VARCHAR2(50),
+-- 2009/10/16 Ver.1.2 [è·äQE_T3_00632] SCS S.Moriyama ADD START
+    SELLING_FROM_CUST_CODE   VARCHAR2(9),
+-- 2009/10/16 Ver.1.2 [è·äQE_T3_00632] SCS S.Moriyama ADD END
     CREATED_BY               NUMBER(15,0) NOT NULL,
     CREATION_DATE            DATE         NOT NULL,
     LAST_UPDATED_BY          NUMBER(15,0) NOT NULL,
@@ -141,6 +145,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_SELLING_TRNS_INFO.GL_INTERFACE_FLAG      IS 'édñÛç
 /
 COMMENT ON COLUMN XXCOK.XXCOK_SELLING_TRNS_INFO.ORG_SLIP_NUMBER        IS 'å≥ì`ï[î‘çÜ'
 /
+-- 2009/10/16 Ver.1.2 [è·äQE_T3_00632] SCS S.Moriyama ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_SELLING_TRNS_INFO.SELLING_FROM_CUST_CODE IS 'îÑè„êUë÷å≥å⁄ãqÉRÅ[Éh'
+/
+-- 2009/10/16 Ver.1.2 [è·äQE_T3_00632] SCS S.Moriyama ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_SELLING_TRNS_INFO.CREATED_BY             IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_SELLING_TRNS_INFO.CREATION_DATE          IS 'çÏê¨ì˙'

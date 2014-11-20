@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  * 2009/05/20     1.2   SCS M.HIRUTA     [障害T1_1099]売上実績振替情報テーブルより原価情報を取得する際のカラム変更
  *                                                    売上原価金額 ⇒ 営業原価
  * 2009/09/08     1.3   SCS K.YAMAGUCHI  [障害0001318]性能改善
+ * 2009/10/09     1.4   SCS S.MORIYAMA   [障害E_T3_00632]伝票入力者を振替元顧客の担当営業員へ変更
+ *                                                       仕訳集約単位に振替元顧客を追加
  *
  *****************************************************************************************/
   --===============================
@@ -94,6 +96,9 @@ AS
   cv_normal_count_msg         CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90001';                 -- 成功件数メッセージ
   cv_err_count_msg            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90002';                 -- エラー件数メッセージ
   cv_warn_count_msg           CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90003';                 -- スキップ件数メッセージ
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+  cv_sales_staff_code_msg     CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00033';                 -- 営業担当員取得エラーメッセージ
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
   --ステータス
   cv_new_status               CONSTANT VARCHAR2(5)  := 'NEW';                               -- ステータス
   --フラグ
@@ -110,6 +115,9 @@ AS
   cv_location_token           CONSTANT VARCHAR2(15) := 'LOCATION_CODE';                     -- トークン名
   cv_proc_token               CONSTANT VARCHAR2(15) := 'PROC_DATE';                         -- トークン名
   cv_count                    CONSTANT VARCHAR2(10) := 'COUNT';                             -- カウント
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+  cv_cust_code_token          CONSTANT VARCHAR2(10) := 'CUST_CODE';                         -- トークン名
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
   --アプリケーション短縮名
   cv_appli_ar_name            CONSTANT VARCHAR2(10) := 'AR';                                -- アプリケーション短縮名
   cv_appli_xxcok_name         CONSTANT VARCHAR2(10) := 'XXCOK';                             -- アプリケーション短縮名
@@ -149,29 +157,58 @@ AS
   -- ===============================
   -- グローバルカーソル
   -- ===============================
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR START
+--  CURSOR g_get_journal_cur
+--  IS
+--    SELECT   xsti.selling_date            AS xsti_selling_date           -- 売上計上日
+---- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR START
+--           , xsti.selling_from_cust_code  AS selling_from_cust_code      -- 売上振替元顧客コード
+---- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR END
+--           , xsti.base_code               AS base_code                   -- 売上振替先拠点コード
+--           , xsti.delivery_base_code      AS delivery_base_code          -- 売上振替元拠点コード
+--           , SUM(xsti.selling_amt_no_tax) AS selling_amt                 -- 売上金額
+---- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+----           , SUM(xsti.selling_cost_amt)   AS selling_cost_amt            -- 売上原価金額
+--           , SUM(xsti.trading_cost)       AS trading_cost                -- 営業原価
+---- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
+--    FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
+---- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+----    WHERE    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
+----                                          =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- A-2で取得した売上計上日
+--    WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
+--    AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
+-- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
+--    AND      xsti.report_decision_flag    =  cv_report_decision_flag     -- 速報確定フラグ1(確定)
+--    AND      xsti.info_interface_flag     =  cv_info_interface_flag      -- 情報系I/Fフラグ1(I/F済)
+--    AND      xsti.gl_interface_flag       =  cv_unsettled_interface_flag -- 仕訳作成フラグ0(仕訳作成未済)
+--    GROUP BY xsti.selling_date
+--           , xsti.base_code
+--           , xsti.delivery_base_code;
+--
   CURSOR g_get_journal_cur
   IS
     SELECT   xsti.selling_date            AS xsti_selling_date           -- 売上計上日
+           , xsti.selling_from_cust_code  AS selling_from_cust_code      -- 売上振替元顧客コード
            , xsti.base_code               AS base_code                   -- 売上振替先拠点コード
            , xsti.delivery_base_code      AS delivery_base_code          -- 売上振替元拠点コード
            , SUM(xsti.selling_amt_no_tax) AS selling_amt                 -- 売上金額
--- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
---           , SUM(xsti.selling_cost_amt)   AS selling_cost_amt            -- 売上原価金額
            , SUM(xsti.trading_cost)       AS trading_cost                -- 営業原価
--- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
--- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
---    WHERE    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
---                                          =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- A-2で取得した売上計上日
     WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
     AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
--- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
     AND      xsti.report_decision_flag    =  cv_report_decision_flag     -- 速報確定フラグ1(確定)
     AND      xsti.info_interface_flag     =  cv_info_interface_flag      -- 情報系I/Fフラグ1(I/F済)
     AND      xsti.gl_interface_flag       =  cv_unsettled_interface_flag -- 仕訳作成フラグ0(仕訳作成未済)
     GROUP BY xsti.selling_date
+           , xsti.selling_from_cust_code
+           , xsti.base_code
+           , xsti.delivery_base_code
+    ORDER BY xsti.selling_date
+           , xsti.selling_from_cust_code
            , xsti.base_code
            , xsti.delivery_base_code;
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR END
+--
   -- ===============================
   -- グローバルレコードタイプ
   -- ===============================
@@ -495,27 +532,44 @@ AS
     --==============================================================
     --ロック取得用カーソル
     --==============================================================
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama UPD START
+--    CURSOR l_upd_cur
+--    IS
+---- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+----      SELECT 'X'
+--      SELECT /*+
+--               INDEX( xsti XXCOK_SELLING_TRNS_INFO_N03 )
+--             */
+--             xsti.selling_trns_info_id  AS selling_trns_info_id
+---- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
+--      FROM   xxcok_selling_trns_info     xsti                         -- 売上実績振替情報テーブル
+--      WHERE  xsti.report_decision_flag = cv_report_decision_flag      -- 速報確定フラグ1(確定)
+--      AND    xsti.info_interface_flag  = cv_info_interface_flag       -- 情報系I/Fフラグ1(I/F済)
+--      AND    xsti.gl_interface_flag    = cv_unsettled_interface_flag  -- 仕訳作成フラグ0(仕訳作成未済)
+---- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
+----      AND    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
+----                                       =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- 売上計上日
+--      AND    xsti.selling_date         = i_get_rec.xsti_selling_date  -- 売上計上日
+---- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
+--      AND    xsti.base_code            = i_get_rec.base_code          -- 売上振替先拠点コード
+--      AND    xsti.delivery_base_code   = i_get_rec.delivery_base_code -- 売上振替元拠点コード
+--      FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
     CURSOR l_upd_cur
     IS
--- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
---      SELECT 'X'
       SELECT /*+
                INDEX( xsti XXCOK_SELLING_TRNS_INFO_N03 )
              */
              xsti.selling_trns_info_id  AS selling_trns_info_id
--- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       FROM   xxcok_selling_trns_info     xsti                         -- 売上実績振替情報テーブル
       WHERE  xsti.report_decision_flag = cv_report_decision_flag      -- 速報確定フラグ1(確定)
       AND    xsti.info_interface_flag  = cv_info_interface_flag       -- 情報系I/Fフラグ1(I/F済)
       AND    xsti.gl_interface_flag    = cv_unsettled_interface_flag  -- 仕訳作成フラグ0(仕訳作成未済)
--- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
---      AND    substr(to_char(xsti.selling_date,'YYYY/MM/DD'),1,7) 
---                                       =  substr(to_char(gd_selling_date,'YYYY/MM/DD'),1,7) -- 売上計上日
       AND    xsti.selling_date         = i_get_rec.xsti_selling_date  -- 売上計上日
--- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
       AND    xsti.base_code            = i_get_rec.base_code          -- 売上振替先拠点コード
       AND    xsti.delivery_base_code   = i_get_rec.delivery_base_code -- 売上振替元拠点コード
+      AND    xsti.selling_from_cust_code = i_get_rec.selling_from_cust_code -- 売上振替元顧客コード
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama UPD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -659,6 +713,9 @@ AS
   , in_debit_amt       IN  NUMBER                                 -- 借方金額
   , in_credit_amt      IN  NUMBER                                 -- 貸方金額
   , iv_base_code       IN  VARCHAR2                               -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+  , iv_sales_staff_code IN VARCHAR2                               -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
   )
   IS
     --===============================
@@ -743,8 +800,11 @@ AS
       , iv_base_code                                   -- A-3で取得した売上振替先拠点コード
 -- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
 --      , cn_last_update_login                           -- ログインユーザーID
-      , cn_created_by                                  -- ログインユーザーID
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR START
+--      , cn_created_by                                  -- ログインユーザーID
+      , iv_sales_staff_code                            -- 売上振替元顧客担当営業員
 -- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR END
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR END
       , gv_set_of_bks_name                             -- A-1で取得した会計帳簿名
       );
     EXCEPTION
@@ -788,6 +848,9 @@ AS
   , ov_retcode OUT VARCHAR2                                      -- リターン・コード
   , ov_errmsg  OUT VARCHAR2                                      -- ユーザー・エラー・メッセージ
   , i_get_rec  IN  g_get_journal_cur%ROWTYPE                     -- レコードの引数
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+  , iv_sales_staff IN jtf_rs_resource_extns.source_number%TYPE   -- 振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
     )
   IS
     --===============================
@@ -823,6 +886,9 @@ AS
       , in_debit_amt       => i_get_rec.selling_amt        -- 借方金額(売上金額)
       , in_credit_amt      => 0                            -- 貸方金額(0)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -839,6 +905,9 @@ AS
       , in_debit_amt       => 0                            -- 借方金額(0)
       , in_credit_amt      => i_get_rec.selling_amt        -- 貸方金額(売上金額)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -863,6 +932,9 @@ AS
       , in_debit_amt       => 0                            -- 借方金額(0)
       , in_credit_amt      => i_get_rec.selling_amt        -- 貸方金額(売上金額)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -879,6 +951,9 @@ AS
       , in_debit_amt       => i_get_rec.selling_amt        -- 借方金額(売上金額)
       , in_credit_amt      => 0                            -- 貸方金額(0)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -913,6 +988,9 @@ AS
       , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -932,6 +1010,9 @@ AS
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , in_credit_amt      => 0                            -- 貸方金額(0)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -966,6 +1047,9 @@ AS
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , in_credit_amt      => 0                            -- 借方金額(0)
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -985,6 +1069,9 @@ AS
       , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -1096,6 +1183,10 @@ AS
     lv_errmsg             VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
     lb_retcode            BOOLEAN        DEFAULT NULL;              -- メッセージ出力変数
     lv_out_msg            VARCHAR2(5000) DEFAULT NULL;              -- メッセージ出力変数
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+    lt_sales_staff_code jtf_rs_resource_extns.source_number%TYPE;   -- 担当営業員コード
+    lt_selling_from_cust  xxcok_selling_trns_info.selling_from_cust_code%TYPE;   -- 振替元顧客
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
     --===============================
     --ローカル例外
     --===============================
@@ -1114,6 +1205,19 @@ AS
       --伝票番号初期化
       --================================================================
       gv_slip_number := NULL;
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      IF ( g_get_journal_rec.selling_from_cust_code != lt_selling_from_cust
+          OR g_get_journal_rec.selling_from_cust_code IS NULL )
+      THEN
+        lt_sales_staff_code := xxcok_common_pkg.get_sales_staff_code_f(
+                                   iv_customer_code => g_get_journal_rec.selling_from_cust_code
+                                 , id_proc_date     => g_get_journal_rec.xsti_selling_date
+                               );
+      END IF;
+--
+      IF ( lt_sales_staff_code IS NOT NULL ) THEN
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+--
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      --================================================================
 --      --売上金額(税抜き)、売上原価金額が共に0以外の場合
@@ -1121,10 +1225,10 @@ AS
 --      IF NOT( (     g_get_journal_rec.selling_amt         = 0 )
 --        AND   ( NVL(g_get_journal_rec.selling_cost_amt,0) = 0 ) ) THEN
 --
-      --================================================================
-      --売上金額(税抜き)、営業原価が共に0以外の場合
-      --================================================================
-      IF NOT( (     g_get_journal_rec.selling_amt     = 0 )
+        --================================================================
+        --売上金額(税抜き)、営業原価が共に0以外の場合
+        --================================================================
+        IF NOT( (     g_get_journal_rec.selling_amt     = 0 )
         AND   ( NVL(g_get_journal_rec.trading_cost,0) = 0 ) ) THEN
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
           --================================================================
@@ -1147,27 +1251,53 @@ AS
           , ov_retcode => lv_retcode         -- リターン・コード
           , ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
           , i_get_rec  => g_get_journal_rec  -- レコード引数
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+          , iv_sales_staff => lt_sales_staff_code  -- 振替元顧客担当営業員
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
           );
           IF( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
+        END IF;
+        --================================================================
+        --upd_jounal_create_p呼び出し(仕訳作成フラグ更新(A-7))
+        --================================================================
+        upd_jounal_create_p(
+          ov_errbuf  => lv_errbuf          -- エラー・メッセージ
+        , ov_retcode => lv_retcode         -- リターン・コード
+        , ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
+        , i_get_rec  => g_get_journal_rec  -- レコード引数
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --==============================================================
+        --成功件数カウント
+        --==============================================================
+        gn_normal_cnt := gn_normal_cnt + 1;
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
+      ELSE
+        --==============================================================
+        --警告件数カウント
+        --==============================================================
+        gn_warn_cnt := gn_warn_cnt + 1;
+        lv_out_msg := xxccp_common_pkg.get_msg(
+                        cv_appli_xxcok_name
+                      , cv_sales_staff_code_msg
+                      , cv_cust_code_token
+                      , g_get_journal_rec.selling_from_cust_code
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f( 
+                        FND_FILE.OUTPUT    -- 出力区分
+                      , lv_out_msg         -- メッセージ
+                      , 0                  -- 改行
+                      );
+        ov_errmsg  := NULL;
+        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
+        ov_retcode := cv_status_warn;
       END IF;
-      --================================================================
-      --upd_jounal_create_p呼び出し(仕訳作成フラグ更新(A-7))
-      --================================================================
-      upd_jounal_create_p(
-        ov_errbuf  => lv_errbuf          -- エラー・メッセージ
-      , ov_retcode => lv_retcode         -- リターン・コード
-      , ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ
-      , i_get_rec  => g_get_journal_rec  -- レコード引数
-      );
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-    --==============================================================
-    --成功件数カウント
-    --==============================================================
-    gn_normal_cnt := gn_normal_cnt + 1;
+      lt_selling_from_cust := g_get_journal_rec.selling_from_cust_code;
+-- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
 --
     END LOOP journal_loop;
     --==============================================================
