@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 支給依頼取込処理 T_MD070_BPO_94F
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -43,7 +43,8 @@ AS
  *  2008/08/28    1.7   Oracle 山根一浩    T_TE080_BPO_940 指摘16対応
  *  2008/10/08    1.8   Oracle 伊藤ひとみ  統合テスト指摘240対応
  *  2008/10/31    1.9   Oracle 伊藤ひとみ  統合テスト指摘528対応
- *  2009/02/09    1.10  Oracle 吉田 夏樹   本番#15対応
+ *  2009/02/09    1.10  SCS    吉田 夏樹   本番#15対応
+ *  2009/06/08    1.11  SCS    伊藤ひとみ  本番#1526対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2035,7 +2036,10 @@ AS
                 xvv.customer_num,             -- 顧客番号
                 xcav.party_id,                -- パーティID
                 xvv.spare2,                   -- 価格表
-                xcav.cust_account_id          -- 顧客ID
+-- 2009/06/08 v1.11 Mod Start 本番障害#1526
+--                xcav.cust_account_id          -- 顧客ID
+                xcav.party_id                 -- 顧客ID
+-- 2009/06/08 v1.11 Mod End
         INTO    gt_vendor_id_tbl(gn_i),
                 gt_customer_num_tbl(gn_i),
                 gt_cust_party_id_tbl(gn_i),
@@ -2230,7 +2234,15 @@ AS
                 ximv.conv_unit,                       -- 入出庫換算単位
                 ximv.num_of_cases,                    -- ケース入数
                 ximv.inventory_item_id,               -- INV品目ID
-                ximv.whse_item_id,                    -- 倉庫品目ID
+-- 2009/06/08 v1.11 Mod Start 本番障害#1526
+--                ximv.whse_item_id,                    -- 倉庫品目ID
+                NVL(whximv.inventory_item_id
+                  , ximv.inventory_item_id)  whse_inv_item_id, -- 倉庫INV品目ID
+-- 2009/06/08 v1.11 Mod End
+-- 2009/06/08 v1.11 Add Start 本番障害#1526
+                NVL(whximv.item_no
+                  , ximv.item_no)            whse_item_no,     -- 倉庫品目コード
+-- 2009/06/08 v1.11 Add End
 -- 2008/07/17 v1.3 Start
 --                ximv.lot_ctl                          -- ロット
                 ximv.lot_ctl,                         -- ロット
@@ -2243,13 +2255,22 @@ AS
                 gt_num_of_cases_tbl(gn_j),
                 gt_inventory_item_id_tbl(gn_j),
                 gt_whse_item_id_tbl(gn_j),
+-- 2009/06/08 v1.11 Add Start 本番障害#1526
+                gt_item_no_tbl(gn_j),
+-- 2009/06/08 v1.11 Add End
 -- 2008/07/17 v1.3 Start
 --                gt_lot_ctl_tbl(gn_j)
                 gt_lot_ctl_tbl(gn_j),
                 gt_l_weight_capacity_class(gn_j)
 -- 2008/07/17 v1.3 End
         FROM    xxcmn_item_mst2_v       ximv
+-- 2009/06/08 v1.11 Add Start 本番障害#1526
+               ,xxcmn_item_mst_v        whximv  -- OPM品目情報VIEW(倉庫品目用)
+-- 2009/06/08 v1.11 Add End
         WHERE   ximv.item_no            =  gt_item_code_tbl(gn_j)
+-- 2009/06/08 v1.11 Add Start 本番障害#1526
+        AND     ximv.whse_item_id       = whximv.item_id(+)
+-- 2009/06/08 v1.11 Add End
         AND     ximv.start_date_active  <= gd_standard_date
         AND     ximv.end_date_active    >= gd_standard_date;
 --
@@ -2274,25 +2295,27 @@ AS
 --
       END;
 --
-      -- 倉庫品目IDに紐付く倉庫品目コードを取得
-      BEGIN
-        SELECT  ximv.item_no                          -- 倉庫品目コード
-        INTO    gt_item_no_tbl(gn_j)
-        FROM    xxcmn_item_mst2_v       ximv
-        WHERE   ximv.item_id            =  gt_whse_item_id_tbl(gn_j)
-        AND     ximv.start_date_active  <= gd_standard_date
-        AND     ximv.end_date_active    >= gd_standard_date;
---
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_xxpo,
-                                                gv_msg_exist,
-                                                gv_tkn_table,
-                                                cv_ximv);
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
---
-      END;
+-- 2009/06/08 v1.11 Del Start 本番障害#1526
+--      -- 倉庫品目IDに紐付く倉庫品目コードを取得
+--      BEGIN
+--        SELECT  ximv.item_no                          -- 倉庫品目コード
+--        INTO    gt_item_no_tbl(gn_j)
+--        FROM    xxcmn_item_mst2_v       ximv
+--        WHERE   ximv.item_id            =  gt_whse_item_id_tbl(gn_j)
+--        AND     ximv.start_date_active  <= gd_standard_date
+--        AND     ximv.end_date_active    >= gd_standard_date;
+----
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_xxpo,
+--                                                gv_msg_exist,
+--                                                gv_tkn_table,
+--                                                cv_ximv);
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_api_expt;
+----
+--      END;
+-- 2009/06/08 v1.11 Add End
 --
       ---------------------------------------------
       -- 品目重複チェック                        --
@@ -3988,6 +4011,13 @@ AS
     LOOP
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT, normal_l_dump_tab(ln_cnt_loop));
     END LOOP normal_l_dump_loop;
+-- 2009/06/08 v.1.11 Add Start
+    <<normal_request_no>>
+    FOR ln_loop_cnt IN 1..gt_ph_request_no_tbl.COUNT
+    LOOP
+      FND_FILE.PUT_LINE(FND_FILE.LOG, '作成依頼No：' || gt_ph_request_no_tbl(gn_i));
+    END LOOP normal_request_no;
+-- 2009/06/08 v.1.11 Add End
 --
   EXCEPTION
 --
