@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  2008/11/11    1.0   S.Sasaki         新規作成
  *  2009/02/02    1.1   S.Sasaki         [障害COK_005]取得条件追加、エラー時IFデータ削除処理追加
  *  2009/03/10    1.2   K.Yamaguchi      [障害T1_0009]問屋請求書明細テーブル削除処理変更
+ *  2009/04/10    1.3   M.Hiruta         [障害T1_0400]数値チェックでマイナス値をチェックできるよう変更
+ *                                       [障害T1_0493]妥当性チェックのNULLチェック時に正確な項目を参照するよう修正
  *
  *****************************************************************************************/
 --
@@ -123,6 +125,9 @@ AS
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';   --コロン
   cv_msg_cont                CONSTANT VARCHAR2(3)   := '.';     --ピリオド
   cv_comma                   CONSTANT VARCHAR2(1)   := ',';     --カンマ
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+  cv_minus                   CONSTANT VARCHAR2(1)   := '-';     --マイナス
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
   --文字列
   cv_revise_flag             CONSTANT VARCHAR2(1)   := '0';    --業管訂正フラグ(0:未訂正)
   cv_base_code               CONSTANT VARCHAR2(1)   := '1';    --顧客区分(拠点コード)
@@ -662,7 +667,10 @@ AS
     lv_msg                  VARCHAR2(5000) DEFAULT NULL;               --メッセージ取得変数
     lv_cust_status          VARCHAR2(2)    DEFAULT NULL;               --顧客ステータス
     lb_retcode              BOOLEAN        DEFAULT TRUE;               --メッセージ出力の戻り値
-    lb_chk_number           BOOLEAN        DEFAULT TRUE;               --半角数字チェックの結果
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--    lb_chk_number           BOOLEAN        DEFAULT TRUE;               --半角数字チェックの結果
+    ln_chk_number           NUMBER         DEFAULT NULL;               --半角数字チェック用
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
     ld_expect_payment_date  DATE;                                      --支払予定日(日付型変換後)
     ld_selling_month        DATE;                                      --売上対象年月(日付型変換後)
     ln_chr_length           NUMBER         DEFAULT 0;                  --桁数チェック
@@ -704,10 +712,12 @@ AS
     -- =============================================================================
     -- 2.①請求数量のデータ型チェック(半角数字チェック)
     -- =============================================================================
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+/*
     lb_chk_number := xxccp_common_pkg.chk_number(
                        iv_check_char => iv_demand_qty
                      );
---
+
     IF ( lb_chk_number = FALSE ) THEN
       lv_msg := xxccp_common_pkg.get_msg(
                   iv_application  => cv_xxcok_appl_name
@@ -722,9 +732,32 @@ AS
                     );
       ov_retcode := cv_status_continue;
     END IF;
+*/
+    BEGIN
+      ln_chk_number := TO_NUMBER( iv_demand_qty );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_err_msg_10140
+                  , iv_token_name1  => cv_token_row_num
+                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+    END;
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--
     -- =============================================================================
     -- 2.②請求金額(税抜)のデータ型チェック(半角数字チェック)
     -- =============================================================================
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+/*
     lb_chk_number := xxccp_common_pkg.chk_number(
                        iv_check_char => iv_demand_amt
                      );
@@ -743,10 +776,33 @@ AS
                     );
       ov_retcode := cv_status_continue;
     END IF;
+*/
+    BEGIN
+      ln_chk_number := TO_NUMBER( iv_demand_amt );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_err_msg_10142
+                  , iv_token_name1  => cv_token_row_num
+                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+    END;
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--
     -- =============================================================================
     -- 2.③支払数量のデータ型チェック(半角数字チェック)(値がNULLの場合チェック対象外)
     -- =============================================================================
     IF ( iv_payment_qty IS NOT NULL ) THEN
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+/*
       lb_chk_number := xxccp_common_pkg.chk_number(
                          iv_check_char => iv_payment_qty
                        );
@@ -765,11 +821,37 @@ AS
                       );
         ov_retcode := cv_status_continue;
       END IF;
+*/
+      BEGIN
+        ln_chk_number := TO_NUMBER( iv_payment_qty );
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10143
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+      END;
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
     END IF;
+--
     -- ====================================================================================
     -- 2.④支払金額(税抜)のデータ型チェック(半角数字チェック)(値がNULLの場合チェック対象外)
     -- ====================================================================================
-    IF ( iv_payment_qty IS NOT NULL ) THEN
+-- Start 2009/04/10 Ver_1.3 T1_0493 M.Hiruta
+--    IF ( iv_payment_qty IS NOT NULL ) THEN
+    IF ( iv_payment_amt IS NOT NULL ) THEN
+-- End   2009/04/10 Ver_1.3 T1_0493 M.Hiruta
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+/*
       lb_chk_number := xxccp_common_pkg.chk_number(
                          iv_check_char => iv_payment_amt
                        );
@@ -788,7 +870,28 @@ AS
                       );
         ov_retcode := cv_status_continue;
       END IF;
+*/
+      BEGIN
+        ln_chk_number := TO_NUMBER( iv_payment_amt );
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10145
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+      END;
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
     END IF;
+--
     -- =============================================================================
     -- 支払予定日の日付型変換チェック
     -- =============================================================================
@@ -853,7 +956,10 @@ AS
     -- =============================================================================
     -- 3.②請求数量の桁数チェック
     -- =============================================================================
-    ln_chr_length := LENGTHB( iv_demand_qty );
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--    ln_chr_length := LENGTHB( iv_demand_qty );
+    ln_chr_length := LENGTHB( REPLACE( iv_demand_qty , cv_minus ) );
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
 --
     IF ( ln_chr_length > cn_9 ) THEN
       lv_msg := xxccp_common_pkg.get_msg(
@@ -892,7 +998,10 @@ AS
     -- =============================================================================
     -- 3.④請求金額(税抜)の桁数チェック
     -- =============================================================================
-    ln_chr_length := LENGTHB( iv_demand_amt );
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--    ln_chr_length := LENGTHB( iv_demand_amt );
+    ln_chr_length := LENGTHB( REPLACE( iv_demand_amt , cv_minus ) );
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
 --
     IF ( ln_chr_length > cn_10 ) THEN
       lv_msg := xxccp_common_pkg.get_msg(
@@ -930,7 +1039,10 @@ AS
     -- =============================================================================
     -- 3.⑥支払数量の桁数チェック
     -- =============================================================================
-    ln_chr_length := LENGTHB( iv_payment_qty );
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--    ln_chr_length := LENGTHB( iv_payment_qty );
+    ln_chr_length := LENGTHB( REPLACE( iv_payment_qty , cv_minus ) );
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
 --
     IF ( ln_chr_length > cn_9 ) THEN
       lv_msg := xxccp_common_pkg.get_msg(
@@ -969,7 +1081,10 @@ AS
     -- =============================================================================
     -- 3.⑧支払金額(税抜)の桁数チェック
     -- =============================================================================
-    ln_chr_length := LENGTHB( iv_payment_amt );
+-- Start 2009/04/10 Ver_1.3 T1_0400 M.Hiruta
+--    ln_chr_length := LENGTHB( iv_payment_amt );
+    ln_chr_length := LENGTHB( REPLACE( iv_payment_amt , cv_minus ) );
+-- End   2009/04/10 Ver_1.3 T1_0400 M.Hiruta
 --
     IF ( ln_chr_length > cn_10 ) THEN
       lv_msg := xxccp_common_pkg.get_msg(
