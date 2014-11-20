@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/05/21    1.10  H.Sasaki         [T1_1123]棚卸情報検索時に日付条件を追加
  *  2009/06/04    1.11  H.Sasaki         [T1_1324]当日取引データにて消化VDを対象外とする
  *  2009/07/21    1.12  H.Sasaki         [0000768]PT対応
+ *  2009/07/30    1.13  N.Abe            [0000638]数量の取得項目修正
  *
  *****************************************************************************************/
 --
@@ -625,7 +626,10 @@ AS
            ,mmt.subinventory_code         subinventory_code     -- 保管場所コード
            ,mtt.attribute3                transaction_type      -- 受払表集計キー
            ,mmt.inventory_item_id         inventory_item_id     -- 品目ID
-           ,mmt.transaction_quantity      transaction_qty       -- 取引数量
+-- == 2009/07/30 V1.13 Modified START ===============================================================
+--           ,mmt.transaction_quantity      transaction_qty       -- 取引数量
+           ,mmt.primary_quantity      transaction_qty           -- 基準単位数量
+-- == 2009/07/30 V1.13 Modified END   ===============================================================
            ,xirm.inv_seq                  inventory_seq         -- 受払棚卸SEQ
 -- == 2009/06/04 V1.11 Added START ===============================================================
            ,msi1.attribute13              subinv_class          -- 保管場所分類
