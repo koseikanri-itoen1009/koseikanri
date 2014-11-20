@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : ’ ‡–β‰®‚ΙΦ‚·‚ιΏ‹‘‚Ζ©Ο‘‚π“Λ‚«‡‚ν‚ΉA•i–Ϊ•Κ‚ΙΏ‹‘‚Ζ©Ο‘‚Μ“ΰ—e‚π•\¦
  * MD.050           : –β‰®”Μ”„πx•¥ƒ`ƒFƒbƒN•\ MD050_COK_021_A06
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,9 @@ AS
  *  2009/02/05    1.1   K.Iwabuchi       [αQCOK_011] ƒpƒ‰ƒ[ƒ^•s‹ο‡‘Ξ‰
  *  2009/02/06    1.2   K.Iwabuchi       [αQCOK_015] ƒNƒCƒbƒNƒR[ƒhƒrƒ…[—Lψ“ϊ•t”»’θ’Η‰Α‘Ξ‰
  *  2009/02/17    1.3   K.Iwabuchi       [αQCOK_036] “o^€–ΪZoC³A©Ο‘ξ•ρζ“ΎC³A‰c‹Ζ’PΚIDπ’Η‰ΑA–³ψ“ϊ”»’f’Η‰Α
+ *  2009/04/17    1.4   M.Hiruta         [αQT1_0414] Ώ‹‹ΰz‚ª0‚Ε‚ ‚ικ‡A•β“UE–β‰®ƒ}[ƒWƒ“Eg”„”ο‚Μ3€‚Ι
+ *                                                     ’l‚ªo—Ν‚³‚κ‚Θ‚Ά‚ζ‚¤•ΟX
+ *                                                     •β“U‚Μ’l‚ªƒ}ƒCƒiƒX‚Ε‚ ‚Α‚Δ‚ΰA‡v‚Μ’Òελ‚ª‡‚¤‚ζ‚¤•ΟX
  *
  *****************************************************************************************/
   -- ===============================================
@@ -463,6 +466,10 @@ AS
   , iv_cust_code                 IN VARCHAR2   -- Ϊ‹qƒR[ƒh
   , iv_sales_outlets_code        IN VARCHAR2   -- –β‰®’ ‡ζƒR[ƒh
   , in_i                         IN NUMBER     -- LOOPƒJƒEƒ“ƒ^
+-- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+  , in_backmargin_amt            IN NUMBER DEFAULT NULL -- ”Μ”„θ”—Ώ
+  , in_sales_support_amt         IN NUMBER DEFAULT NULL -- ”Μ”„‹¦^‹ΰ
+-- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
   )
   IS
     -- ===============================================
@@ -572,33 +579,55 @@ AS
         END IF;
       END IF;
       -- ===============================================
-      -- •β“U(((ΐ)’l-’Κν“X”[)*x•¥”—Κ)  (ΐ)’l-’Κν“X”[‚ª0‚ζ‚θ¬‚³‚Άκ‡A•β“U‚Ν0
+      -- •β“U(((ΐ)’l-’Κν“X”[)*x•¥”—Κ)
+      -- Θ‰Ί‚Μκ‡•β“U‚Ν0
+      -- (ΐ)’l-’Κν“X”[‚ª0‚ζ‚θ¬‚³‚Άκ‡
+      -- A-3.”Μ”„θ”—Ώ‚ªNULL‚Μκ‡
+      -- A-3.”Μ”„θ”—Ώ‚ª0Θ‰Ί‚Μκ‡
       -- ===============================================
-      IF ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 ) THEN
+-- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+--      IF ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 ) THEN
+      IF ( ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 )
+        OR ( ( in_backmargin_amt IS NULL ) OR ( in_backmargin_amt <= cn_number_0 ) ) )
+      THEN
+-- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
         ln_coverage_amt := cn_number_0;
       ELSE
         ln_coverage_amt := ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
       END IF;
+-- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
       -- ===============================================
-      -- –β‰®ƒ}[ƒWƒ“((΅‰ρ“X”[-NET‰Ώi)*x•¥”—Κ  ΅‰ρ“X”[‚ªNULLE0ΘO‚Μκ‡΅‰ρ“X”[ANULL‚ά‚½‚Ν0‚Μκ‡’Κν“X”[
+      -- –β‰®ƒ}[ƒWƒ“
+      -- T1_0414C³‘O ((΅‰ρ“X”[-NET‰Ώi)*x•¥”—Κ  ΅‰ρ“X”[‚ªNULLE0ΘO‚Μκ‡΅‰ρ“X”[ANULL‚ά‚½‚Ν0‚Μκ‡’Κν“X”[
+      -- T1_0414C³γ A-3.”Μ”„θ”—Ώ‚ª0‚ζ‚θ‘ε‚«‚Άκ‡ A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ | •β“U
+      --               γ‹LΘO                        A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ
       -- ===============================================
-      IF (    gn_once_store_deliver_amt IS NOT NULL )
-        AND ( gn_once_store_deliver_amt <> cn_number_0 )
-      THEN
-        ln_wholesale_margin_sum := ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+--      IF (    gn_once_store_deliver_amt IS NOT NULL )
+--        AND ( gn_once_store_deliver_amt <> cn_number_0 )
+--      THEN
+--        ln_wholesale_margin_sum := ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+--      ELSE
+--        ln_wholesale_margin_sum := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+--      END IF;
+      IF ( in_backmargin_amt > cn_number_0 ) THEN
+        ln_wholesale_margin_sum := NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt;
       ELSE
-        ln_wholesale_margin_sum := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+        ln_wholesale_margin_sum := NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
       END IF;
       -- ===============================================
-      -- g”„”ο((’Κν“X”[-΅‰ρ“X”[)*x•¥”—Κ)  ΅‰ρ“X”[‚ªNULL‚ά‚½‚Ν0‚Μκ‡Ag”„”ο‚Ν0
+      -- g”„”ο
+      -- T1_0414C³‘O ((’Κν“X”[-΅‰ρ“X”[)*x•¥”—Κ)  ΅‰ρ“X”[‚ªNULL‚ά‚½‚Ν0‚Μκ‡Ag”„”ο‚Ν0
+      -- T1_0414C³γ A-3.”Μ”„‹¦^‹ΰ ~ x•¥”—Κ
       -- ===============================================
-      IF (   gn_once_store_deliver_amt IS NULL )
-        OR ( gn_once_store_deliver_amt = cn_number_0 )
-      THEN
-        ln_expansion_sales_amt := cn_number_0;
-      ELSE
-        ln_expansion_sales_amt := ( gn_normal_store_deliver_amt - gn_once_store_deliver_amt ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
-      END IF;
+--      IF (   gn_once_store_deliver_amt IS NULL )
+--        OR ( gn_once_store_deliver_amt = cn_number_0 )
+--      THEN
+--        ln_expansion_sales_amt := cn_number_0;
+--      ELSE
+--        ln_expansion_sales_amt := ( gn_normal_store_deliver_amt - gn_once_store_deliver_amt ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+--      END IF;
+      ln_expansion_sales_amt := NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+-- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
       -- ===============================================
       -- ‚»‚Μ‘Ό‰Θ–Ϊ(x•¥‹ΰz) ¨’θ‰Θ–Ϊ‚Ι’l‚ª‚ ‚ικ‡‚Μ‚έ
       -- ===============================================
@@ -805,6 +834,10 @@ AS
     lv_selling_month  VARCHAR2(6)     DEFAULT NULL;              -- ”„γ‘ΞΫ”N(YYYYMM)
     lv_dummy          VARCHAR2(20)    DEFAULT NULL;              -- Φ”–Άg—p€–Ϊ
     ln_dummy          NUMBER          DEFAULT NULL;              -- Φ”–Άg—p€–Ϊ
+-- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+    ln_backmargin_amt    NUMBER       DEFAULT NULL;              -- ”Μ”„θ”—Ώ
+    ln_sales_support_amt NUMBER       DEFAULT NULL;              -- ”Μ”„‹¦^‹ΰ
+-- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
 --
   BEGIN
     -- ===============================================
@@ -885,8 +918,12 @@ AS
         , on_once_store_deliver_amt    => gn_once_store_deliver_amt              -- ΅‰ρ“X”[
         , on_net_selling_price         => gn_net_selling_price                   -- NET‰Ώi
         , ov_estimated_type            => gv_estimated_type                      -- ©Ο‹ζ•ª
-        , on_backmargin_amt            => ln_dummy                               -- ”Μ”„θ”—Ώ(–Άg—p)
-        , on_sales_support_amt         => ln_dummy                               -- ”Μ”„‹¦^‹ΰ(–Άg—p)
+-- Start 2009/04/16 Ver_ T1_ M.Hiruta
+--        , on_backmargin_amt            => ln_dummy                               -- ”Μ”„θ”—Ώ(–Άg—p)
+--        , on_sales_support_amt         => ln_dummy                               -- ”Μ”„‹¦^‹ΰ(–Άg—p)
+        , on_backmargin_amt            => ln_backmargin_amt                      -- ”Μ”„θ”—Ώ
+        , on_sales_support_amt         => ln_sales_support_amt                   -- ”Μ”„‹¦^‹ΰ
+-- End   2009/04/16 Ver_ T1_ M.Hiruta
         );
         IF ( lv_retcode = cv_status_error ) THEN
           lv_outmsg  := xxccp_common_pkg.get_msg(
@@ -926,6 +963,10 @@ AS
         , iv_cust_code             =>  iv_cust_code             -- Ϊ‹qƒR[ƒh
         , iv_sales_outlets_code    =>  iv_sales_outlets_code    -- –β‰®’ ‡ζƒR[ƒh
         , in_i                     =>  i                        -- LOOPƒJƒEƒ“ƒ^
+-- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+        , in_backmargin_amt        =>  ln_backmargin_amt        -- ”Μ”„θ”—Ώ
+        , in_sales_support_amt     =>  ln_sales_support_amt     -- ”Μ”„‹¦^‹ΰ
+-- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
