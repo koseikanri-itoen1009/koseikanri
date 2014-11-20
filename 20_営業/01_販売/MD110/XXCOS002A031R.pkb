@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.9
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,9 @@ AS
  *  2009/07/07    1.7   K.Kiriu          [0000418]削除件数取得不具合対応
  *  2009/09/03    1.8   K.Kiriu          [0000866]PT対応
  *  2010/04/16    1.9   D.Abe            [E_本稼動_02251,02270]カレンダ,拠点計顧客軒数対応
+ *  2011/02/15    1.10  H.Sasaki         [E_本稼動_01730]実績のないデータを出力対象から除外する
+ *  2011/02/21    1.11  H.Sasaki         [E_本稼動_05896]政策群情報の２重表示抑止
+ *  2011/04/04    1.12  H.Sasaki         [E_本稼動_02252]退職者データの出力制御
  *
  *****************************************************************************************/
 --
@@ -863,209 +866,446 @@ AS
               program_id,
               program_update_date
               )
-      SELECT
-/* 2009/09/03 Ver1.8 Add Start */
-              /*+
-                LEADING(rsid.jrrx_n)
-                INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
-                INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(rsid.jrrx_n xxcso_jrre_n02)
-                USE_NL(rsid.papf_n)
-                USE_NL(rsid.pept_n)
-                USE_NL(rsid.paaf_n)
-                USE_NL(rsid.jrgm_n)
-                USE_NL(rsid.jrgb_n)
-                LEADING(rsid.jrrx_o)
-                INDEX(rsid.jrrx_o xxcso_jrre_n02)
-                INDEX(rsid.jrgm_o jtf_rs_group_members_n2)
-                INDEX(rsid.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(rsid.papf_o)
-                USE_NL(rsid.pept_o)
-                USE_NL(rsid.paaf_o)
-                USE_NL(rsid.jrgm_o)
-                USE_NL(rsid.jrgb_o)
-                USE_NL(rsid)
-                LEADING(rsig.jrrx_n)
-                INDEX(rsig.jrgm_n jtf_rs_group_members_n2)
-                INDEX(rsig.jrgb_n jtf_rs_groups_b_u1)
-                INDEX(rsig.jrrx_n xxcso_jrre_n02)
-                USE_NL(rsig.papf_n)
-                USE_NL(rsig.pept_n)
-                USE_NL(rsig.paaf_n)
-                USE_NL(rsig.jrgm_n)
-                USE_NL(rsig.jrgb_n)
-                LEADING(rsig.jrrx_o)
-                INDEX(rsig.jrrx_o xxcso_jrre_n02)
-                INDEX(rsig.jrgm_o jtf_rs_group_members_n2)
-                INDEX(rsig.jrgb_o jtf_rs_groups_b_u1)
-                USE_NL(rsig.papf_o)
-                USE_NL(rsig.pept_o)
-                USE_NL(rsig.paaf_o)
-                USE_NL(rsig.jrgm_o)
-                USE_NL(rsig.jrgb_o)
-                USE_NL(rsig)
-                USE_NL(lvsg_lv2)
+/* 2011/02/21 Ver1.11 Mod START */
+--      SELECT
+--/* 2009/09/03 Ver1.8 Add Start */
+--              /*+
+--                LEADING(rsid.jrrx_n)
+--                INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(rsid.jrrx_n xxcso_jrre_n02)
+--                USE_NL(rsid.papf_n)
+--                USE_NL(rsid.pept_n)
+--                USE_NL(rsid.paaf_n)
+--                USE_NL(rsid.jrgm_n)
+--                USE_NL(rsid.jrgb_n)
+--                LEADING(rsid.jrrx_o)
+--                INDEX(rsid.jrrx_o xxcso_jrre_n02)
+--                INDEX(rsid.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(rsid.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(rsid.papf_o)
+--                USE_NL(rsid.pept_o)
+--                USE_NL(rsid.paaf_o)
+--                USE_NL(rsid.jrgm_o)
+--                USE_NL(rsid.jrgb_o)
+--                USE_NL(rsid)
+--                LEADING(rsig.jrrx_n)
+--                INDEX(rsig.jrgm_n jtf_rs_group_members_n2)
+--                INDEX(rsig.jrgb_n jtf_rs_groups_b_u1)
+--                INDEX(rsig.jrrx_n xxcso_jrre_n02)
+--                USE_NL(rsig.papf_n)
+--                USE_NL(rsig.pept_n)
+--                USE_NL(rsig.paaf_n)
+--                USE_NL(rsig.jrgm_n)
+--                USE_NL(rsig.jrgb_n)
+--                LEADING(rsig.jrrx_o)
+--                INDEX(rsig.jrrx_o xxcso_jrre_n02)
+--                INDEX(rsig.jrgm_o jtf_rs_group_members_n2)
+--                INDEX(rsig.jrgb_o jtf_rs_groups_b_u1)
+--                USE_NL(rsig.papf_o)
+--                USE_NL(rsig.pept_o)
+--                USE_NL(rsig.paaf_o)
+--                USE_NL(rsig.jrgm_o)
+--                USE_NL(rsig.jrgb_o)
+--                USE_NL(rsig)
+--                USE_NL(lvsg_lv2)
+--              */
+--/* 2009/09/03 Ver1.8 Add End   */
+--              xxcos_rep_bus_perf_s01.nextval                                        AS  record_id,
+--              ct_sum_data_cls_employee                                              AS  sum_data_class,
+--              gd_common_base_date                                                   AS  target_date,
+--              rsid.base_code                                                        AS  base_code,
+--              SUBSTRB(hzpb.party_name, 1, cn_limit_base_name)                       AS  base_name,
+--              rsid.group_code                                                       AS  section_code,
+--              SUBSTRB(rsig.employee_name || lvsc.meaning, 1, cn_limit_sention_name) AS  section_name,
+--              rsid.group_in_sequence                                                AS  group_in_sequence,
+--              rsid.employee_number                                                  AS  employee_num,
+--              SUBSTRB(rsid.employee_name, 1, cn_limit_employee_name)                AS  employee_name,
+--              NVL(DECODE(dmpl.sales_plan_rel_div, ct_rel_div_basic_plan, spmp.bsc_sls_prsn_total_amt
+--                                                                       , spmp.tgt_sales_prsn_total_amt)
+--                 , 0)                                                               AS  norma,
+--              gn_common_operating_days                                              AS  actual_date_quantity,
+--              gn_common_lapsed_days                                                 AS  course_date_quantity,
+--              0                                                                     AS  sale_shop_date_total,
+--              0                                                                     AS  sale_shop_total,
+--              0                                                                     AS  rtn_shop_date_total,
+--              0                                                                     AS  rtn_shop_total,
+--              0                                                                     AS  discount_shop_date_total,
+--              0                                                                     AS  discount_shop_total,
+--              0                                                                     AS  sup_sam_shop_date_total,
+--              0                                                                     AS  sup_sam_shop_total,
+--              0                                                                     AS  keep_shop_quantity,
+--              0                                                                     AS  sale_cvs_date_total,
+--              0                                                                     AS  sale_cvs_total,
+--              0                                                                     AS  rtn_cvs_date_total,
+--              0                                                                     AS  rtn_cvs_total,
+--              0                                                                     AS  discount_cvs_date_total,
+--              0                                                                     AS  discount_cvs_total,
+--              0                                                                     AS  sup_sam_cvs_date_total,
+--              0                                                                     AS  sup_sam_cvs_total,
+--              0                                                                     AS  keep_shop_cvs,
+--              0                                                                     AS  sale_wholesale_date_total,
+--              0                                                                     AS  sale_wholesale_total,
+--              0                                                                     AS  rtn_wholesale_date_total,
+--              0                                                                     AS  rtn_wholesale_total,
+--              0                                                                     AS  discount_whol_date_total,
+--              0                                                                     AS  discount_whol_total,
+--              0                                                                     AS  sup_sam_whol_date_total,
+--              0                                                                     AS  sup_sam_whol_total,
+--              0                                                                     AS  keep_shop_wholesale,
+--              0                                                                     AS  sale_others_date_total,
+--              0                                                                     AS  sale_others_total,
+--              0                                                                     AS  rtn_others_date_total,
+--              0                                                                     AS  rtn_others_total,
+--              0                                                                     AS  discount_others_date_total,
+--              0                                                                     AS  discount_others_total,
+--              0                                                                     AS  sup_sam_others_date_total,
+--              0                                                                     AS  sup_sam_others_total,
+--              0                                                                     AS  keep_shop_others,
+--              0                                                                     AS  sale_vd_date_total,
+--              0                                                                     AS  sale_vd_total,
+--              0                                                                     AS  rtn_vd_date_total,
+--              0                                                                     AS  rtn_vd_total,
+--              0                                                                     AS  discount_vd_date_total,
+--              0                                                                     AS  discount_vd_total,
+--              0                                                                     AS  sup_sam_vd_date_total,
+--              0                                                                     AS  sup_sam_vd_total,
+--              0                                                                     AS  keep_shop_vd,
+--              0                                                                     AS  sale_business_car,
+--              0                                                                     AS  rtn_business_car,
+--              0                                                                     AS  discount_business_car,
+--              0                                                                     AS  sup_sam_business_car,
+--              0                                                                     AS  drop_ship_fact_send_directly,
+--              0                                                                     AS  rtn_factory_send_directly,
+--              0                                                                     AS  discount_fact_send_directly,
+--              0                                                                     AS  sup_fact_send_directly,
+--              0                                                                     AS  sale_main_whse,
+--              0                                                                     AS  rtn_main_whse,
+--              0                                                                     AS  discount_main_whse,
+--              0                                                                     AS  sup_sam_main_whse,
+--              0                                                                     AS  sale_others_whse,
+--              0                                                                     AS  rtn_others_whse,
+--              0                                                                     AS  discount_others_whse,
+--              0                                                                     AS  sup_sam_others_whse,
+--              0                                                                     AS  sale_others_base_whse_sale,
+--              0                                                                     AS  rtn_others_base_whse_sale,
+--              0                                                                     AS  discount_oth_base_whse_sale,
+--              0                                                                     AS  sup_sam_oth_base_whse_sale,
+--              0                                                                     AS  sale_actual_transfer,
+--              0                                                                     AS  rtn_actual_transfer,
+--              0                                                                     AS  discount_actual_transfer,
+--              0                                                                     AS  sup_sam_actual_transfer,
+--              0                                                                     AS  sprcial_sale,
+--              0                                                                     AS  rtn_asprcial_sale,
+--              0                                                                     AS  sale_new_contribution_sale,
+--              0                                                                     AS  rtn_new_contribution_sale,
+--              0                                                                     AS  discount_new_contr_sale,
+--              0                                                                     AS  sup_sam_new_contr_sale,
+--              0                                                                     AS  count_yet_visit_party,
+--              0                                                                     AS  count_yet_dealings_party,
+--              0                                                                     AS  count_delay_visit_count,
+--              0                                                                     AS  count_delay_valid_count,
+--              0                                                                     AS  count_valid_count,
+--              0                                                                     AS  count_new_count,
+--              0                                                                     AS  count_new_vendor_count,
+--              0                                                                     AS  count_new_point,
+--              0                                                                     AS  count_mc_party,
+--              lvsg_lv1.lookup_code                                                  AS  policy_sum_code,
+--              lvsg_lv1.attribute3                                                   AS  policy_sum_name,
+--              lvsg_lv2.lookup_code                                                  AS  policy_group,
+--              lvsg_lv2.attribute3                                                   AS  group_name,
+--              0                                                                     AS  sale_amount,
+--              0                                                                     AS  business_cost,
+--              cn_created_by                                                         AS  created_by,
+--              cd_creation_date                                                      AS  creation_date,
+--              cn_last_updated_by                                                    AS  last_updated_by,
+--              cd_last_update_date                                                   AS  last_update_date,
+--              cn_last_update_login                                                  AS  last_update_login,
+--              cn_request_id                                                         AS  request_id,
+--              cn_program_application_id                                             AS  program_application_id,
+--              cn_program_id                                                         AS  program_id,
+--              cd_program_update_date                                                AS  program_update_date
+--      FROM    xxcos_rs_info_v               rsid,
+--              xxcos_rs_info_v               rsig,
+--              hz_cust_accounts              base,
+--              hz_parties                    hzpb,
+--              xxcso_dept_monthly_plans      dmpl,
+--              xxcso_sls_prsn_mnthly_plns    spmp,
+--              xxcos_lookup_values_v         lvsg_lv1,
+--              xxcos_lookup_values_v         lvsg_lv2,
+--              xxcos_lookup_values_v         lvsc
+--      WHERE   rsid.base_code                =       iv_delivery_base_code
+--      AND     NVL(rsid.group_code, cv_para_dummy_section_code)
+--                                            =       NVL(iv_section_code, NVL(rsid.group_code, 
+--                                                                             cv_para_dummy_section_code)
+--                                                       )
+--/* 2009/09/03 Ver1.8 Mod Start */
+----      AND     rsid.employee_number          =       NVL(iv_results_employee_code, rsid.employee_number)
+--      AND     (
+--                ( iv_results_employee_code IS NULL )
+--                OR
+--                ( iv_results_employee_code IS NOT NULL AND rsid.employee_number = iv_results_employee_code )
+--              )
+--/* 2009/09/03 Ver1.8 Mod End   */
+--      AND     rsid.effective_start_date     <=      gd_common_base_date
+--      AND     rsid.effective_end_date       >=      gd_common_first_date
+--      AND     gd_common_base_date           BETWEEN rsid.per_effective_start_date
+--                                            AND     rsid.per_effective_end_date
+--      AND     gd_common_base_date           BETWEEN rsid.paa_effective_start_date
+--                                            AND     rsid.paa_effective_end_date
+--      AND     rsig.base_code(+)             =       rsid.base_code
+--      AND     rsig.group_code(+)            =       rsid.group_code
+--      AND     rsig.group_chief_flag(+)      =       cv_yes
+--      AND     gd_common_base_date           BETWEEN rsig.effective_start_date(+)
+--                                            AND     rsig.effective_end_date(+)
+--      AND     gd_common_base_date           BETWEEN rsig.per_effective_start_date(+)
+--                                            AND     rsig.per_effective_end_date(+)
+--      AND     gd_common_base_date           BETWEEN rsig.paa_effective_start_date(+)
+--                                            AND     rsig.paa_effective_end_date(+)
+--      AND     base.account_number           =       rsid.base_code
+--      AND     base.customer_class_code      =       ct_cust_class_base
+--      AND     hzpb.party_id                 =       base.party_id
+--      AND     dmpl.base_code                =       iv_delivery_base_code
+--      AND     dmpl.year_month               =       gv_common_base_years
+--      AND     spmp.base_code(+)             =       rsid.base_code
+--      AND     spmp.employee_number(+)       =       rsid.employee_number
+--      AND     spmp.year_month(+)            =       gv_common_base_years
+--      AND     lvsg_lv2.lookup_type          =       ct_qct_s_group_type
+--      AND     lvsg_lv2.attribute2           =       cv_band_dff2_lv2
+--      AND     gd_common_base_date           BETWEEN NVL(lvsg_lv2.start_date_active, gd_common_base_date)
+--                                            AND     NVL(lvsg_lv2.end_date_active,   gd_common_base_date)
+--      AND     lvsg_lv1.lookup_type          =       ct_qct_s_group_type
+--      AND     lvsg_lv1.lookup_code          =       lvsg_lv2.attribute1
+--      AND     lvsg_lv1.attribute2           =       cv_band_dff2_lv1
+--      AND     gd_common_base_date           BETWEEN NVL(lvsg_lv1.start_date_active, gd_common_base_date)
+--                                            AND     NVL(lvsg_lv1.end_date_active,   gd_common_base_date)
+--      AND     lvsc.lookup_type              =       ct_qct_section_suffix_type
+--      AND     lvsc.lookup_code              =       ct_qcc_section_suffix_code
+--      AND     gd_common_base_date           BETWEEN NVL(lvsc.start_date_active, gd_common_base_date)
+--                                            AND     NVL(lvsc.end_date_active,   gd_common_base_date)
+--      ;
+      SELECT  /*+ USE_NL(sub lvsg_lv2)
+                  USE_NL(sub lvsc)
               */
-/* 2009/09/03 Ver1.8 Add End   */
-              xxcos_rep_bus_perf_s01.nextval                                        AS  record_id,
-              ct_sum_data_cls_employee                                              AS  sum_data_class,
-              gd_common_base_date                                                   AS  target_date,
-              rsid.base_code                                                        AS  base_code,
-              SUBSTRB(hzpb.party_name, 1, cn_limit_base_name)                       AS  base_name,
-              rsid.group_code                                                       AS  section_code,
-              SUBSTRB(rsig.employee_name || lvsc.meaning, 1, cn_limit_sention_name) AS  section_name,
-              rsid.group_in_sequence                                                AS  group_in_sequence,
-              rsid.employee_number                                                  AS  employee_num,
-              SUBSTRB(rsid.employee_name, 1, cn_limit_employee_name)                AS  employee_name,
-              NVL(DECODE(dmpl.sales_plan_rel_div, ct_rel_div_basic_plan, spmp.bsc_sls_prsn_total_amt
-                                                                       , spmp.tgt_sales_prsn_total_amt)
-                 , 0)                                                               AS  norma,
-              gn_common_operating_days                                              AS  actual_date_quantity,
-              gn_common_lapsed_days                                                 AS  course_date_quantity,
-              0                                                                     AS  sale_shop_date_total,
-              0                                                                     AS  sale_shop_total,
-              0                                                                     AS  rtn_shop_date_total,
-              0                                                                     AS  rtn_shop_total,
-              0                                                                     AS  discount_shop_date_total,
-              0                                                                     AS  discount_shop_total,
-              0                                                                     AS  sup_sam_shop_date_total,
-              0                                                                     AS  sup_sam_shop_total,
-              0                                                                     AS  keep_shop_quantity,
-              0                                                                     AS  sale_cvs_date_total,
-              0                                                                     AS  sale_cvs_total,
-              0                                                                     AS  rtn_cvs_date_total,
-              0                                                                     AS  rtn_cvs_total,
-              0                                                                     AS  discount_cvs_date_total,
-              0                                                                     AS  discount_cvs_total,
-              0                                                                     AS  sup_sam_cvs_date_total,
-              0                                                                     AS  sup_sam_cvs_total,
-              0                                                                     AS  keep_shop_cvs,
-              0                                                                     AS  sale_wholesale_date_total,
-              0                                                                     AS  sale_wholesale_total,
-              0                                                                     AS  rtn_wholesale_date_total,
-              0                                                                     AS  rtn_wholesale_total,
-              0                                                                     AS  discount_whol_date_total,
-              0                                                                     AS  discount_whol_total,
-              0                                                                     AS  sup_sam_whol_date_total,
-              0                                                                     AS  sup_sam_whol_total,
-              0                                                                     AS  keep_shop_wholesale,
-              0                                                                     AS  sale_others_date_total,
-              0                                                                     AS  sale_others_total,
-              0                                                                     AS  rtn_others_date_total,
-              0                                                                     AS  rtn_others_total,
-              0                                                                     AS  discount_others_date_total,
-              0                                                                     AS  discount_others_total,
-              0                                                                     AS  sup_sam_others_date_total,
-              0                                                                     AS  sup_sam_others_total,
-              0                                                                     AS  keep_shop_others,
-              0                                                                     AS  sale_vd_date_total,
-              0                                                                     AS  sale_vd_total,
-              0                                                                     AS  rtn_vd_date_total,
-              0                                                                     AS  rtn_vd_total,
-              0                                                                     AS  discount_vd_date_total,
-              0                                                                     AS  discount_vd_total,
-              0                                                                     AS  sup_sam_vd_date_total,
-              0                                                                     AS  sup_sam_vd_total,
-              0                                                                     AS  keep_shop_vd,
-              0                                                                     AS  sale_business_car,
-              0                                                                     AS  rtn_business_car,
-              0                                                                     AS  discount_business_car,
-              0                                                                     AS  sup_sam_business_car,
-              0                                                                     AS  drop_ship_fact_send_directly,
-              0                                                                     AS  rtn_factory_send_directly,
-              0                                                                     AS  discount_fact_send_directly,
-              0                                                                     AS  sup_fact_send_directly,
-              0                                                                     AS  sale_main_whse,
-              0                                                                     AS  rtn_main_whse,
-              0                                                                     AS  discount_main_whse,
-              0                                                                     AS  sup_sam_main_whse,
-              0                                                                     AS  sale_others_whse,
-              0                                                                     AS  rtn_others_whse,
-              0                                                                     AS  discount_others_whse,
-              0                                                                     AS  sup_sam_others_whse,
-              0                                                                     AS  sale_others_base_whse_sale,
-              0                                                                     AS  rtn_others_base_whse_sale,
-              0                                                                     AS  discount_oth_base_whse_sale,
-              0                                                                     AS  sup_sam_oth_base_whse_sale,
-              0                                                                     AS  sale_actual_transfer,
-              0                                                                     AS  rtn_actual_transfer,
-              0                                                                     AS  discount_actual_transfer,
-              0                                                                     AS  sup_sam_actual_transfer,
-              0                                                                     AS  sprcial_sale,
-              0                                                                     AS  rtn_asprcial_sale,
-              0                                                                     AS  sale_new_contribution_sale,
-              0                                                                     AS  rtn_new_contribution_sale,
-              0                                                                     AS  discount_new_contr_sale,
-              0                                                                     AS  sup_sam_new_contr_sale,
-              0                                                                     AS  count_yet_visit_party,
-              0                                                                     AS  count_yet_dealings_party,
-              0                                                                     AS  count_delay_visit_count,
-              0                                                                     AS  count_delay_valid_count,
-              0                                                                     AS  count_valid_count,
-              0                                                                     AS  count_new_count,
-              0                                                                     AS  count_new_vendor_count,
-              0                                                                     AS  count_new_point,
-              0                                                                     AS  count_mc_party,
-              lvsg_lv1.lookup_code                                                  AS  policy_sum_code,
-              lvsg_lv1.attribute3                                                   AS  policy_sum_name,
-              lvsg_lv2.lookup_code                                                  AS  policy_group,
-              lvsg_lv2.attribute3                                                   AS  group_name,
-              0                                                                     AS  sale_amount,
-              0                                                                     AS  business_cost,
-              cn_created_by                                                         AS  created_by,
-              cd_creation_date                                                      AS  creation_date,
-              cn_last_updated_by                                                    AS  last_updated_by,
-              cd_last_update_date                                                   AS  last_update_date,
-              cn_last_update_login                                                  AS  last_update_login,
-              cn_request_id                                                         AS  request_id,
-              cn_program_application_id                                             AS  program_application_id,
-              cn_program_id                                                         AS  program_id,
-              cd_program_update_date                                                AS  program_update_date
-      FROM    xxcos_rs_info_v               rsid,
-              xxcos_rs_info_v               rsig,
-              hz_cust_accounts              base,
-              hz_parties                    hzpb,
-              xxcso_dept_monthly_plans      dmpl,
-              xxcso_sls_prsn_mnthly_plns    spmp,
-              xxcos_lookup_values_v         lvsg_lv1,
-              xxcos_lookup_values_v         lvsg_lv2,
-              xxcos_lookup_values_v         lvsc
-      WHERE   rsid.base_code                =       iv_delivery_base_code
-      AND     NVL(rsid.group_code, cv_para_dummy_section_code)
-                                            =       NVL(iv_section_code, NVL(rsid.group_code, 
-                                                                             cv_para_dummy_section_code)
-                                                       )
-/* 2009/09/03 Ver1.8 Mod Start */
---      AND     rsid.employee_number          =       NVL(iv_results_employee_code, rsid.employee_number)
-      AND     (
-                ( iv_results_employee_code IS NULL )
-                OR
-                ( iv_results_employee_code IS NOT NULL AND rsid.employee_number = iv_results_employee_code )
-              )
-/* 2009/09/03 Ver1.8 Mod End   */
-      AND     rsid.effective_start_date     <=      gd_common_base_date
-      AND     rsid.effective_end_date       >=      gd_common_first_date
-      AND     gd_common_base_date           BETWEEN rsid.per_effective_start_date
-                                            AND     rsid.per_effective_end_date
-      AND     gd_common_base_date           BETWEEN rsid.paa_effective_start_date
-                                            AND     rsid.paa_effective_end_date
-      AND     rsig.base_code(+)             =       rsid.base_code
-      AND     rsig.group_code(+)            =       rsid.group_code
-      AND     rsig.group_chief_flag(+)      =       cv_yes
-      AND     gd_common_base_date           BETWEEN rsig.effective_start_date(+)
-                                            AND     rsig.effective_end_date(+)
-      AND     gd_common_base_date           BETWEEN rsig.per_effective_start_date(+)
-                                            AND     rsig.per_effective_end_date(+)
-      AND     gd_common_base_date           BETWEEN rsig.paa_effective_start_date(+)
-                                            AND     rsig.paa_effective_end_date(+)
-      AND     base.account_number           =       rsid.base_code
-      AND     base.customer_class_code      =       ct_cust_class_base
-      AND     hzpb.party_id                 =       base.party_id
-      AND     dmpl.base_code                =       iv_delivery_base_code
-      AND     dmpl.year_month               =       gv_common_base_years
-      AND     spmp.base_code(+)             =       rsid.base_code
-      AND     spmp.employee_number(+)       =       rsid.employee_number
-      AND     spmp.year_month(+)            =       gv_common_base_years
+              xxcos_rep_bus_perf_s01.NEXTVAL        AS  record_id                       --  レコードID
+            , ct_sum_data_cls_employee              AS  sum_data_class                  --  集計データ区分
+            , gd_common_base_date                   AS  target_date                     --  日付
+            , sub.base_code                         AS  base_code                       --  拠点コード
+            , sub.base_name                         AS  base_name                       --  拠点名称
+            , sub.section_code                      AS  section_code                    --  課コード
+            , SUBSTRB(sub.section_name || lvsc.meaning, 1, cn_limit_sention_name)
+                                                    AS  section_name                    --  課名称
+            , sub.group_in_sequence                 AS  group_in_sequence               --  グループ内順序
+            , sub.employee_num                      AS  employee_num                    --  営業員コード
+            , sub.employee_name                     AS  employee_name                   --  営業員氏名
+            , sub.norma                             AS  norma                           --  当月ノルマ
+            , gn_common_operating_days              AS  actual_date_quantity            --  実働日数
+            , gn_common_lapsed_days                 AS  course_date_quantity            --  経過日数
+            , 0                                     AS  sale_shop_date_total            --  純売上量販店日計
+            , 0                                     AS  sale_shop_total                 --  純売上量販店累計
+            , 0                                     AS  rtn_shop_date_total             --  返品量販店日計
+            , 0                                     AS  rtn_shop_total                  --  返品量販店累計
+            , 0                                     AS  discount_shop_date_total        --  値引量販店日計
+            , 0                                     AS  discount_shop_total             --  値引量販店累計
+            , 0                                     AS  sup_sam_shop_date_total         --  協賛見本量販店日計
+            , 0                                     AS  sup_sam_shop_total              --  協賛見本量販店累計
+            , 0                                     AS  keep_shop_quantity              --  持軒数量販店
+            , 0                                     AS  sale_cvs_date_total             --  純売上CVS日計
+            , 0                                     AS  sale_cvs_total                  --  純売上CVS累計
+            , 0                                     AS  rtn_cvs_date_total              --  返品CVS日計
+            , 0                                     AS  rtn_cvs_total                   --  返品CVS累計
+            , 0                                     AS  discount_cvs_date_total         --  値引CVS日計
+            , 0                                     AS  discount_cvs_total              --  値引CVS累計
+            , 0                                     AS  sup_sam_cvs_date_total          --  協賛見本CVS日計
+            , 0                                     AS  sup_sam_cvs_total               --  協賛見本CVS累計
+            , 0                                     AS  keep_shop_cvs                   --  持軒数CVS
+            , 0                                     AS  sale_wholesale_date_total       --  純売上問屋日計
+            , 0                                     AS  sale_wholesale_total            --  純売上問屋累計
+            , 0                                     AS  rtn_wholesale_date_total        --  返品問屋日計
+            , 0                                     AS  rtn_wholesale_total             --  返品問屋累計
+            , 0                                     AS  discount_whol_date_total        --  値引問屋日計
+            , 0                                     AS  discount_whol_total             --  値引問屋累計
+            , 0                                     AS  sup_sam_whol_date_total         --  協賛見本問屋日計
+            , 0                                     AS  sup_sam_whol_total              --  協賛見本問屋累計
+            , 0                                     AS  keep_shop_wholesale             --  持軒数問屋
+            , 0                                     AS  sale_others_date_total          --  純売上その他日計
+            , 0                                     AS  sale_others_total               --  純売上その他累計
+            , 0                                     AS  rtn_others_date_total           --  返品その他日計
+            , 0                                     AS  rtn_others_total                --  返品その他累計
+            , 0                                     AS  discount_others_date_total      --  値引その他日計
+            , 0                                     AS  discount_others_total           --  値引その他累計
+            , 0                                     AS  sup_sam_others_date_total       --  協賛見本その他日計
+            , 0                                     AS  sup_sam_others_total            --  協賛見本その他累計
+            , 0                                     AS  keep_shop_others                --  持軒数その他
+            , 0                                     AS  sale_vd_date_total              --  純売上VD日計
+            , 0                                     AS  sale_vd_total                   --  純売上VD累計
+            , 0                                     AS  rtn_vd_date_total               --  返品VD日計
+            , 0                                     AS  rtn_vd_total                    --  返品VD累計
+            , 0                                     AS  discount_vd_date_total          --  値引VD日計
+            , 0                                     AS  discount_vd_total               --  値引VD累計
+            , 0                                     AS  sup_sam_vd_date_total           --  協賛見本VD日計
+            , 0                                     AS  sup_sam_vd_total                --  協賛見本VD累計
+            , 0                                     AS  keep_shop_vd                    --  持軒数VD
+            , 0                                     AS  sale_business_car               --  純売上営業車
+            , 0                                     AS  rtn_business_car                --  返品営業車
+            , 0                                     AS  discount_business_car           --  値引営業車
+            , 0                                     AS  sup_sam_business_car            --  協賛見本営業車
+            , 0                                     AS  drop_ship_fact_send_directly    --  純売上工場直送
+            , 0                                     AS  rtn_factory_send_directly       --  返品工場直送
+            , 0                                     AS  discount_fact_send_directly     --  値引工場直送
+            , 0                                     AS  sup_fact_send_directly          --  協賛見本工場直送
+            , 0                                     AS  sale_main_whse                  --  純売上メイン倉庫
+            , 0                                     AS  rtn_main_whse                   --  返品メイン倉庫
+            , 0                                     AS  discount_main_whse              --  値引メイン倉庫
+            , 0                                     AS  sup_sam_main_whse               --  協賛見本メイン倉庫
+            , 0                                     AS  sale_others_whse                --  純売上その他倉庫
+            , 0                                     AS  rtn_others_whse                 --  返品その他倉庫
+            , 0                                     AS  discount_others_whse            --  値引その他倉庫
+            , 0                                     AS  sup_sam_others_whse             --  協賛見本その他倉庫
+            , 0                                     AS  sale_others_base_whse_sale      --  純売上他拠点倉庫売上
+            , 0                                     AS  rtn_others_base_whse_sale       --  返品他拠点倉庫売上
+            , 0                                     AS  discount_oth_base_whse_sale     --  値引他拠点倉庫売上
+            , 0                                     AS  sup_sam_oth_base_whse_sale      --  協賛見本他拠点倉庫売上
+            , 0                                     AS  sale_actual_transfer            --  純売上実績振替
+            , 0                                     AS  rtn_actual_transfer             --  返品実績振替
+            , 0                                     AS  discount_actual_transfer        --  値引実績振替
+            , 0                                     AS  sup_sam_actual_transfer         --  協賛見本実績振替
+            , 0                                     AS  sprcial_sale                    --  純売上特売売上
+            , 0                                     AS  rtn_asprcial_sale               --  返品特売売上
+            , 0                                     AS  sale_new_contribution_sale      --  純売上新規貢献売上
+            , 0                                     AS  rtn_new_contribution_sale       --  返品新規貢献売上
+            , 0                                     AS  discount_new_contr_sale         --  値引新規貢献売上
+            , 0                                     AS  sup_sam_new_contr_sale          --  協賛見本新規貢献売上
+            , 0                                     AS  count_yet_visit_party           --  件数未訪問客
+            , 0                                     AS  count_yet_dealings_party        --  件数未取引客
+            , 0                                     AS  count_delay_visit_count         --  件数延訪問件数
+            , 0                                     AS  count_delay_valid_count         --  件数延有効件数
+            , 0                                     AS  count_valid_count               --  件数実有効件数
+            , 0                                     AS  count_new_count                 --  件数新規件数
+            , 0                                     AS  count_new_vendor_count          --  件数新規ベンダー件数
+            , 0                                     AS  count_new_point                 --  件数新規ポイント
+            , 0                                     AS  count_mc_party                  --  件数MC訪問
+            , lvsg_lv1.lookup_code                  AS  policy_sum_code                 --  政策群集約コード
+            , lvsg_lv1.attribute3                   AS  policy_sum_name                 --  政策群集約名称
+            , lvsg_lv2.lookup_code                  AS  policy_group                    --  政策群コード
+            , lvsg_lv2.attribute3                   AS  group_name                      --  政策群名称
+            , 0                                     AS  sale_amount                     --  売上金額
+            , 0                                     AS  business_cost                   --  営業原価
+            , cn_created_by                         AS  created_by                      --  作成者
+            , cd_creation_date                      AS  creation_date                   --  作成日
+            , cn_last_updated_by                    AS  last_updated_by                 --  最終更新者
+            , cd_last_update_date                   AS  last_update_date                --  最終更新日
+            , cn_last_update_login                  AS  last_update_login               --  最終更新ログイン
+            , cn_request_id                         AS  request_id                      --  要求ID
+            , cn_program_application_id             AS  program_application_id          --  コンカレント・プログラム・アプリケーションID
+            , cn_program_id                         AS  program_id                      --  コンカレント・プログラムID
+            , cd_program_update_date                AS  program_update_date             --  プログラム更新日
+      FROM    (
+                SELECT
+                        /*+
+                          LEADING(rsid.jrrx_n)
+                          INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
+                          INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
+                          INDEX(rsid.jrrx_n xxcso_jrre_n02)
+                          USE_NL(rsid.papf_n)
+                          USE_NL(rsid.pept_n)
+                          USE_NL(rsid.paaf_n)
+                          USE_NL(rsid.jrgm_n)
+                          USE_NL(rsid.jrgb_n)
+                          LEADING(rsid.jrrx_o)
+                          INDEX(rsid.jrrx_o xxcso_jrre_n02)
+                          INDEX(rsid.jrgm_o jtf_rs_group_members_n2)
+                          INDEX(rsid.jrgb_o jtf_rs_groups_b_u1)
+                          USE_NL(rsid.papf_o)
+                          USE_NL(rsid.pept_o)
+                          USE_NL(rsid.paaf_o)
+                          USE_NL(rsid.jrgm_o)
+                          USE_NL(rsid.jrgb_o)
+                          USE_NL(rsid)
+                          LEADING(rsig.jrrx_n)
+                          INDEX(rsig.jrgm_n jtf_rs_group_members_n2)
+                          INDEX(rsig.jrgb_n jtf_rs_groups_b_u1)
+                          INDEX(rsig.jrrx_n xxcso_jrre_n02)
+                          USE_NL(rsig.papf_n)
+                          USE_NL(rsig.pept_n)
+                          USE_NL(rsig.paaf_n)
+                          USE_NL(rsig.jrgm_n)
+                          USE_NL(rsig.jrgb_n)
+                          LEADING(rsig.jrrx_o)
+                          INDEX(rsig.jrrx_o xxcso_jrre_n02)
+                          INDEX(rsig.jrgm_o jtf_rs_group_members_n2)
+                          INDEX(rsig.jrgb_o jtf_rs_groups_b_u1)
+                          USE_NL(rsig.papf_o)
+                          USE_NL(rsig.pept_o)
+                          USE_NL(rsig.paaf_o)
+                          USE_NL(rsig.jrgm_o)
+                          USE_NL(rsig.jrgb_o)
+                          USE_NL(rsig)
+                        */
+                        DISTINCT
+                        rsid.base_code                                                        AS  base_code
+                      , SUBSTRB(hzpb.party_name, 1, cn_limit_base_name)                       AS  base_name
+                      , rsid.group_code                                                       AS  section_code
+                      , rsig.employee_name                                                    AS  section_name
+                      , NVL(
+                          DECODE(dmpl.sales_plan_rel_div, ct_rel_div_basic_plan, spmp.bsc_sls_prsn_total_amt
+                                                                               , spmp.tgt_sales_prsn_total_amt
+                          ), 0
+                        )                                                                     AS  norma
+                      , rsid.group_in_sequence                                                AS  group_in_sequence
+                      , rsid.employee_number                                                  AS  employee_num
+                      , SUBSTRB(rsid.employee_name, 1, cn_limit_employee_name)                AS  employee_name
+                FROM    xxcos_rs_info_v                   rsid                      --  営業員情報VIEW
+                      , xxcos_rs_info_v                   rsig                      --  グループマスタ
+                      , hz_cust_accounts                  base                      --  顧客マスタ
+                      , hz_parties                        hzpb                      --  パーティマスタ
+                      , xxcso_sls_prsn_mnthly_plns        spmp                      --  営業員計画
+                      , xxcso_dept_monthly_plans          dmpl                      --  売上計画開示区分
+                WHERE   rsid.base_code                =       iv_delivery_base_code
+                AND     NVL(rsid.group_code, cv_para_dummy_section_code)
+                                                      =       NVL(iv_section_code, NVL(rsid.group_code, cv_para_dummy_section_code))
+                AND     (
+                          ( iv_results_employee_code IS NULL )
+                          OR
+                          ( iv_results_employee_code IS NOT NULL AND rsid.employee_number = iv_results_employee_code )
+                        )
+                AND     rsid.effective_start_date     <=      gd_common_base_date
+                AND     rsid.effective_end_date       >=      gd_common_first_date
+/* 2011/04/04 Ver.1.12 Mod START */
+--                AND     gd_common_base_date           BETWEEN rsid.per_effective_start_date
+--                                                      AND     rsid.per_effective_end_date
+--                AND     gd_common_base_date           BETWEEN rsid.paa_effective_start_date
+--                                                      AND     rsid.paa_effective_end_date
+                AND     gd_common_base_date           >=      TO_DATE(TO_CHAR(rsid.per_effective_start_date, cv_fmt_years) || '01', cv_fmt_date)
+                AND     gd_common_base_date           <=      TRUNC(LAST_DAY(rsid.per_effective_end_date))
+                AND     gd_common_base_date           >=      TO_DATE(TO_CHAR(rsid.paa_effective_start_date, cv_fmt_years) || '01', cv_fmt_date)
+                AND     gd_common_base_date           <=      TRUNC(LAST_DAY(rsid.paa_effective_end_date))
+/* 2011/04/04 Ver.1.12 Mod END   */
+                AND     rsig.base_code(+)             =       rsid.base_code
+                AND     rsig.group_code(+)            =       rsid.group_code
+                AND     rsig.group_chief_flag(+)      =       cv_yes
+                AND     gd_common_base_date           BETWEEN rsig.effective_start_date(+)
+                                                      AND     rsig.effective_end_date(+)
+                AND     gd_common_base_date           BETWEEN rsig.per_effective_start_date(+)
+                                                      AND     rsig.per_effective_end_date(+)
+                AND     gd_common_base_date           BETWEEN rsig.paa_effective_start_date(+)
+                                                      AND     rsig.paa_effective_end_date(+)
+                AND     base.account_number           =       rsid.base_code
+                AND     base.customer_class_code      =       ct_cust_class_base
+                AND     hzpb.party_id                 =       base.party_id
+                AND     spmp.base_code(+)             =       rsid.base_code
+                AND     spmp.employee_number(+)       =       rsid.employee_number
+                AND     spmp.year_month(+)            =       gv_common_base_years
+                AND     dmpl.base_code                =       iv_delivery_base_code
+                AND     dmpl.year_month               =       gv_common_base_years
+              )   sub
+            , xxcos_lookup_values_v         lvsc
+            , xxcos_lookup_values_v         lvsg_lv1
+            , xxcos_lookup_values_v         lvsg_lv2
+      WHERE   lvsc.lookup_type              =       ct_qct_section_suffix_type
+      AND     lvsc.lookup_code              =       ct_qcc_section_suffix_code
+      AND     gd_common_base_date           BETWEEN NVL(lvsc.start_date_active, gd_common_base_date)
+                                            AND     NVL(lvsc.end_date_active,   gd_common_base_date)
       AND     lvsg_lv2.lookup_type          =       ct_qct_s_group_type
       AND     lvsg_lv2.attribute2           =       cv_band_dff2_lv2
       AND     gd_common_base_date           BETWEEN NVL(lvsg_lv2.start_date_active, gd_common_base_date)
@@ -1075,11 +1315,8 @@ AS
       AND     lvsg_lv1.attribute2           =       cv_band_dff2_lv1
       AND     gd_common_base_date           BETWEEN NVL(lvsg_lv1.start_date_active, gd_common_base_date)
                                             AND     NVL(lvsg_lv1.end_date_active,   gd_common_base_date)
-      AND     lvsc.lookup_type              =       ct_qct_section_suffix_type
-      AND     lvsc.lookup_code              =       ct_qcc_section_suffix_code
-      AND     gd_common_base_date           BETWEEN NVL(lvsc.start_date_active, gd_common_base_date)
-                                            AND     NVL(lvsc.end_date_active,   gd_common_base_date)
       ;
+/* 2011/02/21 Ver1.11 Mod END   */
     EXCEPTION
       WHEN OTHERS THEN
         lt_table_name := xxccp_common_pkg.get_msg(
@@ -3319,6 +3556,26 @@ AS
     lt_table_name                         dba_tab_comments.comments%TYPE;
 --
     -- *** ローカル・カーソル ***
+/* 2011/02/15 Ver1.10 Add START */
+    --  件数延訪問件数、件数新規件数、売上金額が全て0のデータは実績なしと判断する
+    CURSOR  del_data_cur
+    IS
+      SELECT  xrbp.base_code                                          base_code       --  拠点コード
+            , NVL(xrbp.section_code, cv_para_dummy_section_code)      section_code    --  課コード
+            , xrbp.employee_num                                       employee_num    --  営業員コード
+      FROM    xxcos_rep_bus_perf      xrbp
+      WHERE   xrbp.request_id         =   cn_request_id
+      AND     xrbp.sum_data_class     =   ct_sum_data_cls_employee
+      HAVING  (     SUM(NVL(xrbp.count_delay_visit_count, 0))   =   0
+                AND SUM(NVL(xrbp.count_new_count, 0))           =   0
+                AND SUM(NVL(xrbp.sale_amount, 0))               =   0
+              )
+      GROUP BY    xrbp.base_code
+                , xrbp.section_code
+                , xrbp.employee_num;
+    --
+    del_data_rec    del_data_cur%ROWTYPE;
+/* 2011/02/15 Ver1.10 Add END   */
 --
     -- *** ローカル・レコード ***
 --
@@ -3379,6 +3636,20 @@ AS
 /* 2009/07/07 Ver1.7 Add End   */
       END IF;
 /* 2009/06/18 Ver1.5 Mod End */
+/* 2011/02/15 Ver1.10 Add START */
+      FOR del_data_rec  IN  del_data_cur LOOP
+        --  拠点、課、営業員レベルで、実績の無い営業員情報を削除
+        DELETE
+        FROM    xxcos_rep_bus_perf  xrbp
+        WHERE   xrbp.sum_data_class                                   =   ct_sum_data_cls_employee
+        AND     xrbp.request_id                                       =   cn_request_id
+        AND     xrbp.base_code                                        =   del_data_rec.base_code
+        AND     NVL(xrbp.section_code, cv_para_dummy_section_code)    =   del_data_rec.section_code
+        AND     xrbp.employee_num                                     =   del_data_rec.employee_num;
+        --
+        g_counter_rec.delete_off_the_subject_info := g_counter_rec.delete_off_the_subject_info + SQL%ROWCOUNT;
+      END LOOP;
+/* 2011/02/15 Ver1.10 Add END   */
     EXCEPTION
       WHEN OTHERS THEN
         lt_table_name := xxccp_common_pkg.get_msg(
