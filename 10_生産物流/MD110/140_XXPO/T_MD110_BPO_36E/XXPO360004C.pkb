@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2008/12/24    1.20  A.Shiina         本番障害#827
  *  2009/03/30    1.21  A.Shiina         本番障害#1346
  *  2009/09/24    1.22  T.Yoshimoto      本番障害#1523
+ *  2010/01/06    1.23  H.Itou           本稼動障害#892
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -651,10 +652,13 @@ AS
                 || ' NULL AS loc_cd, ';
     ELSE
       lv_select := lv_select
-                || ' CASE WHEN ( rcrt.txns_type = ''' || cv_sts_num_3 || ''' ) '
-                || ' THEN rcrt.department_code '
-                || ' ELSE xlv.location_code '
-                || ' END AS loc_cd, ';                     -- 部署コード
+-- 2010/01/06 H.Itou Mod Start 本稼動障害#862 常に受入返品の部署コード
+--                || ' CASE WHEN ( rcrt.txns_type = ''' || cv_sts_num_3 || ''' ) '
+--                || ' THEN rcrt.department_code '
+--                || ' ELSE xlv.location_code '
+--                || ' END AS loc_cd, ';                     -- 部署コード
+                || ' rcrt.department_code AS loc_cd, ';                     -- 部署コード
+-- 2010/01/06 Mod End
     END IF;
 --
     -- -----------------------------------------
@@ -665,7 +669,10 @@ AS
                 || ' NULL AS loc_name, ';
     ELSE
       lv_select := lv_select
-                || ' CASE WHEN ( rcrt.txns_type = ''' || cv_sts_num_3 || ''' ) '
+-- 2010/01/06 H.Itou Mod Start 本稼動障害#862 発注あり返品は正式名出力
+--                || ' CASE WHEN ( rcrt.txns_type = ''' || cv_sts_num_3 || ''' ) '
+                || ' CASE WHEN ( rcrt.txns_type = ''' || cv_sts_num_2 || ''' ) '
+-- 2010/01/06 Mod End
                 || ' THEN xlv.location_name '
                 || ' ELSE xlv.description '
                 || ' END AS  loc_name, ';                            -- 部署名
@@ -892,7 +899,10 @@ AS
     -- ============================================================================================
     -- < 部署 > --
     -- ============================================================================================
-             || ' AND pha.attribute10       =   xlv.location_code '      -- 部署コード:attr10
+-- 2010/01/06 H.Itou Mod Start 本稼動障害#892 受入返品の部署コードが最新なので、受入返品で結合する。
+--             || ' AND pha.attribute10       =   xlv.location_code '      -- 部署コード:attr10
+             || ' AND rcrt.department_code   = xlv.location_code '      -- 部署コード:受入返品の部署コード
+-- 2010/01/06 H.Itou Mod End
     -- ============================================================================================
     -- < 取引先 > --
     -- ============================================================================================
