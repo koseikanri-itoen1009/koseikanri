@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/10/02    1.7   S.Miyakoshi      [0001378対応]帳票ワークテーブルの桁あふれ対応
  *  2010/01/18    1.8   S.Miyakoshi      [E_本稼動_00711]PT対応 ログイン拠点情報VIEWからの取得をメインSQL外で処理する
  *  2010/02/17    1.9   N.Maeda          [E_本稼動_01553]INパラメータ(納品日)妥当性チェック内容の修正
+ *  2010/05/24    1.10  Y.Kuboshima      [E_本稼動_02630]出荷先顧客の絞込みで前月売上拠点コードを考慮するよう修正
  *
  *****************************************************************************************/
 --
@@ -188,6 +189,9 @@ AS
   cv_yyyymmdd               CONSTANT  VARCHAR2(100) :=  'YYYYMMDD';            --YYYYMMDD型
   cv_yyyy_mm_dd             CONSTANT  VARCHAR2(100) :=  'YYYY/MM/DD';          --YYYY/MM/DD型
   cv_yyyy_mm                CONSTANT  VARCHAR2(100) :=  'YYYY/MM';             --YYYY/MM型
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD START *********************** --
+  cv_mm                     CONSTANT  VARCHAR2(100) :=  'MM';                  --MM型
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD END   *********************** --
   --クイックコード参照用
   --使用可能フラグ定数
   ct_enabled_flg_y          CONSTANT  fnd_lookup_values.enabled_flag%TYPE
@@ -860,6 +864,10 @@ AS
     ln_err_item_idx           NUMBER;                                 --営業原価未設定ループカウント
     lt_record_id              xxcos_rep_cost_div_list.record_id%TYPE; --レコードID
     lb_ext_flg                BOOLEAN;                                --エラー品目コード設定済フラグ
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD START *********************** --
+    ld_process_first_day      DATE;                                   --業務日付の月の1日
+    ld_proc_process_first_day DATE;                                   --業務日付の前月の1日
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD END   *********************** --
 --
     -- *** ローカル・カーソル ***
     CURSOR data_cur
@@ -1129,7 +1137,13 @@ AS
                                                          xxcmm_cust_accounts xca1,
                                                          fnd_lookup_values   look_val
                                                   WHERE  hca1.cust_account_id  = xca1.customer_id 
-                                                  AND    seh.sales_base_code   = xca1.sale_base_code
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 MOD START *********************** --
+--                                                  AND    seh.sales_base_code   = xca1.sale_base_code
+                                                  AND  ( ( TRUNC( seh.delivery_date, cv_mm )  = ld_process_first_day
+                                                      AND  seh.sales_base_code  = xca1.sale_base_code )
+                                                    OR   ( TRUNC( seh.delivery_date, cv_mm ) <= ld_proc_process_first_day
+                                                      AND  seh.sales_base_code  = xca1.past_sale_base_code ) )
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 MOD END   *********************** --
                                                   AND    look_val.language     = cv_lang
                                                   AND    look_val.lookup_type  = cv_cus_cls_type
                                                   AND    look_val.lookup_code  LIKE cv_cus_cls_code
@@ -1443,7 +1457,13 @@ AS
                                                           xxcmm_cust_accounts xca1,
                                                           fnd_lookup_values   look_val
                                                    WHERE  hca1.cust_account_id  = xca1.customer_id 
-                                                   AND    seh.sales_base_code   = xca1.sale_base_code
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 MOD START *********************** --
+--                                                   AND    seh.sales_base_code   = xca1.sale_base_code
+                                                   AND  ( ( TRUNC( seh.delivery_date, cv_mm )  = ld_process_first_day
+                                                       AND  seh.sales_base_code  = xca1.sale_base_code )
+                                                     OR   ( TRUNC( seh.delivery_date, cv_mm ) <= ld_proc_process_first_day
+                                                       AND  seh.sales_base_code  = xca1.past_sale_base_code ) )
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 MOD END   *********************** --
                                                    AND    look_val.language     = cv_lang
                                                    AND    look_val.lookup_type = cv_cus_cls_type
                                                    AND    look_val.lookup_code LIKE cv_cus_cls_code
@@ -1546,6 +1566,12 @@ AS
     --ループカウント初期化
     ln_idx          := 0;
     ln_err_item_idx := 0;
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD START *********************** --
+    -- 業務日付の月の1日を取得
+    ld_process_first_day      := TRUNC( gd_proc_date, cv_mm );
+    -- 業務日付の前月の1日を取得
+    ld_proc_process_first_day := TRUNC( ADD_MONTHS( gd_proc_date, -1 ), cv_mm );
+-- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD END   *********************** --
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
     FOR i IN 1..g_base_info_tab.COUNT LOOP
       gv_base_code := g_base_info_tab(i).base_code;      --拠点コード
