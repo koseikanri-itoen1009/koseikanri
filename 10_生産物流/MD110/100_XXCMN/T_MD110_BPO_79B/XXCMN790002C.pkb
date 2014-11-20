@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/04/25    1.2   Marushita        TE080_BPO_790 不具合ID 1
  *  2008/06/03    1.3   Marushita        TE080_BPO_790 不具合ID 1
  *  2008/07/03    1.4   Marushita        ST不具合314対応
+ *  2008/09/05    1.5   Oracle 山根 一浩 PT 3-1_19-2指摘67_01対応
  *
  *****************************************************************************************/
 --
@@ -365,15 +366,29 @@ AS
       SELECT  ximv.item_id                item_id           -- 品目ID
             , itp.lot_id                  lot_id            -- ロットID
             , NVL(SUM(itp.trans_qty),0)   trans_qty         -- 投入数量
+-- 2008/09/05 Mod ↓
+/*
             , ccd.cmpnt_cost              unit_price        -- 単価
+*/
+            , SUM((SELECT SUM(NVL(cc.cmpnt_cost,0))
+               FROM  cm_cmpt_dtl cc                         -- 標準原価マスタ
+               WHERE cc.whse_code     =   gt_whse_code          -- 倉庫コード
+               AND   itp.item_id      =   cc.item_id            -- 品目ID
+               AND   cc.calendar_code =   clh.calendar_code     -- 原価カレンダーコード
+               )) unit_price                                -- 単価
+-- 2008/09/05 Mod ↑
       FROM    ic_tran_pnd               itp                 -- 保留在庫トランザクション
             , xxcmn_item_mst_v          ximv                -- OPM品目情報View
+-- 2008/09/05 Mod ↓
+/*
             , (SELECT cc.calendar_code          calendar_code
                      ,cc.item_id                item_id
                      ,NVL(SUM(cc.cmpnt_cost),0) cmpnt_cost
                FROM  cm_cmpt_dtl cc
                WHERE cc.whse_code =   gt_whse_code
                GROUP BY calendar_code,item_id ) ccd         -- 標準原価マスタ
+*/
+-- 2008/09/05 Mod ↑
             , cm_cldr_hdr_b             clh                 -- 原価カレンダヘッダ
             , cm_cldr_dtl               cll                 -- 原価カレンダ明細
             , xxcmn_item_categories4_v  xic                 -- OPM品目カテゴリ割当情報VIEW4
@@ -384,8 +399,12 @@ AS
       AND   itp.reverse_id        IS NULL
       AND   itp.item_id           =   ximv.item_id          -- 品目ID
       AND   ximv.cost_manage_code =   gv_standard_cost      -- 原価管理区分：標準原価
+-- 2008/09/05 Mod ↓
+/*
       AND   itp.item_id           =   ccd.item_id           -- 品目ID
       AND   ccd.calendar_code     =   clh.calendar_code     -- 原価カレンダーコード
+*/
+-- 2008/09/05 Mod ↑
       AND   clh.calendar_code     =   cll.calendar_code     -- 原価カレンダーコード
       AND   itp.trans_date        >=  cll.start_date        -- 期間（自）
       AND   itp.trans_date        <=  cll.end_date          -- 期間（至）
@@ -394,7 +413,11 @@ AS
       GROUP BY
               ximv.item_id
             , itp.lot_id
+-- 2008/09/05 Mod ↓
+/*
             , ccd.cmpnt_cost
+*/
+-- 2008/09/05 Mod ↑
       ;
 --
     -- *** ローカル・レコード ***

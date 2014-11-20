@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2008/08/07    1.7   Oracle 椎名 昭圭 内部変更要求#178対応
  *  2008/08/20    1.8   Oracle 椎名 昭圭 PT_3-2_22_指摘13対応
  *  2008/08/27    1.9   Oracle 山根 一浩 T_S_543,T_S_496対応
+ *  2008/09/08    1.10  Oracle 山根 一浩 T_S_628対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,6 +173,8 @@ AS
   gv_div_code_drink    CONSTANT VARCHAR2(1)   := '2';                    -- ドリンク
   gv_rate_code_reef    CONSTANT VARCHAR2(1)   := '2';                    -- 容積
   gv_rate_code_drink   CONSTANT VARCHAR2(1)   := '1';                    -- 重量
+--2008/09/08
+  gv_def_code_zero     CONSTANT VARCHAR2(1)   := '0';
 --
   --メッセージ番号
   gv_msg_80b_001       CONSTANT VARCHAR2(15) := 'APP-XXCMN-00001';  --ユーザー名
@@ -464,17 +467,28 @@ AS
   gv_spare3                VARCHAR2(20);    -- 予備3
 --
   gd_sysdate               DATE;
+-- 2008/09/08 Mod ↓
+/*
   gn_user_id               NUMBER(15);
   gn_login_id              NUMBER(15);
   gn_request_id            NUMBER(15);
   gn_appl_id               NUMBER(15);
   gn_program_id            NUMBER(15);
+*/
+  gn_user_id               NUMBER;
+  gn_login_id              NUMBER;
+  gn_request_id            NUMBER;
+  gn_appl_id               NUMBER;
+  gn_program_id            NUMBER;
+-- 2008/09/08 Mod ↑
   gd_min_date              DATE;
   gd_max_date              DATE;
   gv_user_name             fnd_user.user_name%TYPE;
 --
   gt_cmpntcls_mast cmpntcls_tbl; -- コンポーネント区分マスタのデータ
 --
+-- 2008/09/08 Del ↓
+/*
   gv_cmpntcls_desc_01      VARCHAR2(20);
   gv_cmpntcls_desc_02      VARCHAR2(20);
   gv_cmpntcls_desc_03      VARCHAR2(20);
@@ -495,6 +509,8 @@ AS
   gv_cmpntcls_num_08       NUMBER;
   gv_cmpntcls_num_09       NUMBER;
   gv_cmpntcls_num_10       NUMBER;
+*/
+-- 2008/09/08 Del ↑
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -3831,10 +3847,16 @@ AS
       IF (ir_masters_rec.arti_div_code = gv_div_code_reef) THEN
         lv_attribute10 := gv_rate_code_reef;
         lv_attribute16 := ir_masters_rec.weight_volume;
-        lv_attribute25 := NULL;
+--2008/09/08 Mod ↓
+--        lv_attribute25 := NULL;
+        lv_attribute25 := gv_def_code_zero;
+--2008/09/08 Mod ↑
       ELSE
         lv_attribute10 := gv_rate_code_drink;
-        lv_attribute16 := NULL;
+--2008/09/08 Mod ↓
+--        lv_attribute16 := NULL;
+        lv_attribute16 := gv_def_code_zero;
+--2008/09/08 Mod ↑
         lv_attribute25 := ir_masters_rec.weight_volume;
       END IF;
 --
@@ -3965,7 +3987,10 @@ AS
 --
     <<chk_price_loop>>
     FOR i IN 1..10 LOOP
-      lv_type := TO_CHAR(i);
+-- 2008/09/08 Mod ↓
+--      lv_type := TO_CHAR(i);
+      lv_type := TO_CHAR(ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id);
+-- 2008/09/08 Mod ↑
 --
       -- 入力あり
       IF (ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id IS NOT NULL) THEN
@@ -3982,7 +4007,9 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        IF (lv_type = ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id) THEN
+-- 2008/09/08 Del ↓
+--        IF (lv_type = ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id) THEN
+-- 2008/09/08 Del ↑
 --
           -- 入力あり
           IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
@@ -3991,12 +4018,17 @@ AS
             IF (NVL(ln_price,-1) <> ir_masters_rec.cmpntcls_mast(i).cost_price) THEN
               ln_flg := 1;
               ov_retmsg := ov_retmsg || ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_desc;
-              IF (i <> 10) THEN
+-- 2008/09/08 Mod ↓
+--              IF (i <> 10) THEN
+              IF (i < 10) THEN
+-- 2008/09/08 Mod ↑
                 ov_retmsg := ov_retmsg || gv_msg_pnt;
               END IF;
             END IF;
           END IF;
-        END IF;
+-- 2008/09/08 Del ↓
+--        END IF;
+-- 2008/09/08 Del ↑
       END IF;
 --
     END LOOP chk_price_loop;
@@ -4946,6 +4978,8 @@ AS
       FOR i IN 1..10 LOOP
 --
         ln_type := NULL;
+-- 2008/09/08 Mod ↓
+/*
 --
         -- 原料
         IF ((i = 1) AND (ir_masters_rec.raw_material_cost IS NOT NULL)) THEN
@@ -4988,6 +5022,50 @@ AS
           ln_type := i;
         END IF;
 --
+*/
+--
+        -- 原料
+        IF ((i = 1) AND (ir_masters_rec.raw_material_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 再製費
+        ELSIF ((i = 2) AND (ir_masters_rec.agein_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 資材費
+        ELSIF ((i = 3) AND (ir_masters_rec.material_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 包装費
+        ELSIF ((i = 4) AND (ir_masters_rec.pack_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 外注加工費
+        ELSIF ((i = 5) AND (ir_masters_rec.out_order_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 保管費
+        ELSIF ((i = 6) AND (ir_masters_rec.safekeep_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- その他経費
+        ELSIF ((i = 7) AND (ir_masters_rec.other_expense_cost IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 予備1
+        ELSIF ((i = 8) AND (ir_masters_rec.spare1 IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 予備2
+        ELSIF ((i = 9) AND (ir_masters_rec.spare2 IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+--
+        -- 予備3
+        ELSIF ((i = 10) AND (ir_masters_rec.spare3 IS NOT NULL)) THEN
+          ln_type := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+        END IF;
+--
+-- 2008/09/08 Mod ↑
         -- 対象あり
         IF (ln_type IS NOT NULL) THEN
 --
@@ -5180,8 +5258,10 @@ AS
     -- 商品区分＝ドリンク
     IF (ir_masters_rec.arti_div_code = gv_div_code_drink) THEN
       lr_item_rec.attribute25 := ir_masters_rec.weight_volume;       -- 重量/体積
+      lr_item_rec.attribute16 := gv_def_code_zero;                   -- 2008/09/08 Add
     ELSE
       lr_item_rec.attribute16 := ir_masters_rec.weight_volume;       -- 重量/体積
+      lr_item_rec.attribute25 := gv_def_code_zero;                   -- 2008/09/08 Add
     END IF;
     lr_item_rec.attribute26 := ir_masters_rec.sale_obj_code;       -- 売上対象区分
     lr_item_rec.attribute30 := TO_CHAR(SYSDATE, 'YYYY/MM/DD');

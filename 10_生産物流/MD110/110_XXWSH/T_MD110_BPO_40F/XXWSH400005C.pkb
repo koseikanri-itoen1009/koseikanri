@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/07/14    1.3   Oracle 椎名 昭圭 TE080指摘事項#73対応
  *  2008/08/04    1.4   Oracle 山根 一浩 ST#103対応
  *  2008/08/22    1.5   Oracle 山根 一浩 T_S_597対応
+ *  2008/09/04    1.6   Oracle 山根 一浩 PT 3-3_23 指摘37対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -570,7 +571,13 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR mst_data_cur
     IS
+-- 2008/09/04 Mod ↓
+/*
       SELECT xoha.arrival_date                   -- 着荷日
+*/
+      SELECT /*+ leading(xola xoha) use_nl(xoha xola ximb ximv1.iimb ximv2.iimb ) */
+             xoha.arrival_date                   -- 着荷日
+-- 2008/09/04 Mod ↑
             ,xoha.head_sales_branch              -- 管轄拠点
             ,xoha.result_deliver_to              -- 出荷先_実績
             ,xoha.customer_code                  -- 顧客
@@ -584,8 +591,23 @@ AS
             ,ximv2.num_of_cases                  -- ケース入数
 -- 2008/07/14 1.3 Update Start
 --            ,xic4.prod_class_code                -- 商品区分
-            ,xicv2.prod_class_h_code             -- 本社商品区分
+-- 2008/09/04 Mod ↓
+--            ,xicv2.prod_class_h_code             -- 本社商品区分
 -- 2008/07/14 1.3 Update End
+            ,(
+             SELECT MAX(CASE
+                        WHEN xicv.category_set_name = '本社商品区分' THEN
+                          mcb.segment1
+                        ELSE
+                          NULL
+                    END) as prod_class_h_code 
+             FROM   xxcmn_item_categories_v xicv 
+                  , mtl_categories_b mcb 
+             WHERE  xicv.category_id  = mcb.category_id 
+             AND    xicv.structure_id = mcb.structure_id 
+             AND    xicv.item_id      = ximv2.item_id
+             ) prod_class_h_code
+-- 2008/09/04 Mod ↑
       FROM   xxwsh_order_headers_all       xoha          -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all         xola          -- 受注明細アドオン
             ,xxwsh_oe_transaction_types2_v otta          -- 受注タイプ情報VIEW
@@ -594,6 +616,8 @@ AS
             ,xxcmn_item_mst_b              ximb          -- OPM品目アドオンマスタ
 -- 2008/07/14 1.3 Update Start
 --            ,xxcmn_item_categories4_v      xic4          -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/09/04 Del ↓
+/*
             ,(SELECT  xicv.item_id
                      ,MAX(CASE
                         WHEN xicv.category_set_name = '本社商品区分' THEN
@@ -606,6 +630,8 @@ AS
             WHERE     xicv.category_id  = mcb.category_id
             AND       xicv.structure_id = mcb.structure_id
             GROUP BY  xicv.item_id) xicv2
+*/
+-- 2008/09/04 Del ↑
 -- 2008/07/14 1.3 Update End
       WHERE  xoha.order_header_id       = xola.order_header_id
       AND    xoha.order_type_id         = otta.transaction_type_id
@@ -616,7 +642,9 @@ AS
       AND    ximb.end_date_active      >= xoha.shipped_date
 -- 2008/07/14 1.3 Update Start
 --      AND    ximv2.item_id              = xic4.item_id
-      AND    ximv2.item_id              = xicv2.item_id
+-- 2008/09/04 Del ↓
+--      AND    ximv2.item_id              = xicv2.item_id
+-- 2008/09/04 Del ↑
 -- 2008/07/14 1.3 Update End
       AND    xoha.req_status            = gv_req_status_04                  -- 出荷実績計上済
       AND    otta.transaction_type_name = gv_tran_type_name                 -- 出荷依頼
@@ -760,7 +788,13 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR mst_data_cur
     IS
+-- 2008/09/04 Mod ↓
+/*
       SELECT xoha.deliver_from                       -- 出荷元
+*/
+-- 2008/09/04 Mod ↑
+      SELECT /*+ leading(xola xoha) use_nl(xoha xola ximv.ximb ximv.iimb ) */ 
+             xoha.deliver_from                       -- 出荷元
             ,xoha.head_sales_branch                  -- 管轄拠点
             ,xoha.order_type_id                      -- 受注タイプID
             ,DECODE(xoha.req_status,gv_req_status_03,NVL( xoha.schedule_arrival_date, xoha.arrival_date ),   -- 着荷予定日
@@ -786,14 +820,30 @@ AS
             ,ximv.num_of_cases                       -- ケース入数
 -- 2008/07/14 1.3 Update Start
 --            ,xic4.prod_class_code                -- 商品区分
-            ,xicv2.prod_class_h_code             -- 本社商品区分
+-- 2008/09/04 Mod ↓
+--            ,xicv2.prod_class_h_code             -- 本社商品区分
 -- 2008/07/14 1.3 Update End
+            ,(SELECT MAX(CASE
+                        WHEN xicv.category_set_name = '本社商品区分' THEN
+                          mcb.segment1
+                        ELSE
+                          NULL
+                     END) AS prod_class_h_code          -- 本社商品区分
+              FROM    xxcmn_item_categories_v   xicv     -- OPM品目カテゴリ割当情報VIEW
+                     ,mtl_categories_b          mcb
+              WHERE   xicv.category_id  = mcb.category_id
+              AND     xicv.structure_id = mcb.structure_id
+              AND     xicv.item_id      = ximv.item_id
+             ) prod_class_h_code
+-- 2008/09/04 Mod ↑
       FROM   xxwsh_order_headers_all       xoha          -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all         xola          -- 受注明細アドオン
             ,xxwsh_oe_transaction_types2_v otta          -- 受注タイプ情報VIEW
             ,xxcmn_item_mst_v              ximv          -- OPM品目情報VIEW
+-- 2008/09/04 Del ↓
 -- 2008/07/14 1.3 Update Start
 --            ,xxcmn_item_categories4_v      xic4          -- OPM品目カテゴリ割当情報VIEW4
+/*
             ,(SELECT  xicv.item_id
                      ,MAX(CASE
                         WHEN xicv.category_set_name = '本社商品区分' THEN
@@ -806,13 +856,17 @@ AS
             WHERE     xicv.category_id  = mcb.category_id
             AND       xicv.structure_id = mcb.structure_id
             GROUP BY  xicv.item_id) xicv2
+*/
 -- 2008/07/14 1.3 Update End
+-- 2008/09/04 Del ↑
       WHERE  xoha.order_header_id       = xola.order_header_id
       AND    xoha.order_type_id         = otta.transaction_type_id
       AND    xola.request_item_code     = ximv.item_no
 -- 2008/07/14 1.3 Update Start
 --      AND    ximv.item_id               = xic4.item_id
-      AND    ximv.item_id               = xicv2.item_id
+-- 2008/09/04 Del ↓
+--      AND    ximv.item_id               = xicv2.item_id
+-- 2008/09/04 Del ↑
 -- 2008/07/14 1.3 Update End
       AND    xoha.req_status           >= gv_req_status_03                --「締め済み」以上
       AND    xoha.req_status           <> gv_req_status_99                --「取消」以外

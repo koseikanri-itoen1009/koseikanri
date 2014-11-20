@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -97,6 +97,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/06/04    1.8  Oracle 熊本 和郎 システムテスト障害対応(販売計画の削除対象抽出条件からROWNUM=1削除)
  *  2008/06/12    1.9  Oracle 大橋 孝郎 結合テスト障害対応(400_不具合ログ#115)
  *  2008/08/01    1.10 Oracle 山根 一浩 ST障害No10,変更要求No184対応
+ *  2008/09/01    1.11 Oracle 大橋 孝郎 PT 2-2_13 指摘56,PT 2-2_14 指摘58,メッセージ出力不具合対応
  *
  *****************************************************************************************/
 --
@@ -126,6 +127,9 @@ PACKAGE BODY XXINV100001C AS
   gn_warn_cnt             NUMBER;                 -- 警告件数
   gn_error_cnt            NUMBER;                 -- エラー件数
   gv_conc_status          VARCHAR2(30);           -- 終了ステータス
+-- add start 1.11
+  gn_del_data_cnt         NUMBER := 0;  -- あらいがえ対象データの処理カウンタ
+-- add end 1.11
 --
 --################################  固定部 END   ##################################
 --
@@ -285,7 +289,10 @@ PACKAGE BODY XXINV100001C AS
 --
   gv_cons_keikaku_term       CONSTANT VARCHAR2(100) := '計画商品対象期間';
   gv_cons_days               CONSTANT VARCHAR2(100) := '日数';
-  gv_cons_api                CONSTANT VARCHAR2(100) := '予測API';
+-- mod start 1.11
+--  gv_cons_api                CONSTANT VARCHAR2(100) := '予測API';
+  gv_cons_api                CONSTANT VARCHAR2(100) := '予測';
+-- mod end 1.11
 -- トークン
   gv_tkn_status        CONSTANT VARCHAR2(15) := 'STATUS';
   gv_tkn_cnt           CONSTANT VARCHAR2(15) := 'CNT';
@@ -446,6 +453,12 @@ PACKAGE BODY XXINV100001C AS
   gn_program_id              NUMBER;
   gd_who_sysdate             DATE;
 -- 2008/08/01 Add ↑
+--
+-- add start 1.11
+  t_forecast_designator_tabl      MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
+  -- Forecast登録用レコード
+  t_forecast_interface_tab_inst   MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+-- add end 1.11
 --
   /**********************************************************************************
    * Procedure Name   : if_data_disp
@@ -2567,6 +2580,9 @@ PACKAGE BODY XXINV100001C AS
                                                      ,gv_cons_fc_type_hikitori)  -- '引取計画'
                                                      ,1
                                                      ,5000);
+-- add start 1.11
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
       RAISE no_data;
     END IF;
 --
@@ -2704,6 +2720,9 @@ PACKAGE BODY XXINV100001C AS
                                                      ,gv_cons_fc_type_hanbai) -- '販売計画'
                                                      ,1
                                                      ,5000);
+-- add start 1.11
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
       RAISE no_data;
     END IF;
 --
@@ -2840,6 +2859,9 @@ PACKAGE BODY XXINV100001C AS
                                                      ,gv_cons_fc_type_keikaku)  -- '計画商品'
                                                      ,1
                                                      ,5000);
+-- add start 1.11
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
       RAISE no_data;
     END IF;
 --
@@ -3058,6 +3080,9 @@ PACKAGE BODY XXINV100001C AS
                                                      ,gv_cons_fc_type_seigen_a) -- '出荷数制限A'
                                                      ,1
                                                      ,5000);
+-- add start 1.11
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
       RAISE no_data;
     END IF;
 --
@@ -3245,6 +3270,9 @@ PACKAGE BODY XXINV100001C AS
                                                     ,gv_cons_fc_type_seigen_b) -- '出荷数制限B'
                                                     ,1
                                                     ,5000);
+-- add start 1.11
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
       RAISE no_data;
     END IF;
 --
@@ -4741,6 +4769,9 @@ PACKAGE BODY XXINV100001C AS
    ***********************************************************************************/
   PROCEDURE inventory_date_check(
     iv_forecast_designator  IN  VARCHAR2,        -- Forecast分類
+-- add start 1.11
+    iv_item_code            IN  VARCHAR2,        -- 品目
+-- add end 1.11
     ov_errbuf               OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4779,6 +4810,9 @@ PACKAGE BODY XXINV100001C AS
       FROM  xxinv_mrp_forecast_interface  mfi
       WHERE mfi.created_by          = gn_created_by   -- ログインユーザ
         AND mfi.forecast_designator = iv_forecast_designator
+-- add start 1.11
+        AND mfi.item_code           = iv_item_code
+-- add end 1.11
       GROUP BY mfi.location_code,
             mfi.base_code,
             mfi.item_code,
@@ -5497,6 +5531,9 @@ PACKAGE BODY XXINV100001C AS
     -- 17.出庫倉庫拠点品目日付での重複チェック
     inventory_date_check( -- Forecast分類
                           in_if_data_tbl(in_if_data_cnt).forecast_designator,
+-- add start 1.11
+                          in_if_data_tbl(in_if_data_cnt).item_code,
+-- add end 1.11
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg
@@ -5820,7 +5857,10 @@ PACKAGE BODY XXINV100001C AS
     -- 警告およびエラーであればログを出力し処理続行
     IF (lv_retcode <> gv_status_normal) THEN
       if_data_disp( in_if_data_tbl, in_if_data_cnt);
+-- mod start 1.11
 --      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
       FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
     END IF;
     -- 警告およびエラー件数を保存
@@ -6278,6 +6318,9 @@ PACKAGE BODY XXINV100001C AS
     -- 17.出庫倉庫拠点品目日付での重複チェック
     inventory_date_check( -- Forecast分類
                           in_if_data_tbl(in_if_data_cnt).forecast_designator,
+-- add start 1.11
+                          in_if_data_tbl(in_if_data_cnt).item_code,
+-- add end 1.11
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg
@@ -7103,6 +7146,9 @@ PACKAGE BODY XXINV100001C AS
     -- 17.出庫倉庫拠点品目日付での重複チェック
     inventory_date_check( -- Forecast分類
                           in_if_data_tbl(in_if_data_cnt).forecast_designator,
+-- add start 1.11
+                          in_if_data_tbl(in_if_data_cnt).item_code,
+-- add end 1.11
                           lv_errbuf,
                           lv_retcode,
                           lv_errmsg
@@ -8017,16 +8063,22 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
 --                                            t_forecast_interface_tab_del,
 --                                            t_forecast_designator_tab);
       -- エラーだった場合
-      IF (lb_retcode = FALSE )THEN
+-- mod start 1.11
+--      IF (lb_retcode = FALSE )THEN
 --      IF ( t_forecast_interface_tab_del(1).process_status <> 5 ) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
-                                                      ,gv_msg_10a_045  -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                      ,1
-                                                      ,5000);
-        RAISE global_api_expt;
-      END IF;
+      FOR i IN 1..lt_del_if.COUNT LOOP
+        IF ( t_forecast_interface_tab_del(i).process_status <> 5 ) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                        ,gv_msg_10a_045  -- APIエラー
+                                                        ,gv_tkn_api_name
+                                                        ,gv_cons_api)    -- 予測API
+                                                        ,1
+                                                        ,5000);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(i).error_message);
+          RAISE global_api_expt;
+        END IF;
+      END LOOP;
+-- mod end 1.11
 --
   EXCEPTION
     -- 削除対象データがない場合の後処理
@@ -8528,56 +8580,87 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity := in_if_data_tbl(in_if_data_cnt).case_quantity * ln_number_of_case
                    + in_if_data_tbl(in_if_data_cnt).quantity;
 --
+-- mod start 1.11
     -- 登録のためのデータセット
-    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
-    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
-    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
-    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
-    t_forecast_interface_tab_ins(1).forecast_date         :=
-                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
-    t_forecast_interface_tab_ins(1).forecast_end_date     :=
-                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
-    t_forecast_interface_tab_ins(1).attribute5            :=
-                                          in_if_data_tbl(in_if_data_cnt).base_code;
-    t_forecast_interface_tab_ins(1).attribute6            :=
-                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
-    t_forecast_interface_tab_ins(1).attribute4            :=
-                                          in_if_data_tbl(in_if_data_cnt).quantity;
-    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
-    t_forecast_interface_tab_ins(1).bucket_type           := 1;
-    t_forecast_interface_tab_ins(1).process_status        := 2;
-    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
+--    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
+--    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
+--    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
+--    t_forecast_interface_tab_ins(1).forecast_date         :=
+--                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
+--    t_forecast_interface_tab_ins(1).forecast_end_date     :=
+--                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
+--    t_forecast_interface_tab_ins(1).attribute5            :=
+--                                          in_if_data_tbl(in_if_data_cnt).base_code;
+--    t_forecast_interface_tab_ins(1).attribute6            :=
+--                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
+--    t_forecast_interface_tab_ins(1).attribute4            :=
+--                                          in_if_data_tbl(in_if_data_cnt).quantity;
+--    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+--    t_forecast_interface_tab_ins(1).bucket_type           := 1;
+--    t_forecast_interface_tab_ins(1).process_status        := 2;
+--    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
 -- 2008/08/01 Add ↓
-    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
-    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
-    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
-    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
-    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
-    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
-    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+--    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+--    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+--    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+--    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+--    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+--    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
 -- 2008/08/01 Add ↓
+--
+    -- 登録のためのデータセット
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_designator   := gv_3f_forecast_designator;
+    t_forecast_interface_tab_inst(in_if_data_cnt).organization_id       := gn_3f_organization_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).inventory_item_id     := ln_inventory_item_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).quantity              := ln_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date         :=
+                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date     :=
+                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute5            :=
+                                          in_if_data_tbl(in_if_data_cnt).base_code;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute6            :=
+                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute4            :=
+                                          in_if_data_tbl(in_if_data_cnt).quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+    t_forecast_interface_tab_inst(in_if_data_cnt).bucket_type           := 1;
+    t_forecast_interface_tab_inst(in_if_data_cnt).process_status        := 2;
+    t_forecast_interface_tab_inst(in_if_data_cnt).confidence_percentage := 100;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).created_by             := gn_created_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_inst(in_if_data_cnt).request_id             := gn_request_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_id             := gn_program_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_update_date    := gd_who_sysdate;
 --
     -- Forecastデータに抽出したインターフェースデータを登録
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_ins,
-                                           t_forecast_designator_tab);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_ins,
+--                                           t_forecast_designator_tab);
 --
     -- エラーだった場合
-    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn    -- 'XXCMN'
-                                                    ,gv_msg_10a_045
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                   ,1
-                                                   ,5000);
+--    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn    -- 'XXCMN'
+--                                                    ,gv_msg_10a_045
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                   ,1
+--                                                   ,5000);
 --add start 1.9
-      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
 --add end 1.9
-      RAISE global_api_expt;
-    END IF;
+--      RAISE global_api_expt;
+--    END IF;
+-- mod end 1.11
 --
   EXCEPTION
     -- ケース入り数が不正(TO_NUMBER()でエラー)な場合の後処理
@@ -8743,55 +8826,86 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity := in_if_data_tbl(in_if_data_cnt).case_quantity * ln_number_of_case
                    + in_if_data_tbl(in_if_data_cnt).quantity;
 --
+-- mod start 1.11
     -- 登録のためのデータセット
-    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
-    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
-    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
-    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
-    t_forecast_interface_tab_ins(1).forecast_date         :=
-                                         in_if_data_tbl(in_if_data_cnt).start_date_active;
-    t_forecast_interface_tab_ins(1).forecast_end_date     :=
-                                         in_if_data_tbl(in_if_data_cnt).end_date_active;
-    t_forecast_interface_tab_ins(1).attribute5            :=
-                                         in_if_data_tbl(in_if_data_cnt).base_code;
-    t_forecast_interface_tab_ins(1).attribute6            :=
-                                         in_if_data_tbl(in_if_data_cnt).case_quantity;
-    t_forecast_interface_tab_ins(1).attribute4            :=
-                                         in_if_data_tbl(in_if_data_cnt).quantity;
-    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
-    t_forecast_interface_tab_ins(1).bucket_type           := 1;
-    t_forecast_interface_tab_ins(1).process_status        := 2;
-    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
+--    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
+--    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
+--    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
+--    t_forecast_interface_tab_ins(1).forecast_date         :=
+--                                         in_if_data_tbl(in_if_data_cnt).start_date_active;
+--    t_forecast_interface_tab_ins(1).forecast_end_date     :=
+--                                         in_if_data_tbl(in_if_data_cnt).end_date_active;
+--    t_forecast_interface_tab_ins(1).attribute5            :=
+--                                         in_if_data_tbl(in_if_data_cnt).base_code;
+--    t_forecast_interface_tab_ins(1).attribute6            :=
+--                                         in_if_data_tbl(in_if_data_cnt).case_quantity;
+--    t_forecast_interface_tab_ins(1).attribute4            :=
+--                                         in_if_data_tbl(in_if_data_cnt).quantity;
+--    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+--    t_forecast_interface_tab_ins(1).bucket_type           := 1;
+--    t_forecast_interface_tab_ins(1).process_status        := 2;
+--    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
 -- 2008/08/01 Add ↓
-    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
-    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
-    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
-    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
-    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
-    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
-    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+--    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+--    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+--    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+--    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+--    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+--    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
 -- 2008/08/01 Add ↓
+--
+    -- 登録のためのデータセット
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_designator    := gv_3f_forecast_designator;
+    t_forecast_interface_tab_inst(in_if_data_cnt).organization_id        := gn_3f_organization_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).inventory_item_id      := ln_inventory_item_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).quantity               := ln_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date          :=
+                                         in_if_data_tbl(in_if_data_cnt).start_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date      :=
+                                         in_if_data_tbl(in_if_data_cnt).end_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute5             :=
+                                         in_if_data_tbl(in_if_data_cnt).base_code;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute6             :=
+                                         in_if_data_tbl(in_if_data_cnt).case_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute4             :=
+                                         in_if_data_tbl(in_if_data_cnt).quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute2             := in_if_data_tbl(in_if_data_cnt).price;
+    t_forecast_interface_tab_inst(in_if_data_cnt).bucket_type            := 1;
+    t_forecast_interface_tab_inst(in_if_data_cnt).process_status         := 2;
+    t_forecast_interface_tab_inst(in_if_data_cnt).confidence_percentage  := 100;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).created_by             := gn_created_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_inst(in_if_data_cnt).request_id             := gn_request_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_id             := gn_program_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_update_date    := gd_who_sysdate;
 --
     -- Forecastデータに抽出したインターフェースデータを登録
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_ins,
-                                           t_forecast_designator_tab);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_ins,
+--                                           t_forecast_designator_tab);
     -- エラーだった場合
-    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
-                                                    ,gv_msg_10a_045 -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                    ,1
-                                                    ,5000);
+--    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+--                                                    ,gv_msg_10a_045 -- APIエラー
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                    ,1
+--                                                    ,5000);
 --add start 1.9
-      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
 --add end 1.9
-      RAISE global_api_expt;
-    END IF;
+--      RAISE global_api_expt;
+--    END IF;
+-- mod end 1.11
 --
   EXCEPTION
     -- ケース入り数が取得できない場合の後処理
@@ -9026,9 +9140,13 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       ln_warning_count := ln_warning_count + 1;
 --
       -- 計画商品対象開始年月日取得を登録のためのデータセットにセット
-      t_forecast_interface_tab_ins(1).forecast_date := gd_keikaku_start_date;
+-- mod start 1.11
+--      t_forecast_interface_tab_ins(1).forecast_date := gd_keikaku_start_date;
+      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date := gd_keikaku_start_date;
     ELSE
-      t_forecast_interface_tab_ins(1).forecast_date := 
+--      t_forecast_interface_tab_ins(1).forecast_date := 
+      t_forecast_interface_tab_ins(in_if_data_cnt).forecast_date := 
+-- mod end 1.11
                                       in_if_data_tbl(in_if_data_cnt).start_date_active;
     END IF;
     -- 終了日付の比較
@@ -9045,9 +9163,13 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       ln_warning_count := ln_warning_count + 1;
 --
       -- 計画商品対象終了年月日取得を登録のためのデータセットにセット
-      t_forecast_interface_tab_ins(1).forecast_end_date := gd_keikaku_end_date;
+-- mod start 1.11
+--      t_forecast_interface_tab_ins(1).forecast_end_date := gd_keikaku_end_date;
+      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date := gd_keikaku_end_date;
     ELSE
-      t_forecast_interface_tab_ins(1).forecast_end_date := 
+--      t_forecast_interface_tab_ins(1).forecast_end_date := 
+      t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date := 
+-- mod end 1.11
                                       in_if_data_tbl(in_if_data_cnt).end_date_active;
     END IF;
 --add end 1.9
@@ -9079,65 +9201,92 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity := in_if_data_tbl(in_if_data_cnt).case_quantity * ln_number_of_case
                    + in_if_data_tbl(in_if_data_cnt).quantity;
 --
+-- mod start 1.11
     -- 登録のためのデータセット
-    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
-    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
-    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
-    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
+--    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
+--    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
+--    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
+--    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
 --del start 1.9
 --    t_forecast_interface_tab_ins(1).forecast_date         :=
 --                                         in_if_data_tbl(in_if_data_cnt).start_date_active;
 --    t_forecast_interface_tab_ins(1).forecast_end_date     :=
 --                                         in_if_data_tbl(in_if_data_cnt).end_date_active;
 --del end 1.9
-    t_forecast_interface_tab_ins(1).attribute5            :=
-                                         in_if_data_tbl(in_if_data_cnt).base_code;
-    t_forecast_interface_tab_ins(1).attribute6            :=
-                                         in_if_data_tbl(in_if_data_cnt).case_quantity;
-    t_forecast_interface_tab_ins(1).attribute4            :=
-                                         in_if_data_tbl(in_if_data_cnt).quantity;
-    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
-    t_forecast_interface_tab_ins(1).bucket_type           := 1;
-    t_forecast_interface_tab_ins(1).process_status        := 2;
-    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--    t_forecast_interface_tab_ins(1).attribute5            :=
+--                                         in_if_data_tbl(in_if_data_cnt).base_code;
+--    t_forecast_interface_tab_ins(1).attribute6            :=
+--                                         in_if_data_tbl(in_if_data_cnt).case_quantity;
+--    t_forecast_interface_tab_ins(1).attribute4            :=
+--                                         in_if_data_tbl(in_if_data_cnt).quantity;
+--    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+--    t_forecast_interface_tab_ins(1).bucket_type           := 1;
+--    t_forecast_interface_tab_ins(1).process_status        := 2;
+--    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
 -- 2008/08/01 Add ↓
-    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
-    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
-    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
-    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
-    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
-    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
-    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+--    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+--    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+--    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+--    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+--    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+--    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
 -- 2008/08/01 Add ↓
+--
+    -- 登録のためのデータセット
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_designator    := gv_3f_forecast_designator;
+    t_forecast_interface_tab_inst(in_if_data_cnt).organization_id        := gn_3f_organization_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).inventory_item_id      := ln_inventory_item_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).quantity               := ln_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute5             :=
+                                         in_if_data_tbl(in_if_data_cnt).base_code;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute6             :=
+                                         in_if_data_tbl(in_if_data_cnt).case_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute4             :=
+                                         in_if_data_tbl(in_if_data_cnt).quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute2             := in_if_data_tbl(in_if_data_cnt).price;
+    t_forecast_interface_tab_inst(in_if_data_cnt).bucket_type            := 1;
+    t_forecast_interface_tab_inst(in_if_data_cnt).process_status         := 2;
+    t_forecast_interface_tab_inst(in_if_data_cnt).confidence_percentage  := 100;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).created_by             := gn_created_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_inst(in_if_data_cnt).request_id             := gn_request_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_id             := gn_program_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_update_date    := gd_who_sysdate;
 --
     -- Forecastデータに抽出したインターフェースデータを登録
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_ins,
-                                           t_forecast_designator_tab);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_ins,
+--                                           t_forecast_designator_tab);
     -- エラーだった場合
-    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
-                                                    ,gv_msg_10a_045 -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                    ,1
-                                                    ,5000);
+--    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+--                                                    ,gv_msg_10a_045 -- APIエラー
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                    ,1
+--                                                    ,5000);
 --add start 1.9
-      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
 --add end 1.9
-      RAISE global_api_expt;
+--      RAISE global_api_expt;
 --add start 1.9
-    ELSE
+--    ELSE
       -- 警告が発生した場合
-      IF (ln_warning_count > 0) THEN
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-        ov_retcode := gv_status_warn;
-      END IF;
+--      IF (ln_warning_count > 0) THEN
+--        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--        ov_retcode := gv_status_warn;
+--      END IF;
 --add end 1.9
-    END IF;
+--    END IF;
+-- mod end 1.11
 --
   EXCEPTION
     -- ケース入り数が取得できない場合の後処理
@@ -9380,53 +9529,81 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity := in_if_data_tbl(in_if_data_cnt).case_quantity * ln_number_of_case
                    + in_if_data_tbl(in_if_data_cnt).quantity;
 --
+-- mod start 1.11
     -- 登録のためのデータセット
-    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
-    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
-    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
-    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
-    t_forecast_interface_tab_ins(1).forecast_date         :=
-                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
-    t_forecast_interface_tab_ins(1).forecast_end_date     :=
-                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
-    t_forecast_interface_tab_ins(1).attribute5         := in_if_data_tbl(in_if_data_cnt).base_code;
-    t_forecast_interface_tab_ins(1).attribute6            :=
-                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
-    t_forecast_interface_tab_ins(1).attribute4         := in_if_data_tbl(in_if_data_cnt).quantity;
-    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
-    t_forecast_interface_tab_ins(1).bucket_type           := 1;
-    t_forecast_interface_tab_ins(1).process_status        := 2;
-    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
+--    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
+--    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
+--    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
+--    t_forecast_interface_tab_ins(1).forecast_date         :=
+--                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
+--    t_forecast_interface_tab_ins(1).forecast_end_date     :=
+--                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
+--    t_forecast_interface_tab_ins(1).attribute5         := in_if_data_tbl(in_if_data_cnt).base_code;
+--    t_forecast_interface_tab_ins(1).attribute6            :=
+--                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
+--    t_forecast_interface_tab_ins(1).attribute4         := in_if_data_tbl(in_if_data_cnt).quantity;
+--    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+--    t_forecast_interface_tab_ins(1).bucket_type           := 1;
+--    t_forecast_interface_tab_ins(1).process_status        := 2;
+--    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
 -- 2008/08/01 Add ↓
-    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
-    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
-    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
-    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
-    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
-    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
-    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+--    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+--    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+--    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+--    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+--    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+--    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
 -- 2008/08/01 Add ↓
+    -- 登録のためのデータセット
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_designator   := gv_3f_forecast_designator;
+    t_forecast_interface_tab_inst(in_if_data_cnt).organization_id       := gn_3f_organization_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).inventory_item_id     := ln_inventory_item_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).quantity              := ln_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date         :=
+                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date     :=
+                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute5         := in_if_data_tbl(in_if_data_cnt).base_code;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute6            :=
+                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute4         := in_if_data_tbl(in_if_data_cnt).quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+    t_forecast_interface_tab_inst(in_if_data_cnt).bucket_type           := 1;
+    t_forecast_interface_tab_inst(in_if_data_cnt).process_status        := 2;
+    t_forecast_interface_tab_inst(in_if_data_cnt).confidence_percentage := 100;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).created_by             := gn_created_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_inst(in_if_data_cnt).request_id             := gn_request_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_id             := gn_program_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_update_date    := gd_who_sysdate;
 --
     -- Forecastデータに抽出したインターフェースデータを登録
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_ins,
-                                           t_forecast_designator_tab);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_ins,
+--                                           t_forecast_designator_tab);
     -- エラーだった場合
-    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
-                                                    ,gv_msg_10a_045 -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                    ,1
-                                                    ,5000);
+--    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+--                                                    ,gv_msg_10a_045 -- APIエラー
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                    ,1
+--                                                    ,5000);
 --add start 1.9
-      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
 --add end 1.9
-      RAISE global_api_expt;
-    END IF;
+--      RAISE global_api_expt;
+--    END IF;
+-- mod end 1.11
 --
   EXCEPTION
     -- ケース入り数が取得できない場合の後処理
@@ -9669,55 +9846,86 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity := in_if_data_tbl(in_if_data_cnt).case_quantity * ln_number_of_case
                    + in_if_data_tbl(in_if_data_cnt).quantity;
 --
+-- mod start 1.11
     -- 登録のためのデータセット
-    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
-    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
-    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
-    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
-    t_forecast_interface_tab_ins(1).forecast_date         :=
-                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
-    t_forecast_interface_tab_ins(1).forecast_end_date     :=
-                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
-    t_forecast_interface_tab_ins(1).attribute5            :=
-                                          in_if_data_tbl(in_if_data_cnt).base_code;
-    t_forecast_interface_tab_ins(1).attribute6            :=
-                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
-    t_forecast_interface_tab_ins(1).attribute4            :=
-                                          in_if_data_tbl(in_if_data_cnt).quantity;
-    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
-    t_forecast_interface_tab_ins(1).bucket_type           := 1;
-    t_forecast_interface_tab_ins(1).process_status        := 2;
-    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
+--    t_forecast_interface_tab_ins(1).forecast_designator   := gv_3f_forecast_designator;
+--    t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
+--    t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
+--    t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
+--    t_forecast_interface_tab_ins(1).forecast_date         :=
+--                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
+--    t_forecast_interface_tab_ins(1).forecast_end_date     :=
+--                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
+--    t_forecast_interface_tab_ins(1).attribute5            :=
+--                                          in_if_data_tbl(in_if_data_cnt).base_code;
+--    t_forecast_interface_tab_ins(1).attribute6            :=
+--                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
+--    t_forecast_interface_tab_ins(1).attribute4            :=
+--                                          in_if_data_tbl(in_if_data_cnt).quantity;
+--    t_forecast_interface_tab_ins(1).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+--    t_forecast_interface_tab_ins(1).bucket_type           := 1;
+--    t_forecast_interface_tab_ins(1).process_status        := 2;
+--    t_forecast_interface_tab_ins(1).confidence_percentage := 100;
 --
 -- 2008/08/01 Add ↓
-    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
-    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
-    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
-    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
-    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
-    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
-    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
-    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_update_date       := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).last_updated_by        := gn_last_updated_by;
+--    t_forecast_interface_tab_ins(1).creation_date          := gd_who_sysdate;
+--    t_forecast_interface_tab_ins(1).created_by             := gn_created_by;
+--    t_forecast_interface_tab_ins(1).last_update_login      := gn_login_user;
+--    t_forecast_interface_tab_ins(1).request_id             := gn_request_id;
+--    t_forecast_interface_tab_ins(1).program_application_id := gn_program_application_id;
+--    t_forecast_interface_tab_ins(1).program_id             := gn_program_id;
+--    t_forecast_interface_tab_ins(1).program_update_date    := gd_who_sysdate;
 -- 2008/08/01 Add ↓
+
+    -- 登録のためのデータセット
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_designator   := gv_3f_forecast_designator;
+    t_forecast_interface_tab_inst(in_if_data_cnt).organization_id       := gn_3f_organization_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).inventory_item_id     := ln_inventory_item_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).quantity              := ln_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_date         :=
+                                          in_if_data_tbl(in_if_data_cnt).start_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).forecast_end_date     :=
+                                          in_if_data_tbl(in_if_data_cnt).end_date_active;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute5            :=
+                                          in_if_data_tbl(in_if_data_cnt).base_code;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute6            :=
+                                          in_if_data_tbl(in_if_data_cnt).case_quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute4            :=
+                                          in_if_data_tbl(in_if_data_cnt).quantity;
+    t_forecast_interface_tab_inst(in_if_data_cnt).attribute2            := in_if_data_tbl(in_if_data_cnt).price;
+    t_forecast_interface_tab_inst(in_if_data_cnt).bucket_type           := 1;
+    t_forecast_interface_tab_inst(in_if_data_cnt).process_status        := 2;
+    t_forecast_interface_tab_inst(in_if_data_cnt).confidence_percentage := 100;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_date       := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_updated_by        := gn_last_updated_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).creation_date          := gd_who_sysdate;
+    t_forecast_interface_tab_inst(in_if_data_cnt).created_by             := gn_created_by;
+    t_forecast_interface_tab_inst(in_if_data_cnt).last_update_login      := gn_login_user;
+    t_forecast_interface_tab_inst(in_if_data_cnt).request_id             := gn_request_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_application_id := gn_program_application_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_id             := gn_program_id;
+    t_forecast_interface_tab_inst(in_if_data_cnt).program_update_date    := gd_who_sysdate;
 --
     -- Forecastデータに抽出したインターフェースデータを登録
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_ins,
-                                           t_forecast_designator_tab);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_ins,
+--                                           t_forecast_designator_tab);
     -- エラーだった場合
-    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
-      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
-                                                    ,gv_msg_10a_045 -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                    ,1
-                                                    ,5000);
+--    IF ( t_forecast_interface_tab_ins(1).process_status <> 5 ) THEN
+--      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+--                                                    ,gv_msg_10a_045 -- APIエラー
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                    ,1
+--                                                    ,5000);
 --add start 1.9
-      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
 --add end 1.9
-      RAISE global_api_expt;
-    END IF;
+--      RAISE global_api_expt;
+--    END IF;
+-- mod end 1.11
 --
   EXCEPTION
     -- ケース入り数が取得できない場合の後処理
@@ -9892,6 +10100,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_data_flg   NUMBER;    -- 日付データありなしフラグ(0:なし、1:あり)
     ln_error_flg  NUMBER;    -- インタ－フェースデータエラーありフラグ(0:なし, 1:あり)
     lb_retcode                  BOOLEAN;
+--add start 1.11
+    ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
+--add end 1.11
 --
     -- *** ローカル・カーソル ***
     -- あらいがえ対象データの抽出
@@ -9907,7 +10118,10 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
             mrp_forecast_items  mfi    -- Forecast品目
     WHERE   mfd.forecast_designator      = gv_3f_forecast_designator   -- Forecast名
       AND   mfd.organization_id          = gn_3f_organization_id       -- 在庫組織
-      AND   TO_CHAR(mfd.forecast_date,'YYYYMM') = gv_in_yyyymm  -- 入力年月
+-- mod start 1.11
+--      AND   TO_CHAR(mfd.forecast_date,'YYYYMM') = gv_in_yyyymm  -- 入力年月
+      AND   TO_CHAR(mfd.forecast_date,'YYYYMM') = TO_CHAR(TO_DATE(gv_in_yyyymm,'YYYYMM'),'YYYYMM')  -- 入力年月
+-- mod strart 1.11
       AND   mfd.organization_id          = mfi.organization_id
 --mod start kumamoto
       AND mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
@@ -9982,6 +10196,10 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       -- 警告ならば処理は続行する。
       IF (lv_retcode = gv_status_error) THEN
         ln_error_flg := 1;
+--add start 1.11
+      ELSIF (lv_retcode = gv_status_warn) THEN
+        ln_warn_flg := 1;
+--add end 1.11
       END IF;
 --
     END LOOP if_data_check_loop;
@@ -10000,6 +10218,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                              lv_errmsg );
         -- エラーがあったらループ処理中止
         IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
           gn_error_cnt := gn_error_cnt + 1;
           ln_error_flg := 1;
           EXIT;
@@ -10016,38 +10237,81 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       <<del_loop>>
       FOR ln_data_cnt2 IN 1..gn_araigae_cnt LOOP
         -- 削除用変数にセット
-        t_forecast_interface_tab_del(1).transaction_id
+-- mod start 1.11
+        gn_del_data_cnt := gn_del_data_cnt + 1;
+--
+--        t_forecast_interface_tab_del(1).transaction_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+--        t_forecast_interface_tab_del(1).forecast_designator
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;                    -- Forecast名
+--        t_forecast_interface_tab_del(1).organization_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;                        -- 組織ID
+--        t_forecast_interface_tab_del(1).inventory_item_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;           -- 品目ID
+--        t_forecast_interface_tab_del(1).quantity              := 0;       -- 数量
+--        t_forecast_interface_tab_del(1).forecast_date
+--                          := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
+--        t_forecast_interface_tab_del(1).forecast_end_date
+--                          := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
+--        t_forecast_interface_tab_del(1).bucket_type           := 1;
+--        t_forecast_interface_tab_del(1).process_status        := 2;
+--        t_forecast_interface_tab_del(1).confidence_percentage := 100;
+--
+        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
                           := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
-        t_forecast_interface_tab_del(1).forecast_designator
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
                           := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;                    -- Forecast名
-        t_forecast_interface_tab_del(1).organization_id
+        t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
                           := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;                        -- 組織ID
-        t_forecast_interface_tab_del(1).inventory_item_id
+        t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
                           := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;           -- 品目ID
-        t_forecast_interface_tab_del(1).quantity              := 0;       -- 数量
-        t_forecast_interface_tab_del(1).forecast_date
+        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;       -- 数量
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
                           := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
-        t_forecast_interface_tab_del(1).forecast_end_date
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
                           := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
-        t_forecast_interface_tab_del(1).bucket_type           := 1;
-        t_forecast_interface_tab_del(1).process_status        := 2;
-        t_forecast_interface_tab_del(1).confidence_percentage := 100;
+        t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
+        t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
+        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
 --
         -- Forecast日付データのクリア
-        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                              t_forecast_interface_tab_del);
+--        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                              t_forecast_interface_tab_del);
         -- エラーだった場合
-        IF (lb_retcode = FALSE )THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
-                                                        ,gv_msg_10a_045  -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                        ,1
-                                                        ,5000);
-          RAISE global_api_expt;
-        END IF;
+--        IF (lb_retcode = FALSE )THEN
+--          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
+--                                                        ,gv_msg_10a_045  -- APIエラー
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                        ,1
+--                                                        ,5000);
+--          RAISE global_api_expt;
+--        END IF;
      END LOOP del_loop;
     END LOOP araigae_loop;
+    -- Forecast日付データのクリア
+    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                          t_forecast_interface_tab_del);
+--
+    <<del_serch_error_loop>>
+    FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
+      -- エラーだった場合
+      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
+                                                      ,gv_msg_10a_045  -- APIエラー
+                                                      ,gv_tkn_api_name
+                                                      ,gv_cons_api) -- 予測API
+                                                      ,1
+                                                      ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        gn_error_cnt := gn_error_cnt + 1;
+        ln_error_flg := 1;
+        EXIT;
+      END IF;
+    END LOOP del_serch_error_loop;
+    -- あらいがえ対象データの処理カウンタの初期化
+    gn_del_data_cnt := 0;
+-- mod end 1.11
 --
       -- Forecast処理データループ
 /*
@@ -10112,37 +10376,78 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
           EXIT;
         END IF;
 */
---
-      <<forecast_ins_loop>>
-      FOR ln_data_cnt IN 1..gn_target_cnt LOOP
-        -- A-2-3 引取計画Forecast名抽出
-        get_f_degi_hikitori( lt_if_data,
-                             ln_data_cnt,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
-        -- A-2-5 引取計画Forecast登録
-        put_forecast_hikitori( lt_if_data,
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+-- add end 1.11
+        <<forecast_ins_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+          -- A-2-3 引取計画Forecast名抽出
+          get_f_degi_hikitori( lt_if_data,
                                ln_data_cnt,
-                               ln_data_flg,
                                lv_errbuf,
                                lv_retcode,
                                lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- add start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+          -- A-2-5 引取計画Forecast登録
+          put_forecast_hikitori( lt_if_data,
+                                 ln_data_cnt,
+                                 ln_data_flg,
+                                 lv_errbuf,
+                                 lv_retcode,
+                                 lv_errmsg );
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- add start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
 --
-      END LOOP forecast_ins_loop;
+        END LOOP forecast_ins_loop;
+-- add start 1.11
+      END IF;
+-- add end 1.11
 --
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+        -- Forecastデータに抽出したインターフェースデータを登録
+        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                               t_forecast_interface_tab_inst,
+                                               t_forecast_designator_tabl);
+--
+        <<serch_error_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+          -- エラーだった場合
+          IF ( t_forecast_interface_tab_inst(ln_data_cnt).process_status <> 5 ) THEN
+            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn    -- 'XXCMN'
+                                                          ,gv_msg_10a_045
+                                                          ,gv_tkn_api_name
+                                                          ,gv_cons_api) -- 予測API
+                                                         ,1
+                                                         ,5000);
+            FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_inst(ln_data_cnt).error_message);
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+        END LOOP serch_error_loop;
+      END IF;
+--
+      -- 登録対象データのレコードの初期化
+      t_forecast_interface_tab_inst.delete;
+      t_forecast_designator_tabl.delete;
+-- add end 1.11
     END IF;
     -- エラーがなかった場合はコミットする
     IF (ln_error_flg = 0) THEN
@@ -10168,6 +10473,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
     -- 各処理でエラーが発生していたらエラーリターンするために例外を発生させる
     IF (ln_error_flg = 1) THEN
       RAISE global_api_expt;
+--add start 1.11
+    ELSIF (ln_warn_flg = 1) THEN
+      RAISE warn_expt;
+--add end 1.11
     END IF;
 --
   EXCEPTION
@@ -10230,6 +10539,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'forecast_del_set_loop...');
     ln_data_cnt   NUMBER;    -- 抽出インターフェースデータの処理カウンタ
     ln_data_flg   NUMBER;    -- 日付データありなしフラグ(0:なし、1:あり)
     ln_error_flg  NUMBER;    -- インタ－フェースデータエラーありフラグ(0:なし, 1:あり)
+-- add start 1.11
+    lb_retcode    BOOLEAN;
+-- add end 1.11
 --
 -- 2008/08/01 Add ↓
     lv_errbuf_w  VARCHAR2(5000);  -- エラー・メッセージ
@@ -10395,6 +10707,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --
         -- エラーがあったらループ処理中止
         IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
           gn_error_cnt := gn_error_cnt + 1;
           ln_error_flg := 1;
           EXIT;
@@ -10405,6 +10720,36 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       END LOOP forecast_proc_loop;
     END IF;
 --
+-- add start 1.11
+    IF (ln_error_flg = 0) THEN
+      -- Forecastデータに抽出したインターフェースデータを登録
+      lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_inst,
+                                             t_forecast_designator_tabl);
+--
+      <<serch_error_loop>>
+      FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+        -- エラーだった場合
+        IF ( t_forecast_interface_tab_inst(ln_data_cnt).process_status <> 5 ) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                        ,gv_msg_10a_045
+                                                        ,gv_tkn_api_name
+                                                        ,gv_cons_api)    -- 予測API
+                                                       ,1
+                                                       ,5000);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_inst(ln_data_cnt).error_message);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          gn_error_cnt := gn_error_cnt + 1;
+          ln_error_flg := 1;
+          EXIT;
+        END IF;
+      END LOOP serch_error_loop;
+    END IF;
+--
+    -- 登録対象データのレコードの初期化
+    t_forecast_interface_tab_inst.delete;
+    t_forecast_designator_tabl.delete;
+-- add end 1.11
     -- エラーがなかった場合はコミットする
     IF (ln_error_flg = 0) THEN
       COMMIT;
@@ -10630,6 +10975,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
                             lv_errmsg );
         -- エラーがあったらループ処理中止
         IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
           gn_error_cnt := gn_error_cnt + 1;
           ln_error_flg := 1;
           EXIT;
@@ -10646,55 +10994,104 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       <<del_loop>>
       FOR ln_data_cnt2 IN 1..gn_araigae_cnt LOOP
         -- 削除用変数にセット
-        t_forecast_interface_tab_del(1).transaction_id
-                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
-        t_forecast_interface_tab_del(1).forecast_designator
-                          := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;                    -- Forecast名
-        t_forecast_interface_tab_del(1).organization_id
-                          := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;                        -- 組織ID
-        t_forecast_interface_tab_del(1).inventory_item_id
-                          := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;           -- 品目ID
-        t_forecast_interface_tab_del(1).quantity              := 0;       -- 数量
-        t_forecast_interface_tab_del(1).forecast_date
-                          := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
-        t_forecast_interface_tab_del(1).forecast_end_date
-                          := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
-        t_forecast_interface_tab_del(1).bucket_type           := 1;
-        t_forecast_interface_tab_del(1).process_status        := 2;
-        t_forecast_interface_tab_del(1).confidence_percentage := 100;
+-- mod start 1.11
+        gn_del_data_cnt := gn_del_data_cnt + 1;
+--        t_forecast_interface_tab_del(1).transaction_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+--        t_forecast_interface_tab_del(1).forecast_designator
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;                    -- Forecast名
+--        t_forecast_interface_tab_del(1).organization_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;                        -- 組織ID
+--        t_forecast_interface_tab_del(1).inventory_item_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;           -- 品目ID
+--        t_forecast_interface_tab_del(1).quantity              := 0;       -- 数量
+--        t_forecast_interface_tab_del(1).forecast_date
+--                          := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
+--        t_forecast_interface_tab_del(1).forecast_end_date
+--                          := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
+--        t_forecast_interface_tab_del(1).bucket_type           := 1;
+--        t_forecast_interface_tab_del(1).process_status        := 2;
+--        t_forecast_interface_tab_del(1).confidence_percentage := 100;
+        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
+                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;             -- 取引ID
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
+                          := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator; -- Forecast名
+        t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
+                          := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;     -- 組織ID
+        t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
+                          := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;             -- 品目ID
+        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;                   -- 数量
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
+                          := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;   -- 開始日付
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
+                          := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;     -- 終了日付
+        t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
+        t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
+        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
 --
-        -- Forecast日付データのクリア
-        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                              t_forecast_interface_tab_del);
-        -- エラーだった場合
-        IF (lb_retcode = FALSE )THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
-                                                        ,gv_msg_10a_045  -- APIエラー
-                                                    ,gv_tkn_api_name
-                                                    ,gv_cons_api) -- 予測API
-                                                        ,1
-                                                        ,5000);
-          RAISE global_api_expt;
-        END IF;
+--        -- Forecast日付データのクリア
+--        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                              t_forecast_interface_tab_del);
+--        -- エラーだった場合
+--        IF (lb_retcode = FALSE )THEN
+--          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn   -- 'XXCMN'
+--                                                        ,gv_msg_10a_045  -- APIエラー
+--                                                    ,gv_tkn_api_name
+--                                                    ,gv_cons_api) -- 予測API
+--                                                        ,1
+--                                                        ,5000);
+--          RAISE global_api_expt;
+--        END IF;
      END LOOP del_loop;
     END LOOP araigae_loop;
-
-      -- Forecast処理データループ
-      <<forecast_ins_loop>>
-      FOR ln_data_cnt IN 1..gn_target_cnt LOOP
 --
-        -- A-4-3 計画商品Forecast名抽出
-        get_f_degi_keikaku( lt_if_data,
-                            ln_data_cnt,
-                            lv_errbuf,
-                            lv_retcode,
-                            lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+    -- Forecast日付データのクリア
+    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                          t_forecast_interface_tab_del);
+--
+    <<del_serch_error_loop>>
+    FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
+      -- エラーだった場合
+      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'del_serch_error_loop');
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                      ,gv_msg_10a_045  -- APIエラー
+                                                      ,gv_tkn_api_name
+                                                      ,gv_cons_api)    -- 予測API
+                                                      ,1
+                                                      ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        gn_error_cnt := gn_error_cnt + 1;
+        ln_error_flg := 1;
+        EXIT;
+      END IF;
+    END LOOP del_serch_error_loop;
+    -- あらいがえ対象データの処理カウンタの初期化
+    gn_del_data_cnt := 0;
+-- mod end 1.11
+--
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+-- add end 1.11
+        -- Forecast処理データループ
+        <<forecast_ins_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+  --
+          -- A-4-3 計画商品Forecast名抽出
+          get_f_degi_keikaku( lt_if_data,
+                              ln_data_cnt,
+                              lv_errbuf,
+                              lv_retcode,
+                              lv_errmsg );
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- add start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- add end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
 --
 /*
         -- A-4-4 計画商品Forecast日付抽出
@@ -10712,21 +11109,59 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         END IF;
 */
 --
-        -- A-4-5 計画商品Forecast登録
-        put_forecast_keikaku( lt_if_data,
-                              ln_data_cnt,
-                              ln_data_flg,
-                              lv_errbuf,
-                              lv_retcode,
-                              lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+          -- A-4-5 計画商品Forecast登録
+          put_forecast_keikaku( lt_if_data,
+                                ln_data_cnt,
+                                ln_data_flg,
+                                lv_errbuf,
+                                lv_retcode,
+                                lv_errmsg );
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
 --
-      END LOOP forecast_ins_loop;
+        END LOOP forecast_ins_loop;
+-- add start 1.11
+      END IF;
+-- add end 1.11
+--
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+        -- Forecastデータに抽出したインターフェースデータを登録
+        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                               t_forecast_interface_tab_inst,
+                                               t_forecast_designator_tabl);
+--
+        <<serch_error_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+          -- エラーだった場合
+          IF ( t_forecast_interface_tab_inst(ln_data_cnt).process_status <> 5 ) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'serch_error_loop');
+            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                          ,gv_msg_10a_045  -- APIエラー
+                                                          ,gv_tkn_api_name
+                                                          ,gv_cons_api)    -- 予測API
+                                                          ,1
+                                                          ,5000);
+            FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_inst(ln_data_cnt).error_message);
+--            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+        END LOOP serch_error_loop;
+      END IF;
+--
+      -- 登録対象データのレコードの初期化
+      t_forecast_interface_tab_inst.delete;
+      t_forecast_designator_tabl.delete;
+-- add end 1.11
 --
     END IF;
 --
@@ -10948,6 +11383,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         lv_err_msg2 := lv_errmsg;
         -- エラーがあったらループ処理中止
         IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
           gn_error_cnt := gn_error_cnt + 1;
           ln_error_flg := 1;
           EXIT;
@@ -11007,90 +11445,173 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       END IF;
 --
       -- 登録済みデータの削除のためのデータセット
-      t_forecast_interface_tab_del(1).transaction_id
-                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
-      t_forecast_interface_tab_del(1).forecast_designator
-                         := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
-      t_forecast_interface_tab_del(1).organization_id
-                         := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
-      t_forecast_interface_tab_del(1).inventory_item_id
-                         := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
-      t_forecast_interface_tab_del(1).quantity              := 0;        -- 数量
-      t_forecast_interface_tab_del(1).forecast_date
-                         := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
-      t_forecast_interface_tab_del(1).forecast_end_date
-                         := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
-      t_forecast_interface_tab_del(1).bucket_type           := 1;
-      t_forecast_interface_tab_del(1).process_status        := 2;
-      t_forecast_interface_tab_del(1).confidence_percentage := 100;
+-- mod start 1.11
+        gn_del_data_cnt := gn_del_data_cnt + 1;
+--      t_forecast_interface_tab_del(1).transaction_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+--      t_forecast_interface_tab_del(1).forecast_designator
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
+--      t_forecast_interface_tab_del(1).organization_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
+--      t_forecast_interface_tab_del(1).inventory_item_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
+--      t_forecast_interface_tab_del(1).quantity              := 0;        -- 数量
+--      t_forecast_interface_tab_del(1).forecast_date
+--                         := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
+--      t_forecast_interface_tab_del(1).forecast_end_date
+--                         := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
+--      t_forecast_interface_tab_del(1).bucket_type           := 1;
+--      t_forecast_interface_tab_del(1).process_status        := 2;
+--      t_forecast_interface_tab_del(1).confidence_percentage := 100;
+        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
+                           := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
+                           := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
+        t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
+                           := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
+        t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
+                           := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
+        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;        -- 数量
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
+                           := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
+        t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
+                           := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
+        t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
+        t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
+        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
 --
       -- 登録済みデータの削除
-        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                              t_forecast_interface_tab_del);
+--        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                              t_forecast_interface_tab_del);
         -- エラーだった場合
-        IF (lb_retcode = FALSE )THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
-                                                        ,gv_msg_10a_045 -- APIエラー
-                                                        ,gv_tkn_api_name
-                                                        ,gv_cons_api) -- 予測API
-                                                        ,1
-                                                        ,5000);
-          RAISE global_api_expt;
-        END IF;
+--        IF (lb_retcode = FALSE )THEN
+--          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+--                                                        ,gv_msg_10a_045 -- APIエラー
+--                                                        ,gv_tkn_api_name
+--                                                        ,gv_cons_api) -- 予測API
+--                                                        ,1
+--                                                        ,5000);
+--          RAISE global_api_expt;
+--        END IF;
       END LOOP del_loop;
     END LOOP araigae_loop;
+    -- Forecast日付データのクリア
+    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                           t_forecast_interface_tab_del);
 --
-      <<forecast_ins_loop>>
-      FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+    <<del_serch_error_loop>>
+    FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
+      -- エラーだった場合
+      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                      ,gv_msg_10a_045  -- APIエラー
+                                                      ,gv_tkn_api_name
+                                                      ,gv_cons_api)    -- 予測API
+                                                      ,1
+                                                      ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        gn_error_cnt := gn_error_cnt + 1;
+        ln_error_flg := 1;
+        EXIT;
+      END IF;
+    END LOOP del_serch_error_loop;
+    -- あらいがえ対象データの処理カウンタの初期化
+    gn_del_data_cnt := 0;
+-- mod end 1.11
 --
-        -- A-5-3 出荷数制限AForecast名抽出
-        get_f_degi_seigen_a( lt_if_data,
-                             ln_data_cnt,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg );
-        lv_err_msg2 := lv_errmsg;
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+-- add end 1.11
+        <<forecast_ins_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
 --
-/*
-        -- A-5-4 出荷数制限AForecast日付抽出
-        get_f_dates_seigen_a( lt_if_data,
-                              ln_data_cnt,
-                              ln_data_flg,
-                              lv_errbuf,
-                              lv_retcode,
-                              lv_errmsg );
-        lv_err_msg2 := lv_errmsg;
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
-*/
---
-        -- A-5-5 出荷数制限AForecast登録
-        put_forecast_seigen_a( lt_if_data,
+          -- A-5-3 出荷数制限AForecast名抽出
+          get_f_degi_seigen_a( lt_if_data,
                                ln_data_cnt,
-                               ln_data_flg,
                                lv_errbuf,
                                lv_retcode,
                                lv_errmsg );
-        lv_err_msg2 := lv_errmsg;
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+          lv_err_msg2 := lv_errmsg;
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+  --
+  /*
+          -- A-5-4 出荷数制限AForecast日付抽出
+          get_f_dates_seigen_a( lt_if_data,
+                                ln_data_cnt,
+                                ln_data_flg,
+                                lv_errbuf,
+                                lv_retcode,
+                                lv_errmsg );
+          lv_err_msg2 := lv_errmsg;
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+  */
 --
-      END LOOP forecast_ins_loop;
+          -- A-5-5 出荷数制限AForecast登録
+          put_forecast_seigen_a( lt_if_data,
+                                 ln_data_cnt,
+                                 ln_data_flg,
+                                 lv_errbuf,
+                                 lv_retcode,
+                                 lv_errmsg );
+          lv_err_msg2 := lv_errmsg;
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
 --
+        END LOOP forecast_ins_loop;
+-- add start 1.11
+      END IF;
+-- add end 1.11
+--
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+        -- Forecastデータに抽出したインターフェースデータを登録
+        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                               t_forecast_interface_tab_inst,
+                                               t_forecast_designator_tabl);
+--
+        <<serch_error_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+          -- エラーだった場合
+          IF ( t_forecast_interface_tab_inst(ln_data_cnt).process_status <> 5 ) THEN
+            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                          ,gv_msg_10a_045  -- APIエラー
+                                                          ,gv_tkn_api_name
+                                                          ,gv_cons_api)    -- 予測API
+                                                          ,1
+                                                          ,5000);
+            FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_inst(ln_data_cnt).error_message);
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+        END LOOP serch_error_loop;
+      END IF;
+--
+      -- 登録対象データのレコードの初期化
+      t_forecast_interface_tab_inst.delete;
+      t_forecast_designator_tabl.delete;
+-- add end 1.11
     END IF;
 --
     -- エラーがなかった場合はコミットする
@@ -11315,6 +11836,9 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
                              lv_errmsg );
         -- エラーがあったらループ処理中止
         IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
           gn_error_cnt := gn_error_cnt + 1;
           ln_error_flg := 1;
           EXIT;
@@ -11374,87 +11898,169 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       END IF;
 --
       -- 登録済みデータの削除のためのデータセット
-      t_forecast_interface_tab_del(1).transaction_id
+-- mod start 1.11
+      gn_del_data_cnt := gn_del_data_cnt + 1;
+--      t_forecast_interface_tab_del(1).transaction_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+--      t_forecast_interface_tab_del(1).forecast_designator
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
+--      t_forecast_interface_tab_del(1).organization_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
+--      t_forecast_interface_tab_del(1).inventory_item_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
+--      t_forecast_interface_tab_del(1).quantity              := 0;        -- 数量
+--      t_forecast_interface_tab_del(1).forecast_date
+--                         := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
+--      t_forecast_interface_tab_del(1).forecast_end_date
+--                         := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
+--      t_forecast_interface_tab_del(1).bucket_type           := 1;
+--      t_forecast_interface_tab_del(1).process_status        := 2;
+--      t_forecast_interface_tab_del(1).confidence_percentage := 100;
+      t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
-      t_forecast_interface_tab_del(1).forecast_designator
+      t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
                          := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
-      t_forecast_interface_tab_del(1).organization_id
+      t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
                          := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
-      t_forecast_interface_tab_del(1).inventory_item_id
+      t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
                          := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
-      t_forecast_interface_tab_del(1).quantity              := 0;        -- 数量
-      t_forecast_interface_tab_del(1).forecast_date
+      t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;        -- 数量
+      t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
                          := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
-      t_forecast_interface_tab_del(1).forecast_end_date
+      t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
                          := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
-      t_forecast_interface_tab_del(1).bucket_type           := 1;
-      t_forecast_interface_tab_del(1).process_status        := 2;
-      t_forecast_interface_tab_del(1).confidence_percentage := 100;
+      t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
+      t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
+      t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
 --
       -- 登録済みデータの削除
-        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                              t_forecast_interface_tab_del);
+--        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                              t_forecast_interface_tab_del);
         -- エラーだった場合
-        IF (lb_retcode = FALSE )THEN
-          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
-                                                        ,gv_msg_10a_045 -- APIエラー
-                                                        ,gv_tkn_api_name
-                                                        ,gv_cons_api) -- 予測API
-                                                        ,1
-                                                        ,5000);
-          RAISE global_api_expt;
-        END IF;
+--        IF (lb_retcode = FALSE )THEN
+--          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+--                                                        ,gv_msg_10a_045 -- APIエラー
+--                                                        ,gv_tkn_api_name
+--                                                        ,gv_cons_api) -- 予測API
+--                                                        ,1
+--                                                        ,5000);
+--          RAISE global_api_expt;
+--        END IF;
       END LOOP del_loop;
     END LOOP araigae_loop;
+    -- Forecast日付データのクリア
+    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                           t_forecast_interface_tab_del);
 --
-      <<forecast_proc_loop>>
-      FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+    <<del_serch_error_loop>>
+    FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
+      -- エラーだった場合
+      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                      ,gv_msg_10a_045  -- APIエラー
+                                                      ,gv_tkn_api_name
+                                                      ,gv_cons_api)    -- 予測API
+                                                      ,1
+                                                      ,5000);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        gn_error_cnt := gn_error_cnt + 1;
+        ln_error_flg := 1;
+        EXIT;
+      END IF;
+    END LOOP del_serch_error_loop;
+    -- あらいがえ対象データの処理カウンタの初期化
+    gn_del_data_cnt := 0;
+-- mod end 1.11
 --
-        -- A-6-3 出荷数制限BForecast名抽出
-        get_f_degi_seigen_b( lt_if_data,
-                             ln_data_cnt,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+-- add end 1.11
+        <<forecast_proc_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
 --
-/*
-        -- A-6-4 出荷数制限BForecast日付抽出
-        get_f_dates_seigen_b( lt_if_data,
-                              ln_data_cnt,
-                              ln_data_flg,
-                              lv_errbuf,
-                              lv_retcode,
-                              lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
-*/
---
-        -- A-6-5 出荷数制限BForecast登録
-        put_forecast_seigen_b( lt_if_data,
+          -- A-6-3 出荷数制限BForecast名抽出
+          get_f_degi_seigen_b( lt_if_data,
                                ln_data_cnt,
-                               ln_data_flg,
                                lv_errbuf,
                                lv_retcode,
                                lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+-- mod start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+-- mod end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+  --
+  /*
+          -- A-6-4 出荷数制限BForecast日付抽出
+          get_f_dates_seigen_b( lt_if_data,
+                                ln_data_cnt,
+                                ln_data_flg,
+                                lv_errbuf,
+                                lv_retcode,
+                                lv_errmsg );
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+  */
+  --
+          -- A-6-5 出荷数制限BForecast登録
+          put_forecast_seigen_b( lt_if_data,
+                                 ln_data_cnt,
+                                 ln_data_flg,
+                                 lv_errbuf,
+                                 lv_retcode,
+                                 lv_errmsg );
+          -- エラーがあったらループ処理中止
+          IF (lv_retcode = gv_status_error) THEN
+  -- mod start 1.11
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+  -- mod end 1.11
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+            EXIT;
+          END IF;
+  --
+        END LOOP forecast_proc_loop;
+-- add start 1.11
+      END IF;
+-- add end 1.11
 --
-      END LOOP forecast_proc_loop;
+-- add start 1.11
+      IF (ln_error_flg = 0) THEN
+        -- Forecastデータに抽出したインターフェースデータを登録
+        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                               t_forecast_interface_tab_inst,
+                                               t_forecast_designator_tabl);
 --
+        <<serch_error_loop>>
+        FOR ln_data_cnt IN 1..gn_target_cnt LOOP
+          -- エラーだった場合
+          IF ( t_forecast_interface_tab_inst(ln_data_cnt).process_status <> 5 ) THEN
+            lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
+                                                          ,gv_msg_10a_045  -- APIエラー
+                                                          ,gv_tkn_api_name
+                                                          ,gv_cons_api)    -- 予測API
+                                                          ,1
+                                                          ,5000);
+            FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_inst(ln_data_cnt).error_message);
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            gn_error_cnt := gn_error_cnt + 1;
+            ln_error_flg := 1;
+          END IF;
+        END LOOP serch_error_loop;
+      END IF;
+--
+      -- 登録対象データのレコードの初期化
+      t_forecast_interface_tab_inst.delete;
+      t_forecast_designator_tabl.delete;
+-- add end 1.11
     END IF;
 --
     -- エラーがなかった場合はコミットする
@@ -11660,7 +12266,6 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
     -- 年月なので月初日・月末日を算出して保存(BETWEENに使用できる)=チェック後なのでエラーはなし
     gd_in_yyyymmdd_start := FND_DATE.STRING_TO_DATE(gv_in_yyyymm,'yyyymm');
     gd_in_yyyymmdd_end := ADD_MONTHS(FND_DATE.STRING_TO_DATE(gv_in_yyyymm,'yyyymm'),1)-1;
-
     -- A-1-2-3 年度チェック
     parameter_check_forecast_year(iv_forecast_designator, -- Forecast区分
                                   iv_forecast_year,       -- 年度
