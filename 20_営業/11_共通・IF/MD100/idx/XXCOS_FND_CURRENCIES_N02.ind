@@ -1,0 +1,2 @@
+CREATE INDEX applsys.xxcos_fnd_currencies_n02 ON fnd_currencies (currency_code,precision) TABLESPACE apps_ts_tx_idx;
+/
