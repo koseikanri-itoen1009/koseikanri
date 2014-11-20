@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/06/10    1.2   Oracle 石渡 賢和 TE080指摘事項修正
  *  2008/07/14    1.3   Oracle 椎名 昭圭 TE080指摘事項#73対応
  *  2008/08/04    1.4   Oracle 山根 一浩 ST#103対応
+ *  2008/08/22    1.5   Oracle 山根 一浩 T_S_597対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1290,6 +1291,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
+-- 2008/08/22 Add ↓
+    cv_def_date     CONSTANT VARCHAR2(4)  := '9999';
+    cv_def_kbn      CONSTANT VARCHAR2(1)  := '1';
+-- 2008/08/22 Add ↑
 --
     -- *** ローカル変数 ***
     mst_rec         masters_rec;
@@ -1303,6 +1308,9 @@ AS
     ln_qty          NUMBER;
     ln_len          NUMBER;
     lv_str          VARCHAR2(20);
+-- 2008/08/22 Add ↓
+    lv_def_date     VARCHAR2(6);
+-- 2008/08/22 Add ↑
 --
     -- *** ローカル・カーソル ***
 --
@@ -1363,14 +1371,26 @@ AS
 --
           -- 出荷依頼
           IF (iv_inf_div = gv_inf_sub_request) THEN
-            lv_data := lv_data || cv_sep_com || gv_max_date;                -- 計上年月
+-- 2008/08/22 Add ↓
+            lv_def_date := cv_def_date || mst_rec.prod_class_h_code
+                                       || mst_rec.request_class;
+-- 2008/08/22 Add ↑
+--
+-- 2008/08/22 Mod ↓
+--            lv_data := lv_data || cv_sep_com || gv_max_date;                -- 計上年月
+            lv_data := lv_data || cv_sep_com || lv_def_date;                -- 計上年月
+-- 2008/08/22 Mod ↓
             lv_data := lv_data || cv_sep_com || mst_rec.deliver_from;       -- 出庫拠点コード
             lv_data := lv_data || cv_sep_com || mst_rec.head_sales_branch;  -- 依頼拠点コード
 -- 2008/07/14 1.3 Update Start
 --            lv_data := lv_data || cv_sep_com || mst_rec.prod_class_code;    -- 商品区分
-            lv_data := lv_data || cv_sep_com || mst_rec.prod_class_h_code;  -- 本社商品区分
+--            lv_data := lv_data || cv_sep_com || mst_rec.prod_class_h_code;  -- 本社商品区分
 -- 2008/07/14 1.3 Update End
-            lv_data := lv_data || cv_sep_com || mst_rec.request_class;      -- 依頼区分
+--            lv_data := lv_data || cv_sep_com || mst_rec.request_class;      -- 依頼区分
+-- 2008/08/22 Mod ↓
+            lv_data := lv_data || cv_sep_com || cv_def_kbn;                 -- 本社商品区分
+            lv_data := lv_data || cv_sep_com || cv_def_kbn;                 -- 依頼区分
+-- 2008/08/22 Mod ↑
             lv_data := lv_data || cv_sep_com || mst_rec.v_arrival_date;     -- 着日(YYYYMMDD)
             lv_data := lv_data || cv_sep_com || mst_rec.deliver_to;         -- 配送先コード
             lv_data := lv_data || cv_sep_com || mst_rec.customer_code;      -- 顧客コード
