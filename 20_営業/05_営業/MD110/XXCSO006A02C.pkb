@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009-05-14    1.4   Kazuo.Satomura   T1_0931対応
  *  2009-05-28    1.5   Kazuo.Satomura   T1_0137対応
  *  2009-07-16    1.6   Kazuo.Satomura   0000070対応
+ *  2009-09-08    1.7   Daisuke.Abe      0001312対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -1800,7 +1801,10 @@ AS
       ,'0'
       ,'2'
       ,NULL
-      ,gt_customer_status
+      /* 2009.09.08 D.Abe 0001312対応 START */
+      --,gt_customer_status
+      ,g_visit_data_rec.customer_status
+      /* 2009.09.08 D.Abe 0001312対応 END */
       ,ln_task_id
       ,lv_errbuf
       ,lv_retcode
@@ -1943,7 +1947,10 @@ AS
       ,'0'
       ,'2'
       ,NULL
-      ,gt_customer_status
+/* 2009.09.08 D.Abe 0001312対応 START */
+      --,gt_customer_status
+      ,g_visit_data_rec.customer_status
+/* 2009.09.08 D.Abe 0001312対応 END */
       ,lv_errbuf
       ,lv_retcode
       ,lv_errmsg
