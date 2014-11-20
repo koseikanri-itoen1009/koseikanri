@@ -7,7 +7,7 @@ AS
  * Description      : éxï•êÊÇÃå⁄ãqÇÊÇËñ‚çáÇπÇ™Ç†Ç¡ÇΩèÍçáÅA
  *                    éÊà¯èåèï ÇÃã‡äzÇ™àÛéöÇ≥ÇÍÇΩéxï•àƒì‡èëÇàÛç¸ÇµÇ‹Ç∑ÅB
  * MD.050           : éxï•àƒì‡èëàÛç¸Åiñæç◊Åj MD050_COK_015_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/09/10    1.5   S.Moriyama       [è·äQ0000060] èZèäÇÃåÖêîïœçXëŒâû
  *  2009/10/14    1.6   S.Moriyama       [ïœçXàÀóäI_E_573] édì¸êÊñºèÃÅAèZèäÇÃê›íËì‡óeïœçXëŒâû
  *  2009/12/15    1.7   K.Nakamura       [è·äQE_ñ{â“ìÆ_00477] éxï•ï€óØíÜÇÃBMÅAÇ‹ÇΩîÃîÑéËêîóøÇ™0â~ÇÃèÍçáÇÕÅAèoóÕÇµÇ»Ç¢ÇÊÇ§èCê≥
+ *  2010/03/02    1.8   S.Moriyama       [è·äQE_ñ{â“ìÆ_01299] ëgÇ›ñﬂÇµå„ÇÃñ{êUécçÇèoóÕëŒâû
  *
  *****************************************************************************************/
   --==================================================
@@ -634,7 +635,10 @@ AS
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
-         , MAX( xbb.expect_payment_date )                       AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+--         , MAX( xbb.expect_payment_date )                       AS payment_date
+         , MAX( xbb.publication_date )                          AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
          , xcbs.delivery_cust_code                              AS cust_code
 -- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
 --         , hca1.cust_name                                       AS cust_name
@@ -761,21 +765,25 @@ AS
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_1
       AND pvsa.attribute5              = gv_param_base_code
--- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR START
---      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
---                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
-      AND (    (     xbb.fb_interface_status      = '0'
-                 AND xbb.fb_interface_date       IS NULL
-                 AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
-                                                AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
-               )
-            OR
-               (     xbb.fb_interface_status      = '1'
-                 AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
-                                                AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
-               )
-          )
--- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR END
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+---- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR START
+----      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+----                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+--      AND (    (     xbb.fb_interface_status      = '0'
+--                 AND xbb.fb_interface_date       IS NULL
+--                 AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+--                                                AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+--               )
+--            OR
+--               (     xbb.fb_interface_status      = '1'
+--                 AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+--                                                AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+--               )
+--          )
+---- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR END
+      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
 -- 2009/12/15 Ver.1.7 [è·äQE_ñ{â“ìÆ_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
@@ -938,7 +946,10 @@ AS
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
-         , MAX( xbb.expect_payment_date )                       AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+--         , MAX( xbb.expect_payment_date )                       AS payment_date
+         , MAX( xbb.publication_date )                          AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
          , xcbs.delivery_cust_code                              AS cust_code
 -- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
 --         , hca1.cust_name                                       AS cust_name
@@ -1065,8 +1076,12 @@ AS
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_2
       AND pvsa.attribute5              = gv_param_base_code
-      AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
-                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+--      AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+--                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
 -- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR START
 --      AND xbb.edi_interface_status     = '1'
@@ -1233,7 +1248,10 @@ AS
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
-         , MAX( xbb.expect_payment_date )                       AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+--         , MAX( xbb.expect_payment_date )                       AS payment_date
+         , MAX( xbb.publication_date )                          AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
          , xcbs.delivery_cust_code                              AS cust_code
 -- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
 --         , hca1.cust_name                                       AS cust_name
@@ -1345,8 +1363,12 @@ AS
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_3
       AND xbb.base_code                = gv_param_base_code
-      AND xbb.balance_cancel_date BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
-                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+--      AND xbb.balance_cancel_date BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+--                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
       AND xbb.expect_payment_amt_tax   = 0
       AND xbb.payment_amt_tax          > 0
@@ -1511,7 +1533,10 @@ AS
          , MAX( xbb.closing_date )                              AS target_month
          , MIN( xcbs.calc_target_period_from)                   AS term_from
          , MAX( xcbs.calc_target_period_to )                    AS term_to
-         , MAX( xbb.expect_payment_date )                       AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR START
+--         , MAX( xbb.expect_payment_date )                       AS payment_date
+         , MAX( xbb.publication_date )                          AS payment_date
+-- 2010/03/02 Ver.1.8 [è·äQE_ñ{â“ìÆ_01299] SCS S.Moriyama REPAIR END
          , xcbs.delivery_cust_code                              AS cust_code
 -- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
 --         , hca1.cust_name                                       AS cust_name
