@@ -1,0 +1,19 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Synonym Name: XXCCP_IF_JOB_STATUS
+ * Description : 対向システムジョブ状況テーブル(インデックス)
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/04/03    1.0   Masayuki.Sano    新規作成
+ *
+ ****************************************************************************************/
+CREATE UNIQUE INDEX xxccp.xxccp_if_job_status_u01 ON xxccp_if_job_status (
+  request_id_val
+)
+TABLESPACE xxidx2
+;
