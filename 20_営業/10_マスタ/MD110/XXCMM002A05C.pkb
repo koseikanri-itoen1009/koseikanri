@@ -6,18 +6,18 @@ AS
  * Package Name     : XXCMM002A05C(body)
  * Description      : 仕入先マスタデータ連携
  * MD.050           : 仕入先マスタデータ連携 MD050_CMM_002_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理プロシージャ(A-1)
- *  get_u_people_data      新規登録以外の社員データ取得プロシージャ(A-2)
- *  update_output_csv      CSVファイル出力(更新)プロシージャ(A-6)
- *  get_i_people_data      新規登録の社員データ取得プロシージャ(A-7)
- *  add_output_csv         CSVファイル出力(新規登録)プロシージャ(A-9)
- *  delete_table           仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ(A-10)
+ *  get_u_people_data      新規登録以外の社員データ取得プロシージャ(A-3)
+ *  update_output_csv      中間I/Fテーブルデータ登録(更新)プロシージャ(A-7)
+ *  get_i_people_data      新規登録の社員データ取得プロシージャ(A-8)
+ *  add_output_csv         中間I/Fテーブルデータ登録(新規登録)プロシージャ(A-10)
+ *  delete_table           仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ(A-2)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行プロシージャ
  *
@@ -33,6 +33,8 @@ AS
  *  2009/07/17    1.3   SCS 久保島 豊    統合テスト障害0000204の対応
  *                                       CSVファイルを作成しBFAのローダーで中間テーブルに取込から
  *                                       CSVファイル作成は廃止し、中間テーブルにINSERTを行うように修正
+ *  2009/10/02    1.4   SCS 久保島 豊    統合テスト障害0001221の対応
+ *                                       仕入先のマッピングを移行に合わせる
  *
  *****************************************************************************************/
 --
@@ -96,11 +98,15 @@ AS
   cv_prepay_ccid            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID';       -- 前払／仮払金勘定科目ID
   cv_group_type_nm          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_GROUP_TYPE_NM';     -- 支払グループタイプ名
   cv_pay_bumon_cd           CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BUMON_CD';      -- 本社総振込支払部門コード
-  cv_pay_bumon_nm           CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BUMON_NM';      -- 本社総振込支払部門名称
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--  cv_pay_bumon_nm           CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BUMON_NM';      -- 本社総振込支払部門名称
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
   cv_pay_method_nm          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_METHOD_NM';     -- 本社総振込支払方法名称
   cv_pay_bank               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BANK';          -- 本社総振込支払窓口銀行支店
   cv_koguti_genkin_nm       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_KOGUTI_GENKIN_NM';  -- 小口現金支払方法名称
-  cv_pay_type_nm            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_TYPE_NM';       -- 支払種類名称
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--  cv_pay_type_nm            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_TYPE_NM';       -- 支払種類名称
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
   cv_terms_id               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_TERMS_ID';          -- 支払条件
 -- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加「当方(I)」
   cv_bank_charge_bearer     CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_BANK_CHARGE';       -- 銀行手数料負担者
@@ -116,6 +122,19 @@ AS
   cv_holder_alt_nm          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_HOLDER_ALT_NM';     -- 現金ダミー口座名義人カナ名
   cv_address_nm1            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_ADDRESS1_NM';       -- 所在地1
   cv_address_nm2            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_ADDRESS2_NM';       -- 所在地2
+  --
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+  cv_pay_method_cd          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_METHOD_CD';     -- ダミー支払方法
+  cv_site_vat_cd            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_SITE_VAT_CD';       -- ダミー請求書税金コード
+  cv_prepay_ccid_aff1       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF1';  -- 前払/仮払金勘定科目AFF1
+  cv_prepay_ccid_aff3       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF3';  -- 前払/仮払金勘定科目AFF3
+  cv_prepay_ccid_aff4       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF4';  -- 前払/仮払金勘定科目AFF4
+  cv_prepay_ccid_aff5       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF5';  -- 前払/仮払金勘定科目AFF5
+  cv_prepay_ccid_aff6       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF6';  -- 前払/仮払金勘定科目AFF6
+  cv_prepay_ccid_aff7       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF7';  -- 前払/仮払金勘定科目AFF7
+  cv_prepay_ccid_aff8       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF8';  -- 前払/仮払金勘定科目AFF8
+  cv_bks_name               CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_NAME';              -- GL会計帳簿名
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                      -- プロファイル名
 -- 2009/07/17 Ver1.3 delete start by Yutaka.Kuboshima
@@ -131,11 +150,15 @@ AS
   cv_tkn_prepay_ccid_nm     CONSTANT VARCHAR2(22)  := '前払／仮払金勘定科目ID';
   cv_tkn_group_type_nm      CONSTANT VARCHAR2(20)  := '支払グループタイプ名';
   cv_tkn_pay_bumon_cd_nm    CONSTANT VARCHAR2(24)  := '本社総振込支払部門コード';
-  cv_tkn_pay_bumon_nm       CONSTANT VARCHAR2(22)  := '本社総振込支払部門名称';
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--  cv_tkn_pay_bumon_nm       CONSTANT VARCHAR2(22)  := '本社総振込支払部門名称';
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
   cv_tkn_pay_method_nm      CONSTANT VARCHAR2(22)  := '本社総振込支払方法名称';
   cv_tkn_pay_bank_nm        CONSTANT VARCHAR2(26)  := '本社総振込支払窓口銀行支店';
   cv_tkn_koguti_genkin_nm   CONSTANT VARCHAR2(20)  := '小口現金支払方法名称';
-  cv_tkn_pay_type_nm        CONSTANT VARCHAR2(20)  := '支払種類名称';
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--  cv_tkn_pay_type_nm        CONSTANT VARCHAR2(20)  := '支払種類名称';
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
   cv_tkn_terms_id_nm        CONSTANT VARCHAR2(10)  := '支払条件';
 -- Ver1.2  2009/04/21  Add  障害：T1_0438対応  銀行手数料負担者を追加
   cv_tkn_bank_charge        CONSTANT VARCHAR2(30)  := '銀行手数料負担者';
@@ -160,6 +183,20 @@ AS
   cv_tkn_table              CONSTANT VARCHAR2(10)  := 'NG_TABLE';                   -- テーブル
   cv_tkn_length             CONSTANT VARCHAR2(10)  := 'NG_LENGTH';                  -- 文字数
   cv_tkn_table_nm           CONSTANT VARCHAR2(31)  := '仕入先従業員情報中間I/Fテーブル';
+  --
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+  cv_tkn_pay_method_cd      CONSTANT VARCHAR2(30)  := 'ダミー支払方法';             -- ダミー支払方法
+  cv_tkn_site_vat_cd        CONSTANT VARCHAR2(30)  := 'ダミー請求書税金コード';     -- ダミー請求書税金コード
+  cv_tkn_ccid_aff1          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF1';    -- 前払/仮払金勘定科目AFF1
+  cv_tkn_ccid_aff3          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF3';    -- 前払/仮払金勘定科目AFF3
+  cv_tkn_ccid_aff4          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF4';    -- 前払/仮払金勘定科目AFF4
+  cv_tkn_ccid_aff5          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF5';    -- 前払/仮払金勘定科目AFF5
+  cv_tkn_ccid_aff6          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF6';    -- 前払/仮払金勘定科目AFF6
+  cv_tkn_ccid_aff7          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF7';    -- 前払/仮払金勘定科目AFF7
+  cv_tkn_ccid_aff8          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF8';    -- 前払/仮払金勘定科目AFF8
+  cv_tkn_bks_name           CONSTANT VARCHAR2(30)  := 'GL会計帳簿名';               -- GL会計帳簿名
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
+  --
 -- 2009/07/17 Ver1.3 add start by Yutaka.Kuboshima
   cv_tkn_err_msg            CONSTANT VARCHAR2(10)  := 'ERR_MSG';                    -- 項目名
 -- 2009/07/17 Ver1.3 add end by Yutaka.Kuboshima
@@ -200,6 +237,11 @@ AS
   cv_address_length         CONSTANT NUMBER(2)     := 35;                           -- プロファイル(所在地1、2)の文字数
   cv_pay_group_length       CONSTANT NUMBER(2)     := 25;                           -- 支払グループコードの文字数
   cv_9000                   CONSTANT VARCHAR2(4)   := '9000';                       -- CSV出力時に使用する文字列
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+  cv_y_flag                 CONSTANT VARCHAR2(1)   := 'Y';                          -- Yフラグ
+  cv_n_flag                 CONSTANT VARCHAR2(1)   := 'N';                          -- Nフラグ
+  cv_i_flag                 CONSTANT VARCHAR2(1)   := 'I';                          -- Iフラグ
+  cv_dummy                  CONSTANT VARCHAR2(1)   := '*';                          -- ダミー値(*)
 --
 -- Ver1.1 2009/03/03 Mod  コンテキストにORG_IDを設定
   -- ORG_ID
@@ -229,11 +271,15 @@ AS
   gv_prepay_ccid            VARCHAR2(50);         -- 前払／仮払金勘定科目ID
   gv_group_type_nm          VARCHAR2(50);         -- 支払グループタイプ名
   gv_pay_bumon_cd           VARCHAR2(50);         -- 本社総振込支払部門コード
-  gv_pay_bumon_nm           VARCHAR2(50);         -- 本社総振込支払部門名称
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--  gv_pay_bumon_nm           VARCHAR2(50);         -- 本社総振込支払部門名称
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
   gv_pay_method_nm          VARCHAR2(50);         -- 本社総振込支払方法名称
   gv_pay_bank               VARCHAR2(50);         -- 本社総振込支払窓口銀行支店
   gv_koguti_genkin_nm       VARCHAR2(50);         -- 小口現金支払方法名称
-  gv_pay_type_nm            VARCHAR2(50);         -- 支払種類名称
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--  gv_pay_type_nm            VARCHAR2(50);         -- 支払種類名称
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
   gv_terms_id               VARCHAR2(50);         -- 支払条件
   gv_bank_number            VARCHAR2(50);         -- 現金ダミー銀行支店コード
   gv_bank_num               VARCHAR2(50);         -- 現金ダミー銀行コード
@@ -352,6 +398,18 @@ AS
   gv_s_bank_charge_new      VARCHAR2(1);          -- 仕入先サイト銀行手数料負担者(新規登録用)
 -- End Ver1.2
 --
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+  gv_pay_method_cd          VARCHAR2(25);         -- 仕入先サイトダミー支払方法
+  gv_site_vat_cd            VARCHAR2(20);         -- 仕入先サイトダミー請求書税金コード
+  gv_non_recover_tax_flag   VARCHAR2(1);          -- 会計オプション：控除対象消費税使用可
+  gv_tax_rounding_rule      VARCHAR2(1);          -- 会計オプション：端数処理規則
+  gv_auto_tax_calc_flag     VARCHAR2(1);          -- 買掛/未払金オプション：計算レベル
+  gv_auto_tax_calc_override VARCHAR2(1);          -- 買掛/未払金オプション：計算レベル上書きの許可
+  gv_bks_name               VARCHAR2(100);        -- GL会計帳簿名
+  gn_chart_of_acct_id       NUMBER;               -- 勘定科目体系ＩＤ
+  gv_id_flex_code           VARCHAR2(100);        -- キーフレックスコード
+  g_aff_segments_tab        fnd_flex_ext.segmentarray; -- AFFセグメントテーブル
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
   -- ===============================
   -- ユーザー定義グローバルカーソル
   -- ===============================
@@ -463,12 +521,19 @@ AS
     -- *** ローカル定数 ***
     -- ファイルオープンモード
     cv_open_mode_w          CONSTANT VARCHAR2(10)  := 'w';           -- 上書き
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+    cv_short_name           VARCHAR2(5) := 'SQLGL';
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
 --
     -- *** ローカル変数 ***
     lb_fexists              BOOLEAN;              -- ファイルが存在するかどうか
     ln_file_size            NUMBER;               -- ファイルの長さ
     ln_block_size           NUMBER;               -- ファイルシステムのブロックサイズ
     lv_tkn_nm               VARCHAR2(31);         -- トークン
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+    lb_ret                  BOOLEAN;
+    ln_ccid                 gl_code_combinations.code_combination_id%TYPE;
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
 --
     -- *** ローカル・カーソル ***
     CURSOR get_vendors_interface_cur IS
@@ -564,11 +629,13 @@ AS
       lv_tkn_nm := cv_tkn_pay_bumon_cd_nm;
       RAISE global_process_expt;
     END IF;
-    gv_pay_bumon_nm := fnd_profile.value(cv_pay_bumon_nm);
-    IF (gv_pay_bumon_nm IS NULL) THEN
-      lv_tkn_nm := cv_tkn_pay_bumon_nm;
-      RAISE global_process_expt;
-    END IF;
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--    gv_pay_bumon_nm := fnd_profile.value(cv_pay_bumon_nm);
+--    IF (gv_pay_bumon_nm IS NULL) THEN
+--      lv_tkn_nm := cv_tkn_pay_bumon_nm;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
     gv_pay_method_nm := fnd_profile.value(cv_pay_method_nm);
     IF (gv_pay_method_nm IS NULL) THEN
       lv_tkn_nm := cv_tkn_pay_method_nm;
@@ -584,11 +651,13 @@ AS
       lv_tkn_nm := cv_tkn_koguti_genkin_nm;
       RAISE global_process_expt;
     END IF;
-    gv_pay_type_nm := fnd_profile.value(cv_pay_type_nm);
-    IF (gv_pay_type_nm IS NULL) THEN
-      lv_tkn_nm := cv_tkn_pay_type_nm;
-      RAISE global_process_expt;
-    END IF;
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--    gv_pay_type_nm := fnd_profile.value(cv_pay_type_nm);
+--    IF (gv_pay_type_nm IS NULL) THEN
+--      lv_tkn_nm := cv_tkn_pay_type_nm;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
     gv_terms_id := fnd_profile.value(cv_terms_id);
     IF (gv_terms_id IS NULL) THEN
       lv_tkn_nm := cv_tkn_terms_id_nm;
@@ -667,17 +736,115 @@ AS
       RAISE global_process_expt;
     END IF;
     --
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+    -- ダミー支払方法の取得
+    gv_pay_method_cd := fnd_profile.value(cv_pay_method_cd);
+    IF (gv_pay_method_cd IS NULL) THEN
+      lv_tkn_nm := cv_tkn_pay_method_cd;
+      RAISE global_process_expt;
+    END IF;
+    -- ダミー請求書税金コードの取得
+    gv_site_vat_cd := fnd_profile.value(cv_site_vat_cd);
+    IF (gv_site_vat_cd IS NULL) THEN
+      lv_tkn_nm := cv_tkn_site_vat_cd;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF1の取得
+    g_aff_segments_tab( 1 ) := fnd_profile.value(cv_prepay_ccid_aff1);
+    IF (g_aff_segments_tab( 1 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff1;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF3の取得
+    g_aff_segments_tab( 3 ) := fnd_profile.value(cv_prepay_ccid_aff3);
+    IF (g_aff_segments_tab( 3 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff3;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF4の取得
+    g_aff_segments_tab( 4 ) := fnd_profile.value(cv_prepay_ccid_aff4);
+    IF (g_aff_segments_tab( 4 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff4;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF5の取得
+    g_aff_segments_tab( 5 ) := fnd_profile.value(cv_prepay_ccid_aff5);
+    IF (g_aff_segments_tab( 5 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff5;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF6の取得
+    g_aff_segments_tab( 6 ) := fnd_profile.value(cv_prepay_ccid_aff6);
+    IF (g_aff_segments_tab( 6 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff6;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF7の取得
+    g_aff_segments_tab( 7 ) := fnd_profile.value(cv_prepay_ccid_aff7);
+    IF (g_aff_segments_tab( 7 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff7;
+      RAISE global_process_expt;
+    END IF;
+    -- 前払/仮払金勘定科目AFF8の取得
+    g_aff_segments_tab( 8 ) := fnd_profile.value(cv_prepay_ccid_aff8);
+    IF (g_aff_segments_tab( 8 ) IS NULL) THEN
+      lv_tkn_nm := cv_tkn_ccid_aff8;
+      RAISE global_process_expt;
+    END IF;
+    -- GL会計帳簿名の取得
+    gv_bks_name := fnd_profile.value(cv_bks_name);
+    IF (gv_bks_name IS NULL) THEN
+      lv_tkn_nm := cv_tkn_bks_name;
+      RAISE global_process_expt;
+    END IF;
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
+    --
 -- Ver1.2  2009/04/21  Del  障害：T1_0438対応  会計オプションから取得するよう変更（負債・前払金）
     -- ============================================================
     --  会計オプションの取得
     -- ============================================================
     SELECT   TO_CHAR( accts_pay_code_combination_id )   -- 負債勘定
-            ,TO_CHAR( prepay_code_combination_id )      -- 前払金
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--            ,TO_CHAR( prepay_code_combination_id )      -- 前払金
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+            ,non_recoverable_tax_flag                   -- 控除対象消費税使用可
+            ,tax_rounding_rule                          -- 端数処理規則
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
     INTO     gv_accts_pay_ccid
-            ,gv_prepay_ccid
+-- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
+--            ,gv_prepay_ccid
+-- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+            ,gv_non_recover_tax_flag
+            ,gv_tax_rounding_rule
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
     FROM     financials_system_parameters;    -- 会計オプション
 -- End Ver1.2
     --
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+    -- ============================================================
+    --  買掛/未払金オプションの取得
+    -- ============================================================
+    SELECT   auto_tax_calc_flag               -- 計算レベル
+            ,auto_tax_calc_override           -- 計算レベル上書きの許可
+    INTO     gv_auto_tax_calc_flag
+            ,gv_auto_tax_calc_override
+    FROM     ap_system_parameters;            -- 買掛/未払金オプション
+    --
+    -- ============================================================
+    -- 勘定科目体系の取得
+    -- ============================================================
+    SELECT  gsob.chart_of_accounts_id    -- 勘定科目体系ＩＤ
+           ,fifsv.id_flex_code           -- キーフレックスコード
+    INTO    gn_chart_of_acct_id
+           ,gv_id_flex_code
+    FROM    fnd_id_flex_structures_vl    fifsv
+           ,gl_sets_of_books             gsob
+    WHERE   gsob.name            = gv_bks_name
+    AND     fifsv.id_flex_num    = gsob.chart_of_accounts_id;
+    --
+-- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
     -- ============================================================
     --  固定出力(I/Fファイル名部)
     -- ============================================================
@@ -772,6 +939,32 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/10/02 Ver1.4 add start by Yutaka.Kuboshima
+    -- =========================================================
+    --  前払/仮払金勘定科目CCID取得
+    -- =========================================================
+    -- 前払/仮払金勘定科目AFF2の設定
+    -- 財務経理部の部門コードを設定
+    g_aff_segments_tab( 2 ) := gv_pay_bumon_cd;
+    -- CCID取得関数呼び出し
+    lb_ret := fnd_flex_ext.get_combination_id(
+                 application_short_name  => cv_short_name          -- アプリケーション短縮名(GL)
+                ,key_flex_code           => gv_id_flex_code        -- キーフレックスコード
+                ,structure_number        => gn_chart_of_acct_id    -- 勘定科目体系番号
+                ,validation_date         => SYSDATE                -- 日付チェック
+                ,n_segments              => 8                      -- セグメント数
+                ,segments                => g_aff_segments_tab     -- セグメント値配列
+                ,combination_id          => ln_ccid                -- CCID
+              );
+    IF (lb_ret) THEN
+      -- 正常終了時
+      gv_prepay_ccid := TO_CHAR(ln_ccid);
+    ELSE
+      -- 異常終了時
+      lv_errmsg := fnd_flex_ext.get_message;
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
     -- =========================================================
     --  仕入先従業員情報中間I/Fテーブルロック
     -- =========================================================
@@ -828,7 +1021,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_u_people_data
-   * Description      : 新規登録以外の社員データ取得プロシージャ(A-2)
+   * Description      : 新規登録以外の社員データ取得プロシージャ(A-3)
    ***********************************************************************************/
   PROCEDURE get_u_people_data(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -913,7 +1106,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : update_output_csv
-   * Description      : CSVファイル出力(更新)プロシージャ(A-6)
+   * Description      : 中間I/Fテーブルデータ登録(更新)プロシージャ(A-7)
    ***********************************************************************************/
   PROCEDURE update_output_csv(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
@@ -1083,17 +1276,26 @@ AS
           AND      attribute2 = gt_u_people_data(ln_loop_cnt).ass_attribute3
           AND      ROWNUM = 1;
           IF (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
-            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+            lv_new_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
             -- 支払可能部門フラグになしをセット
             lv_pay_flg := 'N';
           ELSE
-            lv_new_pay_group := gt_u_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm || '/' || gv_pay_type_nm;
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--            lv_new_pay_group := gt_u_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm || '/' || gv_pay_type_nm;
+            lv_new_pay_group := gt_u_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
             -- 支払可能部門フラグにありをセット
             lv_pay_flg := 'Y';
           END IF;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+            lv_new_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
             -- 支払可能部門フラグになしをセット
             lv_pay_flg := 'N';
           WHEN OTHERS THEN
@@ -1124,7 +1326,11 @@ AS
           -- 退職した社員
           lv_kbn := cv_t;
         ELSIF ((lv_old_pay_group = lv_new_pay_group)
-          OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_nm))
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--          OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_nm))
+          -- 比較対象を本社総振込支払部門名称 -> 本社総振込支払部門コードに変更
+          OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_cd))
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
         THEN
           -- 異動も退職もしなかった社員
           lv_kbn := cv_o;
@@ -1345,7 +1551,10 @@ AS
                        gv_s_email_address,
                        gv_s_pps_flag,
                        gv_s_ps_flag
-              FROM     po_vendor_sites_all
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--              FROM     po_vendor_sites_all
+              FROM     po_vendor_sites
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
               WHERE    vendor_site_id = gn_s_vendor_site_id;
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
@@ -1692,7 +1901,11 @@ AS
           l_vend_if_rec.vndr_employee_id            := gn_v_employee_id;                                      -- 仕入先従業員ID
           l_vend_if_rec.vndr_vendor_type_lkup_code  := gv_v_vendor_type;                                      -- 仕入先仕入先タイプ
           l_vend_if_rec.vndr_terms_id               := gn_v_terms_id;                                         -- 仕入先支払条件
-          l_vend_if_rec.vndr_pay_group_lkup_code    := gv_v_pay_group;                                        -- 仕入先支払グループコード
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--          l_vend_if_rec.vndr_pay_group_lkup_code    := gv_v_pay_group;                                        -- 仕入先支払グループコード
+          -- 仕入先サイト支払条件と同値をセット
+          l_vend_if_rec.vndr_pay_group_lkup_code    := lv_new_pay_group;                                      -- 仕入先支払グループコード
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
           l_vend_if_rec.vndr_invoice_amount_limit   := gn_v_invoice_amount_limit;                             -- 仕入先請求限度額
           l_vend_if_rec.vndr_accts_pay_ccid         := gn_v_accts_pay_ccid;                                   -- 仕入先負債勘定科目ID
           l_vend_if_rec.vndr_prepay_ccid            := gn_v_prepay_ccid;                                      -- 仕入先前払／仮払金勘定科目ID
@@ -2290,7 +2503,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_i_people_data
-   * Description      : 新規登録の社員データ取得プロシージャ(A-7)
+   * Description      : 新規登録の社員データ取得プロシージャ(A-8)
    ***********************************************************************************/
   PROCEDURE get_i_people_data(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -2378,7 +2591,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : add_output_csv
-   * Description      : CSVファイル出力(新規登録)プロシージャ(A-9)
+   * Description      : 中間I/Fテーブルデータ登録(新規登録)プロシージャ(A-10)
    ***********************************************************************************/
   PROCEDURE add_output_csv(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
@@ -2495,13 +2708,22 @@ AS
           AND      attribute2 = gt_i_people_data(ln_loop_cnt).ass_attribute3
           AND      ROWNUM = 1;
           IF (gt_i_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
-            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
           ELSE
-            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm || '/' || gv_pay_type_nm;
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm || '/' || gv_pay_type_nm;
+            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
           END IF;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
           WHEN OTHERS THEN
             RAISE global_api_others_expt;
         END;
@@ -2886,14 +3108,26 @@ AS
            ,SUBSTRB(cv_9000 || gt_i_people_data(ln_loop_cnt).employee_number,1,30) -- 仕入先仕入先番号
            ,SUBSTRB(gt_i_people_data(ln_loop_cnt).person_id,1,22) -- 仕入先従業員ID
            ,gv_v_vendor_type                                      -- 仕入先仕入先タイプ
-           ,NULL                                                  -- 仕入先支払条件
-           ,NULL                                                  -- 仕入先支払グループコード
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先支払条件
+--           ,NULL                                                  -- 仕入先支払グループコード
+           -- 仕入先サイト支払条件と同値をセット
+           ,gv_terms_id                                           -- 仕入先支払条件
+           -- 仕入先サイト支払グループコードと同値をセット
+           ,lv_pay_group                                          -- 仕入先支払グループコード
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先請求限度額
            ,NULL                                                  -- 仕入先負債勘定科目ID
            ,NULL                                                  -- 仕入先前払／仮払金勘定科目ID
            ,NULL                                                  -- 仕入先無効日
-           ,NULL                                                  -- 仕入先中小法人フラグ
-           ,NULL                                                  -- 仕入先入金確認フラグ
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先中小法人フラグ
+--           ,NULL                                                  -- 仕入先入金確認フラグ
+           -- 固定値：「N」をセット
+           ,cv_n_flag                                             -- 仕入先中小法人フラグ
+           -- 固定値：「Y」をセット
+           ,cv_y_flag                                             -- 仕入先入金確認フラグ
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先予備カテゴリ
            ,NULL                                                  -- 仕入先予備1
            ,NULL                                                  -- 仕入先予備2
@@ -2910,32 +3144,62 @@ AS
            ,NULL                                                  -- 仕入先予備13
            ,NULL                                                  -- 仕入先予備14
            ,NULL                                                  -- 仕入先予備15
-           ,NULL                                                  -- 仕入先源泉徴収税使用フラグ
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先源泉徴収税使用フラグ
+           -- 会計オプション：控除対象消費税使用可をセット
+           ,gv_non_recover_tax_flag                               -- 仕入先源泉徴収税使用フラグ
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先仕入先カナ名称
-           ,NULL                                                  -- 仕入先請求税自動計算端数処理規
-           ,NULL                                                  -- 仕入先請求税自動計算計算レベル
-           ,NULL                                                  -- 仕入先請求税自動計算上書きの許
-           ,NULL                                                  -- 仕入先銀行手数料負担者
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先請求税自動計算端数処理規
+--           ,NULL                                                  -- 仕入先請求税自動計算計算レベル
+--           ,NULL                                                  -- 仕入先請求税自動計算上書きの許
+--           ,NULL                                                  -- 仕入先銀行手数料負担者
+           -- 会計オプション：端数処理規則をセット
+           ,gv_tax_rounding_rule                                  -- 仕入先請求税自動計算端数処理規
+           -- 買掛/未払金オプション：計算レベルをセット
+           ,gv_auto_tax_calc_flag                                 -- 仕入先請求税自動計算計算レベル
+           -- 買掛/未払金オプション：計算レベル上書きの許可をセット
+           ,gv_auto_tax_calc_override                             -- 仕入先請求税自動計算上書きの許
+           -- 固定値：「I」をセット
+           ,gv_s_bank_charge_new                                  -- 仕入先銀行手数料負担者
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先サイト仕入先サイトID
            ,cv_site_code_comp                                     -- 仕入先サイト仕入先サイト名
            ,gv_address_nm1                                        -- 仕入先サイト所在地1
            ,gv_address_nm2                                        -- 仕入先サイト所在地2
            ,NULL                                                  -- 仕入先サイト所在地3
-           ,NULL                                                  -- 仕入先サイト住所・郡市区
-           ,NULL                                                  -- 仕入先サイト住所・都道府県
-           ,NULL                                                  -- 仕入先サイト住所・郵便番号
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイト住所・郡市区
+--           ,NULL                                                  -- 仕入先サイト住所・都道府県
+--           ,NULL                                                  -- 仕入先サイト住所・郵便番号
+           -- 固定値「*」をセット
+           ,cv_dummy                                              -- 仕入先サイト住所・郡市区
+           -- 固定値「*」をセット
+           ,cv_dummy                                              -- 仕入先サイト住所・都道府県
+           -- 固定値「*」をセット
+           ,cv_dummy                                              -- 仕入先サイト住所・郵便番号
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先サイト住所・州
            ,gv_country                                            -- 仕入先サイト国
            ,NULL                                                  -- 仕入先サイト市外局番
            ,NULL                                                  -- 仕入先サイト電話番号
            ,NULL                                                  -- 仕入先サイトFAX
            ,NULL                                                  -- 仕入先サイトFAX市外局番
-           ,NULL                                                  -- 仕入先サイト支払方法
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイト支払方法
+           -- 固定値「WIRE」をセット
+           ,gv_pay_method_cd                                      -- 仕入先サイト支払方法
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先サイト口座名称
            ,NULL                                                  -- 仕入先サイト口座番号
            ,NULL                                                  -- 仕入先サイト銀行コード
            ,NULL                                                  -- 仕入先サイト預金種別
-           ,NULL                                                  -- 仕入先サイト請求書税金コード
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイト請求書税金コード
+           -- 固定値「1205」をセット
+           ,gv_site_vat_cd                                        -- 仕入先サイト請求書税金コード
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先サイト配分セットID
            ,TO_NUMBER(gv_accts_pay_ccid)                          -- 仕入先サイト負債勘定科目ID
            ,TO_NUMBER(gv_prepay_ccid)                             -- 仕入先サイト前払／仮払金勘定科
@@ -2961,20 +3225,42 @@ AS
            ,NULL                                                  -- 仕入先サイト銀行支店コード
            ,NULL                                                  -- 仕入先サイト所在地4
            ,NULL                                                  -- 仕入先サイト郡
-           ,NULL                                                  -- 仕入先サイト源泉徴収税使用フラ
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイト源泉徴収税使用フラ
+           -- 会計オプション：控除対象消費税使用可をセット
+           ,gv_non_recover_tax_flag                               -- 仕入先サイト源泉徴収税使用フラ
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先サイト源泉徴収税グループ
            ,NULL                                                  -- 仕入先サイト仕入先サイト名（カ
            ,NULL                                                  -- 仕入先サイト住所カナ
-           ,NULL                                                  -- 仕入先サイト請求税自動計算端数
-           ,NULL                                                  -- 仕入先サイト請求税自動計算計算
-           ,NULL                                                  -- 仕入先サイト請求税自動計算上書
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイト請求税自動計算端数
+--           ,NULL                                                  -- 仕入先サイト請求税自動計算計算
+--           ,NULL                                                  -- 仕入先サイト請求税自動計算上書
+           -- 会計オプション：端数処理規則をセット
+           ,gv_tax_rounding_rule                                  -- 仕入先サイト請求税自動計算端数
+           -- 買掛/未払金オプション：計算レベルをセット
+           ,gv_auto_tax_calc_flag                                 -- 仕入先サイト請求税自動計算計算
+           -- 買掛/未払金オプション：計算レベル上書きの許可をセット
+           ,gv_auto_tax_calc_override                             -- 仕入先サイト請求税自動計算上書
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,gv_s_bank_charge_new                                  -- 仕入先サイト銀行手数料負担者
            ,NULL                                                  -- 仕入先サイト銀行支店タイプ
-           ,NULL                                                  -- 仕入先サイトRTS取引からデビッ
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイトRTS取引からデビッ
+           -- 固定値：「N」をセット
+           ,cv_n_flag                                             -- 仕入先サイトRTS取引からデビッ
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,NULL                                                  -- 仕入先サイト仕入先通知方法
            ,NULL                                                  -- 仕入先サイトEメールアドレス
-           ,NULL                                                  -- 仕入先サイト主支払サイトフラグ
-           ,NULL                                                  -- 仕入先サイト購買フラグ
+-- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+--           ,NULL                                                  -- 仕入先サイト主支払サイトフラグ
+--           ,NULL                                                  -- 仕入先サイト購買フラグ
+           -- 固定値：「N」をセット
+           ,cv_n_flag                                             -- 仕入先サイト主支払サイトフラグ
+           -- 固定値：「N」をセット
+           ,cv_n_flag                                             -- 仕入先サイト購買フラグ
+-- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
            ,gv_bank_number                                        -- 銀行口座銀行支店コード
            ,gv_bank_num                                           -- 銀行口座銀行コード
            ,SUBSTRB(gv_bank_nm || '/' || gv_shiten_nm,1,80)       -- 銀行口座口座名称
@@ -3074,7 +3360,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : delete_table
-   * Description      : 仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ(A-10)
+   * Description      : 仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ(A-2)
    ***********************************************************************************/
   PROCEDURE delete_table(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -3233,7 +3519,7 @@ AS
     --
 --2009/07/17 Ver1.3 add start by Yutaka.Kuboshima
     -- =============================================================
-    --  仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ
+    --  仕入先従業員情報中間I/Fテーブルデータ削除プロシージャ(A-2)
     -- =============================================================
     delete_table(
        lv_errbuf             -- エラー・メッセージ           --# 固定 #
@@ -3244,7 +3530,7 @@ AS
     END IF;
 --2009/07/17 Ver1.3 add end by Yutaka.Kuboshima
     -- =============================================================
-    --  新規登録以外の社員データ取得プロシージャ(A-2)
+    --  新規登録以外の社員データ取得プロシージャ(A-3)
     -- =============================================================
     get_u_people_data(
        lv_errbuf             -- エラー・メッセージ           --# 固定 #
@@ -3255,7 +3541,7 @@ AS
     END IF;
     --
     -- =============================================================
-    --  CSVファイル出力(更新)プロシージャ(A-6)
+    --  中間I/Fテーブルデータ登録(更新)プロシージャ(A-7)
     -- =============================================================
     IF (gn_target_update_cnt > 0) THEN
       update_output_csv(
@@ -3268,7 +3554,7 @@ AS
     END IF;
     --
     -- =============================================================
-    --  新規登録の社員データ取得プロシージャ(A-7)
+    --  新規登録の社員データ取得プロシージャ(A-8)
     -- =============================================================
     get_i_people_data(
        lv_errbuf             -- エラー・メッセージ           --# 固定 #
@@ -3279,7 +3565,7 @@ AS
     END IF;
     --
     -- =============================================================
-    --  CSVファイル出力(新規登録)プロシージャ(A-9)
+    --  中間I/Fテーブルデータ登録(新規登録)プロシージャ(A-10)
     -- =============================================================
     IF (gn_target_add_cnt > 0) THEN
       add_output_csv(
