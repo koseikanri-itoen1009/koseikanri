@@ -6,15 +6,17 @@ AS
  * Package Name     : XXCOI008A03C(body)
  * Description      : 情報系システムへの連携の為、EBSの月次在庫受払表(アドオン)をCSVファイルに出力
  * MD.050           : 月別受払残高情報系連携 <MD050_COI_008_A03>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(A-1)
- *  create_csv_p           受払(在庫)CSVの作成(A-4)
- *  recept_month_cur_p     月次在庫受払表情報の抽出(A-3)
+ *  create_csv_p           受払(在庫)CSVの作成(A-6)
+ *  get_inv_info_p         棚卸情報取得(A-5)
+ *  recept_month_cur_p     月次在庫受払表(累計)情報の抽出(A-4)
+ *  get_open_period_p      オープン在庫会計期間取得(A-3)
  *  submain                メイン処理プロシージャ
  *                           ・ファイルのオープン処理(A-2)
  *                           ・ファイルのクローズ処理(A-5) 
@@ -25,6 +27,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/07    1.0   S.Kanda          新規作成
+ *  2009/04/08    1.1   T.Nakamura       [障害 T1_0197] 月次在庫受払表（累計）データを基に
+ *                                                      受払残高情報を取得するよう変更
  *
  *****************************************************************************************/
 --
@@ -90,6 +94,11 @@ AS
   cv_file_encloser          CONSTANT VARCHAR2(2)   := '"';             -- 文字データ括り用
   cv_inv_kbn_2              CONSTANT VARCHAR2(2)   := '2';             -- 棚卸区分(月末)
   cv_yes                    CONSTANT VARCHAR2(2)   := 'Y';             -- フラグ用変数
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  cv_process_type_0         CONSTANT VARCHAR2(2)   := '0';             -- 処理区分(日次)
+  cv_fmt_date               CONSTANT VARCHAR2(6)   := 'YYYYMM';        -- 日付型フォーマット
+  cv_fmt_date_hyp           CONSTANT VARCHAR2(7)   := 'YYYY-MM';       -- 日付型フォーマット(ハイフン)
+-- == 2009/04/08 V1.1 Added START ===============================================================
   --
   -- メッセージ定数
   cv_msg_xxcoi_00003        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00003';
@@ -102,6 +111,13 @@ AS
   cv_msg_xxcoi_00027        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00027';
   cv_msg_xxcoi_00028        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00028';
   cv_msg_xxcoi_00029        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00029';
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  cv_msg_xxcoi_10374        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10374';
+  cv_msg_xxcoi_10375        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10375';
+  cv_msg_xxcoi_00011        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00011';
+  cv_msg_xxcoi_10376        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10376';
+  cv_msg_xxcoi_10377        CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10377';
+-- == 2009/04/08 V1.1 Added END   ===============================================================
   --
   --トークン
   cv_tkn_pro                CONSTANT VARCHAR2(10)  := 'PRO_TOK';       -- プロファイル名用
@@ -109,6 +125,13 @@ AS
   cv_cnt_token              CONSTANT VARCHAR2(10)  := 'COUNT';         -- 件数メッセージ用
   cv_tkn_file_name          CONSTANT VARCHAR2(10)  := 'FILE_NAME';     -- ファイル名用
   cv_tkn_org_code           CONSTANT VARCHAR2(15)  := 'ORG_CODE_TOK';  -- 在庫組織コード用
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  cv_tkn_process_type       CONSTANT VARCHAR2(15)  := 'PROCESS_TYPE';  -- 処理区分用
+  cv_tkn_month              CONSTANT VARCHAR2(15)  := 'MONTH';         -- 年月用
+  cv_tkn_base_code          CONSTANT VARCHAR2(15)  := 'BASE_CODE';     -- 拠点コード用
+  cv_tkn_subinventory       CONSTANT VARCHAR2(15)  := 'SUBINVENTORY';  -- 保管場所コード用
+  cv_tkn_item_code          CONSTANT VARCHAR2(15)  := 'ITEM_CODE';     -- 品目コード用
+-- == 2009/04/08 V1.1 Added END   ===============================================================
   --
   --ファイルオープンモード
   cv_file_mode              CONSTANT VARCHAR2(2)   := 'W';             -- オープンモード
@@ -128,71 +151,152 @@ AS
   gv_company_code       VARCHAR2(50);                          -- 会社コード取得用
   gv_file_name          VARCHAR2(150);                         -- ファイルパス名取得用
   gv_activ_file_h       UTL_FILE.FILE_TYPE;                    -- ファイルハンドル取得用
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  gv_process_type          VARCHAR2(1);                        -- 処理区分
+  gd_sysdate               DATE;                               -- システム日付
+  gn_open_period_cnt       NUMBER;                             -- 在庫会計期間取得件数
+  gn_month_begin_quantity  NUMBER;                             -- 月首棚卸高
+  gn_inv_result            NUMBER;                             -- 棚卸結果
+  gn_inv_result_bad        NUMBER;                             -- 棚卸結果(不良品)
+  gn_inv_wear              NUMBER;                             -- 棚卸減耗
+-- == 2009/04/08 V1.1 Added END   ===============================================================
 --
   -- ==============================
   -- ユーザー定義カーソル
   -- ==============================
-  -- 月別受払残高情報取得
-  CURSOR recept_month_cur
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  -- オープン在庫会計期間取得カーソル
+  CURSOR get_open_period_cur
   IS
-    SELECT xirm.practice_month          -- 年月
-         , xirm.base_code               -- 拠点コード
-         , xirm.subinventory_code       -- 保管場所
-         , xirm.subinventory_type       -- 保管場所区分
-         , xirm.operation_cost          -- 営業原価
-         , xirm.standard_cost           -- 標準原価
-         , xirm.month_begin_quantity    -- 月首棚卸高
-         , xirm.factory_stock           -- 工場入庫
-         , xirm.factory_stock_b         -- 工場入庫振戻
-         , xirm.change_stock            -- 倉替入庫
-         , xirm.warehouse_stock         -- 倉庫からの入庫
-         , xirm.truck_stock             -- 営業車からの入庫
-         , xirm.others_stock            -- 入出庫＿その他入庫
-         , xirm.goods_transfer_new      -- 商品振替(新商品)
-         , xirm.sales_shipped           -- 売上出庫
-         , xirm.sales_shipped_b         -- 売上出庫振戻
-         , xirm.return_goods            -- 返品
-         , xirm.return_goods_b          -- 返品振戻
-         , xirm.change_ship             -- 倉替出庫
-         , xirm.warehouse_ship          -- 倉庫へ出庫
-         , xirm.truck_ship              -- 営業車へ出庫
-         , xirm.others_ship             -- 入出庫＿その他出庫
-         , xirm.inventory_change_in     -- 基準在庫変更入庫
-         , xirm.inventory_change_out    -- 基準在庫変更出庫
-         , xirm.factory_return          -- 工場返品
-         , xirm.factory_return_b        -- 工場返品振戻
-         , xirm.factory_change          -- 工場倉替
-         , xirm.factory_change_b        -- 工場倉替振戻
-         , xirm.removed_goods           -- 廃却
-         , xirm.removed_goods_b         -- 廃却振戻
-         , xirm.goods_transfer_old      -- 商品振替(旧商品)
-         , xirm.sample_quantity         -- 見本出庫
-         , xirm.sample_quantity_b       -- 見本出庫振戻
-         , xirm.customer_sample_ship    -- 顧客見本出庫
-         , xirm.customer_sample_ship_b  -- 顧客見本出庫振戻
-         , xirm.customer_support_ss     -- 顧客協賛見本出庫
-         , xirm.customer_support_ss_b   -- 顧客協賛見本出庫振戻
-         , xirm.ccm_sample_ship         -- 顧客広告宣伝費A自社商品
-         , xirm.ccm_sample_ship_b       -- 顧客広告宣伝費A自社商品振戻
-         , xirm.inv_result              -- 棚卸結果
-         , xirm.inv_result_bad          -- 棚卸結果(不良品)
-         , xirm.inv_wear                -- 棚卸減耗
-         , xirm.last_update_date        -- 最終更新日
-         , msib.segment1                -- 品目コード
-    FROM   xxcoi_inv_reception_monthly  xirm  -- 月次在庫受払表テーブル
-         , mtl_system_items_b           msib  -- 品目マスタ
-         , org_acct_periods             oap   -- 在庫会計期間
-    WHERE  xirm.inventory_kbn       = cv_inv_kbn_2            -- 棚卸区分(月末)
-    AND    msib.inventory_item_id   = xirm.inventory_item_id  -- 品目ID
-    AND    msib.organization_id     = gn_organization_id      -- A-1.で取得した在庫組織ID
-    AND    oap.organization_id      = msib.organization_id    -- 組織ID
-    AND    xirm.practice_date                           -- 月次在庫受払表テーブル.年月日
-      BETWEEN oap.period_start_date                     -- 会計期間開始日
-      AND     oap.schedule_close_date                   -- クローズ予定日
-    AND    oap.open_flag            = cv_yes;           -- オープンフラグ
-    --
-    -- recept_monthレコード型
-    recept_month_rec   recept_month_cur%ROWTYPE;
+    SELECT   TO_CHAR( oap.period_start_date, cv_fmt_date ) AS year_month
+    FROM     org_acct_periods       oap
+    WHERE    oap.organization_id  = gn_organization_id
+    AND      oap.open_flag        = cv_yes
+    AND      oap.period_name     <= TO_CHAR( gd_process_date, cv_fmt_date_hyp )
+    ORDER BY year_month
+  ;
+  TYPE get_open_period_ttype IS TABLE OF get_open_period_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  get_open_period_tab        get_open_period_ttype;
+-- == 2009/04/08 V1.1 Added END   ===============================================================
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--  -- 月別受払残高情報取得
+--  CURSOR recept_month_cur
+--  IS
+--    SELECT xirm.practice_month          -- 年月
+--         , xirm.base_code               -- 拠点コード
+--         , xirm.subinventory_code       -- 保管場所
+--         , xirm.subinventory_type       -- 保管場所区分
+--         , xirm.operation_cost          -- 営業原価
+--         , xirm.standard_cost           -- 標準原価
+--         , xirm.month_begin_quantity    -- 月首棚卸高
+--         , xirm.factory_stock           -- 工場入庫
+--         , xirm.factory_stock_b         -- 工場入庫振戻
+--         , xirm.change_stock            -- 倉替入庫
+--         , xirm.warehouse_stock         -- 倉庫からの入庫
+--         , xirm.truck_stock             -- 営業車からの入庫
+--         , xirm.others_stock            -- 入出庫＿その他入庫
+--         , xirm.goods_transfer_new      -- 商品振替(新商品)
+--         , xirm.sales_shipped           -- 売上出庫
+--         , xirm.sales_shipped_b         -- 売上出庫振戻
+--         , xirm.return_goods            -- 返品
+--         , xirm.return_goods_b          -- 返品振戻
+--         , xirm.change_ship             -- 倉替出庫
+--         , xirm.warehouse_ship          -- 倉庫へ出庫
+--         , xirm.truck_ship              -- 営業車へ出庫
+--         , xirm.others_ship             -- 入出庫＿その他出庫
+--         , xirm.inventory_change_in     -- 基準在庫変更入庫
+--         , xirm.inventory_change_out    -- 基準在庫変更出庫
+--         , xirm.factory_return          -- 工場返品
+--         , xirm.factory_return_b        -- 工場返品振戻
+--         , xirm.factory_change          -- 工場倉替
+--         , xirm.factory_change_b        -- 工場倉替振戻
+--         , xirm.removed_goods           -- 廃却
+--         , xirm.removed_goods_b         -- 廃却振戻
+--         , xirm.goods_transfer_old      -- 商品振替(旧商品)
+--         , xirm.sample_quantity         -- 見本出庫
+--         , xirm.sample_quantity_b       -- 見本出庫振戻
+--         , xirm.customer_sample_ship    -- 顧客見本出庫
+--         , xirm.customer_sample_ship_b  -- 顧客見本出庫振戻
+--         , xirm.customer_support_ss     -- 顧客協賛見本出庫
+--         , xirm.customer_support_ss_b   -- 顧客協賛見本出庫振戻
+--         , xirm.ccm_sample_ship         -- 顧客広告宣伝費A自社商品
+--         , xirm.ccm_sample_ship_b       -- 顧客広告宣伝費A自社商品振戻
+--         , xirm.inv_result              -- 棚卸結果
+--         , xirm.inv_result_bad          -- 棚卸結果(不良品)
+--         , xirm.inv_wear                -- 棚卸減耗
+--         , xirm.last_update_date        -- 最終更新日
+--         , msib.segment1                -- 品目コード
+--    FROM   xxcoi_inv_reception_monthly  xirm  -- 月次在庫受払表テーブル
+--         , mtl_system_items_b           msib  -- 品目マスタ
+--         , org_acct_periods             oap   -- 在庫会計期間
+--    WHERE  xirm.inventory_kbn       = cv_inv_kbn_2            -- 棚卸区分(月末)
+--    AND    msib.inventory_item_id   = xirm.inventory_item_id  -- 品目ID
+--    AND    msib.organization_id     = gn_organization_id      -- A-1.で取得した在庫組織ID
+--    AND    oap.organization_id      = msib.organization_id    -- 組織ID
+--    AND    xirm.practice_date                           -- 月次在庫受払表テーブル.年月日
+--      BETWEEN oap.period_start_date                     -- 会計期間開始日
+--      AND     oap.schedule_close_date                   -- クローズ予定日
+--    AND    oap.open_flag            = cv_yes;           -- オープンフラグ
+--
+--    --
+--    -- recept_monthレコード型
+--    recept_month_rec   recept_month_cur%ROWTYPE;
+    -- 月次在庫受払表(累計)情報抽出カーソル
+    CURSOR recept_month_cur(
+             iv_practice_date              IN VARCHAR2
+           )
+    IS
+      SELECT xirs.organization_id          AS organization_id           -- 組織ID
+           , xirs.inventory_item_id        AS inventory_item_id         -- 品目ID
+           , xirs.practice_date            AS practice_date             -- 年月
+           , xirs.base_code                AS base_code                 -- 拠点コード
+           , xirs.subinventory_code        AS subinventory_code         -- 保管場所
+           , xirs.subinventory_type        AS subinventory_type         -- 保管場所区分
+           , xirs.operation_cost           AS operation_cost            -- 営業原価
+           , xirs.standard_cost            AS standard_cost             -- 標準原価
+           , xirs.factory_stock            AS factory_stock             -- 工場入庫
+           , xirs.factory_stock_b          AS factory_stock_b           -- 工場入庫振戻
+           , xirs.change_stock             AS change_stock              -- 倉替入庫
+           , xirs.warehouse_stock          AS warehouse_stock           -- 倉庫より入庫
+           , xirs.truck_stock              AS truck_stock               -- 営業車より入庫
+           , xirs.others_stock             AS others_stock              -- 入出庫＿その他入庫
+           , xirs.goods_transfer_new       AS goods_transfer_new        -- 商品振替(新商品)
+           , xirs.sales_shipped            AS sales_shipped             -- 売上出庫
+           , xirs.sales_shipped_b          AS sales_shipped_b           -- 売上出庫振戻
+           , xirs.return_goods             AS return_goods              -- 返品
+           , xirs.return_goods_b           AS return_goods_b            -- 返品振戻
+           , xirs.change_ship              AS change_ship               -- 倉替出庫
+           , xirs.warehouse_ship           AS warehouse_ship            -- 倉庫へ返庫
+           , xirs.truck_ship               AS truck_ship                -- 営業車へ出庫
+           , xirs.others_ship              AS others_ship               -- 入出庫＿その他出庫
+           , xirs.inventory_change_in      AS inventory_change_in       -- 基準在庫変更入庫
+           , xirs.inventory_change_out     AS inventory_change_out      -- 基準在庫変更出庫
+           , xirs.factory_return           AS factory_return            -- 工場返品
+           , xirs.factory_return_b         AS factory_return_b          -- 工場返品振戻
+           , xirs.factory_change           AS factory_change            -- 工場倉替
+           , xirs.factory_change_b         AS factory_change_b          -- 工場倉替振戻
+           , xirs.removed_goods            AS removed_goods             -- 廃却
+           , xirs.removed_goods_b          AS removed_goods_b           -- 廃却振戻
+           , xirs.goods_transfer_old       AS goods_transfer_old        -- 商品振替(旧商品)
+           , xirs.sample_quantity          AS sample_quantity           -- 見本出庫
+           , xirs.sample_quantity_b        AS sample_quantity_b         -- 見本出庫振戻
+           , xirs.customer_sample_ship     AS customer_sample_ship      -- 顧客見本出庫
+           , xirs.customer_sample_ship_b   AS customer_sample_ship_b    -- 顧客見本出庫振戻
+           , xirs.customer_support_ss      AS customer_support_ss       -- 顧客協賛見本出庫
+           , xirs.customer_support_ss_b    AS customer_support_ss_b     -- 顧客協賛見本出庫振戻
+           , xirs.ccm_sample_ship          AS ccm_sample_ship           -- 顧客広告宣伝費A自社商品
+           , xirs.ccm_sample_ship_b        AS ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+           , xirs.book_inventory_quantity  AS book_inventory_quantity   -- 帳簿在庫数
+           , xirs.last_update_date         AS last_update_date          -- 最終更新日
+           , msib.segment1                 AS segment1                  -- 品目コード
+      FROM   xxcoi_inv_reception_sum       xirs                         -- 月次在庫受払表(累計)テーブル
+           , mtl_system_items_b            msib                         -- 品目マスタ
+      WHERE  xirs.practice_date            =  iv_practice_date          -- 年月
+      AND    msib.inventory_item_id        =  xirs.inventory_item_id    -- 品目ID
+      AND    msib.organization_id          =  gn_organization_id        -- A-1.で取得した在庫組織ID
+      ;
+      recept_month_rec   recept_month_cur%ROWTYPE;
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -262,11 +366,22 @@ AS
     gv_company_code       :=  NULL;          -- 会社コード名
     gv_file_name          :=  NULL;          -- ファイルパス名
     lv_directory_path     :=  NULL;          -- ディレクトリフルパス
+-- == 2009/04/08 V1.1 Added START ===============================================================
+    gd_sysdate              := NULL;         -- システム日付
+    gn_open_period_cnt      := 0;            -- 在庫会計期間取得件数
+    gn_month_begin_quantity := NULL;         -- 月首棚卸高
+    gn_inv_result           := NULL;         -- 棚卸結果
+    gn_inv_result_bad       := NULL;         -- 棚卸結果(不良品)
+    gn_inv_wear             := NULL;         -- 棚卸減耗
+-- == 2009/04/08 V1.1 Added END   ===============================================================
     --
     -- ===============================
     --  1.SYSDATE取得
     -- ===============================
-    gd_process_date   :=  sysdate;
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--    gd_process_date   :=  sysdate;
+    gd_sysdate   :=  SYSDATE;
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
     --
     -- ====================================================
     -- 2.情報系_OUTBOUND格納ディレクトリ名情報を取得
@@ -371,12 +486,19 @@ AS
     -- =====================================
     -- 6.メッセージの出力①
     -- =====================================
-    -- コンカレント入力パラメータなしメッセージを出力
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--    -- コンカレント入力パラメータなしメッセージを出力
+--    gv_out_msg  := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_appl_short_name
+--                     , iv_name         => cv_msg_xxcoi_00023
+--                    );
+    -- 入力パラメータ.処理区分の内容を出力
     gv_out_msg  := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
-                     , iv_name         => cv_msg_xxcoi_00023
+                     , iv_name         => cv_msg_xxcoi_10374
+                     , iv_token_name1  => cv_tkn_process_type
+                     , iv_token_value1 => gv_process_type
                     );
-    --
     -- メッセージ出力
     FND_FILE.PUT_LINE(
         which  => FND_FILE.OUTPUT
@@ -387,6 +509,30 @@ AS
       , buff   => gv_out_msg
     );
     --
+    --空行挿入
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => ''
+    );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.LOG
+      , buff   => ''
+    );
+    --
+    -- 入力パラメータ.処理区分がNULLの場合
+    IF ( gv_process_type IS NULL ) THEN
+      -- 入力パラメータ未設定エラー（処理区分）
+      -- 「入力パラメータ：処理区分が未設定です。」
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                       , iv_name         => cv_msg_xxcoi_10375
+                      );
+      lv_errbuf   := lv_errmsg;
+      --
+      RAISE global_process_expt;
+    END IF;
+    --
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
     -- =====================================
     -- 7.メッセージの出力②
     -- =====================================
@@ -429,6 +575,23 @@ AS
         which  => FND_FILE.OUTPUT
       , buff   => gv_out_msg
       );
+-- == 2009/04/08 V1.1 Added START ===============================================================
+    -- ===================================
+    --  9.業務処理日付取得
+    -- ===================================
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+    --
+    IF (gd_process_date IS NULL) THEN
+      -- 業務日付の取得に失敗しました。
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_appl_short_name
+                      , iv_name          => cv_msg_xxcoi_00011
+                     );
+      lv_errbuf   := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+-- == 2009/04/08 V1.1 Added END   ===============================================================
 --
   EXCEPTION
 --
@@ -454,7 +617,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : create_csv_p
-   * Description      : 受払(在庫)CSVの作成(A-4)
+   * Description      : 受払(在庫)CSVの作成(A-6)
    ***********************************************************************************/
   PROCEDURE create_csv_p(
      ir_recept_month_cur   IN  recept_month_cur%ROWTYPE -- コラムNO.
@@ -531,7 +694,10 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    lv_process_date     := TO_CHAR( gd_process_date , 'YYYYMMDDHH24MISS' );                    -- 連携日時
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--    lv_process_date     := TO_CHAR( gd_process_date , 'YYYYMMDDHH24MISS' );                    -- 連携日時
+    lv_process_date     := TO_CHAR( gd_sysdate , 'YYYYMMDDHH24MISS' );                         -- 連携日時
+-- == 2009/04/08 V1.1 Moded START ===============================================================
     lv_last_update_date := TO_CHAR(ir_recept_month_cur.last_update_date , 'YYYYMMDDHH24MISS'); -- 最終更新日
 --
     -- ============================================
@@ -588,14 +754,20 @@ AS
     -- カーソルで取得した値をCSVファイルに格納します
     lv_recept_month := 
       cv_file_encloser || gv_company_code                       || cv_file_encloser || cv_csv_com || -- 1.会社コード
-                          ir_recept_month_cur.practice_month                        || cv_csv_com || -- 2.年月
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--                          ir_recept_month_cur.practice_month                        || cv_csv_com || -- 2.年月
+                          ir_recept_month_cur.practice_date                         || cv_csv_com || -- 2.年月
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
       cv_file_encloser || ir_recept_month_cur.base_code         || cv_file_encloser || cv_csv_com || -- 3.拠点（部門）コード
       cv_file_encloser || ir_recept_month_cur.subinventory_code || cv_file_encloser || cv_csv_com || -- 4.保管場所コード
       cv_file_encloser || ir_recept_month_cur.segment1          || cv_file_encloser || cv_csv_com || -- 5.商品コード
       cv_file_encloser || ir_recept_month_cur.subinventory_type || cv_file_encloser || cv_csv_com || -- 6.保管場所区分
                           ir_recept_month_cur.operation_cost                        || cv_csv_com || -- 7.営業原価
                           ir_recept_month_cur.standard_cost                         || cv_csv_com || -- 8.標準原価
-                          ir_recept_month_cur.month_begin_quantity                  || cv_csv_com || -- 9.月首棚卸高
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--                          ir_recept_month_cur.month_begin_quantity                  || cv_csv_com || -- 9.月首棚卸高
+                          gn_month_begin_quantity                                   || cv_csv_com || -- 9.月首棚卸高
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
                           ln_factory_stock                                          || cv_csv_com || -- 10.工場入庫
                           ir_recept_month_cur.change_stock                          || cv_csv_com || -- 11.倉替入庫
                           ln_sum_stock                                              || cv_csv_com || -- 12.拠点内入庫
@@ -610,9 +782,14 @@ AS
                           ln_removed_goods                                          || cv_csv_com || -- 21.廃却出庫
                           ir_recept_month_cur.goods_transfer_old                    || cv_csv_com || -- 22.振替出庫
                           ln_sum_sample                                             || cv_csv_com || -- 23.協賛見本
-                          ir_recept_month_cur.inv_result                            || cv_csv_com || -- 24.棚卸結果
-                          ir_recept_month_cur.inv_result_bad                        || cv_csv_com || -- 25.棚卸結果(不良品)
-                          ir_recept_month_cur.inv_wear                              || cv_csv_com || -- 26.棚卸減耗
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--                          ir_recept_month_cur.inv_result                            || cv_csv_com || -- 24.棚卸結果
+--                          ir_recept_month_cur.inv_result_bad                        || cv_csv_com || -- 25.棚卸結果(不良品)
+--                          ir_recept_month_cur.inv_wear                              || cv_csv_com || -- 26.棚卸減耗
+                          gn_inv_result                                             || cv_csv_com || -- 24.棚卸結果
+                          gn_inv_result_bad                                         || cv_csv_com || -- 25.棚卸結果(不良品)
+                          gn_inv_wear                                               || cv_csv_com || -- 26.棚卸減耗
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
                           lv_last_update_date                                       || cv_csv_com || -- 27.更新日時
                           lv_process_date;                                                           -- 28.連携日時
 --
@@ -646,14 +823,245 @@ AS
 --
   END create_csv_p;
 --
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : get_inv_info_p
+   * Description      : 棚卸情報取得(A-5)
+   ***********************************************************************************/
+  PROCEDURE get_inv_info_p(
+     ir_recept_month_rec   IN  recept_month_cur%ROWTYPE -- コラムNO.
+   , ov_errbuf             OUT VARCHAR2                 -- エラー・メッセージ           --# 固定 #
+   , ov_retcode            OUT VARCHAR2                 -- リターン・コード             --# 固定 #
+   , ov_errmsg             OUT VARCHAR2)                -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_inv_info_p'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- A-5．棚卸情報取得
+    -- パラメータ「処理区分」が「0：日次」の場合
+    IF ( gv_process_type = cv_process_type_0 ) THEN
+--
+      -- 在庫会計期間の件数＞1件の場合（前月締め処理前）
+      IF ( gn_open_period_cnt > 1 ) THEN
+--
+        -- 月次在庫受払表(累計)の年月＜業務日付の年月の場合
+        IF ( ir_recept_month_rec.practice_date < TO_CHAR( gd_process_date, cv_fmt_date ) ) THEN
+--
+          BEGIN
+            -- 月首棚卸高を取得
+            SELECT xirm.inv_result                                                      -- 棚卸結果
+            INTO   gn_month_begin_quantity
+            FROM   xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
+            WHERE  xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
+            AND    xirm.base_code              = ir_recept_month_rec.base_code          -- A-4で取得した拠点コード
+            AND    xirm.subinventory_code      = ir_recept_month_rec.subinventory_code  -- A-4で取得した保管場所
+            AND    xirm.practice_month         = TO_CHAR(
+                                                     ADD_MONTHS(
+                                                         TO_DATE( ir_recept_month_rec.practice_date, cv_fmt_date )
+                                                       , -1 )
+                                                   , cv_fmt_date )                      -- A-4で取得した年月の前月
+            AND    xirm.inventory_item_id      = ir_recept_month_rec.inventory_item_id  -- A-4で取得した品目ID
+            AND    xirm.inventory_kbn          = cv_inv_kbn_2                           -- 棚卸区分：'2'（月末）
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              gn_month_begin_quantity := 0;
+          END;
+--
+        -- 月次在庫受払表(累計)の年月＝業務日付の年月の場合
+        ELSE
+          gn_month_begin_quantity := 0;
+--
+        END IF;
+--
+      -- 在庫会計期間の件数＝1件の場合（前月締め処理後）
+      ELSE
+--
+        BEGIN
+          -- 月首棚卸高を取得
+          SELECT xirm.inv_result                                                      -- 棚卸結果
+          INTO   gn_month_begin_quantity
+          FROM   xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
+          WHERE  xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
+          AND    xirm.base_code              = ir_recept_month_rec.base_code          -- A-4で取得した拠点コード
+          AND    xirm.subinventory_code      = ir_recept_month_rec.subinventory_code  -- A-4で取得した保管場所
+          AND    xirm.practice_month         = TO_CHAR(
+                                                   ADD_MONTHS(
+                                                       TO_DATE( ir_recept_month_rec.practice_date, cv_fmt_date )
+                                                     , -1 )
+                                                 , cv_fmt_date )                      -- A-4で取得した年月の前月
+          AND    xirm.inventory_item_id      = ir_recept_month_rec.inventory_item_id  -- A-4で取得した品目ID
+          AND    xirm.inventory_kbn          = cv_inv_kbn_2                           -- 棚卸区分：'2'（月末）
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            gn_month_begin_quantity := 0;
+        END;
+--
+      END IF;
+--
+      -- 棚卸結果を取得
+      gn_inv_result     := ir_recept_month_rec.book_inventory_quantity;
+      -- 棚卸結果(不良品)を取得
+      gn_inv_result_bad := 0;
+      -- 棚卸減耗を取得
+      gn_inv_wear       := 0;
+--
+    -- パラメータ「処理区分」が「1：日次」の場合
+    ELSE
+--
+      -- 月次在庫受払表(累計)の年月＜業務日付の年月の場合
+      IF ( ir_recept_month_rec.practice_date < TO_CHAR( gd_process_date, cv_fmt_date ) ) THEN
+--
+        BEGIN
+          -- 前月分棚卸情報を取得
+          SELECT   xirm.month_begin_quantity                                            -- 月首棚卸高
+                 , xirm.inv_result                                                      -- 棚卸結果
+                 , xirm.inv_result_bad                                                  -- 棚卸結果(不良品)
+                 , xirm.inv_wear                                                        -- 棚卸減耗
+          INTO     gn_month_begin_quantity
+                 , gn_inv_result
+                 , gn_inv_result_bad
+                 , gn_inv_wear
+          FROM     xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
+          WHERE    xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
+          AND      xirm.base_code              = ir_recept_month_rec.base_code          -- A-4で取得した拠点コード
+          AND      xirm.subinventory_code      = ir_recept_month_rec.subinventory_code  -- A-4で取得した保管場所
+          AND      xirm.practice_month         = ir_recept_month_rec.practice_date      -- A-4で取得した年月の前月
+          AND      xirm.inventory_item_id      = ir_recept_month_rec.inventory_item_id  -- A-4で取得した品目ID
+          AND      xirm.inventory_kbn          = cv_inv_kbn_2                           -- 棚卸区分：'2'（月末）
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+          -- 前月分棚卸情報取得エラーメッセージ
+          -- 「前月分棚卸情報が取得できませんでした。月次在庫受払情報を確認して下さい。」
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_appl_short_name
+                           , iv_name         => cv_msg_xxcoi_10377
+                           , iv_token_name1  => cv_tkn_month
+                           , iv_token_value1 => ir_recept_month_rec.practice_date
+                           , iv_token_name2  => cv_tkn_base_code
+                           , iv_token_value2 => ir_recept_month_rec.base_code
+                           , iv_token_name3  => cv_tkn_subinventory
+                           , iv_token_value3 => ir_recept_month_rec.subinventory_code
+                           , iv_token_name4  => cv_tkn_item_code
+                           , iv_token_value4 => ir_recept_month_rec.inventory_item_id
+                         );
+            lv_errbuf := lv_errmsg;
+            --
+            RAISE global_api_expt;
+        END;
+--
+      -- 月次在庫受払表(累計)の年月＝業務日付の年月の場合
+      ELSE
+        -- 月首棚卸高を取得
+        BEGIN
+          SELECT xirm.inv_result                                                      -- 棚卸結果
+          INTO   gn_month_begin_quantity
+          FROM   xxcoi_inv_reception_monthly   xirm                                   -- 月次在庫受払表テーブル
+          WHERE  xirm.organization_id        = ir_recept_month_rec.organization_id    -- A-4で取得した組織ID
+          AND    xirm.base_code              = ir_recept_month_rec.base_code          -- A-4で取得した拠点コード
+          AND    xirm.subinventory_code      = ir_recept_month_rec.subinventory_code  -- A-4で取得した保管場所
+          AND    xirm.practice_month         = TO_CHAR(
+                                                   ADD_MONTHS(
+                                                       TO_DATE( ir_recept_month_rec.practice_date, cv_fmt_date )
+                                                     , -1 )
+                                                 , cv_fmt_date )                      -- A-4で取得した年月の前月
+          AND    xirm.inventory_item_id      = ir_recept_month_rec.inventory_item_id  -- A-4で取得した品目ID
+          AND    xirm.inventory_kbn          = cv_inv_kbn_2                           -- 棚卸区分：'2'（月末）
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            gn_month_begin_quantity := 0;
+        END;
+--
+        -- 棚卸結果を取得
+        gn_inv_result     := ir_recept_month_rec.book_inventory_quantity;
+        -- 棚卸結果(不良品)を取得
+        gn_inv_result_bad := 0;
+        -- 棚卸減耗を取得
+        gn_inv_wear       := 0;
+--
+      END IF;
+--
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_inv_info_p;
+--
+-- == 2009/04/08 V1.1 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : recept_month_cur_p
-   * Description      : 月次在庫受払表情報の抽出(A-3)
+   * Description      : 月次在庫受払表(累計)情報の抽出(A-4)
    ***********************************************************************************/
   PROCEDURE recept_month_cur_p(
-     ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ                  --# 固定 #
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
+--     ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ                  --# 固定 #
+--   , ov_retcode    OUT VARCHAR2     --   リターン・コード                    --# 固定 #
+--   , ov_errmsg     OUT VARCHAR2)    --   ユーザー・エラー・メッセージ        --# 固定 #
+     iv_year_month IN  VARCHAR2     --   年月
+   , ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ                  --# 固定 #
    , ov_retcode    OUT VARCHAR2     --   リターン・コード                    --# 固定 #
    , ov_errmsg     OUT VARCHAR2)    --   ユーザー・エラー・メッセージ        --# 固定 #
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -692,7 +1100,12 @@ AS
     -- ***       処理部の呼び出し          ***
     -- ***************************************
     --月別受払残高データ取得カーソルオープン
-    OPEN recept_month_cur;
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--    OPEN recept_month_cur;
+    OPEN recept_month_cur( 
+           iv_practice_date => iv_year_month
+         );
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
       --
       <<recept_month_loop>>
       LOOP
@@ -702,8 +1115,25 @@ AS
         --対象件数加算
         gn_target_cnt := gn_target_cnt + 1;
 --
+-- == 2009/04/08 V1.1 Added START ===============================================================
         -- ===============================
-        -- A-4．月別受払残高CSVの作成
+        -- A-5．棚卸情報取得
+        -- ===============================
+        get_inv_info_p(
+            ir_recept_month_rec   => recept_month_rec        -- コラムNO.
+          , ov_errbuf             => lv_errbuf               -- エラー・メッセージ           --# 固定 #
+          , ov_retcode            => lv_retcode              -- リターン・コード             --# 固定 #
+          , ov_errmsg             => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+        IF (lv_retcode = cv_status_error) THEN
+          -- エラー処理
+          RAISE global_process_expt;
+        END IF;
+--
+-- == 2009/04/08 V1.1 Added END   ===============================================================
+        -- ===============================
+        -- A-6．月別受払残高CSVの作成
         -- ===============================
         create_csv_p(
             ir_recept_month_cur   => recept_month_rec        -- コラムNO.
@@ -726,24 +1156,26 @@ AS
     --カーソルのクローズ
     CLOSE recept_month_cur;
     --
-    -- データが０件で終了した場合
-    IF ( gn_target_cnt = 0 ) THEN
-      -- 対象データ無しメッセージ
-      -- 「対象データはありません。」
-      gv_out_msg   := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_appl_short_name
-                      , iv_name         => cv_msg_xxcoi_00008
-                      );
-      -- メッセージ出力
-      FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-        , buff   => gv_out_msg
-      );
-      FND_FILE.PUT_LINE(
-          which  => FND_FILE.LOG
-        , buff   => gv_out_msg
-      );
-    END IF;
+-- == 2009/04/08 V1.1 Deleted START ===============================================================
+--    -- データが０件で終了した場合
+--    IF ( gn_target_cnt = 0 ) THEN
+--      -- 対象データ無しメッセージ
+--      -- 「対象データはありません。」
+--      gv_out_msg   := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_appl_short_name
+--                      , iv_name         => cv_msg_xxcoi_00008
+--                      );
+--      -- メッセージ出力
+--      FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--        , buff   => gv_out_msg
+--      );
+--      FND_FILE.PUT_LINE(
+--          which  => FND_FILE.LOG
+--        , buff   => gv_out_msg
+--      );
+--    END IF;
+-- == 2009/04/08 V1.1 Deleted END   ===============================================================
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -796,14 +1228,124 @@ AS
 --
   END recept_month_cur_p;
 --
+-- == 2009/04/08 V1.1 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : get_open_period_p
+   * Description      : オープン在庫会計期間取得(A-3)
+   ***********************************************************************************/
+  PROCEDURE get_open_period_p(
+     ov_errbuf             OUT VARCHAR2                 -- エラー・メッセージ           --# 固定 #
+   , ov_retcode            OUT VARCHAR2                 -- リターン・コード             --# 固定 #
+   , ov_errmsg             OUT VARCHAR2)                -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_open_period_p'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- カーソルオープン
+    OPEN  get_open_period_cur;
+--
+    -- カーソルデータ取得
+    FETCH get_open_period_cur BULK COLLECT INTO get_open_period_tab;
+--
+    -- カーソルのクローズ
+    CLOSE get_open_period_cur;
+--
+    -- ===============================
+    -- 対象件数カウント
+    -- ===============================
+    gn_open_period_cnt := get_open_period_tab.COUNT;
+--
+    -- ===============================
+    -- 在庫会計期間取得チェック
+    -- ===============================
+    IF ( gn_open_period_cnt = 0 ) THEN
+      -- 在庫会計期間取得エラーメッセージ
+      -- 「当月以前のオープンしている在庫会計期間が取得できませんでした。在庫会計期間を確認して下さい。」
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                     , iv_name         => cv_msg_xxcoi_10376
+                   );
+      lv_errbuf := lv_errmsg;
+      --
+      RAISE global_api_expt;
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_open_period_p;
+--
+-- == 2009/04/08 V1.1 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-     ov_errbuf     OUT VARCHAR2    --   エラー・メッセージ           --# 固定 #
-   , ov_retcode    OUT VARCHAR2    --   リターン・コード             --# 固定 #
-   , ov_errmsg     OUT VARCHAR2)   --   ユーザー・エラー・メッセージ --# 固定 #
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--     ov_errbuf     OUT VARCHAR2    --   エラー・メッセージ           --# 固定 #
+--   , ov_retcode    OUT VARCHAR2    --   リターン・コード             --# 固定 #
+--   , ov_errmsg     OUT VARCHAR2)   --   ユーザー・エラー・メッセージ --# 固定 #
+     iv_process_type IN  VARCHAR2    --   処理区分
+   , ov_errbuf       OUT VARCHAR2    --   エラー・メッセージ           --# 固定 #
+   , ov_retcode      OUT VARCHAR2    --   リターン・コード             --# 固定 #
+   , ov_errmsg       OUT VARCHAR2)   --   ユーザー・エラー・メッセージ --# 固定 #
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
   IS
 --
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -853,6 +1395,9 @@ AS
     gn_normal_cnt    := 0;
     gn_error_cnt     := 0;
     gv_activ_file_h  := NULL;            -- ファイルハンドル
+-- == 2009/04/08 V1.1 Added START ===============================================================
+    gv_process_type  := iv_process_type; -- 起動パラメータ：処理区分
+-- == 2009/04/08 V1.1 Added END   ===============================================================
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -900,11 +1445,27 @@ AS
                          );
     END IF;
     --
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--    -- ========================================
+--    -- A-3．月別受払残高情報の抽出
+--    -- ========================================
+--    -- A-3の処理内部でA-4を処理
+--    recept_month_cur_p(
+--        ov_errbuf    => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--      , ov_retcode   => lv_retcode        -- リターン・コード             --# 固定 #
+--      , ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+--    --
+--    -- 終了パラメータ判定
+--    IF (lv_retcode = cv_status_error) THEN
+--      -- エラー処理
+--      RAISE global_process_expt;
+--    END IF;
+--
     -- ========================================
-    -- A-3．月別受払残高情報の抽出
+    -- A-3．オープン在庫会計期間取得
     -- ========================================
-    -- A-3の処理内部でA-4を処理
-    recept_month_cur_p(
+    get_open_period_p(
         ov_errbuf    => lv_errbuf         -- エラー・メッセージ           --# 固定 #
       , ov_retcode   => lv_retcode        -- リターン・コード             --# 固定 #
       , ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -916,6 +1477,48 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+    -- 在庫会計期間単位処理ループ
+    <<open_period_loop>>
+    FOR i IN 1 .. get_open_period_tab.COUNT LOOP
+      -- ========================================
+      -- A-4．月別受払残高情報の抽出
+      -- ========================================
+      -- A-4の処理内部でA-5, A-6を処理
+      recept_month_cur_p(
+          iv_year_month => get_open_period_tab(i).year_month  -- 年月
+        , ov_errbuf     => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+        , ov_retcode    => lv_retcode        -- リターン・コード             --# 固定 #
+        , ov_errmsg     => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --
+      -- 終了パラメータ判定
+      IF (lv_retcode = cv_status_error) THEN
+        -- エラー処理
+        RAISE global_process_expt;
+      END IF;
+--
+    END LOOP open_period_loop;
+--
+    -- データが０件で終了した場合
+    IF ( gn_target_cnt = 0 ) THEN
+      -- 対象データ無しメッセージ
+      -- 「対象データはありません。」
+      gv_out_msg   := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name
+                      , iv_name         => cv_msg_xxcoi_00008
+                      );
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => gv_out_msg
+      );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => gv_out_msg
+      );
+    END IF;
+-- 
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
     -- ===============================
     -- A-5．ファイルのクローズ処理
     -- ===============================
@@ -989,8 +1592,13 @@ AS
    **********************************************************************************/
 --
   PROCEDURE main(
-    errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--    errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
+--    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    errbuf          OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
+    retcode         OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_process_type IN  VARCHAR2       --   処理区分
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
   )
 --
 --###########################  固定部 START   ###########################
@@ -1047,9 +1655,15 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-        ov_retcode => lv_retcode  -- エラー・メッセージ           --# 固定 #
-      , ov_errbuf  => lv_errbuf   -- リターン・コード             --# 固定 #
-      , ov_errmsg  => lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+-- == 2009/04/08 V1.1 Moded START ===============================================================
+--        ov_retcode => lv_retcode  -- エラー・メッセージ           --# 固定 #
+--      , ov_errbuf  => lv_errbuf   -- リターン・コード             --# 固定 #
+--      , ov_errmsg  => lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+        iv_process_type => iv_process_type -- 処理区分
+      , ov_retcode      => lv_retcode      -- エラー・メッセージ           --# 固定 #
+      , ov_errbuf       => lv_errbuf       -- リターン・コード             --# 固定 #
+      , ov_errmsg       => lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
+-- == 2009/04/08 V1.1 Moded END   ===============================================================
     );
 --
     --エラー出力
@@ -1071,6 +1685,9 @@ AS
     -- エラー時は成功件数出力を０にセット
     --           エラー件数出力を１にセット
     IF( lv_retcode = cv_status_error ) THEN
+-- == 2009/04/08 V1.1 Added START ===============================================================
+      gn_target_cnt := 0;
+-- == 2009/04/08 V1.1 Added END   ===============================================================
       gn_normal_cnt := 0;
       gn_error_cnt  := 1;
     END IF;
