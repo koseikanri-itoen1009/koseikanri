@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A06C (body)
  * Description      : 受注インポートエラー検知
  * MD.050           : MD050_COS_010_A06_受注インポートエラー検知
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/07/06    1.0   K.Satomura       新規作成
+ *  2009/11/10    1.1   M.Sano           [E_T4_00173]不要な結合テーブルの削除・ヒント句追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -723,7 +724,11 @@ AS
     -- CSV用カーソル
     CURSOR get_csv_err_info_cur
     IS
-      SELECT hca.account_number account_number -- 顧客コード
+      SELECT 
+/* 2009/11/10 Ver.1.1 Add Start */
+             /*+ use_nl(fcr ohi oli) */
+/* 2009/11/10 Ver.1.1 Add Start */
+             hca.account_number account_number -- 顧客コード
             ,hca.account_name   account_name   -- 顧客名称
             ,fcr.request_id     request_id     -- 要求ＩＤ
       FROM   fnd_concurrent_requests fcr  -- コンカレント要求表
@@ -731,8 +736,10 @@ AS
             ,oe_lines_iface_all      oli  -- 受注明細OIF
             ,hz_cust_accounts        hca  -- 顧客マスタ
             ,xxcmm_cust_accounts     xca  -- 顧客アドオンマスタ
-            ,hz_cust_accounts        hca2 -- 顧客マスタ(EDI)
-            ,xxcmm_cust_accounts     xca2 -- 顧客アドオンマスタ(EDI)
+/* 2009/11/10 Ver.1.1 Del Start */
+--            ,hz_cust_accounts        hca2 -- 顧客マスタ(EDI)
+--            ,xxcmm_cust_accounts     xca2 -- 顧客アドオンマスタ(EDI)
+/* 2009/11/10 Ver.1.1 Del End   */
       WHERE  fcr.parent_request_id     = gn_request_id
       AND    fcr.request_id            = ohi.request_id
       AND    fcr.request_id            = oli.request_id
@@ -875,15 +882,51 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+/* 2009/11/10 Ver.1.1 Add Start */
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_edi_err_info_cur%ISOPEN) THEN
+        CLOSE get_edi_err_info_cur;
+        --
+      END IF;
+      --
+      IF (get_csv_err_info_cur%ISOPEN) THEN
+        CLOSE get_csv_err_info_cur;
+        --
+      END IF;
+/* 2009/11/10 Ver.1.1 Add End   */
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+/* 2009/11/10 Ver.1.1 Add Start */
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_edi_err_info_cur%ISOPEN) THEN
+        CLOSE get_edi_err_info_cur;
+        --
+      END IF;
+      --
+      IF (get_csv_err_info_cur%ISOPEN) THEN
+        CLOSE get_csv_err_info_cur;
+        --
+      END IF;
+/* 2009/11/10 Ver.1.1 Add End   */
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+/* 2009/11/10 Ver.1.1 Add Start */
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_edi_err_info_cur%ISOPEN) THEN
+        CLOSE get_edi_err_info_cur;
+        --
+      END IF;
+      --
+      IF (get_csv_err_info_cur%ISOPEN) THEN
+        CLOSE get_csv_err_info_cur;
+        --
+      END IF;
+/* 2009/11/10 Ver.1.1 Add End   */
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
