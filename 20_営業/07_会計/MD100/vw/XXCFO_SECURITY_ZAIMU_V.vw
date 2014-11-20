@@ -5,13 +5,14 @@ CREATE OR REPLACE FORCE VIEW XXCFO_SECURITY_ZAIMU_V(
  * Description     : 財務経理ビュー
  * MD.050          : 
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
- *  2008/12/18    1.0  SCS 嵐田     初回作成
+ *  2008/12/18    1.0  SCS 嵐田      初回作成
+ *  2009/05/01    1.1  SCS 嵐田 勇人 [障害T1_0894]コメントを追加
  ************************************************************************/
   lookup_code                           -- ルックアップコード
 ) AS
@@ -23,3 +24,9 @@ CREATE OR REPLACE FORCE VIEW XXCFO_SECURITY_ZAIMU_V(
      AND TRUNC( SYSDATE ) BETWEEN TRUNC( NVL( flv.start_date_active ,SYSDATE ) )    -- TRUNC( システム日付 ) BETWEEN TRUNC( NVL( クイックコード.開始日 ,システム日付 ) )
                               AND TRUNC( NVL( flv.end_date_active ,SYSDATE ) )      -- AND TRUNC( NVL( クイックコード.終了日 ,システム日付 ) )
 /
+-- Modify 2009.05.01 Ver1.1 Start
+COMMENT ON COLUMN  xxcfo_security_zaimu_v.lookup_code       IS '財務経理部門'
+/
+COMMENT ON TABLE  xxcfo_security_zaimu_v IS '財務経理ビュー'
+/
+-- Modify 2009.05.01 Ver1.1 End

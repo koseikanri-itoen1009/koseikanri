@@ -5,7 +5,7 @@ CREATE OR REPLACE FORCE VIEW XXCFO_PO_DEPT_V(
  * Description     : 発注者部門ビュー
  * MD.050          : 
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------   -------------------------------------
@@ -14,6 +14,7 @@ CREATE OR REPLACE FORCE VIEW XXCFO_PO_DEPT_V(
  *  2008/12/16    1.0  SCS 山口 優     初回作成
  *  2009/02/06    1.1  SCS 嵐田勇人    [障害CFO_001]事業所アドオンマスタの有効日付チェックを追加
  *  2009/04/03    1.2  SCS 廣瀬 真佐人 [障害T1_0283]購買担当者の適用開始日のNULL値を考慮
+ *  2009/05/01    1.3  SCS 嵐田 勇人   [障害T1_0894]コメントを追加
  ************************************************************************/
   location_code,                -- 事業所コード
   location_short_name           -- 略称
@@ -37,3 +38,11 @@ CREATE OR REPLACE FORCE VIEW XXCFO_PO_DEPT_V(
   GROUP BY hl.location_code                      -- 事業所コード
           ,xla.location_short_name               -- 略称
 /
+-- Modify 2009.05.01 Ver1.3 Start
+COMMENT ON COLUMN  xxcfo_po_dept_v.location_code                IS '事業所コード'
+/
+COMMENT ON COLUMN  xxcfo_po_dept_v.location_short_name          IS '略称'
+/
+COMMENT ON TABLE  xxcfo_po_dept_v IS '発注者部門ビュー'
+/
+-- Modify 2009.05.01 Ver1.3 End
