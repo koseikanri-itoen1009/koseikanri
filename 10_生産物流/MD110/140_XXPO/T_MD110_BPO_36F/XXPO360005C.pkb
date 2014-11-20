@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/05/26    1.7   T.Endou          外部倉庫ユーザーのセキュリティは不要なため削除
  *  2008/06/25    1.8   T.Endou          特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/10/22    1.9   I.Higa           取引先の取得項目が不正（仕入先名⇒正式名）
  *
  *****************************************************************************************/
 --
@@ -586,7 +587,7 @@ AS
          ' SELECT'
       || '   xvv_s.segment1            AS segment1_s          ' -- 仕入先番号
       || '  ,xvv_a.segment1            AS segment1_a          ' -- 斡旋者コード
-      || '  ,xvv_s.vendor_name         AS vendor_name         ' -- 仕入先名
+      || '  ,xvv_s.vendor_full_name    AS vendor_name         ' -- 仕入先名
       || '  ,xvv_s.zip                 AS zip                 ' -- 郵便番号
       || '  ,xvv_s.address_line1       AS address_line1       ' -- 取引先住所１
       || '  ,xvv_s.address_line2       AS address_line2       ' -- 取引先住所２
