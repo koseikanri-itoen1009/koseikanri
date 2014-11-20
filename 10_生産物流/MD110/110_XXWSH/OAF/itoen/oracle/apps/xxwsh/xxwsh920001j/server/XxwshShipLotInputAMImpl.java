@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-07-23 1.4  伊藤ひとみ   内部課題#32  換算する場合で、ケース入数が0以下はエラー
 *                              内部変更#174 実績計上済区分がYの場合のみ受注コピー処理を行う
 * 2008-09-25 1.5  伊藤ひとみ   T_TE080_BPO_400指摘93 受注タイプ：廃棄・見本の場合、ロットステータスチェックを行わない
+* 2008-10-17 1.6  伊藤ひとみ   統合テスト指摘346 入庫実績の場合も在庫クローズチェックを行う。
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -41,7 +42,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 入出荷実績ロット入力画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1057,11 +1058,18 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     // ************************* //
     // *  在庫会計期間チェック * //
     // ************************* //
-    // レコードタイプが20:出庫実績の場合
+    // レコードタイプが20:出庫実績の場合、出荷日で在庫クローズチェック
     if (XxwshConstants.RECORD_TYPE_DELI.equals(recordTypeCode))
     {
       Date shippedDate = (Date)lineRow.getAttribute("ShippedDate"); // 出荷日
-      XxwshUtility.chkStockClose(getOADBTransaction(), shippedDate);      
+      XxwshUtility.chkStockClose(getOADBTransaction(), shippedDate);
+// 2008-10-17 H.Itou Add Start 統合テスト指摘346
+    // レコードタイプが30:入庫実績の場合、着荷日で在庫クローズチェック
+    } else 
+    {
+      Date arrivalDate = (Date)lineRow.getAttribute("ArrivalDate"); // 着荷日
+      XxwshUtility.chkStockClose(getOADBTransaction(), arrivalDate);
+// 2008-10-17 H.Itou Add End
     }
 
     return entryFlag;
