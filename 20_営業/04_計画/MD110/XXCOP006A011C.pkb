@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A011C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 3.2
+ * Version          : 3.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,7 +17,7 @@ AS
  *  entry_xli_lot          横持計画手持在庫テーブル登録(ロット計画数)           (B-24)
  *  update_xwyl_schedule   横持計画品目別代表倉庫ワークテーブル更新             (B-23)
  *  entry_xli_balance      横持計画手持在庫テーブル登録(バランス計画数)         (B-22)
- *  entry_supply_failed    横持計画手持在庫テーブル登録(計画不可)               (B-21)
+ *  entry_supply_failed    横持計画出力ワークテーブル登録(計画不可)             (B-21)
  *  proc_lot_quantity      計画ロットの決定                                     (B-20)
  *  proc_balance_quantity  バランス計画数の計算                                 (B-19)
  *  proc_ship_loct         移動元倉庫の特定                                     (B-18)
@@ -64,6 +64,7 @@ AS
  *  2009/11/30    3.0   Y.Goto           I_E_479_019(横持計画パラレル化対応、アプリPT対応、プログラムIDの変更)
  *  2009/12/17    3.1   Y.Goto           E_本稼動_00519
  *  2010/01/07    3.2   Y.Goto           E_本稼動_00936
+ *  2010/01/25    3.3   Y.Goto           E_本稼動_01250
  *
  *****************************************************************************************/
 --
@@ -1257,7 +1258,10 @@ AS
           AND xli.request_id          = cn_request_id
           AND xli.item_id             = xwyl.item_id
           AND xli.loct_id             = xwyl.loct_id
-          AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--          AND xli.shipment_date      <= gd_allocated_date
+          AND xli.shipment_date      <= GREATEST(gd_allocated_date, it_schedule_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
           AND xwyl.transaction_id     = gn_transaction_id
           AND xwyl.request_id         = cn_request_id
           AND xwyl.item_id            = in_item_id
@@ -1289,7 +1293,10 @@ AS
             AND xli.request_id          = cn_request_id
             AND xli.item_id             = xwyl.item_id
             AND xli.loct_id             = xwyl.frq_loct_id
-            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--            AND xli.shipment_date      <= gd_allocated_date
+            AND xli.shipment_date      <= GREATEST(gd_allocated_date, it_schedule_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
             AND xwyl.transaction_id     = gn_transaction_id
             AND xwyl.request_id         = cn_request_id
             AND xwyl.frq_loct_id       <> xwyl.loct_id
@@ -1465,7 +1472,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : entry_supply_failed
-   * Description      : 横持計画手持在庫テーブル登録(計画不可)(B-21)
+   * Description      : 横持計画出力ワークテーブル登録(計画不可)(B-21)
    ***********************************************************************************/
   PROCEDURE entry_supply_failed(
     i_rcpt_rec       IN     g_loct_rtype,   --   移動先倉庫レコード型
@@ -1599,6 +1606,9 @@ AS
     it_sy_manufacture_date  IN     xxcop_wk_yoko_plan_output.sy_manufacture_date%TYPE,
     io_gbqt_tab             IN OUT g_bq_ttype,     --   バランス横持計画コレクション型
     io_xwypo_tab            IN OUT g_xwypo_ttype,  --   横持計画出力ワークテーブルコレクション型
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+    ov_stock_result            OUT VARCHAR2,       --   ロットバランスの計画ステータス
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
     ov_errbuf               OUT    VARCHAR2,       --   エラー・メッセージ           --# 固定 #
     ov_retcode              OUT    VARCHAR2,       --   リターン・コード             --# 固定 #
     ov_errmsg               OUT    VARCHAR2        --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1646,6 +1656,11 @@ AS
     lv_stock_proc_flag        VARCHAR2(1);
     lv_stock_filled_flag      VARCHAR2(1);
     ln_filled_quantity        NUMBER;         --鮮度条件に引当されたロット在庫数合計
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+    ln_max_filled_count       NUMBER;         --計画数(最大)まで補充した鮮度条件の件数
+    ln_bal_filled_count       NUMBER;         --計画数(バランス)まで補充した鮮度条件の件数
+    ln_sy_stocked_quantity    NUMBER;         --特別横持計画の移動数合計(更新値)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
 --
     -- *** ローカル・カーソル ***
     --在庫の取得
@@ -1692,7 +1707,10 @@ AS
           AND xli.request_id          = cn_request_id
           AND xli.item_id             = xwyl.item_id
           AND xli.loct_id             = xwyl.loct_id
-          AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--          AND xli.shipment_date      <= gd_allocated_date
+          AND xli.shipment_date      <= GREATEST(gd_allocated_date, xwyl.schedule_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
           AND xli.transaction_type  NOT IN (cv_xli_type_bq)
           AND xwyl.transaction_id     = gn_transaction_id
           AND xwyl.request_id         = cn_request_id
@@ -1731,7 +1749,10 @@ AS
             AND xli.request_id          = cn_request_id
             AND xli.item_id             = xwyl.item_id
             AND xli.loct_id             = xwyl.frq_loct_id
-            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--            AND xli.shipment_date      <= gd_allocated_date
+            AND xli.shipment_date      <= GREATEST(gd_allocated_date, xwyl.schedule_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
             AND xli.transaction_type  NOT IN (cv_xli_type_bq)
             AND xwyl.transaction_id     = gn_transaction_id
             AND xwyl.request_id         = cn_request_id
@@ -1845,10 +1866,16 @@ AS
     --初期化
     ln_lot_count := 0;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
-    ln_condition_count := 0;
+    ln_condition_count        := 0;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
-    ln_lot_supplies_quantity := 0;
-    ln_surpluses_quantity := 0;
+    ln_lot_supplies_quantity  := 0;
+    ln_surpluses_quantity     := 0;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+    ln_max_filled_count       := 0;
+    ln_bal_filled_count       := 0;
+    ov_stock_result           := cv_failed;
+    ln_sy_stocked_quantity    := NULL;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
 --
     --移動元倉庫、移動先倉庫のロット別在庫数を取得
     OPEN xliv_cur(i_item_rec.item_id);
@@ -2616,6 +2643,26 @@ AS
               IF (lv_retcode = cv_status_error) THEN
                 RAISE global_api_expt;
               END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+              --特別横持計画の場合
+              IF (io_xwypo_tab(ln_rcpt_idx).assignment_set_type = cv_custom_plan) THEN
+                ln_sy_stocked_quantity := NVL(ln_sy_stocked_quantity, io_xwypo_tab(ln_rcpt_idx).sy_stocked_quantity)
+                                        + io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
+                --特別横持制御マスタの移動数を更新
+                --鮮度条件は条件に含めない
+                UPDATE xxcop_wk_yoko_planning xwyp
+                SET    xwyp.sy_stocked_quantity = ln_sy_stocked_quantity
+                WHERE xwyp.transaction_id       = gn_transaction_id
+                  AND xwyp.request_id           = cn_request_id
+                  AND xwyp.assignment_set_type  = cv_custom_plan
+                  AND xwyp.shipping_date        = io_xwypo_tab(ln_rcpt_idx).shipping_date
+                  AND xwyp.receipt_date         = io_xwypo_tab(ln_rcpt_idx).receipt_date
+                  AND xwyp.item_id              = io_xwypo_tab(ln_rcpt_idx).item_id
+                  AND xwyp.ship_loct_id         = io_xwypo_tab(ln_rcpt_idx).ship_loct_id
+                  AND xwyp.rcpt_loct_id         = io_xwypo_tab(ln_rcpt_idx).rcpt_loct_id
+                ;
+              END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
             END IF;
             --バランス計画数にロット計画数を加算
             l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity := l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity
@@ -2644,6 +2691,18 @@ AS
             );
             --ロット計画数にロット別計画数の合計を設定
             io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity := l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+            IF (i_rcpt_rec.loct_id = io_xwypo_tab(ln_rcpt_idx).rcpt_loct_id) THEN
+              --計画数(最大)まで補充した鮮度条件をカウント
+              IF (io_xwypo_tab(ln_rcpt_idx).plan_max_quantity = io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity) THEN
+                ln_max_filled_count := ln_max_filled_count + 1;
+              END IF;
+              --計画数(バランス)まで補充した鮮度条件をカウント
+              IF (io_xwypo_tab(ln_rcpt_idx).plan_bal_quantity = io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity) THEN
+                ln_bal_filled_count := ln_bal_filled_count + 1;
+              END IF;
+            END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
             -- ===============================
             -- B-26．ログレベル出力
             -- ===============================
@@ -2669,25 +2728,43 @@ AS
           --
           -- (5) 初期化
           --
-          ln_lot_count := 0;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+          --計画数(バランス)まで補充した場合、ロットバランスの計算を終了
+          IF (io_gbqt_tab.COUNT = ln_bal_filled_count) THEN
+            --計画数(最大)まで補充できた場合、補充ステータスを計画完了にする
+            IF (io_gbqt_tab.COUNT = ln_max_filled_count) THEN
+              ov_stock_result := cv_complete;
+            END IF;
+            EXIT xliv_loop;
+          END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
+          ln_lot_count              := 0;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
-          ln_condition_count := 0;
+          ln_condition_count        := 0;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
-          ln_total_lot_quantity := 0;
-          ln_lot_supplies_quantity := 0;
-          ln_surpluses_quantity := 0;
+          ln_total_lot_quantity     := 0;
+          ln_lot_supplies_quantity  := 0;
+          ln_surpluses_quantity     := 0;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+          ln_max_filled_count       := 0;
+          ln_bal_filled_count       := 0;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
         END IF;
       EXCEPTION
         WHEN lot_skip_expt THEN
           NULL;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
         WHEN manufacture_skip_expt THEN
-          ln_lot_count := 0;
-          ln_condition_count := 0;
-          ln_total_lot_quantity := 0;
-          ln_lot_supplies_quantity := 0;
-          ln_surpluses_quantity := 0;
+          ln_lot_count              := 0;
+          ln_condition_count        := 0;
+          ln_total_lot_quantity     := 0;
+          ln_lot_supplies_quantity  := 0;
+          ln_surpluses_quantity     := 0;
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+          ln_max_filled_count       := 0;
+          ln_bal_filled_count       := 0;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
       END;
     END LOOP xliv_loop;
     CLOSE xliv_cur;
@@ -3015,7 +3092,10 @@ AS
               AND xli.request_id          = cn_request_id
               AND xli.item_id             = xwyl.item_id
               AND xli.loct_id             = xwyl.loct_id
-              AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--              AND xli.shipment_date      <= gd_allocated_date
+              AND xli.shipment_date      <= GREATEST(gd_allocated_date, i_ship_rec.target_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
               AND xwyl.transaction_id     = gn_transaction_id
               AND xwyl.request_id         = cn_request_id
               AND xwyl.item_id            = i_item_rec.item_id
@@ -3048,7 +3128,10 @@ AS
                 AND xli.request_id          = cn_request_id
                 AND xli.item_id             = xwyl.item_id
                 AND xli.loct_id             = xwyl.frq_loct_id
-                AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--                AND xli.shipment_date      <= gd_allocated_date
+                AND xli.shipment_date      <= GREATEST(gd_allocated_date, i_ship_rec.target_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
                 AND xwyl.transaction_id     = gn_transaction_id
                 AND xwyl.request_id         = cn_request_id
                 AND xwyl.frq_loct_id       <> xwyl.loct_id
@@ -3192,7 +3275,10 @@ AS
                 AND xli.request_id          = cn_request_id
                 AND xli.item_id             = xwyl.item_id
                 AND xli.loct_id             = xwyl.loct_id
-                AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--                AND xli.shipment_date      <= gd_allocated_date
+                AND xli.shipment_date      <= GREATEST(gd_allocated_date, o_xwypo_tab(ln_rcpt_idx).receipt_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
                 AND xwyl.transaction_id     = gn_transaction_id
                 AND xwyl.request_id         = cn_request_id
                 AND xwyl.item_id            = i_item_rec.item_id
@@ -3225,7 +3311,10 @@ AS
                   AND xli.request_id          = cn_request_id
                   AND xli.item_id             = xwyl.item_id
                   AND xli.loct_id             = xwyl.frq_loct_id
-                  AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--                  AND xli.shipment_date      <= gd_allocated_date
+                  AND xli.shipment_date      <= GREATEST(gd_allocated_date, o_xwypo_tab(ln_rcpt_idx).receipt_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
                   AND xwyl.transaction_id     = gn_transaction_id
                   AND xwyl.request_id         = cn_request_id
                   AND xwyl.frq_loct_id       <> xwyl.loct_id
@@ -3270,7 +3359,10 @@ AS
             AND xli.request_id          = cn_request_id
             AND xli.item_id             = i_item_rec.item_id
             AND xli.loct_id             = o_xwypo_tab(ln_rcpt_idx).rcpt_loct_id
-            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--            AND xli.shipment_date      <= gd_allocated_date
+            AND xli.shipment_date      <= GREATEST(gd_allocated_date, o_xwypo_tab(ln_rcpt_idx).receipt_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
             AND xli.schedule_date      <= o_xwypo_tab(ln_rcpt_idx).receipt_date
             AND xli.transaction_type   IN (cv_xli_type_inv)
           ;
@@ -3732,7 +3824,10 @@ AS
             AND xli.request_id          = cn_request_id
             AND xli.item_id             = xwyl.item_id
             AND xli.loct_id             = xwyl.loct_id
-            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--            AND xli.shipment_date      <= gd_allocated_date
+            AND xli.shipment_date      <= GREATEST(gd_allocated_date, id_target_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
             AND xli.transaction_type  NOT IN (cv_xli_type_bq)
             AND xwyl.transaction_id     = gn_transaction_id
             AND xwyl.request_id         = cn_request_id
@@ -3766,7 +3861,10 @@ AS
               AND xli.request_id          = cn_request_id
               AND xli.item_id             = xwyl.item_id
               AND xli.loct_id             = xwyl.frq_loct_id
-              AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--              AND xli.shipment_date      <= gd_allocated_date
+              AND xli.shipment_date      <= GREATEST(gd_allocated_date, id_target_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
               AND xli.transaction_type  NOT IN (cv_xli_type_bq)
               AND xwyl.transaction_id     = gn_transaction_id
               AND xwyl.request_id         = cn_request_id
@@ -4021,7 +4119,10 @@ AS
           AND xli.request_id          = cn_request_id
           AND xli.item_id             = xwyl.item_id
           AND xli.loct_id             = xwyl.loct_id
-          AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--          AND xli.shipment_date      <= gd_allocated_date
+          AND xli.shipment_date      <= GREATEST(gd_allocated_date, gd_planning_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
           AND xli.transaction_type  NOT IN (cv_xli_type_bq)
           AND xwyl.transaction_id     = gn_transaction_id
           AND xwyl.request_id         = cn_request_id
@@ -4055,7 +4156,10 @@ AS
             AND xli.request_id          = cn_request_id
             AND xli.item_id             = xwyl.item_id
             AND xli.loct_id             = xwyl.frq_loct_id
-            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--            AND xli.shipment_date      <= gd_allocated_date
+            AND xli.shipment_date      <= GREATEST(gd_allocated_date, gd_planning_date)
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
             AND xli.transaction_type  NOT IN (cv_xli_type_bq)
             AND xwyl.transaction_id     = gn_transaction_id
             AND xwyl.request_id         = cn_request_id
@@ -4339,7 +4443,9 @@ AS
           AND xli.request_id          = cn_request_id
           AND xli.item_id             = xwyl.item_id
           AND xli.loct_id             = xwyl.loct_id
-          AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_START
+--          AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_END
           AND xli.transaction_type  NOT IN (cv_xli_type_bq)
           AND xwyl.transaction_id     = gn_transaction_id
           AND xwyl.request_id         = cn_request_id
@@ -4373,7 +4479,9 @@ AS
             AND xli.request_id          = cn_request_id
             AND xli.item_id             = xwyl.item_id
             AND xli.loct_id             = xwyl.frq_loct_id
-            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_START
+--            AND xli.shipment_date      <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_END
             AND xli.transaction_type  NOT IN (cv_xli_type_bq)
             AND xwyl.transaction_id     = gn_transaction_id
             AND xwyl.request_id         = cn_request_id
@@ -4498,8 +4606,12 @@ AS
                 l_xli_rec.unique_sign        := l_xliv_rec.unique_sign;
                 l_xli_rec.lot_status         := l_xliv_rec.lot_status;
                 l_xli_rec.loct_onhand        := ln_allocate_quantity * -1;
-                l_xli_rec.schedule_date      := it_shipment_date;
-                l_xli_rec.shipment_date      := cd_lower_limit_date;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--                l_xli_rec.schedule_date      := it_shipment_date;
+--                l_xli_rec.shipment_date      := cd_lower_limit_date;
+                l_xli_rec.schedule_date      := cd_lower_limit_date;
+                l_xli_rec.shipment_date      := it_shipment_date;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
                 l_xli_rec.transaction_type   := cv_xli_type_sp;
                 --出荷ペースを横持計画手持在庫テーブルに登録
                 INSERT INTO xxcop_loct_inv VALUES l_xli_rec;
@@ -4543,8 +4655,12 @@ AS
       l_xli_rec.expiration_date    := NULL;
       l_xli_rec.unique_sign        := NULL;
       l_xli_rec.lot_status         := NULL;
-      l_xli_rec.schedule_date      := it_shipment_date;
-      l_xli_rec.shipment_date      := cd_lower_limit_date;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--      l_xli_rec.schedule_date      := it_shipment_date;
+--      l_xli_rec.shipment_date      := cd_lower_limit_date;
+      l_xli_rec.schedule_date      := cd_lower_limit_date;
+      l_xli_rec.shipment_date      := it_shipment_date;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
       l_xli_rec.transaction_type   := cv_xli_type_sp;
       <<no_lot_loop>>
       FOR ln_gsat_idx IN io_gsat_tab.FIRST .. io_gsat_tab.LAST LOOP
@@ -6724,29 +6840,38 @@ AS
                 IF (lv_retcode = cv_status_error) THEN
                   RAISE global_api_expt;
                 END IF;
-                --配送リードタイムの取得
-                xxcop_common_pkg2.get_deliv_lead_time(
-                   id_target_date        => ld_planning_date
-                  ,iv_from_loct_code     => l_xwyp_rec.ship_loct_code
-                  ,iv_to_loct_code       => l_xwyp_rec.rcpt_loct_code
-                  ,on_delivery_lt        => l_xwyp_rec.delivery_lead_time
-                  ,ov_errbuf             => lv_errbuf
-                  ,ov_retcode            => lv_retcode
-                  ,ov_errmsg             => lv_errmsg
-                );
-                IF (lv_retcode = cv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSIF (lv_retcode = cv_status_warn) THEN
-                  lv_errmsg := xxccp_common_pkg.get_msg(
-                                  iv_application  => cv_msg_appl_cont
-                                 ,iv_name         => cv_msg_00053
-                                 ,iv_token_name1  => cv_msg_00053_token_1
-                                 ,iv_token_value1 => l_xwyp_rec.ship_loct_code
-                                 ,iv_token_name2  => cv_msg_00053_token_2
-                                 ,iv_token_value2 => l_xwyp_rec.rcpt_loct_code
-                               );
-                  RAISE internal_api_expt;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+                IF (l_xwyp_rec.ship_organization_id = gn_source_org_id) THEN
+                  --移動元倉庫がパッカー倉庫ダミーの場合、配送リードタイムに0を設定
+                  l_xwyp_rec.delivery_lead_time := 0;
+                ELSE
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
+                  --配送リードタイムの取得
+                  xxcop_common_pkg2.get_deliv_lead_time(
+                     id_target_date        => ld_planning_date
+                    ,iv_from_loct_code     => l_xwyp_rec.ship_loct_code
+                    ,iv_to_loct_code       => l_xwyp_rec.rcpt_loct_code
+                    ,on_delivery_lt        => l_xwyp_rec.delivery_lead_time
+                    ,ov_errbuf             => lv_errbuf
+                    ,ov_retcode            => lv_retcode
+                    ,ov_errmsg             => lv_errmsg
+                  );
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSIF (lv_retcode = cv_status_warn) THEN
+                    lv_errmsg := xxccp_common_pkg.get_msg(
+                                    iv_application  => cv_msg_appl_cont
+                                   ,iv_name         => cv_msg_00053
+                                   ,iv_token_name1  => cv_msg_00053_token_1
+                                   ,iv_token_value1 => l_xwyp_rec.ship_loct_code
+                                   ,iv_token_name2  => cv_msg_00053_token_2
+                                   ,iv_token_value2 => l_xwyp_rec.rcpt_loct_code
+                                 );
+                    RAISE internal_api_expt;
+                  END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
                 END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
                 --出荷日の取得
                 l_xwyp_rec.shipping_date := ld_planning_date;
                 --着日の取得
@@ -8063,6 +8188,9 @@ AS
               ,cd_program_update_date                                     program_update_date
         FROM xxcop_loct_inv_v           xliv
         WHERE xliv.item_id            = l_xwyp_rec.item_id
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+          AND xliv.shipment_date     <= gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
           AND EXISTS(
                 SELECT 'X'
                 FROM xxcop_wk_yoko_locations  xwyl
@@ -8269,26 +8397,94 @@ AS
     -- *** ローカル・カーソル ***
     --移動先倉庫の取得
     CURSOR rcpt_loct_cur IS
-      SELECT xwyp.rcpt_loct_id                      rcpt_loct_id
-            ,xwyp.item_id                           item_id
-            ,xwyp.shipping_type                     shipping_type
-      FROM xxcop_wk_yoko_planning xwyp
-      WHERE xwyp.transaction_id   = gn_transaction_id
-        AND xwyp.request_id       = cn_request_id
-        AND xwyp.receipt_date     = gd_planning_date
-        AND xwyp.shipping_type    = NVL(gv_plan_type, xwyp.shipping_type)
-        AND CASE
-              WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
-                xwyp.shipping_pace
-              WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
-                xwyp.forecast_pace
-              ELSE
-                0
-            END > 0
-      GROUP BY xwyp.rcpt_loct_id
-              ,xwyp.item_id
-              ,xwyp.shipping_type
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--      SELECT xwyp.rcpt_loct_id                      rcpt_loct_id
+--            ,xwyp.item_id                           item_id
+--            ,xwyp.shipping_type                     shipping_type
+--      FROM xxcop_wk_yoko_planning xwyp
+--      WHERE xwyp.transaction_id   = gn_transaction_id
+--        AND xwyp.request_id       = cn_request_id
+--        AND xwyp.receipt_date     = gd_planning_date
+--        AND xwyp.shipping_type    = NVL(gv_plan_type, xwyp.shipping_type)
+--        AND CASE
+--              WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
+--                xwyp.shipping_pace
+--              WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
+--                xwyp.forecast_pace
+--              ELSE
+--                0
+--            END > 0
+--      GROUP BY xwyp.rcpt_loct_id
+--              ,xwyp.item_id
+--              ,xwyp.shipping_type
+      WITH ship_loct_vw AS (
+        SELECT xwyp.shipping_date                     shipping_date
+              ,xwyp.ship_loct_id                      ship_loct_id
+              ,xwyp.item_id                           item_id
+        FROM xxcop_wk_yoko_planning xwyp
+        WHERE xwyp.transaction_id         = gn_transaction_id
+          AND xwyp.request_id             = cn_request_id
+          AND xwyp.receipt_date           = gd_planning_date
+          AND xwyp.ship_organization_id  <> gn_source_org_id
+        GROUP BY xwyp.shipping_date
+                ,xwyp.ship_loct_id
+                ,xwyp.item_id
+      )
+      SELECT MAX(receipt_date)                        receipt_date
+            ,rcpt_loct_id                             rcpt_loct_id
+            ,item_id                                  item_id
+            ,shipping_type                            shipping_type
+      FROM (
+        SELECT xwyp.receipt_date                      receipt_date
+              ,xwyp.rcpt_loct_id                      rcpt_loct_id
+              ,xwyp.item_id                           item_id
+              ,xwyp.shipping_type                     shipping_type
+        FROM xxcop_wk_yoko_planning xwyp
+            ,ship_loct_vw           slv
+        WHERE xwyp.transaction_id         = gn_transaction_id
+          AND xwyp.request_id             = cn_request_id
+          AND xwyp.receipt_date           > gd_allocated_date
+          AND xwyp.shipping_date          = slv.shipping_date
+          AND xwyp.ship_loct_id           = slv.ship_loct_id
+          AND xwyp.item_id                = slv.item_id
+          AND xwyp.shipping_type          = NVL(gv_plan_type, xwyp.shipping_type)
+          AND CASE
+                WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
+                  xwyp.shipping_pace
+                WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
+                  xwyp.forecast_pace
+                ELSE
+                  0
+              END > 0
+        UNION ALL
+        SELECT xwyp.receipt_date                      receipt_date
+              ,xwyp.rcpt_loct_id                      rcpt_loct_id
+              ,xwyp.item_id                           item_id
+              ,xwyp.shipping_type                     shipping_type
+        FROM xxcop_wk_yoko_planning xwyp
+            ,ship_loct_vw           slv
+        WHERE xwyp.transaction_id         = gn_transaction_id
+          AND xwyp.request_id             = cn_request_id
+          AND xwyp.receipt_date           > gd_allocated_date
+          AND xwyp.shipping_date          = slv.shipping_date
+          AND xwyp.rcpt_loct_id           = slv.ship_loct_id
+          AND xwyp.item_id                = slv.item_id
+          AND xwyp.ship_organization_id   = gn_source_org_id
+          AND xwyp.shipping_type          = NVL(gv_plan_type, xwyp.shipping_type)
+          AND CASE
+                WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
+                  xwyp.shipping_pace
+                WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
+                  xwyp.forecast_pace
+                ELSE
+                  0
+              END > 0
+      )
+      GROUP BY rcpt_loct_id
+              ,item_id
+              ,shipping_type
     ;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
 --
     -- *** ローカル・レコード ***
     l_gsat_tab                      g_sa_ttype;     --出荷ペース在庫引当コレクション型
@@ -8319,97 +8515,130 @@ AS
     l_gsat_tab.DELETE;
 --
     --出荷引当済日以降の場合、出荷ペースを横持計画手持在庫テーブルに登録
-    IF (gd_planning_date > gd_allocated_date) THEN
-      <<rcpt_loct_loop>>
-      FOR l_rcpt_rec IN rcpt_loct_cur LOOP
-        BEGIN
-          --出荷ペーストランザクションが作成された日付を取得
-          SELECT NVL(MAX(xli.schedule_date), gd_allocated_date)    latest_shipment_date
-          INTO lt_latest_shipment_date
-          FROM xxcop_loct_inv xli
-          WHERE xli.transaction_id   = gn_transaction_id
-            AND xli.request_id       = cn_request_id
-            AND xli.loct_id          = l_rcpt_rec.rcpt_loct_id
-            AND xli.item_id          = l_rcpt_rec.item_id
-            AND xli.transaction_type = cv_xli_type_sp
-            AND xli.schedule_date    > gd_allocated_date
-          ;
-          --出荷ペーストランザクションが着日まで作成されている場合、以降をスキップ
-          IF (lt_latest_shipment_date >= gd_planning_date) THEN
-            RAISE not_need_expt;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_START
+--    IF (gd_planning_date > gd_allocated_date) THEN
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_END
+    <<rcpt_loct_loop>>
+    FOR l_rcpt_rec IN rcpt_loct_cur LOOP
+      BEGIN
+        --出荷ペーストランザクションが作成された日付を取得
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--        SELECT NVL(MAX(xli.schedule_date), gd_allocated_date)    latest_shipment_date
+        SELECT NVL(MAX(xli.shipment_date), gd_allocated_date)    latest_shipment_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
+        INTO lt_latest_shipment_date
+        FROM xxcop_loct_inv xli
+        WHERE xli.transaction_id   = gn_transaction_id
+          AND xli.request_id       = cn_request_id
+          AND xli.loct_id          = l_rcpt_rec.rcpt_loct_id
+          AND xli.item_id          = l_rcpt_rec.item_id
+          AND xli.transaction_type = cv_xli_type_sp
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--          AND xli.schedule_date    > gd_allocated_date
+          AND xli.shipment_date    > gd_allocated_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
+        ;
+        --出荷ペーストランザクションが着日まで作成されている場合、以降をスキップ
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--        IF (lt_latest_shipment_date >= gd_planning_date) THEN
+        IF (lt_latest_shipment_date >= l_rcpt_rec.receipt_date) THEN
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
+          RAISE not_need_expt;
+        END IF;
+        --倉庫-品目の鮮度条件を取得
+        SELECT xwyp.item_id                                       item_id
+              ,xwyp.item_no                                       item_no
+              ,xwyp.rcpt_organization_id                          rcpt_organization_id
+              ,xwyp.rcpt_organization_code                        rcpt_organization_code
+              ,xwyp.rcpt_loct_id                                  rcpt_loct_id
+              ,xwyp.rcpt_loct_code                                rcpt_loct_code
+              ,xwyp.rcpt_calendar_code                            rcpt_calendar_code
+              ,xwyp.shipping_type                                 shipping_type
+              ,CASE
+                 WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
+                   xwyp.shipping_pace
+                 WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
+                   xwyp.forecast_pace
+                 ELSE
+                   0
+               END                                                shipping_pace
+              ,xwyp.freshness_priority                            freshness_priority
+              ,xwyp.freshness_class                               freshness_class
+              ,xwyp.freshness_check_value                         freshness_check_value
+              ,xwyp.freshness_adjust_value                        freshness_adjust_value
+              ,xwyp.max_stock_days                                max_stock_days
+              ,0                                                  allocate_quantity
+        BULK COLLECT INTO l_gsat_tab
+        FROM xxcop_wk_yoko_planning xwyp
+        WHERE xwyp.transaction_id   = gn_transaction_id
+          AND xwyp.request_id       = cn_request_id
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--          AND xwyp.receipt_date     = gd_planning_date
+          AND xwyp.receipt_date     = l_rcpt_rec.receipt_date
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
+          AND xwyp.shipping_type    = l_rcpt_rec.shipping_type
+          AND xwyp.rcpt_loct_id     = l_rcpt_rec.rcpt_loct_id
+          AND xwyp.item_id          = l_rcpt_rec.item_id
+          AND CASE
+                WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
+                  xwyp.shipping_pace
+                WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
+                  xwyp.forecast_pace
+                ELSE
+                  0
+              END > 0
+        GROUP BY xwyp.item_id
+                ,xwyp.item_no
+                ,xwyp.rcpt_organization_id
+                ,xwyp.rcpt_organization_code
+                ,xwyp.rcpt_loct_id
+                ,xwyp.rcpt_loct_code
+                ,xwyp.rcpt_calendar_code
+                ,xwyp.shipping_type
+                ,xwyp.freshness_priority
+                ,xwyp.freshness_class
+                ,xwyp.freshness_check_value
+                ,xwyp.freshness_adjust_value
+                ,xwyp.max_stock_days
+                ,xwyp.shipping_pace
+                ,xwyp.forecast_pace
+        ORDER BY xwyp.freshness_priority
+        ;
+        --品目の全ての鮮度条件で出荷ペースが0の場合、以降をスキップ
+        IF (l_gsat_tab.COUNT = 0) THEN
+          RAISE not_need_expt;
+        END IF;
+        --出荷ペーストランザクションを着日まで作成
+        lt_latest_shipment_date := lt_latest_shipment_date + 1;
+        <<date_loop>>
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+--        WHILE (lt_latest_shipment_date <= gd_planning_date) LOOP
+        WHILE (lt_latest_shipment_date <= l_rcpt_rec.receipt_date) LOOP
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
+          --稼働日チェック
+          xxcop_common_pkg2.get_working_days(
+             iv_calendar_code   => l_gsat_tab(1).rcpt_calendar_code
+            ,in_organization_id => l_gsat_tab(1).rcpt_organization_id
+            ,in_loct_id         => l_gsat_tab(1).rcpt_loct_id
+            ,id_from_date       => lt_latest_shipment_date
+            ,id_to_date         => lt_latest_shipment_date
+            ,on_working_days    => ln_working_day
+            ,ov_errbuf          => lv_errbuf
+            ,ov_retcode         => lv_retcode
+            ,ov_errmsg          => lv_errmsg
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_api_expt;
           END IF;
-          --倉庫-品目の鮮度条件を取得
-          SELECT xwyp.item_id                                       item_id
-                ,xwyp.item_no                                       item_no
-                ,xwyp.rcpt_organization_id                          rcpt_organization_id
-                ,xwyp.rcpt_organization_code                        rcpt_organization_code
-                ,xwyp.rcpt_loct_id                                  rcpt_loct_id
-                ,xwyp.rcpt_loct_code                                rcpt_loct_code
-                ,xwyp.rcpt_calendar_code                            rcpt_calendar_code
-                ,xwyp.shipping_type                                 shipping_type
-                ,CASE
-                   WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
-                     xwyp.shipping_pace
-                   WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
-                     xwyp.forecast_pace
-                   ELSE
-                     0
-                 END                                                shipping_pace
-                ,xwyp.freshness_priority                            freshness_priority
-                ,xwyp.freshness_class                               freshness_class
-                ,xwyp.freshness_check_value                         freshness_check_value
-                ,xwyp.freshness_adjust_value                        freshness_adjust_value
-                ,xwyp.max_stock_days                                max_stock_days
-                ,0                                                  allocate_quantity
-          BULK COLLECT INTO l_gsat_tab
-          FROM xxcop_wk_yoko_planning xwyp
-          WHERE xwyp.transaction_id   = gn_transaction_id
-            AND xwyp.request_id       = cn_request_id
-            AND xwyp.receipt_date     = gd_planning_date
-            AND xwyp.shipping_type    = l_rcpt_rec.shipping_type
-            AND xwyp.rcpt_loct_id     = l_rcpt_rec.rcpt_loct_id
-            AND xwyp.item_id          = l_rcpt_rec.item_id
-            AND CASE
-                  WHEN xwyp.shipping_type = cv_plan_type_shipped  THEN
-                    xwyp.shipping_pace
-                  WHEN xwyp.shipping_type = cv_plan_type_forecate THEN
-                    xwyp.forecast_pace
-                  ELSE
-                    0
-                END > 0
-          GROUP BY xwyp.item_id
-                  ,xwyp.item_no
-                  ,xwyp.rcpt_organization_id
-                  ,xwyp.rcpt_organization_code
-                  ,xwyp.rcpt_loct_id
-                  ,xwyp.rcpt_loct_code
-                  ,xwyp.rcpt_calendar_code
-                  ,xwyp.shipping_type
-                  ,xwyp.freshness_priority
-                  ,xwyp.freshness_class
-                  ,xwyp.freshness_check_value
-                  ,xwyp.freshness_adjust_value
-                  ,xwyp.max_stock_days
-                  ,xwyp.shipping_pace
-                  ,xwyp.forecast_pace
-          ORDER BY xwyp.freshness_priority
-          ;
-          --品目の全ての鮮度条件で出荷ペースが0の場合、以降をスキップ
-          IF (l_gsat_tab.COUNT = 0) THEN
-            RAISE not_need_expt;
-          END IF;
-          --出荷ペーストランザクションを着日まで作成
-          lt_latest_shipment_date := lt_latest_shipment_date + 1;
-          <<date_loop>>
-          WHILE (lt_latest_shipment_date <= gd_planning_date) LOOP
-            --稼働日チェック
-            xxcop_common_pkg2.get_working_days(
-               iv_calendar_code   => l_gsat_tab(1).rcpt_calendar_code
-              ,in_organization_id => l_gsat_tab(1).rcpt_organization_id
-              ,in_loct_id         => l_gsat_tab(1).rcpt_loct_id
-              ,id_from_date       => lt_latest_shipment_date
-              ,id_to_date         => lt_latest_shipment_date
-              ,on_working_days    => ln_working_day
+          --非稼働日の場合、スキップ
+          IF (ln_working_day > 0) THEN
+            --横持計画手持在庫テーブル登録に登録
+            -- ===============================
+            -- B-16．横持計画手持在庫テーブル登録(出荷ペース)
+            -- ===============================
+            entry_xli_shipment(
+               it_shipment_date   => lt_latest_shipment_date
+              ,io_gsat_tab        => l_gsat_tab
               ,ov_errbuf          => lv_errbuf
               ,ov_retcode         => lv_retcode
               ,ov_errmsg          => lv_errmsg
@@ -8417,32 +8646,18 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_api_expt;
             END IF;
-            --非稼働日の場合、スキップ
-            IF (ln_working_day > 0) THEN
-              --横持計画手持在庫テーブル登録に登録
-              -- ===============================
-              -- B-16．横持計画手持在庫テーブル登録(出荷ペース)
-              -- ===============================
-              entry_xli_shipment(
-                 it_shipment_date   => lt_latest_shipment_date
-                ,io_gsat_tab        => l_gsat_tab
-                ,ov_errbuf          => lv_errbuf
-                ,ov_retcode         => lv_retcode
-                ,ov_errmsg          => lv_errmsg
-              );
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_api_expt;
-              END IF;
-            END IF;
-            --日付をインクリメント
-            lt_latest_shipment_date := lt_latest_shipment_date + 1;
-          END LOOP date_loop;
-        EXCEPTION
-          WHEN not_need_expt THEN
-            NULL;
-        END;
-      END LOOP rcpt_loct_loop;
-    END IF;
+          END IF;
+          --日付をインクリメント
+          lt_latest_shipment_date := lt_latest_shipment_date + 1;
+        END LOOP date_loop;
+      EXCEPTION
+        WHEN not_need_expt THEN
+          NULL;
+      END;
+    END LOOP rcpt_loct_loop;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_START
+--    END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_END
 --
   EXCEPTION
     WHEN internal_api_expt THEN
@@ -8820,6 +9035,9 @@ AS
                               || l_ship_tab(l_git_tab(ln_git_idx)).loct_code || ','
                               || l_item_tab(ln_item_idx).item_no             || ','
             );
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+            SAVEPOINT pre_balance_proc_svp;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
             -- ===============================
             -- B-19．バランス計画数の計算
             -- ===============================
@@ -8839,28 +9057,31 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_api_expt;
             END IF;
---
-            BEGIN
-              --バランス計画数のトランザクションを削除
-              DELETE xxcop_loct_inv xli
-              WHERE xli.transaction_id    = gn_transaction_id
-                AND xli.request_id        = cn_request_id
-                AND xli.transaction_type  = cv_xli_type_bq
-                AND xli.simulate_flag     = cv_simulate_yes
-              ;
-            EXCEPTION
-              WHEN NO_DATA_FOUND THEN
-                NULL;
-              WHEN OTHERS THEN
-                lv_errbuf := SQLERRM;
-                lv_errmsg := xxccp_common_pkg.get_msg(
-                                iv_application  => cv_msg_appl_cont
-                               ,iv_name         => cv_msg_00042
-                               ,iv_token_name1  => cv_msg_00042_token_1
-                               ,iv_token_value1 => cv_table_xli
-                             );
-                RAISE global_api_expt;
-            END;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+----
+--            BEGIN
+--              --バランス計画数のトランザクションを削除
+--              DELETE xxcop_loct_inv xli
+--              WHERE xli.transaction_id    = gn_transaction_id
+--                AND xli.request_id        = cn_request_id
+--                AND xli.transaction_type  = cv_xli_type_bq
+--                AND xli.simulate_flag     = cv_simulate_yes
+--              ;
+--            EXCEPTION
+--              WHEN NO_DATA_FOUND THEN
+--                NULL;
+--              WHEN OTHERS THEN
+--                lv_errbuf := SQLERRM;
+--                lv_errmsg := xxccp_common_pkg.get_msg(
+--                                iv_application  => cv_msg_appl_cont
+--                               ,iv_name         => cv_msg_00042
+--                               ,iv_token_name1  => cv_msg_00042_token_1
+--                               ,iv_token_value1 => cv_table_xli
+--                             );
+--                RAISE global_api_expt;
+--            END;
+            ROLLBACK TO SAVEPOINT pre_balance_proc_svp;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
 --
             --バランス計算結果を判定
             IF (lv_stock_result IN (cv_complete, cv_incomplete)) THEN
@@ -8875,6 +9096,9 @@ AS
                 ,it_sy_manufacture_date => l_gfqt_tab(1).sy_manufacture_date
                 ,io_gbqt_tab            => l_gbqt_tab
                 ,io_xwypo_tab           => l_xwypo_tab
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+                ,ov_stock_result        => lv_stock_result
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
                 ,ov_errbuf              => lv_errbuf
                 ,ov_retcode             => lv_retcode
                 ,ov_errmsg              => lv_errmsg
@@ -8882,10 +9106,12 @@ AS
               IF (lv_retcode = cv_status_error) THEN
                 RAISE global_api_expt;
               END IF;
-              --全ての鮮度条件で最大在庫まで横持計画ができた場合、以降をスキップ
-              IF (lv_stock_result = cv_complete) THEN
-                EXIT balance_loop;
-              END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_START
+--              --全ての鮮度条件で最大在庫まで横持計画ができた場合、以降をスキップ
+--              IF (lv_stock_result = cv_complete) THEN
+--                EXIT balance_loop;
+--              END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_DEL_END
             END IF;
             -- ===============================
             -- B-21．横持計画手持在庫テーブル登録(計画不可)
@@ -8900,6 +9126,12 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_api_expt;
             END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+            --全ての鮮度条件で最大在庫まで横持計画ができた場合、以降をスキップ
+            IF (lv_stock_result = cv_complete) THEN
+              EXIT balance_loop;
+            END IF;
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
           END LOOP balance_loop;
 --
           BEGIN
@@ -9442,9 +9674,12 @@ AS
       FOR l_planning_rec IN (
         SELECT xwyp.receipt_date    receipt_date
         FROM xxcop_wk_yoko_planning xwyp
-        WHERE xwyp.transaction_id = gn_transaction_id
-          AND xwyp.request_id     = cn_request_id
-          AND xwyp.planning_flag  = cv_planning_yes
+        WHERE xwyp.transaction_id         = gn_transaction_id
+          AND xwyp.request_id             = cn_request_id
+          AND xwyp.planning_flag          = cv_planning_yes
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
+          AND xwyp.ship_organization_id  <> gn_source_org_id
+--20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_END
         GROUP BY xwyp.receipt_date
         ORDER BY xwyp.receipt_date
       ) LOOP
