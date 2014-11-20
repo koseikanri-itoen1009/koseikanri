@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
  *  2009/05/18    1.6   T.Nakamura       [T1_1044]HHT倉庫保管場所コードの取得条件変更
  *  2009/06/03    1.7   H.Sasaki         [T1_1287][T1_1288]アサイメントの有効日を条件に追加
+ *  2009/09/30    1.8   N.Abe            [E_T3_00616]アサインメントの有効日を条件に追加
  *
  *****************************************************************************************/
 --
@@ -175,6 +176,10 @@ AS
       AND    apf.person_id          = fnu.employee_id
       AND    TRUNC(id_target_date) BETWEEN TRUNC(apf.effective_start_date)
       AND    TRUNC(NVL(apf.effective_end_date,id_target_date))
+-- == 2009/09/30 V1.8 Added START ===============================================================
+      AND    TRUNC(id_target_date) BETWEEN TRUNC(aaf.effective_start_date)
+      AND    TRUNC(NVL(aaf.effective_end_date,id_target_date))
+-- == 2009/09/30 V1.8 Added END   ===============================================================
       AND    ppt.business_group_id  = cn_business_group_id
       AND    ppt.system_person_type = 'EMP'
       AND    ppt.active_flag        = 'Y'
