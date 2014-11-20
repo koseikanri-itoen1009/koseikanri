@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.4
+ * Version          : 2.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -63,6 +63,8 @@ AS
  *                                                5.請求先顧客コードを["]で括る(カード)。
  *                                                6.コンカレント出力の件数
  *  2009/05/21    2.4   S.Kayahara       [T1_1060]売上実績CSV作成(A-4)に参照タイプ（納品伝票区分特定マスタ）取得処理追加
+ *  2009/05/29    2.5   T.Kitajima       [T1_1120]org_id追加
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -409,6 +411,9 @@ AS
          AND    hca.cust_account_id         = in_ship_account_id
          AND    hca.cust_account_id         = hcasa.cust_account_id
          AND    hcasa.cust_acct_site_id     = hcsua.cust_acct_site_id
+--****************************** 2009/05/29 2.5 T.Kitajima ADD START ******************************
+         AND    hcasa.org_id                = gt_org_id
+--****************************** 2009/05/29 2.5 T.Kitajima ADD  END  ******************************
          AND    hcsua.site_use_id           = rcta.ship_to_site_use_id
          AND    hcsua.site_use_code         = cv_site_ship_to
          AND    rctla.customer_trx_id       = rctlgda.customer_trx_id       -- 取引データID

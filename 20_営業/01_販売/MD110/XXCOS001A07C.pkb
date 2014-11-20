@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,9 @@ AS
  *  2009/04/17    1.6   T.Kitajima       [T1_0601]入出庫データ更新処理修正
  *  2009/04/22    1.7   T.Kitajima       [T1_0728]入力区分対応
  *  2009/05/07    1.8   N.Maeda          [T1_0821]VDコラム別取引情報テーブル.対象オリジナル伝票存在時対応
+ *  2009/05/21    1.9   T.Kitajima       [T1_1039]販売実績連携済み更新方法修正
+ *  2009/05/26    1.9   T.Kitajima       [T1_1177]件数制御修正
+ *  2009/05/29    1.9   T.Kitajima       [T1_1120]org_id追加
  *
  *****************************************************************************************/
 --
@@ -108,6 +111,10 @@ AS
   cv_prf_max_date    CONSTANT VARCHAR2(50)  := 'XXCOS1_MAX_DATE';
   -- GL会計帳簿ID
   cv_prf_bks_id      CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';
+--****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
+  -- MO営業単位
+  cv_pf_org_id       CONSTANT VARCHAR2(30)  := 'ORG_ID';              -- MO:営業単位
+--****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
 --
   -- エラーコード
   cv_msg_lock        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00001';       -- ロックエラー
@@ -140,6 +147,9 @@ AS
   cv_msg_h_nor_cnt   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10365';       -- ヘッダ成功件数
   cv_msg_l_nor_cnt   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10366';       -- 明細成功件数
   cv_msg_input       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10043';       -- 入力区分
+--****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
+  cv_msg_mo          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00047';       -- MO:営業単位
+--****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE_NAME';             -- テーブル名
   cv_tkn_tab         CONSTANT VARCHAR2(20)  := 'TABLE';                  -- テーブル名
@@ -281,7 +291,11 @@ AS
      request_id                      xxcos_vd_column_headers.request_id%TYPE,-- 要求ID
      program_application_id          xxcos_vd_column_headers.program_application_id%TYPE,-- コンカレント・プログラム・アプリケーションID
      program_id                      xxcos_vd_column_headers.program_id%TYPE,-- コンカレント・プログラムID
-     program_update_date             xxcos_vd_column_headers.program_update_date%TYPE-- プログラム更新日
+     program_update_date             xxcos_vd_column_headers.program_update_date%TYPE,-- プログラム更新日
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
+     h_rowid                         rowid                                                 -- レコードID
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
+
     );
   TYPE g_tab_clm_headers IS TABLE OF g_rec_clm_headers INDEX BY PLS_INTEGER;
 --
@@ -414,6 +428,7 @@ AS
   TYPE g_tab_vd_can_cor_class            IS TABLE OF xxcos_vd_column_headers.cancel_correct_class%TYPE
     INDEX BY PLS_INTEGER;                -- 取消訂正区分
 --******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
+
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -502,6 +517,9 @@ AS
   gt_vd_row_id                      g_tab_vd_row_id;                 -- VDカラム別取引情報-行ID
   gt_vd_can_cor_class               g_tab_vd_can_cor_class;          -- VDカラム別取引情報-取消訂正区分
 --******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ***************************************--
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
+  gt_dlv_headers_row_id             g_tab_vd_row_id;                 -- 納品ヘッダテーブルレコードID
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
 --
   gn_inv_target_cnt     NUMBER;                         -- 入出庫情報抽出件数
   gn_dlv_h_target_cnt   NUMBER;                         -- 納品ヘッダ情報抽出件数
@@ -524,6 +542,9 @@ AS
   gv_tkn1               VARCHAR2(50);                   -- エラーメッセージ用トークン１
   gv_tkn2               VARCHAR2(50);                   -- エラーメッセージ用トークン２
   gv_tkn3               VARCHAR2(50);                   -- エラーメッセージ用トークン３
+--****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
+  gt_org_id             fnd_profile_option_values.profile_option_value%TYPE;      -- MO:営業単位
+--****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
 --
 --
   /**********************************************************************************
@@ -645,6 +666,21 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+--****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
+    -- ===============================
+    --  MO:営業単位取得
+    -- ===============================
+    gt_org_id := FND_PROFILE.VALUE( cv_pf_org_id );
+--
+    -- プロファイル取得エラーの場合
+    IF ( gt_org_id IS NULL ) THEN
+      gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_mo );
+      lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_pro, cv_tkn_profile, gv_tkn1 );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
 --
   EXCEPTION
 --
@@ -923,6 +959,9 @@ AS
           AND    vd.customer_id         = cust.customer_id        -- VDコラムマスタ.顧客ID＝顧客追加情報.顧客ID
           AND    cust.customer_id       = acct.cust_account_id    -- 顧客追加情報.顧客サイトID＝顧客所在地.顧客サイトID
           AND    acct.cust_acct_site_id = site.cust_acct_site_id  -- 顧客所在地.顧客サイトID＝顧客使用目的.顧客サイトID
+--****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
+          AND    acct.org_id            = gt_org_id               -- 顧客所在地.ORG_ID＝1145
+--****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
 --************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
 --          AND    (
@@ -1046,6 +1085,9 @@ AS
           AND    vd.customer_id         = cust.customer_id        -- VDコラムマスタ.顧客ID＝顧客追加情報.顧客ID
           AND    cust.customer_id       = acct.cust_account_id    -- 顧客追加情報.顧客サイトID＝顧客所在地.顧客サイトID
           AND    acct.cust_acct_site_id = site.cust_acct_site_id  -- 顧客所在地.顧客サイトID＝顧客使用目的.顧客サイトID
+--****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
+          AND    acct.org_id            = gt_org_id               -- 顧客所在地.ORG_ID＝1145
+--****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
 --************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
 --          AND    (
@@ -1559,9 +1601,9 @@ AS
 --      gt_replenish_num(ln_inv_lines_num)  := lt_replenish_number;  -- 補充数
       gt_replenish_num(ln_inv_lines_num)  := lt_vd_replenish_number;  -- 補充数
 --************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
---****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
+----****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
       gt_transaction_id(ln_inv_lines_num) := lt_transaction_id;     -- 入出庫一時表ID
---****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
+----****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
       gt_input_class(ln_inv_lines_num)    := lt_input_class;        -- 入力区分
 --****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
@@ -1790,7 +1832,10 @@ AS
           );
 --
       -- ヘッダ成功件数セット
-      on_normal_cnt := SQL%ROWCOUNT;
+--******************** 2009/05/26 Var1.9  T.Kitajima MOD START ******************************************
+--      on_normal_cnt := SQL%ROWCOUNT;
+      on_normal_cnt := gt_order_noh_hht.COUNT;
+--******************** 2009/05/26 Var1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1874,7 +1919,10 @@ AS
           );
 --
       -- 明細成功件数セット
-      on_normal_cnt_l := SQL%ROWCOUNT;
+--******************** 2009/05/26 Var1.9  T.Kitajima MOD START ******************************************
+--      on_normal_cnt_l := SQL%ROWCOUNT;
+      on_normal_cnt_l := gt_order_nol_hht.COUNT;
+--******************** 2009/05/26 Var1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1993,7 +2041,10 @@ AS
              cn_request_id                   request_id,                  -- 要求ID
              cn_program_application_id       program_application_id,      -- コンカレント・プログラム・アプリケーションID
              cn_program_id                   program_id,                  -- コンカレント・プログラムID
-             cd_program_update_date          program_update_date          -- プログラム更新日
+             cd_program_update_date          program_update_date,         -- プログラム更新日
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
+             rowid                           h_rowid                       -- レコードID
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
       FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
       WHERE  head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
       AND    head.input_class          = cv_input_class   -- 入力区分＝5
@@ -2142,6 +2193,9 @@ AS
       gt_dev_set_program_appli_id(header_id) := gt_clm_headers(header_id).program_application_id;
       gt_dev_set_program_id(header_id)          := gt_clm_headers(header_id).program_id;
       gt_dev_set_program_update_d(header_id) := gt_clm_headers(header_id).program_update_date;
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
+      gt_dlv_headers_row_id(header_id)          := gt_clm_headers(header_id).h_rowid;
+--******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
     END LOOP headers_loop;
 --
 --
@@ -2295,7 +2349,10 @@ AS
 --******************** 2009/05/07 Var1.8  N.Maeda MOD  END  ******************************************
 --
     -- ヘッダ抽出件数セット
-    on_target_cnt := SQL%ROWCOUNT;
+--******************** 2009/05/26 Var1.9  T.Kitajima MOD START ******************************************
+--    on_target_cnt := SQL%ROWCOUNT;
+    on_target_cnt := gt_dev_set_order_noh_hht.COUNT;
+--******************** 2009/05/26 Var1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -2551,20 +2608,36 @@ AS
     -- 販売実績連携済みフラグ更新
     --==============================================================
     BEGIN
-      UPDATE
-        xxcos_dlv_headers  head   -- 納品ヘッダテーブル
-      SET
-        head.results_forward_flag   = cv_one,                      -- 販売実績連携済みフラグ
-        head.results_forward_date   = cd_last_update_date,         -- 販売実績連携済み日付
-        head.last_updated_by        = cn_last_updated_by,          -- 最終更新者
-        head.last_update_date       = cd_last_update_date,         -- 最終更新日
-        head.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
-        head.request_id             = cn_request_id,               -- 要求ID
-        head.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
-        head.program_id             = cn_program_id,               -- コンカレント・プログラムID
-        head.program_update_date    = cd_program_update_date       -- プログラム更新日
-      WHERE  head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
-      AND    head.input_class          = cv_input_class;           -- 入力区分＝5
+--******************** 2009/05/21 Var1.9  T.Kitajima MOD START ******************************************
+--      UPDATE
+--        xxcos_dlv_headers  head   -- 納品ヘッダテーブル
+--      SET
+--        head.results_forward_flag   = cv_one,                      -- 販売実績連携済みフラグ
+--        head.results_forward_date   = cd_last_update_date,         -- 販売実績連携済み日付
+--        head.last_updated_by        = cn_last_updated_by,          -- 最終更新者
+--        head.last_update_date       = cd_last_update_date,         -- 最終更新日
+--        head.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
+--        head.request_id             = cn_request_id,               -- 要求ID
+--        head.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
+--        head.program_id             = cn_program_id,               -- コンカレント・プログラムID
+--        head.program_update_date    = cd_program_update_date       -- プログラム更新日
+--      WHERE  head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
+--      AND    head.input_class          = cv_input_class;           -- 入力区分＝5
+--
+      FORALL i in 1..gt_dlv_headers_row_id.COUNT
+        UPDATE xxcos_dlv_headers  head   -- 納品ヘッダテーブル
+           SET head.results_forward_flag   = cv_one,                      -- 販売実績連携済みフラグ
+               head.results_forward_date   = cd_last_update_date,         -- 販売実績連携済み日付
+               head.last_updated_by        = cn_last_updated_by,          -- 最終更新者
+               head.last_update_date       = cd_last_update_date,         -- 最終更新日
+               head.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
+               head.request_id             = cn_request_id,               -- 要求ID
+               head.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
+               head.program_id             = cn_program_id,               -- コンカレント・プログラムID
+               head.program_update_date    = cd_program_update_date       -- プログラム更新日
+         WHERE head.rowid                  = gt_dlv_headers_row_id(i)
+      ;
+--******************** 2009/05/21 Var1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -2596,7 +2669,7 @@ AS
             head.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
             head.program_id             = cn_program_id,               -- コンカレント・プログラムID
             head.program_update_date    = cd_program_update_date       -- プログラム更新日
-          WHERE  head.ROWID             = gt_vd_row_id(i);
+          WHERE  head.rowid             = gt_vd_row_id(i);
 --
       EXCEPTION
         WHEN OTHERS THEN
