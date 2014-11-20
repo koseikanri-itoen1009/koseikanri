@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIƒVƒXƒeƒ€—pI/F˜AŒg‹@”\iINBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_ƒVƒFƒ‹                                      ##
-## Version          : 1.11                                                      ##
+## Version          : 1.12                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -49,6 +49,8 @@
 ##  2009/08/19    1.10  Masayuki.Sano    áŠQ”Ô†[0000835]                      ##
 ##                                         ˆêƒtƒ@ƒCƒ‹–¼•ÏX                   ##
 ##  2009/11/23    1.11  Shigeto.Niki     ˆêƒtƒ@ƒCƒ‹ƒpƒXC³                   ##
+##  2009/11/25    1.12  Masayuki.Sano    áŠQ”Ô†[E_–{‰Ò“®_00056]               ##
+##                                         SQL-Loader“®ì•s³‘Î‰               ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -58,12 +60,12 @@
 ##                                 •Ï”’è‹`                                   ##
 ################################################################################
 
-C_appl_name="XXCCP"                             #ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-C_program_id="ZBZZEXINBOUND"                    #ƒvƒƒOƒ‰ƒ€ID
-L_logpath="/var/log/jp1/PEBSITO"                #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
+C_appl_name="XXCCP"                #ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+C_program_id="ZBZZEXINBOUND"       #ƒvƒƒOƒ‰ƒ€ID
+L_logpath="/var/log/jp1/PEBSITO"   #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
 
 # 2009/11/23 Ver.1.11 Shigeto.Niki mod START
-#L_tmppath="$COMMON_TOP/temp"                    #ˆêƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
+#L_tmppath="$COMMON_TOP/temp"       #ˆêƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
 L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"       #ˆêƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
 # 2009/11/23 Ver.1.11 Shigeto.Niki mod END
 
@@ -156,7 +158,10 @@ C_log_msg_00023="‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ“à‚ÌƒoƒbƒNƒAƒbƒvƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½
 #===============================================================================
 output_log()
 {
-  echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+#2009/11/25 MOD Ver.1.12 Start
+#  echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+  echo $$-`date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+#2009/11/25 MOD Ver.1.12 End
 }
 
 #===============================================================================
@@ -1223,9 +1228,12 @@ then
     L_exit_code=${?}
     if [ ${L_exit_code} -ne 0 ]
     then
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
-      shell_end ${C_ret_code_eror}
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
+#2009/11/25 MOD Ver.1.12 Start
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+#      shell_end ${C_ret_code_eror}
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
+      shell_end ${L_exit_code}
+#2009/11/25 MOD Ver.1.12 End
       exit ${L_exit_code}
     fi
 #2009/02/27 UPDATE BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ END
@@ -1236,7 +1244,10 @@ then
   else
     #SQL Loader‚É‚Äæ‚è‚ñ‚¾ƒf[ƒ^íœ
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
-    SQL_LOADER_DELETE "${2}"
+#2009/11/25 MOD Ver.1.12 Start
+#    SQL_LOADER_DELETE "${2}"
+    SQL_LOADER_DELETE "${G_path_nas}"
+#2009/11/25 MOD Ver.1.12 End
     L_ret_code=${?}
 #2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano START
 #    if [ ${L_ret_code} -ne 0 ]

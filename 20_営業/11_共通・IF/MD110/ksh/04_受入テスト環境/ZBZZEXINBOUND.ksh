@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIƒVƒXƒeƒ€—pI/F˜AŒg‹@”\iINBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_ƒVƒFƒ‹                                      ##
-## Version          : 1.10                                                      ##
+## Version          : 1.12                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -48,6 +48,8 @@
 ##                                         “ú–{Œê‚ÌƒpƒXî•ñ‚ğæ“¾‚·‚é‚æ‚¤C³   ##
 ##  2009/08/19    1.10  Masayuki.Sano    áŠQ”Ô†[0000835]                      ##
 ##                                         ˆêƒtƒ@ƒCƒ‹–¼•ÏX                   ##
+##  2009/11/25    1.12  Masayuki.Sano    áŠQ”Ô†[E_–{‰Ò“®_00056]               ##
+##                                         SQL-Loader“®ì•s³‘Î‰               ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -153,7 +155,10 @@ C_log_msg_00023="‘Ş”ğæƒfƒBƒŒƒNƒgƒŠ“à‚ÌƒoƒbƒNƒAƒbƒvƒtƒ@ƒCƒ‹‚Ìíœ‚É¸”s‚µ‚Ü‚µ‚½
 #===============================================================================
 output_log()
 {
-  echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+#2009/11/25 MOD Ver.1.12 Start
+#  echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+  echo $$-`date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
+#2009/11/25 MOD Ver.1.12 End
 }
 
 #===============================================================================
@@ -1220,9 +1225,12 @@ then
     L_exit_code=${?}
     if [ ${L_exit_code} -ne 0 ]
     then
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
-      shell_end ${C_ret_code_eror}
-#2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
+#2009/11/25 MOD Ver.1.12 Start
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano START
+#      shell_end ${C_ret_code_eror}
+##2009/04/15 ADD Ver.1.7 BY Masayuki.Sano END
+      shell_end ${L_exit_code}
+#2009/11/25 MOD Ver.1.12 End
       exit ${L_exit_code}
     fi
 #2009/02/27 UPDATE BY M.Sano Œ‹‡ƒeƒXƒg“®ì•s³‘Î‰ END
@@ -1233,7 +1241,10 @@ then
   else
     #SQL Loader‚É‚Äæ‚è‚ñ‚¾ƒf[ƒ^íœ
     #EˆÙíI—¹¨–ß‚è’l(7)‚ğƒZƒbƒg‚µ‚Äˆ—I—¹
-    SQL_LOADER_DELETE "${2}"
+#2009/11/25 MOD Ver.1.12 Start
+#    SQL_LOADER_DELETE "${2}"
+    SQL_LOADER_DELETE "${G_path_nas}"
+#2009/11/25 MOD Ver.1.12 End
     L_ret_code=${?}
 #2009/04/15 DELETE Ver.1.7 BY Masayuki.Sano START
 #    if [ ${L_ret_code} -ne 0 ]
