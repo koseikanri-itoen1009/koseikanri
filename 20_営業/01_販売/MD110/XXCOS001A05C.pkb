@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -90,6 +90,7 @@ AS
  *                                       [E_本稼動_01764] 入出庫データ(見本)取込時、ヘッダ作成ブレイク条件追加
  *  2010/09/02    1.27  K.Kiriu          [E_本稼動_02635] 汎用エラーリスト出力対応
  *  2011/03/22    1.28  S.Ochiai         [E_本稼動_06589,06590] オーダーNo連携対応
+ *  2011/04/05    1.29  T.Ishiwata       [E_本稼動_01433] OM受注クローズ時の抽出条件変更
  *
  *****************************************************************************************/
 --
@@ -372,7 +373,10 @@ AS
   cv_xxcos_r_standard_line    CONSTANT VARCHAR2(50) := 'XXCOS_R_STANDARD_LINE:BLOCK';  -- クローズ関数用定数
   cv_status_booked            CONSTANT VARCHAR2(10) := 'BOOKED';                -- ヘッダステータス(記帳済み) 
   cv_status_type_can          CONSTANT VARCHAR2(10) := 'CANCELLED';             -- ステータス(キャンセル)
-  cv_status_type_clo          CONSTANT VARCHAR2(10) := 'CLOSE';                 -- ステータス(クローズ)
+-- 2011/04/05 1.29 T.Ishiwata MOD START
+--  cv_status_type_clo          CONSTANT VARCHAR2(10) := 'CLOSE';                 -- ステータス(クローズ)
+  cv_status_type_clo          CONSTANT VARCHAR2(10) := 'CLOSED';                -- ステータス(クローズ)
+-- 2011/04/05 1.29 T.Ishiwata MOD END
 --  cv_tkn_ja                   CONSTANT VARCHAR2(10) := 'JA';                    -- トークン'JA'
   cv_tkn_yes                  CONSTANT VARCHAR2(10)  := 'Y';                    -- トークン'Y'
   cv_tkn_no                   CONSTANT VARCHAR2(10)  := 'N';                    -- トークン'N'
@@ -3360,7 +3364,18 @@ AS
     -- OM受注データ取得カーソル
     CURSOR get_oe_order_cur
     IS
-      SELECT ooh.order_number      order_number,            -- 受注番号
+-- 2011/04/05 1.29 T.Ishiwata MOD START
+--      SELECT ooh.order_number      order_number,            -- 受注番号
+      SELECT /*+
+                LEADING(ooh)
+                INDEX(oos OE_ORDER_SOURCES_U2)
+                INDEX(ooh OE_ORDER_HEADERS_U2)
+                INDEX(ool XXCOS_ORDER_LINES_ALL_N21)
+                INDEX(msi MTL_SECONDARY_INVENTORIES_U1)
+                INDEX(flv FND_LOOKUP_VALUES_U2)
+              */
+             ooh.order_number      order_number,            -- 受注番号
+-- 2011/04/05 1.29 T.Ishiwata MOD END
              ooh.header_id         header_id,               -- 受注ヘッダID
              ooh.flow_status_code  head_flow_status_code,   -- ステータス
              ooh.order_source_id   order_source_id,         -- 受注ソースID
@@ -3373,6 +3388,10 @@ AS
       FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
              oe_order_lines_all ool,                        -- OM受注明細テーブル
              oe_order_sources oos                           -- オーダーソース
+-- 2011/04/05 1.29 T.Ishiwata ADD START
+            ,mtl_secondary_inventories msi
+            ,fnd_lookup_values         flv
+-- 2011/04/05 1.29 T.Ishiwata ADD END
       WHERE  ooh.header_id = ool.header_id
       AND    ooh.order_source_id = oos.order_source_id
       AND    ool.order_source_id = oos.order_source_id
@@ -3383,6 +3402,17 @@ AS
 -- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
       AND    ool.global_attribute5 IS NULL
 -- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
+-- 2011/04/05 1.29 T.Ishiwata ADD START
+      AND    msi.secondary_inventory_name = ool.subinventory
+      AND    msi.organization_id          = gn_orga_id
+      AND    msi.attribute13              = flv.meaning
+      AND    flv.lookup_type              = cv_xxcos1_hokan_mst_001_a05
+      AND    flv.lookup_code              = cv_xxcos_001_a05_05
+      AND    flv.enabled_flag             = cv_tkn_yes
+      AND    flv.language                 = ct_user_lang
+      AND    gd_process_date             >= flv.start_date_active
+      AND    gd_process_date             <= NVL(flv.end_date_active, gd_max_date)
+-- 2011/04/05 1.29 T.Ishiwata ADD END
       ORDER BY ooh.order_number,ool.line_id
 -- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
       FOR UPDATE OF  ool.global_attribute5
@@ -6537,7 +6567,18 @@ AS
     -- OM受注データ取得カーソル
     CURSOR get_oe_order_cur
     IS
-      SELECT ooh.order_number      order_number,            -- 受注番号
+-- 2011/04/05 1.29 T.Ishiwata MOD START
+--      SELECT ooh.order_number      order_number,            -- 受注番号
+      SELECT /*+
+                LEADING(ooh)
+                INDEX(oos OE_ORDER_SOURCES_U2)
+                INDEX(ooh OE_ORDER_HEADERS_U2)
+                INDEX(ool XXCOS_ORDER_LINES_ALL_N21)
+                INDEX(msi MTL_SECONDARY_INVENTORIES_U1)
+                INDEX(flv FND_LOOKUP_VALUES_U2)
+              */
+             ooh.order_number      order_number,            -- 受注番号
+-- 2011/04/05 1.29 T.Ishiwata MOD END
              ooh.header_id         header_id,               -- 受注ヘッダID
              ooh.flow_status_code  head_flow_status_code,   -- ステータス
              ooh.order_source_id   order_source_id,         -- 受注ソースID
@@ -6550,6 +6591,10 @@ AS
       FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
              oe_order_lines_all ool,                        -- OM受注明細テーブル
              oe_order_sources oos                           -- オーダーソース
+-- 2011/04/05 1.29 T.Ishiwata ADD START
+            ,mtl_secondary_inventories msi
+            ,fnd_lookup_values         flv
+-- 2011/04/05 1.29 T.Ishiwata ADD END
       WHERE  ooh.header_id = ool.header_id
       AND    ooh.order_source_id = oos.order_source_id
       AND    ool.order_source_id = oos.order_source_id
@@ -6560,6 +6605,17 @@ AS
 -- ************ 2009/10/13 N.Maeda ADD START *********** --
       AND    ool.global_attribute5 IS NULL
 -- ************ 2009/10/13 N.Maeda ADD  END  *********** --
+-- 2011/04/05 1.29 T.Ishiwata ADD START
+      AND    msi.secondary_inventory_name = ool.subinventory
+      AND    msi.organization_id          = gn_orga_id
+      AND    msi.attribute13              = flv.meaning
+      AND    flv.lookup_type              = cv_xxcos1_hokan_mst_001_a05
+      AND    flv.lookup_code              = cv_xxcos_001_a05_05
+      AND    flv.enabled_flag             = cv_tkn_yes
+      AND    flv.language                 = ct_user_lang
+      AND    gd_process_date             >= flv.start_date_active
+      AND    gd_process_date             <= NVL(flv.end_date_active, gd_max_date)
+-- 2011/04/05 1.29 T.Ishiwata ADD END
       ORDER BY ooh.order_number,ool.line_id
 -- ************ 2009/10/13 N.Maeda ADD START *********** --
       FOR UPDATE OF  ool.global_attribute5
