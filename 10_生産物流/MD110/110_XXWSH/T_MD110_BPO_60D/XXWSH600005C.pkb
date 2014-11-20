@@ -33,6 +33,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/18    1.0  Oracle 上原正好   初回作成
+ *  2008/06/16    1.1  Oracle 野村正幸   結合障害 #9対応
  *
  *****************************************************************************************/
 --
@@ -77,6 +78,9 @@ AS
   -- ===============================
   --*** 処理対象データなし例外 ***
   global_no_data_found_expt EXCEPTION;
+-- ##### 20080616 1.1 結合障害 #9対応 START #####
+  ex_worn                   EXCEPTION ;
+-- ##### 20080616 1.1 結合障害 #9対応 END   #####
   --*** ロックエラー例外 ***
   global_lock_error_expt    EXCEPTION;
 --
@@ -1637,7 +1641,10 @@ AS
       END IF ;
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := gv_status_error;
+-- ##### 20080616 1.1 結合障害 #9対応 START #####
+--      ov_retcode := gv_status_error;
+      ov_retcode := gv_status_warn;
+-- ##### 20080616 1.1 結合障害 #9対応 END   #####
 --
     -- *** ロックエラー例外ハンドラ ***
     WHEN global_lock_error_expt THEN
@@ -2780,6 +2787,9 @@ AS
         RAISE global_process_expt;
       ELSIF (lv_retcode = gv_status_warn) THEN
         ov_retcode := lv_retcode;
+-- ##### 20080616 1.1 結合障害 #9対応 START #####
+        RAISE ex_worn ;
+-- ##### 20080616 1.1 結合障害 #9対応 END   #####
       END IF;
 --
       -- エラーフラグの初期化
@@ -2999,6 +3009,16 @@ AS
     END IF;
 --
   EXCEPTION
+--
+-- ##### 20080616 1.1 結合障害 #9対応 START #####
+    -- =============================================================================================
+    -- 警告処理
+    -- =============================================================================================
+    WHEN ex_worn THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := lv_errbuf ;
+      ov_retcode := gv_status_warn;
+-- ##### 20080616 1.1 結合障害 #9対応 END   #####
 --
     --*** 数値型に変換できなかった場合=TO_NUMBER() ***
     WHEN VALUE_ERROR THEN

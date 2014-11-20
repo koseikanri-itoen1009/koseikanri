@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2008/05/02    1.0   M.Ikeda          新規作成
  *  2008/06/04    1.1   N.Yoshida        移動ロット詳細紐付け対応
  *  2008/06/11    1.2   M.Hokkanji       配車が組まれていない場合でも出力されるように修正
+ *  2008/06/12    1.3   M.Nomura         結合テスト 不具合対応#7
+ *  2008/06/17    1.4   M.Hokkanji       システムテスト 不具合対応#153
  *
  *****************************************************************************************/
 --
@@ -200,7 +202,10 @@ AS
   gc_data_class_ins         CONSTANT VARCHAR2(1) := '0' ;     -- 追加
 -- M.Hokkanji Ver1.2 START
 --  gc_data_class_del         CONSTANT VARCHAR2(1) := '2' ;     -- 削除
-  gc_data_class_del         CONSTANT VARCHAR2(1) := '2' ;     -- 削除
+-- ##### 20080612 Ver.1.2 データ区分削除コード対応 START #####
+--  gc_data_class_del         CONSTANT VARCHAR2(1) := '2' ;     -- 削除
+  gc_data_class_del         CONSTANT VARCHAR2(1) := '1' ;     -- 削除
+-- ##### 20080612 Ver.1.2 データ区分削除コード対応 START #####
   gc_product_flg_1          CONSTANT VARCHAR2(1) := '1' ;     -- 製品
   gc_product_flg_0          CONSTANT VARCHAR2(1) := '0' ;     -- 製品以外
 -- M.Hokkanji Ver1.2 END
@@ -1305,10 +1310,7 @@ AS
     gt_arrival_time_to(gn_cre_idx)        := ir_main_data.arrival_time_to ;       -- 着荷時間TO
     gt_cust_po_number(gn_cre_idx)         := ir_main_data.cust_po_number ;        -- 顧客発注番号
     gt_description(gn_cre_idx)            := ir_main_data.description ;           -- 摘要
--- M.Hokkanji Ver1.2 START
---    gt_status(gn_cre_idx)                 := '02' ;                               -- ステータス
-    gt_status(gn_cre_idx)                 := gc_status_k ;                        -- ステータス
--- M.Hokkanji Ver1.2 END
+    gt_status(gn_cre_idx)                 := '02' ;                               -- ステータス
     gt_freight_charge_class(gn_cre_idx)   := ir_main_data.freight_charge_class ;  -- 運賃区分
     gt_pallet_sum_quantity(gn_cre_idx)    := iv_pallet_sum_quantity ;             -- ﾊﾟﾚｯﾄ使用枚数
     gt_reserve1(gn_cre_idx)               := NULL ;                               -- 予備１
@@ -1404,7 +1406,10 @@ AS
 -- M.Hokkanji Ver1.2 END
     gt_delivery_no(gn_cre_idx)            := ir_main_data.delivery_no ; -- 配送No
     gt_requesgt_no(gn_cre_idx)            := ir_main_data.request_no ;  -- 依頼No
-    gt_reserve(gn_cre_idx)                := gc_reserve ;               -- 予備
+-- M.Hokkanji Ver1.4 START
+--    gt_reserve(gn_cre_idx)                := gc_reserve ;               -- 予備
+    gt_reserve(gn_cre_idx)                := NULL ;                     -- 予備
+-- M.Hokkanji Ver1.4 END
     gt_head_sales_branch(gn_cre_idx)      := NULL ;                     -- 拠点コード
     gt_head_sales_branch_name(gn_cre_idx) := NULL ;                     -- 管轄拠点名称
     gt_shipped_locat_code(gn_cre_idx)     := NULL ;                     -- 出庫倉庫コード
@@ -2267,10 +2272,15 @@ AS
                   || re_out_data.item_uom_code            || ','  -- 品目単位
                   || re_out_data.item_quantity            || ','  -- 品目数量
                   || re_out_data.lot_no                   || ','                -- ロット番号
+-- M.Hokkanji Ver1.4 START
                   || TO_CHAR( re_out_data.lot_date     , 'YYYY/MM/DD' ) || ','  -- 製造日
-                  || re_out_data.lot_sign                 || ','                -- 固有記号
                   || TO_CHAR( re_out_data.best_bfr_date, 'YYYY/MM/DD' ) || ','  -- 賞味期限
+                  || re_out_data.lot_sign                 || ','                -- 固有記号
+--                  || TO_CHAR( re_out_data.lot_date     , 'YYYY/MM/DD' ) || ','  -- 製造日
+--                  || re_out_data.lot_sign                 || ','                -- 固有記号
+--                  || TO_CHAR( re_out_data.best_bfr_date, 'YYYY/MM/DD' ) || ','  -- 賞味期限
                   || re_out_data.lot_quantity             || ','                -- ロット数量
+-- M.Hokkanji Ver1.4 END
 -- M.Hokkanji Ver1.2 START
 --                  || re_out_data.new_modify_del_class     || ','  -- データ区分
                   || lt_new_modify_del_class              || ','  -- データ区分

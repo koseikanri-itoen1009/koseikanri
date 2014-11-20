@@ -43,6 +43,9 @@ AS
  *                                       個別にクローズするように変更
  *  2008/06/06    1.4   M.HOKKANJI       結合テスト440不具合対応#66
  *  2008/06/06    1.5   M.HOKKANJI       結合テスト440不具合対応#65
+ *  2008/06/11    1.6   M.NOMURA         結合テスト WF対応
+ *  2008/06/12    1.7   M.NOMURA         結合テスト 不具合対応#9
+ *  2008/06/16    1.8   M.NOMURA         結合テスト 440 不具合対応#64
  *
  *****************************************************************************************/
 --
@@ -235,12 +238,21 @@ AS
   gc_wf_class_sys           CONSTANT VARCHAR2(1) := '5' ;     -- 現営業システム
   gc_wf_class_syo           CONSTANT VARCHAR2(1) := '6' ;     -- 職責
 --
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+  -- XXCMN：商品区分(セキュリティ)
+  gv_prof_item_div_security   CONSTANT VARCHAR2(100) := 'XXCMN_ITEM_DIV_SECURITY';
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+--
   --------------------------------------------------
   -- その他
   --------------------------------------------------
   gc_time_default           CONSTANT VARCHAR2(4) := '0000' ;    -- 時間デフォルト値
   gc_time_min               CONSTANT VARCHAR2(5) := '00:00' ;   -- 時間最小値
   gc_time_max               CONSTANT VARCHAR2(5) := '23:59' ;   -- 時間最大値
+
+-- ##### 20080611 Ver.1.6 WF対応 START #####
+  gc_wf_ope_div             CONSTANT VARCHAR2(2) := '09'; -- Workflow通知先（09:外部倉庫入出庫）
+-- ##### 20080611 Ver.1.6 WF対応 END   #####
 --
   -- ===============================================================================================
   -- グローバル変数
@@ -250,7 +262,9 @@ AS
   gd_date_to          DATE ;    -- 基準日付To
   gn_prof_del_date    NUMBER ;  -- 削除基準日数
 --
-  gr_outbound_rec     xxcmn_common_pkg.outbound_rec ;   -- ファイル情報のレコードの定義
+-- ##### 20080611 Ver.1.6 WF対応 START #####
+  gr_wf_whs_rec       xxwsh_common3_pkg.wf_whs_rec ;   -- ファイル情報のレコードの定義
+-- ##### 20080611 Ver.1.6 WF対応 END   #####
 --
   gn_created_by               NUMBER ;  -- 作成者
   gn_last_updated_by          NUMBER ;  -- 最終更新者
@@ -263,6 +277,10 @@ AS
   gn_out_cnt_shi              NUMBER := 0 ;   -- 出力件数：支給
   gn_out_cnt_mov              NUMBER := 0 ;   -- 出力件数：移動
 --
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+  gv_item_div_security       VARCHAR2(100);
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+
   --------------------------------------------------
   -- デバッグ用
   --------------------------------------------------
@@ -665,6 +683,10 @@ AS
     lc_msg_code     CONSTANT VARCHAR2(50) := 'APP-XXWSH-11953' ;
     lc_tok_name     CONSTANT VARCHAR2(50) := 'PROF_NAME' ;
     lc_tok_val      CONSTANT VARCHAR2(50) := 'XXWSH: 通知済情報パージ処理対象期間_配車配送計画' ;
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+    lc_tok_val2     CONSTANT VARCHAR2(50) := '商品区分（セキュリティ）' ;
+    lv_tok_val      VARCHAR2(50);
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
 --
     -- ==================================================
     -- 変数宣言
@@ -689,8 +711,20 @@ AS
     -- ====================================================
     gn_prof_del_date := FND_PROFILE.VALUE( lc_prof_name ) ;
     IF ( gn_prof_del_date IS NULL ) THEN
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      lv_tok_val := lc_tok_val;
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       RAISE ex_prof_error ;
     END IF ;
+--
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+    -- 商品区分（セキュリティ）取得
+    gv_item_div_security := FND_PROFILE.VALUE(gv_prof_item_div_security);
+    IF (gv_item_div_security IS NULL) THEN
+      lv_tok_val := lc_tok_val2;
+      RAISE ex_prof_error ;
+    END IF;
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
 --
   EXCEPTION
     -- =============================================================================================
@@ -701,7 +735,9 @@ AS
                     ( iv_application    => gc_appl_sname_wsh
                      ,iv_name           => lc_msg_code
                      ,iv_token_name1    => lc_tok_name
-                     ,iv_token_value1   => lc_tok_val
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+                     ,iv_token_value1   => lv_tok_val
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
                     ) ;
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
@@ -1019,6 +1055,9 @@ AS
       ----------------------------------------------------------------------------------------------
       -- 受注ヘッダアドオン
       AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      AND   xoha.prod_class           = gv_item_div_security    -- 商品区分（セキュリティ）
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xoha.req_status           IN( gc_req_status_syu_3   -- 締め済
                                          ,gc_req_status_syu_5 ) -- 取消
       AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
@@ -1144,6 +1183,9 @@ AS
       ----------------------------------------------------------------------------------------------
       -- 受注ヘッダアドオン
       AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      AND   xoha.prod_class           = gv_item_div_security    -- 商品区分（セキュリティ）
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xoha.req_status           IN( gc_req_status_shi_3   -- 受領済
                                          ,gc_req_status_shi_5 ) -- 取消
       ---- パラメータが「予定」の場合
@@ -1278,6 +1320,9 @@ AS
       ----------------------------------------------------------------------------------------------
       -- 移動依頼指示ヘッダ
       AND   xmrih.mov_type    = gc_mov_type_y           -- 積送あり
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      AND   xmrih.item_class  = gv_item_div_security    -- 商品区分（セキュリティ）
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
       AND   xmrih.status      IN( gc_mov_status_cmp     -- 依頼済
                                  ,gc_mov_status_adj     -- 調整中
                                  ,gc_mov_status_ccl )   -- 取消
@@ -2450,6 +2495,9 @@ AS
     -- 固定ローカル定数
     -- ==================================================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_create_can_data' ; -- プログラム名
+-- ##### 20080612 Ver.1.8 440不具合対応#68 START #####
+    lc_transfer_branch_no_h     CONSTANT VARCHAR2(100) := '10' ;    -- ヘッダ
+-- ##### 20080612 Ver.1.8 440不具合対応#68 END   #####
 --
 --#####################  固定ローカル変数宣言部 START   ########################
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
@@ -2580,12 +2628,30 @@ AS
       gt_item_code(gn_cre_idx)              := re_can_data.item_code ;
       gt_item_name(gn_cre_idx)              := re_can_data.item_name ;
       gt_item_uom_code(gn_cre_idx)          := re_can_data.item_uom_code ;
-      gt_item_quantity(gn_cre_idx)          := 0 ;
+--
+-- ##### 20080612 Ver.1.8 440不具合対応#68 START #####
+      -- 伝送用枝番が「ヘッダ」の場合
+      IF (re_can_data.transfer_branch_no =lc_transfer_branch_no_h) THEN
+        gt_item_quantity(gn_cre_idx)          := NULL ;
+      ELSE
+        gt_item_quantity(gn_cre_idx)          := 0 ;
+      END IF;
+-- ##### 20080612 Ver.1.8 440不具合対応#68 END   #####
+--
       gt_lot_no(gn_cre_idx)                 := re_can_data.lot_no ;
       gt_lot_date(gn_cre_idx)               := re_can_data.lot_date ;
       gt_best_bfr_date(gn_cre_idx)          := re_can_data.best_bfr_date ;
       gt_lot_sign(gn_cre_idx)               := re_can_data.lot_sign ;
-      gt_lot_quantity(gn_cre_idx)           := 0 ;
+--
+-- ##### 20080612 Ver.1.8 440不具合対応#68 START #####
+      -- 伝送用枝番が「ヘッダ」の場合
+      IF (re_can_data.transfer_branch_no =lc_transfer_branch_no_h) THEN
+        gt_lot_quantity(gn_cre_idx)           := NULL ;
+      ELSE
+        gt_lot_quantity(gn_cre_idx)           := 0 ;
+      END IF;
+-- ##### 20080612 Ver.1.8 440不具合対応#68 END   #####
+--
       gt_new_modify_del_class(gn_cre_idx)   := gc_data_class_del ;
       gt_update_date(gn_cre_idx)            := SYSDATE ;
       gt_line_number(gn_cre_idx)            := re_can_data.line_number ;
@@ -2822,6 +2888,12 @@ AS
     -- ファイル出力関連
     lf_file_hand        UTL_FILE.FILE_TYPE ;    -- ファイル・ハンドルの宣言
     lv_csv_text         VARCHAR2(32000) ;
+--
+-- ##### 20080611 Ver.1.6 WF対応 START #####
+    lv_dir              VARCHAR2(150) ;         -- ディレクトリ
+    lv_file_name        VARCHAR2(150) ;         -- ファイル名
+-- ##### 20080611 Ver.1.6 WF対応 END   #####
+--
 -- M.Hokkanji Ver1.5 START
     lt_new_modify_del_class xxwsh_stock_delivery_info_tmp.new_modify_del_class%TYPE;
 -- M.Hokkanji Ver1.5 END
@@ -2916,67 +2988,6 @@ AS
     -- ====================================================
     <<eos_loop>>
     FOR re_eos_data IN cu_eos_data LOOP
-/*
-      -------------------------------------------------------
-      -- ワークフロー情報取得：処理区分
-      -------------------------------------------------------
-      -- !!!!!!!!!!!!!!!!!!!! 暫定処置 !!!!!!!!!!!!!!!!!!!!
-      lv_wf_ope_div := '0' ;
---
-      -------------------------------------------------------
-      -- ワークフロー情報取得：対象
-      -------------------------------------------------------
-      IF ( re_out_data.eos_csv_output = re_out_data.eos_shipped_locat ) THEN
-        lv_wf_class := gc_wf_class_gai ;    -- 外部倉庫
-      ELSE
-        lv_wf_class := gc_wf_class_uns ;    -- 運送業者
-      END IF ;
---
-      -------------------------------------------------------
-      -- ワークフロー情報取得：宛先
-      -------------------------------------------------------
-      BEGIN
-        SELECT  xlv.attribute2
-        INTO    lv_wf_notification
-        FROM    xxcmn_lookup_values_v xlv
-        WHERE  xlv.lookup_type  = lc_lookup_wf_notif
-        AND    xlv.attribute1   = iv_wf_class
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lv_wf_notification := NULL ;
-      END ;
---
-      xxcmn_common_pkg.get_outbound_info
-        ( iv_wf_ope_div       => lv_wf_ope_div        -- 処理区分
-         ,iv_wf_class         => lv_wf_class          -- 対象
-         ,iv_wf_notification  => lv_wf_notification   -- 宛先
-         ,or_outbound_rec     => gr_outbound_rec      -- ファイル情報
-         ,ov_errbuf           => lv_errbuf            -- エラー・メッセージ
-         ,ov_retcode          => lv_retcode           -- リターン・コード
-         ,ov_errmsg           => lv_errmsg            -- ユーザー・エラー・メッセージ
-        )
-      IF ( lv_retcode = gv_status_error ) THEN
-        RAISE global_api_expt;
-      END IF ;
---
-*/
-      -- !!!!!!!!!!!!!!!!!!!! 暫定処置 !!!!!!!!!!!!!!!!!!!!
--- M.HOKKANJI Ver1.2 START
-      gr_outbound_rec.directory := '/usr/tmp' ;
-      gr_outbound_rec.file_name := 'XXWSH600002_TEST_' || re_eos_data.eos_csv_output || '_' || TO_CHAR(FND_GLOBAL.CONC_REQUEST_ID) || '.CSV' ;
---      gr_outbound_rec.directory := '/home/ebsdev03/work' ;
---      gr_outbound_rec.file_name := 'XXWSH600002_TEST_' || re_eos_data.eos_csv_output || '.CSV' ;
--- M.HOKKANJI Ver1.2 END
---
-      -- ====================================================
-      -- ＵＴＬファイルオープン
-      -- ====================================================
-      lf_file_hand := UTL_FILE.FOPEN
-                        (
-                          gr_outbound_rec.directory
-                         ,gr_outbound_rec.file_name
-                         ,'w'
-                        ) ;
 --
       -- ====================================================
       -- 出力データ抽出
@@ -2991,6 +3002,73 @@ AS
           lt_new_modify_del_class := NULL;
         END IF;
 -- M.Hokkanji Ver1.4 END
+--
+-- ##### 20080611 Ver.1.6 WF対応 START #####
+--
+        -- ====================================================
+        -- ファイルOPEN チェック
+        -- ====================================================
+        IF ( UTL_FILE.IS_OPEN(lf_file_hand) = FALSE) THEN
+--
+          -------------------------------------------------------
+          -- ワークフロー情報取得：処理区分
+          -------------------------------------------------------
+          lv_wf_ope_div := gc_wf_ope_div;
+--
+          -------------------------------------------------------
+          -- ワークフロー情報取得：対象
+          -------------------------------------------------------
+          -- EOS宛先（CSV出力）＝ EOS宛先（出庫倉庫）の場合
+          IF ( re_out_data.eos_csv_output = re_out_data.eos_shipped_locat ) THEN
+            -- 外部倉庫
+            lv_wf_class := gc_wf_class_gai ;
+--
+          -- EOS宛先（CSV出力）≠ EOS宛先（出庫倉庫）の場合
+          ELSE
+            -- 運送業者
+            lv_wf_class := gc_wf_class_uns ;
+          END IF ;
+--
+          -------------------------------------------------------
+          -- ワークフロー情報取得：宛先
+          -------------------------------------------------------
+          lv_wf_notification := re_out_data.eos_csv_output;
+--
+          -------------------------------------------------------
+          -- ワークフロー関連情報取得
+          -------------------------------------------------------
+          xxwsh_common3_pkg.get_wsh_wf_info(  
+                            iv_wf_ope_div       => lv_wf_ope_div      -- 処理区分
+                          , iv_wf_class         => lv_wf_class        -- 対象
+                          , iv_wf_notification  => lv_wf_notification -- 宛先
+                          , or_wf_whs_rec       => gr_wf_whs_rec      -- ファイル情報
+                          , ov_errbuf           => lv_errbuf          -- エラー・メッセージ
+                          , ov_retcode          => lv_retcode         -- リターン・コード
+                          , ov_errmsg           => lv_errmsg);        -- ユーザー・エラー・メッセージ
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
+--
+          -------------------------------------------------------
+          -- ファイル出力情報設定
+          -------------------------------------------------------
+          -- ディレクトリ
+          lv_dir        :=  gr_wf_whs_rec.directory;
+          -- ファイル名（処理区分'-'EOS宛先'_'クイックコードファイル名）
+          lv_file_name  :=  lv_wf_ope_div               || '-' || 
+                            re_out_data.eos_csv_output  || '_' || 
+                            gr_wf_whs_rec.file_name ;
+--
+          -------------------------------------------------------
+          -- ＵＴＬファイルオープン
+          -------------------------------------------------------
+          lf_file_hand := UTL_FILE.FOPEN( lv_dir         -- ディレクトリ
+                                         ,lv_file_name  -- ファイル名
+                                         ,'w') ;        -- モード（上書）
+--
+        END IF;
+-- ##### 20080611 Ver.1.6 WF対応 END   #####
+--
         -- ====================================================
         -- 出力文字列編集
         -- ====================================================
@@ -3056,24 +3134,6 @@ AS
         UTL_FILE.PUT_LINE( lf_file_hand, lv_csv_text ) ;
 --
         -- ====================================================
-        -- ワークフロー通知
-        -- ====================================================
-/*
-        xxcmn_common_pkg.wf_start
-          (
-            iv_wf_ope_div       => lv_wf_ope_div        -- 処理区分
-           ,iv_wf_class         => lv_wf_class          -- 対象
-           ,iv_wf_notification  => lv_wf_notification   -- 宛先
-           ,ov_errbuf           => lv_errbuf            -- エラー・メッセージ
-           ,ov_retcode          => lv_retcode           -- リターン・コード
-           ,ov_errmsg           => lv_errmsg            -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
-        END IF ;
-*/
---
-        -- ====================================================
         -- 処理件数カウントアップ
         -- ====================================================
         -------------------------------------------------------
@@ -3104,6 +3164,22 @@ AS
       -- ＵＴＬファイルクローズ
       -- ====================================================
       UTL_FILE.FCLOSE( lf_file_hand ) ;
+--
+-- ##### 20080611 Ver.1.6 WF対応 START #####
+      -- ====================================================
+      -- ワークフロー通知
+      -- ====================================================
+      xxwsh_common3_pkg.wf_whs_start( 
+                    ir_wf_whs_rec => gr_wf_whs_rec      -- ワークフロー関連情報
+                   ,iv_filename   => lv_file_name       -- ファイル名
+                   ,ov_errbuf     => lv_errbuf          -- エラー・メッセージ
+                   ,ov_retcode    => lv_retcode         -- リターン・コード
+                   ,ov_errmsg     => lv_errmsg          -- ユーザー・エラー・メッセージ
+      );
+      IF ( lv_retcode = gv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF ;
+-- ##### 20080611 Ver.1.6 WF対応 END   #####
 --
     END LOOP eos_loop ;
 --
