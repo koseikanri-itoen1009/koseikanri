@@ -7,7 +7,7 @@ AS
  * Description      : 原価コピー処理
  * MD.050           : 標準原価マスタT_MD050_BPO_821
  * MD.070           : 原価コピー処理(82E) T_MD070_BPO_82E
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/07/01    1.0   H.Itou           新規作成
  *  2009/01/08    1.1   N.Yoshida        本番#968対応
+ *  2009/03/18    1.2   A.Shiina         本番#1304対応
  *
  *****************************************************************************************/
 --
@@ -202,7 +203,9 @@ AS
   gd_update_date_from   DATE;           -- 更新日時FROM
   gd_update_date_to     DATE;           -- 更新日時TO
 --
-  gv_close_date         VARCHAR2(100);  -- 在庫クローズ年月
+-- 2009/03/18 v1.2 DELETE START
+--  gv_close_date         VARCHAR2(100);  -- 在庫クローズ年月
+-- 2009/03/18 v1.2 DELETE END
   gt_period_code        cm_cldr_dtl.period_code%TYPE;    -- 期間
   gt_start_date         cm_cldr_dtl.start_date %TYPE;    -- 開始日
   gt_end_date           cm_cldr_dtl.end_date   %TYPE;    -- 終了日
@@ -496,11 +499,15 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/03/18 v1.2 DELETE START
+/*
     -- ===========================
     -- 在庫クローズ年月取得
     -- ===========================
     gv_close_date := xxcmn_common_pkg.get_opminv_close_period;
 --
+*/
+-- 2009/03/18 v1.2 DELETE END
     -- ===========================
     -- 原価カレンダ情報取得
     -- ===========================
@@ -1211,6 +1218,8 @@ AS
       --   ・マスタ受信日に値なし
       ELSIF (ln_update_flg = 1) 
       AND   (lt_master_receive_date IS NULL) THEN
+-- 2009/03/18 v1.2 DELETE START
+/*
         -- 以下の場合、警告。更新処理を行わずに処理をスキップする。
         --   ・原価管理区分が1：標準原価かつ、開始日の年月≦在庫クローズ日
         IF  ((it_cost_manage_code = gv_cost_manage_code_normal) AND (TO_CHAR(gt_start_date, gv_yyyymm) <= gv_close_date)) THEN
@@ -1226,6 +1235,7 @@ AS
 --
         -- 上記以外の場合、更新処理
         ELSE
+*/
           -- 更新件数カウント
           ln_upd_cnt := ln_upd_cnt + 1;
 --
@@ -1237,7 +1247,9 @@ AS
           lr_upd_this_tbl(ln_upd_cnt).delete_mark        := 0; -- 削除フラグ
           lr_upd_this_tbl(ln_upd_cnt).cmpnt_cost         := ln_unit_price_ttl; -- コンポーネント原価
 --
-        END IF;
+-- 2009/03/18 v1.2 DELETE START
+--        END IF;
+-- 2009/03/18z v1.2 DELETE END
 --
       -- 以下の場合、本社インタフェースされた品目なので、処理対象外。
       --   ・キーで品目原価マスタを検索できる
