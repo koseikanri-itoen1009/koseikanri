@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2009-03-24    1.1   Kazuo.Satomura   システムテスト障害(障害番号T1_0135,0136,0140)
  *  2009-04-02    1.2   Kazuo.Satomura   システムテスト障害(障害番号T1_0227)
  *  2009-04-08    1.3   Kazuo.Satomura   システムテスト障害(障害番号T1_0287)
+ *  2009-04-08    1.4   Kazuo.Satomura   システムテスト障害(障害番号T1_0617)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -261,7 +262,7 @@ AS
   cv_debug_msg58 CONSTANT VARCHAR2(200) := 'vendor_id = ';
   cv_debug_msg59 CONSTANT VARCHAR2(200) := '<< ＳＰ専決顧客ＩＤ >>';
   cv_debug_msg60 CONSTANT VARCHAR2(200) := 'customer_id = ';
-  cv_debug_msg61 CONSTANT VARCHAR2(200) := ' << ＳＰ専決情報>> ';
+  cv_debug_msg61 CONSTANT VARCHAR2(200) := ' << ＳＰ専決情報 >> ';
   cv_debug_msg62 CONSTANT VARCHAR2(200) := 'condition_business_type = ';
   cv_debug_msg63 CONSTANT VARCHAR2(200) := 'electricity_type        = ';
   cv_debug_msg64 CONSTANT VARCHAR2(200) := 'electricity_amount      = ';
@@ -276,6 +277,10 @@ AS
   cv_debug_msg73 CONSTANT VARCHAR2(200) := 'bm_container_type       = ';
   cv_debug_msg74 CONSTANT VARCHAR2(200) := 'contract_number        = ';
   cv_debug_msg75 CONSTANT VARCHAR2(200) := 'discount_amt            = ';
+  cv_debug_msg76 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理開始（ＢＦＡ起動） >> ';
+  cv_debug_msg77 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理終了 >> ';
+  cv_debug_msg78 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理完了確認処理開始 >> ';
+  cv_debug_msg79 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理完了確認処理終了 >> ';
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -1286,6 +1291,17 @@ AS
     --
     --###########################  固定部 END   ############################
     --
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    -- *** DEBUG_LOG START ***
+    -- ＢＦＡ起動開始をログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg76 || CHR(10) ||
+                 ''
+    );
+    -- *** DEBUG_LOG END ***
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    --
     -- ============================
     -- 発注依頼ヘッダ・明細登録処理
     -- ============================
@@ -1315,6 +1331,17 @@ AS
       RAISE global_api_expt;
       --
     END IF;
+    --
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    -- *** DEBUG_LOG START ***
+    -- ＢＦＡ起動終了をログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg77 || CHR(10) ||
+                 ''
+    );
+    -- *** DEBUG_LOG END ***
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
     --
     -- *** DEBUG_LOG START ***
     -- 要求ＩＤをログ出力
@@ -1410,6 +1437,17 @@ AS
     --
     --###########################  固定部 END   ############################
     --
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    -- *** DEBUG_LOG START ***
+    -- 仕入先登録処理完了確認処理開始をログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg78 || CHR(10) ||
+                 ''
+    );
+    -- *** DEBUG_LOG END ***
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    --
     -- ================================
     -- 仕入先情報登録/更新完了確認
     -- ================================
@@ -1441,6 +1479,16 @@ AS
       --
     END IF;
     --
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    -- *** DEBUG_LOG START ***
+    -- 仕入先登録処理完了確認処理終了をログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg79 || CHR(10) ||
+                 ''
+    );
+    -- *** DEBUG_LOG END ***
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
     IF (lv_dev_phase <> cv_phase_complete) THEN
       -- 実行フェーズが正常以外の場合
       lv_errbuf := xxccp_common_pkg.get_msg(
@@ -3414,6 +3462,9 @@ AS
     gn_mst_normal_cnt    := cn_number_zero;
     gn_vendor_error_cnt  := cn_number_zero;
     gn_mst_error_cnt     := cn_number_zero;
+    /* 2009.04.17 K.Satomura T1_0617対応 START */
+    ln_work_count        := cn_number_zero;
+    /* 2009.04.17 K.Satomura T1_0617対応 END */
     --
     -- ============
     -- A-1.初期処理
@@ -3493,7 +3544,9 @@ AS
       -- ============================================
       -- A-4.仕入先情報取得処理
       -- ============================================
-      ln_work_count := cn_number_zero;
+      /* 2009.04.17 K.Satomura T1_0617対応 START */
+      --ln_work_count := cn_number_zero;
+      /* 2009.04.17 K.Satomura T1_0617対応 END */
       --
       <<vendor_info_loop>>
       FOR lt_vendor_info_rec IN vendor_info_cur LOOP
