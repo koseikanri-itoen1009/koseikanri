@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Kakishita新規作成
  *  2010/02/12    1.1   SCS K.Atsushiba  [E_本稼動_01386対応]販売実績ID追加
+ *  2010/04/16    1.1   SCS K.Atsushiba  [E_本稼動_01688対応]集約フラグ追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_VD_DIGESTION_HDRS
@@ -38,6 +39,7 @@ CREATE TABLE XXCOS.XXCOS_VD_DIGESTION_HDRS
   CHANGE_OUT_TIME_100             VARCHAR2(4),                                  --つり銭切れ時間100円
   CHANGE_OUT_TIME_10              VARCHAR2(4),                                  --つり銭切れ時間10円
   SALES_EXP_HEADER_ID             NUMBER,                                       --販売実績ヘッダID
+  SUMMARY_DATA_FLAG               VARCHAR2(1),                                  --集約フラグ
   CREATED_BY                      NUMBER(15)    NOT NULL,                       --作成者
   CREATION_DATE                   DATE          NOT NULL,                       --作成日
   LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                       --最終更新者
@@ -74,6 +76,7 @@ COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.UNCALCULATE_CLASS               
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CHANGE_OUT_TIME_100             IS 'つり銭切れ時間100円';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CHANGE_OUT_TIME_10              IS 'つり銭切れ時間10円';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.SALES_EXP_HEADER_ID             IS '販売実績ヘッダID';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.SUMMARY_DATA_FLAG               IS '集約フラグ';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CREATED_BY                      IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.CREATION_DATE                   IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_DIGESTION_HDRS.LAST_UPDATED_BY                 IS '最終更新者';

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  update_digestion       消化ＶＤ用消化計算テーブル更新処理(A-7)
  *  get_vd_column          VDコラム別取引情報取得処理(A-8)
  *  get_cust_trx           AR取引情報取得処理(A-9)
+ *  chk_digestion_due_date 締日チェック(A-10)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -69,6 +70,7 @@ AS
  *  2010/02/22   1.26  K.Atsushiba       [E_本稼動_01669]「締日」パラメター追加対応
  *  2010/02/25   1.27  N.Maeda           [E_本稼動_01477]締日の休日対応修正
  *  2010/03/24   1.28  K.Atsushiba       [E_本稼動_01805]顧客移行対応
+ *  2010/04/06   1.29  H.Sasaki          [E_本稼動_01688]集約フラグを追加
  *
  *****************************************************************************************/
 --
@@ -248,6 +250,10 @@ AS
   ct_msg_standards_date         CONSTANT fnd_new_messages.message_name%TYPE
                                          :='APP-XXCOS1-11071';
 --****************************** 2010/02/25 1.26 N.Maeda MOD  END   ******************************--
+-- == 2010/04/06 V1.29 Added START ===============================================================
+  ct_msg_xxcos_11072            CONSTANT  fnd_new_messages.message_name%TYPE
+                                          :=  'APP-XXCOS1-11072';
+-- == 2010/04/06 V1.29 Added END   ===============================================================
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -342,6 +348,12 @@ AS
   ct_un_calc_flag_4            CONSTANT  xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
                                       := 4;                                --未計算フラグ
 --******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
+-- == 2010/04/06 V1.29 Added START ===============================================================
+  ct_un_calc_flag_2            CONSTANT  xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
+                                      := '2';                                --未計算フラグ
+  ct_un_calc_flag_3            CONSTANT  xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
+                                      := '3';                                --未計算フラグ
+-- == 2010/04/06 V1.29 Added END   ===============================================================
   --赤黒フラグ
   ct_red_black_flag_0          CONSTANT  xxcos_sales_exp_lines.red_black_flag%TYPE
                                       := '0';                              --赤
@@ -419,6 +431,10 @@ AS
 --****************************** 2009/05/07 1.14 T.Kitajima DEL  END  ******************************--
   --y
   cv_y                         CONSTANT  VARCHAR2(1)  := 'Y';              --Y
+-- == 2010/04/06 V1.29 Added START ===============================================================
+  cv_n                        CONSTANT VARCHAR2(1)    :=  'N';            --  N
+  cv_date_type                CONSTANT VARCHAR2(6)    :=  'YYYYMM';
+-- == 2010/04/06 V1.29 Added END   ===============================================================
   --MM
   cv_mm                        CONSTANT  VARCHAR2(2)  := 'MM';             --MM
   --登録区分
@@ -585,6 +601,107 @@ AS
   gd_due_date                         DATE;                        -- 締日
 /* 2010/02/22 Ver1.26 Add Start */
 --
+--
+-- == 2010/04/06 V1.29 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : chk_digestion_due_date
+   * Description      : 締日チェック(A-10)
+   ***********************************************************************************/
+  PROCEDURE chk_digestion_due_date(
+    ov_errbuf     OUT    NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT    NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg     OUT    NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_digestion_due_date'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_customer_number      xxcos_vd_digestion_hdrs.customer_number%TYPE;
+    lt_digestion_due_date   xxcos_vd_digestion_hdrs.digestion_due_date%TYPE;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    BEGIN
+      --  対象データが取得された場合、処理を中断
+      SELECT  xvdh.customer_number
+            , xvdh.digestion_due_date
+      INTO    lt_customer_number
+            , lt_digestion_due_date
+      FROM    xxcos_vd_digestion_hdrs     xvdh
+      WHERE   xvdh.sales_base_code              =   gv_base_code
+      AND     xvdh.customer_number              =   NVL(gv_customer_number, xvdh.customer_number)
+      AND     xvdh.digestion_due_date           >=  gd_delay_date
+      AND     xvdh.digestion_due_date           <   gd_due_date
+      AND     xvdh.sales_result_creation_flag   =   cv_n
+      AND     ROWNUM  = 1;
+      --
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+          iv_application      =>  ct_xxcos_appl_short_name
+        , iv_name             =>  ct_msg_xxcos_11072
+        , iv_token_name1      =>  cv_tkn_parm_data1
+        , iv_token_value1     =>  TO_CHAR(lt_digestion_due_date, cv_fmt_date)
+      );
+      lv_errbuf   :=    lv_errmsg;
+      RAISE global_process_expt;
+    EXCEPTION
+      WHEN  NO_DATA_FOUND THEN
+        NULL;
+    END;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ###################################
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_digestion_due_date;
+-- == 2010/04/06 V1.29 Added END   ===============================================================
 --
 --****************************** 2010/02/08 1.25 N.Maeda ADD START ******************************--
   /**********************************************************************************
@@ -4044,6 +4161,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+-- == 2010/04/06 V1.29 Added START ===============================================================
+    ln_dummy    NUMBER;
+-- == 2010/04/06 V1.29 Added END   ===============================================================
     -- *** ローカル変数 ***
     ln_i  NUMBER;  --カウンター
 --
@@ -4069,8 +4189,21 @@ AS
        FOR UPDATE NOWAIT
     ;
 --****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
+-- == 2010/04/06 V1.29 Added START ===============================================================
+    CURSOR  cur_xvdh_lock
+    IS
+      SELECT  xvdh.vd_digestion_hdr_id    vd_digestion_hdr_id
+            , xvdh.cust_account_id        cust_account_id
+            , xvdh.digestion_due_date     digestion_due_date
+      FROM    xxcos_vd_digestion_hdrs     xvdh
+      WHERE   xvdh.sales_result_creation_flag   =   cv_n
+      AND     xvdh.uncalculate_class            IN(ct_un_calc_flag_2, ct_un_calc_flag_3)
+      AND     xvdh.digestion_due_date           <=  gd_delay_date
+      FOR UPDATE NOWAIT;
 --
     -- *** ローカル・レコード ***
+    rec_xvdh_lock     cur_xvdh_lock%ROWTYPE;
+-- == 2010/04/06 V1.29 Added END   ===============================================================
 --
   BEGIN
 --
@@ -4382,6 +4515,48 @@ AS
         RAISE global_up_inv_expt;
     END;
 --
+-- == 2010/04/06 V1.29 Added START ===============================================================
+    IF (gv_exec_div = cv_1) THEN
+      -- 定期モードの場合
+      BEGIN
+        FOR rec_xvdh_lock IN  cur_xvdh_lock LOOP
+          BEGIN
+            IF  (TO_CHAR(rec_xvdh_lock.digestion_due_date, cv_date_type)  <>  TO_CHAR(gd_business_date, cv_date_type))  THEN
+              -- 消化計算締年月が業務処理年月と不一致で、前当月の売上拠点が不一致の場合は
+              -- 以下の処理をスキップ
+              SELECT  1
+              INTO    ln_dummy
+              FROM    xxcmm_cust_accounts   xca
+              WHERE   xca.customer_id       =   rec_xvdh_lock.cust_account_id
+              AND     xca.sale_base_code    =   xca.past_sale_base_code;
+            END IF;
+            --
+            UPDATE  xxcos_vd_digestion_hdrs
+            SET     summary_data_flag           =   cv_y
+                  , last_updated_by             =   cn_last_updated_by
+                  , last_update_date            =   cd_last_update_date
+                  , last_update_login           =   cn_last_update_login
+                  , request_id                  =   cn_request_id
+                  , program_application_id      =   cn_program_application_id
+                  , program_id                  =   cn_program_id
+                  , program_update_date         =   cd_program_update_date
+            WHERE   vd_digestion_hdr_id         =   rec_xvdh_lock.vd_digestion_hdr_id;
+          EXCEPTION
+            WHEN  NO_DATA_FOUND THEN
+              NULL;
+          END;
+        END LOOP;
+      EXCEPTION
+        WHEN  global_data_lock_expt THEN
+          lv_errmsg               :=  xxccp_common_pkg.get_msg(
+              iv_application      =>  ct_xxcos_appl_short_name
+            , iv_name             =>  ct_msg_line_lock_err
+          );
+          lv_errbuf   :=    lv_errmsg;
+          RAISE global_process_expt;
+      END;
+    END IF;
+-- == 2010/04/06 V1.29 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -4416,6 +4591,11 @@ AS
 --
 --****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
 --#####################################  固定部 START ##########################################
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -4537,6 +4717,19 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_common_expt;
     END IF;
+-- == 2010/04/06 V1.29 Added START ===============================================================
+    -- ===============================
+    -- A-10.締日チェック
+    -- ===============================
+    chk_digestion_due_date(
+      lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+      lv_retcode,         -- リターン・コード             --# 固定 #
+      lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_common_expt;
+    END IF;
+-- == 2010/04/06 V1.29 Added END   ===============================================================
     -- ====================================
     -- A-3.消化ＶＤ用消化計算データ抽出処理
     -- ====================================
