@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.5
+ * Version          : 2.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *                                                6.コンカレント出力の件数
  *  2009/05/21    2.4   S.Kayahara       [T1_1060]売上実績CSV作成(A-4)に参照タイプ（納品伝票区分特定マスタ）取得処理追加
  *  2009/05/29    2.5   T.Kitajima       [T1_1120]org_id追加
+ *  2009/06/02    2.6   N.Maeda          [T1_1291]端数処理修正
  *
  *****************************************************************************************/
 --
@@ -1386,9 +1387,14 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--****************************** 2009/06/02 Var2.6  N.Maeda MOD START ******************************--
     IF ( ( it_sales_actual.xseh_card_sale_class = gt_card_sale_class )
-        AND ( it_sales_actual.xsel_cash_and_card > 0 ) )
+        AND ( it_sales_actual.xsel_cash_and_card <> 0 ) )
     THEN
+--    IF ( ( it_sales_actual.xseh_card_sale_class = gt_card_sale_class )
+--        AND ( it_sales_actual.xsel_cash_and_card > 0 ) )
+--    THEN
+--****************************** 2009/06/02 Var2.6  N.Maeda MOD  END  ******************************--
 --****************************** 2009/04/23 2.3 2 T.Kitajima MOD START ******************************--
 --      -- *** 併用の場合  ***
 --      -- ===============================
@@ -1437,18 +1443,28 @@ AS
       --カード消費税計算(現金・カード併用額*消費税率)
       ln_tax_card             := it_sales_actual.xsel_cash_and_card * (it_sales_actual.xseh_tax_rate / 100);
       --消費税額の端数処理
-      IF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_up ) THEN
-        -- 切り上げの場合
-        ln_tax_card           := CEIL(ln_tax_card);
+--****************************** 2009/06/02 Var2.6  N.Maeda MOD START ******************************--
+      IF ( TRUNC(ln_tax_card) <> ln_tax_card ) THEN
+        IF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_up ) THEN
+          -- 切り上げの場合
+--          ln_tax_card           := CEIL(ln_tax_card);
+          IF ( SIGN( ln_tax_card ) <> -1 ) THEN
+            ln_tax_card           := TRUNC(ln_tax_card) + 1;
+          ELSE
+            ln_tax_card           := TRUNC(ln_tax_card) - 1;
+          END IF;
 --
-      ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_down ) THEN
-        -- 切り下げの場合
-        ln_tax_card           := FLOOR(ln_tax_card);
+        ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_down ) THEN
+          -- 切り下げの場合
+--          ln_tax_card           := FLOOR(ln_tax_card);
+          ln_tax_card           := TRUNC(ln_tax_card);
 --
-      ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_nearest ) THEN
-        -- 四捨五入の場合
-        ln_tax_card           := ROUND(ln_tax_card);
+        ELSIF ( it_sales_actual.xchv_bill_tax_round_rule = cv_round_rule_nearest ) THEN
+          -- 四捨五入の場合
+          ln_tax_card           := ROUND(ln_tax_card);
+        END IF;
       END IF;
+--****************************** 2009/06/02 Var2.6  N.Maeda MOD  END  ******************************--
       --カード売上金額計算(現金・カード併用額-端数処理のカード消費税)
       ln_sales_amount_card    := it_sales_actual.xsel_cash_and_card - ln_tax_card;
       --現金売上金額計算(本体金額-カード売上金額)

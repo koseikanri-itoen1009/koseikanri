@@ -37,6 +37,7 @@ AS
  *  2009/05/21    1.9   T.Kitajima       [T1_1039]販売実績連携済み更新方法修正
  *  2009/05/26    1.9   T.Kitajima       [T1_1177]件数制御修正
  *  2009/05/29    1.9   T.Kitajima       [T1_1120]org_id追加
+ *  2009/06/02    1.10  N.Maeda          [T1_1192]端数処理(切上)の修正
  *
  *****************************************************************************************/
 --
@@ -1559,19 +1560,36 @@ AS
       -- 税込金額÷消費税率
       lt_sales_tax_tempo := lt_tax_include_tempo - ( lt_tax_include_tempo / ln_rate );
 --
-      -- 小数点以下の処理
-      IF ( lt_tax_round_rule = cv_tkn_down ) THEN        -- 切捨て処理
+--*************************** 2009/06/02 Var1.10 N.Maeda MOD START *****************************--
+      -- 端数発生時処理
+      IF ( lt_sales_tax_tempo <> TRUNC(lt_sales_tax_tempo) ) THEN
 --
-        lt_sales_tax_tempo := TRUNC( lt_sales_tax_tempo );
+        -- 小数点以下の処理
+        IF ( lt_tax_round_rule = cv_tkn_down ) THEN        -- 切捨て処理
 --
-      ELSIF ( lt_tax_round_rule = cv_tkn_up ) THEN       -- 切上げ処理
+          lt_sales_tax_tempo := TRUNC( lt_sales_tax_tempo );
 --
-        lt_sales_tax_tempo := TRUNC( lt_sales_tax_tempo + .9 );
+        ELSIF ( lt_tax_round_rule = cv_tkn_up ) THEN       -- 切上げ処理
 --
-      ELSIF ( lt_tax_round_rule = cv_tkn_nearest ) THEN  -- 四捨五入処理
+--          lt_sales_tax_tempo := TRUNC( lt_sales_tax_tempo + .9 );
 --
-        lt_sales_tax_tempo := ROUND( lt_sales_tax_tempo );
+          IF ( SIGN( lt_sales_tax_tempo ) <> -1 ) THEN
 --
+            lt_sales_tax_tempo := TRUNC( lt_sales_tax_tempo) + 1;
+--
+          ELSE
+--
+            lt_sales_tax_tempo := TRUNC( lt_sales_tax_tempo) - 1;
+--
+          END IF;
+--
+        ELSIF ( lt_tax_round_rule = cv_tkn_nearest ) THEN  -- 四捨五入処理
+--
+          lt_sales_tax_tempo := ROUND( lt_sales_tax_tempo );
+--
+        END IF;
+--
+--*************************** 2009/06/02 Var1.10 N.Maeda MOD  END  *****************************--
       END IF;
 --
       -- ヘッダ変数格納用データ算出

@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_lines_info_v
  * Description     : ”[•i“`•[–¾×î•ñƒrƒ…[
- * Version         : 1.0
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/12/08    1.0   T.Tyou           V‹Kì¬
  *  2009/02/18    1.1   T.Tyou           ó’NOiEBSj‚ğ’Ç‰Á
+ *  2009/05/28    1.2   K.Kiriu          [T1_1119]–¾×”Ô†(EBS)‚ğ’Ç‰Á
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_lines_info_v (
   order_no_hht
@@ -52,6 +53,9 @@ CREATE OR REPLACE VIEW xxcos_dlv_lines_info_v (
  ,inventory_item_id
  ,standard_unit
  ,order_no_ebs
+/* 2009/05/28 Ver1.2 Add Start */
+ ,line_number_ebs
+/* 2009/05/28 Ver1.2 Add End   */
  )
 AS
 SELECT
@@ -92,15 +96,18 @@ SELECT
        xdl.request_id,
        xdl.program_application_id,
        xdl.program_id,
-       xdl.program_update_date
-       ,xdl.sold_out_class                                         --”„Ø‹æ•ª
-       ,xdl.sold_out_time                                          --”„ØŠÔ
-       ,xdl.inventory_item_id                                      --•i–ÚID
-       ,xdl.standard_unit                                          --Šî€’PˆÊ
-       ,xdl.order_no_ebs order_no_ebs                              --ó’No.iEBSj
+       xdl.program_update_date,
+       xdl.sold_out_class,                                         --”„Ø‹æ•ª
+       xdl.sold_out_time,                                          --”„ØŠÔ
+       xdl.inventory_item_id,                                      --•i–ÚID
+       xdl.standard_unit,                                          --Šî€’PˆÊ
+       xdl.order_no_ebs order_no_ebs,                              --ó’No.iEBSj
+/* 2009/05/28 Ver1.2 Add Start */
+       xdl.line_number_ebs                                         --–¾×”Ô†(EBS)
+/* 2009/05/28 Ver1.2 Add End   */
 FROM
-       xxcos_dlv_lines     xdl,                                    --”[•i–¾×ƒe[ƒuƒ‹
-       xxcos_dlv_headers   xdh,                             --”[•iƒwƒbƒ_ƒe[ƒuƒ‹
+       xxcos_dlv_lines       xdl,                             --”[•i–¾×ƒe[ƒuƒ‹
+       xxcos_dlv_headers     xdh,                             --”[•iƒwƒbƒ_ƒe[ƒuƒ‹
        mtl_system_items_b    mtl_item,
        ic_item_mst_b         ic_item,
        xxcmm_system_items_b  cmm_item,
@@ -131,7 +138,7 @@ FROM
          NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
        AND     look_val.enabled_flag = 'Y'
        ORDER BY look_val.lookup_code
-       ) sc,                                                     
+       ) sc,
        (
        --H/C‹æ•ª
        SELECT look_val.lookup_code lookup_code
@@ -160,7 +167,7 @@ FROM
        AND     look_val.enabled_flag = 'Y'
        ORDER BY look_val.lookup_code
        ) hac,
-       xxcoi_mst_vd_column    xmvc    
+       xxcoi_mst_vd_column    xmvc
        , hz_cust_accounts     cust                                                                                            
 WHERE  xdl.order_no_hht = xdh.order_no_hht
 AND    xdl.digestion_ln_number = xdh.digestion_ln_number
@@ -220,5 +227,8 @@ COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.SOLD_OUT_TIME             IS '”„ØŠ
 COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.INVENTORY_ITEM_ID         IS '•i–ÚID';
 COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.STANDARD_UNIT             IS 'Šî€’PˆÊ';
 COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.ORDER_NO_EBS              IS 'ó’No.iEBSj';
+/* 2009/05/28 Ver1.2 Add Start */
+COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.LINE_NUMBER_EBS           IS '–¾×”Ô†(EBS)';
+/* 2009/05/28 Ver1.2 Add End   */
 --
 COMMENT ON  TABLE   xxcos_dlv_lines_info_v                           IS '”[•i“`•[–¾×î•ñƒrƒ…[';
