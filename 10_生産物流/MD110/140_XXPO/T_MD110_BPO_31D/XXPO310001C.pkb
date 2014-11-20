@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績作成処理
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : 仕入実績作成        T_MD070_BPO_31D
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/10/27    1.5   Oracle 吉元 強樹 内部変更No216対応
  *  2008/12/04    1.6   Oracle 吉元 強樹 本番障害No420対応
  *  2008/12/06    1.7   Oracle 伊藤 ひとみ 本番障害No528対応
+ *  2009/12/02    1.8   SCS    吉元 強樹 本稼動障害#263
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -159,6 +160,9 @@ AS
     h_attribute6          po_headers_all.attribute6%TYPE,                      -- 直送区分
     h_attribute10         po_headers_all.attribute10%TYPE,                     -- 部署コード
     po_line_id            po_lines_all.po_line_id%TYPE,                        -- 発注明細ID
+-- 2009/12/02 v1.8 T.Yoshimoto Add Start 本稼動障害#263
+    po_line_location_id   po_line_locations_all.line_location_id%TYPE,        -- 発注明細ID
+-- 2009/12/02 v1.8 T.Yoshimoto Add End 本稼動障害#263
     line_num              po_lines_all.line_num%TYPE,                          -- 明細番号
     item_id               po_lines_all.item_id%TYPE,                           -- 品目ID
     lot_no                po_lines_all.attribute1%TYPE,                        -- ロットNO
@@ -849,6 +853,9 @@ AS
             ,xxpo.h_attribute6            -- 直送区分
             ,xxpo.h_attribute10           -- 部署コード
             ,xxpo.po_line_id              -- 発注明細ID
+-- 2009/12/02 v1.8 T.Yoshimoto Add Start 本稼動障害#263
+            ,xxpo.line_location_id     -- 発注納入明細ID
+-- 2009/12/02 v1.8 T.Yoshimoto Add End 本稼動障害#263
             ,xxpo.line_num                -- 明細番号
             ,xxpo.item_id                 -- 品目ID
             ,xxpo.l_attribute1            -- ロットNO
@@ -877,6 +884,9 @@ AS
                    ,pha.attribute10 as h_attribute10  -- 部署コード
                    ,pha.attribute11 as h_attribute11  -- 発注区分
                    ,pla.po_line_id                    -- 発注明細ID
+-- 2009/12/02 v1.8 T.Yoshimoto Add Start 本稼動障害#263
+                   ,plla.line_location_id          -- 発注納入明細ID
+-- 2009/12/02 v1.8 T.Yoshimoto Add End 本稼動障害#263
                    ,pla.line_num                      -- 明細番号
                    ,pla.item_id                       -- 品目ID
                    ,pla.unit_price                    -- 単価
@@ -893,7 +903,15 @@ AS
 -- 2008/12/06 H.Itou Add End
              FROM   po_headers_all pha                -- 発注ヘッダ
                    ,po_lines_all pla                  -- 発注明細
-             WHERE  pha.po_header_id = pla.po_header_id) xxpo
+-- 2009/12/02 v1.8 T.Yoshimoto Add Start 本稼動障害#263
+                   ,po_line_locations_all plla
+-- 2009/12/02 v1.8 T.Yoshimoto Add End 本稼動障害#263
+             WHERE  pha.po_header_id  = pla.po_header_id
+-- 2009/12/02 v1.8 T.Yoshimoto Add Start 本稼動障害#263
+             AND    plla.po_header_id = pha.po_header_id
+             AND    plla.po_line_id   = pla.po_line_id
+-- 2009/12/02 v1.8 T.Yoshimoto Add End 本稼動障害#263
+             ) xxpo
             ,xxcmn_item_mst_v xiv                      -- OPM品目情報VIEW
             ,ic_lots_mst ilm                           -- OPMロットマスタ
             ,xxcmn_vendors_v xvv                       -- 仕入先情報VIEW
@@ -940,43 +958,46 @@ AS
       FETCH base_data_cur INTO lr_base_data_rec;
       EXIT WHEN base_data_cur%NOTFOUND;
 --
-      mst_rec.h_segment1        := lr_base_data_rec.h_segment1;
-      mst_rec.po_header_id      := lr_base_data_rec.po_header_id;
-      mst_rec.h_attribute11     := lr_base_data_rec.h_attribute11;
-      mst_rec.vendor_id         := lr_base_data_rec.vendor_id;
-      mst_rec.h_attribute4      := lr_base_data_rec.h_attribute4;
-      mst_rec.h_attribute5      := lr_base_data_rec.h_attribute5;
-      mst_rec.h_attribute6      := lr_base_data_rec.h_attribute6;
-      mst_rec.h_attribute10     := lr_base_data_rec.h_attribute10;
-      mst_rec.po_line_id        := lr_base_data_rec.po_line_id;
-      mst_rec.line_num          := lr_base_data_rec.line_num;
-      mst_rec.item_id           := lr_base_data_rec.item_id;
-      mst_rec.lot_no            := lr_base_data_rec.l_attribute1;
-      mst_rec.unit_price        := lr_base_data_rec.unit_price;
-      mst_rec.quantity          := lr_base_data_rec.quantity;
-      mst_rec.unit_code         := lr_base_data_rec.unit_meas_lookup_code;
-      mst_rec.l_attribute4      := lr_base_data_rec.l_attribute4;
-      mst_rec.l_attribute10     := lr_base_data_rec.l_attribute10;
-      mst_rec.l_attribute11     := lr_base_data_rec.l_attribute11;
-      mst_rec.lot_id            := lr_base_data_rec.lot_id;
-      mst_rec.attribute4        := lr_base_data_rec.attribute4;
-      mst_rec.attribute5        := lr_base_data_rec.attribute5;
-      mst_rec.item_no           := lr_base_data_rec.item_no;
-      mst_rec.segment1          := lr_base_data_rec.segment1;
-      mst_rec.vendor_stock_whse := lr_base_data_rec.vendor_stock_whse;
-      mst_rec.lot_ctl           := lr_base_data_rec.lot_ctl;
-      mst_rec.item_idv          := lr_base_data_rec.item_idv;
-      mst_rec.prod_class_code   := lr_base_data_rec.prod_class_code;
-      mst_rec.item_class_code   := lr_base_data_rec.item_class_code;
+      mst_rec.h_segment1          := lr_base_data_rec.h_segment1;
+      mst_rec.po_header_id        := lr_base_data_rec.po_header_id;
+      mst_rec.h_attribute11       := lr_base_data_rec.h_attribute11;
+      mst_rec.vendor_id           := lr_base_data_rec.vendor_id;
+      mst_rec.h_attribute4        := lr_base_data_rec.h_attribute4;
+      mst_rec.h_attribute5        := lr_base_data_rec.h_attribute5;
+      mst_rec.h_attribute6        := lr_base_data_rec.h_attribute6;
+      mst_rec.h_attribute10       := lr_base_data_rec.h_attribute10;
+      mst_rec.po_line_id          := lr_base_data_rec.po_line_id;
+-- 2009/12/02 v1.8 T.Yoshimoto Add Start 本稼動障害#263
+      mst_rec.po_line_location_id := lr_base_data_rec.line_location_id;
+-- 2009/12/02 v1.8 T.Yoshimoto Add End 本稼動障害#263
+      mst_rec.line_num            := lr_base_data_rec.line_num;
+      mst_rec.item_id             := lr_base_data_rec.item_id;
+      mst_rec.lot_no              := lr_base_data_rec.l_attribute1;
+      mst_rec.unit_price          := lr_base_data_rec.unit_price;
+      mst_rec.quantity            := lr_base_data_rec.quantity;
+      mst_rec.unit_code           := lr_base_data_rec.unit_meas_lookup_code;
+      mst_rec.l_attribute4        := lr_base_data_rec.l_attribute4;
+      mst_rec.l_attribute10       := lr_base_data_rec.l_attribute10;
+      mst_rec.l_attribute11       := lr_base_data_rec.l_attribute11;
+      mst_rec.lot_id              := lr_base_data_rec.lot_id;
+      mst_rec.attribute4          := lr_base_data_rec.attribute4;
+      mst_rec.attribute5          := lr_base_data_rec.attribute5;
+      mst_rec.item_no             := lr_base_data_rec.item_no;
+      mst_rec.segment1            := lr_base_data_rec.segment1;
+      mst_rec.vendor_stock_whse   := lr_base_data_rec.vendor_stock_whse;
+      mst_rec.lot_ctl             := lr_base_data_rec.lot_ctl;
+      mst_rec.item_idv            := lr_base_data_rec.item_idv;
+      mst_rec.prod_class_code     := lr_base_data_rec.prod_class_code;
+      mst_rec.item_class_code     := lr_base_data_rec.item_class_code;
 --
-      mst_rec.h_def4_date       := 
+      mst_rec.h_def4_date         := 
                              FND_DATE.STRING_TO_DATE(lr_base_data_rec.h_attribute4,'YYYY/MM/DD');
-      mst_rec.def4_date         := 
+      mst_rec.def4_date           := 
                              FND_DATE.STRING_TO_DATE(lr_base_data_rec.attribute4,'YYYY/MM/DD');
-      mst_rec.def5_date         := 
+      mst_rec.def5_date           := 
                              FND_DATE.STRING_TO_DATE(lr_base_data_rec.attribute5,'YYYY/MM/DD');
-      mst_rec.def11_qty         := TO_NUMBER(lr_base_data_rec.l_attribute11);
-      mst_rec.def5_num          := TO_NUMBER(lr_base_data_rec.h_attribute5);
+      mst_rec.def11_qty           := TO_NUMBER(lr_base_data_rec.l_attribute11);
+      mst_rec.def5_num            := TO_NUMBER(lr_base_data_rec.h_attribute5);
 --
       IF ((ln_po_header_id IS NULL) OR (ln_po_header_id <> mst_rec.po_header_id)) THEN
 --
@@ -1284,7 +1305,10 @@ AS
         ,'PO'                                            -- source_document_code
         ,ir_mst_rec.po_header_id                         -- po_header_id
         ,ir_mst_rec.po_line_id                           -- po_line_id
-        ,ir_mst_rec.po_line_id                           -- po_line_location_id
+-- 2009/12/02 v1.8 T.Yoshimoto Mod Start 本稼動障害#263
+        --,ir_mst_rec.po_line_id                           -- po_line_location_id
+        ,ir_mst_rec.po_line_location_id                  -- po_line_location_id
+-- 2009/12/02 v1.8 T.Yoshimoto Mod End 本稼動障害#263
         ,'INVENTORY'                                     -- destination_type_code
         ,ir_mst_rec.subinventory_code                    -- subinventory
         ,ir_mst_rec.inventory_location_id                -- locator_id

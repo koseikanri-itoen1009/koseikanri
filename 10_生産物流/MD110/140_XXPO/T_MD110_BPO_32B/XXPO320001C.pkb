@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -66,7 +66,8 @@ AS
  *  2009/01/13    1.15  Oracle 吉元 強樹 受入明細番号採番不備対応
  *  2009/01/15    1.16  Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応(訂正処理不備)
  *  2009/03/30    1.17  Oracle 飯田 甫   本番障害No1346対応
- *  2009/09/17    1.18  Oracle 吉元 強樹 本番障害No1632対応
+ *  2009/09/17    1.18  SCS    吉元 強樹 本番障害No1632対応
+ *  2009/12/02    1.19  SCS    吉元 強樹 本稼動障害#263
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2015,7 +2016,10 @@ AS
           ,'PO'                                            -- source_document_code
           ,ir_masters_rec.po_header_id                     -- po_header_id
           ,ir_masters_rec.po_line_id                       -- po_line_id
-          ,ir_masters_rec.po_line_id                       -- po_line_location_id
+-- 2009/12/02 v1.19 T.Yoshimoto Mod Start 本稼動障害#263
+--          ,ir_masters_rec.po_line_id                       -- po_line_location_id
+          ,ir_masters_rec.po_line_location_id              -- po_line_location_id
+-- 2009/12/02 v1.19 T.Yoshimoto Mod Start 本稼動障害#263
           ,'INVENTORY'                                     -- destination_type_code
           ,ir_masters_rec.subinventory                     -- subinventory
           ,ir_masters_rec.locator_id                       -- locator_id
@@ -4564,6 +4568,9 @@ AS
             ,xxpo.h_attribute10                        -- 部署コード
             ,xxpo.h_attribute3                         -- 斡旋者ID
             ,xxpo.po_line_id                           -- 発注明細ID
+-- 2009/12/02 v1.19 T.Yoshimoto Add Start 本稼動障害#263
+            ,xxpo.line_location_id                  -- 発注納入明細ID
+-- 2009/12/02 v1.19 T.Yoshimoto Add End 本稼動障害#263
             ,xxpo.line_num                             -- 明細番号
             ,xxpo.item_id                              -- 品目ID
             ,xxpo.l_attribute1 as lot_no               -- ロットNO
@@ -4606,6 +4613,9 @@ AS
                     ,pha.vendor_id
                     ,pha.segment1
                     ,pla.po_line_id
+-- 2009/12/02 v1.19 T.Yoshimoto Add Start 本稼動障害#263
+                    ,plla.line_location_id          -- 発注納入明細ID
+-- 2009/12/02 v1.19 T.Yoshimoto Add End 本稼動障害#263
                     ,pla.item_id
                     ,pla.line_num
                     ,pla.attribute1 as l_attribute1    -- ロット番号
@@ -4624,7 +4634,15 @@ AS
 -- 2008/12/06 H.Itou Add End
               FROM  po_headers_all pha,                -- 発注ヘッダ
                     po_lines_all  pla                  -- 発注明細
-              WHERE pha.po_header_id = pla.po_header_id) xxpo
+-- 2009/12/02 v1.19 T.Yoshimoto Add Start 本稼動障害#263
+                   ,po_line_locations_all plla         -- 発注納入明細
+-- 2009/12/02 v1.19 T.Yoshimoto Add End 本稼動障害#263
+              WHERE pha.po_header_id = pla.po_header_id
+-- 2009/12/02 v1.19 T.Yoshimoto Add Start 本稼動障害#263
+              AND   plla.po_header_id = pha.po_header_id
+              AND   plla.po_line_id   = pla.po_line_id
+-- 2009/12/02 v1.19 T.Yoshimoto Add End 本稼動障害#263
+             ) xxpo
       WHERE xxpo.h_attribute5 = xilv.segment1
       AND   xxpo.vendor_id    = xvv.vendor_id
       AND   xxpo.item_id      = xiv.inventory_item_id
@@ -4669,6 +4687,9 @@ AS
       mst_rec.attribute4          := lr_po_data_rec.h_attribute4;
       mst_rec.h_attribute10       := lr_po_data_rec.h_attribute10;
       mst_rec.po_line_id          := lr_po_data_rec.po_line_id;
+-- 2009/12/02 v1.19 T.Yoshimoto Add Start 本稼動障害#263
+      mst_rec.po_line_location_id := lr_po_data_rec.line_location_id;
+-- 2009/12/02 v1.19 T.Yoshimoto Add End 本稼動障害#263
       mst_rec.line_num            := lr_po_data_rec.line_num;
       mst_rec.item_id             := lr_po_data_rec.item_id;
       mst_rec.lot_no              := lr_po_data_rec.lot_no;
