@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.22
+ * Version                : 1.23
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/11/26    1.20  M.Hokkanji       本番障害133対応
  *  2008/12/02    1.21  M.Nomura         本番障害318対応
  *  2008/12/07    1.22  M.Hokkanji       本番障害514対応
+ *  2008/12/13    1.23  M.Hokkanji       本番障害554対応
  *
  *****************************************************************************************/
 --
@@ -1572,7 +1573,9 @@ AS
           END IF;
 --
           -- リードタイム妥当チェック
-          ln_retcode :=
+-- Ver1.23 M.Hokkanji Start
+--          ln_retcode :=
+-- Ver1.23 M.Hokkanji End
 -- Ver1.19 M.Hokkanji Start
 -- 出庫日の生産物流LTの稼働日を取得するように変更
 --          xxwsh_common_pkg.get_oprtn_day(loop_cnt.schedule_arrival_date, -- D-2着日
@@ -1581,29 +1584,33 @@ AS
 --                                         ln_delivery_lt,                 -- リードタイム
 --                                         loop_cnt.prod_class,            -- D-2商品区分
 --                                         ld_oprtn_day);                  -- 稼働日日付
-          xxwsh_common_pkg.get_oprtn_day(loop_cnt.schedule_ship_date,    -- D-2出荷予定日
-                                         NULL,                           -- 出荷元保管場所
-                                         loop_cnt.deliver_to,            -- D-2配送先コード
-                                         ln_lead_time,                   -- 生産物流LT
-                                         loop_cnt.prod_class,            -- D-2商品区分
-                                         ld_oprtn_day);                  -- 稼働日日付
+-- Ver1.23 M.Hokkanji Start
+--          xxwsh_common_pkg.get_oprtn_day(loop_cnt.schedule_ship_date,    -- D-2出荷予定日
+--                                         NULL,                           -- 出荷元保管場所
+--                                         loop_cnt.deliver_to,            -- D-2配送先コード
+--                                         ln_lead_time,                   -- 生産物流LT
+--                                         loop_cnt.prod_class,            -- D-2商品区分
+--                                         ld_oprtn_day);                  -- 稼働日日付
+-- Ver1.23 M.Hokkanji End
 -- Ver1.19 M.Hokkanji End
 --
+-- Ver1.23 M.Hokkanji Start
           -- リターン・コードにエラーが返された場合はエラー
-          IF (ln_retcode = gn_status_error) THEN
-            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+--          IF (ln_retcode = gn_status_error) THEN
+--            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
 -- Ver1.15 M.Hokkanji START
-                                                  gv_cnst_msg_155,
+ --                                                 gv_cnst_msg_155,
 --                                                  gv_cnst_msg_154,
 -- Ver1.15 M.Hokkanji END
-                                                  'API_NAME',
-                                                  cv_get_oprtn_day_api,
-                                                  'ERR_MSG',
-                                                  '',
-                                                  'REQUEST_NO',
-                                                  loop_cnt.request_no);
-            RAISE global_api_expt;
-          END IF;
+--                                                  'API_NAME',
+--                                                  cv_get_oprtn_day_api,
+--                                                  'ERR_MSG',
+--                                                  '',
+--                                                  'REQUEST_NO',
+--                                                  loop_cnt.request_no);
+--            RAISE global_api_expt;
+--          END IF;
+-- Ver1.23 M.Hokkanji End
 --
 -- Ver1.19 M.Hokkanji Start
           IF (ln_delivery_lt IS NULL ) THEN
@@ -1635,7 +1642,10 @@ AS
           -- システム日付 > 稼働日
 -- Ver1.19 M.Hokkanji Start
 --          IF (ld_sysdate > ld_oprtn_day) THEN
-          IF (ld_sysdate > ld_oprtn_day + 1) THEN
+-- Ver1.23 M.Hokkanji Start
+--          IF (ld_sysdate > ld_oprtn_day + 1) THEN
+          IF (ld_sysdate > (loop_cnt.schedule_ship_date - ln_lead_time + 1)) THEN
+-- Ver1.23 M.Hokkanji End
 -- Ver1.19 M.Hokkanji End
             -- 配送リードタイムが妥当でない
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,

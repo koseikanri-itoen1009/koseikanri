@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/09/01    1.6   Oracle 山根 一浩   課題#64変更#176対応
  *  2008/10/10    1.7   Oracle 伊藤 ひとみ 統合テスト指摘116対応
  *  2008/12/02    1.8   Oracle 北寒寺正夫  本番障害対応
+ *  2008/12/13    1.9   Oracle 二瓶 大輔   本番障害#568対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1653,6 +1654,10 @@ AS
   PROCEDURE get_same_request_number(
     it_request_no
         IN  xxwsh_order_headers_all.request_no%TYPE,            -- 同一依頼No
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+    it_order_type_id
+        IN  xxwsh_order_headers_all.order_type_id%TYPE,         -- 受注タイプID
+-- 2008/12/13 v1.8 D.Nihei Add End
     on_same_request_no
         OUT NOCOPY NUMBER,                                      -- 同一依頼No件数
     ot_old_order_header_id
@@ -1681,16 +1686,38 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+    cv_cancel               CONSTANT VARCHAR2(2)   := '99';                    --取消
+    cv_get_err              CONSTANT VARCHAR2(100) := 'APP-XXWSH-10013';     -- 取得エラー
+    cv_msg_kbn              CONSTANT VARCHAR2(5)   := 'XXWSH';               -- 出荷
+    cv_tkn_table            CONSTANT VARCHAR2(20)  := 'TABLE';               -- TABLE
+    cv_xoha                 CONSTANT VARCHAR2(100) := '受注ヘッダアドオン';
+    cv_tkn_type             CONSTANT VARCHAR2(20)  := 'TYPE';                -- TYPE
+    cv_tkn_no_type          CONSTANT VARCHAR2(20)  := 'NO_TYPE';             -- NO_TYPE
+    cv_request_no           CONSTANT VARCHAR2(10)  := '依頼No';
+    cv_tkn_request_no       CONSTANT VARCHAR2(20)  := 'REQUEST_NO';          -- REQUEST_NO
+    cv_log_level            CONSTANT VARCHAR2(1)   := '6';                   -- ログレベル
+    cv_colon                CONSTANT VARCHAR2(1)   := ':';                   -- コロン
+-- 2008/12/13 v1.8 D.Nihei Add End
 --
     -- *** ローカル変数 ***
-     ln_return_code         NUMBER;                                      -- 関数戻り値
-     ln_same_request_no     NUMBER;                                      -- 同一依頼No件数
-     lt_old_order_header_id xxwsh_order_headers_all.order_header_id%TYPE;-- ヘッダアドオンID(OLD)
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+    lv_except_msg          VARCHAR2(200);                               -- エラーメッセージ
+-- 2008/12/13 v1.8 D.Nihei Add End
+    ln_return_code         NUMBER;                                      -- 関数戻り値
+    ln_same_request_no     NUMBER;                                      -- 同一依頼No件数
+    lt_old_order_header_id xxwsh_order_headers_all.order_header_id%TYPE;-- ヘッダアドオンID(OLD)
 --
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
 --
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+    user_expt             EXCEPTION;     -- ユーザ定義エラー
+-- 2008/12/13 v1.8 D.Nihei Add End
   BEGIN
 --
 --################################  固定ステータス初期化部 START   ################################
@@ -1699,23 +1726,102 @@ AS
 --
 --#####################################  固定部 END   #############################################
 --
-    ln_return_code := xxwsh_common_pkg.get_same_request_number(
-                        it_request_no,
-                        ln_same_request_no,    -- 同一依頼No件数
-                        lt_old_order_header_id -- 受注ヘッダアドオンID(OLD)
-    );
-    IF (ln_return_code <> gv_status_normal) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(
-                     gv_msg_kbn_wsh,
-                     gv_msg_42a_022,
-                     gv_tkn_request_no,
-                     it_request_no
-      );
-      RAISE global_api_expt;
+-- 2008/12/13 v1.8 D.Nihei Del Start 本番障害#568対応
+--    ln_return_code := xxwsh_common_pkg.get_same_request_number(
+--                        it_request_no,
+--                        ln_same_request_no,    -- 同一依頼No件数
+--                        lt_old_order_header_id -- 受注ヘッダアドオンID(OLD)
+--    );
+--    IF (ln_return_code <> gv_status_normal) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(
+--                     gv_msg_kbn_wsh,
+--                     gv_msg_42a_022,
+--                     gv_tkn_request_no,
+--                     it_request_no
+--      );
+--      RAISE global_api_expt;
+--    END IF;
+--    on_same_request_no     := ln_same_request_no;     -- 同一依頼No件数
+--    ot_old_order_header_id := lt_old_order_header_id; -- 受注ヘッダアドオンID(OLD)
+-- 2008/12/13 v1.8 D.Nihei Del End
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+    -- 入力パラメータチェック
+    IF ( it_request_no IS NULL ) THEN
+      RAISE user_expt;
     END IF;
-    on_same_request_no     := ln_same_request_no;     -- 同一依頼No件数
-    ot_old_order_header_id := lt_old_order_header_id; -- 受注ヘッダアドオンID(OLD)
+--
+    -- 同一依頼Noの件数カウント
+    SELECT COUNT(1)
+    INTO   on_same_request_no
+    FROM   xxwsh_order_headers_all  xoha
+    WHERE  xoha.req_status  <> cv_cancel
+    AND    xoha.order_type_id = it_order_type_id
+    AND    xoha.request_no  =  it_request_no
+    ;
+--
+    IF ( on_same_request_no > 1 ) THEN
+--
+      BEGIN
+        -- 同一依頼Noの受注ヘッダアドオンID取得
+        SELECT MAX(xoha.order_header_id)
+        INTO   ot_old_order_header_id
+        FROM   xxwsh_order_headers_all  xoha
+        WHERE  xoha.order_type_id = it_order_type_id
+        AND    xoha.request_no    = it_request_no
+        AND    xoha.req_status    IN('04', '08')  --出荷(04)と支給(08)実績計上済
+        AND    NVL(xoha.latest_external_flag, 'N')   <> 'Y'
+        AND    NVL(xoha.actual_confirm_class, 'N')   =  'Y'
+        ;
+--
+        IF ( ot_old_order_header_id IS NULL ) THEN
+          RAISE user_expt;
+        END IF;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          RAISE user_expt;
+--
+      END;
+--
+    ELSIF ( on_same_request_no = 1 ) THEN
+--
+      BEGIN
+--
+        SELECT xoha.order_header_id
+        INTO   ot_old_order_header_id
+        FROM   xxwsh_order_headers_all  xoha
+        WHERE  xoha.req_status    <> cv_cancel
+        AND    xoha.order_type_id  = it_order_type_id
+        AND    xoha.request_no     =  it_request_no
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn        , cv_get_err,
+                                                    cv_tkn_table      , cv_xoha,
+                                                    cv_tkn_type       , NULL,
+                                                    cv_tkn_no_type    , NULL,
+                                                    cv_tkn_request_no , it_request_no);
+          FND_LOG.STRING(cv_log_level, gv_pkg_name
+                        || cv_colon
+                        || cv_prg_name, lv_except_msg);
+          RAISE global_api_expt;
+      END;
+--
+    ELSE
+      -- 指定した依頼Noは存在しません。
+      RAISE user_expt;
+    END IF;
+-- 2008/12/13 v1.8 D.Nihei Add End
   EXCEPTION
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+    WHEN user_expt THEN -- ユーザ定義エラー
+      ov_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh
+                                          , gv_msg_42a_022
+                                          , gv_tkn_request_no
+                                          , it_request_no);
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+-- 2008/12/13 v1.8 D.Nihei Add End
 --
 --#################################  固定例外処理部 START   #######################################
 --
@@ -5494,6 +5600,9 @@ AS
         -- A-4同一依頼No検索処理
         -- ===============================
         get_same_request_number(lt_order_tbl(gn_shori_count).request_no,         -- 依頼No
+-- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
+                                lt_order_tbl(gn_shori_count).transaction_type_id,-- 受注タイプID
+-- 2008/12/13 v1.8 D.Nihei Add End
                                 ln_same_request_no_count,                        -- 同一依頼No件数
                                 lt_old_order_header_id,                          -- 受注ヘッダアドオンID(OLD)
                                 lv_errbuf,                                       -- エラー・メッセージ --# 固定 #
