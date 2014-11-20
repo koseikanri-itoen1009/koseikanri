@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -44,7 +44,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/23    1.0   T.Nishikawa      新規作成
  *  2009/03/13    1.1   H.Wada           get_subinventory_info1 取得条件修正(障害番号T1_0040)
- *  2009/03/24    1.2   S.Kayahara       最終行に/追加
+ *  2009/03/30    1.2   N.Abe            convert_cust_subinv_code 顧客ステータス不備対応(障害番号T1_0165)
  *
  *****************************************************************************************/
 --
@@ -1873,48 +1873,50 @@ AS
     --
     ELSE
     --
-        IF iv_record_type = cv_record_type_inv THEN         -- 90:棚卸
-        --
-            IF lt_cust_status NOT IN( cv_cust_status_appl      -- 30:承認
-                                     ,cv_cust_status_cust      -- 40:顧客
-                                     ,cv_cust_status_rest      -- 50:休止
-                                     ,cv_cust_status_credit )  -- 80:更正債権
-            THEN
-            --
-                lv_errmsg  := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_msg_kbn_coi
-                          ,iv_name         => cv_msg_coi_10216
-                          ,iv_token_name1  => cv_tkn_cust_code
-                          ,iv_token_value1 => iv_cust_code
-                              );
-                lv_errbuf := SQLERRM;
-                RAISE sub_error_expt;
-            --
-            END IF;
-        --
-        ELSE
-        --
-            IF ( ( iv_hht_form_flag IS NOT NULL ) AND ( iv_hht_form_flag = cv_flag_y ) ) THEN
-                -- HHT取引入力画面の場合
-                IF lt_cust_status NOT IN( cv_cust_status_appl      -- 30:承認
-                                         ,cv_cust_status_cust      -- 40:顧客
-                                         ,cv_cust_status_rest      -- 50:休止
-                                         ,cv_cust_status_credit )  -- 80:更正債権
-                THEN
-                --
-                    lv_errmsg  := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_coi
-                              ,iv_name         => cv_msg_coi_10216
-                              ,iv_token_name1  => cv_tkn_cust_code
-                              ,iv_token_value1 => iv_cust_code
-                                  );
-                    lv_errbuf := SQLERRM;
-                    RAISE sub_error_expt;
-                --
-                END IF;
-            --
-            ELSE
-                -- HHT_IFの場合
+-- == 2009/03/30 Ver1.2 Modified START =========================================
+--        IF iv_record_type = cv_record_type_inv THEN         -- 90:棚卸
+--        --
+--            IF lt_cust_status NOT IN( cv_cust_status_appl      -- 30:承認
+--                                     ,cv_cust_status_cust      -- 40:顧客
+--                                     ,cv_cust_status_rest      -- 50:休止
+--                                     ,cv_cust_status_credit )  -- 80:更正債権
+--            THEN
+--            --
+--                lv_errmsg  := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_msg_kbn_coi
+--                          ,iv_name         => cv_msg_coi_10216
+--                          ,iv_token_name1  => cv_tkn_cust_code
+--                          ,iv_token_value1 => iv_cust_code
+--                              );
+--                lv_errbuf := SQLERRM;
+--                RAISE sub_error_expt;
+--            --
+--            END IF;
+--        --
+--        ELSE
+--        --
+--            IF ( ( iv_hht_form_flag IS NOT NULL ) AND ( iv_hht_form_flag = cv_flag_y ) ) THEN
+--                -- HHT取引入力画面の場合
+--                IF lt_cust_status NOT IN( cv_cust_status_appl      -- 30:承認
+--                                         ,cv_cust_status_cust      -- 40:顧客
+--                                         ,cv_cust_status_rest      -- 50:休止
+--                                         ,cv_cust_status_credit )  -- 80:更正債権
+--                THEN
+--                --
+--                    lv_errmsg  := xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_coi
+--                              ,iv_name         => cv_msg_coi_10216
+--                              ,iv_token_name1  => cv_tkn_cust_code
+--                              ,iv_token_value1 => iv_cust_code
+--                                  );
+--                    lv_errbuf := SQLERRM;
+--                    RAISE sub_error_expt;
+--                --
+--                END IF;
+--            --
+--            ELSE
+--                -- HHT_IFの場合
+                -- 上様以外の場合
                 IF lt_cust_status NOT IN( cv_cust_status_appl   -- 30:承認
                                          ,cv_cust_status_cust   -- 40:顧客
                                          ,cv_cust_status_rest)  -- 50:休止
@@ -1931,11 +1933,11 @@ AS
                     RAISE sub_error_expt;
                 --
                 END IF;
-
-            END IF;
-        --
-        END IF;
-    --
+--            END IF;
+--        --
+--        END IF;
+--    --
+-- == 2009/03/30 Ver1.2 Modified END =========================================
     END IF;
     -- ========================================
     -- 5.拠点複の場合は、管理元拠点の一致チェック
@@ -3153,4 +3155,3 @@ AS
 --###########################   END   ##############################
 --
 END XXCOI_COMMON_PKG;
-/
