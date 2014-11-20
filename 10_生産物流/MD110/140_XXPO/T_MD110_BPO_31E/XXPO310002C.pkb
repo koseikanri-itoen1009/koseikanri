@@ -7,7 +7,7 @@ AS
  * Description      : HHT発注情報IF
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT発注情報IF       T_MD070_BPO_31E
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/04/08    1.0   Oracle 山根 一浩 初回作成
  *  2008/04/21    1.1   Oracle 山根 一浩 変更要求No43対応
  *  2008/05/23    1.2   Oracle 藤井 良平 結合テスト不具合（シナリオ4-1）
+ *  2008/07/14    1.3   Oracle 椎名 昭圭 仕様不備障害#I_S_001.4,#I_S_192.1.2,#T_S_435対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -131,6 +132,9 @@ AS
     item_short_name     xxcmn_item_mst_v.item_short_name%TYPE,      -- 略称(品名称)
     lot_no              po_lines_all.attribute1%TYPE,               -- ロットNo
     attribute1          ic_lots_mst.attribute1%TYPE,                -- 製造年月日
+-- 2008/07/14 1.3 ADD Start
+    attribute3          ic_lots_mst.attribute3%TYPE,                -- 賞味期限
+-- 2008/07/14 1.3 ADD End
     attribute2          ic_lots_mst.attribute2%TYPE,                -- 固有記号
     attribute11         po_lines_all.attribute11%TYPE,              -- 発注数量
     attribute10         po_lines_all.attribute10%TYPE,              -- 発注単位
@@ -245,8 +249,21 @@ AS
   PROCEDURE parameter_check(
     iv_from_date   IN            VARCHAR2,     -- 1.納入日(FROM)
     iv_to_date     IN            VARCHAR2,     -- 2.納入日(TO)
-    iv_inv_code    IN            VARCHAR2,     -- 3.納入先コード
-    iv_vendor_id   IN            VARCHAR2,     -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--    iv_inv_code   IN            VARCHAR2,     -- 3.納入先コード
+--    iv_vendor_id  IN            VARCHAR2,     -- 4.取引先コード
+    iv_inv_code_01 IN           VARCHAR2,     -- 03.納入先コード01
+    iv_inv_code_02 IN           VARCHAR2,     -- 04.納入先コード02
+    iv_inv_code_03 IN           VARCHAR2,     -- 05.納入先コード03
+    iv_inv_code_04 IN           VARCHAR2,     -- 06.納入先コード04
+    iv_inv_code_05 IN           VARCHAR2,     -- 07.納入先コード05
+    iv_inv_code_06 IN           VARCHAR2,     -- 08.納入先コード06
+    iv_inv_code_07 IN           VARCHAR2,     -- 09.納入先コード07
+    iv_inv_code_08 IN           VARCHAR2,     -- 10.納入先コード08
+    iv_inv_code_09 IN           VARCHAR2,     -- 11.納入先コード09
+    iv_inv_code_10 IN           VARCHAR2,     -- 12.納入先コード10
+    iv_vendor_id   IN           VARCHAR2,     -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
     ov_errbuf         OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg         OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -286,8 +303,12 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 納入先が未入力
-    IF (iv_inv_code IS NULL) THEN
+-- 2008/07/14 1.3 UPDATE Start
+--    -- 納入先が未入力
+--    IF (iv_inv_code IS NULL) THEN
+    -- 納入先01が未入力
+    IF (iv_inv_code_01 IS NULL) THEN
+-- 2008/07/14 1.3 UPDATE End
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                             gv_tkn_number_31e_06,
                                             gv_tkn_param_name,
@@ -350,7 +371,8 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    -- 納入先コードチェック
+-- 2008/07/14 1.3 UPDATE Start
+/*    -- 納入先コードチェック
     SELECT COUNT(xilv.segment1)
     INTO   ln_cnt
     FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
@@ -368,6 +390,224 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+*/--
+    -- 納入先コード01チェック
+    SELECT COUNT(xilv.segment1)
+    INTO   ln_cnt
+    FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+    WHERE  xilv.segment1 = iv_inv_code_01
+    AND    ROWNUM        = 1;
+--
+    -- 納入先コードがない
+    IF (ln_cnt = 0) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                            gv_tkn_number_31e_07,
+                                            gv_tkn_param_name,
+                                            gv_tkn_2byte_ship,
+                                            gv_tkn_param_value,
+                                            iv_inv_code_01);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 納入先コード02チェック
+    IF (iv_inv_code_02 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_02
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_02);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード03チェック
+    IF (iv_inv_code_03 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_03
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_03);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード04チェック
+    IF (iv_inv_code_04 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_04
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_04);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード05チェック
+    IF (iv_inv_code_05 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_05
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_05);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード06チェック
+    IF (iv_inv_code_06 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_06
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_06);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード07チェック
+    IF (iv_inv_code_07 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_07
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_07);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード08チェック
+    IF (iv_inv_code_08 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_08
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_08);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード09チェック
+    IF (iv_inv_code_09 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_09
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_09);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 納入先コード10チェック
+    IF (iv_inv_code_10 IS NOT NULL) THEN
+      SELECT COUNT(xilv.segment1)
+      INTO   ln_cnt
+      FROM   xxcmn_item_locations_v xilv                  -- OPM保管場所情報VIEW
+      WHERE  xilv.segment1 = iv_inv_code_10
+      AND    ROWNUM        = 1;
+--
+      -- 納入先コードがない
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31e_07,
+                                              gv_tkn_param_name,
+                                              gv_tkn_2byte_ship,
+                                              gv_tkn_param_value,
+                                              iv_inv_code_10);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+-- 2008/07/14 1.3 UPDATE End
 --
     -- 取引先が指定あり
     IF (iv_vendor_id IS NOT NULL) THEN
@@ -391,7 +631,8 @@ AS
     END IF;
 --
     -- 入力パラメータ表示
-    lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+-- 2008/07/14 1.3 UPDATE Start
+/*    lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                           gv_tkn_number_31e_11,
                                           gv_tkn_vendor,
                                           iv_vendor_id,
@@ -403,7 +644,36 @@ AS
                                           iv_to_date);
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+*/--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '＜入力パラメータ情報＞');
 --
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '取引先コード：'   || iv_vendor_id);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード01：' || iv_inv_code_01);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード02：' || iv_inv_code_02);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード03：' || iv_inv_code_03);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード04：' || iv_inv_code_04);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード05：' || iv_inv_code_05);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード06：' || iv_inv_code_06);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード07：' || iv_inv_code_07);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード08：' || iv_inv_code_08);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード09：' || iv_inv_code_09);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入先コード10：' || iv_inv_code_10);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入日(From)：'   || iv_from_date);
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, '納入日(To)：'     || iv_to_date);
+--
+-- 2008/07/14 1.3 UPDATE End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -433,8 +703,21 @@ AS
   PROCEDURE get_mast_data(
     iv_from_date   IN            VARCHAR2,     -- 1.納入日(FROM)
     iv_to_date     IN            VARCHAR2,     -- 2.納入日(TO)
-    iv_inv_code    IN            VARCHAR2,     -- 3.納入先コード
-    iv_vendor_id   IN            VARCHAR2,     -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--    iv_inv_code   IN            VARCHAR2,     -- 3.納入先コード
+--    iv_vendor_id  IN            VARCHAR2,     -- 4.取引先コード
+    iv_inv_code_01 IN           VARCHAR2,     -- 03.納入先コード01
+    iv_inv_code_02 IN           VARCHAR2,     -- 04.納入先コード02
+    iv_inv_code_03 IN           VARCHAR2,     -- 05.納入先コード03
+    iv_inv_code_04 IN           VARCHAR2,     -- 06.納入先コード04
+    iv_inv_code_05 IN           VARCHAR2,     -- 07.納入先コード05
+    iv_inv_code_06 IN           VARCHAR2,     -- 08.納入先コード06
+    iv_inv_code_07 IN           VARCHAR2,     -- 09.納入先コード07
+    iv_inv_code_08 IN           VARCHAR2,     -- 10.納入先コード08
+    iv_inv_code_09 IN           VARCHAR2,     -- 11.納入先コード09
+    iv_inv_code_10 IN           VARCHAR2,     -- 12.納入先コード10
+    iv_vendor_id   IN           VARCHAR2,     -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
     ov_errbuf         OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg         OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -475,6 +758,9 @@ AS
             ,xiv.item_no                                   -- 品目コード
             ,xiv.item_short_name                           -- 略称(品名称)
             ,ilm.attribute1                                -- 製造年月日
+-- 2008/07/14 1.3 ADD Start
+            ,ilm.attribute3                                -- 賞味期限
+-- 2008/07/14 1.3 ADD End
             ,ilm.attribute2                                -- 固有記号
             ,xvv.segment1                                  -- 仕入先番号
             ,xvv.vendor_short_name                         -- 略称(取引先名)
@@ -493,7 +779,19 @@ AS
       AND    pha.attribute5   = xilv.segment1
       AND   ((iv_vendor_id IS NULL)
       OR     (xvv.segment1    = iv_vendor_id))
-      AND    pha.attribute5   = iv_inv_code
+-- 2008/07/14 1.3 UPDATE Start
+--      AND    pha.attribute5   = iv_inv_code
+      AND    pha.attribute5   IN (iv_inv_code_01,
+                                  iv_inv_code_02,
+                                  iv_inv_code_03,
+                                  iv_inv_code_04,
+                                  iv_inv_code_05,
+                                  iv_inv_code_06,
+                                  iv_inv_code_07,
+                                  iv_inv_code_08,
+                                  iv_inv_code_09,
+                                  iv_inv_code_10)
+-- 2008/07/14 1.3 UPDATE End
       AND    pha.attribute4   >= iv_from_date
       AND    pha.attribute4   <= iv_to_date
       AND    pha.attribute1   >= gv_status_po_zumi                   -- 発注作成済:20
@@ -549,6 +847,9 @@ AS
       mst_rec.item_no           := lr_mst_data_rec.item_no;
       mst_rec.item_short_name   := lr_mst_data_rec.item_short_name;
       mst_rec.attribute1        := lr_mst_data_rec.attribute1;
+-- 2008/07/14 1.3 ADD Start
+      mst_rec.attribute3        := lr_mst_data_rec.attribute3;
+-- 2008/07/14 1.3 ADD End
       mst_rec.attribute2        := lr_mst_data_rec.attribute2;
       mst_rec.segment1          := lr_mst_data_rec.segment1;
       mst_rec.vendor_short_name := lr_mst_data_rec.vendor_short_name;
@@ -688,20 +989,40 @@ AS
 --
           -- データ作成
           lv_data := mst_rec.po_header_number  || cv_sep_com ||        -- 発注番号
-                     mst_rec.segment1          || cv_sep_com ||        -- 仕入先番号
-                     mst_rec.vendor_short_name || cv_sep_com ||        -- 略称(取引先名)
+-- 2008/07/14 1.3 UPDATE Start
+--                     mst_rec.segment1          || cv_sep_com ||        -- 仕入先番号
+                     REPLACE(mst_rec.segment1, cv_sep_com)
+                                               || cv_sep_com ||        -- 仕入先番号
+--                     mst_rec.vendor_short_name || cv_sep_com ||        -- 略称(取引先名)
+                     REPLACE(mst_rec.vendor_short_name, cv_sep_com)
+                                               || cv_sep_com ||        -- 略称(取引先名)
+-- 2008/07/14 1.3 UPDATE End
                      mst_rec.attribute4        || cv_sep_com ||        -- 納入日
                      mst_rec.attribute5        || cv_sep_com ||        -- 納入先コード
-                     mst_rec.description       || cv_sep_com ||        -- 摘要(納入先名)
+-- 2008/07/14 1.3 UPDATE Start
+--                     mst_rec.description       || cv_sep_com ||        -- 摘要(納入先名)
+                     REPLACE(mst_rec.description, cv_sep_com)
+                                               || cv_sep_com ||        -- 摘要(納入先名)
+-- 2008/07/14 1.3 UPDATE End
                      mst_rec.line_num          || cv_sep_com ||        -- 明細番号
                      mst_rec.item_no           || cv_sep_com ||        -- 品目
-                     mst_rec.item_short_name   || cv_sep_com ||        -- 略称(品名称)
+-- 2008/07/14 1.3 UPDATE Start
+--                     mst_rec.item_short_name   || cv_sep_com ||        -- 略称(品名称)
+                     REPLACE(mst_rec.item_short_name, cv_sep_com)
+                                               || cv_sep_com ||        -- 略称(品名称)
+-- 2008/07/14 1.3 UPDATE End
                      mst_rec.lot_no            || cv_sep_com ||        -- ロットNo
                      mst_rec.attribute1        || cv_sep_com ||        -- 製造年月日
+-- 2008/07/14 1.3 ADD Start
+                     mst_rec.attribute3        || cv_sep_com ||        -- 賞味期限
+-- 2008/07/14 1.3 ADD End
                      mst_rec.attribute2        || cv_sep_com ||        -- 固有記号
                      mst_rec.attribute11       || cv_sep_com ||        -- 発注数量
                      mst_rec.attribute10       || cv_sep_com ||        -- 発注単位
-                     mst_rec.attribute15;                              -- 明細摘要
+-- 2008/07/14 1.3 UPDATE Start
+--                     mst_rec.attribute15;                              -- 明細摘要
+                     REPLACE(mst_rec.attribute15, cv_sep_com);         -- 明細摘要
+-- 2008/07/14 1.3 UPDATE End
 --
           -- データ出力
           UTL_FILE.PUT_LINE(lf_file_hand,lv_data);
@@ -850,8 +1171,21 @@ AS
   PROCEDURE submain(
     iv_from_date  IN            VARCHAR2,     -- 1.納入日(FROM)
     iv_to_date    IN            VARCHAR2,     -- 2.納入日(TO)
-    iv_inv_code   IN            VARCHAR2,     -- 3.納入先コード
-    iv_vendor_id  IN            VARCHAR2,     -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--    iv_inv_code   IN            VARCHAR2,     -- 3.納入先コード
+--    iv_vendor_id  IN            VARCHAR2,     -- 4.取引先コード
+    iv_inv_code_01 IN           VARCHAR2,     -- 03.納入先コード01
+    iv_inv_code_02 IN           VARCHAR2,     -- 04.納入先コード02
+    iv_inv_code_03 IN           VARCHAR2,     -- 05.納入先コード03
+    iv_inv_code_04 IN           VARCHAR2,     -- 06.納入先コード04
+    iv_inv_code_05 IN           VARCHAR2,     -- 07.納入先コード05
+    iv_inv_code_06 IN           VARCHAR2,     -- 08.納入先コード06
+    iv_inv_code_07 IN           VARCHAR2,     -- 09.納入先コード07
+    iv_inv_code_08 IN           VARCHAR2,     -- 10.納入先コード08
+    iv_inv_code_09 IN           VARCHAR2,     -- 11.納入先コード09
+    iv_inv_code_10 IN           VARCHAR2,     -- 12.納入先コード10
+    iv_vendor_id   IN           VARCHAR2,     -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
     ov_errbuf        OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode       OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg        OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -921,8 +1255,21 @@ AS
     parameter_check(
       iv_from_date,       -- 1.納入日(FROM)
       iv_to_date,         -- 2.納入日(TO)
-      iv_inv_code,        -- 3.納入先コード
-      iv_vendor_id,       -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--      iv_inv_code,          -- 3.納入先コード
+--      iv_vendor_id,         -- 4.取引先コード
+      iv_inv_code_01,       -- 03.納入先コード01
+      iv_inv_code_02,       -- 04.納入先コード02
+      iv_inv_code_03,       -- 05.納入先コード03
+      iv_inv_code_04,       -- 06.納入先コード04
+      iv_inv_code_05,       -- 07.納入先コード05
+      iv_inv_code_06,       -- 08.納入先コード06
+      iv_inv_code_07,       -- 09.納入先コード07
+      iv_inv_code_08,       -- 10.納入先コード08
+      iv_inv_code_09,       -- 11.納入先コード09
+      iv_inv_code_10,       -- 12.納入先コード10
+      iv_vendor_id,         -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -937,8 +1284,21 @@ AS
     get_mast_data(
       iv_from_date,       -- 1.納入日(FROM)
       iv_to_date,         -- 2.納入日(TO)
-      iv_inv_code,        -- 3.納入先コード
-      iv_vendor_id,       -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--      iv_inv_code,          -- 3.納入先コード
+--      iv_vendor_id,         -- 4.取引先コード
+      iv_inv_code_01,       -- 03.納入先コード01
+      iv_inv_code_02,       -- 04.納入先コード02
+      iv_inv_code_03,       -- 05.納入先コード03
+      iv_inv_code_04,       -- 06.納入先コード04
+      iv_inv_code_05,       -- 07.納入先コード05
+      iv_inv_code_06,       -- 08.納入先コード06
+      iv_inv_code_07,       -- 09.納入先コード07
+      iv_inv_code_08,       -- 10.納入先コード08
+      iv_inv_code_09,       -- 11.納入先コード09
+      iv_inv_code_10,       -- 12.納入先コード10
+      iv_vendor_id,         -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1003,8 +1363,21 @@ AS
     retcode          OUT NOCOPY VARCHAR2,         --   エラーコード     #固定#
     iv_from_date  IN            VARCHAR2,         -- 1.納入日(FROM)
     iv_to_date    IN            VARCHAR2,         -- 2.納入日(TO)
-    iv_inv_code   IN            VARCHAR2,         -- 3.納入先コード
-    iv_vendor_id  IN            VARCHAR2)         -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--    iv_inv_code   IN            VARCHAR2,         -- 3.納入先コード
+--    iv_vendor_id  IN            VARCHAR2)         -- 4.取引先コード
+    iv_inv_code_01 IN           VARCHAR2,         -- 03.納入先コード01
+    iv_inv_code_02 IN           VARCHAR2,         -- 04.納入先コード02
+    iv_inv_code_03 IN           VARCHAR2,         -- 05.納入先コード03
+    iv_inv_code_04 IN           VARCHAR2,         -- 06.納入先コード04
+    iv_inv_code_05 IN           VARCHAR2,         -- 07.納入先コード05
+    iv_inv_code_06 IN           VARCHAR2,         -- 08.納入先コード06
+    iv_inv_code_07 IN           VARCHAR2,         -- 09.納入先コード07
+    iv_inv_code_08 IN           VARCHAR2,         -- 10.納入先コード08
+    iv_inv_code_09 IN           VARCHAR2,         -- 11.納入先コード09
+    iv_inv_code_10 IN           VARCHAR2,         -- 12.納入先コード10
+    iv_vendor_id   IN           VARCHAR2)         -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
 --
 --###########################  固定部 START   ###########################
 --
@@ -1067,8 +1440,21 @@ AS
     submain(
       iv_from_date,         -- 1.納入日(FROM)
       iv_to_date,           -- 2.納入日(TO)
-      iv_inv_code,          -- 3.納入先コード
-      iv_vendor_id,         -- 4.取引先コード
+-- 2008/07/14 1.3 UPDATE Start
+--      iv_inv_code,          -- 3.納入先コード
+--      iv_vendor_id,         -- 4.取引先コード
+      iv_inv_code_01,       -- 03.納入先コード01
+      iv_inv_code_02,       -- 04.納入先コード02
+      iv_inv_code_03,       -- 05.納入先コード03
+      iv_inv_code_04,       -- 06.納入先コード04
+      iv_inv_code_05,       -- 07.納入先コード05
+      iv_inv_code_06,       -- 08.納入先コード06
+      iv_inv_code_07,       -- 09.納入先コード07
+      iv_inv_code_08,       -- 10.納入先コード08
+      iv_inv_code_09,       -- 11.納入先コード09
+      iv_inv_code_10,       -- 12.納入先コード10
+      iv_vendor_id,         -- 13.取引先コード
+-- 2008/07/14 1.3 UPDATE End
       lv_errbuf,            -- エラー・メッセージ           --# 固定 #
       lv_retcode,           -- リターン・コード             --# 固定 #
       lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #

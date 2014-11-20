@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/05/01    1.0   Oracle 山根 一浩 初回作成
  *  2008/05/30    1.1   Oracle 石渡 賢和 出荷依頼(実績)出力済みフラグの判定修正
  *  2008/06/10    1.2   Oracle 石渡 賢和 TE080指摘事項修正
+ *  2008/07/14    1.3   Oracle 椎名 昭圭 TE080指摘事項#73対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -138,7 +139,10 @@ AS
   TYPE masters_rec IS RECORD(
     deliver_from          xxwsh_order_headers_all.deliver_from%TYPE,      -- 出荷元
     head_sales_branch     xxwsh_order_headers_all.head_sales_branch%TYPE, -- 管轄拠点
-    prod_class_code       xxcmn_item_categories3_v.prod_class_code%TYPE,  -- 商品区分
+-- 2008/07/14 1.3 Update Start
+--    prod_class_code       xxcmn_item_categories3_v.prod_class_code%TYPE,  -- 商品区分
+    prod_class_h_code     mtl_categories_b.segment1%TYPE,                 -- 本社商品区分
+-- 2008/07/14 1.3 Update End
     order_type_id         xxwsh_order_headers_all.order_type_id%TYPE,     -- 受注タイプID
     arrival_date          xxwsh_order_headers_all.arrival_date%TYPE,      -- 着荷日
     deliver_to            xxwsh_order_headers_all.deliver_to%TYPE,        -- 出荷先
@@ -576,14 +580,31 @@ AS
             ,ximv1.item_no                       -- 親品目
             ,ximv2.new_crowd_code                -- 新・群コード
             ,ximv2.num_of_cases                  -- ケース入数
-            ,xic4.prod_class_code                -- 商品区分
+-- 2008/07/14 1.3 Update Start
+--            ,xic4.prod_class_code                -- 商品区分
+            ,xicv2.prod_class_h_code             -- 本社商品区分
+-- 2008/07/14 1.3 Update End
       FROM   xxwsh_order_headers_all       xoha          -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all         xola          -- 受注明細アドオン
             ,xxwsh_oe_transaction_types2_v otta          -- 受注タイプ情報VIEW
             ,xxcmn_item_mst2_v             ximv1         -- OPM品目マスタ(親)
             ,xxcmn_item_mst2_v             ximv2         -- OPM品目マスタ(子)
             ,xxcmn_item_mst_b              ximb          -- OPM品目アドオンマスタ
-            ,xxcmn_item_categories4_v      xic4          -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/07/14 1.3 Update Start
+--            ,xxcmn_item_categories4_v      xic4          -- OPM品目カテゴリ割当情報VIEW4
+            ,(SELECT  xicv.item_id
+                     ,MAX(CASE
+                        WHEN xicv.category_set_name = '本社商品区分' THEN
+                          mcb.segment1
+                        ELSE
+                          NULL
+                      END) AS prod_class_h_code          -- 本社商品区分
+            FROM      xxcmn_item_categories_v   xicv     -- OPM品目カテゴリ割当情報VIEW
+                     ,mtl_categories_b          mcb
+            WHERE     xicv.category_id  = mcb.category_id
+            AND       xicv.structure_id = mcb.structure_id
+            GROUP BY  xicv.item_id) xicv2
+-- 2008/07/14 1.3 Update End
       WHERE  xoha.order_header_id       = xola.order_header_id
       AND    xoha.order_type_id         = otta.transaction_type_id
       AND    ximv2.item_no              = xola.request_item_code
@@ -591,7 +612,10 @@ AS
       AND    ximb.parent_item_id        = ximv1.item_id
       AND    ximb.start_date_active    <= xoha.shipped_date
       AND    ximb.end_date_active      >= xoha.shipped_date
-      AND    ximv2.item_id              = xic4.item_id
+-- 2008/07/14 1.3 Update Start
+--      AND    ximv2.item_id              = xic4.item_id
+      AND    ximv2.item_id              = xicv2.item_id
+-- 2008/07/14 1.3 Update End
       AND    xoha.req_status            = gv_req_status_04                  -- 出荷実績計上済
       AND    otta.transaction_type_name = gv_tran_type_name                 -- 出荷依頼
       AND    otta.order_category_code   = gv_category_code                  -- 受注
@@ -630,7 +654,10 @@ AS
       mst_rec.item_no           := lr_mst_data_rec.item_no;            -- 親品目
       mst_rec.new_crowd_code    := lr_mst_data_rec.new_crowd_code;     -- 新・群コード
       mst_rec.num_of_cases      := lr_mst_data_rec.num_of_cases;       -- ケース入数
-      mst_rec.prod_class_code   := lr_mst_data_rec.prod_class_code;    -- 商品区分
+-- 2008/07/14 1.3 Update Start
+--      mst_rec.prod_class_code   := lr_mst_data_rec.prod_class_code;    -- 商品区分
+      mst_rec.prod_class_h_code := lr_mst_data_rec.prod_class_h_code;  -- 本社商品区分
+-- 2008/07/14 1.3 Update End
 --
       mst_rec.order_line_id     := lr_mst_data_rec.order_line_id;      -- 受注明細アドオンID
 --
@@ -755,16 +782,36 @@ AS
             ,xola.quantity                           -- 数量
             ,xola.delete_flag                        -- 削除フラグ
             ,ximv.num_of_cases                       -- ケース入数
-            ,xic4.prod_class_code                    -- 商品区分
+-- 2008/07/14 1.3 Update Start
+--            ,xic4.prod_class_code                -- 商品区分
+            ,xicv2.prod_class_h_code             -- 本社商品区分
+-- 2008/07/14 1.3 Update End
       FROM   xxwsh_order_headers_all       xoha          -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all         xola          -- 受注明細アドオン
             ,xxwsh_oe_transaction_types2_v otta          -- 受注タイプ情報VIEW
             ,xxcmn_item_mst_v              ximv          -- OPM品目情報VIEW
-            ,xxcmn_item_categories4_v      xic4          -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/07/14 1.3 Update Start
+--            ,xxcmn_item_categories4_v      xic4          -- OPM品目カテゴリ割当情報VIEW4
+            ,(SELECT  xicv.item_id
+                     ,MAX(CASE
+                        WHEN xicv.category_set_name = '本社商品区分' THEN
+                          mcb.segment1
+                        ELSE
+                          NULL
+                      END) AS prod_class_h_code          -- 本社商品区分
+            FROM      xxcmn_item_categories_v   xicv     -- OPM品目カテゴリ割当情報VIEW
+                     ,mtl_categories_b          mcb
+            WHERE     xicv.category_id  = mcb.category_id
+            AND       xicv.structure_id = mcb.structure_id
+            GROUP BY  xicv.item_id) xicv2
+-- 2008/07/14 1.3 Update End
       WHERE  xoha.order_header_id       = xola.order_header_id
       AND    xoha.order_type_id         = otta.transaction_type_id
       AND    xola.request_item_code     = ximv.item_no
-      AND    ximv.item_id               = xic4.item_id
+-- 2008/07/14 1.3 Update Start
+--      AND    ximv.item_id               = xic4.item_id
+      AND    ximv.item_id               = xicv2.item_id
+-- 2008/07/14 1.3 Update End
       AND    xoha.req_status           >= gv_req_status_03                --「締め済み」以上
       AND    xoha.req_status           <> gv_req_status_99                --「取消」以外
       AND    NVL(xoha.latest_external_flag,gv_flag_off) = gv_flag_on      -- 最新のみ
@@ -806,7 +853,10 @@ AS
       mst_rec.quantity           := lr_mst_data_rec.quantity;            -- 数量
       mst_rec.delete_flag        := lr_mst_data_rec.delete_flag;         -- 削除フラグ
       mst_rec.num_of_cases       := lr_mst_data_rec.num_of_cases;        -- ケース入数
-      mst_rec.prod_class_code    := lr_mst_data_rec.prod_class_code;     -- 商品区分
+-- 2008/07/14 1.3 Update Start
+--      mst_rec.prod_class_code    := lr_mst_data_rec.prod_class_code;     -- 商品区分
+      mst_rec.prod_class_h_code  := lr_mst_data_rec.prod_class_h_code;   -- 本社商品区分
+-- 2008/07/14 1.3 Update End
 --
       mst_rec.order_line_id      := lr_mst_data_rec.order_line_id;       -- 受注明細アドオンID
 --
@@ -1311,7 +1361,10 @@ AS
             lv_data := lv_data || cv_sep_com || gv_max_date;                -- 計上年月
             lv_data := lv_data || cv_sep_com || mst_rec.deliver_from;       -- 出庫拠点コード
             lv_data := lv_data || cv_sep_com || mst_rec.head_sales_branch;  -- 依頼拠点コード
-            lv_data := lv_data || cv_sep_com || mst_rec.prod_class_code;    -- 商品区分
+-- 2008/07/14 1.3 Update Start
+--            lv_data := lv_data || cv_sep_com || mst_rec.prod_class_code;    -- 商品区分
+            lv_data := lv_data || cv_sep_com || mst_rec.prod_class_h_code;  -- 本社商品区分
+-- 2008/07/14 1.3 Update End
             lv_data := lv_data || cv_sep_com || mst_rec.request_class;      -- 依頼区分
             lv_data := lv_data || cv_sep_com || mst_rec.v_arrival_date;     -- 着日(YYYYMMDD)
             lv_data := lv_data || cv_sep_com || mst_rec.deliver_to;         -- 配送先コード
@@ -1378,7 +1431,10 @@ AS
             lv_data := lv_data || cv_sep_com || TO_CHAR(mst_rec.arrival_date,'YYYYMM');
 --
             -- 入力拠点コード
-            IF (mst_rec.prod_class_code = gv_prod_class_reef) THEN
+-- 2008/07/14 1.3 Update Start
+--            IF (mst_rec.prod_class_code = gv_prod_class_reef) THEN
+            IF (mst_rec.prod_class_h_code = gv_prod_class_reef) THEN
+-- 2008/07/14 1.3 Update End
               lv_data := lv_data || cv_sep_com || gv_base_code_reef;
             ELSE
               lv_data := lv_data || cv_sep_com || gv_base_code_drink;
