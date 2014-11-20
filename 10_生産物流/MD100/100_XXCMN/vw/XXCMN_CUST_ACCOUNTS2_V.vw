@@ -79,7 +79,11 @@ AS
           xp.start_date_active,
           xp.end_date_active,
           xp.party_name,
-          xp.party_short_name,
+          CASE
+            WHEN hca.customer_class_code = '10'
+              THEN xp.party_name
+              ELSE xp.party_short_name
+          END,
           xp.party_name_alt,
           xp.zip,
           xp.address_line1,
