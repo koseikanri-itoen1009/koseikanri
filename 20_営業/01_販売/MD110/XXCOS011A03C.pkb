@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/10/05    1.14  N.Maeda          [0001464]受注明細分割による影響対応
  *  2010/03/01    1.15  S.Karikomi       [E_本稼働_01635]ヘッダ出力拠点修正
  *                                                       件数カウント単位の同期対応
+ *  2010/03/09    1.16  S.Karikomi       [E_本稼働_01637]売単価、売価金額修正
  *
  *****************************************************************************************/
 --
@@ -1366,6 +1367,10 @@ AS
    ,invoice_order_price_amt      xxcos_edi_headers.invoice_order_price_amt%TYPE      -- (伝票計)売価金額(発注)
    ,invoice_shipping_price_amt   xxcos_edi_headers.invoice_shipping_price_amt%TYPE   -- (伝票計)売価金額(出荷)
    ,invoice_stockout_price_amt   xxcos_edi_headers.invoice_stockout_price_amt%TYPE   -- (伝票計)売価金額(欠品)
+/* 2010/03/09 Ver1.16 Add Start */
+   ,total_order_price_amt        xxcos_edi_headers.total_order_price_amt%TYPE        -- (総合計)売価金額(発注)
+   ,total_shipping_price_amt     xxcos_edi_headers.total_shipping_price_amt%TYPE     -- (総合計)売価金額(出荷)
+/* 2010/03/09 Ver1.16 Add  End  */
    ,edi_delivery_schedule_flag   xxcos_edi_headers.edi_delivery_schedule_flag%TYPE   -- EDI納品予定送信済フラグ
   );
 --
@@ -3254,6 +3259,10 @@ AS
     gt_edi_header_tab(gn_head_cnt).invoice_order_price_amt     := ir_total_rec.order_price_amt;                   -- (伝票計)売価金額(発注)
     gt_edi_header_tab(gn_head_cnt).invoice_shipping_price_amt  := ir_total_rec.shipping_price_amt;                -- (伝票計)売価金額(出荷)
     gt_edi_header_tab(gn_head_cnt).invoice_stockout_price_amt  := ir_total_rec.stockout_price_amt;                -- (伝票計)売価金額(欠品)
+/* 2010/03/09 Ver1.16 Add Start */
+    gt_edi_header_tab(gn_head_cnt).total_order_price_amt       := ir_total_rec.order_price_amt;                   -- (総合計)売価金額(発注)
+    gt_edi_header_tab(gn_head_cnt).total_shipping_price_amt    := ir_total_rec.shipping_price_amt;                -- (総合計)売価金額(出荷)
+/* 2009/03/09 Ver1.16 Add  End  */
     -- 「作成区分」が、'送信'の場合
     IF ( iv_make_class = cv_make_class_transe ) THEN
       gt_edi_header_tab(gn_head_cnt).edi_delivery_schedule_flag  := cv_y;                                         -- EDI納品予定送信済フラグ
@@ -3286,6 +3295,10 @@ AS
       gt_data_tab(ln_loop_cnt)(cv_invc_order_price_amt)  := ir_total_rec.order_price_amt;      -- (伝票計)売価金額(発注)
       gt_data_tab(ln_loop_cnt)(cv_invc_ship_price_amt)   := ir_total_rec.shipping_price_amt;   -- (伝票計)売価金額(出荷)
       gt_data_tab(ln_loop_cnt)(cv_invc_stkout_price_amt) := ir_total_rec.stockout_price_amt;   -- (伝票計)売価金額(欠品)
+/* 2010/03/09 Ver1.16 Add Start */
+      gt_data_tab(ln_loop_cnt)(cv_t_order_price_amt)     := ir_total_rec.order_price_amt;      -- (総合計)売価金額(発注)
+      gt_data_tab(ln_loop_cnt)(cv_t_ship_price_amt)      := ir_total_rec.shipping_price_amt;   -- (総合計)売価金額(出荷)
+/* 2009/03/09 Ver1.16 Add  End  */
 --
       --==============================================================
       -- データ成形
@@ -4643,6 +4656,10 @@ AS
               ,xeh.invoice_order_price_amt     = gt_edi_header_tab(ln_loop_cnt).invoice_order_price_amt      -- (伝票計)売価金額(発注)
               ,xeh.invoice_shipping_price_amt  = gt_edi_header_tab(ln_loop_cnt).invoice_shipping_price_amt   -- (伝票計)売価金額(出荷)
               ,xeh.invoice_stockout_price_amt  = gt_edi_header_tab(ln_loop_cnt).invoice_stockout_price_amt   -- (伝票計)売価金額(欠品)
+/* 2010/03/09 Ver1.16 Add Start */
+              ,xeh.total_order_price_amt       = gt_edi_header_tab(ln_loop_cnt).total_order_price_amt        -- (総合計)売価金額(発注)
+              ,xeh.total_shipping_price_amt    = gt_edi_header_tab(ln_loop_cnt).total_shipping_price_amt     -- (総合計)売価金額(出荷)
+/* 2010/03/09 Ver1.16 Add  End  */
               ,xeh.edi_delivery_schedule_flag  = gt_edi_header_tab(ln_loop_cnt).edi_delivery_schedule_flag   -- EDI納品予定送信済フラグ
               ,xeh.last_updated_by             = cn_last_updated_by                                          -- 最終更新者
               ,xeh.last_update_date            = cd_last_update_date                                         -- 最終更新日

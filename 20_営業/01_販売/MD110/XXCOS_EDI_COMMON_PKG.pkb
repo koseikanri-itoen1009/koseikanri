@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/07/13   1.5   K.Kiriu          [0000660]対応
  *  2009/07/14   1.6   K.Kiriu          [0000064]対応
  *  2009/08/11   1.7   K.Kiriu          [0000966]対応
+ *  2010/03/09   1.8   S.Karikomi       [E_本稼働_01637]対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -148,6 +149,10 @@ AS
         ,ordered_quantity    oe_order_lines_all.ordered_quantity%TYPE    -- 受注明細.受注数量
         ,orig_sys_line_refw  oe_order_lines_all.orig_sys_line_ref%TYPE   -- 受注明細.外部システム受注明細番号
         ,unit_selling_price  oe_order_lines_all.unit_selling_price%TYPE  -- 販売単価
+/* 2010/03/09 Ver1.8 Add Start */
+        ,selling_price       xxcos_edi_lines.selling_price%TYPE          -- 売単価
+        ,order_price_amt     xxcos_edi_lines.order_price_amt%TYPE        -- 売価金額(発注)
+/* 2010/03/09 Ver1.8 Add  End  */
         ,num_of_case         ic_item_mst_b.attribute11%TYPE              -- OPM品目.DFF11(ケース入数)
         ,jan_code            ic_item_mst_b.attribute21%TYPE              -- OPM品目.DFF21(JANコード)
         ,itf_code            ic_item_mst_b.attribute22%TYPE              -- OPM品目.DFF22(ITFコード)
@@ -472,25 +477,30 @@ AS
 --
         -- 明細情報読込
         SELECT
-          oola.line_number         line_number         -- 受注明細.行番号
-         ,oola.ordered_item        ordered_item        -- 受注明細.受注品目
-         ,oola.order_quantity_uom  order_quantity_uom  -- 受注明細.受注単位
-         ,oola.ordered_quantity    ordered_quantity    -- 受注明細.受注数量
-         ,oola.orig_sys_line_ref   orig_sys_line_refw  -- 受注明細.外部システム受注明細番号
-         ,oola.unit_selling_price  unit_selling_price  -- 販売単価
-         ,iimb.attribute11         num_of_case         -- OPM品目.DFF11(ケース入数)
-         ,iimb.attribute21         jan_code            -- OPM品目.DFF21(JANコード)
-         ,iimb.attribute22         itf_code            -- OPM品目.DFF22(ITFコード)
-         ,msib.segment1            item_code           -- Disc品目.品名コード
-         ,xsib.bowl_inc_num        num_of_bowl         -- Disc品目アドオン.ボール入数
-         ,flv.attribute8           regular_sale_class  -- クイックコード.DFF8(定番特売区分)
-         ,flv.attribute10          outbound_flag       -- クイックコード.DFF10(OUTBOUND可否)
+          oola.line_number            line_number         -- 受注明細.行番号
+         ,oola.ordered_item           ordered_item        -- 受注明細.受注品目
+         ,oola.order_quantity_uom     order_quantity_uom  -- 受注明細.受注単位
+         ,oola.ordered_quantity       ordered_quantity    -- 受注明細.受注数量
+         ,oola.orig_sys_line_ref      orig_sys_line_refw  -- 受注明細.外部システム受注明細番号
+         ,oola.unit_selling_price     unit_selling_price  -- 販売単価
+/* 2010/03/09 Ver1.8 Add Start */
+         ,TO_NUMBER(oola.attribute10) selling_price       -- 売単価
+         ,TO_NUMBER(oola.attribute10)
+          * oola.ordered_quantity     order_price_amt     -- 売価金額(発注)
+/* 2010/03/09 Ver1.8 Add  End  */
+         ,iimb.attribute11            num_of_case         -- OPM品目.DFF11(ケース入数)
+         ,iimb.attribute21            jan_code            -- OPM品目.DFF21(JANコード)
+         ,iimb.attribute22            itf_code            -- OPM品目.DFF22(ITFコード)
+         ,msib.segment1               item_code           -- Disc品目.品名コード
+         ,xsib.bowl_inc_num           num_of_bowl         -- Disc品目アドオン.ボール入数
+         ,flv.attribute8              regular_sale_class  -- クイックコード.DFF8(定番特売区分)
+         ,flv.attribute10             outbound_flag       -- クイックコード.DFF10(OUTBOUND可否)
 /* 2009/03/03 Ver1.1 Add Start */
-         ,ximb.item_name            item_name           -- OPM品目アドオン.正式名
-         ,ximb.item_name_alt        item_name_alt       -- OPM品目アドオン.カナ名
+         ,ximb.item_name              item_name           -- OPM品目アドオン.正式名
+         ,ximb.item_name_alt          item_name_alt       -- OPM品目アドオン.カナ名
 /* 2009/03/03 Ver1.1 Add  End  */
 /* 2009/04/24 Ver1.3 Add Start */
-         ,muom.attribute1          edi_rep_uom         -- EDI・帳票用単位
+         ,muom.attribute1             edi_rep_uom         -- EDI・帳票用単位
 /* 2009/04/24 Ver1.3 Add End   */
         BULK COLLECT INTO lt_line_tab
         FROM oe_order_lines_all    oola  -- 受注明細
@@ -874,8 +884,12 @@ AS
                  ,NULL                                             -- 原価金額(発注)
                  ,NULL                                             -- 原価金額(出荷)
                  ,NULL                                             -- 原価金額(欠品)
-                 ,NULL                                             -- 売単価
-                 ,NULL                                             -- 売価金額(発注)
+/* 2010/03/09 Ver1.8 Mod Start */
+--                 ,NULL                                             -- 売単価
+--                 ,NULL                                             -- 売価金額(発注)
+                 ,lt_line_tab(ln_line_cnt).selling_price           -- 売単価
+                 ,lt_line_tab(ln_line_cnt).order_price_amt         -- 売価金額(発注)
+/* 2010/03/09 Ver1.8 Mod  End  */
                  ,NULL                                             -- 売価金額(出荷)
                  ,NULL                                             -- 売価金額(欠品)
                  ,NULL                                             -- Ａ欄(百貨店)
