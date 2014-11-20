@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,16 +11,16 @@
 * 2008-06-17 1.1  二瓶大輔     ST不具合#126対応
 * 2008-06-18 1.2  二瓶大輔     不具合対応
 * 2008-06-02 1.3  二瓶大輔     変更要求#42対応
-*                             ST不具合#199対応
+*                              ST不具合#199対応
 * 2008-07-04 1.4  二瓶大輔     変更要求#91対応
 * 2008-07-29 1.5  二瓶大輔     内部変更要求#164,166,173、課題#32
 * 2008-08-13 1.6  二瓶大輔     ST不具合#249対応
 * 2008-08-27 1.7  伊藤ひとみ   内部変更要求#209対応
 * 2008-10-07 1.8  伊藤ひとみ   統合テスト指摘240対応
 * 2008-10-21 1.9  二瓶大輔     T_S_437対応
-*                             T_TE080_BPO_440 No14
+*                              T_TE080_BPO_440 No14
 * 2008-10-27 1.10 二瓶大輔     T_TE080_BPO_600 No22
-
+* 2009-01-05 1.11 二瓶大輔     本番障害#861対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -54,7 +54,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.10
+ * @version 1.11
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -342,11 +342,13 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         String reqNo = (String)row.getAttribute("RequestNo"); // 依頼No
         // 自動発注作成を実行
         XxpoUtility.provAutoPurchaseOrders(getOADBTransaction(), reqNo);
-        // 通知ステータスを「確定通知済」に更新します。
-        XxpoUtility.updateNotifStatus(
-          getOADBTransaction(),
-          orderHeaderId,
-          XxpoConstants.NOTIF_STATUS_KTZ);
+// 2009-01-05 D.Nihei Del Start
+//        // 通知ステータスを「確定通知済」に更新します。
+//        XxpoUtility.updateNotifStatus(
+//          getOADBTransaction(),
+//          orderHeaderId,
+//          XxpoConstants.NOTIF_STATUS_KTZ);
+// 2009-01-05 D.Nihei Del End
 
       }
       exeFlag = true;
@@ -1281,11 +1283,13 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       String reqNo = (String)row.getAttribute("RequestNo"); // 依頼No
       // 自動発注作成を実行
       XxpoUtility.provAutoPurchaseOrders(getOADBTransaction(), reqNo);
-      // 通知ステータスを「確定通知済」に更新します。
-      XxpoUtility.updateNotifStatus(
-        getOADBTransaction(),
-        orderHeaderId,
-        XxpoConstants.NOTIF_STATUS_KTZ);
+// 2009-01-05 D.Nihei Del Start
+//      // 通知ステータスを「確定通知済」に更新します。
+//      XxpoUtility.updateNotifStatus(
+//        getOADBTransaction(),
+//        orderHeaderId,
+//        XxpoConstants.NOTIF_STATUS_KTZ);
+// 2009-01-05 D.Nihei Del End
 
     }
 
