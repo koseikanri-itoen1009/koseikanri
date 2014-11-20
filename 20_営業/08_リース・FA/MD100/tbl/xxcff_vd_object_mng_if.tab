@@ -1,0 +1,83 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_vd_object_mng_if
+ * Description     : 自販機物件管理インタフェース
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------- -------------------------------------
+ *  Date          Ver.  Editor        Description
+ * ------------- ----- ------------- -------------------------------------
+ *  2014/07/04    1.0  SCSK 山下翔太  初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_vd_object_mng_if (
+     object_code                    VARCHAR2(10)  NOT NULL
+    ,generation_date                DATE
+    ,manufacturer_name              VARCHAR2(50)
+    ,age_type                       VARCHAR2(50)
+    ,model                          VARCHAR2(14)
+    ,quantity                       NUMBER(12)
+    ,department_code                VARCHAR2(5)
+    ,owner_company_type             VARCHAR2(4)
+    ,installation_place             VARCHAR2(50)
+    ,installation_address           VARCHAR2(600)
+    ,active_flag                    VARCHAR2(1)
+    ,import_status                  VARCHAR2(1)
+    ,group_id                       VARCHAR2(50)
+    ,customer_code                  VARCHAR2(25)
+    ,vendor_code                    VARCHAR2(30)
+    ,machine_type                   VARCHAR2(2)
+    ,lease_class                    VARCHAR2(2)
+    ,date_placed_in_service         DATE
+    ,assets_cost                    NUMBER(10)
+    ,moved_date                     DATE
+    ,dclr_place                     VARCHAR2(5)
+    ,location                       VARCHAR2(30)
+    ,date_retired                   DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,CONSTRAINT xxcff_vd_object_mng_if_pk PRIMARY KEY (object_code)
+  USING INDEX TABLESPACE xxidx2)
+ TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K)
+;
+COMMENT ON TABLE xxcff.xxcff_vd_object_mng_if IS '自販機物件管理インタフェース';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.object_code                           IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.generation_date                       IS '発生日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.manufacturer_name                     IS 'メーカ名';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.age_type                              IS '年式';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.model                                 IS '機種';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.quantity                              IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.department_code                       IS '管理部門';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.owner_company_type                    IS '本社／工場区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.installation_place                    IS '現設置先';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.installation_address                  IS '現設置場所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.active_flag                           IS '物件有効フラグ';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.import_status                         IS '取込ステータス';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.group_id                              IS 'グループID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.customer_code                         IS '顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.vendor_code                           IS '仕入先コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.machine_type                          IS '機器区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.lease_class                           IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.date_placed_in_service                IS '事業供用日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.assets_cost                           IS '取得価格';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.moved_date                            IS '移動日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.dclr_place                            IS '申告地';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.location                              IS '事業所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.date_retired                          IS '除・売却日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.created_by                            IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.creation_date                         IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.last_updated_by                       IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.last_update_date                      IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.last_update_login                     IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.request_id                            IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.program_application_id                IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.program_id                            IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_mng_if.program_update_date                   IS 'プログラム更新日';

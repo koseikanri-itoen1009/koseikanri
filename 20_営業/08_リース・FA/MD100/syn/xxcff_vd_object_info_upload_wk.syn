@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcff_vd_object_info_upload_wk FOR xxcff.xxcff_vd_object_info_upload_wk;

@@ -1,0 +1,102 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_vd_object_info_upload_wk
+ * Description     : 自販機物件情報アップロードワーク
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------- -------------------------------------
+ *  Date          Ver.  Editor        Description
+ * ------------- ----- ------------- -------------------------------------
+ *  2014/07/4     1.0  SCSK 山下翔太  初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_vd_object_info_upload_wk (
+     file_id                        NUMBER        NOT NULL
+    ,upload_type                    NUMBER        NOT NULL
+    ,object_code                    VARCHAR2(10)  NOT NULL
+    ,history_num                    NUMBER(15)
+    ,process_type                   VARCHAR2(3)
+    ,process_date                   DATE
+    ,object_status                  VARCHAR2(3)
+    ,owner_company_type             VARCHAR2(4)
+    ,department_code                VARCHAR2(5)
+    ,machine_type                   VARCHAR2(2)
+    ,vendor_code                    VARCHAR2(30)
+    ,manufacturer_name              VARCHAR2(50)
+    ,model                          VARCHAR2(14)
+    ,age_type                       VARCHAR2(50)
+    ,customer_code                  VARCHAR2(25)
+    ,quantity                       NUMBER(12)
+    ,date_placed_in_service         DATE
+    ,assets_cost                    NUMBER(10)
+--    ,month_lease_charge             NUMBER(10)
+--    ,re_lease_charge                NUMBER(10)
+    ,assets_date                    DATE
+    ,moved_date                     DATE
+    ,installation_place             VARCHAR2(50)
+    ,installation_address           VARCHAR2(600)
+    ,dclr_place                     VARCHAR2(5)
+    ,location                       VARCHAR2(30)
+    ,date_retired                   DATE
+    ,proceeds_of_sale               NUMBER(10)
+    ,cost_of_removal                NUMBER(10)
+    ,retired_flag                   VARCHAR2(1)
+    ,ib_if_date                     DATE
+    ,fa_if_date                     DATE
+    ,ob_last_updated_by             NUMBER(15)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  )
+  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 64k )
+;
+COMMENT ON TABLE xxcff.xxcff_vd_object_info_upload_wk IS '自販機物件情報アップロードワーク';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.file_id                                IS 'ファイルID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.upload_type                            IS '変更区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.object_code                            IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.history_num                            IS '履歴番号';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.process_type                           IS '処理区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.process_date                           IS '処理日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.object_status                          IS '物件ステータス';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.owner_company_type                     IS '本社;工場区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.department_code                        IS '管理部門';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.machine_type                           IS '機器区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.vendor_code                            IS '仕入先コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.manufacturer_name                      IS 'メーカ名';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.model                                  IS '機種';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.age_type                               IS '年式';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.customer_code                          IS '顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.quantity                               IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.date_placed_in_service                 IS '事業供用日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.assets_cost                            IS '取得価格';
+--COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.month_lease_charge                     IS '月額リース料';
+--COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.re_lease_charge                        IS '再リース料';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.assets_date                            IS '取得日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.moved_date                             IS '移動日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.installation_place                     IS '設置先';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.installation_address                   IS '設置場所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.dclr_place                             IS '申告地';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.location                               IS '事業所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.date_retired                           IS '除･売却日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.proceeds_of_sale                       IS '売却価額';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.cost_of_removal                        IS '撤去費用';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.retired_flag                           IS '除売却確定フラグ';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.ib_if_date                             IS '設置ベース情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.fa_if_date                             IS 'FA情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.ob_last_updated_by                     IS '物件管理_最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_info_upload_wk.program_update_date                    IS 'プログラム更新日';

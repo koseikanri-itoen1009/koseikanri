@@ -1,0 +1,95 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_vd_object_headers
+ * Description     : 自販機物件管理
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------- -------------------------------------
+ *  Date          Ver.  Editor        Description
+ * ------------- ----- ------------- -------------------------------------
+ *  2014/08/01    1.0  SCSK 山下翔太  初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_vd_object_headers (
+     object_header_id               NUMBER        NOT NULL
+    ,object_code                    VARCHAR2(10)  NOT NULL
+    ,object_status                  VARCHAR2(3)   NOT NULL
+    ,owner_company_type             VARCHAR2(4)
+    ,department_code                VARCHAR2(5)
+    ,machine_type                   VARCHAR2(2)
+    ,lease_class                    VARCHAR2(2)
+    ,vendor_code                    VARCHAR2(30)
+    ,manufacturer_name              VARCHAR2(50)
+    ,model                          VARCHAR2(14)
+    ,age_type                       VARCHAR2(50)
+    ,customer_code                  VARCHAR2(25)
+    ,quantity                       NUMBER(12)
+    ,date_placed_in_service         DATE
+    ,assets_cost                    NUMBER(10)
+    ,month_lease_charge             NUMBER(10)
+    ,re_lease_charge                NUMBER(10)
+    ,assets_date                    DATE
+    ,moved_date                     DATE
+    ,installation_place             VARCHAR2(50)
+    ,installation_address           VARCHAR2(600)
+    ,dclr_place                     VARCHAR2(5)
+    ,location                       VARCHAR2(30)
+    ,date_retired                   DATE
+    ,proceeds_of_sale               NUMBER(10)
+    ,cost_of_removal                NUMBER(10)
+    ,retired_flag                   VARCHAR2(1)   NOT NULL
+    ,ib_if_date                     DATE          NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)    
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,CONSTRAINT xxcff_vd_object_headers_pk PRIMARY KEY (object_header_id)
+  USING INDEX TABLESPACE xxidx2
+    ,CONSTRAINT xxcff_vd_object_headers_u01 UNIQUE (object_code)
+  USING INDEX TABLESPACE xxidx2)
+ TABLESPACE xxdata2 PCTFREE 10 PCTUSED 50 INITRANS 8 STORAGE ( INITIAL 65M)
+;
+COMMENT ON TABLE xxcff.xxcff_vd_object_headers IS '自販機物件管理';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.object_header_id                       IS '物件ID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.object_code                            IS '物件コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.object_status                          IS '物件ステータス';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.owner_company_type                     IS '本社／工場区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.department_code                        IS '管理部門';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.machine_type                           IS '機器区分';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.lease_class                            IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.vendor_code                            IS '仕入先コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.manufacturer_name                      IS 'メーカー名';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.model                                  IS '機種';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.age_type                               IS '年式';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.customer_code                          IS '顧客コード';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.quantity                               IS '数量';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.date_placed_in_service                 IS '事業供用日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.assets_cost                            IS '取得価格';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.month_lease_charge                     IS '月額リース料';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.re_lease_charge                        IS '再リース料';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.assets_date                            IS '取得日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.moved_date                             IS '移動日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.installation_place                     IS '設置先';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.installation_address                   IS '設置場所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.dclr_place                             IS '申告地';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.location                               IS '事業所';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.date_retired                           IS '除・売却日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.proceeds_of_sale                       IS '売却価格';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.cost_of_removal                        IS '撤去費用';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.retired_flag                           IS '除売却確定フラグ';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.ib_if_date                             IS '設置ベース情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.created_by                             IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.creation_date                          IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.last_updated_by                        IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.last_update_date                       IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.last_update_login                      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.request_id                             IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.program_id                             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.program_update_date                    IS 'プログラム更新日';
