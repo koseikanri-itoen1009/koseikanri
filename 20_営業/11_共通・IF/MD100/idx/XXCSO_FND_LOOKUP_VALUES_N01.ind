@@ -1,0 +1,2 @@
+CREATE INDEX applsys.xxcso_fnd_lookup_values_n01 ON fnd_lookup_values (UPPER(lookup_type)) TABLESPACE apps_ts_tx_idx;
+/
