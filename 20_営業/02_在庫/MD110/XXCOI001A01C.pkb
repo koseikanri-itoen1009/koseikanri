@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/12/18    1.14  H.Sasaki         [E_本稼動_00524]伝票日付違いの入庫情報編集内容を修正
  *  2010/01/04    1.15  H.Sasaki         [E_本稼動_00760]サマリデータの更新方法を修正
  *  2010/01/06    1.16  H.Sasaki         [E_本稼動_00908]既存一時表データの修正方法変更
+ *  2010/01/13    1.17  H.Sasaki         [E_本稼動_00837]エラーメッセージ修正
  *
  *****************************************************************************************/
 --
@@ -2233,12 +2234,16 @@ AS
 -- == 2009/10/26 V1.9 Modified END   ===============================================================
     WHEN subinventory_found_expt THEN
       lv_errmsg   := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                       , iv_name         => cv_subinventory_found_msg
-                       , iv_token_name1  => cv_tkn_base_code
-                       , iv_token_value1 => iv_base_code
-                       , iv_token_name2  => cv_tkn_warehouse
-                       , iv_token_value2 => lt_store_code
+                          iv_application  =>  cv_application
+                        , iv_name         =>  cv_subinventory_found_msg
+                        , iv_token_name1  =>  cv_tkn_base_code
+                        , iv_token_value1 =>  iv_base_code
+                        , iv_token_name2  =>  cv_tkn_warehouse
+                        , iv_token_value2 =>  lt_store_code
+-- == 2010/01/13 V1.17 Added START ===============================================================
+                        , iv_token_name3  =>  cv_tkn_den_no
+                        , iv_token_value3 =>  gv_slip_num
+-- == 2010/01/13 V1.17 Added END   ===============================================================
                      );
       lv_errbuf := lv_errmsg;
 --
@@ -2256,6 +2261,10 @@ AS
                        , iv_token_value1 => iv_base_code
                        , iv_token_name2  => cv_tkn_warehouse
                        , iv_token_value2 => lt_store_code
+-- == 2010/01/13 V1.17 Added START ===============================================================
+                        , iv_token_name3  =>  cv_tkn_den_no
+                        , iv_token_value3 =>  gv_slip_num
+-- == 2010/01/13 V1.17 Added END   ===============================================================
                      );
       lv_errbuf := lv_errmsg;
 --
@@ -2273,6 +2282,10 @@ AS
                        , iv_token_value1 => iv_base_code
                        , iv_token_name2  => cv_tkn_warehouse
                        , iv_token_value2 => lt_store_code
+-- == 2010/01/13 V1.17 Added START ===============================================================
+                        , iv_token_name3  =>  cv_tkn_den_no
+                        , iv_token_value3 =>  gv_slip_num
+-- == 2010/01/13 V1.17 Added END   ===============================================================
                      );
       lv_errbuf := lv_errmsg;
 --
