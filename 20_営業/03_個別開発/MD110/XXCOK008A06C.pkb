@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上実績振替情報の作成（振替割合） 販売物流 MD050_COK_008_A06
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *                                                    振戻対象データの日付に基づいて取得するよう変更
  *                                                    1.振戻データが先月データである場合⇒先月末日付
  *                                                    2.振戻データが当月データである場合⇒業務処理日付
+ *  2009/07/03    1.5   M.Hiruta         [障害0000422]振戻データ作成処理で作成される業務登録日付を、
+ *                                                    業務処理日付へ変更
  *
  *****************************************************************************************/
   -- ===============================
@@ -2208,7 +2210,10 @@ AS
                 , xsti.tax_code                       -- tax_code
                 , xsti.tax_rate                       -- tax_rate
                 , xsti.delivery_base_code             -- delivery_base_code
-                , xsti.registration_date              -- registration_date
+-- Start 2009/07/03 Ver_1.5 0000422 M.Hiruta REPAIR
+--                , xsti.registration_date              -- registration_date
+                , gd_process_date                     -- registration_date
+-- End   2009/07/03 Ver_1.5 0000422 M.Hiruta REPAIR
                 , cv_correction_on_flg                -- correction_flag
                 , xsti.report_decision_flag           -- report_decision_flag
                 , cv_info_if_flag                     -- info_interface_flag
