@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS001A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS001A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/04/30    1.3   T.Kitajima       [T1_0268]CHAR項目のTRIM対応
  *  2009/05/15    1.4   T.Kitajima       [T1_0639]拠点コード設定変更(売上拠点→入金拠点)
  *  2009/05/19    1.5   N.Maeda          [T1_1011]エラーリスト登録用拠点抽出条件変更
+ *  2009/06/19    1.6   T.Kitajima       [T1_1447]パフォーマンス改善対応
  *
  *****************************************************************************************/
 --
@@ -266,6 +267,9 @@ AS
   gt_qck_class            g_tab_qck_class;               -- 入金区分
   gn_purge_date           NUMBER;                        -- パージ処理基準日
   gd_process_date         DATE;                          -- 業務処理日
+--****************************** 2009/06/19 1.6 T.kitajima ADD START ******************************--
+  gd_purge_date           DATE;                          -- パージ用日付
+--****************************** 2009/06/19 1.6 T.kitajima ADD  END  ******************************--
   gd_max_date             DATE;                          -- MAX日付
 --
 --
@@ -556,7 +560,11 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     ELSE
-      gd_process_date := TRUNC( ld_process_date );
+--****************************** 2009/06/19 1.6 T.kitajima MOD START ******************************--
+--      gd_process_date := TRUNC( ld_process_date );
+      gd_process_date := ld_process_date;
+      gd_purge_date   := gd_process_date - gn_purge_date - ( 1 / 86400 ) ;
+--****************************** 2009/06/19 1.6 T.kitajima MOD  END  ******************************--
     END IF;
 --
     --==============================================================
@@ -1709,8 +1717,12 @@ AS
       SELECT pay.delete_flag  delete_flag
       FROM   xxcos_payment    pay                -- 入金テーブル
       WHERE  pay.delete_flag = cv_tkn_yes
-      AND    TRUNC( pay.creation_date ) < ( gd_process_date - gn_purge_date )
+--****************************** 2009/06/19 1.6 T.Kitajima MOD START ******************************--
+--      AND    TRUNC( pay.creation_date ) < ( gd_process_date - gn_purge_date )
+      AND    pay.creation_date  <= gd_purge_date
       FOR UPDATE NOWAIT;
+--****************************** 2009/06/19 1.6 T.Kitajima MOD  END  ******************************--
+
 --
     -- *** ローカル・レコード ***
 --
@@ -1736,7 +1748,11 @@ AS
 --
       DELETE FROM xxcos_payment
       WHERE xxcos_payment.delete_flag = cv_tkn_yes
-        AND TRUNC( xxcos_payment.creation_date ) < ( gd_process_date - gn_purge_date );
+--****************************** 2009/06/19 1.6 T.Kitajima MOD START ******************************--
+--        AND TRUNC( xxcos_payment.creation_date ) < ( gd_process_date - gn_purge_date );
+        AND xxcos_payment.creation_date  <= gd_purge_date
+      ;
+--****************************** 2009/06/19 1.6 T.Kitajima MOD  END  ******************************--
 --
       ln_delete_cnt := SQL%ROWCOUNT;    -- 削除件数
 --

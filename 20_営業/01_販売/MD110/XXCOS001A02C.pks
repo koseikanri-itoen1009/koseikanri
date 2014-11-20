@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS001A02C
+CREATE OR REPLACE PACKAGE APPS.XXCOS001A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (spec)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/04/30    1.3   T.Kitajima       [T1_0268]CHAR項目のTRIM対応
  *  2009/05/15    1.4   T.Kitajima       [T1_0639]拠点コード設定変更(売上拠点→入金拠点)
  *  2009/05/19    1.5   N.Maeda          [T1_1011]エラーリスト登録用拠点抽出条件変更
+ *  2009/06/19    1.6   T.Kitajima       [T1_1447]パフォーマンス改善対応
  *
  *****************************************************************************************/
 --
