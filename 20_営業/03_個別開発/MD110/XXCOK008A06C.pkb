@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.3
+ * Version          : 2.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *                                                   納品数量がゼロの場合の対応
  *  2009/10/15    2.2   S.Moriyama       [E_T3_00632]売上実績振替情報登録時に売上振替元顧客コードを設定するように変更
  *  2009/11/27    2.3   K.Yamaguchi      [E_本稼動_00141]振り戻しデータの数量に-1を掛けるように修正
+ *  2009/12/04    2.4   K.Yamaguchi      [E_本稼動_00292]振替元顧客はチェーン店コード(EDI)が設定されている場合にも対象とする
  *  
  *****************************************************************************************/
   --==================================================
@@ -281,7 +282,9 @@ AS
       AND ship_hca.customer_class_code      = cv_customer_class_customer
       AND ship_hca.cust_account_id          = ship_xca.customer_id
       AND ship_xca.selling_transfer_div     = cv_xca_transfer_div_on
-      AND ship_xca.chain_store_code        IS NULL
+-- 2009/12/04 Ver.2.5 [E_本稼動_00292] SCS K.Yamaguchi DELETE START
+--      AND ship_xca.chain_store_code        IS NULL
+-- 2009/12/04 Ver.2.5 [E_本稼動_00292] SCS K.Yamaguchi DELETE END
       AND ship_hca.cust_account_id          = ship_hcas.cust_account_id
       AND ship_hca.party_id                 = ship_hp.party_id
       AND ship_hp.duns_number_c            IN (   cv_customer_status_30
@@ -324,7 +327,9 @@ AS
                      AND hca.customer_class_code         = cv_customer_class_customer
                      AND hca.cust_account_id             = xca.customer_id
                      AND xca.selling_transfer_div        = cv_xca_transfer_div_on
-                     AND xca.chain_store_code           IS NULL
+-- 2009/12/04 Ver.2.5 [E_本稼動_00292] SCS K.Yamaguchi DELETE START
+--                     AND xca.chain_store_code           IS NULL
+-- 2009/12/04 Ver.2.5 [E_本稼動_00292] SCS K.Yamaguchi DELETE END
                      AND hca.party_id                    = hp.party_id
                      AND hp.duns_number_c               IN (   cv_customer_status_30
                                                              , cv_customer_status_40
@@ -413,7 +418,9 @@ AS
       AND hca.account_number            = xsri.selling_to_cust_code
       AND hca.customer_class_code       = cv_customer_class_customer
       AND xca.customer_id               = hca.cust_account_id
-      AND xca.chain_store_code         IS NULL
+-- 2009/12/04 Ver.2.5 [E_本稼動_00292] SCS K.Yamaguchi DELETE START
+--      AND xca.chain_store_code         IS NULL
+-- 2009/12/04 Ver.2.5 [E_本稼動_00292] SCS K.Yamaguchi DELETE END
       AND xca.selling_transfer_div      = cv_xca_transfer_div_on
       AND hp.party_id                   = hca.party_id
       AND hp.duns_number_c             IN (   cv_customer_status_30
