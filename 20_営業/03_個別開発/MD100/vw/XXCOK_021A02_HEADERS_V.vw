@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/02/02    1.1   K.Yamaguchi      [障害COK_004] 抽出条件に営業単位を追加
  *                                       [障害COK_004] 抽出条件に仕入先サイトマスタの無効日を追加
+ *  2010/02/23    1.2   K.Yamaguchi      [E_本稼動_01176] 口座種別の取得元変更
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_headers_v(
@@ -92,7 +93,10 @@ WHERE xwbh.base_code                    = hca1.account_number
   AND abaua.primary_flag                = 'Y'
   AND ( abaua.start_date <= xxccp_common_pkg2.get_process_date OR abaua.start_date IS NULL )
   AND ( abaua.end_date   >= xxccp_common_pkg2.get_process_date OR abaua.end_date   IS NULL )
-  AND hl.lookup_type                    = 'JP_BANK_ACCOUNT_TYPE'
+-- 2010/02/23 Ver.1.3 [E_本稼動_01176] SCS K.Yamaguchi REPAIR START
+--  AND hl.lookup_type                    = 'JP_BANK_ACCOUNT_TYPE'
+  AND hl.lookup_type                    = 'XXCSO1_KOZA_TYPE'
+-- 2010/02/23 Ver.1.3 [E_本稼動_01176] SCS K.Yamaguchi REPAIR END
   AND pvsa.org_id                       = abaua.org_id
   AND pvsa.org_id                       = abaa.org_id
   AND pvsa.org_id                       = TO_NUMBER( FND_PROFILE.VALUE( 'ORG_ID' ) )
