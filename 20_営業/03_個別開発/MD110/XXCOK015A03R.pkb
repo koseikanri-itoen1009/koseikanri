@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/03/03    1.2   M.Hiruta         [障害COK_067] 容器区分取得方法変更
  *  2009/05/11    1.3   K.Yamaguchi      [障害T1_0841] 支払額（税込）の取得方法を変更
  *                                       [障害T1_0866] 本振（案内書あり）の場合の抽出条件を変更
+ *  2009/05/25    1.4   M.Hiruta         [障害T1_1168] 支払案内書(明細)の発行日をシステム日付から業務処理日付へ変更
  *
  *****************************************************************************************/
   --==================================================
@@ -579,7 +580,10 @@ AS
     , program_update_date              -- プログラム更新日
     )
     SELECT xbb.supplier_code                                    AS payment_code
-         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+-- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
+--         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+         , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
+-- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
          , pvsa.zip                                             AS payment_zip_code
          , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
          , pvsa.address_line2                                   AS payment_addr_2
@@ -816,7 +820,10 @@ AS
     , program_update_date              -- プログラム更新日
     )
     SELECT xbb.supplier_code                                    AS payment_code
-         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+-- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
+--         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+         , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
+-- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
          , pvsa.zip                                             AS payment_zip_code
          , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
          , pvsa.address_line2                                   AS payment_addr_2
@@ -1044,7 +1051,10 @@ AS
     , program_update_date              -- プログラム更新日
     )
     SELECT xbb.supplier_code                                    AS payment_code
-         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+-- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
+--         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+         , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
+-- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
          , pvsa.zip                                             AS payment_zip_code
          , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
          , pvsa.address_line2                                   AS payment_addr_2
@@ -1255,7 +1265,10 @@ AS
     , program_update_date              -- プログラム更新日
     )
     SELECT xbb.supplier_code                                    AS payment_code
-         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+-- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
+--         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
+         , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
+-- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
          , pvsa.zip                                             AS payment_zip_code
          , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
          , pvsa.address_line2                                   AS payment_addr_2
