@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmm004a08c
+CREATE OR REPLACE PACKAGE BODY XXCMM004A08C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -47,6 +47,7 @@ AS
  *  2009/02/03    1.0   N.Nishimura      proc_init共通関数の例外処理メッセージ変更
  *  2009/02/03    1.1   N.Nishimura      ファイル内重複チェック修正
  *                                       OPM標準原価 ロック取得エラー修正
+ *  2009/05/14    1.2   H.Yoshikawa      障害T1_0569 対応
  *
  *****************************************************************************************/
 --
@@ -1434,7 +1435,11 @@ AS
           lv_step := 'A-2.4';
           lv_cost_div := SUBSTRB( TRIM( REPLACE( l_if_data_tab( ln_line_cnt ), cv_cost_div_str, '' ) ), 1, 1 );
           --
-          IF ( lv_cost_div != cv_cost_div_opm ) THEN
+-- Ver1.2  2009/05/14  Mod  T1_0569対応
+--          IF ( lv_cost_div != cv_cost_div_opm ) THEN
+          IF ( lv_cost_div != cv_cost_div_opm )
+          OR ( lv_cost_div IS NULL ) THEN
+-- End
             -- 標準原価改定ではないためエラー
             RAISE cost_div_expt;
           END IF;
@@ -2348,5 +2353,5 @@ AS
       ROLLBACK;
   END main;
 --
-END xxcmm004a08c;
+END XXCMM004A08C;
 /
