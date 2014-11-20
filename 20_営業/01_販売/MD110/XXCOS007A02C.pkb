@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2010/08/25    1.16  S.Arizumi        [E_本稼動_01763] INV締め日当日のINV連携日中化
  *                                       [E_本稼動_02635] クローズされない受注のエラーリスト出力
  *  2011/02/07    1.17  Y.Nishino        [E_本稼動_01010] 販売単価0円の受注データをクローズしないように修正
+ *  2014/01/28    1.18  S.Niki           [E_本稼動_11449] 消費税率取得基準日を検収日⇒オリジナル検収日に変更
  *
  *****************************************************************************************/
 --
@@ -2229,8 +2230,12 @@ AS
 
     FOR i IN 1..g_tax_tab.COUNT LOOP
       IF ( g_tax_tab(i).tax_class = io_order_rec.consumption_tax_class )
-        AND ( g_tax_tab(i).start_date_active <= io_order_rec.inspect_date )
-        AND ( g_tax_tab(i).end_date_active   >= io_order_rec.inspect_date )
+-- ************ 2014/01/28 1.18 S.Niki MOD START ************ --
+--        AND ( g_tax_tab(i).start_date_active <= io_order_rec.inspect_date )
+--        AND ( g_tax_tab(i).end_date_active   >= io_order_rec.inspect_date )
+        AND ( g_tax_tab(i).start_date_active <= io_order_rec.orig_inspect_date )
+        AND ( g_tax_tab(i).end_date_active   >= io_order_rec.orig_inspect_date )
+-- ************ 2014/01/28 1.18 S.Niki MOD END ************ --
       THEN
          io_order_rec.tax_rate  := NVL(g_tax_tab(i).tax_rate, 0);  -- 税率
          io_order_rec.tax_code  := g_tax_tab(i).tax_code;          -- 税コード

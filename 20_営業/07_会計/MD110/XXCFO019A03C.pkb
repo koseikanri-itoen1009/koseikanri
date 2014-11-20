@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2012/11/28    1.2   T.Osawa          管理テーブル更新、ＡＲ取引取得エラー
  *  2012/12/18    1.3   T.Ishiwata       性能改善対応
  *  2013/08/06    1.4   S.Niki           E_本稼動_10960対応(消費税増税対応)
+ *  2014/01/29    1.5   S.Niki           E_本稼動_11449対応 消費税区分名称の取得条件を納品日⇒オリジナル納品日に変更
  *
  *****************************************************************************************/
 --
@@ -2110,8 +2111,12 @@ AS
                 WHERE     flv.lookup_type               =         cv_lookup_consumption_tax
                 AND       flv.enabled_flag              =         cv_flag_y
                 AND       flv.language                  =         cv_lang
-                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
-                AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
+-- Ver.1.5 Mod Start
+--                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
+--                AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
+                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.orig_delivery_date
+                AND       NVL(flv.end_date_active  , gd_prdate)   >=  xseh.orig_delivery_date
+-- Ver.1.5 Mod End
 -- Ver.1.4 Mod Start
 --                AND       flv.lookup_code               =         xseh.consumption_tax_class)
                 AND       flv.attribute3                =         xseh.consumption_tax_class)
@@ -2367,8 +2372,12 @@ AS
                 WHERE     flv.lookup_type               =         cv_lookup_consumption_tax
                 AND       flv.enabled_flag              =         cv_flag_y
                 AND       flv.language                  =         cv_lang
-                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
-                AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
+-- Ver.1.5 Mod Start
+--                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
+--                AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
+                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.orig_delivery_date
+                AND       NVL(flv.end_date_active  , gd_prdate)   >=  xseh.orig_delivery_date
+-- Ver.1.5 Mod End
 -- Ver.1.4 Mod Start
 --                AND       flv.lookup_code               =         xseh.consumption_tax_class)
                 AND       flv.attribute3                =         xseh.consumption_tax_class)
@@ -2619,8 +2628,12 @@ AS
                 WHERE     flv.lookup_type               =         cv_lookup_consumption_tax
                 AND       flv.enabled_flag              =         cv_flag_y
                 AND       flv.language                  =         cv_lang
-                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
-                AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
+-- Ver.1.5 Mod Start
+--                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
+--                AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
+                AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.orig_delivery_date
+                AND       NVL(flv.end_date_active  , gd_prdate)   >=  xseh.orig_delivery_date
+-- Ver.1.5 Mod End
 -- Ver.1.4 Mod Start
 --                AND       flv.lookup_code               =         xseh.consumption_tax_class)
                 AND       flv.attribute3                =         xseh.consumption_tax_class)

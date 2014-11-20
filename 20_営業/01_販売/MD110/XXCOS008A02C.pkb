@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *                                                       販売単価0円の受注データをクローズしないように修正
  *  2011/03/25    1.31  K.Kiriu          [E_本稼動_03559]検収日不一致チェックの修正
  *  2011/05/31    1.32  T.Ishiwata       [E_本稼動_06548]拠点出荷対応
+ *  2014/01/20    1.33  K.Kiriu          [E_本稼動_11449]消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -2641,10 +2642,16 @@ AS
     FOR t IN 1..g_tax_sub_tab.COUNT LOOP
 --
       IF  ( g_tax_sub_tab(t).tax_class = io_order_rec.consumption_tax_class )      -- 消費税区分が合致
-      -- クイックコード消費税区分適用開始日 <= NVL(販売実績.検収日,OM.要求日(オリジナル納品日))
-      AND ( g_tax_sub_tab(t).flv_start_date_active <= NVL(io_order_rec.inspect_date, io_order_rec.org_dlv_date ) )
-      -- NVL(販売実績.検収日,OM.要求日(オリジナル納品日)) <= クイックコード消費税区分適用終了日
-      AND ( NVL(io_order_rec.inspect_date, io_order_rec.org_dlv_date ) <= NVL(g_tax_sub_tab(t).flv_end_date_active,gd_max_date) ) THEN 
+/* 2014/01/20 Ver1.33 K.Kiriu Mod Start */
+--      -- クイックコード消費税区分適用開始日 <= NVL(販売実績.検収日,OM.要求日(オリジナル納品日))
+--      AND ( g_tax_sub_tab(t).flv_start_date_active <= NVL(io_order_rec.inspect_date, io_order_rec.org_dlv_date ) )
+--      -- NVL(販売実績.検収日,OM.要求日(オリジナル納品日)) <= クイックコード消費税区分適用終了日
+--      AND ( NVL(io_order_rec.inspect_date, io_order_rec.org_dlv_date ) <= NVL(g_tax_sub_tab(t).flv_end_date_active,gd_max_date) ) THEN 
+      -- クイックコード消費税区分適用開始日 <= NVL(OM.検収日(オリジナル検収日),OM.要求日(オリジナル納品日))
+      AND ( g_tax_sub_tab(t).flv_start_date_active <= NVL(io_order_rec.orig_inspect_date, io_order_rec.org_dlv_date ) )
+      -- NVL(OM.検収日(オリジナル検収日),OM.要求日(オリジナル納品日)) <= クイックコード消費税区分適用終了日
+      AND ( NVL(io_order_rec.orig_inspect_date, io_order_rec.org_dlv_date ) <= NVL(g_tax_sub_tab(t).flv_end_date_active,gd_max_date) ) THEN 
+/* 2014/01/20 Ver1.33 K.Kiriu Mod End   */
 --
         -- 税率をセット
         io_order_rec.tax_rate := NVL( g_tax_sub_tab(t).tax_rate, 0 );
