@@ -1,5 +1,4 @@
-create or replace
-PACKAGE BODY XXCFF004A30C
+create or replace PACKAGE BODY      XXCFF004A30C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +6,7 @@ AS
  * Package Name     : XXCFF004A30C(body)
  * Description      : リース物件一部修正・移動・解約アップロード
  * MD.050           : MD050_CFF_004_A30_リース物件一部修正・移動・解約アップロード
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -52,6 +51,9 @@ AS
  *  2009/02/19    1.3  SCS 嶋田         顧客コードを追加
  *  2009/02/23    1.4  SCS 嶋田         契約ステータスが204:満了の際の対応を追加
  *  2009/05/18    1.5  SCS 松中         [障害T1_0721]デリミタ文字分割データ格納配列の桁数を変更
+ *  2009/07/31    1.6  SCS 萱原         [統合テスト障害0000654]物件コードNULL時の処理分岐追加
+ *  2009/08/03    1.7  SCS 渡辺         [統合テスト障害0000654(追加)]
+ *                                        支払照合済チェックの呼出をコメントアウト
  *
  *****************************************************************************************/
 --
@@ -1199,7 +1201,7 @@ AS
                      ,g_bond_acceptance_date_tab     --証書受領日
                      ,g_expiration_date_tab          --満了日
                      ,g_object_status_tab            --物件ステータス
-                     ,g_active_flag_tab              --物件有効フラグ
+                     ,g_active_flag_tab		              --物件有効フラグ
                      ,g_info_sys_if_date_tab         --リース管理情報連携日
                      ,g_generation_date_tab          --発生日
                      ,g_customer_code_tab            --顧客コード
@@ -2269,12 +2271,14 @@ AS
     -- ***************************************
 --
     -- FA共通関数(支払照合済チェック)
-    xxcff_common2_pkg.payment_match_chk(
-      in_line_id   => g_contract_line_id_tab(in_loop_cnt_3)  --契約明細内部ID
-     ,ov_errbuf    => lv_errbuf                  -- エラー・メッセージ           --# 固定 #
-     ,ov_retcode   => lv_retcode                 -- リターン・コード             --# 固定 #
-     ,ov_errmsg    => lv_errmsg                  -- ユーザー・エラー・メッセージ --# 固定 #
-    );
+-- 0000654 2009/08/03 DEL START
+--    xxcff_common2_pkg.payment_match_chk(
+--      in_line_id   => g_contract_line_id_tab(in_loop_cnt_3)  --契約明細内部ID
+--     ,ov_errbuf    => lv_errbuf                  -- エラー・メッセージ           --# 固定 #
+--     ,ov_retcode   => lv_retcode                 -- リターン・コード             --# 固定 #
+--     ,ov_errmsg    => lv_errmsg                  -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+-- 0000654 2009/08/03 DEL END
     IF ( lv_retcode = cv_status_warn ) THEN
       lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff  -- XXCFF
                                                       ,cv_msg_name10 ) -- 支払照合済みエラー
@@ -3312,7 +3316,7 @@ AS
     ln_loop_cnt_1  NUMBER;
     ln_loop_cnt_2  NUMBER;
 --
-    --データ取得処理内(A-1～A-6)でエラーが発生した件数をカウント
+    --データ取得処理内(A-1?A-6)でエラーが発生した件数をカウント
     ln_error_cnt   PLS_INTEGER;
 --
     --移動・修正項目の存在チェック用
@@ -3445,6 +3449,10 @@ AS
 --
           --エラーフラグがTRUEならA-6の処理をスキップ
           IF ( gb_err_flag = FALSE ) THEN
+-- 0000654 2009/07/31 ADD START
+            --物件コードがNULLの場合、A-6の処理をスキップ
+            IF ( g_csv_object_code IS NOT NULL ) THEN
+-- 0000654 2009/07/31 ADD END
             -- ============================================
             -- A-6．リース物件メンテナンステーブル作成
             -- ============================================
@@ -3458,6 +3466,9 @@ AS
             IF ( lv_retcode <> cv_status_normal ) THEN
               RAISE global_process_expt;
             END IF;
+-- 0000654 2009/07/31 ADD START
+            END IF;
+-- 0000654 2009/07/31 ADD END
           END IF;
 --
           --エラーフラグがTRUE
