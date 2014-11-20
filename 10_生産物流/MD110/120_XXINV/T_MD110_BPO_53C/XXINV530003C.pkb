@@ -7,7 +7,7 @@ AS
  * Description      : ’I‰µ•\
  * MD.050/070       : ’I‰µIssue1.0 (T_MD050_BPO_530)
                       ’I‰µ•\Draft1A (T_MD070_BPO_530C)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                       ‚³‚ê‚È‚¢Œ»Û‚Ö‚Ì‘Î‰ž
  *  2008/12/06    1.5   N.Yoshida        –{”ÔáŠQNo.493‘Î‰ž “ü”‚Ì­”“_ˆÈ‰º•\Ž¦‚ðC³
  *  2008/12/07    1.6   T.Miyata         12ŒŽ•ª‚Ì’I‰µ•\‚ªo—Í‚³‚ê‚È‚¢áŠQ‚ðC³
+ *  2008/12/08    1.7   Y.Kawano         ––“ú•ª‚Ì’I‰µ•\‚ªo—Í‚³‚ê‚È‚¢áŠQ‚ðC³
  *
  *****************************************************************************************/
 --
@@ -543,7 +544,10 @@ AS
 --WHERE‹å•ÒW
       || 'WHERE'
       || ' (xsir.invent_date >= ''' || ld_object_date  || ''''
-      || '   AND xsir.invent_date < ''' || ld_next_date || ''')'
+-- 2008/12/08 Y.Kawano Upd Start
+--      || '   AND xsir.invent_date < ''' || ld_next_date || ''')'
+      || '   AND xsir.invent_date <= ''' || ld_next_date || ''')'
+-- 2008/12/08 Y.Kawano Upd End
       || ' AND xsir.invent_whse_code = iwm.whse_code '
       || ' AND ximv.item_id = xsir.item_id '
       || ' AND ((ximv.start_date_active <= xsir.invent_date) '
