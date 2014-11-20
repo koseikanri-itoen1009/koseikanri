@@ -6,7 +6,7 @@ AS
  * Package Name     : XXINV500002C(body)
  * Description      : 移動指示情報取込
  * MD.050           : 移動依頼 T_MD050_BPO_500
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  *  2011/03/04    1.0   SCS Y.Kanami     新規作成
+ *  2011/06/02    1.1   SCS S.Niki       E_本稼動_07482,07525対応
  *
  ******************************************************************************************/
 --
@@ -2139,17 +2140,19 @@ AS
       gv_err_status := cv_status_error;
     END IF;
 --
-    -- 小口区分対象の場合
-    IF ((gv_small_amount_cls = cv_object)   -- 小口区分対象
-      OR (gv_max_ship_method IS NULL))      -- 最大配送区分設定なし
-    THEN
-      NULL;
-    ELSE
---
-      -- パレット重量を加算
-      gn_ttl_weight := gn_ttl_weight + gn_ttl_palette_weight;
---
-    END IF;
+-- 2011/06/02 Ver1.1 S.Niki Del Start E_本稼動_07482
+--    -- 小口区分対象の場合
+--    IF ((gv_small_amount_cls = cv_object)   -- 小口区分対象
+--      OR (gv_max_ship_method IS NULL))      -- 最大配送区分設定なし
+--    THEN
+--      NULL;
+--    ELSE
+----
+----      -- パレット重量を加算
+----      gn_ttl_weight := gn_ttl_weight + gn_ttl_palette_weight;
+----
+--    END IF;
+-- 2011/06/02 Ver1.1 S.Niki Del End E_本稼動_07482
 --
     -- 総合計重量
     gn_sum_ttl_weight     := gn_sum_ttl_weight + gn_ttl_weight;
@@ -2853,16 +2856,19 @@ AS
     g_case_qty_tab(gn_mov_instr_line_cnt)             := gn_best_num_cases;                             -- ケース数
     g_instr_qty_tab(gn_mov_instr_line_cnt)            := gn_instruct_qty;                               -- 指示数量
 --
-    IF ((gv_prod_cls = cv_drink)                                    -- 商品区分：ドリンク
-       AND (g_mov_instr_tab(gn_cnt).product_flg = cv_prod_cls_prod) -- 製品識別区分：製品
-       AND (gv_conv_unit IS NOT NULL))                              -- 入出庫換算単位設定済
-    THEN
---
-      g_uom_code_tab(gn_mov_instr_line_cnt)           := gv_conv_unit;                                  -- 入出庫換算単位
---
-    ELSE
-      g_uom_code_tab(gn_mov_instr_line_cnt)           := gv_item_um;                                    -- 単位
-    END IF;
+-- 2011/06/02 Ver1.1 S.Niki Mod Start E_本稼動_07482
+--    IF ((gv_prod_cls = cv_drink)                                    -- 商品区分：ドリンク
+--       AND (g_mov_instr_tab(gn_cnt).product_flg = cv_prod_cls_prod) -- 製品識別区分：製品
+--       AND (gv_conv_unit IS NOT NULL))                              -- 入出庫換算単位設定済
+--    THEN
+----
+--      g_uom_code_tab(gn_mov_instr_line_cnt)           := gv_conv_unit;                                  -- 入出庫換算単位
+----
+--    ELSE
+--      g_uom_code_tab(gn_mov_instr_line_cnt)           := gv_item_um;                                    -- 単位
+--    END IF;
+    g_uom_code_tab(gn_mov_instr_line_cnt)             := gv_item_um;                                    -- 単位
+-- 2011/06/02 Ver1.1 S.Niki Mod End E_本稼動_07482
 --
     g_pallet_num_of_sheet_tab(gn_mov_instr_line_cnt)  := gn_palette_num;                                -- パレット枚数
     g_weight_tab(gn_mov_instr_line_cnt)               := gn_ttl_weight;                                 -- 重量
@@ -3127,6 +3133,10 @@ AS
         , comp_actual_flg                           -- 実績計上済フラグ
         , correct_actual_flg                        -- 実績訂正フラグ
         , new_modify_flg                            -- 新規修正フラグ
+-- 2011/06/02 Ver1.1 S.Niki Add Start E_本稼動_07525
+        , screen_update_by                          -- 画面更新者
+        , screen_update_date                        -- 画面更新日時
+-- 2011/06/02 Ver1.1 S.Niki Add End E_本稼動_07525
         , created_by                                -- 作成者
         , creation_date                             -- 作成日
         , last_updated_by                           -- 最終更新者
@@ -3175,6 +3185,10 @@ AS
         , cv_off                                    -- 実績計上済フラグ
         , cv_off                                    -- 実績訂正フラグ
         , cv_off                                    -- 新規修正フラグ
+-- 2011/06/02 Ver1.1 S.Niki Add Start E_本稼動_07525
+        , gn_user_id                                -- 画面更新者
+        , gd_sysdate                                -- 画面更新日時
+-- 2011/06/02 Ver1.1 S.Niki Add End E_本稼動_07525
         , gn_user_id                                -- 作成者
         , gd_sysdate                                -- 作成日
         , gn_user_id                                -- 最終更新者
@@ -3303,7 +3317,10 @@ AS
         , g_uom_code_tab(rec_cnt)                   -- 単位
         , g_designated_prod_date_tab(rec_cnt)       -- 指定製造日
         , g_pallet_num_of_sheet_tab(rec_cnt)        -- パレット枚数
-        , g_first_instruct_qty_tab(rec_cnt)         -- 初回指示数量
+-- 2011/06/02 Ver1.1 S.Niki Mod Start E_本稼動_07482
+--        , g_first_instruct_qty_tab(rec_cnt)         -- 初回指示数量
+        , g_instr_qty_tab(rec_cnt)                  -- 初回指示数量
+-- 2011/06/02 Ver1.1 S.Niki Mod End E_本稼動_07482
         , g_weight_tab(rec_cnt)                     -- 重量
         , g_capacity_tab(rec_cnt)                   -- 容積
         , g_pallet_weight_tab(rec_cnt)              -- パレット重量
