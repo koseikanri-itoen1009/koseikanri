@@ -59,6 +59,7 @@ AS
  *  2008/09/19    1.18  M.Nomura         T_S_453 460 468対応
  *  2008/09/25    1.19  M.Nomura         TE080_600指摘#31対応
  *  2008/09/25    1.20  M.Nomura         統合#26対応
+ *  2008/10/06    1.21  M.Nomura         統合#306対応
  *
  *****************************************************************************************/
 --
@@ -3269,11 +3270,17 @@ AS
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_locat   ,lv_eos_shipped_to_locat))
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_to_locat, lv_eos_shipped_locat))) THEN
 *****/
-    -- 運送業者のEOS宛先が設定せれていて、入庫のEOSと出庫のEOSと異なる場合
+    -- 運送業者のEOS宛先が設定せれていて、出庫のEOSと異なる場合
     --   配送依頼データを出力する
+    --   入庫倉庫と同一の場合は、配送依頼を出力する
     IF  ( lv_eos_freight_carrier  IS NOT NULL )
+-- ##### 20081006 Ver.1.21 統合#306対応 START #####
+/*****
     AND ((lv_eos_shipped_locat    IS NULL) OR ( lv_eos_freight_carrier <> lv_eos_shipped_locat))
     AND ((lv_eos_shipped_to_locat IS NULL) OR ( lv_eos_freight_carrier <> lv_eos_shipped_to_locat)) THEN
+*****/
+    AND ((lv_eos_shipped_locat IS NULL) OR ( lv_eos_freight_carrier <> lv_eos_shipped_locat )) THEN
+-- ##### 20081006 Ver.1.21 統合#306対応 END   #####
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 END   #####
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
       -------------------------------------------------------
