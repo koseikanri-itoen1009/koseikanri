@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009-05-25    1.7   M.Maruyama       ＳＴ障害対応(T1_1154)
  *  2009-06-09    1.8   K.Hosoi          ＳＴ障害対応(T1_1154) 再修正
  *  2009-07-09    1.9   K.Hosoi          SCS障害管理番号(0000518) 対応
+ *  2009-07-21    1.10  K.Hosoi          SCS障害管理番号(0000475) 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1292,30 +1293,36 @@ AS
         ln_target_cnt := get_act_wk_dt_cur%ROWCOUNT;
         --抽出件数が０件の場合
         IF (ln_target_cnt = 0) THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_app_name                   -- アプリケーション短縮名
-                                ,iv_name         => cv_tkn_number_18              -- メッセージコード
-                                ,iv_token_name1  => cv_tkn_tsk_nm                 -- トークンコード1
-                                ,iv_token_value1 => cv_actual_work_date_2         -- トークン値1抽出処理名
-                                ,iv_token_name2  => cv_tkn_bukken                 -- トークンコード2
-                                ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
-                  );
-            lv_errbuf  := lv_errmsg;
-            RAISE status_warn_expt;
+        /* 2009.07.21 K.Hosoi 0000475対応 START */
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                                 iv_application  => cv_app_name                   -- アプリケーション短縮名
+--                                ,iv_name         => cv_tkn_number_18              -- メッセージコード
+--                                ,iv_token_name1  => cv_tkn_tsk_nm                 -- トークンコード1
+--                                ,iv_token_value1 => cv_actual_work_date_2         -- トークン値1抽出処理名
+--                                ,iv_token_name2  => cv_tkn_bukken                 -- トークンコード2
+--                                ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+--                  );
+--            lv_errbuf  := lv_errmsg;
+--            RAISE status_warn_expt;
+          ln_actual_work_date := NULL;
+        /* 2009.07.21 K.Hosoi 0000475対応 END */
         END IF;
 --
         -- 取得した実作業日がNULLの場合
         IF ( l_get_act_wk_dt_rec.actual_work_date IS NULL ) THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_app_name                   -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_17              -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
-                              ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
-                              ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
-                              ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
-                );
-          lv_errbuf  := lv_errmsg;
-          RAISE status_warn_expt;
+        /* 2009.07.21 K.Hosoi 0000475対応 START */
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_app_name                   -- アプリケーション短縮名
+--                              ,iv_name         => cv_tkn_number_17              -- メッセージコード
+--                              ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+--                              ,iv_token_value1 => cv_actual_work_date           -- トークン値1抽出処理名
+--                              ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
+--                              ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+--                );
+--          lv_errbuf  := lv_errmsg;
+--          RAISE status_warn_expt;
+          ln_actual_work_date := NULL;
+        /* 2009.07.21 K.Hosoi 0000475対応 END */
         END IF;
 --
         -- カテゴリ区分 = '50'(引揚情報) 且つ 作業区分 = '5'(引揚)の場合
@@ -1682,7 +1689,10 @@ AS
         || cv_sep_com || TO_CHAR(TO_DATE(l_get_rec.haikikessai_dt, 'YYYY/MM/DD'), 'YYYYMMDD')  -- 廃棄決裁日
         /* 2009.05.18 K.Satomura T1_1049対応 END */
         || cv_sep_com || cv_sep_wquot ||l_get_rec.ven_sisan_kbn || cv_sep_wquot               -- 資産区分
-        || cv_sep_com || l_get_rec.ven_kobai_ymd                                              -- 購買日付
+        /* 2009.07.21 K.Hosoi 0000475対応 START */
+        --|| cv_sep_com || l_get_rec.ven_kobai_ymd                                              -- 購買日付
+        || cv_sep_com || TO_CHAR(TO_DATE(l_get_rec.ven_kobai_ymd, 'YYYY/MM/DD'), 'YYYYMMDD')  -- 購買日付
+        /* 2009.07.21 K.Hosoi 0000475対応 END */
         || cv_sep_com || NVL(l_get_rec.ven_kobai_kg,0)                                        -- 購買金額
         || cv_sep_com || NVL(l_get_rec.count_no,0)                                            -- カウンターNo.
         || cv_sep_com || cv_sep_wquot || l_get_rec.chiku_cd || cv_sep_wquot                   -- 地区コード
@@ -2009,6 +2019,14 @@ AS
     cv_fist_install_dt_tkn  CONSTANT VARCHAR2(100)   := '初回設置日';
     cv_nyuko_date_tkn       CONSTANT VARCHAR2(100)   := '入庫日';
     cv_lst_yr_mnth_tkn      CONSTANT VARCHAR2(100)   := '先月末年月';
+    /* 2009.07.21 K.Hosoi 0000475対応 START */
+    cv_haikikessai_dt_tkn   CONSTANT VARCHAR2(100)   := '廃棄決済日';
+    cv_ven_kobai_ymd_tkn    CONSTANT VARCHAR2(100)   := '購買日付';
+    cv_yotei_dt_tkn         CONSTANT VARCHAR2(100)   := '最終作業完了予定日';
+    cv_kanryo_dt_tkn        CONSTANT VARCHAR2(100)   := '最終作業完了日';
+    cv_msg_bkn_cd           CONSTANT VARCHAR2(100)   := '、物件コード( ';
+    cv_prnthss              CONSTANT VARCHAR2(100)   := ' )';
+    /* 2009.07.21 K.Hosoi 0000475対応 END */
     cn_lst_yr_mnth_num      CONSTANT NUMBER(1)       := 6;
     /*20090709_hosoi_0000518 START*/
     cv_count_no             CONSTANT VARCHAR2(100)   := 'COUNT_NO';
@@ -2944,14 +2962,36 @@ AS
                                  iv_application  => cv_app_name              -- アプリケーション短縮名
                                 ,iv_name         => cv_tkn_number_15         -- メッセージコード
                                 ,iv_token_name1  => cv_tkn_item              -- トークンコード1
-                                ,iv_token_value1 => cv_lst_yr_mnth_tkn       -- トークン値1項目名
+                                /* 2009.07.21 K.Hosoi 0000475対応 START */
+--                                ,iv_token_value1 => cv_lst_yr_mnth_tkn       -- トークン値1項目名
+                                ,iv_token_value1 => cv_haikikessai_dt_tkn    -- トークン値1項目名
+                                /* 2009.07.21 K.Hosoi 0000475対応 END */
                                 ,iv_token_name2  => cv_tkn_value             -- トークンコード2
                                 ,iv_token_value2 => l_get_rec.haikikessai_dt -- トークン値2値
           );
           lv_sub_buf  := lv_sub_msg;
           RAISE select_error_expt;
         END IF;
-        --
+        /* 2009.07.21 K.Hosoi 0000475対応 START */
+        -- 購買日付
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.ven_kobai_ymd
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          lv_sub_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name              -- アプリケーション短縮名
+                                ,iv_name         => cv_tkn_number_15         -- メッセージコード
+                                ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+                                ,iv_token_value1 => cv_ven_kobai_ymd_tkn     -- トークン値1項目名
+                                ,iv_token_name2  => cv_tkn_value             -- トークンコード2
+                                ,iv_token_value2 => l_get_rec.ven_kobai_ymd -- トークン値2値
+          );
+          lv_sub_buf  := lv_sub_msg;
+          RAISE select_error_expt;
+        END IF;
+        /* 2009.07.21 K.Hosoi 0000475対応 END */
         -- 最終作業完了予定日
         lb_check_date := xxcso_util_common_pkg.check_date(
                                       iv_date         => l_get_rec.yotei_dt
@@ -2963,7 +3003,10 @@ AS
                                  iv_application  => cv_app_name        -- アプリケーション短縮名
                                 ,iv_name         => cv_tkn_number_15   -- メッセージコード
                                 ,iv_token_name1  => cv_tkn_item        -- トークンコード1
-                                ,iv_token_value1 => cv_lst_yr_mnth_tkn -- トークン値1項目名
+                                /* 2009.07.21 K.Hosoi 0000475対応 START */
+--                                ,iv_token_value1 => cv_lst_yr_mnth_tkn -- トークン値1項目名
+                                ,iv_token_value1 => cv_yotei_dt_tkn -- トークン値1項目名
+                                /* 2009.07.21 K.Hosoi 0000475対応 END */
                                 ,iv_token_name2  => cv_tkn_value       -- トークンコード2
                                 ,iv_token_value2 => l_get_rec.yotei_dt -- トークン値2値
           );
@@ -2982,7 +3025,10 @@ AS
                                  iv_application  => cv_app_name         -- アプリケーション短縮名
                                 ,iv_name         => cv_tkn_number_15    -- メッセージコード
                                 ,iv_token_name1  => cv_tkn_item         -- トークンコード1
-                                ,iv_token_value1 => cv_lst_yr_mnth_tkn  -- トークン値1項目名
+                                /* 2009.07.21 K.Hosoi 0000475対応 START */
+--                                ,iv_token_value1 => cv_lst_yr_mnth_tkn  -- トークン値1項目名
+                                ,iv_token_value1 => cv_kanryo_dt_tkn    -- トークン値1項目名
+                                /* 2009.07.21 K.Hosoi 0000475対応 START */
                                 ,iv_token_name2  => cv_tkn_value        -- トークンコード2
                                 ,iv_token_value2 => l_get_rec.kanryo_dt -- トークン値2値
           );
@@ -3059,7 +3105,11 @@ AS
              which  => FND_FILE.LOG
             ,buff   => cv_pkg_name||cv_msg_cont||
                        cv_prg_name||cv_msg_part||
-                       lv_sub_buf
+                       /* 2009.07.21 K.Hosoi 0000475対応 START */
+                       --lv_sub_buf
+                       lv_sub_buf ||cv_msg_bkn_cd||
+                       l_get_rec.install_code || cv_prnthss
+                       /* 2009.07.21 K.Hosoi 0000475対応 START */
           );
       END;
 --
