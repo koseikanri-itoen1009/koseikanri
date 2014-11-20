@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *                                       発注納入明細の粉引後単価が更新されない。
  *  2008/09/24    1.8   Oracle山根一浩   変更#193対応
  *  2008/12/04    1.9   Oracle二瓶大輔   本番障害#381対応(TRUNC削除)
+ *  2008/12/19    1.10  H.Marushita      本番障害#794対応
  *
  *****************************************************************************************/
 --
@@ -1238,6 +1239,16 @@ AS
                       iv_name         => gv_msg_xxcmn10018,
                       iv_token_name1  => gv_tkn_api_name,
                       iv_token_value1 => cv_api_name);  -- メッセージ取得
+--
+--2008/12/19 ADD S
+      -- エラー情報追加
+      lv_errmsg := lv_errmsg ||
+        ' PO_NO: '   || ir_po_data.po_no ||
+        ' PO_LINE: ' || ir_po_data.po_l_no ||
+        ' VERSION: ' || ir_po_data.revision_num ||
+        ' ERROR : '  || ltbl_api_errors.message_text(1);
+--2008/12/19 ADD E
+--
       RAISE global_user_expt;
     END IF;
 --
