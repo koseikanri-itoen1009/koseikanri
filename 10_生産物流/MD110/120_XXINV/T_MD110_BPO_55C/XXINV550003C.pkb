@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.9
+ * Version          : 1.10
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -40,6 +40,7 @@ AS
  *  2008/10/16    1.7  Takao Ohashi     T_S_492,T_S_557,T_S_494対応
  *  2008/11/11    1.8  Takao Ohashi     指摘549対応
  *  2008/11/20    1.9  Takao Ohashi     指摘691対応
+ *  2008/11/28    1.10 Akiyosi Shiina   本番#227対応
  *
  *****************************************************************************************/
 --
@@ -784,7 +785,10 @@ AS
     --  2．年月日_TO
 --mod start 1.3
 --    lv_sql_body := lv_sql_body || ' AND gbh.actual_cmplt_date      BETWEEN FND_DATE.STRING_TO_DATE(';
-    lv_sql_body := lv_sql_body || ' AND TRUNC(gbh.actual_cmplt_date) BETWEEN FND_DATE.STRING_TO_DATE(';
+-- 2008/11/28 v1.10 UPDATE START
+--    lv_sql_body := lv_sql_body || ' AND TRUNC(gbh.actual_cmplt_date) BETWEEN FND_DATE.STRING_TO_DATE(';
+    lv_sql_body := lv_sql_body || ' AND gbh.actual_cmplt_date BETWEEN FND_DATE.STRING_TO_DATE(';
+-- 2008/11/28 v1.10 UPDATE END
 --mod end 1.3
 -- 2008/09/26 v1.6 UPDATE START
 /*
@@ -1780,10 +1784,17 @@ AS
   BEGIN
 --
     -- SQL本体
+-- 2008/11/28 v1.10 UPDATE START
 -- mod start ver1.8
 --    lv_sql_body := lv_sql_body || ' SELECT ' ;
-    lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xoha ooha otta iimb ximb gic mcb mct) use_nl(xoha ooha otta iimb ximb gic mcb mct) */' ;
+--    lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xoha ooha otta iimb ximb gic mcb mct) use_nl(xoha ooha otta iimb ximb gic mcb mct) */' ;
+    IF (iv_doc_type = gc_doc_type_omso) THEN
+      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xoha ooha otta wdd itp) use_nl(xoha ooha otta wdd itp) */' ;
+    ELSE
+      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xoha ooha otta rsl itp) use_nl(xoha ooha otta rsl itp) */' ;
+    END IF ;
 -- mod end ver1.8
+-- 2008/11/28 v1.10 UPDATE END
     lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
     lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
     lv_sql_body := lv_sql_body || ' ,SUBSTRB(xlv.description,1,20)             AS dept_name' ;
@@ -1930,7 +1941,10 @@ AS
 -- mod start ver1.8
 --    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
     lv_sql_body := lv_sql_body || ' AND ximb.item_id  = iimb.item_id' ;
-    lv_sql_body := lv_sql_body || ' AND iimb.item_id  = gic.item_id' ;
+-- 2008/11/28 v1.10 UPDATE START
+--    lv_sql_body := lv_sql_body || ' AND iimb.item_id  = gic.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND itp.item_id  = gic.item_id' ;
+-- 2008/11/28 v1.10 UPDATE END
     lv_sql_body := lv_sql_body || ' AND mct.source_lang  = :para_language_code ' ;
     lv_sql_body := lv_sql_body || ' AND mct.language     = :para_language_code ' ;
     lv_sql_body := lv_sql_body || ' AND mcb.category_id        = mct.category_id' ;

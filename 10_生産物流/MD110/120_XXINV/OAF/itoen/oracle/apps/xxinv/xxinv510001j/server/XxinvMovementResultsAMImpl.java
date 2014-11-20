@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2008-08-20 1.6  山本恭久     ST#249対応、内部変更#167対応
 * 2008-09-24 1.7  伊藤ひとみ   統合テスト 指摘59,156対応
 * 2008-10-21 1.8  伊藤ひとみ   統合テスト 指摘353対応
+* 2008-12-01 1.9  伊藤ひとみ   本番障害#236対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -43,7 +44,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.8
+ * @version 1.9
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -861,6 +862,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     Date dbActualShipDate    = (Date)row.getAttribute("DbActualShipDate");    // 出庫日(実績)
     Date dbActualArrivalDate = (Date)row.getAttribute("DbActualArrivalDate"); // 着日(実績)
 // 2008-10-21 H.Itou Add End
+// 2008-12-01 H.Itou Add Start
+    String freightChargeClass       = (String)row.getAttribute("FreightChargeClass");       // 運賃区分
+    String actualFreightCarrierCode = (String)row.getAttribute("ActualFreightCarrierCode"); // 運送業者
+// 2008-12-01 H.Itou Add End
 
     // 実績データ区分VO取得
     OAViewObject resultSearchVo = getXxinvMovResultsSearchVO1();
@@ -868,6 +873,22 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OARow  resultSearchRow = (OARow)resultSearchVo.first(); 
     String actualFlg       = (String)resultSearchRow.getAttribute("ActualFlg"); // 実績データ区分
 // 2008-09-24 H.Itou Add End
+// 2008-12-01 H.Itou Add Start
+    // 運賃区分がONの場合、運送業者NULLはエラー
+    if ("1".equals(freightChargeClass)
+      && XxcmnUtility.isBlankOrNull(actualFreightCarrierCode))
+    {
+      // エラーメッセージトークン取得
+      throw new OAAttrValException(
+        OAAttrValException.TYP_VIEW_OBJECT,
+        vo.getName(),
+        row.getKey(),
+        "ActualFreightCarrierCode",
+        actualFreightCarrierCode,
+        XxcmnConstants.APPL_XXINV,
+        XxinvConstants.XXINV10180);
+    }
+// 2008-12-01 H.Itou Add End
 
     // 移動番号が設定済かつ移動タイプが「積送なし」かつ実績計上済の場合
     if ((!XxcmnUtility.isBlankOrNull(movNum))

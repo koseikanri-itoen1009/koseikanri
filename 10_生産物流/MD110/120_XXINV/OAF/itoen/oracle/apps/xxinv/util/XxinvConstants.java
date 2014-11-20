@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvConstants
 * 概要説明   : INV共通定数
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-06-18 1.1  大橋孝郎     不具合指摘事項修正
 * 2008-07-10 1.2  伊藤ひとみ   内部変更
 * 2008-09-24 1.3  伊藤ひとみ   統合テスト 指摘156
+* 2008-12-01 1.4  伊藤ひとみ   本番障害#236
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -17,7 +18,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * INV共通定数クラスです。
  * @author  ORACLE 高梨雅史
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxinvConstants 
@@ -172,6 +173,8 @@ public class XxinvConstants
   public static final String XXINV10061 = "APP-XXINV-10061"; // add ver1.1
   /** メッセージ：APP-XXINV-10119 入出庫保管倉庫エラーメッセージ */
   public static final String XXINV10119 = "APP-XXINV-10119"; // add ver1.3
+  /** メッセージ：APP-XXINV-10180 運送業者未登録エラー */
+  public static final String XXINV10180 = "APP-XXINV-10180"; // add ver1.4
   /** トークン：SHIP_DATE */
   public static final String TOKEN_SHIP_DATE       = "SHIP_DATE";
   /** トークン：ARRIVAL_DATE */

@@ -7,7 +7,7 @@ AS
  * Description      : 原料費原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 原料費原価計算処理 T_MD070_BPO_79A
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/31    1.0   Y.Kanami         新規作成
  *  2008/10/27    1.1   H.Itou           T_S_500,T_S_631対応
+ *  2008/11/28    1.2   H.Marushita      本番245対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -442,13 +443,19 @@ AS
             , ilm.lot_id            lot_id                      -- ロットID
             , ilm.lot_no            lot_no                      -- ロットNo
             , SUM(itp.trans_qty)    trans_qty                   -- 数量
-            , pla.unit_price        price                       -- 発注単価
+-- 2008/11/28 MOD START
+            -- , pla.unit_price        price                       -- 発注単価
+            ,TO_NUMBER(pll.attribute2) price                    -- 粉挽後単価
+-- 2008/11/28 MOD END
       FROM    ic_tran_pnd           itp                         -- 保留在庫トランザクション
             , xxcmn_item_mst_v      ximv                        -- OPM品目情報View
             , rcv_shipment_lines    rsl                         -- 受入明細
             , rcv_transactions      rt                          -- 受入取引
             , ic_lots_mst           ilm                         -- OPMロットマスタ
             , po_lines_all          pla                         -- 発注明細
+-- 2008/11/28 ADD START
+            , po_line_locations_all pll                         -- 発注納入明細
+-- 2008/11/28 ADD END
       WHERE itp.doc_type            =   cv_doc_type_porc        -- 文書タイプ：購買
       AND   itp.completed_ind       =   cn_completion           -- 完了区分：完了
       AND   itp.trans_date          >=  gd_opening_date         -- 取引日
@@ -464,13 +471,17 @@ AS
       AND   itp.lot_id              =   ilm.lot_id              -- ロットID
       AND   ilm.lot_id              >   0                       -- デフォルトロットは対象外
       AND   rsl.po_line_id          =   pla.po_line_id          -- 発注明細ID
+      AND   pll.po_line_id          =   pla.po_line_id
       GROUP BY  itp.doc_type        -- 文書タイプ
               , itp.doc_id          -- 文書ID
               , ximv.item_id        -- 品目ID
               , ximv.item_no        -- 品目コード
               , ilm.lot_id          -- ロットID
               , ilm.lot_no          -- ロットNo
-              , pla.unit_price      -- 発注単価
+-- 2008/11/28 MOD START
+              --, pla.unit_price      -- 発注単価
+              ,TO_NUMBER(pll.attribute2)  -- 粉挽後単価
+-- 2008/11/28 MOD END
       UNION ALL
       SELECT  itc.doc_type          doc_type                    -- 文書タイプ
             , itc.doc_id            doc_id                      -- 文書ID
