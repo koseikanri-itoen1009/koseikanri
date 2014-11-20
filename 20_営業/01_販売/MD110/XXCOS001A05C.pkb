@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,9 @@ AS
  *  2009/12/08    1.24  M.Fujinuma       [E_本稼動_00224]値引のみのヘッダーデータに対応
  *  2009/12/21    1.24  N.Maeda          [E_本稼動_00224] 値引きヘッダー納品画面登録情報対応
  *  2010/02/02    1.25  Y.Kuboshima      [E_T4_00195] 会計カレンダをAR ⇒ INVに修正
+ *  2010/03/01    1.26  N.Maeda          [E_本稼動_01601] 受注取込納品伝票入力画面以外からのデータに対して
+ *                                                 INVカレンダのチェック処理追加
+ *                                       [E_本稼動_01764] 入出庫データ(見本)取込時、ヘッダ作成ブレイク条件追加
  *
  *****************************************************************************************/
 --
@@ -248,6 +251,9 @@ AS
   cv_bookd_out_msg              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10256';
   cv_bookd_err_msg              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10257';
 -- ************ 2009/10/13 N.Maeda ADD  END  *********** --
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+  cv_msg_invoice_date_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10259';
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
   ct_msg_fiscal_period_err    CONSTANT fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00175';               -- 会計期間取得エラー
@@ -1993,6 +1999,10 @@ AS
   lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
   lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
 -- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+  lt_open_dlv_date                     xxcos_dlv_headers.dlv_date%TYPE;                 -- オープン済み納品日
+  lt_open_inspect_date                 xxcos_dlv_headers.inspect_date%TYPE;             -- オープン済み検収日
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
 --
   BEGIN
 --
@@ -2128,6 +2138,35 @@ AS
 --
       --納品明細番号の初期化
       ln_invoice_line_num := 0;
+--
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+        --==================================
+        -- 1.伝票日付チェック
+        --==================================
+        get_fiscal_period_from(
+            iv_div        => cv_fiscal_period_inv            -- 会計区分
+          , id_base_date  => lt_head_invoice_date            -- 基準日            =  伝票日付
+          , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
+          , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+          , ov_retcode    => lv_retcode                      -- リターン・コード               #固定#
+          , ov_errmsg     => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_invoice_date_err,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                                iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+                                                iv_token_name2   => cv_invoice_no,               --トークンコード2
+                                                iv_token_value2  => lt_head_invoice_no,
+                                                iv_token_name3   => cv_tkn_base_date,
+                                                iv_token_value3  => TO_CHAR( lt_head_invoice_date,cv_stand_date ) );
+        ELSE
+          lt_open_inspect_date := lt_open_dlv_date;
+        END IF;
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
 --
 --******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
 --      --================================
@@ -2344,7 +2383,10 @@ AS
         lt_sample_if_date               :=  gt_inv_transactions_data( line_no ).sample_if_date;  -- 見本転送日
         lt_output_flag                  :=  gt_inv_transactions_data( line_no ).output_flag;     -- 出力済フラグ
 --
-        EXIT WHEN(lt_head_invoice_no <> lt_invoice_no);
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+--        EXIT WHEN(lt_head_invoice_no <> lt_invoice_no);
+        EXIT WHEN ( (lt_head_invoice_no <> lt_invoice_no) OR ( lt_head_inside_cust_code <> lt_inside_cust_code ) );
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
 --
         --納品明細番号のカウント
         ln_invoice_line_num := ln_invoice_line_num + 1;
@@ -2661,10 +2703,14 @@ AS
         gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
 -- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
         gt_head_input_class( gn_head_data_no )             := cv_tkn_null;                -- 入力区分
---******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
-        gt_head_open_dlv_date( gn_head_data_no )           := lt_head_invoice_date;
-        gt_head_open_inspect_date( gn_head_data_no )       := lt_head_invoice_date;
---******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+----******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--        gt_head_open_dlv_date( gn_head_data_no )           := lt_head_invoice_date;
+--        gt_head_open_inspect_date( gn_head_data_no )       := lt_head_invoice_date;
+----******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+        gt_head_open_dlv_date( gn_head_data_no )           := lt_open_dlv_date;
+        gt_head_open_inspect_date( gn_head_data_no )       := lt_open_inspect_date;
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
         gn_head_data_no := gn_head_data_no + 1;
 --
 --******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
@@ -2981,6 +3027,10 @@ AS
   lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
   lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
 -- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+  lt_open_dlv_date                xxcos_dlv_headers.dlv_date%TYPE;                 -- オープン済み納品日
+  lt_open_inspect_date            xxcos_dlv_headers.inspect_date%TYPE;             -- オープン済み検収日
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -3225,6 +3275,59 @@ AS
     --      FROM DUAL;
     --******************************* 2009/04/16 N.Maeda Var1.12 DEL END   *****************************************
     --
+--
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+        --==================================
+        -- 1.納品日算出
+        --==================================
+        get_fiscal_period_from(
+            iv_div        => cv_fiscal_period_inv            -- 会計区分
+          , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
+          , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
+          , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+          , ov_retcode    => lv_retcode                      -- リターン・コード               #固定#
+          , ov_errmsg     => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                                iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+                                                iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+                                                iv_token_value2  => lt_order_no_hht,
+                                                iv_token_name3   => cv_tkn_base_date,
+                                                iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
+        END IF;
+--
+        --==================================
+        -- 2.売上計上日算出
+        --==================================
+        get_fiscal_period_from(
+            iv_div        => cv_fiscal_period_inv                 -- 会計区分
+          , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
+          , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
+          , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+          , ov_retcode    => lv_retcode                           -- リターン・コード               #固定#
+          , ov_errmsg     => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                                iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+                                                iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+                                                iv_token_value2  => lt_order_no_hht,
+                                                iv_token_name3   => cv_tkn_base_date,
+                                                iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
+        END IF;
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
+--
           --=========================
           --顧客マスタ付帯情報の導出
           --=========================
@@ -3449,8 +3552,12 @@ AS
             FROM   xxcos_tax_v   xtv         -- 消費税view
             WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
             AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
-            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
-            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+--            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
+--            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
+            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
 --
 --            SELECT avtab.tax_rate           -- 消費税率
 --            INTO   lt_tax_consum 
@@ -5603,8 +5710,8 @@ AS
             gt_head_cancel_cor_cls( gn_head_data_no )          := lt_max_cancel_correct_class;  --  取消・訂正区分
     --******************************* 2009/05/18 N.Maeda Var1.15 MOD END   ***************************************
             gt_head_system_class( gn_head_data_no )            := lt_system_class;            -- 業態区分(業態小分類)
-            gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                -- 納品日
-            gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;            -- 検収日(売上計上日)
+            gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                -- オリジナル納品日
+            gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;            -- オリジナル検収日(売上計上日)
             gt_head_customer_number( gn_head_data_no )         := lt_customer_number;         -- 顧客【納品先】
             gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;     -- 売上金額合計
             gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;     -- 本体金額合計
@@ -5641,10 +5748,14 @@ AS
             gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
     -- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
             gt_head_input_class( gn_head_data_no )             := lt_input_class;             -- 入力区分
-    --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
-            gt_head_open_dlv_date( gn_head_data_no )           := lt_dlv_date;
-            gt_head_open_inspect_date( gn_head_data_no )       := lt_inspect_date;
-    --******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+            gt_head_open_dlv_date( gn_head_data_no )           := lt_open_dlv_date;
+            gt_head_open_inspect_date( gn_head_data_no )       := lt_open_inspect_date;
+--    --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
+--            gt_head_open_dlv_date( gn_head_data_no )           := lt_dlv_date;
+--            gt_head_open_inspect_date( gn_head_data_no )       := lt_inspect_date;
+--    --******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
             gn_head_data_no := gn_head_data_no + 1;
     --******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
     --
@@ -9055,6 +9166,10 @@ AS
   lt_mon_sale_base_code                xxcmm_cust_accounts.sale_base_code%TYPE;
   lt_past_sale_base_code               xxcmm_cust_accounts.past_sale_base_code%TYPE;
 -- ************* 2009/08/21 1.20 N.Maeda ADD  END  *************--
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+  lt_open_dlv_date                xxcos_dlv_headers.dlv_date%TYPE;                 -- オープン済み納品日
+  lt_open_inspect_date            xxcos_dlv_headers.inspect_date%TYPE;             -- オープン済み検収日
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -9267,6 +9382,57 @@ AS
     --      FROM DUAL;
     --******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
     --
+--******************************* 2010/03/01 1.26 N.Maeda ADD START ***************************************
+          --==================================
+          -- 1.納品日算出
+          --==================================
+          get_fiscal_period_from(
+              iv_div        => cv_fiscal_period_inv            -- 会計区分
+            , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
+            , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
+            , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+            , ov_retcode    => lv_retcode                      -- リターン・コード               #固定#
+            , ov_errmsg     => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+          );
+          IF ( lv_retcode != cv_status_normal ) THEN
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                                  iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+                                                  iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+                                                  iv_token_value2  => lt_order_no_hht,
+                                                  iv_token_name3   => cv_tkn_base_date,
+                                                  iv_token_value3  => TO_CHAR( lt_dlv_date,cv_stand_date ) );
+          END IF;
+--
+          --==================================
+          -- 2.売上計上日算出
+          --==================================
+          get_fiscal_period_from(
+              iv_div        => cv_fiscal_period_inv                 -- 会計区分
+            , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
+            , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
+            , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+            , ov_retcode    => lv_retcode                           -- リターン・コード               #固定#
+            , ov_errmsg     => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+          );
+          IF ( lv_retcode != cv_status_normal ) THEN
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_account_name,         --トークンコード1
+                                                  iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+                                                  iv_token_name2   => cv_tkn_order_number,         --トークンコード2
+                                                  iv_token_value2  => lt_order_no_hht,
+                                                  iv_token_name3   => cv_tkn_base_date,
+                                                  iv_token_value3  => TO_CHAR( lt_inspect_date,cv_stand_date ) );
+          END IF;
+--******************************* 2010/03/01 1.26 N.Maeda ADD  END  ***************************************
           --=========================
           --顧客マスタ付帯情報の導出
           --=========================
@@ -9499,8 +9665,12 @@ AS
             FROM   xxcos_tax_v   xtv         -- 消費税view
             WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
             AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
-            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
-            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+--            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
+--            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
+            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
 --
 --            SELECT avtab.tax_rate           -- 消費税率
 --            INTO   lt_tax_consum 
@@ -11500,8 +11670,8 @@ AS
             gt_head_cancel_cor_cls( gn_head_data_no )          := lt_max_cancel_correct_class;  --  取消・訂正区分
     --******************************* 2009/05/18 N.Maeda Var1.15 MOD END   ***************************************
             gt_head_system_class( gn_head_data_no )            := lt_system_class;              -- 業態区分(業態小分類)
-            gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                  -- 納品日
-            gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;              -- 検収日(売上計上日)
+            gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                  -- オリジナル納品日
+            gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;              -- オリジナル検収日(売上計上日)
             gt_head_customer_number( gn_head_data_no )         := lt_customer_number;           -- 顧客【納品先
             gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;       -- 売上金額合計
             gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;       -- 本体金額合計
@@ -11538,10 +11708,14 @@ AS
             gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
     -- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
             gt_head_input_class( gn_head_data_no )             := lt_input_class;               -- 入力区分
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
     --******************************* 2009/05/18 N.Maeda Var1.15 ADD START ***************************************
-            gt_head_open_dlv_date( gn_head_data_no )           := lt_dlv_date;
-            gt_head_open_inspect_date( gn_head_data_no )       := lt_inspect_date;
+--            gt_head_open_dlv_date( gn_head_data_no )           := lt_dlv_date;
+--            gt_head_open_inspect_date( gn_head_data_no )       := lt_inspect_date;
+            gt_head_open_dlv_date( gn_head_data_no )           := lt_open_dlv_date;
+            gt_head_open_inspect_date( gn_head_data_no )       := lt_open_inspect_date;
     --******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
             gn_head_data_no := gn_head_data_no + 1;
     --******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
     --
@@ -12262,7 +12436,10 @@ AS
                hit.inside_code, hit.invoice_date, hit.record_type,
                hit.inside_cust_code, hit.inside_business_low_type,
                hit.column_no
-      ORDER BY hit.invoice_no, hit.column_no;
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+--      ORDER BY hit.invoice_no, hit.column_no;
+      ORDER BY hit.inside_cust_code, hit.invoice_no, hit.column_no;
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
 --
     --HHT入出庫一時テーブル
     CURSOR transaction_cur
@@ -12323,7 +12500,10 @@ AS
       FROM   xxcoi_hht_inv_transactions hit         -- HHT入出庫一時表
       WHERE  hit.record_type = cv_record_type_sample
       AND    hit.sample_if_flag = cv_sample_if_flag
-      ORDER BY hit.invoice_no,hit.column_no
+--******************************* 2010/03/01 1.26 N.Maeda MOD START ***************************************
+--      ORDER BY hit.invoice_no,hit.column_no
+      ORDER BY hit.inside_cust_code, hit.invoice_no,hit.column_no
+--******************************* 2010/03/01 1.26 N.Maeda MOD  END  ***************************************
     FOR UPDATE NOWAIT;
 --
     -- *** ローカル・レコード ***
