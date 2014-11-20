@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009-06-04    1.12  K.Satomura       【T1_1107再修正対応】
  *  2009-06-15    1.13  K.Satomura       【T1_1239対応】
  *  2009-07-10    1.14  K.Satomura       統合テスト障害対応(0000476)
+ *  2009-08-28    1.15  K.Satomura       統合テスト障害対応(0001205)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -788,14 +789,16 @@ AS
     -- =====================
     -- AR会計期間クローズチェック 
     -- =====================
-    gv_chk_rslt := xxcso_util_common_pkg.check_ar_gl_period_status(
-                       id_standard_date => ld_process_date
-                     );
-    IF (gv_chk_rslt = cv_true) THEN
-      gv_chk_rslt_flag := 'N';
-    ELSE
-      gv_chk_rslt_flag := 'C';
-    END IF;
+    /* 2009.08.28 K.Satomura 0001205対応 START */
+    --gv_chk_rslt := xxcso_util_common_pkg.check_ar_gl_period_status(
+    --                   id_standard_date => ld_process_date
+    --                 );
+    --IF (gv_chk_rslt = cv_true) THEN
+    --  gv_chk_rslt_flag := 'N';
+    --ELSE
+    --  gv_chk_rslt_flag := 'C';
+    --END IF;
+    /* 2009.08.28 K.Satomura 0001205対応 END */
     -- ====================
     -- 変数初期化処理 
     -- ====================
@@ -3954,7 +3957,7 @@ AS
           ,last_update_login                      -- 最終更新ログイン
           ,request_id                             -- 要求ID
           ,program_application_id                 -- コンカレント・プログラム・アプリケーションID
-          ,program_id                             -- コンカレント・プログラムID	PROGRAM_ID
+          ,program_id                             -- コンカレント・プログラムID PROGRAM_ID
           ,program_update_date                    -- プログラム更新日
         )VALUES(
            lv_install_code1                       -- 物件コード
@@ -3979,7 +3982,7 @@ AS
           ,cn_last_update_login                   -- 最終更新ログイン
           ,cn_request_id                          -- 要求ID
           ,cn_program_application_id              -- コンカレント・プログラム・アプリケーションID
-          ,cn_program_id                          -- コンカレント・プログラムID	PROGRAM_ID
+          ,cn_program_id                          -- コンカレント・プログラムID PROGRAM_ID
           ,SYSDATE                                -- プログラム更新日
         );
       EXCEPTION
@@ -5623,12 +5626,30 @@ AS
     END;
   /*20090507_mori_T1_0439 END*/
 --
+    /* 2009.08.28 K.Satomura 0001205対応 START */
+    -- ==========================
+    -- AR会計期間クローズチェック
+    -- ==========================
+    gv_chk_rslt := xxcso_util_common_pkg.check_ar_gl_period_status(
+                      id_standard_date => ld_actual_work_date
+                   );
+    --
+    IF (gv_chk_rslt = cv_true) THEN
+      gv_chk_rslt_flag := 'N';
+      --
+    ELSE
+      gv_chk_rslt_flag := 'C';
+      --
+    END IF;
+    --
+    /* 2009.08.28 K.Satomura 0001205対応 END */
     -- 作業区分が「1.新台設置」、「3.新台代替」、「2. 旧台設置」、または「4.旧台代替」で、
     -- 物件データの物件コードが作業データの物件コード１(新設置先)と同一の場合、
     -- 顧客ステータス（休止→顧客）更新の処理を行う。
     IF((ln_job_kbn = cn_work_kbn1 OR ln_job_kbn = cn_work_kbn2 OR
-        ln_job_kbn = cn_work_kbn3 OR ln_job_kbn = cn_work_kbn4) 
-        AND lv_install_code = NVL(lv_install_code1, ' ')) THEN
+        ln_job_kbn = cn_work_kbn3 OR ln_job_kbn = cn_work_kbn4)
+        AND lv_install_code = NVL(lv_install_code1, ' '))
+    THEN
       -- 1.DUNS(顧客ステータス)「'50'(休止)」→「'40'(顧客)」
       BEGIN
         -- ①顧客名の取得
@@ -6027,8 +6048,8 @@ AS
                            ,iv_name         => cv_tkn_number_23              -- メッセージコード
                            ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
                            ,iv_token_value1 => cv_xca_cnvs_date              -- トークン値1
-		                   ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
-		                   ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                           ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                           ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
                            ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
                            ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
                            ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
@@ -6172,7 +6193,7 @@ AS
                     gv_chk_rslt_flag = 'N') OR
                    (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(id_process_date ,'YYYYMM'))
                   ) THEN
-              UPDATE xxcmm_cust_accounts	                                         -- 顧客アドオンマスタ
+              UPDATE xxcmm_cust_accounts                                         -- 顧客アドオンマスタ
               SET    cnvs_date = ld_actual_work_date,    -- 顧客獲得日
                      last_updated_by        = cn_last_updated_by,
                      last_update_date       = cd_last_update_date,
@@ -6960,70 +6981,70 @@ AS
         lv_bukken_code := l_inst_base_data_rec.install_code;
 --
         -- レコードの格納
-        l_g_get_data_rec.seq_no                    := l_inst_base_data_rec.seq_no;                   
-        l_g_get_data_rec.slip_no                   := l_inst_base_data_rec.slip_no;                   
-        l_g_get_data_rec.slip_branch_no            := l_inst_base_data_rec.slip_branch_no;            
-        l_g_get_data_rec.line_number               := l_inst_base_data_rec.line_number;               
-        l_g_get_data_rec.job_kbn                   := l_inst_base_data_rec.job_kbn;                   
-        l_g_get_data_rec.install_code1             := l_inst_base_data_rec.install_code1;             
-        l_g_get_data_rec.install_code2             := l_inst_base_data_rec.install_code2;             
-        l_g_get_data_rec.safe_setting_standard     := l_inst_base_data_rec.safe_setting_standard;     
-        l_g_get_data_rec.install_code              := l_inst_base_data_rec.install_code;             
-        l_g_get_data_rec.un_number                 := l_inst_base_data_rec.un_number;                 
-        l_g_get_data_rec.install_number            := l_inst_base_data_rec.install_number;            
-        l_g_get_data_rec.machinery_kbn             := l_inst_base_data_rec.machinery_kbn;             
-        l_g_get_data_rec.first_install_date        := l_inst_base_data_rec.first_install_date;        
-        l_g_get_data_rec.counter_no                := l_inst_base_data_rec.counter_no;                
-        l_g_get_data_rec.division_code             := l_inst_base_data_rec.division_code;             
-        l_g_get_data_rec.base_code                 := l_inst_base_data_rec.base_code;                 
-        l_g_get_data_rec.job_company_code          := l_inst_base_data_rec.job_company_code;          
-        l_g_get_data_rec.location_code             := l_inst_base_data_rec.location_code;             
-        l_g_get_data_rec.last_job_slip_no          := l_inst_base_data_rec.last_job_slip_no;          
-        l_g_get_data_rec.last_job_kbn              := l_inst_base_data_rec.last_job_kbn;              
-        l_g_get_data_rec.last_job_going            := l_inst_base_data_rec.last_job_going;            
-        l_g_get_data_rec.last_job_cmpltn_plan_date := l_inst_base_data_rec.last_job_cmpltn_plan_date; 
-        l_g_get_data_rec.last_job_cmpltn_date      := l_inst_base_data_rec.last_job_cmpltn_date;      
-        l_g_get_data_rec.last_maintenance_contents := l_inst_base_data_rec.last_maintenance_contents; 
-        l_g_get_data_rec.last_install_slip_no      := l_inst_base_data_rec.last_install_slip_no;      
-        l_g_get_data_rec.last_install_kbn          := l_inst_base_data_rec.last_install_kbn;          
-        l_g_get_data_rec.last_install_plan_date    := l_inst_base_data_rec.last_install_plan_date;    
-        l_g_get_data_rec.last_install_going        := l_inst_base_data_rec.last_install_going;        
-        l_g_get_data_rec.machinery_status1         := l_inst_base_data_rec.machinery_status1;         
-        l_g_get_data_rec.machinery_status2         := l_inst_base_data_rec.machinery_status2;         
-        l_g_get_data_rec.machinery_status3         := l_inst_base_data_rec.machinery_status3;         
-        l_g_get_data_rec.stock_date                := l_inst_base_data_rec.stock_date;                
-        l_g_get_data_rec.withdraw_company_code     := l_inst_base_data_rec.withdraw_company_code;    
-        l_g_get_data_rec.withdraw_location_code    := l_inst_base_data_rec.withdraw_location_code;    
-        l_g_get_data_rec.resale_disposal_vendor    := l_inst_base_data_rec.resale_disposal_vendor;    
-        l_g_get_data_rec.resale_disposal_slip_no   := l_inst_base_data_rec.resale_disposal_slip_no;   
-        l_g_get_data_rec.owner_company_code        := l_inst_base_data_rec.owner_company_code;        
-        l_g_get_data_rec.resale_disposal_flag      := l_inst_base_data_rec.resale_disposal_flag;      
-        l_g_get_data_rec.resale_completion_kbn     := l_inst_base_data_rec.resale_completion_kbn;     
-        l_g_get_data_rec.delete_flag               := l_inst_base_data_rec.delete_flag;               
-        l_g_get_data_rec.creation_date_time        := l_inst_base_data_rec.creation_date_time;        
-        l_g_get_data_rec.update_date_time          := l_inst_base_data_rec.update_date_time;          
-        l_g_get_data_rec.account_number1           := l_inst_base_data_rec.account_number1;           
-        l_g_get_data_rec.account_number2           := l_inst_base_data_rec.account_number2;           
-        l_g_get_data_rec.po_number                 := l_inst_base_data_rec.po_number;                 
-        l_g_get_data_rec.po_line_number            := l_inst_base_data_rec.po_line_number;            
-        l_g_get_data_rec.po_req_number             := l_inst_base_data_rec.po_req_number;             
-        l_g_get_data_rec.line_num                  := l_inst_base_data_rec.line_num;                  
-        l_g_get_data_rec.actual_work_date          := l_inst_base_data_rec.actual_work_date;          
+        l_g_get_data_rec.seq_no                    := l_inst_base_data_rec.seq_no;
+        l_g_get_data_rec.slip_no                   := l_inst_base_data_rec.slip_no;
+        l_g_get_data_rec.slip_branch_no            := l_inst_base_data_rec.slip_branch_no;
+        l_g_get_data_rec.line_number               := l_inst_base_data_rec.line_number;
+        l_g_get_data_rec.job_kbn                   := l_inst_base_data_rec.job_kbn;
+        l_g_get_data_rec.install_code1             := l_inst_base_data_rec.install_code1;
+        l_g_get_data_rec.install_code2             := l_inst_base_data_rec.install_code2;
+        l_g_get_data_rec.safe_setting_standard     := l_inst_base_data_rec.safe_setting_standard;
+        l_g_get_data_rec.install_code              := l_inst_base_data_rec.install_code;
+        l_g_get_data_rec.un_number                 := l_inst_base_data_rec.un_number;
+        l_g_get_data_rec.install_number            := l_inst_base_data_rec.install_number;
+        l_g_get_data_rec.machinery_kbn             := l_inst_base_data_rec.machinery_kbn;
+        l_g_get_data_rec.first_install_date        := l_inst_base_data_rec.first_install_date;
+        l_g_get_data_rec.counter_no                := l_inst_base_data_rec.counter_no;
+        l_g_get_data_rec.division_code             := l_inst_base_data_rec.division_code;
+        l_g_get_data_rec.base_code                 := l_inst_base_data_rec.base_code;
+        l_g_get_data_rec.job_company_code          := l_inst_base_data_rec.job_company_code;
+        l_g_get_data_rec.location_code             := l_inst_base_data_rec.location_code;
+        l_g_get_data_rec.last_job_slip_no          := l_inst_base_data_rec.last_job_slip_no;
+        l_g_get_data_rec.last_job_kbn              := l_inst_base_data_rec.last_job_kbn;
+        l_g_get_data_rec.last_job_going            := l_inst_base_data_rec.last_job_going;
+        l_g_get_data_rec.last_job_cmpltn_plan_date := l_inst_base_data_rec.last_job_cmpltn_plan_date;
+        l_g_get_data_rec.last_job_cmpltn_date      := l_inst_base_data_rec.last_job_cmpltn_date;
+        l_g_get_data_rec.last_maintenance_contents := l_inst_base_data_rec.last_maintenance_contents;
+        l_g_get_data_rec.last_install_slip_no      := l_inst_base_data_rec.last_install_slip_no;
+        l_g_get_data_rec.last_install_kbn          := l_inst_base_data_rec.last_install_kbn;
+        l_g_get_data_rec.last_install_plan_date    := l_inst_base_data_rec.last_install_plan_date;
+        l_g_get_data_rec.last_install_going        := l_inst_base_data_rec.last_install_going;
+        l_g_get_data_rec.machinery_status1         := l_inst_base_data_rec.machinery_status1;
+        l_g_get_data_rec.machinery_status2         := l_inst_base_data_rec.machinery_status2;
+        l_g_get_data_rec.machinery_status3         := l_inst_base_data_rec.machinery_status3;
+        l_g_get_data_rec.stock_date                := l_inst_base_data_rec.stock_date;
+        l_g_get_data_rec.withdraw_company_code     := l_inst_base_data_rec.withdraw_company_code;
+        l_g_get_data_rec.withdraw_location_code    := l_inst_base_data_rec.withdraw_location_code;
+        l_g_get_data_rec.resale_disposal_vendor    := l_inst_base_data_rec.resale_disposal_vendor;
+        l_g_get_data_rec.resale_disposal_slip_no   := l_inst_base_data_rec.resale_disposal_slip_no;
+        l_g_get_data_rec.owner_company_code        := l_inst_base_data_rec.owner_company_code;
+        l_g_get_data_rec.resale_disposal_flag      := l_inst_base_data_rec.resale_disposal_flag;
+        l_g_get_data_rec.resale_completion_kbn     := l_inst_base_data_rec.resale_completion_kbn;
+        l_g_get_data_rec.delete_flag               := l_inst_base_data_rec.delete_flag;
+        l_g_get_data_rec.creation_date_time        := l_inst_base_data_rec.creation_date_time;
+        l_g_get_data_rec.update_date_time          := l_inst_base_data_rec.update_date_time;
+        l_g_get_data_rec.account_number1           := l_inst_base_data_rec.account_number1;
+        l_g_get_data_rec.account_number2           := l_inst_base_data_rec.account_number2;
+        l_g_get_data_rec.po_number                 := l_inst_base_data_rec.po_number;
+        l_g_get_data_rec.po_line_number            := l_inst_base_data_rec.po_line_number;
+        l_g_get_data_rec.po_req_number             := l_inst_base_data_rec.po_req_number;
+        l_g_get_data_rec.line_num                  := l_inst_base_data_rec.line_num;
+        l_g_get_data_rec.actual_work_date          := l_inst_base_data_rec.actual_work_date;
         /* 2009.06.15 K.Satomura T1_1239対応 START */
         l_g_get_data_rec.completion_kbn            := l_inst_base_data_rec.completion_kbn;
         /* 2009.06.15 K.Satomura T1_1239対応 END */
 --
         -- メッセージ格納用
-        ln_seq_no                     := l_inst_base_data_rec.seq_no;                    
-        ln_slip_num                   := l_inst_base_data_rec.slip_no;                   
-        ln_slip_branch_num            := l_inst_base_data_rec.slip_branch_no;            
-        ln_line_num                   := l_inst_base_data_rec.line_number;               
-        ln_job_kbn                    := l_inst_base_data_rec.job_kbn;                   
-        lv_install_code1              := l_inst_base_data_rec.install_code1;             
-        lv_install_code2              := l_inst_base_data_rec.install_code2;             
-        lv_account_num1               := l_inst_base_data_rec.account_number1;           
+        ln_seq_no                     := l_inst_base_data_rec.seq_no;
+        ln_slip_num                   := l_inst_base_data_rec.slip_no;
+        ln_slip_branch_num            := l_inst_base_data_rec.slip_branch_no;
+        ln_line_num                   := l_inst_base_data_rec.line_number;
+        ln_job_kbn                    := l_inst_base_data_rec.job_kbn;
+        lv_install_code1              := l_inst_base_data_rec.install_code1;
+        lv_install_code2              := l_inst_base_data_rec.install_code2;
+        lv_account_num1               := l_inst_base_data_rec.account_number1;
         lv_account_num2               := l_inst_base_data_rec.account_number2;
-        lv_cnvs_date                  := TO_CHAR(l_inst_base_data_rec.last_job_cmpltn_date);           
+        lv_cnvs_date                  := TO_CHAR(l_inst_base_data_rec.last_job_cmpltn_date);
 --
         -- ========================================
         -- A-3.(更新失敗用)セーブポイント設定
