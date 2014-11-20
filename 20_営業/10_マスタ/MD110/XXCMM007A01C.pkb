@@ -7,7 +7,7 @@ AS
  * Description      : 顧客の標準画面よりメンテナンスされた名称・住所情報を、
  *                  : パーティアドオンマスタへ反映し、内容の同期を行います。
  * MD.050           : 生産顧客情報同期 MD050_CMM_005_A04
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *                                                          パーティアドオンの初期値を変更
  *  2010/02/18    1.3   Yutaka.Kuboshima 障害E_本稼動_01419 PT対応
  *  2010/02/23    1.4   Yutaka.Kuboshima 障害E_本稼動_01419 連携項目チェックエラー時でも正常終了するよう修正
+ *  2010/05/28    1.5   Shigeto.Niki     障害E_本稼動_02876 顧客名称または住所情報が変更された場合に更新するよう修正
+ *                                                          営業組織IDを修正
  *
  *****************************************************************************************/
 --
@@ -172,6 +174,10 @@ AS
   -- ■ データフォーマット
   cv_datetime_fmt     CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS';
   cv_date_fmt         CONSTANT VARCHAR2(30) := 'YYYY/MM/DD';
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 add start by Shigeto.Niki
+  cv_max_date         CONSTANT VARCHAR2(10) := '9999/12/31';       -- MAX日付
+  cv_null             CONSTANT VARCHAR2(2)  := 'X';                -- NULLの代替文字
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 add end by Shigeto.Niki  
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -252,8 +258,8 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ****
-    cv_min_time  CONSTANT VARCHAR2(10) := ' 00:00:00';
-    cv_max_time  CONSTANT VARCHAR2(10) := ' 23:59:59';
+    cv_min_time               CONSTANT VARCHAR2(10) := ' 00:00:00';
+    cv_max_time               CONSTANT VARCHAR2(10) := ' 23:59:59';
     -- *** ローカル変数 ***
     ld_prev_process_date DATE;          -- 前業務日付
     lv_proc_date_tmp     VARCHAR2(20);  -- 処理日(一時格納用)
@@ -435,7 +441,10 @@ AS
       SELECT haou.organization_id organization_id -- 営業組織ID
       INTO   gv_sal_org_id
       FROM   hr_all_organization_units haou       -- 人事組織マスタテーブル
-      WHERE  haou.name = 'SALES-OU'
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki
+--      WHERE  haou.name = 'SALES-OU'
+      WHERE  haou.name = cv_tvl_sales_ou
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki
       AND    ROWNUM    = 1
       ;
     EXCEPTION
@@ -468,7 +477,10 @@ AS
       SELECT haou.organization_id organization_id -- 生産組織ID
       INTO   gv_mfg_org_id
       FROM   hr_all_organization_units haou       -- 人事組織マスタテーブル
-      WHERE  haou.name = 'ITOE-OU-MFG'
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki
+--      WHERE  haou.name = 'ITOE-OU-MFG'
+      WHERE  haou.name = cv_tvl_itoe_ou_mfg
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki
       AND    ROWNUM    = 1
       ;
     EXCEPTION
@@ -557,6 +569,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 add start by Shigeto.Niki
+    cv_flag_a                 CONSTANT VARCHAR2(1)  := 'A';   -- 有効フラグA
+    cv_customer_class_cust    CONSTANT VARCHAR2(2)  := '10';  -- 顧客区分：顧客
+    cv_customer_class_base    CONSTANT VARCHAR2(2)  := '1';   -- 顧客区分：拠点
+    cv_flag_yes               CONSTANT VARCHAR2(1)  := 'Y';
+    cv_flag_no                CONSTANT VARCHAR2(1)  := 'N';
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 add end by Shigeto.Niki
 --
     -- *** ローカルカーソル***
 -- 2010/02/18 Ver1.3 E_本稼動_01419 delete start by Yutaka.Kuboshima
@@ -643,8 +662,12 @@ AS
                  FROM   xxcmn_parties  xcpt         -- (table)パーティアドオンテーブル
                  WHERE  xcpt.party_id = hca.party_id
                  AND    ROWNUM = 1
-               ) IS NOT NULL THEN 'Y'
-               ELSE               'N'
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki
+--               ) IS NOT NULL THEN 'Y'
+--               ELSE               'N'
+               ) IS NOT NULL THEN cv_flag_yes
+               ELSE               cv_flag_no
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki
              END                            AS xxcmn_perties_active_flag  -- (列)パーティアドオン有無
       FROM   hz_cust_accounts       hca             -- (table)顧客マスタテーブル
             ,hz_parties             hpt             -- (table)パーティテーブル
@@ -659,7 +682,10 @@ AS
               UNION
               SELECT hcas2.cust_account_id   cust_account_id
               FROM   hz_cust_acct_sites_all hcas2
-              WHERE  hcas2.org_id = 2190
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki
+--              WHERE  hcas2.org_id = 2190
+              WHERE  hcas2.org_id = it_sal_org_id
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki
                 AND  hcas2.last_update_date BETWEEN id_proc_date_from AND id_proc_date_to
               UNION
               SELECT /*+ USE_NL(hl3 hps3 hp3 hca3) */
@@ -691,14 +717,21 @@ AS
       AND    hca.cust_account_id = hsa.cust_account_id
       AND    hps.party_site_id   = hsa.party_site_id
       AND    hps.location_id     = hlo.location_id
-      AND    hps.status          = 'A'                  -- (条件)パーティサイトテーブルが有効
-      AND    hca.customer_class_code IN ('1','10')      -- (条件)拠点または顧客
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki
+--      AND    hps.status          = 'A'                  -- (条件)パーティサイトテーブルが有効
+--      AND    hca.customer_class_code IN ('1','10')      -- (条件)拠点または顧客
+      AND    hps.status          = cv_flag_a            -- (条件)パーティサイトテーブルが有効
+      AND    hca.customer_class_code IN (cv_customer_class_base , cv_customer_class_cust)      -- (条件)拠点または顧客
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki    
       AND    hsa.org_id          = it_sal_org_id        -- (条件)組織が営業組織である
       AND    EXISTS( /* 生産OUを保有するもの */
                SELECT 'X'
                FROM   hz_cust_acct_sites_all   hsa1 -- (table)顧客所在地テーブル
                WHERE  hsa1.cust_account_id = hca.cust_account_id
-               AND    hsa1.status          = 'A'
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki
+--               AND    hsa1.status          = 'A'
+               AND    hsa1.status          = cv_flag_a
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki
                AND    hsa1.org_id          = it_mfg_org_id
              )
 -- 2010/02/18 Ver1.3 E_本稼動_01419 modify start by Yutaka.Kuboshima
@@ -723,6 +756,17 @@ AS
 --             )                                          -- (条件)最終更新日が処理日(From～To)の範囲内
       AND    hps.party_id        = xcp.party_id(+)
       AND    hca.cust_account_id = def.cust_account_id
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 add start by Shigeto.Niki
+      -- 顧客名称または住所情報が不一致のものを抽出
+      AND   (NVL(xcp.party_name, cv_null)       <> NVL(SUBSTRB(hpt.party_name, 1, 60), cv_null)
+       OR    NVL(xcp.party_short_name, cv_null) <> NVL(SUBSTRB(hca.account_name, 1, 20), cv_null)
+       OR    NVL(xcp.party_name_alt, cv_null)   <> NVL(SUBSTRB(hpt.organization_name_phonetic, 1, 30), cv_null)
+       OR    NVL(xcp.zip, cv_null)              <> NVL(SUBSTRB(hlo.postal_code, 1, 8), cv_null)
+       OR    NVL(xcp.address_line1, cv_null)    <> NVL(SUBSTRB(hlo.state || hlo.city || hlo.address1 || hlo.address2,  1, 30), cv_null)
+       OR    NVL(xcp.address_line2, cv_null)    <> NVL(SUBSTRB(hlo.state || hlo.city || hlo.address1 || hlo.address2, 31, 30), cv_null)
+       OR    NVL(xcp.phone, cv_null)            <> NVL(SUBSTRB(hlo.address_lines_phonetic, 1, 15), cv_null)
+       OR    NVL(xcp.fax, cv_null)              <> NVL(SUBSTRB(hlo.address4, 1,15), cv_null))
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 add end by Shigeto.Niki
       FOR UPDATE OF xcp.party_id  NOWAIT
 -- 2010/02/18 Ver1.3 E_本稼動_01419 modify end by Yutaka.Kuboshima
       ;
@@ -1441,7 +1485,10 @@ AS
 --        ,gd_process_date + 1                               -- (値)適用開始日
         ,gd_process_date                                  -- (値)適用開始日
 -- 2010/02/15 Ver1.2 E_本稼動_01419 modify end by Yutaka.Kuboshima
-        ,TO_DATE('99991231', 'YYYYMMDD')                   -- (値)適用終了日
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify start by Shigeto.Niki    
+--        ,TO_DATE('99991231', 'YYYYMMDD')                   -- (値)適用終了日
+        ,TO_DATE(cv_max_date , cv_date_fmt)                -- (値)適用終了日
+-- 2010/05/28 Ver1.5 障害：E_本稼動_02876 modify end by Shigeto.Niki    
         ,SUBSTRB(it_parties_rec.party_name, 1, 60)         -- (値)正式名
         ,SUBSTRB(it_parties_rec.party_short_name, 1, 20)   -- (値)略称
         ,SUBSTRB(it_parties_rec.party_name_alt, 1, 30)     -- (値)カナ名
