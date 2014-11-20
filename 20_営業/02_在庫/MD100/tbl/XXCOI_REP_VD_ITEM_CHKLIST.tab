@@ -1,0 +1,95 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : xxcoi_rep_vd_item_chklist
+ * Description : 消化VD商品別チェックリスト帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/03/10    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+ CREATE TABLE xxcoi.xxcoi_rep_vd_item_chklist (
+          base_code                             VARCHAR2(4) 
+        , base_name                             VARCHAR2(20)
+        , customer_code                         VARCHAR2(9) 
+        , customer_name                         VARCHAR2(80)
+        , item_code                             VARCHAR2(7) 
+        , item_name                             VARCHAR2(20)
+        , date_from                             VARCHAR2(10)
+        , date_to                               VARCHAR2(10)
+        , conclusion_day_param                  VARCHAR2(2)
+        , conclusion_day                        VARCHAR2(8)
+        , stock_qty                             NUMBER
+        , ship_qty                              NUMBER
+        , sales_qty                             NUMBER
+        , digestion_due_qty                     NUMBER
+        , customer_specify_flag                 VARCHAR2(1)
+        , message                               VARCHAR2(200)
+        , created_by                            NUMBER(15,0)
+        , creation_date                         DATE
+        , last_updated_by                       NUMBER(15,0)
+        , last_update_date                      DATE
+        , last_update_login                     NUMBER(15,0)
+        , request_id                            NUMBER(15,0)
+        , program_application_id                NUMBER(15,0)
+        , program_id                            NUMBER(15,0)
+        , program_update_date                   DATE
+  )
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_rep_vd_item_chklist IS '消化VD商品別チェックリスト帳票ワークテーブル';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.base_code               IS  '拠点コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.base_name               IS  '拠点名';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.customer_code           IS  '顧客コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.customer_name           IS  '顧客名称';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.item_code               IS  '品目コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.item_name               IS  '品目名称';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.date_from               IS  '出力期間（From)';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.date_to                 IS  '出力期間（To)';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.conclusion_day_param    IS  '締め日（指定）';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.conclusion_day          IS  '締め日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.stock_qty               IS  '入庫数量';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.ship_qty                IS  '出庫数量';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.sales_qty               IS  '売上計上済数量';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.digestion_due_qty       IS  '今回消化計算対象数量';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.customer_specify_flag   IS  '顧客指定';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.message                 IS  'メッセージ';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.created_by              IS  '作成者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.creation_date           IS  '作成日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.last_updated_by         IS  '最終更新者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.last_update_date        IS  '最終更新日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.last_update_login       IS  '最終更新ログイン';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.request_id              IS  '要求ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.program_application_id  IS  'コンカレント・プログラム・アプリケーションID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.program_id              IS  'コンカレント・プログラムID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_vd_item_chklist.program_update_date     IS  'プログラム更新日';
+/

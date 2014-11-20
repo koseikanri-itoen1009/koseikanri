@@ -1,0 +1,22 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Index Name  : XXCOI_REP_VD_ITEM_CHKLIST_N01
+ * Description : 消化VD商品別チェックリストN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/03/11    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+CREATE INDEX XXCOI.XXCOI_REP_VD_ITEM_CHKLIST_N01
+ON XXCOI.XXCOI_REP_VD_ITEM_CHKLIST
+(
+    base_code
+  , customer_code
+  , item_code
+)
+TABLESPACE XXIDX2;
