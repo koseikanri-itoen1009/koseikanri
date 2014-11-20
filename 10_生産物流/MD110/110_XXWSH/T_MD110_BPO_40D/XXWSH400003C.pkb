@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.17
+ * Version                : 1.19
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/09/01    1.16  N.Yoshida       PT対応(起票なし)
  *  2008/09/24    1.17  M.Hokkanji       TE080_400指摘66対応
  *  2008/10/15    1.18  Marushita        I_S_387対応
+ *  2008/11/18    1.19  M.Hokkanji       統合指摘141、632、658対応
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,9 @@ AS
 -- Ver 1.17 M.Hokkanji START
   gv_cnst_msg_176  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11176';  -- 運送業者エラー
 -- Ver 1.17 M.Hokkanji END
+-- Ver 1.19 M.Hokkanji Start
+  gv_cnst_msg_177  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11177';  -- リードタイム不正エラー
+-- Ver 1.19 M.Hokkanji End
   gv_cnst_sep_msg  CONSTANT VARCHAR2(15)  := 'APP-XXCMN-00003';  -- sep_msg
   gv_cnst_cmn_008  CONSTANT VARCHAR2(15)  := 'APP-XXCMN-00008';  -- 処理件数
   gv_cnst_cmn_009  CONSTANT VARCHAR2(15)  := 'APP-XXCMN-00009';  -- 成功件数
@@ -183,6 +187,9 @@ AS
   gv_status_A             CONSTANT VARCHAR2(1)   := 'A'; -- 有効
 --
   gv_transaction_type_name_ship CONSTANT VARCHAR2(100) := '引取変更'; -- 出庫形態 2008/07/08 ST不具合対応#405
+-- Ver1.19 M.Hokkanji Start
+  gv_transaction_type_name_mat  CONSTANT VARCHAR2(100) := '資材出荷';
+-- Ver1.19 M.Hokkanji End
 --
   gv_freight_charge_class_on  CONSTANT VARCHAR2(1) := '1'; -- 運賃区分「対象」  2008/07/09 ST不具合対応#430
   gv_freight_charge_class_off CONSTANT VARCHAR2(1) := '0'; -- 運賃区分「対象外」2008/07/09 ST不具合対応#430
@@ -717,6 +724,9 @@ AS
     cv_weight_capacity_class_1       VARCHAR2(1)    := '1'; -- 重量
     cv_small_amount_class_1          VARCHAR2(1)    := '1'; -- 小口区分
 -- Ver1.15 M.Hokkanji End
+-- Ver1.19 M.Hokkanji Start
+    cv_tran_type_name_mat            VARCHAR2(10)   := '資材出荷';
+-- Ver1.19 M.Hokkanji End
     cv_prod_class_leaf               VARCHAR2(1)    := '1'; -- リーフ
     cv_rate_class                    xxcmn_item_mst2_v.rate_class%TYPE :=  '0';  -- 
     cv_item_kbn                      VARCHAR2(8)    := '品目区分'; -- 
@@ -818,6 +828,9 @@ AS
 -- Ver1.17 M.Hokkanji Start
     lv_bfr_freight_carrier_code      xxwsh_order_headers_all.freight_carrier_code%TYPE; --運送業者
 -- Ver1.17 M.Hokkanji End
+-- Ver1.19 M.Hokkanji Start
+    lt_transaction_type_id_mat       xxwsh_oe_transaction_types_v.transaction_type_id%TYPE; -- 資材出荷ID保管
+-- Ver1.19 M.Hokkanji End
 -- 2008/09/01 N.Yoshida ADD START
     lv_select     VARCHAR2(32000) ;
     lv_select_other     VARCHAR2(32000) ;
@@ -1237,6 +1250,24 @@ AS
                                           cv_tran_type_name || ':' || cv_tran_type_name_ara);
     END;
 -- Ver1.15 M.Hokkanji END
+-- Ver1.19 M.Hokkanji Start
+    -- 出庫形態(荒茶出荷)を取得
+    BEGIN
+      SELECT xottv.transaction_type_id
+        INTO lt_transaction_type_id_mat
+        FROM xxwsh_oe_transaction_types_v xottv
+       WHERE xottv.transaction_type_name = cv_tran_type_name_mat;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_err_message := lv_err_message ||
+                 xxcmn_common_pkg.get_msg(gv_cnst_msg_cmn,
+                                          gv_cnst_cmn_012,
+                                          gv_cnst_tkn_table,
+                                          cv_table_name_tran,
+                                          gv_cnst_tkn_key,
+                                          cv_tran_type_name || ':' || cv_tran_type_name_mat);
+    END;
+-- Ver1.19 M.Hokkanji End
 --
     -- **************************************************
     -- *** メッセージの整形
@@ -1511,12 +1542,21 @@ AS
 --
           -- リードタイム妥当チェック
           ln_retcode :=
-          xxwsh_common_pkg.get_oprtn_day(loop_cnt.schedule_arrival_date, -- D-2着日
+-- Ver1.19 M.Hokkanji Start
+-- 出庫日の生産物流LTの稼働日を取得するように変更
+--          xxwsh_common_pkg.get_oprtn_day(loop_cnt.schedule_arrival_date, -- D-2着日
+--                                         NULL,                           -- 出荷元保管場所
+--                                         loop_cnt.deliver_to,            -- D-2配送先コード
+--                                         ln_delivery_lt,                 -- リードタイム
+--                                         loop_cnt.prod_class,            -- D-2商品区分
+--                                         ld_oprtn_day);                  -- 稼働日日付
+          xxwsh_common_pkg.get_oprtn_day(loop_cnt.schedule_ship_date,    -- D-2出荷予定日
                                          NULL,                           -- 出荷元保管場所
                                          loop_cnt.deliver_to,            -- D-2配送先コード
-                                         ln_delivery_lt,                 -- リードタイム
+                                         ln_lead_time,                   -- 生産物流LT
                                          loop_cnt.prod_class,            -- D-2商品区分
                                          ld_oprtn_day);                  -- 稼働日日付
+-- Ver1.19 M.Hokkanji End
 --
           -- リターン・コードにエラーが返された場合はエラー
           IF (ln_retcode = gn_status_error) THEN
@@ -1534,25 +1574,46 @@ AS
             RAISE global_api_expt;
           END IF;
 --
-          -- D-2出庫日 > 稼働日
-          IF (loop_cnt.schedule_ship_date > ld_oprtn_day) THEN
+-- Ver1.19 M.Hokkanji Start
+          IF (ln_delivery_lt IS NULL ) THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                  gv_cnst_msg_177,
+                                                  'REQUEST_NO',
+                                                  loop_cnt.request_no);
+            RAISE global_api_expt;
+          END IF;
+-- Ver1.19 M.Hokkanji End
+          -- D-2出庫日 > (着日 - 配送LT)
+          IF (loop_cnt.schedule_ship_date >
+                 (loop_cnt.schedule_arrival_date - ln_delivery_lt)) THEN
+ --          IF (loop_cnt.schedule_ship_date > ld_oprtn_day) THEN
             -- リードタイムを満たしていない
+-- Ver1.19 M.Hokkanji End
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                   gv_cnst_msg_153,
                                                   'LT_CLASS',
-                                                  cv_get_oprtn_day_lt,
+-- Ver1.19 M.Hokkanji Start
+--                                                  cv_get_oprtn_day_lt,
+                                                  cv_get_oprtn_day_lt2,
+-- Ver1.19 M.Hokkanji End
                                                   'REQUEST_NO',
                                                   loop_cnt.request_no);
             RAISE global_api_expt;
           END IF;
 --
           -- システム日付 > 稼働日
-          IF (ld_sysdate > ld_oprtn_day) THEN
+-- Ver1.19 M.Hokkanji Start
+--          IF (ld_sysdate > ld_oprtn_day) THEN
+          IF (ld_sysdate > ld_oprtn_day + 1) THEN
+-- Ver1.19 M.Hokkanji End
             -- 配送リードタイムが妥当でない
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                   gv_cnst_msg_153,
                                                   'LT_CLASS',
-                                                  cv_get_oprtn_day_lt2,
+-- Ver1.19 M.Hokkanji Start
+                                                  cv_get_oprtn_day_lt,
+                                                  --cv_get_oprtn_day_lt2,
+-- Ver1.19 M.Hokkanji End
                                                   'REQUEST_NO',
                                                   loop_cnt.request_no);
             RAISE global_api_expt;
@@ -1701,9 +1762,17 @@ AS
 -- Ver1.15 M.Hokkanji START
 -- TE080_400指摘74対応(品目が親の場合のみチェックを行う)
 --        ELSIF (loop_cnt.sales_div <> cv_sales_div) THEN
-        ELSIF ((loop_cnt.sales_div <> cv_sales_div) AND
+-- Ver1.19 M.Hokkanji Start
+--        ELSIF ((loop_cnt.sales_div <> cv_sales_div) AND
+--               (loop_cnt.item_id = loop_cnt.parent_item_id)) THEN
+-- Ver1.19 M.Hokkanji END
+-- Ver1.15 M.Hokkanji END]
+-- Ver1.19 M.Hokkanji Start
+-- 資材出荷は売上対象区分のチェックを行わないように修正
+        ELSIF (loop_cnt.order_type_id <> lt_transaction_type_id_mat) AND
+              ((loop_cnt.sales_div <> cv_sales_div) AND
                (loop_cnt.item_id = loop_cnt.parent_item_id)) THEN
--- Ver1.15 M.Hokkanji END
+-- Ver1.19 M.Hokkanji End
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                 gv_cnst_msg_166,
                                                 'ITEM_ERRMSG',

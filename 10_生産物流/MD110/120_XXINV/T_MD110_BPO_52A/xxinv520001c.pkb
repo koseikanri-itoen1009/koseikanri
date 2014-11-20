@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52A
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/05/22    1.2  Oracle 熊本 和郎   結合テスト障害対応(ステータスチェック・更新処理追加)
  *  2008/05/22    1.3  Oracle 熊本 和郎   結合テスト障害対応(同一パラメータによる実行時のエラー)
  *  2008/10/09    1.4  Oracle 大橋 孝郎   T_S_621対応
+ *  2008/11/19    1.5  Oracle 二瓶 大輔   統合指摘#685対応
  *
  *****************************************************************************************/
 --
@@ -170,6 +171,9 @@ AS
   -- フォーミュラステータス
   gv_fml_sts_new     CONSTANT VARCHAR2(4) := '100'; -- 新規
   gv_fml_sts_appr    CONSTANT VARCHAR2(4) := '700'; -- 一般使用の承認
+-- add start 1.5
+  gv_fml_sts_abo     CONSTANT VARCHAR2(4) := '1000';-- 廃止/アーカイブ済
+-- add end   1.5
   -- フォーミュラ・バージョン
   gn_fml_vers        CONSTANT NUMBER      := 1;
   -- レシピ・バージョン
@@ -867,14 +871,28 @@ AS
     FROM   fm_form_mst_b ffmb,         -- フォーミュラマスタ
            fm_matl_dtl   fmd1,         -- フォーミュラマスタ明細
            fm_matl_dtl   fmd2          -- フォーミュラマスタ明細
-    WHERE  ffmb.formula_id = fmd1.formula_id
-    AND    ffmb.formula_id = fmd2.formula_id
-    AND    fmd1.item_id    = ir_masters_rec.from_item_id
--- mod start 1.4
---    AND    fmd2.item_id    = ir_masters_rec.to_item_id
-    AND    fmd2.item_id    = ir_masters_rec.to_item_id;
---    AND    ffmb.formula_no = ir_masters_rec.formula_no;
--- mod end 1.4
+    WHERE  ffmb.formula_id      = fmd1.formula_id
+    AND    ffmb.formula_id      = fmd2.formula_id
+    AND    fmd1.item_id         = ir_masters_rec.from_item_id
+-- mod start 1.5
+---- mod start 1.4
+----    AND    fmd2.item_id    = ir_masters_rec.to_item_id
+--    AND    fmd2.item_id    = ir_masters_rec.to_item_id;
+----    AND    ffmb.formula_no = ir_masters_rec.formula_no;
+---- mod end 1.4
+    AND    fmd1.line_type       = gn_line_type_i
+    AND    fmd2.item_id         = ir_masters_rec.to_item_id
+    AND    fmd2.line_type       = gn_line_type_p
+    AND    ffmb.formula_status <> gv_fml_sts_abo
+    AND    SUBSTRB(ffmb.formula_no, 9, 1) 
+                                = '9' -- 品目振替用フォーミュラ
+    AND    EXISTS ( SELECT 1
+                    FROM   fm_matl_dtl fmd
+                    WHERE  fmd.formula_id = ffmb.formula_id
+                    GROUP BY fmd.formula_id
+                    HAVING COUNT(1) = 2 )
+    ;
+-- mod end   1.5
 --
 --add start 1.2
     -- ステータスが「一般使用の承認」の場合
