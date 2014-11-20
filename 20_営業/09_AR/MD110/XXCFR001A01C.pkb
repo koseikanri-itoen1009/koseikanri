@@ -7,7 +7,7 @@ AS
  * Description      : AR部門入力の顧客情報更新
  * MD.050           : MD050_CFR_001_A01_AR部門入力の顧客情報更新
  * MD.070           : MD050_CFR_001_A01_AR部門入力の顧客情報更新
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,10 @@ AS
  *  get_ar_interface_lines p 更新対象AR 取引OIFテーブル取得          (A-3)
  *  get_convert_cust_code  p 読替請求先顧客取得                      (A-4)
  *  get_receipt_dept_code  p 入金拠点取得                            (A-5)
+-- Modify 2010.07.09 Ver1.4 Start
+ *  get_ship_account       p 出荷先顧客情報取得                      (A-7)
+ *  get_trx_number_div     p 請求書番号分割処理                      (A-8)
+-- Modify 2010.07.09 Ver1.4 End
  *  update_ar_interface_lines p 対象テーブル更新                     (A-6)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
@@ -30,6 +34,7 @@ AS
  *  2009/07/23    1.1  SCS T.KANEDA     T3時障害0000838対応
  *  2010/01/26    1.2  SCS M.HIROSE     [E_本稼動_01336] 期中の顧客階層変更対応
  *  2012/02/12    1.3  SCS M.HIROSE     [E_本稼動_01606] 期中の支払方法変更対応
+ *  2010/07/09    1.4  SCS M.HIROSE     [E_本稼動_01990] 連携項目の追加(DFF12,13,14,15)
  *
  *****************************************************************************************/
 --
@@ -124,6 +129,11 @@ AS
 --
   -- 改行コード
   cv_cr              CONSTANT VARCHAR2(1) := CHR(10);      -- 改行コード
+-- Modify 2010.07.09 Ver1.4 Start
+--
+  -- 書式マスク
+  cv_yyyy_mm_dd      CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';  -- 書式マスク
+-- Modify 2010.07.09 Ver1.4 End
 --
   -- ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT';    -- メッセージ出力
@@ -161,6 +171,22 @@ AS
                                                INDEX BY PLS_INTEGER;
   TYPE g_header_attribute11_ttype  IS TABLE OF ra_interface_lines_all.header_attribute11%type
                                                INDEX BY PLS_INTEGER;
+-- Modify 2010.07.09 Ver1.4 Start
+  TYPE g_header_attribute12_ttype  IS TABLE OF ra_interface_lines_all.header_attribute12%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_header_attribute13_ttype  IS TABLE OF ra_interface_lines_all.header_attribute13%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_header_attribute14_ttype  IS TABLE OF ra_interface_lines_all.header_attribute14%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_header_attribute15_ttype  IS TABLE OF ra_interface_lines_all.header_attribute15%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_trx_number_ttype          IS TABLE OF ra_interface_lines_all.trx_number%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_if_line_attribute5_ttype  IS TABLE OF ra_interface_lines_all.interface_line_attribute5%type
+                                               INDEX BY PLS_INTEGER;
+  TYPE g_batch_source_name_ttype   IS TABLE OF ra_interface_lines_all.batch_source_name%type
+                                               INDEX BY PLS_INTEGER;
+-- Modify 2010.07.09 Ver1.4 End
   TYPE g_customer_class_code_ttype IS TABLE OF hz_cust_accounts.customer_class_code%type
                                                INDEX BY PLS_INTEGER;
 -- Modify 2009.07.23 Ver1.1 Start
@@ -183,6 +209,15 @@ AS
   gt_ril_cust_trx_type_id               g_cust_trx_type_id_ttype;
   gt_ril_header_attribute7              g_header_attribute7_ttype;
   gt_ril_header_attribute11             g_header_attribute11_ttype;
+-- Modify 2010.07.09 Ver1.4 Start
+  gt_ril_header_attribute12             g_header_attribute12_ttype;
+  gt_ril_header_attribute13             g_header_attribute13_ttype;
+  gt_ril_header_attribute14             g_header_attribute14_ttype;
+  gt_ril_header_attribute15             g_header_attribute15_ttype;
+  gt_ril_trx_number                     g_trx_number_ttype;
+  gt_ril_if_line_attribute5             g_if_line_attribute5_ttype;
+  gt_ril_batch_source_name              g_batch_source_name_ttype;
+-- Modify 2010.07.09 Ver1.4 End
   gt_hca_customer_class_code            g_customer_class_code_ttype;
 -- Modify 2009.07.23 Ver1.1 Start
   gt_ril_receipt_method_id              g_receipt_method_id_ttype;
@@ -431,6 +466,13 @@ AS
 -- Modify 2010.01.26 Ver1.2 Start
              NVL(rctt.type, cv_nml_invoice_type) trx_type,                       -- 請求書タイプ
              rila.reference_line_id              ref_line_id,                    -- 取消取引明細内部ID
+-- Modify 2010.07.09 Ver1.4 Start
+             rila.interface_line_attribute3      interface_line_attribute3,      -- 納品書番号
+             TO_CHAR(rila.gl_date,cv_yyyy_mm_dd) gl_date,                        -- 計上日
+             rila.trx_number                     trx_number,                     -- 請求書番号
+             rila.interface_line_attribute5      interface_line_attribute5,      -- 明細番号
+             rila.batch_source_name              batch_source_name,              -- バッチソース名
+-- Modify 2010.07.09 Ver1.4 End
 -- Modify 2010.01.26 Ver1.2 End
              DECODE ( rctt.attribute1,
                       gt_out_flag(1), gt_hold_status(1),
@@ -498,6 +540,13 @@ AS
 -- Modify 2010.01.26 Ver1.2 Start
           gt_trx_type,
           gt_ref_line_id,
+-- Modify 2010.07.09 Ver1.4 Start
+          gt_ril_header_attribute14,
+          gt_ril_header_attribute15,
+          gt_ril_trx_number,
+          gt_ril_if_line_attribute5,
+          gt_ril_batch_source_name,
+-- Modify 2010.07.09 Ver1.4 End
 -- Modify 2010.01.26 Ver1.2 End
           gt_ril_header_attribute7;
 --
@@ -890,6 +939,221 @@ AS
 --
   END get_receipt_dept_code;
 --
+-- Modify 2010.07.09 Ver1.4 Start
+  /**********************************************************************************
+   * Procedure Name   : get_ship_account
+   * Description      : 出荷先顧客情報取得 (A-7)
+   ***********************************************************************************/
+  PROCEDURE get_ship_account(
+    ov_errbuf               OUT VARCHAR2,            -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT VARCHAR2,            -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_ship_account'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_loop_cnt     NUMBER;         -- ループカウンタ
+--
+    -- *** ローカル・カーソル ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 対象件数が０でない場合、出荷先顧客の情報を取得
+    IF ( gn_target_cnt > 0 ) THEN
+      -- 出荷先顧客の情報を取得
+      <<ship_account_loop>>
+      FOR ln_loop_cnt IN gt_ril_rowid.FIRST..gt_ril_rowid.LAST LOOP
+--
+        -- 初期値の設定
+        gt_ril_header_attribute12(ln_loop_cnt) := NULL;
+        gt_ril_header_attribute13(ln_loop_cnt) := NULL;
+--
+        -- 出荷先顧客がある場合は、出荷先顧客の情報を取得する。(14顧客で入力されたとき以外が該当)
+        IF(  ( gt_ril_ship_customer_id(ln_loop_cnt) IS NOT NULL )  -- 出荷先顧客ＩＤ
+         AND ( gt_ril_ship_address_id(ln_loop_cnt)  IS NOT NULL )  -- 出荷先顧客所在地ＩＤ
+        ) THEN
+--
+          BEGIN
+            SELECT hca.account_number           AS account_number
+                  ,SUBSTRB(hp.party_name,1,150) AS party_name
+            INTO   gt_ril_header_attribute12(ln_loop_cnt)
+                  ,gt_ril_header_attribute13(ln_loop_cnt)
+            FROM   hz_cust_accounts  hca  -- 顧客マスタ
+                  ,hz_parties        hp   -- パーティーマスタ
+            WHERE  hca.party_id        = hp.party_id   -- 内部ID
+            AND    hca.cust_account_id = gt_ril_ship_customer_id(ln_loop_cnt) -- 内部ID
+            AND    hca.status          = cv_status_a  -- 有効な顧客
+            ;
+  --
+          EXCEPTION
+            WHEN OTHERS THEN
+              -- データが取得できない場合、なにもしない
+              NULL;
+          END;
+--
+        END IF;
+--
+      END LOOP ship_account_loop;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_ship_account;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_trx_number_div
+   * Description      : 請求書番号分割処理 (A-8)
+   ***********************************************************************************/
+  PROCEDURE get_trx_number_div(
+    ov_errbuf               OUT VARCHAR2,            -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT VARCHAR2,            -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_trx_number_div'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    cv_hihun    CONSTANT VARCHAR2(1) := '-';  -- ハイフン
+    -- *** ローカル変数 ***
+    ln_loop_cnt     NUMBER;         -- ループカウンタ
+    ln_count        NUMBER;         -- レコード数
+--
+    -- *** ローカル・カーソル ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 対象件数が０でない場合、出荷先顧客の情報を取得
+    IF ( gn_target_cnt > 0 ) THEN
+      -- 出荷先顧客の情報を取得
+      <<trx_number_loop>>
+      FOR ln_loop_cnt IN gt_ril_rowid.FIRST..gt_ril_rowid.LAST LOOP
+--
+        ln_count := 0;
+--
+        BEGIN
+          SELECT COUNT(ROWNUM)  AS cnt
+          INTO   ln_count
+          FROM  (SELECT COUNT(ROWNUM) AS cnt
+                 FROM   ra_interface_lines  rila
+                 WHERE  rila.trx_number        = gt_ril_trx_number(ln_loop_cnt)
+                 AND    rila.batch_source_name = gt_ril_batch_source_name(ln_loop_cnt)
+                 GROUP BY rila.interface_line_attribute3
+                )
+          ;
+  --
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- データが取得できない場合、なにもしない
+            NULL;
+        END;
+--
+        -- 一ヘッダに複数の納品書番号があるときは、請求書番号を分割する。
+        IF (ln_count > 1) THEN
+          -- 請求書番号 = 請求書番号 + '-' + 明細番号三桁
+          gt_ril_trx_number(ln_loop_cnt) := gt_ril_trx_number(ln_loop_cnt)
+                                         || cv_hihun
+                                         || SUBSTRB(gt_ril_if_line_attribute5(ln_loop_cnt) , -3 , 3 )
+          ;
+        END IF;
+--
+      END LOOP trx_number_loop;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_trx_number_div;
+-- Modify 2010.07.09 Ver1.4 End
+--
   /**********************************************************************************
    * Procedure Name   : update_ar_interface_lines
    * Description      : 対象テーブル更新 (A-6)
@@ -955,6 +1219,13 @@ AS
            ,orig_system_ship_address_id    = gt_ril_ship_address_id(ln_loop_cnt)        -- 出荷先顧客所在地ＩＤ
            ,header_attribute7              = gt_ril_header_attribute7(ln_loop_cnt)      -- 請求書保留ステータス
            ,header_attribute11             = gt_ril_header_attribute11(ln_loop_cnt)     -- 入金拠点
+-- Modify 2010.07.09 Ver1.4 Start
+           ,header_attribute12             = gt_ril_header_attribute12(ln_loop_cnt)     -- 出荷先顧客コード
+           ,header_attribute13             = gt_ril_header_attribute13(ln_loop_cnt)     -- 出荷先顧客名
+           ,header_attribute14             = gt_ril_header_attribute14(ln_loop_cnt)     -- 伝票番号
+           ,header_attribute15             = gt_ril_header_attribute15(ln_loop_cnt)     -- GL記帳日
+           ,trx_number                     = gt_ril_trx_number(ln_loop_cnt)             -- 請求書番号
+-- Modify 2010.07.09 Ver1.4 End
 -- Modify 2009.07.23 Ver1.1 Start
            ,receipt_method_id              = gt_ril_receipt_method_id(ln_loop_cnt)
 -- Modify 2009.07.23 Ver1.1 End
@@ -1138,6 +1409,32 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Modify 2010.07.09 Ver1.4 Start
+    -- =====================================================
+    --  出荷先顧客情報取得 (A-7)
+    -- =====================================================
+    get_ship_account(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+    -- =====================================================
+    --  請求書番号分割処理 (A-8)
+    -- =====================================================
+    get_trx_number_div(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+-- Modify 2010.07.09 Ver1.4 End
     -- =====================================================
     --  対象テーブル更新 (A-6)
     -- =====================================================

@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(spec)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -24,6 +24,9 @@ AS
  *  csv_out                   P           OUTファイル出力処理
  *  get_base_target_tel_num   F    VAR    請求拠点担当電話番号取得関数
  *  get_receive_updatable     F    VAR    入金画面 顧客変更可能判定
+-- Modify 2010.07.09 Ver1.2 Start
+ *  awi_ship_code             P           ARWebInquiry用 納品先顧客コード値リスト
+-- Modify 2010.07.09 Ver1.2 End
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -40,6 +43,8 @@ AS
  *  2008-12-22   1.0    SCS 松尾 泰生    請求拠点担当電話番号取得関数追加
  *  2010-03-31   1.1    SCS 安川 智博    障害「E_本稼動_02092」対応
  *                                       新規function「get_receive_updatable」を追加
+ *  2010-07-09   1.2    SCS 廣瀬 真佐人  障害「E_本稼動_01990」対応
+ *                                       新規Prucedure「awi_ship_code」を追加
  *
  *****************************************************************************************/
 --
@@ -127,6 +132,20 @@ AS
     iv_gl_date IN VARCHAR2          -- 2.GL記帳日
   )
   RETURN VARCHAR2;
+-- Modify 2010.07.09 Ver1.2 Start
+  --
+  -- ARWebInquiry用 納品先顧客コード値リスト
+  PROCEDURE awi_ship_code(
+    p_sql_type         IN     VARCHAR2,
+    p_sql              IN OUT VARCHAR2,
+    p_list_filter_item IN     VARCHAR2,
+    p_sort_item        IN     VARCHAR2,
+    p_sort_method      IN     VARCHAR2,
+    p_segment_id       IN     NUMBER,
+    p_child_condition  IN     VARCHAR2,
+    p_parent_condition IN     VARCHAR2 DEFAULT NULL)
+  ;
+-- Modify 2010.07.09 Ver1.2 End
 --
 END XXCFR_COMMON_PKG;--(変更)
 /

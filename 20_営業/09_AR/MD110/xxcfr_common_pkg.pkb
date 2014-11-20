@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(body)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -24,6 +24,9 @@ AS
  *  csv_out                   P           OUTファイル出力処理
  *  get_base_target_tel_num   F    VAR    請求拠点担当電話番号取得関数
  *  get_receive_updatable     F    VAR    入金画面 顧客変更可能判定
+-- Modify 2010.07.09 Ver1.3 Start
+ *  awi_ship_code             P           ARWebInquiry用 納品先顧客コード値リスト
+-- Modify 2010.07.09 Ver1.3 End
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -41,6 +44,8 @@ AS
  *  2009-03-31   1.1    SCS 大川 恵      [障害T1_0210] 請求拠点担当電話番号取得関数 複数組織対応
  *  2010-03-31   1.2    SCS 安川 智博    障害「E_本稼動_02092」対応
  *                                       新規function「get_receive_updatable」を追加
+ *  2010-07-09   1.3    SCS 廣瀬 真佐人  障害「E_本稼動_01990」対応
+ *                                       新規Prucedure「awi_ship_code」を追加
  *
  *****************************************************************************************/
 --
@@ -1183,6 +1188,90 @@ AS
 --
       RETURN NULL;
   END get_receive_updatable;
+--
+  /**********************************************************************************
+   * Procedure Name    : awi_ship_code
+   * Description      : ARWebInquiry用 納品先顧客コード値リスト
+   *                    ※xx03_glwi_lov_pkg.input_departmentを応用
+   ***********************************************************************************/
+   PROCEDURE awi_ship_code(
+    p_sql_type         IN     VARCHAR2,
+    p_sql              IN OUT VARCHAR2,
+    p_list_filter_item IN     VARCHAR2,
+    p_sort_item        IN     VARCHAR2,
+    p_sort_method      IN     VARCHAR2,
+    p_segment_id       IN     NUMBER,
+    p_child_condition  IN     VARCHAR2,
+    p_parent_condition IN     VARCHAR2 DEFAULT NULL)
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    l_sql_rec                   xgv_common.sql_rtype;  -- SQL文とバインド変数格納用
+--
+  BEGIN
+--
+    --------------------------------------------------
+    -- 動的SQLの組み立て開始
+    --------------------------------------------------
+-- 値リストを開く際に、総件数を取得。懐中電灯ボタンを押下する際に通るロジック。
+    IF  p_sql_type = 'COUNT'
+    THEN
+      l_sql_rec.text(1) := 'SELECT count(xtcv.name)';
+      l_sql_rec.text(2) := 'FROM   xxcfr_awi_ship_code_v xtcv';
+      l_sql_rec.text(3) := 'WHERE';
+-- 値リストの表を表示する際にデータを取得。懐中電灯ボタンを押下する際に通るロジック。
+    ELSE
+      l_sql_rec.text(1) := 'SELECT NULL,';
+      l_sql_rec.text(2) := '       NULL,';
+      l_sql_rec.text(3) := '       xtcv.name name,';
+      l_sql_rec.text(4) := '       xtcv.description description';
+      l_sql_rec.text(5) := 'FROM   xxcfr_awi_ship_code_v xtcv';
+      l_sql_rec.text(6) := 'WHERE';
+    END IF;
+    -- 値抽出条件に既に検索条件が指定されている場合
+    -- 検索条件をWHERE句の書式に変更
+    IF  p_child_condition IS NOT NULL
+    THEN
+-- 値リスト内の検索 検索項目=値のとき
+      IF  p_list_filter_item = 'VALUE'
+      THEN
+        xgv_common.get_where_clause(
+          l_sql_rec, 'xtcv', 'name', p_child_condition);
+-- 値リスト内の検索 検索項目=摘要のとき
+      ELSE
+        xgv_common.set_bind_value(l_sql_rec, upper(p_child_condition));
+        l_sql_rec.text(l_sql_rec.text.COUNT + 1) :=
+          'upper(xtcv.description) like :' || l_sql_rec.ph_name(l_sql_rec.num_ph);
+      END IF;
+-- 値抽出条件に検索条件が指定されていない場合はWHERE句がないので1=1を追加。
+    ELSE
+      -- セキュリティルール用に必ず成立する条件をSQLに追加
+      l_sql_rec.text(l_sql_rec.text.COUNT + 1) := '       1 = 1';
+    END IF;
+    -- 動的SQLにORDER BY句の追加
+    IF  p_sql_type = 'LIST'
+    THEN
+-- 値リストを表示する際にソート順を追加。
+      IF  p_sort_item = 'VALUE'
+      THEN
+        l_sql_rec.text(l_sql_rec.text.COUNT + 1) := 'ORDER BY xtcv.name ' || p_sort_method;
+-- ロジックとして通っていない模様。念のため残しておく。
+      ELSE
+        l_sql_rec.text(l_sql_rec.text.COUNT + 1) := 'ORDER BY xtcv.description ' || p_sort_method;
+      END IF;
+    END IF;
+    --------------------------------------------------
+    -- 動的SQLの組み立て終了
+    --------------------------------------------------
+    -- 動的SQLのデバッグ用出力（HTMLコメントとして出力）
+    xgv_common.show_sql_statement(l_sql_rec);
+    -- xgv_common.sql_rtype型に格納したSQL文を、通常の文字列型のSQL文に変換
+    xgv_common.get_plain_sql_statement(p_sql, l_sql_rec);
+  END awi_ship_code;
 --
 END xxcfr_common_pkg;
 /
