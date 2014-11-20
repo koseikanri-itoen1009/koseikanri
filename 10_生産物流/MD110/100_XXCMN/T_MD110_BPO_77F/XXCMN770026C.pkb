@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.21
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -56,6 +56,8 @@ AS
  *  2008/12/16    1.19  A.Shiina         本番#754対応 -- 対応削除
  *  2008/12/17    1.20  A.Shiina         本番#428対応(PT対応)
  *  2008/12/18    1.21  A.Shiina         本番#799対応
+ *  2009/01/09    1.22  A.Shiina         本番#987対応
+ *  2009/01/10    1.23  A.Shiina         本番#987対応(再対応)
  *
  *****************************************************************************************/
 --
@@ -79,7 +81,7 @@ AS
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
-  gv_pkg_name                 CONSTANT VARCHAR2(20) := 'XXCMN770026C' ; -- パッケージ名
+  gv_pkg_name                 CONSTANT VARCHAR2(20) := 'xxcmn770026c' ; -- パッケージ名
   gv_print_name               CONSTANT VARCHAR2(20) := '出庫実績表' ;   -- 帳票名
 --
   ------------------------------
@@ -806,14 +808,41 @@ AS
 */
     || ' ,(' 
     || ' ROUND((CASE iimb2.attribute15'
-    || '          WHEN ''1'' THEN xsupv.stnd_unit_price' 
+-- 2009/01/16 v1.23 UPDATE START
+--    || '          WHEN ''1'' THEN xsupv.stnd_unit_price' 
+    || ' WHEN ''1'' THEN ' 
+    || ' NVL((SELECT xsupv.stnd_unit_price '
+    || ' FROM xxcmn_stnd_unit_price_v xsupv '
+    || ' WHERE xsupv.item_id = itp.item_id '
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
+    || ' ), 0) '
+-- 2009/01/16 v1.23 UPDATE END
     || '          ELSE DECODE(iimb2.lot_ctl' 
     || '                     ,1,NVL(xlc.unit_ploce, 0)' 
-    || '                     ,xsupv.stnd_unit_price)' 
+-- 2009/01/16 v1.23 UPDATE START
+--    || '                     ,xsupv.stnd_unit_price)' 
+    || ' ,NVL((SELECT xsupv.stnd_unit_price '
+    || ' FROM xxcmn_stnd_unit_price_v xsupv '
+    || ' WHERE xsupv.item_id = itp.item_id '
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
+    || ' ), 0)) '
+-- 2009/01/16 v1.23 UPDATE END
     || '        END) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))' 
     || ' ) AS actual_price' -- 実際金額
 -- 2008/12/02 v1.14 UPDATE END
-    || ' ,ROUND(xsupv.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2009/01/16 v1.23 UPDATE START
+--    || ' ,ROUND(xsupv.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+    || ' ,ROUND( '
+    || ' (NVL((SELECT xsupv.stnd_unit_price '
+    || ' FROM xxcmn_stnd_unit_price_v xsupv '
+    || ' WHERE xsupv.item_id = itp.item_id '
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date) '
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date) '
+    || ' ), 0) '
+    || ' ) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+-- 2009/01/16 v1.23 UPDATE END
     || ' ) AS stnd_price' -- 標準金額
 -- 2008/12/02 v1.14 UPDATE START
 /*
@@ -1103,7 +1132,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
@@ -1170,9 +1201,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE END
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
@@ -1235,7 +1273,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
@@ -1300,9 +1340,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE END
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
@@ -1365,7 +1412,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.12 DELETE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.12 DELETE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
@@ -1435,9 +1484,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = iimb2.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = iimb2.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.12 DELETE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.12 DELETE END
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
@@ -1497,7 +1553,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -1554,9 +1612,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -1612,7 +1677,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/16 v1.23 DELETE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -1669,9 +1736,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/16 v1.23 DELETE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -1730,7 +1804,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -1792,9 +1868,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = iimb2.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = iimb2.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -1852,7 +1935,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -1918,9 +2003,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active   >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = iimb2.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = iimb2.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -1973,7 +2065,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
@@ -2040,9 +2134,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
@@ -2100,7 +2201,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
@@ -2166,9 +2269,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
@@ -2230,7 +2340,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
@@ -2299,9 +2411,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = iimb2.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = iimb2.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
 /*
     || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
@@ -2360,7 +2479,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -2417,9 +2538,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -2474,7 +2602,9 @@ AS
     || ' ,xxcmn_lot_cost xlc'
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -2531,9 +2661,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = itp.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = itp.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -2591,7 +2728,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -2652,9 +2791,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = iimb2.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = iimb2.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -2711,7 +2857,9 @@ AS
     || ' ,ic_item_mst_b iimb2'
     || ' ,xxcmn_item_mst_b ximb2'
 --    || ' ,ic_item_mst_b iimb3'
-    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+-- 2009/01/09 v1.22 UPDATE END
     || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
     || ' ,po_vendors pv' -- 仕入先マスタ 
 -- 2008/12/13 v1.17 DELETE START
@@ -2777,9 +2925,16 @@ AS
     || ' AND ximb2.item_id = iimb2.item_id' 
     || ' AND ximb2.start_date_active <= TRUNC(itp.trans_date)' 
     || ' AND ximb2.end_date_active >= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.item_id = iimb2.item_id' 
-    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
-    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id = iimb2.item_id' 
+--    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+--    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+-- 2009/01/09 v1.22 UPDATE END
+-- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
 -- 2008/12/13 v1.16 UPDATE START
@@ -3928,6 +4083,91 @@ AS
           (( ir_param.crowd_type = gc_crowd_type_4) AND ( ir_param.acnt_crowd_code  IS NULL )))
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_main_start );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po102_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po102 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po101_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po101 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po112_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po112 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po103x5_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po103x5 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po103x124_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po103x124 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po105_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po105 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_po108_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_po108 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om102_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om102 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om101_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om101 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om112_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om112 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om103x5_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om103x5 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om103x124_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om103x124 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om105_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om105 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, ' UNION ALL ' );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_g1_om108_4_hint );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_common );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_group1_2 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_1_om108 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_where3 );
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_select_main_end );
         -- オープン
         OPEN  get_cur01 FOR lv_select_main_start
                          || lv_select_g1_po102_4_hint
