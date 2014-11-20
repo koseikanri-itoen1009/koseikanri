@@ -1170,7 +1170,14 @@ AS
   ;
   -- 販売実績情報・一律条件
   CURSOR get_sales_data_cur3 IS
-    SELECT /*+ LEADING(xt0c xmbc xcbi xseh xsel) */
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--    SELECT /*+ LEADING(xt0c xmbc xcbi xseh xsel) */
+    SELECT /*+
+             LEADING(xt0c xcbi xmbc xseh xsel)
+             USE_NL(xt0c xcbi xmbc xseh xsel)
+             INDEX(xseh XXCOS_SALES_EXP_HEADERS_N08)
+           */
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR START
 --           xseh.sales_base_code                                                    AS base_code                -- 拠点コード
 --         , xseh.results_employee_code                                              AS emp_code                 -- 担当者コード
@@ -2379,7 +2386,12 @@ GROUP BY CASE
   -- 販売実績情報・電気料
   CURSOR get_sales_data_cur5 IS
     SELECT /*+
-             LEADING( xt0c hca xca xcbi xmbc )
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--             LEADING( xt0c hca xca xcbi xmbc )
+             LEADING( xt0c hca xca xcbi xseh xsel )
+             USE_NL( xt0c hca xca xcbi xseh xsel )
+             INDEX( xseh XXCOS_SALES_EXP_HEADERS_N08 )
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
            */
            CASE
              WHEN TRUNC( xt0c.closing_date, 'MM' ) = TRUNC( gd_process_date, 'MM' ) THEN
