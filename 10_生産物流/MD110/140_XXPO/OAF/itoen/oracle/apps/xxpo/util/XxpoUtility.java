@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.22
+* バージョン : 1.23
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -30,6 +30,7 @@
 * 2008-12-26 1.20 伊藤ひとみ   本番障害#809対応
 * 2009-01-16 1.21 吉元強樹     本番障害#1006対応
 * 2009-01-20 1.22 吉元強樹     本番障害#739,985対応
+* 2009-02-06 1.23 伊藤ひとみ   本番障害#1147対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -51,7 +52,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.20
+ * @version 1.23
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -139,7 +140,7 @@ public class XxpoUtility
    * @param trans - トランザクション
    * @param itemId - 品目ID
    * @param productedDate - 製造日
-   * @param expirationDay - 賞味期間
+   * @param itemCode - 品目コード
    * @return Date 賞味期限日
    * @throws OAException - OA例外
    ****************************************************************************/
@@ -147,25 +148,47 @@ public class XxpoUtility
     OADBTransaction trans,
     Number itemId,
     Date productedDate,
-    String expirationDay
+// 2009-02-06 H.Itou Mod Start 本番障害#1147対応
+//    String expirationDay
+    String itemCode
+// 2009-02-06 H.Itou Mod End
   ) throws OAException
   {
     String apiName   = "getUseByDate";
     Date   useByDate = null;
+
     // 品目ID、製造日がNullの場合は処理を行わない。
     if (XxcmnUtility.isBlankOrNull(itemId) 
       || XxcmnUtility.isBlankOrNull(productedDate)
-      || XxcmnUtility.isBlankOrNull(expirationDay)) 
+// 2009-02-06 H.Itou Mod Start 本番障害#1147
+//      || XxcmnUtility.isBlankOrNull(expirationDay)) 
+        )
+// 2009-02-06 H.Itou Mod End
     {
-      return null;
+      // 賞味期限の計算はしません。
+      return null;      
     }
+
     // PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(100);
     sb.append("BEGIN "                                     );
     sb.append("   SELECT :1 + NVL(ximv.expiration_day, 0) "); // 賞味期限
     sb.append("   INTO   :2 "                              );
-    sb.append("   FROM   xxcmn_item_mst_v ximv "           ); // OPM品目情報V
-    sb.append("   WHERE  ximv.item_id = :3;    "           ); // 品目ID
+// 2009-02-06 H.Itou Add Start 本番障害#1147
+//    sb.append("   FROM   xxcmn_item_mst_v ximv "           ); // OPM品目情報V
+    sb.append("   FROM   xxcmn_item_mst2_v ximv "          ); // OPM品目情報V
+// 2009-02-06 H.Itou Add End
+    sb.append("   WHERE  ximv.item_id = :3     "           ); // 品目ID
+// 2009-02-06 H.Itou Add Start 本番障害#1147
+    sb.append("   AND    ximv.start_date_active <= :4 "    ); // 適用開始日
+    sb.append("   AND    ximv.end_date_active   >= :5 "    ); // 適用終了日
+// 2009-02-06 H.Itou Add End
+    sb.append("   ; "                                      );
+// 2009-02-06 H.Itou Add Start 本番障害#1147
+    sb.append("EXCEPTION "                                 );
+    sb.append("  WHEN NO_DATA_FOUND THEN "                 );
+    sb.append("    NULL; "                                 );
+// 2009-02-06 H.Itou Add End
     sb.append("END; "                                      );
 
     //PL/SQLの設定を行います
@@ -175,17 +198,34 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
-      cstmt.setDate(1, XxcmnUtility.dateValue(productedDate)); // 生産日
+      cstmt.setDate(1, XxcmnUtility.dateValue(productedDate)); // 製造日
       cstmt.setInt(3, XxcmnUtility.intValue(itemId));          // 品目ID
-      
+// 2009-02-06 H.Itou Add Start 本番障害#1147
+      cstmt.setDate(4, XxcmnUtility.dateValue(productedDate)); // 製造日
+      cstmt.setDate(5, XxcmnUtility.dateValue(productedDate)); // 製造日
+// 2009-02-06 H.Itou Add End
+
       // パラメータ設定(OUTパラメータ)
       cstmt.registerOutParameter(2, Types.DATE);               // 賞味期限
 
       // PL/SQL実行
       cstmt.execute();
-      
-      // 戻り値取得
-      useByDate = new Date(cstmt.getDate(2));
+
+// 2009-02-06 H.Itou Add Start 本番障害#1147
+      // 賞味期限がNULLの場合(適用日内に品目データがない場合)
+      if (XxcmnUtility.isBlankOrNull(cstmt.getDate(2)))
+      {
+        // 品目取得失敗エラー
+        MessageToken[] tokens = {new MessageToken(XxpoConstants.ITEM_VALUE, itemCode)};
+        throw new OAException(XxcmnConstants.APPL_XXPO, 
+                               XxpoConstants.XXPO10278,
+                               tokens);
+      } else
+      {
+        // 戻り値取得
+        useByDate = new Date(cstmt.getDate(2));
+      }
+// 2009-02-06 H.Itou Add End
 
     // PL/SQL実行時例外の場合
     } catch(SQLException s)

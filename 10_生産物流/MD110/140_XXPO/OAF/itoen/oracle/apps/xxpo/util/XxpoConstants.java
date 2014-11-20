@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,13 +13,14 @@
 * 2008-07-11 1.3  二瓶大輔　     ST#421対応(メッセージ追加)
 * 2008-07-30 1.4  伊藤ひとみ     内部変更要求#176(メッセージ追加)
 * 2008-10-23 1.5  伊藤ひとみ     T_TE08_BPO_340 指摘5
+* 2009-02-06 1.6  伊藤ひとみ     本番障害#1147対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
 /***************************************************************************
  * 仕入共通定数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxpoConstants 
@@ -234,6 +235,10 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-10275 相手先在庫管理対象不一致エラー */
   public static final String XXPO10275   = "APP-XXPO-10275";
 // 2008-10-23 H.Itou Add END
+// 2009-02-06 H.Itou Add START
+  /** メッセージ：APP-XXPO-10278 品目未登録エラー */
+  public static final String XXPO10278   = "APP-XXPO-10278";
+// 2009-02-06 H.Itou Add END
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -262,6 +267,10 @@ public class XxpoConstants
   /** トークン：TOKEN */
   public static final String TOKEN             = "TOKEN";
 // 2008-07-30 H.Itou Add END
+// 2009-02-06 H.Itou Add START
+  /** トークン：ITEM_VALUE */
+  public static final String ITEM_VALUE        = "ITEM_VALUE";
+// 2009-02-06 H.Itou Add END
   /** トークン名称：取引先 */
   public static final String TOKEN_NAME_ENTRY  = "取引先";
   /** トークン名称：出来高報告 */

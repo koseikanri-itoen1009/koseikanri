@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotSearchAMImpl
 * 概要説明   : 検査ロット情報検索・登録アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-01-29 1.0  戸谷田 大輔    新規作成
 * 2008-05-09 1.1  熊本 和郎      内部変更要求#28,41,43対応
 * 2008-12-24 1.2  二瓶大輔       本番障害#743対応
+* 2009-02-06 1.3  伊藤ひとみ     本番障害#1147対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370001j.server;
@@ -46,7 +47,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 検査ロット情報検索・登録画面のアプリケーションモジュールクラスです。
  * @author  ORACLE SCS
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -236,7 +237,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap retHashMap = getUserData();    
     
     // VOの取得
-    OAViewObject registVo = (OAViewObject)getXxpoLotsMstRegVO1();
+// 2009-02-06 H.Itou Mod Start
+//    OAViewObject registVo = (OAViewObject)getXxpoLotsMstRegVO1();
+    XxpoLotsMstRegVOImpl registVo = getXxpoLotsMstRegVO1();
+// 2009-02-06 H.Itou Mod End
 // mod start 1.1
 //    OAViewObject inspectVo = (OAViewObject)getXxwipQtInspectionSummaryVO1();
     XxwipQtInspectionSummaryVOImpl inspectVo = getXxwipQtInspectionSummaryVO1();
@@ -292,13 +296,20 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     // ロットIDがNullじゃない場合：更新
     } else 
     {
+// 2009-02-06 H.Itou Mod Start
       // パラメータの設定
-      Serializable[] params = { new Number(lotId) };
-      Class[] paramTypes = { Number.class };
+//      Serializable[] params = { new Number(lotId) };
+//      Class[] paramTypes = { Number.class };
+//
+//      // 初期化処理(OPMロットマスタ登録VO)
+//      registVo.setMaxFetchSize(1);
+//
+//      registVo.invokeMethod("initQuery", params, paramTypes);
 
-      // 初期化処理(OPMロットマスタ登録VO)
-      registVo.setMaxFetchSize(1);
-      registVo.invokeMethod("initQuery", params, paramTypes);
+      registVo.initQuery(new Number(lotId));
+
+// 2009-02-06 H.Itou Mod End
+
       if (registVo.getRowCount() == 0)
       {
         // 想定外エラー
@@ -306,7 +317,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
                             XxcmnConstants.XXCMN10123);
       }
       // 行を取得する。
-      Row registRow = registVo.first();
+// 2009-02-06 H.Itou Mod Start
+//      Row registRow = registVo.first();
+      OARow registRow = (OARow)registVo.first();
+// 2009-02-06 H.Itou Mod End
       // 検査依頼Noの取得
       String insReqNo = (String)registRow.getAttribute("Attribute22");
 // mod start 1.1
@@ -393,6 +407,7 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     }
     // 例外の出力
     OAException.raiseBundledOAException(exceptions);
+
   }
 
   /***************************************************************************
@@ -419,32 +434,41 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     Date productedDate = (Date)registRow.getAttribute("Attribute1");
 // mod end 1.1
     Number itemId = (Number)registRow.getAttribute("ItemId");
-
-    // 製造日/仕入日が設定されていない場合
-    if (XxcmnUtility.isBlankOrNull(productedDate))
-    {
-      // 賞味期限にNullを設定
-      registRow.setAttribute("Attribute3", null);
-
-    // 引数が設定されていない場合
-    } else if (XxcmnUtility.isBlankOrNull(itemId))
-    {
-      // 賞味期限に製造日/仕入日を設定
-      registRow.setAttribute("Attribute3", productedDate);
-
-    // 賞味期限取得処理
-    } else
-    {
+// 2009-02-06 H.Itou Add Start 本番障害#1147
+    String itemCode = (String)registRow.getAttribute("ItemNo");
+// 2009-02-06 H.Itou Add End
+// 2009-02-06 H.Itou Del Start 本番障害#1147
+//    // 製造日/仕入日が設定されていない場合
+//    if (XxcmnUtility.isBlankOrNull(productedDate))
+//    {
+//      // 賞味期限にNullを設定
+//      registRow.setAttribute("Attribute3", null);
+//
+//    // 引数が設定されていない場合
+//    } else if (XxcmnUtility.isBlankOrNull(itemId))
+//    {
+//      // 賞味期限に製造日/仕入日を設定
+//      registRow.setAttribute("Attribute3", productedDate);
+//
+//    // 賞味期限取得処理
+//    } else
+//    {
+// 2009-02-06 H.Itou Del End
       bestBeforeDate = XxpoUtility.getUseByDate(
                          getOADBTransaction(),  // トランザクション
                          itemId,                // 品目ID
                          productedDate,         // 製造日
-                         "dummy"               // 賞味期間(未使用)
+// 2009-02-06 H.Itou Mod Start 本番障害#1147
+//                         "dummy"               // 賞味期間(未使用)
+                         itemCode
+// 2009-02-06 H.Itou Mod End
                          );
 
       // 賞味期限を検査ロット情報:登録VOにセット
       registRow.setAttribute("Attribute3", bestBeforeDate);
-    }
+// 2009-02-06 H.Itou Del Start 本番障害#1147
+//    }
+// 2009-02-06 H.Itou Del End
   }
 
   /***************************************************************************

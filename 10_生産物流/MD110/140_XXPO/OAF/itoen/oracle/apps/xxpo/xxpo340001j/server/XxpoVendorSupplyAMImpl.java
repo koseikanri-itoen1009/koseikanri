@@ -1,19 +1,20 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-11 1.0  伊藤ひとみ   新規作成
-* 2008-05-07 1.0   伊藤ひとみ   変更要求対応(#86,90)、内部変更要求対応(#28,29,41)
+* 2008-05-07 1.0  伊藤ひとみ   変更要求対応(#86,90)、内部変更要求対応(#28,29,41)
 * 2008-05-15 1.0  伊藤ひとみ   結合バグ#340_2
 *                              外部ユーザーの場合、表示された取引先コードで検索できない。
 * 2008-05-21 1.0  伊藤ひとみ   内部変更要求対応(#104)
 * 2008-07-11 1.1  二瓶大輔     ST#421対応
 * 2008-07-22 1.2  伊藤ひとみ   内部課題#32対応 換算ありの場合、ケース入数がNULLまたは0はエラー
 * 2008-10-23 1.3  伊藤ひとみ   T_TE080_BPO_340 指摘5
+* 2009-02-06 1.4  伊藤ひとみ   本番障害#1147対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -40,7 +41,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 外注出来高報告のアプリケーションモジュールクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -367,26 +368,35 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // データ取得
     Date productedDate   = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate");   // 製造日
     Number itemId        = (Number)vendorSupplyMakeRow.getAttribute("ItemId");        // 品目ID
+// 2009-02-06 H.Itou Add Start 本番障害#1147対応
+    String itemCode      = (String)vendorSupplyMakeRow.getAttribute("ItemCode");  // 品目コード
+// 2009-02-06 H.Itou Add End
     String expirationDay = (String)vendorSupplyMakeRow.getAttribute("ExpirationDay"); // 賞味期間
 
-    // 賞味期間に値がある場合、賞味期限取得
-    if (XxcmnUtility.isBlankOrNull(expirationDay) == false)
-    {
+// 2009-02-06 H.Itou Del Start 本番障害#1147対応
+//    // 賞味期間に値がある場合、賞味期限取得
+//    if (XxcmnUtility.isBlankOrNull(expirationDay) == false)
+//    {
+// 2009-02-06 H.Itou Del End
       Date useByDate = XxpoUtility.getUseByDate(
                          getOADBTransaction(), // トランザクション
                          itemId,               // 品目ID
                          productedDate,        // 製造日
-                         expirationDay         // 賞味期間
+// 2009-02-06 H.Itou Add Start 本番障害#1147対応
+//                         expirationDay         // 賞味期間
+                         itemCode              // 品目コード
+// 2009-02-06 H.Itou Add End
                        );
       // 賞味期限を外注出来高情報:登録VOにセット
       vendorSupplyMakeRow.setAttribute("UseByDate", useByDate);
-    
-    // 賞味期間に値がない場合、NULL
-    } else
-    {
-      // 賞味期限を外注出来高情報:登録VOにセット
-      vendorSupplyMakeRow.setAttribute("UseByDate", "");      
-    }
+// 2009-02-06 H.Itou Del Start 本番障害#1147対応    
+//    // 賞味期間に値がない場合、NULL
+//    } else
+//    {
+//      // 賞味期限を外注出来高情報:登録VOにセット
+//      vendorSupplyMakeRow.setAttribute("UseByDate", "");      
+//    }
+// 2009-02-06 H.Itou Del End
   }
 
   /***************************************************************************
@@ -1531,6 +1541,25 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     String costManageCode = (String)params.get("CostManageCode"); // 原価管理区分
     Object processFlag    = (Object)params.get("ProcessFlag");    // 処理フラグ
     Object itemClassCode  = (Object)params.get("ItemClassCode");  // 品目区分
+
+// 2009-02-06 H.Itou Add Start 本番障害#1147対応 カーソル移動しないで適用ボタンを押した場合を想定。
+    // 固有記号に値がない場合、自動算出
+    if (XxcmnUtility.isBlankOrNull(params.get("koyuCode")))
+    {
+      // ************************** //
+      // *   固有記号算出         * //
+      // ************************** //
+      getKoyuCode();
+    }
+    // 賞味期限に値がない場合、自動算出
+    if (XxcmnUtility.isBlankOrNull(params.get("useByDate")))
+    {
+      // ************************** //
+      // *   賞味期限算出         * //
+      // ************************** //
+      getUseByDate();
+    }
+// 2009-02-06 H.Itou Add End
 
     // ******************************* //
     // *   必須チェック              * //

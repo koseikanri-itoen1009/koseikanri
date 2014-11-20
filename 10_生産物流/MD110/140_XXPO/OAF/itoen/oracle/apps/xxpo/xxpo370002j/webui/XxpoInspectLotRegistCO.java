@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotRegistCO
 * 概要説明   : 検査ロット:登録コントローラ
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者        修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-29 1.0  戸谷田 大輔    新規作成
 * 2008-05-09 1.1  熊本 和郎      内部変更要求#28,41,43対応
+* 2009-02-06 1.2  伊藤 ひとみ    エラー発生時の再表示の制御について修正
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370002j.webui;
@@ -42,7 +43,7 @@ import java.sql.SQLException;
 /***************************************************************************
  * 検査ロット:登録コントローラクラスです。
  * @author  ORACLE 戸谷田 大輔
- * @version 1.0
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
@@ -60,117 +61,151 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
   {
     super.processRequest(pageContext, webBean);
 
-    // 戻るボタンの判定に使用する。
+    // ブラウザの戻るボタンを押下していない場合
     if (!pageContext.isBackNavigationFired(false))
     {
       // トランザクション開始
       TransactionUnitHelper.startTransactionUnit(
         pageContext, XxpoConstants.TXN_XXPO370002J);
-
-      // 変数定義
-      String paramLotId = null;
-      Number lotId = null;
-      HashMap map = new HashMap();
-      // 適用ボタン取得
-      OASubmitButtonBean applyButton =
-        (OASubmitButtonBean)webBean.findChildRecursive("Apply");
-
-      // パラメータの取得
-      paramLotId = pageContext.getParameter("pSearchLotId");
-      if (!XxcmnUtility.isBlankOrNull(paramLotId))
+// add start 1.2
+      // **************************************************************** //
+      //  エラーありのため、再表示の場合、再検索せずに項目制御のみ行う。  //
+      // **************************************************************** //
+      if ("Y".equals(pageContext.getParameter("ErrorFlag")))
       {
+        // エラーフラグ初期化
+        pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+
+        // ********************** //
+        //  項目制御              //
+        // ********************** //
+        itemControl(pageContext, webBean);
+
+      // **************************************************************** //
+      //  初期表示時または、適用処理完了後の更新モードで再表示の場合      //
+      // **************************************************************** //
+      } else
+      {
+// add end 1.2
+        // 変数定義
+        String paramLotId = null;
+        Number lotId = null;
+        HashMap map = new HashMap();
+        // 適用ボタン取得
+        OASubmitButtonBean applyButton =
+          (OASubmitButtonBean)webBean.findChildRecursive("Apply");
+
+        // パラメータの取得
+        paramLotId = pageContext.getParameter("pSearchLotId");
+        if (!XxcmnUtility.isBlankOrNull(paramLotId))
+        {
+          try
+          {
+            lotId = new Number(paramLotId);
+          } catch (SQLException expt)
+          {
+            // 不正なパラメータが渡ってきた場合。
+            // 適用ボタンを使用不可にする
+            applyButton.setDisabled(true);
+            // メッセージの出力
+            throw new OAException(XxcmnConstants.APPL_XXCMN,
+                                XxcmnConstants.XXCMN10123);
+          }
+        } 
+      
+        // アプリケーションモジュールの取得
+        OAApplicationModule am = pageContext.getApplicationModule(webBean);
+// del start 1.2 項目制御をメソッドにしたため、ここでは不要
+//        // 取引先
+//        OAMessageLovInputBean lovAttribute8 =
+//          (OAMessageLovInputBean)webBean.findChildRecursive("Attribute8");
+//        // 品目
+//        OAMessageLovInputBean lovItemNo =
+//          (OAMessageLovInputBean)webBean.findChildRecursive("ItemNo");
+//        // 賞味期限
+//        OAMessageDateFieldBean inputAttribute3 =
+//          (OAMessageDateFieldBean)webBean.findChildRecursive("Attribute3");
+// del end 1.2
+        // ********************** //
+        //  初期表示              //
+        // ********************** //
+        // 引数の設定(初期表示処理)
+        Serializable[] params = { lotId };
+        Class[] paramTypes = { Number.class };
+      
         try
         {
-          lotId = new Number(paramLotId);
-        } catch (SQLException expt)
+          // 初期表示処理
+          map = (HashMap)am.invokeMethod("initQuery", params, paramTypes);
+        } catch (OAException expt)
         {
-          // 不正なパラメータが渡ってきた場合。
           // 適用ボタンを使用不可にする
           applyButton.setDisabled(true);
           // メッセージの出力
-          throw new OAException(XxcmnConstants.APPL_XXCMN,
-                              XxcmnConstants.XXCMN10123);
+          throw expt;
         }
-      } 
-      
-      // アプリケーションモジュールの取得
-      OAApplicationModule am = pageContext.getApplicationModule(webBean);
+// mod start 1.2 項目制御をエラーありの場合の再表示と共通化するためメソッド追加。
+        // ********************** //
+        //  項目制御              //
+        // ********************** //
+        itemControl(pageContext, webBean);
 
-      // 取引先
-      OAMessageLovInputBean lovAttribute8 =
-        (OAMessageLovInputBean)webBean.findChildRecursive("Attribute8");
-      // 品目
-      OAMessageLovInputBean lovItemNo =
-        (OAMessageLovInputBean)webBean.findChildRecursive("ItemNo");
-      // 賞味期限
-      OAMessageDateFieldBean inputAttribute3 =
-        (OAMessageDateFieldBean)webBean.findChildRecursive("Attribute3");
-
-      // 引数の設定(初期表示処理)
-      Serializable[] params = { lotId };
-      Class[] paramTypes = { Number.class };
-      
-      try
-      {
-        // 初期表示処理
-        map = (HashMap)am.invokeMethod("initQuery", params, paramTypes);
-      } catch (OAException expt)
-      {
-        // 適用ボタンを使用不可にする
-        applyButton.setDisabled(true);
-        // メッセージの出力
-        throw expt;
+//        // 内部ユーザで更新の場合、取引先と品目を固定する。
+//        if (("1".equals((String)map.get("PeopleCode")) &&
+//              (!XxcmnUtility.isBlankOrNull(lotId))))
+//        {
+//          // 取引先
+//          lovAttribute8.setReadOnly(true);
+//          lovAttribute8.setCSSClass("OraDataText");
+//          // 品目
+//          lovItemNo.setReadOnly(true);
+//          lovItemNo.setCSSClass("OraDataText");        
+//        }
+//
+//        // 外部ユーザ、かつ新規の場合、取引先を固定し賞味期限を編集不可にする。
+//        if (("2".equals((String)map.get("PeopleCode")) &&
+//             (XxcmnUtility.isBlankOrNull(lotId))))
+//        {
+//          // 取引先
+//          lovAttribute8.setReadOnly(true);
+//          lovAttribute8.setCSSClass("OraDataText");
+//          // 賞味期限
+//          inputAttribute3.setReadOnly(true);
+//          inputAttribute3.setCSSClass("OraDataText");
+//
+//        // 外部ユーザ、かつ更新の場合、取引先、品目、賞味期限を編集不可にする。
+//        } else if (("2".equals((String)map.get("PeopleCode")) &&
+//                      (!XxcmnUtility.isBlankOrNull(lotId))))
+//        {
+//          // 取引先
+//          lovAttribute8.setReadOnly(true);
+//          lovAttribute8.setCSSClass("OraDataText");
+//          // 品目
+//          lovItemNo.setReadOnly(true);
+//          lovItemNo.setCSSClass("OraDataText");        
+//          // 賞味期限
+//          inputAttribute3.setReadOnly(true);
+//          inputAttribute3.setCSSClass("OraDataText");
+//        
+//        }
+// mod end 1.2
+// del start 1.2 メッセージはprocessFormRequestで出力するため、不要
+//// add start 1.1
+//        // 完了メッセージ取得
+//        String mainMessage = pageContext.getParameter(XxpoConstants.URL_PARAM_MAIN_MESSAGE);
+//        if (!XxcmnUtility.isBlankOrNull(mainMessage)) 
+//        {
+//          // メッセージボックス表示
+//          pageContext.putDialogMessage(new OAException(mainMessage, OAException.INFORMATION));
+//        }
+//// add end 1.1
+// del end 1.2
+// add start 1.2
       }
+// add end 1.2
 
-      // 内部ユーザで更新の場合、取引先と品目を固定する。
-      if (("1".equals((String)map.get("PeopleCode")) &&
-            (!XxcmnUtility.isBlankOrNull(lotId))))
-      {
-        // 取引先
-        lovAttribute8.setReadOnly(true);
-        lovAttribute8.setCSSClass("OraDataText");
-        // 品目
-        lovItemNo.setReadOnly(true);
-        lovItemNo.setCSSClass("OraDataText");        
-      }
-
-      // 外部ユーザ、かつ新規の場合、取引先を固定し賞味期限を編集不可にする。
-      if (("2".equals((String)map.get("PeopleCode")) &&
-           (XxcmnUtility.isBlankOrNull(lotId))))
-      {
-        // 取引先
-        lovAttribute8.setReadOnly(true);
-        lovAttribute8.setCSSClass("OraDataText");
-        // 賞味期限
-        inputAttribute3.setReadOnly(true);
-        inputAttribute3.setCSSClass("OraDataText");
-
-      // 外部ユーザ、かつ更新の場合、取引先、品目、賞味期限を編集不可にする。
-      } else if (("2".equals((String)map.get("PeopleCode")) &&
-                    (!XxcmnUtility.isBlankOrNull(lotId))))
-      {
-        // 取引先
-        lovAttribute8.setReadOnly(true);
-        lovAttribute8.setCSSClass("OraDataText");
-        // 品目
-        lovItemNo.setReadOnly(true);
-        lovItemNo.setCSSClass("OraDataText");        
-        // 賞味期限
-        inputAttribute3.setReadOnly(true);
-        inputAttribute3.setCSSClass("OraDataText");
-        
-      }      
-// add start 1.1
-      // 完了メッセージ取得
-      String mainMessage = pageContext.getParameter(XxpoConstants.URL_PARAM_MAIN_MESSAGE);
-      if (!XxcmnUtility.isBlankOrNull(mainMessage)) 
-      {
-        // メッセージボックス表示
-        pageContext.putDialogMessage(new OAException(mainMessage, OAException.INFORMATION));
-      }
-// add end 1.1
-
-    }else
+    // ブラウザの戻るボタンを押下した場合、エラー
+    } else
     {
       // トランザクションチェック
       if (!TransactionUnitHelper.isTransactionUnitInProgress(
@@ -207,6 +242,12 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
 
     // アプリケーションモジュールの取得
     OAApplicationModule am = pageContext.getApplicationModule(webBean);
+// add start 1.2
+    // エラー発生で再表示したのかをprocessRequestで判断するために使用するフラグ。
+    // 正常終了した場合は、各処理の最後でNに変えます。
+    pageContext.putParameter("ErrorFlag", "Y"); // エラー発生:Yes
+    pageContext.putParameter("pSearchLotId", pageContext.getParameter("LotId")); // ロットID
+// add end 1.2
 // add start 1.1
     try
     {
@@ -221,10 +262,12 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
     // 「適用」ボタン押下時
     if (pageContext.getParameter("Apply") != null)
     {
-// add start 1.1
-      // メッセージの初期化
-      pageContext.removeParameter(XxpoConstants.URL_PARAM_MAIN_MESSAGE);
-// add end 1.1
+// del start 1.2 メッセージはprocessFormRequestで出力するため、不要
+//// add start 1.1
+//      // メッセージの初期化
+//      pageContext.removeParameter(XxpoConstants.URL_PARAM_MAIN_MESSAGE);
+//// add end 1.1
+// del end 1.2
       // 必須入力チェック
       am.invokeMethod("inputCheck");
 
@@ -237,31 +280,43 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
       // 更新の場合
       if (!XxcmnUtility.isBlankOrNull(lotNo))
       {
-        try
-        {
+// del start 1.2
+//        try
+//        {
+// del end 1.2
           List list = (List)am.invokeMethod("doUpdate");
-          OAException oae = OAException.getBundledOAException(list);
-          pageContext.putDialogMessage(oae);
-
+// del start 1.2
+//          OAException oae = OAException.getBundledOAException(list);
+//          pageContext.putDialogMessage(oae);
+// del end 1.2
           String pLotId = (String)pageContext.getParameter("LotId");
-          map.put("pSearchLotId", pLotId);
-
+// mod start 1.2 パラメータはpageContext.putParameterで渡す。
+//          map.put("pSearchLotId", pLotId);
+          // 再表示のため、パラメータをセット。
+          pageContext.putParameter("pSearchLotId", pLotId); // ロットID
+// mod end 1.2
           // トランザクション終了
           TransactionUnitHelper.endTransactionUnit(
             pageContext, XxpoConstants.TXN_XXPO370002J);
-          pageContext.forwardImmediatelyToCurrentPage(
-            map, true, OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
-        } catch (OAException oae2)
-        {
-
-          // トランザクション終了
-          TransactionUnitHelper.endTransactionUnit(
-            pageContext, XxpoConstants.TXN_XXPO370002J);
-
-          // エラーメッセージの設定
-          pageContext.putDialogMessage(oae2);
-        }
-        
+// add start 1.2
+          pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+          // メッセージ出力
+          OAException.raiseBundledOAException(list);
+// add end 1.2
+// del start 1.2
+//          pageContext.forwardImmediatelyToCurrentPage(
+//            map, true, OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
+//        } catch (OAException oae2)
+//        {
+//
+//          // トランザクション終了
+//          TransactionUnitHelper.endTransactionUnit(
+//            pageContext, XxpoConstants.TXN_XXPO370002J);
+//
+//          // エラーメッセージの設定
+//          pageContext.putDialogMessage(oae2);
+//        }
+// del end 1.2
       // 新規の場合
       } else
       {
@@ -271,29 +326,32 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
 // del end 1.1
           // ロット情報、品質検査依頼情報作成処理呼び出し
           List result = (List)am.invokeMethod("doInsert");
-          map.put("pSearchLotId", result.get(0));
-
+// mod start 1.2 パラメータはpageContext.putParameterで渡す。
+//          map.put("pSearchLotId", result.get(0));
+          // 再表示のため、パラメータをセット。
+          pageContext.putParameter("pSearchLotId", result.get(0));// 新規作成したロットID
+// mod end 1.2
           // メッセージをリストに追加
           // ロット情報作成成功メッセージ
+// mod start 1.2 メッセージはexptArrayに格納する。
 // mod start 1.1
-//          MessageToken[] tokens = {
-//            new MessageToken("PROCESS",
-//                             XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
-
-//          exptArray.add(new OAException(
-//                          XxcmnConstants.APPL_XXCMN,
-//                          XxcmnConstants.XXCMN05001,
-//                          tokens,
-//                          OAException.INFORMATION,
-//                          null));
-          MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS, XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
-          map.put(
-            XxpoConstants.URL_PARAM_MAIN_MESSAGE,
-            pageContext.getMessage(XxcmnConstants.APPL_XXCMN,
-                                   XxcmnConstants.XXCMN05001,
-                                   tokens));
+          MessageToken[] tokens = {
+            new MessageToken("PROCESS",
+                             XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
+          exptArray.add(new OAException(
+                          XxcmnConstants.APPL_XXCMN,
+                          XxcmnConstants.XXCMN05001,
+                          tokens,
+                          OAException.INFORMATION,
+                          null));
+//          MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS, XxpoConstants.TOKEN_NAME_CREATE_LOT_INFO) };
+//          map.put(
+//            XxpoConstants.URL_PARAM_MAIN_MESSAGE,
+//            pageContext.getMessage(XxcmnConstants.APPL_XXCMN,
+//                                   XxcmnConstants.XXCMN05001,
+//                                   tokens));
 // mod end 1.1
-
+// mod end 1.2
           if (result.size() > 1) 
           {
             // 品質検査依頼情報作成成功メッセージ
@@ -311,7 +369,11 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
           // トランザクション終了
           TransactionUnitHelper.endTransactionUnit(
             pageContext, XxpoConstants.TXN_XXPO370002J);
-
+// add start 1.2
+          pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+          // メッセージ出力
+          OAException.raiseBundledOAException(exptArray);
+// add end 1.2
           // 同一画面へ遷移
 // mod start 1.1
 //          pageContext.putDialogMessage(
@@ -325,38 +387,41 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
 //            map,
 //            true, // ratain AM
 //            OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
-          pageContext.setForwardURL(
-            XxpoConstants.URL_XXPO370002J,
-            null,
-            OAWebBeanConstants.KEEP_MENU_CONTEXT,
-            null,
-            map,
-            false, // Retain AM
-            OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
-            OAWebBeanConstants.IGNORE_MESSAGES);    
+// del start 1.2
+//          pageContext.setForwardURL(
+//            XxpoConstants.URL_XXPO370002J,
+//            null,
+//            OAWebBeanConstants.KEEP_MENU_CONTEXT,
+//            null,
+//            map,
+//            false, // Retain AM
+//            OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
+//            OAWebBeanConstants.IGNORE_MESSAGES);    
+// del end 1.2
 // mod end 1.1
 
 // del start 1.1
-/*
-        } catch (OAException oae)
-        {
-          map.put("pSearchLotId", null);
-          exptArray.add(oae);
-
-          // エラーメッセージの設定
-          pageContext.putDialogMessage(
-            OAException.getBundledOAException(exptArray));
-        }
-*/
+//        } catch (OAException oae)
+//        {
+//          map.put("pSearchLotId", null);
+//          exptArray.add(oae);
+//
+//          // エラーメッセージの設定
+//          pageContext.putDialogMessage(
+//            OAException.getBundledOAException(exptArray));
+//        }
 // del end 1.1
       }
 
     // 「取消」ボタン押下時
-    }else if (pageContext.getParameter("Cancel") != null)
+    } else if (pageContext.getParameter("Cancel") != null)
     {
       // トランザクション終了
       TransactionUnitHelper.endTransactionUnit(
         pageContext, XxpoConstants.TXN_XXPO370002J);
+// add start 1.2
+      pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+// add end 1.2
 // add start 1.1
       // ロットNoの取得
       lotNo = pageContext.getParameter("HiddenLotNo");      
@@ -392,7 +457,9 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
     {
       // 賞味期限を算出
       am.invokeMethod("getBestBeforeDate");
-
+// add start 1.2
+      pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+// add end 1.2
     // =============================== //
     // =    値リストが起動した場合      = //
     // =============================== //
@@ -409,6 +476,9 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
         {
           // 賞味期限を算出
           am.invokeMethod("getBestBeforeDate");
+// add start 1.2
+          pageContext.putParameter("ErrorFlag", "N"); // エラー発生:No
+// add end 1.2
         }
       }
     }
@@ -421,4 +491,94 @@ public class XxpoInspectLotRegistCO extends XxcmnOAControllerImpl
 // add end 1.1
 
   }
+// add start 1.2 項目制御をエラーありの場合の再表示と共通化するためメソッド追加。
+  /***************************************************************************
+   * 項目制御を行うメソッドです
+   * @param pageContext -
+   * @param webBean - 
+   ***************************************************************************
+   */
+  public void itemControl(OAPageContext pageContext, OAWebBean webBean)
+  {
+    String lotId = null;
+    HashMap map = new HashMap();
+
+    // 適用ボタン取得
+    OASubmitButtonBean applyButton =
+      (OASubmitButtonBean)webBean.findChildRecursive("Apply");
+
+    // パラメータの取得
+    lotId = pageContext.getParameter("pSearchLotId");
+
+    // ロットIDが-1の場合、新規なので初期化
+    if ("-1".equals(lotId))
+    {
+      lotId = null;
+    }
+    
+    // アプリケーションモジュールの取得
+    OAApplicationModule am = pageContext.getApplicationModule(webBean);
+
+    // 取引先
+    OAMessageLovInputBean lovAttribute8 =
+      (OAMessageLovInputBean)webBean.findChildRecursive("Attribute8");
+    // 品目
+    OAMessageLovInputBean lovItemNo =
+      (OAMessageLovInputBean)webBean.findChildRecursive("ItemNo");
+    // 賞味期限
+    OAMessageDateFieldBean inputAttribute3 =
+      (OAMessageDateFieldBean)webBean.findChildRecursive("Attribute3");
+
+    try
+    {
+      // ユーザー情報取得
+      map = (HashMap)am.invokeMethod("getUserData");
+
+    } catch (OAException expt)
+    {
+      // 適用ボタンを使用不可にする
+      applyButton.setDisabled(true);
+      // メッセージの出力
+      throw expt;
+    }
+
+    // 内部ユーザで更新の場合、取引先と品目を固定する。
+    if (("1".equals((String)map.get("PeopleCode")) &&
+          (!XxcmnUtility.isBlankOrNull(lotId))))
+    {
+      // 取引先
+      lovAttribute8.setReadOnly(true);
+      lovAttribute8.setCSSClass("OraDataText");
+      // 品目
+      lovItemNo.setReadOnly(true);
+      lovItemNo.setCSSClass("OraDataText");        
+    }
+
+    // 外部ユーザ、かつ新規の場合、取引先を固定し賞味期限を編集不可にする。
+    if (("2".equals((String)map.get("PeopleCode")) &&
+         (XxcmnUtility.isBlankOrNull(lotId))))
+    {
+      // 取引先
+      lovAttribute8.setReadOnly(true);
+      lovAttribute8.setCSSClass("OraDataText");
+      // 賞味期限
+      inputAttribute3.setReadOnly(true);
+      inputAttribute3.setCSSClass("OraDataText");
+
+    // 外部ユーザ、かつ更新の場合、取引先、品目、賞味期限を編集不可にする。
+    } else if (("2".equals((String)map.get("PeopleCode")) &&
+                  (!XxcmnUtility.isBlankOrNull(lotId))))
+    {
+      // 取引先
+      lovAttribute8.setReadOnly(true);
+      lovAttribute8.setCSSClass("OraDataText");
+      // 品目
+      lovItemNo.setReadOnly(true);
+      lovItemNo.setCSSClass("OraDataText");        
+      // 賞味期限
+      inputAttribute3.setReadOnly(true);
+      inputAttribute3.setCSSClass("OraDataText");
+    }    
+  }
+// add end 1.2
 }
