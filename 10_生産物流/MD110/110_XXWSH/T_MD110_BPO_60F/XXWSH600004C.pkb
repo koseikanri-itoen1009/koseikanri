@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,10 +41,14 @@ AS
  *  2008/06/27    1.6   M.Nomura         システムテスト 不具合対応#303
  *  2008/07/04    1.7   M.Nomura         システムテスト 不具合対応#193 2回目
  *  2008/07/17    1.8   Oracle 山根 一浩 I_S_001,I_S_192,T_S_443,指摘240対応
- *  2008/07/22    1.9   N.Fukuda         I_S_001対応(予備1を小口/引取区分で使用する)
+ *  2008/07/22    1.9   N.Fukuda         I_S_001対応(予備1を引取/小口区分で使用する)
  *  2008/08/08    1.10  Oracle 山根 一浩 TE080_400指摘#83,課題#32
  *  2008/08/11    1.10  N.Fukuda         指示部署の抽出条件SQLの不具合対応
  *  2008/08/12    1.10  N.Fukuda         課題#48(変更要求#164)対応
+ *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#27(1)対応(全部明細取消のパターン)
+ *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#27(3)対応(一部明細取消のパターン)
+ *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#28対応
+ *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#29対応(TE080_400指摘#83の再修正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -133,16 +137,27 @@ AS
   -- 小口区分
   gc_small_method_y     CONSTANT VARCHAR2(1) := '1' ;   -- 小口
   gc_small_method_n     CONSTANT VARCHAR2(1) := '0' ;   -- 小口以外
-/* 2008/08/08 Mod ↓
-  -- 2008/07/22 Start
-  -- 小口/引取区分（予備１）
+--
+  /* 2008/08/08 Mod ↓
+  -- 2008/07/22 I_S_001 Add Start --------------------------
+  -- 引取/小口区分（予備１）
   gc_small_class        CONSTANT VARCHAR2(1) := '1' ;   -- 小口
   gc_takeback_class     CONSTANT VARCHAR2(1) := '2' ;   -- 引取
-  -- 2008/07/22 End
-2008/08/08 Mod ↑ */
-  -- 小口/引取区分（予備１）
-  gc_small_class        CONSTANT VARCHAR2(1) := '0' ;   -- 小口
+  -- 2008/07/22 I_S_001 Add End -----------------------------
+  2008/08/08 Mod ↑ */
+--
+  -- 2008/08/29 TE080_600指摘#29対応(TE080_400指摘#83の再修正) Del Start ---------
+  ---- 引取/小口区分（予備１）
+  --gc_small_class        CONSTANT VARCHAR2(1) := '0' ;   -- 小口
+  --gc_takeback_class     CONSTANT VARCHAR2(1) := '1' ;   -- 引取
+  -- 2008/08/29 TE080_600指摘#29対応(TE080_400指摘#83の再修正) Del End ----------
+--
+  -- 2008/08/29 TE080_600指摘#29対応(TE080_400指摘#83の再修正) Add Start --------
+  -- 引取/小口区分（予備１）
   gc_takeback_class     CONSTANT VARCHAR2(1) := '1' ;   -- 引取
+  gc_small_class        CONSTANT VARCHAR2(1) := '2' ;   -- 小口
+  -- 2008/08/29 TE080_600指摘#29対応(TE080_400指摘#83の再修正) Add End ----------
+--
   -- Ｙ／Ｎフラグ
   gc_yes_no_y           CONSTANT VARCHAR2(1) := 'Y' ;   -- Ｙ
   gc_yes_no_n           CONSTANT VARCHAR2(1) := 'N' ;   -- Ｎ
@@ -206,6 +221,8 @@ AS
   -- データタイプ
   gc_data_type_syu_ins      CONSTANT VARCHAR2(1) := '1' ;   -- 出荷：登録
   gc_data_type_mov_ins      CONSTANT VARCHAR2(1) := '3' ;   -- 移動：登録
+  gc_data_type_syu_can      CONSTANT VARCHAR2(1) := '7' ;   -- 出荷：取消 -- 2008/08/29 TE080_600指摘#27(1) Add
+  gc_data_type_mov_can      CONSTANT VARCHAR2(1) := '9' ;   -- 移動：取消 -- 2008/08/29 TE080_600指摘#27(1) Add
   -- 運賃区分
   gc_freight_class_ins_y    CONSTANT VARCHAR2(1) := '1' ;   -- 対象
   gc_freight_class_ins_n    CONSTANT VARCHAR2(1) := '0' ;   -- 対象外
@@ -255,7 +272,7 @@ AS
   gn_prof_del_date            NUMBER ;          -- 削除基準日数
   gv_prof_put_file_name       VARCHAR2(100) ;   -- 出力ファイル名
   gv_prof_put_file_path       VARCHAR2(100) ;   -- 出力ファイルディレクトリ
-  gv_prof_type_plan           VARCHAR2(100) ;   -- 引取変更 --2008/07/22 ADD
+  gv_prof_type_plan           VARCHAR2(100) ;   -- 引取変更           -- 2008/07/22 I_S_001 Add
 --
   gr_outbound_rec     xxcmn_common_pkg.outbound_rec ;   -- ファイル情報のレコードの定義
 --
@@ -351,9 +368,7 @@ AS
      ,out_whse_inout_div        xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 出 倉庫 内外倉庫区分
      ,in_whse_inout_div         xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 入 倉庫 内外倉庫区分
 -- ##### 20080619 1.5 ST不具合#193 END   #####
--- 2008/07/22 Start
-     ,reserve1         xxwsh_hht_stock_deliv_info_tmp.reserve1%TYPE   -- 小口/引取区分（予備１）
--- 2008/07/22 End
+     ,reserve1         xxwsh_hht_stock_deliv_info_tmp.reserve1%TYPE   -- 引取/小口区分（予備１） -- 2008/07/22 I_S_001 Add
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -629,7 +644,7 @@ AS
     lc_prof_name_period       CONSTANT VARCHAR2(50) := 'XXWSH_PURGE_PERIOD_601' ;
     lc_prof_name_file_name    CONSTANT VARCHAR2(50) := 'XXWSH_OB_IF_FILENAME_601F' ;
     lc_prof_name_file_path    CONSTANT VARCHAR2(50) := 'XXWSH_OB_IF_DEST_PATH_601F' ;
-    lc_prof_name_type_plan    CONSTANT VARCHAR2(50) := 'XXWSH_TRAN_TYPE_PLAN' ;  -- 2008/07/22 ADD
+    lc_prof_name_type_plan    CONSTANT VARCHAR2(50) := 'XXWSH_TRAN_TYPE_PLAN' ;    -- 2008/07/22 I_S_001 Add
 --
     lc_msg_code               CONSTANT VARCHAR2(50) := 'APP-XXWSH-11953' ;
     lc_tok_name               CONSTANT VARCHAR2(50) := 'PROF_NAME' ;
@@ -639,10 +654,8 @@ AS
         := 'XXWSH:CSVファイル名_HHT入出庫配車確定情報抽出' ;
     lc_tok_val_path           CONSTANT VARCHAR2(100)
         := 'XXWSH:CSVファイル出力先ディレクトリパス_HHT入出庫配車確定情報抽出' ;
-    -- 2008/07/22 Start
-    lc_tok_val_type_plan      CONSTANT VARCHAR2(100)
-        := 'XXWSH:引取変更' ;
-    -- 2008/07/22 End
+    lc_tok_val_type_plan      CONSTANT VARCHAR2(100)    -- 2008/07/22 I_S_001 Add
+        := 'XXWSH:引取変更' ;                           -- 2008/07/22 I_S_001 Add
 --
     -- ==================================================
     -- 変数宣言
@@ -689,8 +702,8 @@ AS
       lv_toc_val := lc_tok_val_path ;
       RAISE ex_prof_error ;
     END IF ;
-    --
-    -- 2008/07/22 Start
+--
+    -- 2008/07/22 I_S_001 Add Start----------------------------------
     -------------------------------------------------------
     -- 引取変更
     -------------------------------------------------------
@@ -699,7 +712,7 @@ AS
       lv_toc_val := lc_tok_val_type_plan ;
       RAISE ex_prof_error ;
     END IF ;
-    -- 2008/07/22 End
+    -- 2008/07/22 I_S_001 Add End -----------------------------------
 --
   EXCEPTION
     -- ============================================================================================
@@ -929,7 +942,13 @@ AS
         SELECT xola.order_line_number             AS line_number
               ,xola.order_line_id                 AS line_id
               ,xoha.prev_notif_status             AS prev_notif_status
-              ,gc_data_type_syu_ins               AS data_type
+              --,gc_data_type_syu_ins               AS data_type  -- 2008/08/29 TE080_600指摘#27(1) Del
+              -- 2008/08/29 TE080_600指摘#27(1) Add Start --------------------------
+              ,CASE
+                 WHEN xoha.req_status = gc_req_status_syu_5 THEN gc_data_type_syu_can
+                 ELSE gc_data_type_syu_ins
+               END                                AS data_type
+              -- 2008/08/29 TE080_600指摘#27(1) Add End ----------------------------
               ,xoha.delivery_no                   AS delivery_no
               ,xoha.request_no                    AS request_no
               ,xp.party_number                    AS head_sales_branch
@@ -990,18 +1009,16 @@ AS
               ,NULL                                 AS out_whse_inout_div   -- 内外倉庫区分：出
               ,NULL                                 AS in_whse_inout_div    -- 内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
--- 2008/07/22 Start
+              -- 2008/07/22 I_S_001 Add Start ------------------------------------------
               ,CASE xottv.transaction_type_name
                  WHEN gv_prof_type_plan THEN gc_takeback_class       --引取
                  ELSE                  gc_small_class                --小口
-               END                                AS reserve1        -- 小口/引取区分（予備１）
--- 2008/07/22 END
+               END                                AS reserve1        -- 引取/小口区分（予備１）
+               -- 2008/07/22 I_S_001 Add End -------------------------------------------
         FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
-            -- 2008/07/22 Start
-            --,oe_transaction_types_all   otta      -- 受注タイプ
-            ,xxwsh_oe_transaction_types2_v   xottv      -- 受注タイプ情報View２
-            -- 2008/07/22 End
+            --,oe_transaction_types_all   otta      -- 受注タイプ           -- 2008/07/22 I_S_001 Del
+            ,xxwsh_oe_transaction_types2_v   xottv  -- 受注タイプ情報View２ -- 2008/07/22 I_S_001 Add
             ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
             ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
             ,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）
@@ -1061,12 +1078,10 @@ AS
         AND   xoha.deliver_from_id        = xil.inventory_location_id
         -------------------------------------------------------------------------------------------
         -- 受注タイプ
-        -- 2008/07/22 Start
-        --AND   otta.attribute1    = gc_sp_class_ship                     -- 出荷依頼
-        --AND   xoha.order_type_id = otta.transaction_type_id
-        AND   xottv.shipping_shikyu_class  = gc_sp_class_ship                     -- 出荷依頼
-        AND   xoha.order_type_id = xottv.transaction_type_id
-        -- 2008/07/22 End
+        --AND   otta.attribute1    = gc_sp_class_ship            -- 出荷依頼  -- 2008/07/22 I_S_001 Del
+        --AND   xoha.order_type_id = otta.transaction_type_id                 -- 2008/07/22 I_S_001 Del
+        AND   xottv.shipping_shikyu_class  = gc_sp_class_ship    -- 出荷依頼  -- 2008/07/22 I_S_001 Add
+        AND   xoha.order_type_id = xottv.transaction_type_id                  -- 2008/07/22 I_S_001 Add
         -------------------------------------------------------------------------------------------
         -- 受注ヘッダアドオン
         AND   NOT EXISTS
@@ -1086,6 +1101,7 @@ AS
         AND   (
                 (   xoha.notif_status          = gc_notif_status_c      -- 確定通知済
                 AND xoha.prev_notif_status     = gc_notif_status_n      -- 未通知
+                AND xoha.req_status            = gc_req_status_syu_3    -- 締め済  -- 2008/08/29 TE080_600指摘#27(1) Add
                 AND NOT EXISTS
                       ( SELECT 1
                         FROM xxwsh_hht_delivery_info  xhdi
@@ -1093,13 +1109,16 @@ AS
                 )
               OR
                 (   xoha.notif_status          = gc_notif_status_c      -- 確定通知済
-                AND xoha.prev_notif_status     = gc_notif_status_r   )  -- 再通知要
+                AND xoha.prev_notif_status     = gc_notif_status_r      -- 再通知要
+                AND xoha.req_status           IN (gc_req_status_syu_3   -- 締め済  -- 2008/08/29 TE080_600指摘#27(1) Add
+                                                 ,gc_req_status_syu_5)  -- 取消    -- 2008/08/29 TE080_600指摘#27(1) Add
+                )
               )
-        AND   xoha.req_status                  = gc_req_status_syu_3    -- 締め済
+        --AND   xoha.req_status                  = gc_req_status_syu_3    -- 締め済  -- 2008/08/29 TE080_600指摘#27(1) Del
         AND   xoha.notif_date           BETWEEN gd_date_from AND gd_date_to
         AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
         AND   xoha.prod_class           = gc_prod_class_r         -- リーフ
-        -- 2008/08/11 Start 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
+        -- 2008/08/11 Del Start 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
         --AND   ((xoha.instruction_dept   = gr_param.dept_code_01)  -- 指示部署
         -- OR   ((gr_param.dept_code_02 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_02))
         -- OR   ((gr_param.dept_code_03 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_03))
@@ -1110,6 +1129,8 @@ AS
         -- OR   ((gr_param.dept_code_08 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_08))
         -- OR   ((gr_param.dept_code_09 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_09))
         -- OR   ((gr_param.dept_code_10 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_10)))
+        -- 2008/08/11 Del End 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
+        -- 2008/08/11 Add Start 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
         AND xoha.instruction_dept IN (gr_param.dept_code_01,   -- 01は必須入力
                                       gr_param.dept_code_02,   -- 02～10は任意入力
                                       gr_param.dept_code_03,
@@ -1120,7 +1141,7 @@ AS
                                       gr_param.dept_code_08,
                                       gr_param.dept_code_09,
                                       gr_param.dept_code_10)
-        -- 2008/08/11 End 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
+        -- 2008/08/11 Add End 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
         AND   xola.order_line_id        = imld.mov_line_id (+)    -- ロット詳細ID
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
         AND   gc_doc_type_ship          = imld.document_type_code (+)   -- 文書タイプ
@@ -1132,7 +1153,13 @@ AS
         SELECT xmril.line_number                  AS line_number
               ,xmril.mov_line_id                  AS line_id
               ,xmrih.prev_notif_status            AS prev_notif_status
-              ,gc_data_type_mov_ins               AS data_type
+              --,gc_data_type_mov_ins               AS data_type  -- 2008/08/29 TE080_600指摘#27(1) Del
+              -- 2008/08/29 TE080_600指摘#27 Add Start ----------------------------
+              ,CASE
+                 WHEN xmrih.status = gc_mov_status_ccl THEN gc_data_type_mov_can
+                 ELSE gc_data_type_mov_ins
+               END                                AS data_type
+              -- 2008/08/29 TE080_600指摘#27 Add End ------------------------------
               ,xmrih.delivery_no                  AS delivery_no
               ,xmrih.mov_num                      AS request_no
               ,NULL                               AS head_sales_branch
@@ -1195,9 +1222,7 @@ AS
               ,xil1.whse_inside_outside_div       AS out_whse_inout_div   -- 内外倉庫区分：出
               ,xil2.whse_inside_outside_div       AS in_whse_inout_div    -- 内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
--- 2008/07/22 Start
-              ,NULL                               AS reserve1        -- 小口/引取区分（予備１）
--- 2008/07/22 END
+              ,NULL                               AS reserve1  -- 引取/小口区分（予備１）-- 2008/07/22 I_S_001 Add
         FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
             ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
             ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1276,6 +1301,8 @@ AS
         AND   (
                 (   xmrih.notif_status        = gc_notif_status_c       -- 確定通知済
                 AND xmrih.prev_notif_status   = gc_notif_status_n       -- 未通知
+                AND xmrih.status              IN( gc_mov_status_cmp     -- 依頼済  -- 2008/08/29 TE080_600指摘#27(1) Add
+                                                 ,gc_mov_status_adj )   -- 調整中  -- 2008/08/29 TE080_600指摘#27(1) Add
                 AND NOT EXISTS
                       ( SELECT 1
                         FROM xxwsh_hht_delivery_info  xhdi
@@ -1283,10 +1310,14 @@ AS
                 )
               OR
                 (   xmrih.notif_status        = gc_notif_status_c       -- 確定通知済
-                AND xmrih.prev_notif_status   = gc_notif_status_r   )   -- 再通知要
+                AND xmrih.prev_notif_status   = gc_notif_status_r       -- 再通知要
+                AND xmrih.status              IN( gc_mov_status_cmp     -- 依頼済  -- 2008/08/29 TE080_600指摘#27(1) Add
+                                                 ,gc_mov_status_adj     -- 調整中  -- 2008/08/29 TE080_600指摘#27(1) Add
+                                                 ,gc_mov_status_ccl )   -- 取消    -- 2008/08/29 TE080_600指摘#27(1) Add
+                )
               )
-        AND   xmrih.status               IN( gc_mov_status_cmp      -- 依頼済
-                                            ,gc_mov_status_adj )    -- 調整中
+        --AND   xmrih.status               IN( gc_mov_status_cmp      -- 依頼済  -- 2008/08/29 TE080_600指摘#27(1) Del
+        --                                    ,gc_mov_status_adj )    -- 調整中  -- 2008/08/29 TE080_600指摘#27(1) Del
         AND   xmrih.notif_date            BETWEEN gd_date_from AND gd_date_to
         AND   xmrih.mov_type              = gc_mov_type_y           -- 積送あり
         AND   xmrih.item_class            = gc_prod_class_r         -- リーフ
@@ -1294,7 +1325,7 @@ AS
 --        AND   xmrih.product_flg           = gc_yes_no_y             -- 製品識別
         AND   xmrih.product_flg           = gc_product_flg_1        -- 製品識別(製品)
 -- M.Hokkanji Ver1.2 END
-        -- 2008/08/11 Start 指示部署の抽出条件SQLの不具合対応 -------------------------------------
+        -- 2008/08/11 Del Start 指示部署の抽出条件SQLの不具合対応 -------------------------------------
         --AND   ((xmrih.instruction_post_code = gr_param.dept_code_01) -- 指示部署
         -- OR   ((gr_param.dept_code_02 IS NULL)
         -- OR    (xmrih.instruction_post_code = gr_param.dept_code_02))
@@ -1314,6 +1345,8 @@ AS
         -- OR    (xmrih.instruction_post_code = gr_param.dept_code_09))
         -- OR   ((gr_param.dept_code_10 IS NULL)
         -- OR    (xmrih.instruction_post_code = gr_param.dept_code_10)))
+        -- 2008/08/11 Del End 指示部署の抽出条件SQLの不具合対応 -------------------------------------
+        -- 2008/08/11 Add Start 指示部署の抽出条件SQLの不具合対応 -------------------------------------
         AND xmrih.instruction_post_code IN (gr_param.dept_code_01,  -- 01は必須入力
                                             gr_param.dept_code_02,  -- 02～10は任意入力
                                             gr_param.dept_code_03,
@@ -1324,7 +1357,7 @@ AS
                                             gr_param.dept_code_08,
                                             gr_param.dept_code_09,
                                             gr_param.dept_code_10)
-        -- 2008/08/11 End 指示部署の抽出条件SQLの不具合対応 -------------------------------------
+        -- 2008/08/11 Add End 指示部署の抽出条件SQLの不具合対応 -------------------------------------
         AND   xmril.mov_line_id           = imld.mov_line_id (+)    -- ロット詳細ID
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
         AND   gc_doc_type_move            = imld.document_type_code (+) -- 文書タイプ
@@ -1466,10 +1499,8 @@ AS
     gt_status(gn_cre_idx)                 := '02' ;                               -- ステータス
     gt_freight_charge_class(gn_cre_idx)   := ir_main_data.freight_charge_class ;  -- 運賃区分
     gt_pallet_sum_quantity(gn_cre_idx)    := iv_pallet_sum_quantity ;             -- ﾊﾟﾚｯﾄ使用枚数
-    -- 2008/07/22 Start
-    --gt_reserve1(gn_cre_idx)               := NULL ;                               -- 予備１
-    gt_reserve1(gn_cre_idx)               := ir_main_data.reserve1;                 -- 小口/引取区分（予備１）
-    -- 2008/07/22 End
+    --gt_reserve1(gn_cre_idx)               := NULL ;                 -- 予備１                 -- 2008/07/22 I_S_001 Del
+    gt_reserve1(gn_cre_idx)               := ir_main_data.reserve1;   -- 引取/小口区分（予備１）-- 2008/07/22 I_S_001 Add
     gt_reserve2(gn_cre_idx)               := NULL ;                               -- 予備２
     gt_reserve3(gn_cre_idx)               := NULL ;                               -- 予備３
     gt_reserve4(gn_cre_idx)               := NULL ;                               -- 予備４
@@ -1810,19 +1841,22 @@ AS
       -------------------------------------------------------
       -- 明細データの作成
       -------------------------------------------------------
-      prc_cre_dtl_data
-        (
-          ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-         ,iv_data_class           => gc_data_class_syu_s      -- データ種別
-         ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
-         ,iv_item_quantity        => lv_item_quantity         -- 品目数量
-         ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-         ,ov_retcode              => lv_retcode               -- リターン・コード
-         ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-        ) ;
-      IF ( lv_retcode = gv_status_error ) THEN
-        RAISE global_api_expt;
-      END IF ;
+      -- 明細の削除フラグが「Y」の場合、明細データを作成しない。            -- 2008/08/29 TE080_600指摘#27(3) Add
+      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN  -- 2008/08/29 TE080_600指摘#27(3) Add
+        prc_cre_dtl_data
+          (
+            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+           ,iv_data_class           => gc_data_class_syu_s      -- データ種別
+           ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
+           ,iv_item_quantity        => lv_item_quantity         -- 品目数量
+           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+           ,ov_retcode              => lv_retcode               -- リターン・コード
+           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+          ) ;
+        IF ( lv_retcode = gv_status_error ) THEN
+          RAISE global_api_expt;
+        END IF ;
+      END IF ;        -- 2008/08/29 TE080_600指摘#27(3) Add
 --
     -- ============================================================================================
     -- データタイプ：移動
@@ -1888,53 +1922,58 @@ AS
 --
       END IF ;
 --
--- ##### 20080619 1.5 ST不具合#193 START #####
-      -- 内外倉庫区分が内部倉庫の場合
-      IF (gt_main_data(in_idx).out_whse_inout_div = gc_whse_io_div_i) THEN
--- ##### 20080619 1.5 ST不具合#193 END   #####
-        -------------------------------------------------------
-        -- 明細データの作成（移動出庫）
-        -------------------------------------------------------
-        prc_cre_dtl_data
-          (
-            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-           ,iv_data_class           => gc_data_class_mov_s      -- データ種別
-           ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
-           ,iv_item_quantity        => lv_item_quantity         -- 品目数量
-           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-           ,ov_retcode              => lv_retcode               -- リターン・コード
-           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
-        END IF ;
--- ##### 20080619 1.5 ST不具合#193 START #####
-      END IF;
--- ##### 20080619 1.5 ST不具合#193 END   #####
+      -- 明細の削除フラグが「Y」の場合、明細データを作成しない。            -- 2008/08/29 TE080_600指摘#27(3) Add
+      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN  -- 2008/08/29 TE080_600指摘#27(3) Add
 --
--- ##### 20080619 1.5 ST不具合#193 START #####
+        -- ##### 20080619 1.5 ST不具合#193 START #####
+        -- 内外倉庫区分が内部倉庫の場合
+        IF (gt_main_data(in_idx).out_whse_inout_div = gc_whse_io_div_i) THEN
+        -- ##### 20080619 1.5 ST不具合#193 END   #####
+          -------------------------------------------------------
+          -- 明細データの作成（移動出庫）
+          -------------------------------------------------------
+          prc_cre_dtl_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_mov_s      -- データ種別
+             ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
+             ,iv_item_quantity        => lv_item_quantity         -- 品目数量
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
+        -- ##### 20080619 1.5 ST不具合#193 START #####
+        END IF;
+        -- ##### 20080619 1.5 ST不具合#193 END   #####
+--
+        -- ##### 20080619 1.5 ST不具合#193 START #####
         -- 内外倉庫区分が内部倉庫の場合
         IF (gt_main_data(in_idx).in_whse_inout_div = gc_whse_io_div_i) THEN
--- ##### 20080619 1.5 ST不具合#193 END   #####
-      -------------------------------------------------------
-      -- 明細データの作成（移動入庫）
-      -------------------------------------------------------
-      prc_cre_dtl_data
-        (
-          ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-         ,iv_data_class           => gc_data_class_mov_n      -- データ種別
-         ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
-         ,iv_item_quantity        => lv_item_quantity         -- 品目数量
-         ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-         ,ov_retcode              => lv_retcode               -- リターン・コード
-         ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-        ) ;
-      IF ( lv_retcode = gv_status_error ) THEN
-        RAISE global_api_expt;
-      END IF ;
--- ##### 20080619 1.5 ST不具合#193 START #####
-      END IF;
--- ##### 20080619 1.5 ST不具合#193 END   #####
+        -- ##### 20080619 1.5 ST不具合#193 END   #####
+          -------------------------------------------------------
+          -- 明細データの作成（移動入庫）
+          -------------------------------------------------------
+          prc_cre_dtl_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_mov_n      -- データ種別
+             ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
+             ,iv_item_quantity        => lv_item_quantity         -- 品目数量
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
+        -- ##### 20080619 1.5 ST不具合#193 START #####
+        END IF;
+        -- ##### 20080619 1.5 ST不具合#193 END   #####
+--
+      END IF ;  -- 2008/08/29 TE080_600指摘#27(3) Add
 --
     END IF ;
 --
@@ -3090,7 +3129,9 @@ AS
       -- ==========================================================================================
       -- F-05 通知済情報作成処理
       -- ==========================================================================================
-      IF ( gt_main_data(i).line_delete_flag = gc_delete_flag_n ) THEN
+      --IF ( gt_main_data(i).line_delete_flag = gc_delete_flag_n ) THEN              -- 2008/08/27 TE080_600指摘#28 Del
+      IF ( gt_main_data(i).data_type IN( gc_data_type_syu_ins         -- 出荷：登録  -- 2008/08/29 TE080_600指摘#27(1) Add
+                                        ,gc_data_type_mov_ins) ) THEN -- 移動：登録  -- 2008/08/29 TE080_600指摘#27(1) Add
         prc_create_ins_data
           (
             in_idx        => i
