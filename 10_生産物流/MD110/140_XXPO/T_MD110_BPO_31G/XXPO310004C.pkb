@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/06/26    1.4   Oracle 山根 一浩 結合テスト不具合No84,86対応
  *  2008/07/09    1.5   Oracle 山根一浩  I_S_192対応
  *  2008/08/06    1.6   Oracle 山根 一浩 課題#32対応
+ *  2008/09/25    1.7   Oracle 山根 一浩 指摘23対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -120,6 +121,7 @@ AS
   gv_tkn_rcv_num        CONSTANT VARCHAR2(20) := 'RCV_NUM';
   gv_tkn_name_vendor    CONSTANT VARCHAR2(20) := 'VENDOR';
   gv_tkn_name_shipment  CONSTANT VARCHAR2(20) := 'SHIPMENT';
+  gv_tkn_cnt            CONSTANT VARCHAR2(20) := 'CNT';              -- 2008/09/25
 --
   gv_tkn_number_31g_01    CONSTANT VARCHAR2(15) := 'APP-XXPO-10027';
   gv_tkn_number_31g_02    CONSTANT VARCHAR2(15) := 'APP-XXPO-10053';
@@ -133,6 +135,12 @@ AS
   gv_tkn_number_31g_10    CONSTANT VARCHAR2(15) := 'APP-XXPO-30026';
   gv_tkn_number_31g_11    CONSTANT VARCHAR2(15) := 'APP-XXPO-30027';
   gv_tkn_number_31g_12    CONSTANT VARCHAR2(15) := 'APP-XXPO-10022';
+--
+  --2008/09/25 Add
+  gv_tkn_number_31g_13    CONSTANT VARCHAR2(15) := 'APP-XXPO-10269';
+  gv_tkn_number_31g_14    CONSTANT VARCHAR2(15) := 'APP-XXCMN-00008';    -- 処理件数
+  gv_tkn_number_31g_15    CONSTANT VARCHAR2(15) := 'APP-XXCMN-00009';    -- 成功件数
+  gv_tkn_number_31g_16    CONSTANT VARCHAR2(15) := 'APP-XXCMN-00010';    -- エラー件数
 --
   gv_tkn_name_vendor_code   CONSTANT VARCHAR2(50) := '取引先コード';
   gv_tkn_name_location_code CONSTANT VARCHAR2(50) := '納入先コード';
@@ -152,6 +160,7 @@ AS
   gv_add_status_rcv_on   CONSTANT VARCHAR2(5)  := '25';              -- 受入あり
   gv_add_status_num_zmi  CONSTANT VARCHAR2(5)  := '30';              -- 数量確定済
   gv_add_status_qty_zmi  CONSTANT VARCHAR2(5)  := '35';              -- 金額確定済
+  gv_add_status_end      CONSTANT VARCHAR2(5)  := '99';              -- 取消済み     2008/09/25 Add
   gv_po_type_rev         CONSTANT VARCHAR2(1)  := '3';               -- 相手先在庫
   gv_prod_class_code     CONSTANT VARCHAR2(1)  := '2';               -- ドリンク
   gv_txns_type_po        CONSTANT VARCHAR2(1)  := '1';               -- 受入
@@ -1239,6 +1248,9 @@ AS
 --2008/08/06 Add ↓
             ,xivv.conv_unit                -- 入出庫換算単位
 --2008/08/06 Add ↑
+--2008/09/25 Add ↓
+            ,xxpo.l_cancel_flag            -- 取消フラグ
+--2008/09/25 Add ↑
       FROM   xxpo_rcv_txns_interface xrti                 -- 受入実績IF(アドオン)
             ,xxcmn_vendors_v xvv                          -- 仕入先情報VIEW
             ,xxcmn_vendor_sites_v xsv                     -- 仕入先サイト情報VIEW
@@ -1264,15 +1276,30 @@ AS
                     ,pla.attribute7  as l_attribute7   -- 受入数量
                     ,pla.attribute10 as l_attribute10  -- 発注単位
                     ,pla.attribute11 as l_attribute11  -- 発注数量
+--2008/09/25 Add ↓
+                    ,pla.cancel_flag as l_cancel_flag  -- 取消フラグ
+--2008/09/25 Add ↑
              FROM    po_headers_all pha                   -- 発注ヘッダ
                     ,po_lines_all pla                     -- 発注明細
              WHERE   pha.po_header_id = pla.po_header_id
+--2008/09/25 Mod ↓
+/*
              AND     pha.attribute1 >= gv_add_status_zmi             -- 発注作成済:20
              AND     pha.attribute1 < gv_add_status_qty_zmi) xxpo    -- 金額確定済:35
+*/
+             AND     ((pha.attribute1 >= gv_add_status_zmi         -- 発注作成済:20
+             AND     pha.attribute1 < gv_add_status_qty_zmi)       -- 金額確定済:35
+              OR     pha.attribute1 = gv_add_status_end)) xxpo     -- 取消済み:99
+--2008/09/25 Mod ↑
             ,(SELECT xiv.item_no                       -- 品目コード
                     ,xiv.num_of_cases                  -- ケース入数
                     ,xiv.lot_ctl                       -- ロット
+--2008/09/25 Mod ↓
+/*
                     ,xiv.item_id as opm_item_id        -- OPM品目ID
+*/
+                    ,xiv.inventory_item_id as opm_item_id  -- OPM品目ID
+--2008/09/25 Mod ↑
 --2008/08/06 Add ↓
                     ,xiv.conv_unit                     -- 入出庫換算単位
 --2008/08/06 Add ↑
@@ -1372,188 +1399,211 @@ AS
       mst_rec.def4_date          := FND_DATE.STRING_TO_DATE(mst_rec.attribute4,'YYYY/MM/DD');
       mst_rec.def5_date          := FND_DATE.STRING_TO_DATE(mst_rec.attribute5,'YYYY/MM/DD');
 --
-      -- 項目の設定
-      gt_txns_id(ln_cnt)           := mst_rec.txns_id;
-      gt_src_doc_num(ln_cnt)       := mst_rec.src_doc_num;
-      gt_vendor_code(ln_cnt)       := mst_rec.vendor_code;
-      gt_promised_date(ln_cnt)     := mst_rec.promised_date;
-      gt_location_code(ln_cnt)     := mst_rec.location_code;
-      gt_src_doc_line_num(ln_cnt)  := mst_rec.src_doc_line_num;
-      gt_item_code(ln_cnt)         := mst_rec.item_code;
-      gt_lot_number(ln_cnt)        := mst_rec.lot_number;
+--2008/09/25 Add ↓
+      -- 取消フラグが取り消し:'Y'
+      IF (lr_mst_data_rec.l_cancel_flag = gv_flg_on) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+                                              gv_tkn_number_31g_13,
+                                              gv_tkn_h_no,
+                                              lr_mst_data_rec.h_segment1,
+                                              gv_tkn_m_no,
+                                              lr_mst_data_rec.line_num,
+                                              gv_tkn_date,
+                                              TO_CHAR(lr_mst_data_rec.rcv_date,'YYYY/MM/DD'),
+                                              gv_tkn_item_no,
+                                              lr_mst_data_rec.item_no);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+        gn_warn_cnt := gn_warn_cnt + 1;
+      ELSE
+--2008/09/25 Add ↑
+--
+        -- 項目の設定
+        gt_txns_id(ln_cnt)           := mst_rec.txns_id;
+        gt_src_doc_num(ln_cnt)       := mst_rec.src_doc_num;
+        gt_vendor_code(ln_cnt)       := mst_rec.vendor_code;
+        gt_promised_date(ln_cnt)     := mst_rec.promised_date;
+        gt_location_code(ln_cnt)     := mst_rec.location_code;
+        gt_src_doc_line_num(ln_cnt)  := mst_rec.src_doc_line_num;
+        gt_item_code(ln_cnt)         := mst_rec.item_code;
+        gt_lot_number(ln_cnt)        := mst_rec.lot_number;
 -- 2008/05/23 v1.3 Changed
 --      gt_rcv_quantity_uom(ln_cnt)  := mst_rec.rcv_quantity_uom;
-      gt_rcv_quantity_uom(ln_cnt)  := mst_rec.unit_code;
+        gt_rcv_quantity_uom(ln_cnt)  := mst_rec.unit_code;
 -- 2008/05/23 v1.3 Changed
-      gt_po_description(ln_cnt)    := mst_rec.po_description;
-      gt_rcv_date(ln_cnt)          := mst_rec.rcv_date;
-      gt_rcv_quantity(ln_cnt)      := mst_rec.rcv_quantity;
-      gt_po_header_id(ln_cnt)      := mst_rec.po_header_id;
-      gt_attribute6(ln_cnt)        := mst_rec.attribute6;
-      gt_vendor_id(ln_cnt)         := mst_rec.vendor_id;
-      gt_po_line_id(ln_cnt)        := mst_rec.po_line_id;
-      gt_line_num(ln_cnt)          := mst_rec.line_num;
-      gt_item_id(ln_cnt)           := mst_rec.item_id;
-      gt_unit_price(ln_cnt)        := mst_rec.unit_price;
-      gt_lot_no(ln_cnt)            := mst_rec.lot_no;
-      gt_unit_code(ln_cnt)         := mst_rec.unit_code;
-      gt_attribute10(ln_cnt)       := mst_rec.attribute10;
-      gt_lot_id(ln_cnt)            := mst_rec.lot_id;
-      gt_department_code(ln_cnt)   := mst_rec.department_code;
+        gt_po_description(ln_cnt)    := mst_rec.po_description;
+        gt_rcv_date(ln_cnt)          := mst_rec.rcv_date;
+        gt_rcv_quantity(ln_cnt)      := mst_rec.rcv_quantity;
+        gt_po_header_id(ln_cnt)      := mst_rec.po_header_id;
+        gt_attribute6(ln_cnt)        := mst_rec.attribute6;
+        gt_vendor_id(ln_cnt)         := mst_rec.vendor_id;
+        gt_po_line_id(ln_cnt)        := mst_rec.po_line_id;
+        gt_line_num(ln_cnt)          := mst_rec.line_num;
+        gt_item_id(ln_cnt)           := mst_rec.item_id;
+        gt_unit_price(ln_cnt)        := mst_rec.unit_price;
+        gt_lot_no(ln_cnt)            := mst_rec.lot_no;
+        gt_unit_code(ln_cnt)         := mst_rec.unit_code;
+        gt_attribute10(ln_cnt)       := mst_rec.attribute10;
+        gt_lot_id(ln_cnt)            := mst_rec.lot_id;
+        gt_department_code(ln_cnt)   := mst_rec.department_code;
 -- 2008/05/21 v1.2 Add
-      gt_opm_item_id(ln_cnt)       := mst_rec.item_idv;
+        gt_opm_item_id(ln_cnt)       := mst_rec.item_idv;
 -- 2008/05/21 v1.2 Add
 --
-      -- 発注ヘッダ保持
-      keep_po_head_id(
-        mst_rec.po_header_id,
-        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-        lv_retcode,        -- リターン・コード             --# 固定 #
-        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+        -- 発注ヘッダ保持
+        keep_po_head_id(
+          mst_rec.po_header_id,
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 --
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
 --
-      gt_conversion_factor(ln_cnt) := 1;
-      ln_qty := mst_rec.rcv_quantity;
+        gt_conversion_factor(ln_cnt) := 1;
+        ln_qty := mst_rec.rcv_quantity;
 --
 /* 2008/08/06 Mod ↓
-      -- ドリンク製品(入出庫換算単位あり) の場合
-      IF ((mst_rec.prod_class_code = gv_prod_class_code) 
-       AND (mst_rec.unit_code <> mst_rec.attribute10)) THEN
-        ln_qty := ln_qty * NVL(mst_rec.num_of_cases,1);
-        gt_conversion_factor(ln_cnt) := NVL(mst_rec.num_of_cases,1);
+        -- ドリンク製品(入出庫換算単位あり) の場合
+        IF ((mst_rec.prod_class_code = gv_prod_class_code) 
+         AND (mst_rec.unit_code <> mst_rec.attribute10)) THEN
+          ln_qty := ln_qty * NVL(mst_rec.num_of_cases,1);
+          gt_conversion_factor(ln_cnt) := NVL(mst_rec.num_of_cases,1);
 --
-      END IF;
+        END IF;
 2008/08/06 Mod ↑ */
 --
-      -- ドリンク製品(入出庫換算単位あり) の場合
-      IF ((mst_rec.prod_class_code = gv_prod_class_code)
-       AND (mst_rec.conv_unit IS NOT NULL)) THEN
-        ln_qty := ln_qty * mst_rec.num_of_cases;
-        gt_conversion_factor(ln_cnt) := mst_rec.num_of_cases;
+        -- ドリンク製品(入出庫換算単位あり) の場合
+        IF ((mst_rec.prod_class_code = gv_prod_class_code)
+         AND (mst_rec.conv_unit IS NOT NULL)) THEN
+          ln_qty := ln_qty * mst_rec.num_of_cases;
+          gt_conversion_factor(ln_cnt) := mst_rec.num_of_cases;
+        END IF;
+--
+        gt_calc_quantity(ln_cnt) := ln_qty;
+        gt_rtn_quantity(ln_cnt) := ln_qty;
+--
+        IF (mst_rec.delivery_code IS NOT NULL) THEN
+          BEGIN
+            SELECT mil.organization_id
+                  ,mil.subinventory_code
+                  ,mil.inventory_location_id
+            INTO   mst_rec.organization_id
+                  ,mst_rec.subinventory_code
+                  ,mst_rec.inventory_location_id
+            FROM  mtl_item_locations mil
+            WHERE mil.segment1 = mst_rec.delivery_code;           -- 納入先コード
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              mst_rec.organization_id       := NULL;
+              mst_rec.subinventory_code     := NULL;
+              mst_rec.inventory_location_id := NULL;
+--
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+--
+        ELSE
+          mst_rec.organization_id       := NULL;
+          mst_rec.subinventory_code     := NULL;
+          mst_rec.inventory_location_id := NULL;
+        END IF;
+--
+        gt_master_tbl(ln_cnt) := mst_rec;
+--
+        -- 発注ヘッダのロック
+        IF (mst_rec.po_header_id IS NOT NULL) THEN
+--
+          BEGIN
+            SELECT pha.po_header_id
+            INTO   ln_po_header_id
+            FROM   po_headers_all pha
+            WHERE  pha.po_header_id = mst_rec.po_header_id
+            FOR UPDATE OF pha.po_header_id NOWAIT;
+--
+          EXCEPTION
+            WHEN lock_expt THEN
+              lv_tbl_name := gv_tbl_name_po_head;
+              RAISE master_data_get_expt;
+--
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+        END IF;
+--
+        -- 発注明細のロック
+        IF (mst_rec.po_line_id IS NOT NULL) THEN
+--
+          BEGIN
+            SELECT pla.po_line_id
+            INTO   ln_po_line_id
+            FROM   po_lines_all pla
+            WHERE  pla.po_line_id = mst_rec.po_line_id
+            FOR UPDATE OF pla.po_line_id NOWAIT;
+--
+          EXCEPTION
+            WHEN lock_expt THEN
+              lv_tbl_name := gv_tbl_name_po_line;
+              RAISE master_data_get_expt;
+--
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+        END IF;
+--
+        -- OPMロットマスタのロック
+        IF ((mst_rec.lot_id IS NOT NULL)
+          AND (mst_rec.lot_no IS NOT NULL)
+          AND (mst_rec.item_idv IS NOT NULL)) THEN
+--
+          BEGIN
+            SELECT ilm.lot_id
+            INTO   ln_lot_id
+            FROM   ic_lots_mst ilm
+            WHERE  ilm.item_id = mst_rec.item_idv
+            AND    ilm.lot_id  = mst_rec.lot_id
+            AND    ilm.lot_no  = mst_rec.lot_no
+            FOR UPDATE OF ilm.lot_id NOWAIT;
+--
+          EXCEPTION
+            WHEN lock_expt THEN
+              lv_tbl_name := gv_tbl_name_lot_mast;
+              RAISE master_data_get_expt;
+--
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+        END IF;
+--
+        SELECT rcv_headers_interface_s.NEXTVAL
+        INTO   ln_num
+        FROM   DUAL;
+        gt_head_if_id(ln_cnt) := ln_num;
+--
+        SELECT rcv_transactions_interface_s.NEXTVAL
+        INTO   ln_num
+        FROM   DUAL;
+        gt_if_tran_id(ln_cnt) := ln_num;
+--
+        -- ロット管理品
+        IF (mst_rec.lot_ctl = gn_lot_ctl_on) THEN
+          gt_trans_id(gn_lot_count)  := gt_if_tran_id(ln_cnt);
+          gt_trans_qty(gn_lot_count) := ABS(gt_calc_quantity(ln_cnt));
+          gt_trans_lot(gn_lot_count) := gt_lot_number(ln_cnt);
+          gn_lot_count := gn_lot_count + 1;
+        END IF;
+--
+        gt_organization_id(ln_cnt) := mst_rec.organization_id;
+        gt_subinventory(ln_cnt)    := mst_rec.subinventory_code;
+        gt_locator_id(ln_cnt)      := mst_rec.inventory_location_id;
+--
+        ln_cnt := ln_cnt + 1;
+--
+--2008/09/25 Add ↓
       END IF;
---
-      gt_calc_quantity(ln_cnt) := ln_qty;
-      gt_rtn_quantity(ln_cnt) := ln_qty;
---
-      IF (mst_rec.delivery_code IS NOT NULL) THEN
-        BEGIN
-          SELECT mil.organization_id
-                ,mil.subinventory_code
-                ,mil.inventory_location_id
-          INTO   mst_rec.organization_id
-                ,mst_rec.subinventory_code
-                ,mst_rec.inventory_location_id
-          FROM  mtl_item_locations mil
-          WHERE mil.segment1 = mst_rec.delivery_code;           -- 納入先コード
---
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            mst_rec.organization_id       := NULL;
-            mst_rec.subinventory_code     := NULL;
-            mst_rec.inventory_location_id := NULL;
---
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
---
-      ELSE
-        mst_rec.organization_id       := NULL;
-        mst_rec.subinventory_code     := NULL;
-        mst_rec.inventory_location_id := NULL;
-      END IF;
---
-      gt_master_tbl(ln_cnt) := mst_rec;
---
-      -- 発注ヘッダのロック
-      IF (mst_rec.po_header_id IS NOT NULL) THEN
---
-        BEGIN
-          SELECT pha.po_header_id
-          INTO   ln_po_header_id
-          FROM   po_headers_all pha
-          WHERE  pha.po_header_id = mst_rec.po_header_id
-          FOR UPDATE OF pha.po_header_id NOWAIT;
---
-        EXCEPTION
-          WHEN lock_expt THEN
-            lv_tbl_name := gv_tbl_name_po_head;
-            RAISE master_data_get_expt;
---
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
-      END IF;
---
-      -- 発注明細のロック
-      IF (mst_rec.po_line_id IS NOT NULL) THEN
---
-        BEGIN
-          SELECT pla.po_line_id
-          INTO   ln_po_line_id
-          FROM   po_lines_all pla
-          WHERE  pla.po_line_id = mst_rec.po_line_id
-          FOR UPDATE OF pla.po_line_id NOWAIT;
---
-        EXCEPTION
-          WHEN lock_expt THEN
-            lv_tbl_name := gv_tbl_name_po_line;
-            RAISE master_data_get_expt;
---
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
-      END IF;
---
-      -- OPMロットマスタのロック
-      IF ((mst_rec.lot_id IS NOT NULL)
-        AND (mst_rec.lot_no IS NOT NULL)
-        AND (mst_rec.item_idv IS NOT NULL)) THEN
---
-        BEGIN
-          SELECT ilm.lot_id
-          INTO   ln_lot_id
-          FROM   ic_lots_mst ilm
-          WHERE  ilm.item_id = mst_rec.item_idv
-          AND    ilm.lot_id  = mst_rec.lot_id
-          AND    ilm.lot_no  = mst_rec.lot_no
-          FOR UPDATE OF ilm.lot_id NOWAIT;
---
-        EXCEPTION
-          WHEN lock_expt THEN
-            lv_tbl_name := gv_tbl_name_lot_mast;
-            RAISE master_data_get_expt;
---
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
-      END IF;
---
-      SELECT rcv_headers_interface_s.NEXTVAL
-      INTO   ln_num
-      FROM   DUAL;
-      gt_head_if_id(ln_cnt) := ln_num;
---
-      SELECT rcv_transactions_interface_s.NEXTVAL
-      INTO   ln_num
-      FROM   DUAL;
-      gt_if_tran_id(ln_cnt) := ln_num;
---
-      -- ロット管理品
-      IF (mst_rec.lot_ctl = gn_lot_ctl_on) THEN
-        gt_trans_id(gn_lot_count)  := gt_if_tran_id(ln_cnt);
-        gt_trans_qty(gn_lot_count) := ABS(gt_calc_quantity(ln_cnt));
-        gt_trans_lot(gn_lot_count) := gt_lot_number(ln_cnt);
-        gn_lot_count := gn_lot_count + 1;
-      END IF;
---
-      gt_organization_id(ln_cnt) := mst_rec.organization_id;
-      gt_subinventory(ln_cnt)    := mst_rec.subinventory_code;
-      gt_locator_id(ln_cnt)      := mst_rec.inventory_location_id;
---
-      ln_cnt := ln_cnt + 1;
+--2008/09/25 Add ↑
 --
       gt_org_txns_id(gn_org_txns_cnt) := lr_mst_data_rec.txns_id;
       gn_org_txns_cnt := gn_org_txns_cnt + 1;
@@ -2938,6 +2988,8 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE term_proc_expt;
     END IF;
+--2008/09/25 Mod ↓
+/*
 --
     lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
                                           gv_tkn_number_31g_11,
@@ -2945,6 +2997,32 @@ AS
                                           gt_master_tbl.COUNT);
 --
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+*/
+--
+    --区切り文字列出力
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
+--
+    --処理件数出力
+    lv_errmsg := xxcmn_common_pkg.get_msg(gv_com_name,
+                                          gv_tkn_number_31g_14,
+                                          gv_tkn_cnt,
+                                          gt_master_tbl.COUNT+gn_warn_cnt);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+    --成功件数出力
+    lv_errmsg := xxcmn_common_pkg.get_msg(gv_com_name,
+                                          gv_tkn_number_31g_15,
+                                          gv_tkn_cnt,
+                                          gt_master_tbl.COUNT);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--
+    --エラー件数出力
+    lv_errmsg := xxcmn_common_pkg.get_msg(gv_com_name,
+                                          gv_tkn_number_31g_16,
+                                          gv_tkn_cnt,
+                                          gn_warn_cnt);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--2008/09/25 Mod ↑
 --
   EXCEPTION
     WHEN term_proc_expt THEN

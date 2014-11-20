@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2008/08/27    1.9   Oracle 山根 一浩 T_S_543,T_S_496対応
  *  2008/09/08    1.10  Oracle 山根 一浩 T_S_628対応
  *  2008/09/16    1.11  Oracle 山根一浩  T_S_421対応
+ *  2008/09/29    1.12  Oracle 山根一浩  T_S_546,T_S_547対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -722,8 +723,13 @@ AS
                                    gv_crowd_code,                 -- 群コード
                                    gv_policy_group_code,          -- 政策群コード
                                    gv_marke_crowd_code,           -- マーケ用群コード
+                                   gv_acnt_crowd_code             -- 経理部用群コード
+--2008/09/29 Mod ↓
+/*
                                    gv_acnt_crowd_code,            -- 経理部用群コード
                                    gv_factory_code                -- 工場群コード
+*/
+--2008/09/29 Mod ↑
                                   )
        ;
 --
@@ -766,9 +772,13 @@ AS
 --
         ELSIF (lr_category_rec.description = gv_acnt_crowd_code) THEN
           lt_category_rec.segment1 := gv_def_acnt_crowd_code;
+--2008/09/29 Mod ↓
+/*
 --
         ELSIF (lr_category_rec.description = gv_factory_code) THEN
           lt_category_rec.segment1 := gv_def_factory_code;
+*/
+--2008/09/29 Mod ↑
         END IF;
 --
       -- 入力値作成
@@ -785,9 +795,13 @@ AS
 --
         ELSIF (lr_category_rec.description = gv_acnt_crowd_code) THEN
           lt_category_rec.segment1 := gv_def_acnt_crowd_code;
+--2008/09/29 Mod ↓
+/*
 --
         ELSIF (lr_category_rec.description = gv_factory_code) THEN
           lt_category_rec.segment1 := gv_def_factory_code;
+*/
+--2008/09/29 Mod ↓
         END IF;
       END IF;
 --

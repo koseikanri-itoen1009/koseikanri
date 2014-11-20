@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/05/20    1.2   H.Marushita      内部変更要求No.105対応
  *  2008/09/11    1.3   Oracle 山根一浩  指摘115対応
  *  2008/09/24    1.4   Oracle 山根一浩  T_S_421対応
+ *  2008/09/29    1.5   Oracle 山根一浩  T_S_546,T_S_547対応
  *
  *****************************************************************************************/
 --
@@ -166,6 +167,9 @@ AS
     item_name           xxcmn_item_mst_b.item_name%TYPE,                -- 正式名
     expiration_day      xxcmn_item_mst_b.expiration_day%TYPE,           -- 賞味期間
     whse_county_code    xxcmn_item_mst_b.whse_county_code%TYPE          -- 工場群コード
+--2008/09/29 ↓
+    ,cs_weigth_or_capacity xxcmn_item_mst_b.cs_weigth_or_capacity%TYPE  -- ケース重量容積
+--2008/09/29 ↑
   );
 --
   -- OPM品目カテゴリ割当取得レコード
@@ -230,6 +234,10 @@ AS
   TYPE xm_program_application_id IS TABLE OF xxcmn_item_mst_b.program_application_id%TYPE INDEX BY BINARY_INTEGER;
   -- プログラム更新日
   TYPE xm_program_update_date    IS TABLE OF xxcmn_item_mst_b.program_update_date%TYPE INDEX BY BINARY_INTEGER;
+--2008/09/29 Add ↓
+  -- ケース重量容積
+  TYPE xm_cs_weigth_or_capacity IS TABLE OF xxcmn_item_mst_b.cs_weigth_or_capacity%TYPE INDEX BY BINARY_INTEGER;
+--2008/09/29 Add ↑
 --
   -- OPM品目カテゴリ割当項目のテーブル型定義
   -- 品目ID
@@ -271,6 +279,9 @@ AS
   gt_xm_item_id             xm_item_id;           -- OPM品目アドオンマスタ：品目ID
   gt_xm_start_date_active   xm_start_date_active; -- OPM品目アドオンマスタ：適用開始日
   gt_xm_active_flag         xm_active_flag;       -- OPM品目アドオンマスタ：適用済みフラグ
+--2008/09/29 Add ↓
+  gt_xm_cs_wc               xm_cs_weigth_or_capacity; -- OPM品目アドオンマスタ：ケース重量容積
+--2008/09/29 Add ↑
   gt_gm_item_id_g           gm_item_id;           -- OPM品目カテゴリ割当：カテゴリID(群コード用)
   gt_gm_category_set_id_g   gm_category_set_id;   -- OPM品目カテゴリ割当：カテゴリセットID
   gt_gm_category_id_g       gm_category_id;       -- OPM品目カテゴリ割当：カテゴリID
@@ -524,8 +535,13 @@ AS
                                    gv_crowd_code,              -- 群コード
                                    gv_policy_group_code,       -- 政策群コード
                                    gv_marke_crowd_code,        -- マーケ用群コード
+                                   gv_acnt_crowd_code          -- 経理部用群コード
+--2008/09/29 Mod ↓
+/*
                                    gv_acnt_crowd_code,         -- 経理部用群コード
                                    gv_factory_code             -- 工場群コード
+*/
+--2008/09/29 Mod ↑
                                   )
        ;
 --
@@ -586,10 +602,14 @@ AS
         -- 経理部用群コード
         ELSIF (lr_category_rec.description = gv_acnt_crowd_code) THEN
           lt_category_rec.segment1 := gv_def_acnt_crowd_code;
+--2008/09/29 Mod ↓
+/*
 --
         -- 工場群コード
         ELSIF (lr_category_rec.description = gv_factory_code) THEN
           lt_category_rec.segment1 := gv_def_factory_code;
+*/
+--2008/09/29 Mod ↑
         END IF;
 --
         lt_category_rec.summary_flag := 'N';
@@ -1127,6 +1147,9 @@ AS
       gt_xm_item_id(gn_target_cnt)           := ir_item01_rec.item_id;
       gt_xm_start_date_active(gn_target_cnt) := ir_item01_rec.start_date_active;
       gt_xm_active_flag(gn_target_cnt)       := cv_active_flag_y;
+--2008/09/29 Add ↓
+      gt_xm_cs_wc(gn_target_cnt)             := ir_item01_rec.cs_weigth_or_capacity;
+--2008/09/29 Add ↑
       -- OPM品目アドオンマスタレポート用格納
       ir_report_tbl(gn_target_cnt).start_date_active := ir_item01_rec.start_date_active;
       ir_report_tbl(gn_target_cnt).item_name         := ir_item01_rec.item_name;
@@ -1525,6 +1548,8 @@ AS
         WHERE gic.item_id         = gt_gm_item_id_g(gun_cnt)
         AND   gic.category_set_id = gt_gm_category_set_id_g(gun_cnt);
     END IF;
+--2008/09/29 Mod ↓
+/*
 --
     -- 工場群コードのカテゴリ更新
     IF (iv_ret_k = gv_status_normal) THEN
@@ -1538,6 +1563,8 @@ AS
         WHERE gic.item_id         = gt_gm_item_id_k(kgun_cnt)
         AND   gic.category_set_id = gt_gm_category_set_id_k(kgun_cnt);
     END IF;
+*/
+--2008/09/29 Mod ↑
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1609,6 +1636,9 @@ AS
       -- OPM品目アドオンマスタ更新
       UPDATE xxcmn_item_mst_b ximb
       SET ximb.active_flag            = gt_xm_active_flag(item_cnt),
+--2008/09/29 Add ↓
+          ximb.cs_weigth_or_capacity  = gt_xm_cs_wc(item_cnt),
+--2008/09/29 Add ↑
           ximb.last_updated_by        = TO_NUMBER(gv_last_update_by),
           ximb.last_update_date       = gd_last_update_date,
           ximb.last_update_login      = TO_NUMBER(gv_last_update_login),
@@ -1889,6 +1919,15 @@ AS
              ximb.item_name,                      -- 正式名
              ximb.expiration_day,                 -- 賞味期間
              ximb.whse_county_code                -- 工場群コード
+--2008/09/29 Add ↓
+             ,DECODE(iimb.attribute10,
+                     NULL,0,
+                     '1',TO_NUMBER(NVL(iimb.attribute11,'0')) *
+                     TO_NUMBER(NVL(iimb.attribute25,'0')),  --ケース入数*重量
+                     '2',TO_NUMBER(NVL(iimb.attribute11,'0')) *
+                     TO_NUMBER(NVL(iimb.attribute16,'0'))   --ケース入数*容積
+                    ) cs_weigth_or_capacity
+--2008/09/29 Add ↑
       FROM ic_item_mst_b iimb,
            xxcmn_item_mst_b ximb
       WHERE iimb.item_id = ximb.item_id
@@ -1994,6 +2033,8 @@ AS
 -- 2008/09/24 Mod ↑
         END IF;
       END IF;
+--2008/09/29 Mod ↓
+/*
 --
       -- ============================================
       -- B-5.品目カテゴリマスタ情報格納(工場群コード)
@@ -2020,13 +2061,19 @@ AS
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_process_expt;
           END IF;
+*/
+--2008/09/29 Mod ↑
 /*
           lv_ret_k   := lv_retcode;
           lv_retcode := gv_status_normal;
 */
 -- 2008/09/24 Mod ↑
+--2008/09/29 Mod ↓
+/*
         END IF;
       END IF;
+*/
+--2008/09/29 Mod ↑
 --2008/09/24 Add ↓
       -- 品目割当作成
       proc_item_category(

@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *                                       条件にして抽出する。
  *  2008/07/02    1.7   Y.Ishikawa       口銭区分及び配賦金区分が率以外の時
  *                                       発注納入明細の粉引後単価が更新されない。
+ *  2008/09/24    1.8   Oracle山根一浩   変更#193対応
  *
  *****************************************************************************************/
 --
@@ -1366,11 +1367,20 @@ AS
     -- ===============================
     -- 数量の算出
     -- ===============================
+--2008/09/24 Mod ↓
+/*
     IF (ir_po_data.status > gv_po_stats) THEN
       ln_quantity := TRUNC(TO_NUMBER(ir_po_data.po_quantity));
     ELSE
       ln_quantity := TRUNC(TO_NUMBER(ir_po_data.rcv_quantity));
     END IF;
+*/
+    IF (ir_po_data.status > gv_po_stats) THEN
+      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.rcv_quantity));
+    ELSE
+      ln_quantity := TRUNC(TO_NUMBER(ir_po_data.po_quantity));
+    END IF;
+--2008/09/24 Mod ↑
 --
     -- 品目がドリンク製品の場合(単位と発注単位が異なる場合)は 数量 = 数量 * ケース入数
     IF (ir_po_data.base_uom <> ir_po_data.po_uom) THEN
