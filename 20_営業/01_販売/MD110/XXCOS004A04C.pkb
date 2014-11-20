@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/06/09   1.16  T.kitajima        [T1_1371]行ロック
  *  2009/06/10   1.16  T.kitajima        [T1_1412]納品伝票番号取得処理変更
  *  2009/06/11   1.17  T.kitajima        [T1_1415]納品伝票番号取得処理変更
+ *  2009/06/12   1.18  T.kitajima        [T1_1432]VDコラム別取引ヘッダ更新条件変更
  *
  *****************************************************************************************/
 --
@@ -2983,7 +2984,13 @@ AS
     IS
       SELECT digestion_vd_rate_maked_date
         FROM xxcos_vd_column_headers
+--****************************** 2009/06/12 1.18 T.Kitajima ADD START ******************************--
+--       WHERE digestion_vd_rate_maked_date IS NOT NULL
        WHERE digestion_vd_rate_maked_date IS NOT NULL
+         AND (    forward_date IS NULL
+               OR forward_flag = ct_make_flag_no
+             )
+--****************************** 2009/06/12 1.18 T.Kitajima ADD  END  ******************************--
        FOR UPDATE NOWAIT
     ;
 --****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
@@ -3172,7 +3179,13 @@ AS
              program_application_id     = cn_program_application_id,
              program_id                 = cn_program_id,
              program_update_date        = cd_program_update_date
-       WHERE digestion_vd_rate_maked_date IS NOT NULL;
+--****************************** 2009/06/12 1.18 T.Kitajima ADD START ******************************--
+--           WHERE digestion_vd_rate_maked_date IS NOT NULL;
+           WHERE digestion_vd_rate_maked_date IS NOT NULL
+             AND (    forward_date IS NULL
+                   OR forward_flag = ct_make_flag_no
+                 );
+--****************************** 2009/06/12 1.18 T.Kitajima ADD  END  ******************************--
     EXCEPTION
       -- エラー処理（データ追加エラー）
       WHEN OTHERS THEN
