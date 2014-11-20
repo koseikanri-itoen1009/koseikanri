@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2011/01/21    1.16  Shigeto.Niki     障害E_本稼動_02266の対応
  *  2011/02/21    1.17  Shigeto.Niki     障害E_本稼動_06495の対応
  *  2011/11/09    1.18  Shigeto.Niki     障害E_本稼動_08648の対応
+ *  2012/01/11    1.19  Shigeto.Niki     障害E_本稼動_08830の対応
  *
  *****************************************************************************************/
 --
@@ -1195,17 +1196,26 @@ AS
       -- 顧客ステータスが'10'(MC候補),'20'(MC),'25'(SP決裁済)の場合
       IF (cust_data_rec.duns_number_c IN (cv_mc_kouho_sts, cv_mc_sts, cv_sp_kessai_sts)) THEN
 -- 2011/11/09 Ver1.18 add start by Shigeto.Niki
-        -- 獲得、請求、入金、納品拠点のいずれかがNULLかつ、売上拠点がNULLの場合
-        IF ( (cust_data_rec.cnvs_base_code IS NULL)
-          OR (cust_data_rec.bill_base_code IS NULL)
-          OR (cust_data_rec.receiv_base_code IS NULL)
-          OR (cust_data_rec.delivery_base_code IS NULL) )
-          AND (cust_data_rec.sale_base_code IS NULL) THEN
+-- 2012/01/11 Ver1.19 mod start by Shigeto.Niki
+--        -- 獲得、請求、入金、納品拠点のいずれかがNULLかつ、売上拠点がNULLの場合
+--        IF ( (cust_data_rec.cnvs_base_code IS NULL)
+--          OR (cust_data_rec.bill_base_code IS NULL)
+--          OR (cust_data_rec.receiv_base_code IS NULL)
+--          OR (cust_data_rec.delivery_base_code IS NULL) )
+--          AND (cust_data_rec.sale_base_code IS NULL) THEN
+        -- 売上拠点がNULLの場合
+        IF (cust_data_rec.sale_base_code IS NULL) THEN
+-- 2012/01/11 Ver1.19 mod end by Shigeto.Niki
 --
           -- 担当営業員の所属拠点を取得
           OPEN resource_location_code_cur(cust_data_rec.resource_no);
           FETCH resource_location_code_cur INTO resource_location_code_rec;
           CLOSE resource_location_code_cur;
+-- 2012/01/11 Ver1.19 add start by Shigeto.Niki
+          -- 売上拠点および前月売上拠点に担当営業員の所属拠点をセット
+          cust_data_rec.sale_base_code      := resource_location_code_rec.location_code;
+          cust_data_rec.past_sale_base_code := resource_location_code_rec.location_code;
+-- 2012/01/11 Ver1.19 add end by Shigeto.Niki
 --
         END IF;
 -- 2011/11/09 Ver1.18 add end by Shigeto.Niki
