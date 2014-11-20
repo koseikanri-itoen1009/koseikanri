@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *                                       [E_本稼動_00374]削除データ登録方法の修正
  *  2009/12/14    1.13  H.Sasaki         [E_本稼動_00428]在庫会計期間CLOSE時の処理を修正
  *  2009/12/18    1.14  H.Sasaki         [E_本稼動_00524]伝票日付違いの入庫情報編集内容を修正
+ *  2010/01/04    1.15  H.Sasaki         [E_本稼動_00760]サマリデータの更新方法を修正
  *
  *****************************************************************************************/
 --
@@ -2585,7 +2586,10 @@ AS
             , program_application_id = cn_program_application_id
             , program_id             = cn_program_id
             , program_update_date    = SYSDATE
-      WHERE  xsi.rowid               = upd_xsi_tbl_rec.rowid
+-- == 2010/01/04 V1.15 Modified START ===============================================================
+--      WHERE  xsi.rowid               = upd_xsi_tbl_rec.rowid
+      WHERE  xsi.rowid               = iv_rowid
+-- == 2010/01/04 V1.15 Modified END   ===============================================================
       ;
 --
     -- カーソルクローズ
@@ -2742,7 +2746,10 @@ AS
             , program_application_id = cn_program_application_id
             , program_id             = cn_program_id
             , program_update_date    = SYSDATE
-      WHERE  xsi.rowid               = upd_xsi_tbl_rec.rowid
+-- == 2010/01/04 V1.15 Modified START ===============================================================
+--      WHERE  xsi.rowid               = upd_xsi_tbl_rec.rowid
+      WHERE  xsi.rowid               = iv_rowid
+-- == 2010/01/04 V1.15 Modified END   ===============================================================
       ;
 --
     -- カーソルクローズ
@@ -2903,7 +2910,10 @@ AS
             , program_application_id = cn_program_application_id
             , program_id             = cn_program_id
             , program_update_date    = SYSDATE
-      WHERE  xsi.rowid               = upd_xsi_tbl_rec.rowid
+-- == 2010/01/04 V1.15 Modified START ===============================================================
+--      WHERE  xsi.rowid               = upd_xsi_tbl_rec.rowid
+      WHERE  xsi.rowid               = iv_rowid
+-- == 2010/01/04 V1.15 Modified END   ===============================================================
       ;
 --
     -- カーソルクローズ
@@ -4086,6 +4096,7 @@ AS
         OPEN    cur_upd_lines;
         CLOSE   cur_upd_lines;
         --
+        -- 既に在庫会計期間がクローズされているデータは取込済みとする
         -- 受注明細「出荷実績連携済フラグ」更新
         UPDATE xxwsh_order_lines_all xol
         SET    xol.shipping_result_if_flg   =   cv_y_flag
