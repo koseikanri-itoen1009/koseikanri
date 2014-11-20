@@ -1,0 +1,8 @@
+CREATE DIRECTORY xxcmm_hht_out      AS '/var/ST/ebsif/outbound/ad_iffile/ha/';
+CREATE DIRECTORY xxcmm_jihanki_out  AS '/var/ST/ebsif/outbound/ad_iffile/ma/';
+CREATE DIRECTORY xxcmm_chohyo_out   AS '/var/ST/ebsif/outbound/ad_iffile/ka/';
+CREATE DIRECTORY xxcmm_jyoho_out    AS '/var/ST/ebsif/outbound/ad_iffile/kb/';
+CREATE DIRECTORY xxcmm_workflow_out AS '/var/ST/ebsif/outbound/ad_iffile/mc/';
+CREATE DIRECTORY xxcmm_jinji_in     AS '/var/ST/ebsif/inbound/ad_iffile/na/';
+CREATE DIRECTORY xxcmm_tmp_out      AS '/var/ST/ebsif/outbound/ad_iffile/tmp';
+CREATE DIRECTORY xxcmm_tmp_in       AS '/var/ST/ebsif/inbound/ad_iffile/tmp';
