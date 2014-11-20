@@ -9,6 +9,7 @@ CREATE TABLE xxinv.xxinv_stc_inventory_month_stck
   monthly_stock             NUMBER,
   cargo_stock               NUMBER,
   invent_ym                 VARCHAR2(6),
+  cargo_stock_not_stn       NUMBER,
   created_by                NUMBER(15,0)  NOT NULL,
   creation_date             DATE          NOT NULL,
   last_updated_by           NUMBER(15,0)  NOT NULL,
@@ -33,6 +34,7 @@ COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.lot_no                   
 COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.monthly_stock            IS '月末在庫数';
 COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.cargo_stock              IS '積送中在庫数';
 COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.invent_ym                IS '棚卸年月';
+COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.cargo_stock_not_stn      IS '積送中在庫数（標準なし）';
 COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.created_by               IS '作成者';
 COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.creation_date            IS '作成日';
 COMMENT ON COLUMN xxinv.xxinv_stc_inventory_month_stck.last_updated_by          IS '最終更新者';
