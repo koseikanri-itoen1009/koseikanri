@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF004A30C(body)
  * Description      : リース物件一部修正・移動・解約アップロード
  * MD.050           : MD050_CFF_004_A30_リース物件一部修正・移動・解約アップロード
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  call_fa_common               FA共通関数起動処理(通常)                  (A-22)
  *  call_fa_common_other         FA共通関数起動処理(その他)                (A-23)
  *  call_facmn_chk_location      FA共通関数(事業所マスタチェック)          (A-24)
+ *  check_cancellation_date      解約日チェック                            (A-25)
  *
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
@@ -54,6 +55,7 @@ AS
  *  2009/07/31    1.6  SCS 萱原         [統合テスト障害0000654]物件コードNULL時の処理分岐追加
  *  2009/08/03    1.7  SCS 渡辺         [統合テスト障害0000654(追加)]
  *                                        支払照合済チェックの呼出をコメントアウト
+ *  2011/12/26    1.8  SCSK白川         [E_本稼動_08123] アップロードシートに解約日を追加
  *
  *****************************************************************************************/
 --
@@ -189,6 +191,12 @@ AS
   cv_msg_name10    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00120'; --支払照合済みエラー
   cv_msg_name11    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00104'; --削除エラー
   cv_msg_name12    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00159'; --物件エラー対象
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+  cv_msg_name13    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00191'; --解約日未設定チェックエラー
+  cv_msg_name14    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00192'; --解約日設定チェックエラー
+  cv_msg_name15    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00193'; --現会計期間開始日取得エラー
+  cv_msg_name16    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00188'; --解約日エラー
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
 --
   cv_msg_name29    CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00167'; --アップロード初期出力メッセージ
   cv_msg_name30    CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90000'; --対象件数メッセージ
@@ -325,6 +333,9 @@ AS
   g_cancellation_class_tab       g_cancellation_class_ttype;   --解約種別
   g_object_code_tab              g_object_code_ttype;          --物件コード
   g_bond_acceptance_flag_xmw_tab g_bond_acceptance_flag_ttype; --証書受領フラグ(メンテナンステーブル)
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+  g_cancellation_date_xmw_tab    g_cancellation_date_ttype;    --解約日(メンテナンステーブル)
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
   g_lease_class_tab              g_lease_class_ttype;          --リース種別
   g_lease_type_tab               g_lease_type_ttype;           --リース区分
   g_re_lease_times_tab           g_re_lease_times_ttype;       --再リース回数
@@ -342,7 +353,7 @@ AS
   g_chassis_number_tab           g_chassis_number_ttype;       --車台番号
   g_re_lease_flag_tab            g_re_lease_flag_ttype;        --再リース要フラグ
   g_cancellation_type_tab        g_cancellation_type_ttype;    --解約区分
-  g_cancellation_date_tab        g_cancellation_date_ttype;    --中途解約日
+  g_cancellation_date_tab        g_cancellation_date_ttype;    --中途解約日(物件テーブル)
   g_dissolution_date_tab         g_dissolution_date_ttype;     --中途解約キャンセル日
   g_bond_acceptance_flag_tab     g_bond_acceptance_flag_ttype; --証書受領フラグ(物件テーブル)
   g_bond_acceptance_date_tab     g_bond_acceptance_date_ttype; --証書受領日
@@ -370,6 +381,10 @@ AS
   --エラーフラグ
   gb_err_flag                    BOOLEAN;
 --
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+  gd_period_date_from            DATE;                         --現会計期間開始日
+--
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -488,11 +503,39 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+    --④現会計期間開始日の取得
+    BEGIN
+
+      SELECT ADD_MONTHS(TO_DATE((period_name || '-01'),'YYYY-MM-DD'), 1) AS period_date_from  -- リース月次締め期間の翌月初日
+      INTO   gd_period_date_from                                                              -- 現会計期間開始日
+      FROM   xxcff_lease_closed_periods xlcp                                                  -- リース月次締め期間
+      WHERE  xlcp.set_of_books_id = g_init_rec.set_of_books_id                                -- 会計帳簿ID
+      ;
+
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                       -- XXCFF
+                                                      ,cv_msg_name15 )                      -- 現会計期間開始日取得エラー
+                                                      ,1
+                                                      ,5000);
+        RAISE global_process_expt;
+    END;
+--
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
 --
   EXCEPTION
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
     WHEN global_api_expt THEN                           --*** 共通関数コメント ***
       -- *** 任意で例外処理を記述する ****
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
@@ -986,6 +1029,9 @@ AS
      ,installation_place      --現設置先
      ,cancellation_class      --解約種別
      ,bond_acceptance_flag    --証書受領フラグ
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+     ,cancellation_date       --解約日
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
      ,created_by              --作成者
      ,creation_date           --作成日
      ,last_updated_by         --最終更新者
@@ -1013,6 +1059,9 @@ AS
      ,g_load_data_tab(13)        --現設置先
      ,g_load_data_tab(14)        --解約種別
      ,g_load_data_tab(15)        --証書受領
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+     ,TO_DATE(g_load_data_tab(16),'YYYY/MM/DD')  --解約日
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
      ,cn_created_by              --作成者
      ,cd_creation_date           --作成日
      ,cn_last_updated_by         --最終更新者
@@ -1101,6 +1150,9 @@ AS
              ,xmw.cancellation_class       AS cancellation_class        --解約種別
              ,xmw.object_code              AS object_code               --物件コード
              ,xmw.bond_acceptance_flag     AS bond_acceptance_flag_xmw  --証書受領フラグ
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+             ,xmw.cancellation_date        AS cancellation_date_xmw     --解約日
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
              ,xoh.lease_class              AS lease_class               --リース種別
              ,xoh.lease_type               AS lease_type                --リース区分
              ,xoh.re_lease_times           AS re_lease_times            --再リース回数
@@ -1178,6 +1230,9 @@ AS
                      ,g_cancellation_class_tab       --解約種別
                      ,g_object_code_tab              --物件コード
                      ,g_bond_acceptance_flag_xmw_tab --証書受領フラグ(メンテナンステーブル)
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+                     ,g_cancellation_date_xmw_tab    --解約日(メンテナンステーブル)
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
                      ,g_lease_class_tab              --リース種別
                      ,g_lease_type_tab               --リース区分
                      ,g_re_lease_times_tab           --再リース回数
@@ -1195,7 +1250,7 @@ AS
                      ,g_chassis_number_tab           --車台番号
                      ,g_re_lease_flag_tab            --再リース要フラグ
                      ,g_cancellation_type_tab        --解約区分
-                     ,g_cancellation_date_tab        --中途解約日
+                     ,g_cancellation_date_tab        --中途解約日(物件テーブル)
                      ,g_dissolution_date_tab         --中途解約キャンセル日
                      ,g_bond_acceptance_flag_tab     --証書受領フラグ(物件テーブル)
                      ,g_bond_acceptance_date_tab     --証書受領日
@@ -3073,8 +3128,12 @@ AS
                                        WHEN  cv_proc_flag_tbl
                                          THEN
                                            CASE g_cancellation_class_tab(in_loop_cnt_3)
-                                             WHEN  cv_cancel_class_1 THEN g_init_rec.process_date
-                                             WHEN  cv_cancel_class_2 THEN g_init_rec.process_date
+-- 2011/12/26 Ver.1.8 A.Shirakawa MOD Start
+--                                             WHEN  cv_cancel_class_1 THEN g_init_rec.process_date
+--                                             WHEN  cv_cancel_class_2 THEN g_init_rec.process_date
+                                             WHEN  cv_cancel_class_1 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
+                                             WHEN  cv_cancel_class_2 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
+-- 2011/12/26 Ver.1.8 A.Shirakawa MOD End
                                              WHEN  cv_cancel_class_3 THEN g_cancellation_date_tab(in_loop_cnt_3)
                                              WHEN  cv_cancel_class_4 THEN g_cancellation_date_tab(in_loop_cnt_3)
                                              WHEN  cv_cancel_class_5 THEN g_cancellation_date_tab(in_loop_cnt_3)
@@ -3277,6 +3336,152 @@ AS
 --
   END call_facmn_chk_location;
 --
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+  /**********************************************************************************
+   * Procedure Name   : check_cancellation_date
+   * Description      : 解約日チェック処理(A-25)
+   ***********************************************************************************/
+  PROCEDURE check_cancellation_date(
+    in_loop_cnt_3 IN  NUMBER,       --  ループカウンタ3
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_cancellation_date'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_warn_msg                VARCHAR2(5000); --警告メッセージ
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 解約種別が解約確定、且つCSVファイルの解約日が未設定の場合(不正)
+    IF ( ( g_cancellation_class_tab(in_loop_cnt_3) IN ( cv_cancel_class_1, cv_cancel_class_2 ) )
+     AND ( g_cancellation_date_xmw_tab(in_loop_cnt_3) IS NULL ) )
+    THEN
+      --解約日未設定チェックエラー
+      lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                      -- XXCFF
+                                                      ,cv_msg_name13                       -- 解約日未設定チェックエラー
+                                                     )
+                                                     || xxccp_common_pkg.get_msg(
+                                                          cv_msg_kbn_cff                   --XXCFF
+                                                         ,cv_msg_name12                    --物件エラー対象
+                                                         ,cv_tkn_name4                     --トークン'OBJECT_CODE'
+                                                         ,g_object_code_tab(in_loop_cnt_3) -- 物件コード
+                                                        )
+                                                     ,1
+                                                     ,5000);
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+        ,buff   => lv_warn_msg
+      );
+      --エラーフラグをTRUEにする
+      gb_err_flag := TRUE;
+    END IF;
+--
+    -- 解約種別が解約確定以外、且つCSVファイルの解約日を設定の場合(不正)
+    IF ( ( ( g_cancellation_class_tab(in_loop_cnt_3) IS NULL )
+     OR    ( g_cancellation_class_tab(in_loop_cnt_3) NOT IN ( cv_cancel_class_1, cv_cancel_class_2 ) ) )
+     AND   ( g_cancellation_date_xmw_tab(in_loop_cnt_3) IS NOT NULL ) )
+    THEN
+      --解約日設定チェックエラー
+      lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                      -- XXCFF
+                                                      ,cv_msg_name14                       -- 解約日設定チェックエラー
+                                                     )
+                                                     || xxccp_common_pkg.get_msg(
+                                                          cv_msg_kbn_cff                   --XXCFF
+                                                         ,cv_msg_name12                    --物件エラー対象
+                                                         ,cv_tkn_name4                     --トークン'OBJECT_CODE'
+                                                         ,g_object_code_tab(in_loop_cnt_3) -- 物件コード
+                                                        )
+                                                     ,1
+                                                     ,5000);
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+        ,buff   => lv_warn_msg
+      );
+      --エラーフラグをTRUEにする
+      gb_err_flag := TRUE;
+    END IF;
+--
+    IF ( ( g_cancellation_date_xmw_tab(in_loop_cnt_3) < gd_period_date_from )
+     OR  ( g_cancellation_date_xmw_tab(in_loop_cnt_3) > g_init_rec.process_date ) )
+    THEN
+      --解約日エラー
+      lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                      -- XXCFF
+                                                      ,cv_msg_name16                       -- 解約日エラー
+                                                     )
+                                                     || xxccp_common_pkg.get_msg(
+                                                          cv_msg_kbn_cff                   --XXCFF
+                                                         ,cv_msg_name12                    --物件エラー対象
+                                                         ,cv_tkn_name4                     --トークン'OBJECT_CODE'
+                                                         ,g_object_code_tab(in_loop_cnt_3) -- 物件コード
+                                                        )
+                                                     ,1
+                                                     ,5000);
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+        ,buff   => lv_warn_msg
+      );
+      --エラーフラグをTRUEにする
+      gb_err_flag := TRUE;
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    WHEN global_api_expt THEN                           --*** 共通関数コメント ***
+      -- *** 任意で例外処理を記述する ****
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_cancellation_date;
+--
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3688,11 +3893,35 @@ AS
         END IF;
 --
         --解約種別のチェック
-        IF ( g_cancellation_class_tab(ln_loop_cnt_3) IS NOT NULL ) THEN
+-- 2011/12/26 Ver.1.8 A.Shirakawa MOD Start
+--        IF ( g_cancellation_class_tab(ln_loop_cnt_3) IS NOT NULL ) THEN
+        IF (( g_cancellation_class_tab(ln_loop_cnt_3) IS NOT NULL )            --CSVファイルの解約種別が設定されている
+         OR ( g_cancellation_date_xmw_tab(ln_loop_cnt_3) IS NOT NULL ) ) THEN  --CSVファイルの解約日が設定されている
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
 --
           --対象件数のインクリメント
           gn_target_cnt := ( gn_target_cnt + 1 );
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
 --
+          -- ============================================
+          -- A-25．解約日チェック
+          -- ============================================
+--
+          check_cancellation_date(
+             ln_loop_cnt_3     -- ループカウンタ3
+            ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
+            ,lv_retcode        -- リターン・コード             --# 固定 #
+            ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          --解約種別≠NULLの場合、以降の解約関連処理を続行する
+          --解約種別＝NULL（かつ解約日≠NULL）の場合、A-25でエラーと判定されており、該当データの解約関連処理をSKIPする
+          IF ( g_cancellation_class_tab(ln_loop_cnt_3) IS NOT NULL ) THEN
+--
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
           -- ============================================
           -- A-11．マスタチェック(解約種別)
           -- ============================================
@@ -3828,6 +4057,9 @@ AS
             END IF;
 --
           END IF;  --エラーフラグがTRUE
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+          END IF;  --解約種別≠NULL
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
         END IF;  --解約種別のチェック
 --
         --エラーフラグがTRUEの場合、エラーカウンタをインクリメント

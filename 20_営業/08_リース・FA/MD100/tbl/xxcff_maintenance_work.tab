@@ -3,7 +3,7 @@
  * Table Name      : xxcff_maintenance_work
  * Description     : 物件メンテナンスワーク
  * MD.070          : 
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -15,6 +15,7 @@
  *  2009/04/13    1.3  SCS 松中俊樹  【T1_0471】物件設置場所の桁数を変更
  *  2009/08/24    1.4  SCS 萱原伸哉  統合テスト障害0000502対応 発注番号のデータ型をVARCHAR2に変更
  *                                   統合テスト障害0001035対応 機番の最大長を100に変更
+ *  2011/12/26    1.5  SCSK白川篤史  [E_本稼動_08123] 解約日を追加
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_maintenance_work (
      file_id                        NUMBER        NOT NULL
@@ -42,6 +43,9 @@ CREATE TABLE xxcff.xxcff_maintenance_work (
     ,installation_place             VARCHAR2(50)
     ,cancellation_class             VARCHAR2(1)
     ,bond_acceptance_flag           VARCHAR2(1)
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+    ,cancellation_date              DATE
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -70,6 +74,9 @@ COMMENT ON COLUMN xxcff.xxcff_maintenance_work.installation_address             
 COMMENT ON COLUMN xxcff.xxcff_maintenance_work.installation_place                      IS '現設置先';
 COMMENT ON COLUMN xxcff.xxcff_maintenance_work.cancellation_class                      IS '解約種別';
 COMMENT ON COLUMN xxcff.xxcff_maintenance_work.bond_acceptance_flag                    IS '証書受領フラグ';
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD Start
+COMMENT ON COLUMN xxcff.xxcff_maintenance_work.cancellation_date                       IS '解約日';
+-- 2011/12/26 Ver.1.8 A.Shirakawa ADD End
 COMMENT ON COLUMN xxcff.xxcff_maintenance_work.created_by                              IS '作成者';
 COMMENT ON COLUMN xxcff.xxcff_maintenance_work.creation_date                           IS '作成日';
 COMMENT ON COLUMN xxcff.xxcff_maintenance_work.last_updated_by                         IS '最終更新者';
