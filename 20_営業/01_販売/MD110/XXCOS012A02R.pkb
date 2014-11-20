@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A02R (body)
  * Description      : ピックリスト（出荷先・販売先・製品別）
  * MD.050           : ピックリスト（出荷先・販売先・製品別） MD050_COS_012_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,8 @@ AS
  *                                        ・非在庫品、エラー品目の取得条件の日付を業務日付から受注日に変更
  *  2010/06/14    1.13  T.Maruyama       [E_本稼動_02638]
  *                                       ・パラメータにEDI受信日を追加
+ *  2010/06/30    1.14  M.Hirose         [E_本稼動_02363]
+ *                                       ・定番特売区分がNULLの場合の出力変更
  *
  *****************************************************************************************/
 --
@@ -1568,9 +1570,16 @@ AS
             CASE
               WHEN xeh.ar_sale_class = gt_fixture_code THEN
                 gt_fixture_name
-              ELSE
+/* 2010/06/30 Ver1.14 Mod Start */
+--              ELSE
+--                gt_bargain_name
+--            END CASE,                                                         --定番特売区分名称
+              WHEN xeh.ar_sale_class = gt_bargain_code THEN
                 gt_bargain_name
+              ELSE
+                NULL
             END CASE,                                                         --定番特売区分名称
+/* 2010/06/30 Ver1.14 Mod  End  */
 /* 2009/08/20 Ver1.10 Mod Start */
             TRIM( SUBSTRB( xca1.delivery_order, 1, 7 ) )
                                               delivery_order1,                --配送順（月、水、金）
@@ -1996,9 +2005,16 @@ AS
             CASE
               WHEN xeh.ar_sale_class = gt_fixture_code THEN
                 gt_fixture_name
-              ELSE
+/* 2010/06/30 Ver1.14 Mod Start */
+--              ELSE
+--                gt_bargain_name
+--            END CASE,                                                               --定番特売区分名称
+              WHEN xeh.ar_sale_class = gt_bargain_code THEN
                 gt_bargain_name
+              ELSE
+                NULL
             END CASE,                                                               --定番特売区分名称
+/* 2010/06/30 Ver1.14 Mod  End  */
             TRIM( SUBSTRB( xca1.delivery_order, 1, 7 ) )
                                                              delivery_order1,       --配送順（月、水、金）
             TRIM( NVL( SUBSTRB( xca1.delivery_order, 8, 7 ), SUBSTRB( xca1.delivery_order, 1, 7 ) ) )

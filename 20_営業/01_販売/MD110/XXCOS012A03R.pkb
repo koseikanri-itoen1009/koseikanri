@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A03R (body)
  * Description      : ピックリスト（出荷先・製品・販売先別）
  * MD.050           : ピックリスト（出荷先・製品・販売先別） MD050_COS_012_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,8 @@ AS
  *                                          指定なし  ：「対象」と「対象外」の両方
  *  2010/06/14    1.13  T.Maruyama       [E_本稼動_02638]
  *                                       ・パラメータにEDI受信日を追加
+ *  2010/06/30    1.14  M.Hirose         [E_本稼動_02363]
+ *                                       ・定番特売区分がNULLの場合の出力変更
  *
  *****************************************************************************************/
 --
@@ -1545,7 +1547,10 @@ AS
               WHEN ( xeh.ar_sale_class = gt_tokuban_code ) THEN -- 特番の場合
                 gt_tokuban_name
               ELSE                                              -- その他の場合
-                gt_tokuban_name
+-- *********** 2010/06/30 1.14 M.Hirose MOD START ****************** --
+--                gt_tokuban_name
+                NULL
+-- *********** 2010/06/30 1.14 M.Hirose MOD END   ****************** --
             END                               bargain_class_name,             --定番特売区分名称
 -- *********** 2009/08/19 1.10 N.Maeda MOD  END  ****************** --
             TRIM( SUBSTRB( xca1.delivery_order, 1, 7 ) )
@@ -1979,7 +1984,10 @@ AS
               WHEN ( xeh.ar_sale_class = gt_tokuban_code ) THEN -- 特番の場合
                 gt_tokuban_name
               ELSE                                              -- その他の場合
-                gt_tokuban_name
+-- *********** 2010/06/30 1.14 M.Hirose MOD START ****************** --
+--                gt_tokuban_name
+                NULL
+-- *********** 2010/06/30 1.14 M.Hirose MOD END   ****************** --
             END                               bargain_class_name,             --定番特売区分名称
             TRIM( SUBSTRB( xca1.delivery_order, 1, 7 ) )
                                               delivery_order1,                --配送順（月、水、金）

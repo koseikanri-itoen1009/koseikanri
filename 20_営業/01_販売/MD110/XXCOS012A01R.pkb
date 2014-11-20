@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (body)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,8 @@ AS
  *                                       ・定番特売区分による出力制御追加
  *  2010/06/09    1.11  M.Hirose         [E_本稼動_02638]
  *                                       ・パラメータにEDI受信日を追加
+ *  2010/06/30    1.12  M.Hirose         [E_本稼動_02363]
+ *                                       ・定番特売区分がNULLの場合の出力変更
  *
  *****************************************************************************************/
 --
@@ -1511,9 +1513,16 @@ AS
             CASE
               WHEN xeh.ar_sale_class = gt_fixture_code THEN
                 gt_fixture_name
-              ELSE
+-- ********** 2010/06/30 1.12 M.Hirose MOD START ********** --
+--              ELSE
+--                gt_bargain_name
+--            END                               bargain_class_name              --定番特売区分名称
+              WHEN xeh.ar_sale_class = gt_bargain_code THEN  -- 特売時は特売を出力
                 gt_bargain_name
+              ELSE                                           -- 指定なし時は何も出力しない
+                NULL
             END                               bargain_class_name              --定番特売区分名称
+-- ********** 2010/06/30 1.12 M.Hirose MOD  END  ********** --
 -- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
           FROM
@@ -1858,9 +1867,16 @@ AS
             CASE
               WHEN xeh.ar_sale_class = gt_fixture_code THEN
                 gt_fixture_name
-              ELSE
+-- ********** 2010/06/30 1.12 M.Hirose MOD START ********** --
+--              ELSE
+--                gt_bargain_name
+--            END                               bargain_class_name              --定番特売区分名称
+              WHEN xeh.ar_sale_class = gt_bargain_code THEN  -- 特売時は特売を出力
                 gt_bargain_name
+              ELSE                                           -- 指定なし時は何も出力しない
+                NULL
             END                               bargain_class_name              --定番特売区分名称
+-- ********** 2010/06/30 1.12 M.Hirose MOD  END  ********** --
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
           FROM
             hz_cust_accounts                  hca1,                           --顧客マスタ
