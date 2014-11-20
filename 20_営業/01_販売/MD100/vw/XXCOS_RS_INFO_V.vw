@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_xxcos_rs_info_v
  * Description     : 営業員情報ビュー
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -17,11 +17,20 @@
  *  2008/12/30    1.0   T.Nakabayashi   発令日に値がない場合、旧拠点情報は無条件に対象外とする
  *  2009/02/26    1.1   T.Nakabayashi   従業員マスタ、従業員アサインメントの適用日をview項目に追加
  *                                      business_group_idの抽出条件を、固定値からfnd_global参照へ変更
+ *  2009/07/09    1.2   K.Kakishita     [T3_0000208]パフォーマンス障害  ヒント句追加
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_rs_info_v
 AS
 --  SQL A(新拠点情報抽出)
 SELECT
+  /*+
+    INDEX( JRRX XXCSO_JRRE_N02 )
+    INDEX( JRGM JTF_RS_GROUP_MEMBERS_N2 )
+    INDEX( JRGB JTF_RS_GROUPS_B_U1 )
+    INDEX( pept PER_PERSON_TYPES_PK)
+    INDEX( papf PER_PEOPLE_F_PK)
+    INDEX( paaf XXCSO_PAAF_N100)
+  */
       jrgb.attribute1                           AS  base_code
       ,to_date(nvl(paaf.ass_attribute2, '19000101'), 'yyyymmdd')
                                                 AS  effective_start_date
@@ -79,6 +88,14 @@ AND   paaf.ass_attribute5       =   jrgb.attribute1
 UNION
 --  SQL B(旧拠点情報抽出)
 SELECT
+  /*+
+    INDEX( JRRX XXCSO_JRRE_N02 )
+    INDEX( JRGM JTF_RS_GROUP_MEMBERS_N2 )
+    INDEX( JRGB JTF_RS_GROUPS_B_U1 )
+    INDEX( pept PER_PERSON_TYPES_PK)
+    INDEX( papf PER_PEOPLE_F_PK)
+    INDEX( paaf XXCSO_PAAF_N101)
+  */
       jrgb.attribute1                           AS  base_code
 --      ,to_date(nvl(paaf.ass_attribute2, '19000101'), 'yyyymmdd')
 --                                                AS  effective_start_date
