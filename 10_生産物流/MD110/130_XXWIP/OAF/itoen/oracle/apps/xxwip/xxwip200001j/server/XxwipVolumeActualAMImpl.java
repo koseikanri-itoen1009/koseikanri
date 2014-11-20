@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-12-24 1.6  二瓶大輔     本番障害#836
 * 2009-01-15 1.7  二瓶大輔     本番障害#823
 *                              本番障害#836恒久対応Ⅱ
+* 2009-01-20 1.8  二瓶大輔     本番障害#1055
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -50,7 +51,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.7
+ * @version 1.8
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -452,7 +453,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           {
             investRow = (OARow)investRows[i];
             // 投入総数
-            investedQty = (String)investRow.getAttribute("InvestedQty");
+// 2009-01-20 v1.8 D.Nihei Mod Start 本番障害#1055
+//            investedQty = (String)investRow.getAttribute("InvestedQty");
+            investedQty = XxcmnUtility.commaRemoval((String)investRow.getAttribute("InvestedQty"));
+// 2009-01-20 v1.8 D.Nihei Mod End
             // 数量チェック
             if (XxcmnUtility.chkCompareNumeric(1, investedQty, XxcmnConstants.STRING_ZERO))
             {
@@ -471,7 +475,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           {
             reInvestRow = (OARow)reInvestRows[i];
             // 投入総数
-            investedQty = (String)reInvestRow.getAttribute("InvestedQty");
+// 2009-01-20 v1.8 D.Nihei Mod Start 本番障害#1055
+//            investedQty = (String)reInvestRow.getAttribute("InvestedQty");
+            investedQty = XxcmnUtility.commaRemoval((String)reInvestRow.getAttribute("InvestedQty"));
+// 2009-01-20 v1.8 D.Nihei Mod End
             // 数量チェック
             if (XxcmnUtility.chkCompareNumeric(1, investedQty, XxcmnConstants.STRING_ZERO))
             {
