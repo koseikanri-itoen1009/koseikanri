@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -54,7 +54,8 @@ AS
  *  2008/07/10   1.7   Oracle 二瓶 大輔   システムテスト不具合対応#315(在庫単価取得関数修正)
  *  2008/07/14   1.8   Oracle 伊藤ひとみ  結合不具合 指摘2対応  品質検査依頼情報作成で更新の場合、検査予定日・結果を更新しない。
  *  2008/08/25   1.9   Oracle 伊藤ひとみ  内部変更要求#189対応(品質検査依頼情報作成修正)更新・削除で検査依頼NoがNULLの場合、処理を行わない。
- *  2008/09/03   1.10  Oracle 二瓶 大輔   統合テスト不具合#46対応(処理日付更新関数修正)
+ *  2008/09/03   1.10  Oracle 二瓶 大輔   統合障害#46対応(処理日付更新関数修正)
+ *  2008/09/10   1.11  Oracle 二瓶 大輔   統合障害#112対応(ロット追加・更新関数)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -1500,8 +1501,12 @@ AS
             lr_lot_mst.lot_id := NULL;
             lr_lot_mst.lot_no := NULL;
         END;
-      -- 半製品の場合
-      ELSIF (it_item_class_code = gv_item_type_harf_prod) THEN
+-- 2008/09/10 v1.11 D.Nihei MOD START
+--      -- 半製品の場合
+--      ELSIF (it_item_class_code = gv_item_type_harf_prod) THEN
+      -- 原料、半製品の場合
+      ELSIF ( it_item_class_code IN ( gv_item_type_mtl , gv_item_type_harf_prod) )  THEN
+-- 2008/09/10 v1.11 D.Nihei MOD END
         lr_lot_mst.lot_no := it_lot_no_prod;
         IF ((lr_lot_mst.lot_id IS NULL) OR (lr_lot_mst.lot_no IS NULL)) THEN
           ov_errbuf  := '不正なデータです。';
