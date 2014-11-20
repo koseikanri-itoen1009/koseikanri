@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
 
 <JboPackage
@@ -43,5 +43,15 @@
       Name="XxwshReserveLotAM"
       FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshReserveLotAM"
       ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxwshReserveLotVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshReserveLotVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxwshReserveUnLotVO"
+      FullName="itoen.oracle.apps.xxwsh.xxwsh920002j.server.XxwshReserveUnLotVO"
+      ObjectType="ViewObject" >
    </Containee>
 </JboPackage>

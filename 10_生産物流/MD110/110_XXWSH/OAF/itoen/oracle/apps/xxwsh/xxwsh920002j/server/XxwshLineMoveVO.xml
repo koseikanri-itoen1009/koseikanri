@@ -33,26 +33,29 @@ SELECT xmril.mov_line_id                  line_id
      , xmril.item_code                    item_code
      , TO_CHAR(xmril.designated_production_date, 'YYYY/MM/DD') 
                                           designated_production_date
-     , xilv1.short_name                    input_inventory_location_name
+     , mil.attribute12                    input_inventory_location_name
      , xlvv.attribute6                    small_amount_class
 -- 2008/10/22 D.Nihei ADD START 統合障害#194  
-     , xilv2.short_name                   deliver_to_name
+     , mil2.attribute12                   deliver_to_name
 -- 2008/10/22 D.Nihei ADD END
+     , mil.attribute5                           frequent_whse
   FROM xxinv_mov_req_instr_lines   xmril -- 移動依頼明細
      , xxinv_mov_req_instr_headers xmrih -- 移動依頼ヘッダ
      , xxcmn_lookup_values_v       xlvv  -- クイックコード情報VIEW(配送区分用)
-     , xxcmn_item_locations_v      xilv1 -- OPM保管場所情報VIEW(出庫倉庫用)
+     , mtl_item_locations      mil   -- 保管場所
 -- 2008/10/22 D.Nihei ADD START 統合障害#194  
-     , xxcmn_item_locations_v      xilv2 -- OPM保管場所情報VIEW(入庫倉庫用)
+     , mtl_item_locations      mil2 -- OPM保管場所情報VIEW(入庫倉庫用)
 -- 2008/10/22 D.Nihei ADD END
  WHERE xmril.mov_line_id   = :0
    AND xmrih.mov_hdr_id    = xmril.mov_hdr_id
    AND xlvv.lookup_type(+) = 'XXCMN_SHIP_METHOD'
    AND xlvv.lookup_code(+) = xmrih.shipping_method_code
 -- 2008/10/22 D.Nihei ADD START 統合障害#194  
-   AND xilv2.segment1      = xmrih.ship_to_locat_code
+   AND mil2.segment1       = xmrih.ship_to_locat_code
+   AND mil2.disable_date   IS NULL
 -- 2008/10/22 D.Nihei ADD END
-   AND xilv1.segment1      = xmrih.shipped_locat_code
+   AND mil.segment1        = xmrih.shipped_locat_code
+   AND mil.disable_date    IS NULL
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
@@ -356,6 +359,19 @@ SELECT xmril.mov_line_id                  line_id
       ColumnType="VARCHAR2"
       AliasName="DELIVER_TO_NAME"
       Expression="DELIVER_TO_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FrequentWhseCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREQUENT_WHSE"
+      Expression="FREQUENT_WHSE"
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="150" />

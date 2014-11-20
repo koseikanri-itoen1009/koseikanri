@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-10-24 1.4  二瓶　大輔     TE080_BPO_600 No22
 * 2008-12-10 1.5  伊藤ひとみ     本番#587対応
 * 2008-12-11 1.6  伊藤ひとみ     本番#675対応
+* 2008-12-25 1.7  二瓶　大輔     本番#771対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -32,14 +33,18 @@ import oracle.apps.fnd.framework.OAAttrValException;
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.OARow;
 import oracle.apps.fnd.framework.OAViewObject;
+import oracle.apps.fnd.framework.server.OAViewObjectImpl;
 
+import oracle.jbo.AttributeDef;
+import oracle.jbo.Row;
+import oracle.jbo.RowSetIterator;
 import oracle.jbo.domain.Date;
 import oracle.jbo.domain.Number;
 
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.6
+ * @version 1.7
  ***************************************************************************
  */
  
@@ -118,24 +123,70 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     OARow lRow       = (OARow)lvo.first();
     HashMap data     = new HashMap();
     // 検索に必要な項目をセット
-    data.put("ItemId",                  hRow.getAttribute("ItemId"));                   // 品目ID
-    data.put("InputInventoryLocationId",lRow.getAttribute("InputInventoryLocationId")); // 保管倉庫ID
-    data.put("DocumentTypeCode",        lRow.getAttribute("DocumentTypeCode"));         // 文書タイプ
-    data.put("LocationRelCode",         lRow.getAttribute("LocationRelCode"));          // 拠点実績有無区分
-    data.put("ConvUnitUseKbn",          hRow.getAttribute("ConvUnitUseKbn"));           // 入出庫換算単位使用区分
-    data.put("CallPictureKbn",          hRow.getAttribute("CallPictureKbn"));           // 呼出画面区分
-    data.put("LotCtl",                  hRow.getAttribute("LotCtl"));                   // ロット管理品
-    data.put("DesignatedProductionDate",lRow.getAttribute("DesignatedProductionDate")); // 指定製造日
-    data.put("LineId",                  lRow.getAttribute("LineId"));                   // 明細ID
-    data.put("ScheduleShipDate",        lRow.getAttribute("ScheduleShipDate"));         // 出荷予定日
-    data.put("ProdClass",               hRow.getAttribute("ProdClass"));                // 商品区分
-    data.put("ItemClass",               hRow.getAttribute("ItemClass"));                // 品目区分
-    data.put("NumOfCases",              hRow.getAttribute("NumOfCases"));               // ケース入数
+    data.put("ItemId",                    hRow.getAttribute("ItemId"));                     // 品目ID
+    data.put("InputInventoryLocationId"  ,lRow.getAttribute("InputInventoryLocationId"));   // 保管倉庫ID
+// 2008-12-25 D.Nihei Add Start
+    data.put("InputInventoryLocationCode",lRow.getAttribute("InputInventoryLocationCode")); // 保管倉庫コード
+// 2008-12-25 D.Nihei Add End
+    data.put("DocumentTypeCode",          lRow.getAttribute("DocumentTypeCode"));           // 文書タイプ
+    data.put("LocationRelCode",           lRow.getAttribute("LocationRelCode"));            // 拠点実績有無区分
+    data.put("ConvUnitUseKbn",            hRow.getAttribute("ConvUnitUseKbn"));             // 入出庫換算単位使用区分
+    data.put("CallPictureKbn",            hRow.getAttribute("CallPictureKbn"));             // 呼出画面区分
+    data.put("LotCtl",                    hRow.getAttribute("LotCtl"));                     // ロット管理品
+    data.put("DesignatedProductionDate",  lRow.getAttribute("DesignatedProductionDate"));   // 指定製造日
+    data.put("LineId",                    lRow.getAttribute("LineId"));                     // 明細ID
+    data.put("ScheduleShipDate",          lRow.getAttribute("ScheduleShipDate"));           // 出荷予定日
+    data.put("ProdClass",                 hRow.getAttribute("ProdClass"));                  // 商品区分
+    data.put("ItemClass",                 hRow.getAttribute("ItemClass"));                  // 品目区分
+    data.put("NumOfCases",                hRow.getAttribute("NumOfCases"));                 // ケース入数
+// 2008-12-25 D.Nihei Add Start
+    data.put("FrequentWhseCode",          lRow.getAttribute("FrequentWhseCode"));           // 代表倉庫
+    data.put("MasterOrgId",               getOADBTransaction().getProfile("XXCMN_MASTER_ORG_ID"));        // 在庫組織ID
+    data.put("MaxDate",                   getOADBTransaction().getProfile("XXCMN_MAX_DATE"));             // 最大日付
+    data.put("DummyFrequentWhse",         getOADBTransaction().getProfile("XXCMN_DUMMY_FREQUENT_WHSE"));  // ダミー倉庫
+// 2008-12-25 D.Nihei Add End
     XxwshStockCanEncQtyVOImpl vo = getXxwshStockCanEncQtyVO1();
+// 2008-12-25 D.Nihei Add Start
+    // 1行もない場合、空行作成
+    if (vo.getFetchedRowCount() == 0)
+    {
+      vo.setMaxFetchSize(0);
+    } else
+    {
+      vo.first();
+      OARow row = null;
+      while (vo.getCurrentRow() != null)
+      {
+        row = (OARow)vo.getCurrentRow();
+        row.remove();
+        vo.next();
+      }
+    }
+// 2008-12-25 D.Nihei Add End
     // 手持在庫数・引当可能数一覧リージョン検索実施
-    vo.initQuery(data);
+// 2008-12-25 D.Nihei Mod Start
+//    vo.initQuery(data);
+    // ロット管理品の場合
+    if (XxcmnUtility.isEquals(new Number(1), hRow.getAttribute("LotCtl"))) 
+    {
+      XxwshReserveLotVOImpl lotVo = getXxwshReserveLotVO1();
+      lotVo.initQuery(data);
+      copyRows(lotVo, vo);
+      
+    // ロット管理品外の場合
+    } else 
+    {
+      XxwshReserveUnLotVOImpl unLotVo = getXxwshReserveUnLotVO1();
+      unLotVo.initQuery(data);
+      copyRows(unLotVo, vo);
+      
+    }
+// 2008-12-25 D.Nihei Mod End
     // 手持在庫数・引当可能数一覧リージョンの件数が0件の場合
-    if ( vo.getRowCount() == 0)
+// 2008-12-25 D.Nihei Mod Start
+//    if ( vo.getRowCount() == 0)
+    if ( vo.getFetchedRowCount() == 0 )
+// 2008-12-25 D.Nihei Mod End
     {
       // 支給指示が画面へ戻るボタン以外を非表示&無効化
       pvoRow.setAttribute("CancelRendered", Boolean.FALSE); // 一括解除：非表示
@@ -2489,6 +2540,95 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 明細情報リージョンの依頼Noを返す
     return (String)lrow.getAttribute("RequestNo");
   }
+
+// 2008-12-25 D.Nihei Add Start
+  /***************************************************************************
+   * 明細行コピー処理を行うメソッドです。
+   * @param orgVo  - コピー元VO
+   * @param destVo - コピー先VO
+   ***************************************************************************
+   */
+  public static void copyRows(OAViewObjectImpl orgVo, OAViewObjectImpl destVo)
+  {
+    // どちらかのVOがnullの場合は処理終了
+    if (orgVo == null || destVo == null)
+    {
+      return;
+    }
+
+    // コピー元のVOの属性を取得
+    AttributeDef[] attrDefs = orgVo.getAttributeDefs();
+    int attrCount = (attrDefs == null) ? 0 : attrDefs.length;
+    // 属性が取得できない場合は処理終了
+    if (attrCount == 0)
+    {
+      return;
+    }
+    // コピー用イテレータを取得します。
+    RowSetIterator copyIter = orgVo.findRowSetIterator("copyIter");
+    // コピー用イテレータがnullの場合
+    if (copyIter == null)
+    {
+      // イテレータを作成します。
+      copyIter = orgVo.createRowSetIterator("copyIter");
+    }
+
+    boolean rowInserted = false; // 挿入フラグ
+    int lineNum = 1;             // 組織番号
+    
+    // コピーループ
+    while (copyIter.hasNext())
+    {
+      // 行を取得
+      Row sourceRow = copyIter.next();
+
+      // 行を一行でも挿入した場合
+      if (rowInserted)
+      {
+        // コピー先行を次行へ移動します。
+        destVo.next();
+      }
+      // コピー先行を作成
+      Row destRow = destVo.createRow();
+
+      // 属性を全てコピー
+      for (int i = 0; i < attrCount; i++)
+      {
+        byte attrKind = attrDefs[i].getAttributeKind();
+
+        if (!(attrKind == AttributeDef.ATTR_ASSOCIATED_ROW ||
+              attrKind == AttributeDef.ATTR_ASSOCIATED_ROWITERATOR ||
+              attrKind == AttributeDef.ATTR_DYNAMIC))
+
+        {
+
+          String attrName = attrDefs[i].getName();
+          if (destVo.lookupAttributeDef(attrName) != null)
+          {
+
+            Object attrVal = sourceRow.getAttribute(attrName);
+
+            if (attrVal != null)
+            {
+
+              destRow.setAttribute(attrName, attrVal);
+            }
+          }
+        }
+      }
+      // コピー先を一行挿入します。
+      destVo.insertRow(destRow);
+      // 挿入フラグをtrue
+      rowInserted = true;
+    }
+    // コピー用イテレータをクローズ
+    copyIter.closeRowSetIterator();
+    // コピー先VOをリセットします。
+    destVo.reset();
+
+  } // copyRows
+// 2008-12-25 D.Nihei Add End
+
   /**
    * 
    * Container's getter for XxwshPageLayoutPVO1
@@ -2542,4 +2682,24 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (XxwshLineMoveVOImpl)findViewObject("XxwshLineMoveVO1");
   }  
+
+  /**
+   * 
+   * Container's getter for XxwshReserveUnLotVO1
+   */
+  public XxwshReserveUnLotVOImpl getXxwshReserveUnLotVO1()
+  {
+    return (XxwshReserveUnLotVOImpl)findViewObject("XxwshReserveUnLotVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxwshReserveLotVO1
+   */
+  public XxwshReserveLotVOImpl getXxwshReserveLotVO1()
+  {
+    return (XxwshReserveLotVOImpl)findViewObject("XxwshReserveLotVO1");
+  }
+
+
 }
