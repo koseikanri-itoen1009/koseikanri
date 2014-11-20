@@ -537,6 +537,9 @@ SELECT xstv.whse_code
         AND    gmd_in_pr.item_id                  = ximv_in_pr.item_id
         AND    ilm_in_pr.item_id                  = ximv_in_pr.item_id
         AND    itp_in_pr.lot_id                   = ilm_in_pr.lot_id
+--mod start 2008/09/02
+        AND    xmld_in_pr.lot_id                  = ilm_in_pr.lot_id
+--mod start 2008/09/02
         AND    grb_in_pr.attribute9               = xilv_in_pr.segment1
         AND    xmld_in_pr.document_type_code      = '40'               -- 生産指示
         AND    xmld_in_pr.record_type_code        = '10'               -- 指示
@@ -912,9 +915,15 @@ SELECT xstv.whse_code
               ,flv_out_om.meaning
               ,xoha_out_om.request_no
               ,TO_NUMBER( xoha_out_om.head_sales_branch )
-              ,xcav_out_om.party_name
+--mod start 2008/09/02
+--              ,xcav_out_om.party_name
+              ,hpat_out_om.attribute19
+--mod end 2008/09/02
               ,xoha_out_om.deliver_to_id
-              ,xpsv_out_om.party_site_full_name
+--mod start 2008/09/02
+--              ,xpsv_out_om.party_site_full_name
+              ,xpas_out_om.party_site_name
+--mod end 2008/09/02
               ,0                                       AS stock_quantity
 --mod start 2008/06/05 rev1.5
 --              ,CASE
@@ -947,12 +956,22 @@ SELECT xstv.whse_code
               ,xxwsh_order_lines_all        xola_out_om                 -- 受注明細(アドオン)
               ,xxinv_mov_lot_details        xmld_out_om                 -- 移動ロット詳細(アドオン)
               ,oe_transaction_types_all     otta_out_om                 -- 受注タイプ
-              ,xxcmn_cust_accounts_v        xcav_out_om                 -- 顧客情報VIEW
-              ,xxcmn_party_sites_v          xpsv_out_om                 -- パーティサイト情報VIEW
+--mod start 2008/09/02
+--              ,xxcmn_cust_accounts_v        xcav_out_om                 -- 顧客情報VIEW
+--              ,xxcmn_party_sites_v          xpsv_out_om                 -- パーティサイト情報VIEW
+              ,hz_parties                   hpat_out_om
+              ,hz_cust_accounts             hcsa_out_om
+              ,hz_party_sites               hpas_out_om
+              ,xxcmn_party_sites            xpas_out_om
+--mod end 2008/09/02
 --mod start 2008/06/04 rev1.4
 --              ,xxcmn_item_categories4_v     xicv_out_om                 -- OPM品目カテゴリ割当情報VIEW4
-              ,xxcmn_item_categories4_v     xicv_out_om_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
-              ,xxcmn_item_categories4_v     xicv_out_om_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
+--mod start 2008/09/02
+--              ,xxcmn_item_categories4_v     xicv_out_om_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
+              ,xxcmn_item_categories5_v     xicv_out_om_s               -- OPM品目カテゴリ割当情報VIEW5(出荷品目)
+              ,xxcmn_item_categories5_v     xicv_out_om_r               -- OPM品目カテゴリ割当情報VIEW5(依頼品目)
+--mod end 2008/09/02
 --mod end 2008/06/04 rev1.4
         WHERE  xrpm_out_om.doc_type                         = 'OMSO'
         AND    xrpm_out_om.use_div_invent                   = 'Y'
@@ -1014,8 +1033,21 @@ SELECT xstv.whse_code
         AND    flv_out_om.lookup_type                       = 'XXCMN_NEW_DIVISION'
         AND    flv_out_om.language                          = 'JA'
         AND    flv_out_om.lookup_code                       = xrpm_out_om.new_div_invent
-        AND    xoha_out_om.customer_id                      = xcav_out_om.party_id
-        AND    xoha_out_om.deliver_to_id                    = xpsv_out_om.party_site_id
+--mod start 2008/09/02
+--        AND    xoha_out_om.customer_id                      = xcav_out_om.party_id
+--        AND    xoha_out_om.deliver_to_id                    = xpsv_out_om.party_site_id
+        AND    xoha_out_om.customer_id                      = hpat_out_om.party_id
+        AND    hpat_out_om.party_id                         = hcsa_out_om.party_id
+        AND    hpat_out_om.status                           = 'A'
+        AND    hcsa_out_om.status                           = 'A'
+        AND    xoha_out_om.deliver_to_id                    = hpas_out_om.party_site_id
+        AND    hpas_out_om.party_site_id                    = xpas_out_om.party_site_id
+        AND    hpas_out_om.party_id                         = xpas_out_om.party_id
+        AND    hpas_out_om.location_id                      = xpas_out_om.location_id
+        AND    hpas_out_om.status                           = 'A'
+        AND    xpas_out_om.start_date_active               <= TRUNC(SYSDATE)
+        AND    xpas_out_om.end_date_active                 >= TRUNC(SYSDATE)
+--mod end 2008/09/02
         UNION ALL
         -- 有償出荷予定
         SELECT xilv_out_om2.whse_code
@@ -1099,11 +1131,15 @@ SELECT xstv.whse_code
 --              ,xxcmn_party_sites_v          xpsv_out_om2                 -- パーティサイト情報VIEW
               ,xxcmn_vendor_sites_v         xvsv_out_om2                 -- 仕入先サイト情報VIEW
 --mod end 2008/06/04 rev1.3
+--mod start 2008/09/02
 --mod start 2008/06/04 rev1.4
 --              ,xxcmn_item_categories4_v     xicv_out_om2                 -- OPM品目カテゴリ割当情報VIEW4
-              ,xxcmn_item_categories4_v     xicv_out_om2_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
-              ,xxcmn_item_categories4_v     xicv_out_om2_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om2_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om2_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
+              ,xxcmn_item_categories5_v     xicv_out_om2_s               -- OPM品目カテゴリ割当情報VIEW5(出荷品目)
+              ,xxcmn_item_categories5_v     xicv_out_om2_r               -- OPM品目カテゴリ割当情報VIEW5(依頼品目)
 --mod end 2008/06/04 rev1.4
+--mod end 2008/09/02
         WHERE  xrpm_out_om2.doc_type                         = 'OMSO'
         AND    xrpm_out_om2.use_div_invent                   = 'Y'
         AND    xoha_out_om2.order_header_id                  = xola_out_om2.order_header_id
@@ -1282,7 +1318,10 @@ SELECT xstv.whse_code
 --          OR ( xrpm_out_pr.hit_in_div              = gmd_out_pr.attribute5 ) )
         AND ((( gmd_out_pr.attribute5              IS NULL )
           AND ( xrpm_out_pr.hit_in_div             IS NULL ))
-        OR   (( gmd_out_pr.attribute5              IS NOT NULL )
+--mod start 2008/09/02
+--        OR   (( gmd_out_pr.attribute5              IS NOT NULL )
+        OR   (( gmd_out_pr.attribute5              = 'Y' )
+--mod end 2008/09/02
           AND ( xrpm_out_pr.hit_in_div             = gmd_out_pr.attribute5 )))
 --mod start 2008/06/23
         AND    flv_out_pr.lookup_type              = 'XXCMN_NEW_DIVISION'
@@ -1788,8 +1827,10 @@ SELECT xstv.whse_code
               ,gmd_routings_b               grb_in_pr_e                  -- 工順マスタ
 --mod start 2008/06/07
               ,gmd_routings_tl              grt_in_pr_e                  -- 工順マスタ日本語
-              ,gmd_routing_class_b          grcb_in_pr_e                 -- 工順区分マスタ
-              ,gmd_routing_class_tl         grct_in_pr_e                 -- 工順区分マスタ日本語
+--del start 2008/09/02
+--              ,gmd_routing_class_b          grcb_in_pr_e                 -- 工順区分マスタ
+--              ,gmd_routing_class_tl         grct_in_pr_e                 -- 工順区分マスタ日本語
+--del end 2008/09/02
 --mod end 2008/06/07
               ,ic_tran_pnd                  itp_in_pr_e                  -- OPM保留在庫トランザクション
         WHERE  xrpm_in_pr_e.doc_type                = 'PROD'
@@ -1818,7 +1859,10 @@ SELECT xstv.whse_code
 --          OR ( xrpm_in_pr_e.hit_in_div              = gmd_in_pr_e.attribute5 ))
         AND ((( gmd_in_pr_e.attribute5              IS NULL )
           AND ( xrpm_in_pr_e.hit_in_div             IS NULL ))
-        OR   (( gmd_in_pr_e.attribute5              IS NOT NULL )
+--mod start 2008/09/02
+--        OR   (( gmd_in_pr_e.attribute5              IS NOT NULL )
+        OR   (( gmd_in_pr_e.attribute5              = 'Y' )
+--mod end 2008/09/02
           AND ( xrpm_in_pr_e.hit_in_div             = gmd_in_pr_e.attribute5 )))
 --mod start 2008/06/23
         AND    flv_in_pr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
@@ -1827,13 +1871,26 @@ SELECT xstv.whse_code
 --mod start 2008/06/07
         AND    grb_in_pr_e.routing_id               = grt_in_pr_e.routing_id
         AND    grt_in_pr_e.language                 = 'JA'
-        AND    grct_in_pr_e.routing_class           = grcb_in_pr_e.routing_class
-        AND    grcb_in_pr_e.routing_class           = grb_in_pr_e.routing_class
-        AND    grct_in_pr_e.language                = 'JA'
-        AND    grct_in_pr_e.routing_class_desc  NOT IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
+--mod start 2008/09/02
+--        AND    grct_in_pr_e.routing_class           = grcb_in_pr_e.routing_class
+--        AND    grcb_in_pr_e.routing_class           = grb_in_pr_e.routing_class
+--        AND    grct_in_pr_e.language                = 'JA'
+--        AND    grct_in_pr_e.routing_class_desc  NOT IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
+--                                                       ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_SEPARATE')
+--                                                       ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET'))
+--mod end 2008/06/07
+        AND NOT EXISTS 
+          ( SELECT 'X'
+            FROM   gmd_routing_class_b   grcb_in_pr_ex          -- 工順区分マスタ
+                  ,gmd_routing_class_tl  grct_in_pr_ex          -- 工順区分マスタ日本語
+            WHERE  grcb_in_pr_ex.routing_class      = grb_in_pr_e.routing_class
+            AND    grct_in_pr_ex.routing_class      = grcb_in_pr_ex.routing_class
+            AND    grct_in_pr_ex.language           = 'JA'
+            AND    grct_in_pr_ex.routing_class_desc IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
                                                        ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_SEPARATE')
                                                        ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET'))
---mod end 2008/06/07
+          )
+--mod end 2008/09/02
         UNION ALL
 --mod start 2008/06/07
         -- 生産入庫実績 品目振替 品種振替
@@ -1879,8 +1936,12 @@ SELECT xstv.whse_code
               ,gmd_routing_class_b          grcb_in_pr_e70                 -- 工順区分マスタ
               ,gmd_routing_class_tl         grct_in_pr_e70                 -- 工順区分マスタ日本語
               ,ic_tran_pnd                  itp_in_pr_e70                  -- OPM保留在庫トランザクション
-              ,xxcmn_item_categories4_v     xicv_in_pr_e70a                -- OPM品目カテゴリ割当情報VIEW4(振替先)
-              ,xxcmn_item_categories4_v     xicv_in_pr_e70b                -- OPM品目カテゴリ割当情報VIEW4(振替元)
+--mod start 2008/09/02
+--              ,xxcmn_item_categories4_v     xicv_in_pr_e70a                -- OPM品目カテゴリ割当情報VIEW4(振替先)
+--              ,xxcmn_item_categories4_v     xicv_in_pr_e70b                -- OPM品目カテゴリ割当情報VIEW4(振替元)
+              ,xxcmn_item_categories5_v     xicv_in_pr_e70a                -- OPM品目カテゴリ割当情報VIEW5(振替先)
+              ,xxcmn_item_categories5_v     xicv_in_pr_e70b                -- OPM品目カテゴリ割当情報VIEW5(振替元)
+--mod end 2008/09/02
         WHERE  xrpm_in_pr_e70.doc_type                = 'PROD'
         AND    xrpm_in_pr_e70.use_div_invent          = 'Y'
         AND    grct_in_pr_e70.language                = 'JA'
@@ -1961,7 +2022,10 @@ SELECT xstv.whse_code
               ,gmd_routing_class_b          grcb_in_pr_e70                 -- 工順区分マスタ
               ,gmd_routing_class_tl         grct_in_pr_e70                 -- 工順区分マスタ日本語
               ,ic_tran_pnd                  itp_in_pr_e70                  -- OPM保留在庫トランザクション
-              ,xxcmn_item_categories4_v     xicv_in_pr_e70                 -- OPM品目カテゴリ割当情報VIEW4
+--mod start 2008/09/02
+--              ,xxcmn_item_categories4_v     xicv_in_pr_e70                 -- OPM品目カテゴリ割当情報VIEW4
+              ,xxcmn_item_categories5_v     xicv_in_pr_e70                 -- OPM品目カテゴリ割当情報VIEW5
+--mod end 2008/09/02
         WHERE  xrpm_in_pr_e70.doc_type                = 'PROD'
         AND    xrpm_in_pr_e70.use_div_invent          = 'Y'
         AND    grct_in_pr_e70.routing_class_desc     IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET')       -- 返品原料
@@ -2018,9 +2082,15 @@ SELECT xstv.whse_code
               ,flv_in_po_e_rma.meaning
               ,xoha_in_po_e_rma.request_no
               ,xoha_in_po_e_rma.customer_id
-              ,xcav_in_po_e_rma.party_name
+--mod start 2008/09/02
+--              ,xcav_in_po_e_rma.party_name
+              ,hpat_in_po_e_rma.attribute19
+--mod end 2008/09/02
               ,xoha_in_po_e_rma.deliver_to_id
-              ,xpsv_in_po_e_rma.party_site_full_name
+--mod start 2008/09/02
+--              ,xpsv_in_po_e_rma.party_site_full_name
+              ,xpas_in_po_e_rma.party_site_name
+--mod end 2008/09/02
               ,xmld_in_po_e_rma.actual_quantity
               ,0                                       AS leaving_quantity
               ,ximv_in_po_e_rma.lot_ctl
@@ -2033,8 +2103,14 @@ SELECT xstv.whse_code
               ,xxwsh_order_lines_all        xola_in_po_e_rma                 -- 受注明細(アドオン)
               ,xxinv_mov_lot_details        xmld_in_po_e_rma                 -- 移動ロット詳細(アドオン)
               ,oe_transaction_types_all     otta_in_po_e_rma                 -- 受注タイプ
-              ,xxcmn_cust_accounts_v        xcav_in_po_e_rma                 -- 顧客情報VIEW
-              ,xxcmn_party_sites_v          xpsv_in_po_e_rma                 -- パーティサイト情報VIEW
+--mod start 2008/09/02
+--              ,xxcmn_cust_accounts_v        xcav_in_po_e_rma                 -- 顧客情報VIEW
+--              ,xxcmn_party_sites_v          xpsv_in_po_e_rma                 -- パーティサイト情報VIEW
+              ,hz_parties                   hpat_in_po_e_rma
+              ,hz_cust_accounts             hcsa_in_po_e_rma
+              ,hz_party_sites               hpas_in_po_e_rma
+              ,xxcmn_party_sites            xpas_in_po_e_rma
+--mod end 2008/09/02
         WHERE  xrpm_in_po_e_rma.doc_type                    = 'PORC'
         AND    xrpm_in_po_e_rma.source_document_code        = 'RMA'
 --mod start 2008/06/09
@@ -2076,11 +2152,24 @@ SELECT xstv.whse_code
         AND    flv_in_po_e_rma.lookup_type                  = 'XXCMN_NEW_DIVISION'
         AND    flv_in_po_e_rma.language                     = 'JA'
         AND    flv_in_po_e_rma.lookup_code                  = xrpm_in_po_e_rma.new_div_invent
-        AND    xoha_in_po_e_rma.customer_id                 = xcav_in_po_e_rma.party_id
+--mod start 2008/09/02
+--        AND    xoha_in_po_e_rma.customer_id                 = xcav_in_po_e_rma.party_id
 --mod start 2008/06/16
 --        AND    xoha_in_po_e_rma.deliver_to_id               = xpsv_in_po_e_rma.party_site_id
-        AND    xoha_in_po_e_rma.result_deliver_to_id        = xpsv_in_po_e_rma.party_site_id
+--        AND    xoha_in_po_e_rma.result_deliver_to_id        = xpsv_in_po_e_rma.party_site_id
 --mod end 2008/06/16
+        AND    xoha_in_po_e_rma.customer_id                 = hpat_in_po_e_rma.party_id
+        AND    hpat_in_po_e_rma.party_id                    = hcsa_in_po_e_rma.party_id
+        AND    hpat_in_po_e_rma.status                      = 'A'
+        AND    hcsa_in_po_e_rma.status                      = 'A'
+        AND    xoha_in_po_e_rma.result_deliver_to_id        = hpas_in_po_e_rma.party_site_id
+        AND    hpas_in_po_e_rma.party_site_id               = xpas_in_po_e_rma.party_site_id
+        AND    hpas_in_po_e_rma.party_id                    = xpas_in_po_e_rma.party_id
+        AND    hpas_in_po_e_rma.location_id                 = xpas_in_po_e_rma.location_id
+        AND    hpas_in_po_e_rma.status                      = 'A'
+        AND    xpas_in_po_e_rma.start_date_active          <= TRUNC(SYSDATE)
+        AND    xpas_in_po_e_rma.end_date_active            >= TRUNC(SYSDATE)
+--mod end 2008/09/02
         UNION ALL
 --mod start 2008/06/06
         -- 在庫調整 入庫実績(相手先在庫)
@@ -2680,8 +2769,10 @@ SELECT xstv.whse_code
               ,gmd_routings_b               grb_out_pr_e                  -- 工順マスタ
 --mod start 2008/06/07
               ,gmd_routings_tl              grt_out_pr_e                  -- 工順マスタ日本語
-              ,gmd_routing_class_b          grcb_out_pr_e                 -- 工順区分マスタ
-              ,gmd_routing_class_tl         grct_out_pr_e                 -- 工順区分マスタ日本語
+--del start 2008/09/02
+--              ,gmd_routing_class_b          grcb_out_pr_e                 -- 工順区分マスタ
+--              ,gmd_routing_class_tl         grct_out_pr_e                 -- 工順区分マスタ日本語
+--del end 2008/09/02
 --mod end 2008/06/07
               ,ic_tran_pnd                  itp_out_pr_e                  -- OPM保留在庫トランザクション
         WHERE  xrpm_out_pr_e.doc_type                = 'PROD'
@@ -2713,7 +2804,10 @@ SELECT xstv.whse_code
 --          OR ( xrpm_out_pr_e.hit_in_div              = gmd_out_pr_e.attribute5 ))
         AND ((( gmd_out_pr_e.attribute5              IS NULL )
           AND ( xrpm_out_pr_e.hit_in_div             IS NULL ))
-        OR   (( gmd_out_pr_e.attribute5              IS NOT NULL )
+--mod start 2008/09/02
+--        OR   (( gmd_out_pr_e.attribute5              IS NOT NULL )
+        OR   (( gmd_out_pr_e.attribute5              = 'Y' )
+--mod end 2008/09/02
           AND ( xrpm_out_pr_e.hit_in_div             = gmd_out_pr_e.attribute5 )))
 --mod start 2008/06/23
         AND    flv_out_pr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
@@ -2722,13 +2816,26 @@ SELECT xstv.whse_code
 --mod start 2008/06/07
         AND    grb_out_pr_e.routing_id               = grt_out_pr_e.routing_id
         AND    grt_out_pr_e.language                 = 'JA'
-        AND    grct_out_pr_e.routing_class           = grcb_out_pr_e.routing_class
-        AND    grcb_out_pr_e.routing_class           = grb_out_pr_e.routing_class
-        AND    grct_out_pr_e.language                = 'JA'
-        AND    grct_out_pr_e.routing_class_desc NOT IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
-                                                       ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_SEPARATE')
-                                                       ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET'))
+--mod start 2008/09/02
+--        AND    grct_out_pr_e.routing_class           = grcb_out_pr_e.routing_class
+--        AND    grcb_out_pr_e.routing_class           = grb_out_pr_e.routing_class
+--        AND    grct_out_pr_e.language                = 'JA'
+--        AND    grct_out_pr_e.routing_class_desc NOT IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
+--                                                       ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_SEPARATE')
+--                                                       ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET'))
 --mod end 2008/06/07
+        AND NOT EXISTS 
+          ( SELECT 'X'
+            FROM   gmd_routing_class_b   grcb_out_pr_ex          -- 工順区分マスタ
+                  ,gmd_routing_class_tl  grct_out_pr_ex          -- 工順区分マスタ日本語
+            WHERE  grcb_out_pr_ex.routing_class      = grb_out_pr_e.routing_class
+            AND    grct_out_pr_ex.routing_class      = grcb_out_pr_ex.routing_class
+            AND    grct_out_pr_ex.language           = 'JA'
+            AND    grct_out_pr_ex.routing_class_desc IN (FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
+                                                        ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_SEPARATE')
+                                                        ,FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING_RET'))
+          )
+--mod end 2008/09/02
         UNION ALL
 --mod start 2008/06/07
         -- 生産出庫実績 品目振替 品種振替
@@ -2774,8 +2881,12 @@ SELECT xstv.whse_code
               ,gmd_routing_class_b          grcb_out_pr_e70                 -- 工順区分マスタ
               ,gmd_routing_class_tl         grct_out_pr_e70                 -- 工順区分マスタ日本語
               ,ic_tran_pnd                  itp_out_pr_e70                  -- OPM保留在庫トランザクション
-              ,xxcmn_item_categories4_v     xicv_out_pr_e70a                -- OPM品目カテゴリ割当情報VIEW4(振替元)
-              ,xxcmn_item_categories4_v     xicv_out_pr_e70b                -- OPM品目カテゴリ割当情報VIEW4(振替先)
+--mod start 2008/09/02
+--              ,xxcmn_item_categories4_v     xicv_out_pr_e70a                -- OPM品目カテゴリ割当情報VIEW4(振替元)
+--              ,xxcmn_item_categories4_v     xicv_out_pr_e70b                -- OPM品目カテゴリ割当情報VIEW4(振替先)
+              ,xxcmn_item_categories5_v     xicv_out_pr_e70a                -- OPM品目カテゴリ割当情報VIEW5(振替元)
+              ,xxcmn_item_categories5_v     xicv_out_pr_e70b                -- OPM品目カテゴリ割当情報VIEW5(振替先)
+--mod end 2008/09/02
         WHERE  xrpm_out_pr_e70.doc_type                = 'PROD'
         AND    xrpm_out_pr_e70.use_div_invent          = 'Y'
         AND    grct_out_pr_e70.language                = 'JA'
@@ -2857,7 +2968,10 @@ SELECT xstv.whse_code
               ,gmd_routing_class_b          grcb_out_pr_e70                 -- 工順区分マスタ
               ,gmd_routing_class_tl         grct_out_pr_e70                 -- 工順区分マスタ日本語
               ,ic_tran_pnd                  itp_out_pr_e70                  -- OPM保留在庫トランザクション
-              ,xxcmn_item_categories4_v     xicv_out_pr_e70                 -- OPM品目カテゴリ割当情報VIEW4
+--mod start 2008/09/02
+--              ,xxcmn_item_categories4_v     xicv_out_pr_e70                 -- OPM品目カテゴリ割当情報VIEW4
+              ,xxcmn_item_categories5_v     xicv_out_pr_e70                 -- OPM品目カテゴリ割当情報VIEW5
+--mod end 2008/09/02
         WHERE  xrpm_out_pr_e70.doc_type                = 'PROD'
         AND    xrpm_out_pr_e70.use_div_invent          = 'Y'
         AND    grct_out_pr_e70.language                = 'JA'
@@ -2922,12 +3036,18 @@ SELECT xstv.whse_code
               ,flv_out_om_e.meaning
               ,xoha_out_om_e.request_no
               ,TO_NUMBER( xoha_out_om_e.head_sales_branch )
-              ,xcav_out_om_e.party_name
+--mod start 2008/09/02
+--              ,xcav_out_om_e.party_name
+              ,hpat_out_om_e.attribute19
+--mod end 2008/09/02
 --mod start 2008/06/09
 --              ,xoha_out_om_e.deliver_to_id
               ,xoha_out_om_e.result_deliver_to_id
 --mod end 2008/06/09
-              ,xpsv_out_om_e.party_site_full_name
+--mod start 2008/09/02
+--              ,xpsv_out_om_e.party_site_full_name
+              ,xpas_out_om_e.party_site_name
+--mod end 2008/09/02
               ,0                                       AS stock_quantity
 --mod start 2008/06/05 rev1.5
 --              ,CASE
@@ -2955,13 +3075,21 @@ SELECT xstv.whse_code
               ,xxwsh_order_lines_all        xola_out_om_e                 -- 受注明細(アドオン)
               ,xxinv_mov_lot_details        xmld_out_om_e                 -- 移動ロット詳細(アドオン)
               ,oe_transaction_types_all     otta_out_om_e                 -- 受注タイプ
-              ,xxcmn_cust_accounts_v        xcav_out_om_e                 -- 顧客情報VIEW
-              ,xxcmn_party_sites_v          xpsv_out_om_e                 -- パーティサイト情報VIEW
+--mod start 2008/09/02
+--              ,xxcmn_cust_accounts_v        xcav_out_om_e                 -- 顧客情報VIEW
+--              ,xxcmn_party_sites_v          xpsv_out_om_e                 -- パーティサイト情報VIEW
 --mod start 2008/06/04 rev1.4
 --              ,xxcmn_item_categories4_v     xicv_out_om_e                 -- OPM品目カテゴリ割当情報VIEW4
-              ,xxcmn_item_categories4_v     xicv_out_om_e_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
-              ,xxcmn_item_categories4_v     xicv_out_om_e_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om_e_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om_e_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
 --mod end 2008/06/04 rev1.4
+              ,hz_parties                   hpat_out_om_e
+              ,hz_cust_accounts             hcsa_out_om_e
+              ,hz_party_sites               hpas_out_om_e
+              ,xxcmn_party_sites            xpas_out_om_e
+              ,xxcmn_item_categories5_v     xicv_out_om_e_s               -- OPM品目カテゴリ割当情報VIEW5(出荷品目)
+              ,xxcmn_item_categories5_v     xicv_out_om_e_r               -- OPM品目カテゴリ割当情報VIEW5(依頼品目)
+--mod end 2008/09/02
         WHERE  xrpm_out_om_e.doc_type                         = 'OMSO'
         AND    xrpm_out_om_e.use_div_invent                   = 'Y'
 --mod start 2008/06/09
@@ -2974,7 +3102,9 @@ SELECT xstv.whse_code
 --mod end 2008/06/04 rev1.1
 --mod start 2008/06/04 rev1.4
 --        AND    xola_out_om_e.shipping_inventory_item_id       = ximv_out_om_e.inventory_item_id
+--del start 2008/09/02
 --        AND    ilm_out_om_e.item_id                           = ximv_out_om_e.item_id
+--del end 2008/09/02
         AND    xola_out_om_e.shipping_inventory_item_id       = ximv_out_om_e_s.inventory_item_id
 --add start 2008/06/04 rev1.4
         AND    xola_out_om_e.request_item_id                  = ximv_out_om_e_r.inventory_item_id
@@ -3023,11 +3153,24 @@ SELECT xstv.whse_code
         AND    flv_out_om_e.lookup_type                       = 'XXCMN_NEW_DIVISION'
         AND    flv_out_om_e.language                          = 'JA'
         AND    flv_out_om_e.lookup_code                       = xrpm_out_om_e.new_div_invent
-        AND    xoha_out_om_e.customer_id                      = xcav_out_om_e.party_id
+--mod start 2008/09/02
+--        AND    xoha_out_om_e.customer_id                      = xcav_out_om_e.party_id
 --mod start 2008/06/09
 --        AND    xoha_out_om_e.deliver_to_id                    = xpsv_out_om_e.party_site_id
-        AND    xoha_out_om_e.result_deliver_to_id             = xpsv_out_om_e.party_site_id
+--        AND    xoha_out_om_e.result_deliver_to_id             = xpsv_out_om_e.party_site_id
 --mod end 2008/06/09
+        AND    xoha_out_om_e.customer_id                      = hpat_out_om_e.party_id
+        AND    hpat_out_om_e.party_id                         = hcsa_out_om_e.party_id
+        AND    hpat_out_om_e.status                           = 'A'
+        AND    hcsa_out_om_e.status                           = 'A'
+        AND    xoha_out_om_e.result_deliver_to_id             = hpas_out_om_e.party_site_id
+        AND    hpas_out_om_e.party_site_id                    = xpas_out_om_e.party_site_id
+        AND    hpas_out_om_e.party_id                         = xpas_out_om_e.party_id
+        AND    hpas_out_om_e.location_id                      = xpas_out_om_e.location_id
+        AND    hpas_out_om_e.status                           = 'A'
+        AND    xpas_out_om_e.start_date_active               <= TRUNC(SYSDATE)
+        AND    xpas_out_om_e.end_date_active                 >= TRUNC(SYSDATE)
+--mod end 2008/09/02
 --mod start 2008/06/10
         AND    xrpm_out_om_e.stock_adjustment_div             = otta_out_om_e.attribute4
         AND    xrpm_out_om_e.stock_adjustment_div             = '1'
@@ -3115,11 +3258,15 @@ SELECT xstv.whse_code
 --              ,xxcmn_party_sites_v          xpsv_out_om2_e                 -- パーティサイト情報VIEW
               ,xxcmn_vendor_sites_v         xvsv_out_om2_e                 -- 仕入先サイト情報VIEW
 --mod end 2008/06/04 rev1.3
+--mod start 2008/09/02
 --mod start 2008/06/04 rev1.4
 --              ,xxcmn_item_categories4_v     xicv_out_om2_e                 -- OPM品目カテゴリ割当情報VIEW4
-              ,xxcmn_item_categories4_v     xicv_out_om2_e_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
-              ,xxcmn_item_categories4_v     xicv_out_om2_e_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om2_e_s               -- OPM品目カテゴリ割当情報VIEW4(出荷品目)
+--              ,xxcmn_item_categories4_v     xicv_out_om2_e_r               -- OPM品目カテゴリ割当情報VIEW4(依頼品目)
 --mod end 2008/06/04 rev1.4
+              ,xxcmn_item_categories5_v     xicv_out_om2_e_s               -- OPM品目カテゴリ割当情報VIEW5(出荷品目)
+              ,xxcmn_item_categories5_v     xicv_out_om2_e_r               -- OPM品目カテゴリ割当情報VIEW5(依頼品目)
+--mod end 2008/09/02
 --mod start 2008/06/09
 --        WHERE  xrpm_out_om2_e.doc_type                         = 'OMSO'
         WHERE ((xrpm_out_om2_e.doc_type                        = 'OMSO'
@@ -3232,9 +3379,15 @@ SELECT xstv.whse_code
               ,flv_out_om3_e.meaning
               ,xoha_out_om3_e.request_no
               ,TO_NUMBER( xoha_out_om3_e.head_sales_branch )
-              ,xcav_out_om3_e.party_name
+--mod start 2008/09/02
+--              ,xcav_out_om3_e.party_name
+              ,hpat_out_om3_e.attribute19
+--mod end 2008/09/02
               ,xoha_out_om3_e.result_deliver_to_id
-              ,xpsv_out_om3_e.party_site_full_name
+--mod start 2008/09/02
+--              ,xpsv_out_om3_e.party_site_full_name
+              ,xpas_out_om3_e.party_site_name
+--mod end 2008/09/02
               ,0                                      AS stock_quantity
               ,xmld_out_om3_e.actual_quantity         AS leaving_quantity
               ,ximv_out_om3_e.lot_ctl
@@ -3247,9 +3400,16 @@ SELECT xstv.whse_code
               ,xxwsh_order_lines_all        xola_out_om3_e                 -- 受注明細(アドオン)
               ,xxinv_mov_lot_details        xmld_out_om3_e                 -- 移動ロット詳細(アドオン)
               ,oe_transaction_types_all     otta_out_om3_e                 -- 受注タイプ
-              ,xxcmn_cust_accounts_v        xcav_out_om3_e                 -- 顧客情報VIEW
-              ,xxcmn_party_sites_v          xpsv_out_om3_e                 -- パーティサイト情報VIEW
-              ,xxcmn_item_categories4_v     xicv_out_om3_e                 -- OPM品目カテゴリ割当情報VIEW4
+--mod start 2008/09/02
+--              ,xxcmn_cust_accounts_v        xcav_out_om3_e                 -- 顧客情報VIEW
+--              ,xxcmn_party_sites_v          xpsv_out_om3_e                 -- パーティサイト情報VIEW
+--              ,xxcmn_item_categories4_v     xicv_out_om3_e                 -- OPM品目カテゴリ割当情報VIEW4
+              ,hz_parties                   hpat_out_om3_e
+              ,hz_cust_accounts             hcsa_out_om3_e
+              ,hz_party_sites               hpas_out_om3_e
+              ,xxcmn_party_sites            xpas_out_om3_e
+              ,xxcmn_item_categories5_v     xicv_out_om3_e                 -- OPM品目カテゴリ割当情報VIEW5
+--mod end 2008/09/02
         WHERE  xrpm_out_om3_e.doc_type                         = 'OMSO'
         AND    xrpm_out_om3_e.use_div_invent                   = 'Y'
         AND    otta_out_om3_e.order_category_code              = 'ORDER'
@@ -3274,8 +3434,21 @@ SELECT xstv.whse_code
         AND    flv_out_om3_e.lookup_type                       = 'XXCMN_NEW_DIVISION'
         AND    flv_out_om3_e.language                          = 'JA'
         AND    flv_out_om3_e.lookup_code                       = xrpm_out_om3_e.new_div_invent
-        AND    xoha_out_om3_e.customer_id                      = xcav_out_om3_e.party_id
-        AND    xoha_out_om3_e.result_deliver_to_id             = xpsv_out_om3_e.party_site_id
+--mod start 2008/09/02
+--        AND    xoha_out_om3_e.customer_id                      = xcav_out_om3_e.party_id
+--        AND    xoha_out_om3_e.result_deliver_to_id             = xpsv_out_om3_e.party_site_id
+        AND    xoha_out_om3_e.customer_id                      = hpat_out_om3_e.party_id
+        AND    hpat_out_om3_e.party_id                         = hcsa_out_om3_e.party_id
+        AND    hpat_out_om3_e.status                           = 'A'
+        AND    hcsa_out_om3_e.status                           = 'A'
+        AND    xoha_out_om3_e.result_deliver_to_id             = hpas_out_om3_e.party_site_id
+        AND    hpas_out_om3_e.party_site_id                    = xpas_out_om3_e.party_site_id
+        AND    hpas_out_om3_e.party_id                         = xpas_out_om3_e.party_id
+        AND    hpas_out_om3_e.location_id                      = xpas_out_om3_e.location_id
+        AND    hpas_out_om3_e.status                           = 'A'
+        AND    xpas_out_om3_e.start_date_active               <= TRUNC(SYSDATE)
+        AND    xpas_out_om3_e.end_date_active                 >= TRUNC(SYSDATE)
+--mod end 2008/09/02
         UNION ALL
         -- 在庫調整 出庫実績(相手先在庫)
         SELECT xilv_out_ad_e_x97.whse_code

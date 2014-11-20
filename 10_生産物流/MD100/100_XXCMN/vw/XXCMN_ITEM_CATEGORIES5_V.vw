@@ -18,36 +18,22 @@ AS
         ,gmi_item_categories    gic_s
         ,mtl_categories_b       mcb_s
         ,mtl_categories_tl      mct_s
-        ,mtl_category_sets_b    mcsb_s
-        ,mtl_category_sets_tl   mcst_s
         ,gmi_item_categories    gic_h
         ,mtl_categories_b       mcb_h
         ,mtl_categories_tl      mct_h
-        ,mtl_category_sets_b    mcsb_h
-        ,mtl_category_sets_tl   mcst_h
   WHERE iimb.item_id             = gic_s.item_id
   AND   mct_s.source_lang        = 'JA'
   AND   mct_s.language           = 'JA'
   AND   mcb_s.category_id        = mct_s.category_id
-  AND   mcsb_s.structure_id      = mcb_s.structure_id
   AND   gic_s.category_id        = mcb_s.category_id
-  AND   mcst_s.source_lang       = 'JA'
-  AND   mcst_s.language          = 'JA'
-  AND   mcst_s.category_set_name = 'è§ïiãÊï™'
-  AND   mcsb_s.category_set_id   = mcst_s.category_set_id
-  AND   gic_s.category_set_id    = mcsb_s.category_set_id
+  AND   gic_s.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
 --
   AND   gic_s.item_id            = gic_h.item_id
   AND   mct_h.source_lang        = 'JA'
   AND   mct_h.language           = 'JA'
   AND   mcb_h.category_id        = mct_h.category_id
-  AND   mcsb_h.structure_id      = mcb_h.structure_id
   AND   gic_h.category_id        = mcb_h.category_id
-  AND   mcst_h.source_lang       = 'JA'
-  AND   mcst_h.language          = 'JA'
-  AND   mcst_h.category_set_name = 'ïiñ⁄ãÊï™'
-  AND   mcsb_h.category_set_id   = mcst_h.category_set_id
-  AND   gic_h.category_set_id    = mcsb_h.category_set_id
+  AND   gic_h.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
 ;
 --
 COMMENT ON COLUMN xxcmn_item_categories5_v.item_id          IS 'ïiñ⁄ID' ;

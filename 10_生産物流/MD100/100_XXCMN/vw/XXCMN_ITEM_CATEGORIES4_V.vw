@@ -1,4 +1,4 @@
-CREATE OR REPLACE FORCE VIEW xxcmn_item_categories4_v
+CREATE OR REPLACE VIEW xxcmn_item_categories4_v
 (
   item_id
  ,prod_class_code
@@ -17,54 +17,29 @@ AS
   FROM   gmi_item_categories    gic_s
         ,mtl_categories_b       mcb_s
         ,mtl_categories_tl      mct_s
-        ,mtl_category_sets_b    mcsb_s
-        ,mtl_category_sets_tl   mcst_s
         ,gmi_item_categories    gic_h
         ,mtl_categories_b       mcb_h
         ,mtl_categories_tl      mct_h
-        ,mtl_category_sets_b    mcsb_h
-        ,mtl_category_sets_tl   mcst_h
         ,(SELECT  mcb_g.segment1 crowd_code
                  ,gic_g.item_id  item_id
           FROM
             gmi_item_categories    gic_g
            ,mtl_categories_b       mcb_g
-           ,mtl_categories_tl      mct_g
-           ,mtl_category_sets_b    mcsb_g
-           ,mtl_category_sets_tl   mcst_g
-          WHERE mct_g.source_lang        = 'JA'
-          AND   mct_g.language           = 'JA'
-          AND   mcb_g.category_id        = mct_g.category_id
-          AND   mcsb_g.structure_id      = mcb_g.structure_id
-          AND   gic_g.category_id        = mcb_g.category_id
-          AND   mcst_g.source_lang       = 'JA'
-          AND   mcst_g.language          = 'JA'
-          AND   mcst_g.category_set_name = '群コード'
-          AND   mcsb_g.category_set_id   = mcst_g.category_set_id
-          AND   gic_g.category_set_id    = mcsb_g.category_set_id
+          WHERE gic_g.category_id        = mcb_g.category_id
+          AND   gic_g.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
          ) gun
   WHERE mct_s.source_lang        = 'JA'
   AND   mct_s.language           = 'JA'
   AND   mcb_s.category_id        = mct_s.category_id
-  AND   mcsb_s.structure_id      = mcb_s.structure_id
   AND   gic_s.category_id        = mcb_s.category_id
-  AND   mcst_s.source_lang       = 'JA'
-  AND   mcst_s.language          = 'JA'
-  AND   mcst_s.category_set_name = '商品区分'
-  AND   mcsb_s.category_set_id   = mcst_s.category_set_id
-  AND   gic_s.category_set_id    = mcsb_s.category_set_id
+  AND   gic_s.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
 --
   AND   gic_s.item_id            = gic_h.item_id
   AND   mct_h.source_lang        = 'JA'
   AND   mct_h.language           = 'JA'
   AND   mcb_h.category_id        = mct_h.category_id
-  AND   mcsb_h.structure_id      = mcb_h.structure_id
   AND   gic_h.category_id        = mcb_h.category_id
-  AND   mcst_h.source_lang       = 'JA'
-  AND   mcst_h.language          = 'JA'
-  AND   mcst_h.category_set_name = '品目区分'
-  AND   mcsb_h.category_set_id   = mcst_h.category_set_id
-  AND   gic_h.category_set_id    = mcsb_h.category_set_id
+  AND   gic_h.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
 --
   AND   gic_s.item_id            = gun.item_id(+)
 ;
