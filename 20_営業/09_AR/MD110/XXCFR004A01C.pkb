@@ -7,7 +7,7 @@ AS
  * Description      : 支払通知データ抽出
  * MD.050           : MD050_CFR_004_A01_支払通知データ抽出
  * MD.070           : MD050_CFR_004_A01_支払通知データ抽出
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/04/10    1.2  SCS S.KAYAHARA   T1_0129対応
  *  2009/04/24    1.3  SCS S.KAYAHARA   T1_0128対応
  *  2009/05/14    1.4  SCS S.KAYAHARA   T1_0955対応
+ *  2009/06/10    1.5  SCS S.KAYAHARA   T1_1355対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -928,7 +929,10 @@ AS
 --          WHEN 3 THEN
           WHEN 2 THEN
 -- Modify 2009.04.22 Ver1.3 End
-            gt_pn_chain_shop_code(ln_target_cnt)         := lv_col_value;
+-- Modify 2009.06.10 Ver1.5 Start
+--            gt_pn_chain_shop_code(ln_target_cnt)         := lv_col_value;
+            gt_pn_chain_shop_code(ln_target_cnt)         := LTRIM(lv_col_value);
+-- Modify 2009.06.10 Ver1.5 End
 -- Modify 2009.04.22 Ver1.3 Start
 --          WHEN 4 THEN
           WHEN 3 THEN
@@ -1036,7 +1040,10 @@ AS
 --          WHEN 24 THEN
           WHEN 23 THEN
 -- Modify 2009.04.22 Ver1.3 End
-            gt_pn_shop_code(ln_target_cnt)               := lv_col_value;
+-- Modify 2009.06.10 Ver1.5 Start
+--            gt_pn_shop_code(ln_target_cnt)               := lv_col_value;
+            gt_pn_shop_code(ln_target_cnt)               := LTRIM(lv_col_value);
+-- Modify 2009.06.10 Ver1.5 End
 -- Modify 2009.04.22 Ver1.3 Start
 --          WHEN 25 THEN
           WHEN 24 THEN
