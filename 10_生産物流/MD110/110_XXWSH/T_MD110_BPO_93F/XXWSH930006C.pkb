@@ -7,7 +7,7 @@ AS
  * Description      : インタフェースデータ削除処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_935
  * MD.070           : インタフェースデータ削除処理  T_MD070_BPO_93F
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/22    1.0   Oracle 山根 一浩 初回作成
+ *  2008/12/12    1.1   Oracle 福田 直樹 本番障害#702対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -109,6 +110,8 @@ AS
   gv_title_head               CONSTANT VARCHAR2(50) := 'ヘッダ削除件数';
   gv_title_line               CONSTANT VARCHAR2(50) := '明細削除件数';
   gv_title_count              CONSTANT VARCHAR2(50) := '件';
+--
+  gv_null_chr                 CONSTANT VARCHAR2(04) := 'NULL';    -- 2008/12/12 本番障害#702 Add
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -342,7 +345,8 @@ AS
             ,xxwsh_shipping_headers_if del     -- 削除対象
       WHERE  base.report_post_code = del.report_post_code                    -- 報告部署
       AND    base.eos_data_type    = del.eos_data_type                       -- EOSデータ種別
-      AND    base.delivery_no      = del.delivery_no                         -- 配送No
+      --AND    base.delivery_no      = del.delivery_no                         -- 配送No       2008/12/12 本番障害#702 Del
+      AND    NVL(base.delivery_no,gv_null_chr) = NVL(del.delivery_no,gv_null_chr) -- 配送No    2008/12/12 本番障害#702 Add
       AND    base.report_post_code = iv_location_code                        -- 1.報告部署
       AND    base.eos_data_type    = iv_eos_data_type                        -- 2.EOSデータ種別
       AND    base.order_source_ref = NVL(iv_order_ref,base.order_source_ref) -- 3.依頼No/移動No
@@ -370,7 +374,8 @@ AS
             ,xxwsh_shipping_lines_if   line
       WHERE  base.report_post_code = del.report_post_code                    -- 報告部署
       AND    base.eos_data_type    = del.eos_data_type                       -- EOSデータ種別
-      AND    base.delivery_no      = del.delivery_no                         -- 配送No
+      --AND    base.delivery_no      = del.delivery_no                         -- 配送No        2008/12/12 本番障害#702 Del
+      AND    NVL(base.delivery_no,gv_null_chr) = NVL(del.delivery_no,gv_null_chr) -- 配送No     2008/12/12 本番障害#702 Add
       AND    line.header_id        = del.header_id                           -- ヘッダID
       AND    base.report_post_code = iv_location_code                        -- 1.報告部署
       AND    base.eos_data_type    = iv_eos_data_type                        -- 2.EOSデータ種別
