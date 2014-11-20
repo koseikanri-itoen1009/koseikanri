@@ -6,7 +6,7 @@ AS
  * Package Name     : XXINV500002C(body)
  * Description      : 移動指示情報取込
  * MD.050           : 移動依頼 T_MD050_BPO_500
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  Date          Ver.  Editor           Description
  *  2011/03/04    1.0   SCS Y.Kanami     新規作成
  *  2011/06/02    1.1   SCS S.Niki       E_本稼動_07482,07525対応
+ *  2011/06/14    1.2   SCS S.Niki       E_本稼動_07482ユーザー指摘事項対応
  *
  ******************************************************************************************/
 --
@@ -452,9 +453,15 @@ AS
   gn_instruct_qty           NUMBER;           -- 指示数量
   gn_ttl_instruct_qty       NUMBER;           -- 指示数量合計
   gn_ttl_weight             NUMBER;           -- 合計重量
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+  gn_ttl_kei_weight         NUMBER;           -- 合計重量(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
   gn_ttl_capacity           NUMBER;           -- 合計容積
   gn_ttl_palette_weight     NUMBER;           -- 合計パレット重量
   gn_sum_ttl_weight         NUMBER;           -- 総合計重量
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+  gn_sum_ttl_kei_weight     NUMBER;           -- 総合計重量(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
   gn_sum_ttl_capacity       NUMBER;           -- 総合計容積
   gn_sum_ttl_palette_weight NUMBER;           -- 総合計パレット重量
   gn_sml_amnt_num           NUMBER;           -- 小口個数
@@ -2148,14 +2155,32 @@ AS
 --      NULL;
 --    ELSE
 ----
-----      -- パレット重量を加算
-----      gn_ttl_weight := gn_ttl_weight + gn_ttl_palette_weight;
+--      -- パレット重量を加算
+--      gn_ttl_weight := gn_ttl_weight + gn_ttl_palette_weight;
 ----
 --    END IF;
 -- 2011/06/02 Ver1.1 S.Niki Del End E_本稼動_07482
 --
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+    -- 小口区分対象の場合
+    IF ((gv_small_amount_cls = cv_object)   -- 小口区分対象
+      OR (gv_max_ship_method IS NULL))      -- 最大配送区分設定なし
+    THEN
+      -- 合計重量をセット
+      gn_ttl_kei_weight := gn_ttl_weight;
+    ELSE
+      -- 合計重量＋パレット重量をセット
+      gn_ttl_kei_weight := gn_ttl_weight + gn_ttl_palette_weight;
+    END IF;
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
+--
     -- 総合計重量
     gn_sum_ttl_weight     := gn_sum_ttl_weight + gn_ttl_weight;
+--
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+    -- 総合計重量(パレット重量込)
+    gn_sum_ttl_kei_weight := gn_sum_ttl_kei_weight + gn_ttl_kei_weight;
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
 --
     -- 総合計容積
     gn_sum_ttl_capacity   := gn_sum_ttl_capacity + gn_ttl_capacity;
@@ -2278,7 +2303,10 @@ AS
     IF (gv_prod_cls = cv_drink) THEN
 --
       xxwsh_common910_pkg.calc_load_efficiency(
-              gn_sum_ttl_weight           -- 合計重量
+-- 2011/06/14 Ver1.2 S.Niki Mod Start E_本稼動_07482
+--              gn_sum_ttl_weight           -- 合計重量
+              gn_sum_ttl_kei_weight       -- 合計重量(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Mod End E_本稼動_07482
             , NULL                        -- 合計容積
             , cv_warehouses               -- 倉庫:4
             , gv_shipped_locat_code       -- 出庫元コード
@@ -3700,10 +3728,16 @@ AS
     gn_instruct_qty           := 0;           -- 指示数量
     gn_ttl_instruct_qty       := 0;           -- 指示数量合計
     gn_ttl_weight             := 0;           -- 合計重量
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+    gn_ttl_kei_weight         := 0;           -- 合計重量(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
     gn_ttl_capacity           := 0;           -- 合計容積
     gn_ttl_palette_weight     := 0;           -- 合計パレット重量
     gn_sum_ttl_palette_weight := 0;           -- 総合計パレット重量
     gn_sum_ttl_weight         := 0;           -- 総合計重量
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+    gn_sum_ttl_kei_weight     := 0;           -- 総合計重量(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
     gn_sum_ttl_capacity       := 0;           -- 総合計容積
     gn_sml_amnt_num           := 0;           -- 小口個数
     gn_ttl_sml_amnt_num       := 0;           -- 小口個数合計
@@ -3828,6 +3862,9 @@ AS
           gn_we_loading             :=  0;    -- 積載率(重量)
           gn_ca_loading             :=  0;    -- 積載率(容積)
           gn_ttl_weight             :=  0;    -- 合計重量
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+          gn_ttl_kei_weight         :=  0;    -- 合計重量(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
           gn_ttl_sml_amnt_num       :=  0;    -- 小口個数
           gn_ttl_label_num          :=  0;    -- ラベル枚数
           gn_drink_deadweight       :=  0;    -- ドリンク基本重量
@@ -3835,6 +3872,9 @@ AS
           gn_leaf_deadweight        :=  0;    -- リーフ基本重量
           gn_leaf_loading_capa      :=  0;    -- リーフ基本容積
           gn_sum_ttl_weight         :=  0;    -- 積載重量合計
+-- 2011/06/14 Ver1.2 S.Niki Add Start E_本稼動_07482
+          gn_sum_ttl_kei_weight     :=  0;    -- 積載重量合計(パレット重量込)
+-- 2011/06/14 Ver1.2 S.Niki Add End E_本稼動_07482
           gn_sum_ttl_capacity       :=  0;    -- 積載容積合計
           gn_sum_ttl_palette_weight :=  0;    -- 総合計パレット重量
           gn_ttl_palette_weight     :=  0;    -- 合計パレット重量
