@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A05C(body)
  * Description      : 単価マスタIF出力（ファイル作成）
  * MD.050           : 単価マスタIF出力（ファイル作成） MD050_COS_003_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/01/17   1.1    K.Okaguchi       [障害COS_124] ファイル出力編集のバグを修正
  *  2009/02/24   1.2    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/04/15   1.3    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
+ *  2009/04/22   1.4    N.Maeda          [ST障害No.T1_0754対応]ファイル出力時の｢"｣付加修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -509,7 +510,7 @@ AS
           || cv_delimit || cv_quot || lv_sls_bef_prev_qty_sign || cv_quot -- 特売前々回数量サイン
           || cv_delimit || lv_sls_bef_prev_qty                            -- 特売前々回数量
           || cv_delimit                                                   -- 値引単価　前回
-          || cv_delimit || TO_CHAR(SYSDATE , 'YYYY/MM/DD HH24:MI:SS')     -- 処理日時
+          || cv_delimit || cv_quot || TO_CHAR(SYSDATE , 'YYYY/MM/DD HH24:MI:SS') || cv_quot     -- 処理日時
         INTO gv_tm_file_data
         FROM DUAL
         ;

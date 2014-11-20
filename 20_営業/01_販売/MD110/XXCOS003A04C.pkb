@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/04/15   1.2    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
  *  2009/04/16   1.3    K.Kiriu          [ST障害No.T1_0075対応] 桁数超過対応
  *                                       [ST障害No.T1_0079対応] ホット警告残数の計算ロジック修正
+ *  2009/04/22   1.4    N.Maeda          [ST障害No.T1_0754対応]ファイル出力時の｢"｣付加修正
  *
  *****************************************************************************************/
 --
@@ -1239,7 +1240,7 @@ AS
            || cv_delimit ||  TO_CHAR(NVL(gn_total_amount_1 ,0))          --前回納品金額
            || cv_delimit ||  TO_CHAR(NVL(gn_total_amount_2 ,0))          --前々回納品金額
            || cv_delimit ||  TO_CHAR(NVL(gn_total_amount_3 ,0))          --前々前回納品金額
-           || cv_delimit || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS')     --更新日時
+           || cv_delimit || cv_quot ||TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || cv_quot    --更新日時
     INTO gv_deli_h_file_data
     FROM DUAL
     ;
