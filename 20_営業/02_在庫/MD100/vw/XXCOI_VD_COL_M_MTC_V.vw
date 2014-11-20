@@ -3,7 +3,7 @@
  *
  * View Name       : xxcoi_vd_col_m_mtc_v
  * Description     : VDƒRƒ‰ƒ€ƒ}ƒXƒ^ƒƒ“ƒeƒiƒ“ƒX‰æ–Êƒrƒ…[
- * Version         : 1.1
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2008/11/18    1.0   SCS H.Wada       V‹Kì¬
  *  2008/12/04    1.1   SCS H.Wada       C³iVDƒRƒ‰ƒ€ƒ}ƒXƒ^–¼C³j
  *  2009/08/20    1.2   SCS T.Murakami   İŒÉ‘gD‚ğuS01v¨uZ99v‚É•ÏX
+ *  2009/09/08    1.3   SCS H.Sasaki     [0001266]OPM•i–ÚƒAƒhƒIƒ“‚Ì”ÅŠÇ—‘Î‰
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
@@ -20,8 +21,10 @@ CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
   ,column_no                                                                  -- 3.ƒRƒ‰ƒ€‡‚
   ,item_code                                                                  -- 4.•i–ÚƒR[ƒh(“–Œ)
   ,last_item_code                                                             -- 5.•i–ÚƒR[ƒh(‘OŒ)
-  ,item_name                                                                  -- 6.•i–Ú–¼Ì(“–Œ)
-  ,last_item_name                                                             -- 7.•i–Ú–¼Ì(‘OŒ)
+-- == 2009/09/08 V1.3 Deleted START ===============================================================
+--  ,item_name                                                                  -- 6.•i–Ú–¼Ì(“–Œ)
+--  ,last_item_name                                                             -- 7.•i–Ú–¼Ì(‘OŒ)
+-- == 2009/09/08 V1.3 Deleted END   ===============================================================
   ,item_id                                                                    -- 8.•i–ÚID(“–Œ)
   ,last_item_id                                                               -- 9.•i–ÚID(‘OŒ)
   ,primary_uom_code                                                           -- 10.Šî€’PˆÊ(“–Œ)
@@ -33,11 +36,11 @@ CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
   ,hot_cold                                                                   -- 16.H/C’l(“–Œ)
   ,last_hot_cold                                                              -- 17.H/C’l(‘OŒ)
   ,rack_quantity                                                              -- 18.ƒ‰ƒbƒN”
-  ,created_by                                                                 -- 19.ì¬Ò
-  ,creation_date                                                              -- 20.ì¬“ú
-  ,last_updated_by                                                            -- 21.ÅIXVÒ
-  ,last_update_date                                                           -- 22.ÅIXV“ú
-  ,last_update_login                                                          -- 23.ÅIXVƒƒOƒCƒ“
+  ,created_by                                                                 -- 23.ì¬Ò
+  ,creation_date                                                              -- 24.ì¬“ú
+  ,last_updated_by                                                            -- 25.ÅIXVÒ
+  ,last_update_date                                                           -- 26.ÅIXV“ú
+  ,last_update_login                                                          -- 27.ÅIXVƒƒOƒCƒ“
   )
 AS
 SELECT   xmvc.vd_column_mst_id               AS vd_column_mst_id              -- 1.VDƒRƒ‰ƒ€ƒ}ƒXƒ^ID
@@ -45,8 +48,10 @@ SELECT   xmvc.vd_column_mst_id               AS vd_column_mst_id              --
         ,xmvc.column_no                      AS column_no                     -- 3.ƒRƒ‰ƒ€‡‚
         ,sub_query1.item_code                AS item_code                     -- 4.•i–ÚƒR[ƒh(“–Œ)
         ,sub_query2.item_code                AS last_item_code                -- 5.•i–ÚƒR[ƒh(‘OŒ)
-        ,sub_query1.short_name               AS item_short_name               -- 6.•i–Ú–¼Ì(“–Œ)
-        ,sub_query2.short_name               AS last_item_short_name          -- 7.•i–Ú–¼Ì(‘OŒ)
+-- == 2009/09/08 V1.3 Deleted START ===============================================================
+--        ,sub_query1.short_name               AS item_short_name               -- 6.•i–Ú–¼Ì(“–Œ)
+--        ,sub_query2.short_name               AS last_item_short_name          -- 7.•i–Ú–¼Ì(‘OŒ)
+-- == 2009/09/08 V1.3 Deleted END   ===============================================================
         ,sub_query1.item_id                  AS item_id                       -- 8.•i–ÚID(“–Œ)
         ,sub_query2.item_id                  AS last_item_id                  -- 9.•i–ÚID(‘OŒ)
         ,sub_query1.primary_unit_of_measure  AS primary_uom_code              -- 10.Šî€’PˆÊ(“–Œ)
@@ -58,41 +63,65 @@ SELECT   xmvc.vd_column_mst_id               AS vd_column_mst_id              --
         ,xmvc.hot_cold                       AS hot_cold                      -- 16.H/C’l(“–Œ)
         ,xmvc.last_month_hot_cold            AS last_hot_cold                 -- 17.H/C’l(‘OŒ)
         ,xmvc.rack_quantity                  AS rack_quantity                 -- 18.ƒ‰ƒbƒN”
-        ,xmvc.created_by                     AS created_by                    -- 19.ì¬Ò
-        ,xmvc.creation_date                  AS creation_date                 -- 20.ì¬“ú
-        ,xmvc.last_updated_by                AS last_updated_by               -- 21.ÅIXVÒ
-        ,xmvc.last_update_date               AS last_update_date              -- 22.ÅIXV“ú
-        ,xmvc.last_update_login              AS last_update_login             -- 23.ÅIXVƒƒOƒCƒ“
-FROM     xxcoi_mst_vd_column                 xmvc                             -- 1.VDƒRƒ‰ƒ€ƒ}ƒXƒ^
+        ,xmvc.created_by                     AS created_by                    -- 23.ì¬Ò
+        ,xmvc.creation_date                  AS creation_date                 -- 24.ì¬“ú
+        ,xmvc.last_updated_by                AS last_updated_by               -- 25.ÅIXVÒ
+        ,xmvc.last_update_date               AS last_update_date              -- 26.ÅIXV“ú
+        ,xmvc.last_update_login              AS last_update_login             -- 27.ÅIXVƒƒOƒCƒ“
+FROM     xxcoi_mst_vd_column                 xmvc                             -- VDƒRƒ‰ƒ€ƒ}ƒXƒ^
+-- == 2009/09/08 V1.3 Deleted START ===============================================================
+--        ,(SELECT msib.segment1          AS item_code
+--                ,ximb.item_short_name   AS short_name
+--                ,msib.inventory_item_id AS item_id
+--                ,msib.primary_uom_code  AS primary_unit_of_measure
+--          FROM   mtl_system_items_b   msib
+--                ,ic_item_mst_b        iimb
+--                ,xxcmn_item_mst_b     ximb
+--                ,xxcmm_system_items_b xsib
+--          WHERE  msib.segment1 = iimb.item_no
+--          AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+--          AND    iimb.item_id = ximb.item_id
+--          AND    iimb.item_id = xsib.item_id 
+--          AND    iimb.attribute26 = '1')     sub_query1                       -- 2.•i–Úî•ñƒTƒuƒNƒGƒŠ[1
+--        ,(SELECT msib.segment1          AS item_code
+--                ,ximb.item_short_name   AS short_name
+--                ,msib.inventory_item_id AS item_id
+--                ,msib.primary_uom_code  AS primary_unit_of_measure
+--          FROM   mtl_system_items_b   msib
+--                ,ic_item_mst_b        iimb
+--                ,xxcmn_item_mst_b     ximb
+--                ,xxcmm_system_items_b xsib
+--          WHERE  msib.segment1 = iimb.item_no
+--          AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('S01')
+--          AND    iimb.item_id = ximb.item_id
+--          AND    iimb.item_id = xsib.item_id 
+--          AND    iimb.attribute26 = '1')     sub_query2                       -- 3.•i–Úî•ñƒTƒuƒNƒGƒŠ[2
         ,(SELECT msib.segment1          AS item_code
-                ,ximb.item_short_name   AS short_name
                 ,msib.inventory_item_id AS item_id
                 ,msib.primary_uom_code  AS primary_unit_of_measure
           FROM   mtl_system_items_b   msib
                 ,ic_item_mst_b        iimb
-                ,xxcmn_item_mst_b     ximb
                 ,xxcmm_system_items_b xsib
           WHERE  msib.segment1 = iimb.item_no
           AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('Z99')
-          AND    iimb.item_id = ximb.item_id
           AND    iimb.item_id = xsib.item_id 
           AND    iimb.attribute26 = '1')     sub_query1                       -- 2.•i–Úî•ñƒTƒuƒNƒGƒŠ[1
         ,(SELECT msib.segment1          AS item_code
-                ,ximb.item_short_name   AS short_name
                 ,msib.inventory_item_id AS item_id
                 ,msib.primary_uom_code  AS primary_unit_of_measure
           FROM   mtl_system_items_b   msib
                 ,ic_item_mst_b        iimb
-                ,xxcmn_item_mst_b     ximb
                 ,xxcmm_system_items_b xsib
           WHERE  msib.segment1 = iimb.item_no
           AND    msib.organization_id = xxcoi_common_pkg.get_organization_id('Z99')
-          AND    iimb.item_id = ximb.item_id
           AND    iimb.item_id = xsib.item_id 
           AND    iimb.attribute26 = '1')     sub_query2                       -- 3.•i–Úî•ñƒTƒuƒNƒGƒŠ[2
+-- == 2009/09/08 V1.3 Deleted END   ===============================================================
 WHERE    xmvc.item_id                        = sub_query1.item_id(+)
 AND      xmvc.last_month_item_id             = sub_query2.item_id(+)
-ORDER BY xmvc.customer_id, xmvc.column_no
+-- == 2009/09/08 V1.3 Deleted START ===============================================================
+--ORDER BY xmvc.customer_id, xmvc.column_no
+-- == 2009/09/08 V1.3 Deleted END   ===============================================================
 /
 COMMENT ON TABLE xxcoi_vd_col_m_mtc_v IS 'VDƒRƒ‰ƒ€ƒ}ƒXƒ^ƒƒ“ƒeƒiƒ“ƒX‰æ–Êƒrƒ…['
 /
@@ -106,10 +135,12 @@ COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_code                     IS '•i–ÚƒR
 /
 COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_code                IS '•i–ÚƒR[ƒh(‘OŒ)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_name                     IS '•i–Ú–¼Ì(“–Œ)';
-/
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_name                IS '•i–Ú–¼Ì(‘OŒ)';
-/
+-- == 2009/09/08 V1.3 Deleted START ===============================================================
+--COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_name                     IS '•i–Ú–¼Ì(“–Œ)';
+--/
+--COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_name                IS '•i–Ú–¼Ì(‘OŒ)';
+--/
+-- == 2009/09/08 V1.3 Deleted END   ===============================================================
 COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_id                       IS '•i–ÚID(“–Œ)';
 /
 COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_id                  IS '•i–ÚID(‘OŒ)';
