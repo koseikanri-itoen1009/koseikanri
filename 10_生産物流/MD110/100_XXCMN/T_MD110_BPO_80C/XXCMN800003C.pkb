@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 従業員インタフェース T_MD070_BPO_80C
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2008/07/07    1.3   Oracle 山根 一浩 I_S_192対応,内部変更要求No43対応
  *  2008/10/06    1.4   Oracle 椎名 昭圭 統合障害#304対応
  *  2008/11/20    1.5   Oracle 丸下 博宣 I_S_698
+ *  2009/03/25    1.6   Oracle 椎名 昭圭 本番#1340対応
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -3615,6 +3616,8 @@ AS
           END IF;
         END IF;
 --
+-- 2009/03/25 v1.6 DELETE START
+/*
         -- 購買担当マスタ存在チェック
         IF (ir_masters_rec.po_flag = gv_flg_on) THEN
           get_po_agents(ir_masters_rec,
@@ -3671,6 +3674,8 @@ AS
           END IF;
         END IF;
 --
+*/
+-- 2009/03/25 v1.6 DELETE END
         -- 職責マスタ存在チェック
         exists_fnd_respons(ir_masters_rec,
                          lb_retcd,
@@ -5899,7 +5904,9 @@ AS
     END IF;
 --
     -- 購買担当マスタ(直接)
-    IF (or_masters_tbl.po_flag = gv_flg_on) THEN
+-- 2009/03/25 v1.6 DELETE START
+--    IF (or_masters_tbl.po_flag = gv_flg_on) THEN
+-- 2009/03/25 v1.6 DELETE END
       -- 削除
       po_agents_proc(gn_proc_delete,
                      or_masters_tbl, 
@@ -5911,6 +5918,9 @@ AS
         RAISE global_api_expt;
       END IF;
 --
+-- 2009/03/25 v1.6 ADD START
+    IF (or_masters_tbl.po_flag = gv_flg_on) THEN
+-- 2009/03/25 v1.6 ADD END
       -- 登録
       po_agents_proc(gn_proc_insert,
                      or_masters_tbl, 
@@ -5926,7 +5936,9 @@ AS
     END IF;
 --
     -- 出荷ロールマスタ(直接)
-    IF (or_masters_tbl.wsh_flag = gv_flg_on) THEN
+-- 2009/03/25 v1.6 DELETE START
+--    IF (or_masters_tbl.wsh_flag = gv_flg_on) THEN
+-- 2009/03/25 v1.6 DELETE END
       -- 削除
       wsh_grants_proc(gn_proc_delete, 
                       or_masters_tbl, 
@@ -5938,6 +5950,9 @@ AS
         RAISE global_api_expt;
       END IF;
 --
+-- 2009/03/25 v1.6 ADD START
+    IF (or_masters_tbl.wsh_flag = gv_flg_on) THEN
+-- 2009/03/25 v1.6 ADD END
       -- 登録
       wsh_grants_proc(gn_proc_insert, 
                       or_masters_tbl, 
