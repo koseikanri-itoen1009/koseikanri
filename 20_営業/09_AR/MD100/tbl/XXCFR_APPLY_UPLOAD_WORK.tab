@@ -1,0 +1,59 @@
+CREATE TABLE xxcfr.xxcfr_apply_upload_work (
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_apply_upload_work
+ * Description     : 入金一括消込アップロードワーク
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- --------------- -----------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- --------------- -----------------------------------
+ *  2010/05/14    1.0   SCS 苅込 周平   初回作成
+ ************************************************************************/
+     file_id                        NUMBER        NOT NULL
+    ,receipt_number                 VARCHAR2(30)  NOT NULL
+    ,account_number                 VARCHAR2(9)   NOT NULL
+    ,receipt_date                   DATE          NOT NULL
+    ,doc_sequence_value             VARCHAR2(9)   NOT NULL
+    ,trx_amount                     NUMBER        NOT NULL
+    ,comments                       VARCHAR2(240)
+    ,apply_date                     DATE
+    ,apply_gl_date                  DATE
+    ,cash_receipt_id                NUMBER
+    ,customer_trx_id                NUMBER
+    ,trx_number                     VARCHAR2(20)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+)
+;
+COMMENT ON TABLE xxcfr.xxcfr_apply_upload_work IS '入金一括消込アップロードワーク';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.file_id                IS 'ファイルID';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.receipt_number         IS '入金番号';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.account_number         IS '顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.receipt_date           IS '入金日';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.doc_sequence_value     IS '文書番号';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.trx_amount             IS '消込金額';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.comments               IS '注釈';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.apply_date             IS '消込日';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.apply_gl_date          IS '消込GL記帳日';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.cash_receipt_id        IS '入金内部ID';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.customer_trx_id        IS '取引内部ID';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.trx_number             IS '取引番号';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.created_by             IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_apply_upload_work.program_update_date    IS 'プログラム更新日';
