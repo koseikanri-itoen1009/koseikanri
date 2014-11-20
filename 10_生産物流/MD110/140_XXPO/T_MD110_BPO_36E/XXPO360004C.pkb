@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2008/07/24    1.15  I.Higa           「発注なし仕入先返品」の場合、以下の項目は受入返品実績
  *                                       より取得する
  *                                        「工場」、「納入先」、「摘要」、「付帯コード」
+ *  2008/10/21    1.16  T.Ohashi         T_S_456,T_TE080_BPO_300 指摘29対応
  *
  *****************************************************************************************/
 --
@@ -151,7 +152,10 @@ AS
    ic_attr3       ic_lots_mst.attribute3%TYPE,                            -- 賞味期限
    order_no       xxpo_rcv_and_rtn_txns.source_document_number%TYPE,      -- 発注No
    factry_code    po_vendor_sites_all.vendor_site_code%TYPE,              -- 工場(工場コード)
-   in_cnt         xxpo_rcv_and_rtn_txns.unit_price%TYPE,                  -- 入数
+-- mod start 1.16
+--   in_cnt         xxpo_rcv_and_rtn_txns.unit_price%TYPE,                  -- 入数
+   in_cnt         xxpo_rcv_and_rtn_txns.conversion_factor%TYPE,           -- 入数
+-- mod end 1.16
    total_cnt      xxpo_rcv_and_rtn_txns.quantity%TYPE,                    -- 総数
    rtn_uom        xxpo_rcv_and_rtn_txns.rcv_rtn_uom%TYPE,                 -- 単位
    unit_price     xxpo_rcv_and_rtn_txns.kobki_converted_unit_price%TYPE,  -- 単価
@@ -702,7 +706,12 @@ AS
               || ' pla.unit_price) ), ' || cn_sts_num_zero
               || ' ) AS amount_pay, '                                   -- 仕入金額
               || ' xilv.segment1 AS deliver_dist,'                      -- 保管倉庫コード
-              || ' pla.attribute15   AS   po_attr15, '                  -- 摘要
+-- mod start 1.16
+--              || ' pla.attribute15   AS   po_attr15, '                  -- 摘要
+              || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
+              || ' rcrt.line_description,'
+              || ' pla.attribute15)  AS   po_attr15, '                  -- 摘要
+-- mod end 1.16
               || ' xlv.location_code AS   order_loc_cd,';
 --
     -- ------------------------------------
