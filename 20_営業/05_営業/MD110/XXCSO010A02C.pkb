@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009-04-02    1.2   Kazuo.Satomura   システムテスト障害(障害番号T1_0227)
  *  2009-04-08    1.3   Kazuo.Satomura   システムテスト障害(障害番号T1_0287)
  *  2009-04-08    1.4   Kazuo.Satomura   システムテスト障害(障害番号T1_0617)
+ *  2009-04-27    1.5   Kazuo.Satomura   システムテスト障害(障害番号T1_0766)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1716,6 +1717,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    /* 2009.04.27 K.Satomura T1_0766対応 START */
+    cv_bm1_send_type_other CONSTANT xxcso_sp_decision_headers.bm1_send_type%TYPE := '3'; -- ＢＭ１送付先区分=その他
+    /* 2009.04.27 K.Satomura T1_0766対応 END */
     --
     -- トークン用定数
     cv_tkn_value_action_vendor CONSTANT VARCHAR2(50) := '仕入先ＩＤ関連付け処理時：仕入先マスタ';
@@ -1723,6 +1727,9 @@ AS
     cv_tkn_value_sp_dec_cust   CONSTANT VARCHAR2(50) := 'ＳＰ専決顧客テーブル';
     cv_tkn_value_key_name_sp   CONSTANT VARCHAR2(50) := 'ＳＰ専決ヘッダＩＤ';
     cv_tkn_value_destination   CONSTANT VARCHAR2(50) := '送付先テーブル';
+    /* 2009.04.27 K.Satomura T1_0766対応 START */
+    cv_tkn_value_sp_dec_head   CONSTANT VARCHAR2(50) := 'ＳＰ専決ヘッダテーブル';
+    /* 2009.04.27 K.Satomura T1_0766対応 END */
     --
     -- *** ローカル変数 ***
     lt_vendor_id               po_vendors.vendor_id%TYPE;
@@ -1902,6 +1909,35 @@ AS
         --
       END IF;
       --
+      /* 2009.04.27 K.Satomura T1_0766対応 START */
+      IF (lt_destinations_rec.delivery_div = ct_delivery_div_bm1) THEN
+        -- 送付先区分が1:BM1の場合
+        -- ================================
+        -- ＢＭ１送付先区分更新
+        -- ================================
+        BEGIN
+          UPDATE xxcso_sp_decision_headers xsd -- ＳＰ専決ヘッダテーブル
+          SET    xsd.bm1_send_type = cv_bm1_send_type_other -- ＢＭ１送付先区分
+          WHERE  xsd.sp_decision_header_id = it_sp_decision_header_id
+          ;
+          --
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_02         -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                           ,iv_token_value1 => cv_tkn_value_sp_dec_head -- トークン値1
+                           ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                           ,iv_token_value2 => SQLERRM                  -- トークン値2
+                        );
+            --
+            RAISE global_api_expt;
+            --
+        END;
+        --
+      END IF;
+      /* 2009.04.27 K.Satomura T1_0766対応 END */
     END LOOP destinations_loop;
     --
   EXCEPTION
@@ -2310,7 +2346,9 @@ AS
         AND    TRUNC(xmb.start_date_active) = TRUNC(cd_process_date)    -- 有効日(From)
         /* 2009.03.24 K.Satomura 障害番号T1_0140対応 START */
         --AND    xmb.calc_target_flag         = cv_flag_yes               -- 計算対象フラグ
-        AND    xmb.calc_target_flag         = cv_flag_yes               -- 計算対象フラグ
+        /* 2009.04.27 K.Satomura 障害番号T1_0766対応 START */
+        --AND    xmb.calc_target_flag         = cv_flag_yes               -- 計算対象フラグ
+        /* 2009.04.27 K.Satomura 障害番号T1_0766対応 START */
         /* 2009.03.24 K.Satomura 障害番号T1_0140対応 END */
         ;
         --
