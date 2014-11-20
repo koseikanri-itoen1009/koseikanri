@@ -44,6 +44,7 @@ AS
  *  2009-03-05    1.1   N.Yabuki         結合障害対応(不具合ID.46)
  *                                       ・カテゴリ区分がNULL(営業TM以外)の場合、後続処理をスキップする処理を追加
  *  2009-04-02    1.2   N.Yabuki         【ST障害対応177】顧客ステータスチェックに「25：SP承認済」を追加
+ *  2009-04-03    1.3   N.Yabuki         【ST障害対応297】経費購買品（カテゴリ区分がNULL）を抽出対象外に修正
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -177,6 +178,10 @@ AS
   cv_tkn_api_err_msg    CONSTANT VARCHAR2(20) := 'API_ERR_MSG';
   cv_tkn_req_num        CONSTANT VARCHAR2(20) := 'REQUISITION_NUM';
   cv_tkn_req_line_num   CONSTANT VARCHAR2(20) := 'REQUISITION_LINE_NUM';
+/*20090403_yabuki_ST297 START*/
+  -- 固定の数値
+  cv_tkn_req_header_num CONSTANT VARCHAR2(20) := 'REQ_HEADER_NUM';
+/*20090403_yabuki_ST297 END*/
   --
   -- 複数エラーメッセージの区切り文字（カンマ）
   cv_msg_comma CONSTANT VARCHAR2(3) := ' , ';
@@ -229,6 +234,12 @@ AS
   cv_jotai_kbn3_non_schdl   CONSTANT VARCHAR2(1) := '0';  -- 機器状態３（廃棄情報）「予定無」
   cv_jotai_kbn3_ablsh_appl  CONSTANT VARCHAR2(1) := '2';  -- 機器状態３（廃棄情報）「廃棄申請中」
   --
+/*20090403_yabuki_ST297 START*/
+  -- 固定の数値
+  cn_zero    CONSTANT NUMBER := 0;
+  cn_one     CONSTANT NUMBER := 1;
+/*20090403_yabuki_ST297 END*/
+    --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -566,6 +577,9 @@ AS
   PROCEDURE get_requisition_info(
       iv_requisition_number  IN         po_requisition_headers.segment1%TYPE  -- 発注依頼番号
     , id_process_date        IN         DATE                                  -- 業務処理日付
+/*20090403_yabuki_ST297 START*/
+    , on_rec_count           OUT NOCOPY NUMBER               -- 抽出件数
+/*20090403_yabuki_ST297 END*/
     , o_requisition_rec      OUT NOCOPY g_requisition_rtype  -- 発注依頼情報
     , ov_errbuf              OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
     , ov_retcode             OUT NOCOPY VARCHAR2             -- リターン・コード   --# 固定 #
@@ -602,6 +616,11 @@ AS
     ov_retcode := cv_status_normal;
     --
     --###########################  固定部 END   ############################
+    --
+/*20090403_yabuki_ST297 START*/
+    -- 処理件数を初期化
+    on_rec_count := cn_zero;
+/*20090403_yabuki_ST297 END*/
     --
     -- ============================
     -- 発注依頼情報抽出
@@ -661,19 +680,31 @@ AS
            , xxcso_requisition_lines_v  xrlv
       WHERE  prh.segment1               = iv_requisition_number
       AND    xrlv.requisition_header_id = prh.requisition_header_id
+      /*20090403_yabuki_ST297 START*/
+      AND    xrlv.category_kbn IS NOT NULL
+      /*20090403_yabuki_ST297 END*/
       ;
+      --
+/*20090403_yabuki_ST297 START*/
+    -- 処理件数を設定
+    on_rec_count := cn_one;
+/*20090403_yabuki_ST297 END*/
       --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         -- 該当データが存在しない場合
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                       , iv_name         => cv_tkn_number_07          -- メッセージコード
-                       , iv_token_name1  => cv_tkn_req_num            -- トークンコード1
-                       , iv_token_value1 => iv_requisition_number     -- トークン値1
-                    );
-        --
-        RAISE sql_expt;
+/*20090403_yabuki_ST297 START*/
+        -- 何も処理しない（→正常かつ処理件数=0）
+        NULL;
+--        lv_errbuf := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+--                       , iv_name         => cv_tkn_number_07          -- メッセージコード
+--                       , iv_token_name1  => cv_tkn_req_num            -- トークンコード1
+--                       , iv_token_value1 => iv_requisition_number     -- トークン値1
+--                    );
+--        --
+--        RAISE sql_expt;
+/*20090403_yabuki_ST297 END*/
         --
       WHEN OTHERS THEN
         -- その他の例外の場合
@@ -682,7 +713,10 @@ AS
                        , iv_name         => cv_tkn_number_08          -- メッセージコード
                        , iv_token_name1  => cv_tkn_table              -- トークンコード1
                        , iv_token_value1 => cv_tkn_val_requisition    -- トークン値1
-                       , iv_token_name2  => cv_tkn_req_num            -- トークンコード2
+/*20090403_yabuki_ST297 START*/
+                       , iv_token_name2  => cv_tkn_req_header_num     -- トークンコード2
+--                       , iv_token_name2  => cv_tkn_req_num            -- トークンコード2
+/*20090403_yabuki_ST297 END*/
                        , iv_token_value2 => iv_requisition_number     -- トークン値2
                        , iv_token_name3  => cv_tkn_err_msg            -- トークンコード3
                        , iv_token_value3 => SQLERRM                   -- トークン値3
@@ -3223,6 +3257,9 @@ AS
     ln_transaction_type_id  csi_txn_types.transaction_type_id%TYPE;  -- 取引タイプID
     lv_errbuf2              VARCHAR2(5000);                          -- エラー・メッセージ
     lv_retcode2             VARCHAR2(1);                             -- リターン・コード
+/*20090403_yabuki_ST297 START*/
+    ln_rec_count            NUMBER;                                  -- 抽出件数
+/*20090403_yabuki_ST297 END*/
     --
     -- *** ローカル・カーソル ***
     --
@@ -3276,6 +3313,9 @@ AS
     get_requisition_info(
         iv_requisition_number => lv_requisition_number  -- 発注依頼番号
       , id_process_date       => ld_process_date        -- 業務処理日付
+/*20090403_yabuki_ST297 START*/
+      , on_rec_count          => ln_rec_count           -- 抽出件数
+/*20090403_yabuki_ST297 END*/
       , o_requisition_rec     => l_requisition_rec      -- 発注依頼情報
       , ov_errbuf             => lv_errbuf              -- エラー・メッセージ  --# 固定 #
       , ov_retcode            => lv_retcode             -- リターン・コード    --# 固定 #
@@ -3289,14 +3329,24 @@ AS
     -- エラーメッセージ初期化
     lv_errbuf := NULL;
     --
+/*20090403_yabuki_ST297 START*/
     --------------------------------------------------
-    -- カテゴリ区分がNULL（営業TM以外）の場合
+    -- A-2での抽出件数が0件の場合
     --------------------------------------------------
-    IF ( l_requisition_rec.category_kbn IS NULL )  THEN
+    IF ( ln_rec_count = 0 )  THEN
       -- 以降の処理をスキップします
       RETURN;
       --
     END IF;
+--    --------------------------------------------------
+--    -- カテゴリ区分がNULL（営業TM以外）の場合
+--    --------------------------------------------------
+--    IF ( l_requisition_rec.category_kbn IS NULL )  THEN
+--      -- 以降の処理をスキップします
+--      RETURN;
+--      --
+--    END IF;
+/*20090403_yabuki_ST297 END*/
     --
     -- ========================================
     -- セーブポイント設定
