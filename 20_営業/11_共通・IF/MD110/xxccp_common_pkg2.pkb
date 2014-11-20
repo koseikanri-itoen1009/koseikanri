@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_common_pkg2(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.4
+ * Version                : 1.6
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *                                      業務日付を指定可能なように変更
  *  2009-05-01    1.4  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *  2009-05-11    1.5  Masayuki.Sano    障害番号T1_0376対応(ダミー日付の日付変換時、書式指定)
+ *  2009-06-25    1.6  Yuuki.Nakamura   障害番号T1_1425対応(文字化けチェック削除)
  *****************************************************************************************/
 --
   -- ===============================
@@ -323,7 +324,8 @@ AS
         END IF;
       --文字化けチェックの場合
       ELSIF (iv_check_scope = cv_chk_scope_garbled) THEN
-        --禁則文字チェック
+-- 2009-06-25 MOD Ver.1.6 By Yuuki.Nakamura Start
+/*        --禁則文字チェック
         IF ((ln_check_char IN (cn_chr_code_tilde,cn_chr_code_yen_mark))
           OR (ln_check_char = cn_chr_code_yen_mark)
           OR (ln_check_char BETWEEN cn_chr_code_backslash AND cn_chr_code_parallel)
@@ -331,7 +333,10 @@ AS
             cn_chr_code_two_darshi,cn_chr_code_yen_mark_b,cn_chr_code_cent,cn_chr_code_pound,cn_chr_code_not)))
         THEN
           RETURN FALSE;
-        END IF;
+        END IF;*/
+        --常にTRUEを返す
+        RETURN TRUE;
+-- 2009-06-25 MOD Ver.1.6 By Yuuki.Nakamura End
       END IF;
     END LOOP;
 --
