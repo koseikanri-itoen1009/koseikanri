@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  2008/12/02   1.5   D.Nihei          本番障害#251対応（条件追加) 
  *  2008/12/19   1.6   D.Nihei          本番障害#645対応（条件修正) 
  *                                      本番障害#648対応（条件修正) 
+ *  2008/12/24   1.7   D.Nihei          本番障害#836対応（抽出箇所編集) 
+ *                                      本番障害#837対応（抽出箇所編集) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -66,6 +68,10 @@ AS
 -- 2008/10/22 D.Nihei ADD START
     lt_dummy                 ic_lots_mst.attribute23%TYPE;                        -- 
 -- 2008/10/22 D.Nihei ADD END
+-- 2008/12/24 D.Nihei ADD START 本番障害#837
+    lt_prod_item_id          ic_lots_mst.item_id%TYPE;                            -- 品目ID(完成品)
+    lt_prod_lot_id           ic_lots_mst.lot_id%TYPE;                             -- ロットID(完成品)
+-- 2008/12/24 D.Nihei ADD END
 --
   BEGIN
 --
@@ -107,6 +113,29 @@ AS
       WHERE  ximv.item_id = xicv.item_id
       AND    xicv.item_id = lt_item_id
       ;
+-- 2008/12/24 D.Nihei ADD START 本番障害#837
+      --==========================
+      -- 完成品情報取得
+      --==========================
+      BEGIN
+        SELECT item_id
+             , lot_id
+        INTO   lt_prod_item_id
+             , lt_prod_lot_id
+        FROM   ic_tran_pnd           
+        WHERE  doc_id      = lt_batch_id 
+        AND    doc_type    = 'PROD'
+        AND    delete_mark = 0
+        AND    line_type   = 1
+        AND    reverse_id  IS NULL
+        AND    lot_id      <> 0
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_prod_item_id := 0;
+          lt_prod_lot_id  := 0;
+      END;
+-- 2008/12/24 D.Nihei ADD END
 --
       --==========================
       -- 動的SQL作成
@@ -504,6 +533,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     itp.completed_ind      = 0 ';
         wk_sql1 := wk_sql1 || '       AND     itp.doc_type           = ''PROD'' ';
         wk_sql1 := wk_sql1 || '       AND     itp.lot_id             = ilm.lot_id ';
+-- 2008/12/24 D.Nihei ADD START 本番障害#836
+        wk_sql1 := wk_sql1 || '       AND     itp.delete_mark        = 0 ';
+-- 2008/12/24 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '       AND     gmd.material_detail_id = mld.mov_line_id ';
         wk_sql1 := wk_sql1 || '       AND     mld.document_type_code = ''40'' ';
         wk_sql1 := wk_sql1 || '       AND     mld.record_type_code   = ''10'' ';
@@ -1030,6 +1062,9 @@ AS
         wk_sql2 := wk_sql2 || '                 AND     gmd.material_detail_id = itp.line_id ';
         wk_sql2 := wk_sql2 || '                 AND     itp.completed_ind      = 0 ';
         wk_sql2 := wk_sql2 || '                 AND     itp.doc_type           = ''PROD'' ';
+-- 2008/12/24 D.Nihei ADD START 本番障害#836
+        wk_sql2 := wk_sql2 || '                 AND     itp.delete_mark        = 0 ';
+-- 2008/12/24 D.Nihei ADD END
         wk_sql2 := wk_sql2 || '                 AND     gmd.material_detail_id = mld.mov_line_id ';
         wk_sql2 := wk_sql2 || '                 AND     mld.document_type_code = ''40'' ';
         wk_sql2 := wk_sql2 || '                 AND     mld.record_type_code   = ''10'' ';
@@ -1309,6 +1344,12 @@ AS
          AND ( ior_ilm_data(ln_cnt).record_type =  0 ) ) 
         THEN
           ior_ilm_data.DELETE(ln_cnt);
+-- 2008/12/24 D.Nihei ADD START 本番障害#837
+        ELSIF ( ( lt_prod_item_id = ior_ilm_data(ln_cnt).item_id ) 
+            AND ( lt_prod_lot_id  = ior_ilm_data(ln_cnt).lot_id ) ) 
+        THEN
+         ior_ilm_data.DELETE(ln_cnt);
+-- 2008/12/24 D.Nihei ADD END
 -- 2008/10/22 D.Nihei ADD START
         ELSIF ( ( lt_item_class_code              <> cv_shizai ) 
             AND ( ior_ilm_data(ln_cnt).record_type =  0        ) ) 
