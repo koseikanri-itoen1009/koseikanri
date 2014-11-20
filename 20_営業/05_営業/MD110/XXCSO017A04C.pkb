@@ -7,7 +7,7 @@ AS
  * Description      : 帳合問屋用見積入力画面から、見積番号、版毎に見積書を	
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A04_見積書（帳合問屋用）PDF出力
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-07    1.4   Kazuo.Satomura   ＳＴ障害対応(T1_0889)
  *  2009-05-13    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0972,T1_0974)
+ *  2009-05-20    1.6   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1762,7 +1763,9 @@ AS
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
 --
-    cv_log_msg         CONSTANT VARCHAR2(100) := 'システムエラーが発生しました。システム管理者に確認してください。';
+    /* 2009.05.20 M.Ohtsuki T1_0696対応 START */
+--    cv_log_msg         CONSTANT VARCHAR2(100) := 'システムエラーが発生しました。システム管理者に確認してください。';
+    /* 2009.05.20 M.Ohtsuki T1_0696対応 END */
     -- エラーメッセージ
     -- ===============================
     -- ローカル変数
@@ -1813,17 +1816,27 @@ AS
        --エラー出力
        fnd_file.put_line(
           which  => FND_FILE.LOG
-         ,buff   => lv_errmsg                  --ユーザー・エラーメッセージ
-       );
-       fnd_file.put_line(
-          which  => FND_FILE.LOG
+    /* 2009.05.20 M.Ohtsuki T1_0696対応 START */
+--         ,buff   => lv_errmsg                  --ユーザー・エラーメッセージ
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
          ,buff   => SUBSTRB(
-                      cv_log_msg ||cv_msg_prnthss_l||
-                      cv_pkg_name||cv_msg_cont||
-                      cv_prg_name||cv_msg_part||
-                      lv_errbuf  ||cv_msg_prnthss_r,1,5000
+                    cv_pkg_name||cv_msg_cont||
+                    cv_prg_name||cv_msg_part||
+                    lv_errbuf,1,5000
                     )
-       );                                                     --エラーメッセージ
+    /* 2009.05.20 M.Ohtsuki T1_0696対応 END */
+       );
+    /* 2009.05.20 M.Ohtsuki T1_0696対応 START */
+--       fnd_file.put_line(
+--          which  => FND_FILE.LOG
+--         ,buff   => SUBSTRB(
+--                      cv_log_msg ||cv_msg_prnthss_l||
+--                      cv_pkg_name||cv_msg_cont||
+--                      cv_prg_name||cv_msg_part||
+--                      lv_errbuf  ||cv_msg_prnthss_r,1,5000
+--                    )
+--       );                                                     --エラーメッセージ
+    /* 2009.05.20 M.Ohtsuki T1_0696対応 START */
     END IF;
 --
     -- =======================
