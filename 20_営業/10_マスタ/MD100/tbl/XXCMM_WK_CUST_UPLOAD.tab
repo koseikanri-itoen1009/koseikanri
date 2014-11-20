@@ -1,3 +1,19 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCMM_WK_CUST_UPLOAD
+ * Description : 顧客一括登録用ワーク(テーブル)
+ * Version     : 1.2
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/10/05    1.0   S.Niki           新規作成
+ *  2012/12/03    1.1   M.Takasaki       [E_本稼動_09963]
+ *  2013/04/15    1.2   K.Nakamura       [E_本稼動_09963追加対応]支払方法、カード会社区分追加
+ *
+ ****************************************************************************************/
 CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
      file_id                        NUMBER
     ,line_no                        NUMBER
@@ -17,6 +33,9 @@ CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
     ,address3                       VARCHAR2(30)
     ,tel_no                         VARCHAR2(50)
     ,fax                            VARCHAR2(50)
+-- Ver1.2 Add E_本稼動_09963対応
+    ,receipt_method_name            VARCHAR2(60)    -- 支払方法
+-- Ver1.2 End
     ,business_low_type_tmp          VARCHAR2(10)
     ,manager_name                   VARCHAR2(300)
     ,emp_number                     VARCHAR2(30)
@@ -48,6 +67,9 @@ CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
     ,receiv_base_code               VARCHAR2(10)    -- 入金拠点
     ,sales_head_base_code           VARCHAR2(10)    -- 販売先本部担当拠点
 -- Ver1.1 End
+-- Ver1.2 Add E_本稼動_09963対応
+    ,card_company_kbn               VARCHAR2(10)    -- カード会社区分
+-- Ver1.2 End
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -96,6 +118,10 @@ COMMENT ON COLUMN xxcmm_wk_cust_upload.tel_no                                   
 /
 COMMENT ON COLUMN xxcmm_wk_cust_upload.fax                                       IS 'FAX'
 /
+-- Ver1.2 Add E_本稼動_09963対応
+COMMENT ON COLUMN xxcmm_wk_cust_upload.receipt_method_name                       IS '支払方法'
+/
+-- Ver1.2 End
 COMMENT ON COLUMN xxcmm_wk_cust_upload.business_low_type_tmp                     IS '業態小分類（仮）'
 /
 COMMENT ON COLUMN xxcmm_wk_cust_upload.manager_name                              IS '店長名'
@@ -156,6 +182,10 @@ COMMENT ON COLUMN xxcmm_wk_cust_upload.receiv_base_code                         
 COMMENT ON COLUMN xxcmm_wk_cust_upload.sales_head_base_code                      IS '販売先本部担当拠点'
 /
 -- Ver1.1 End
+-- Ver1.2 Add E_本稼動_09963対応
+COMMENT ON COLUMN xxcmm_wk_cust_upload.card_company_kbn                          IS 'カード会社区分'
+/
+-- Ver1.2 End
 COMMENT ON COLUMN xxcmm_wk_cust_upload.created_by                                IS '作成者'
 /
 COMMENT ON COLUMN xxcmm_wk_cust_upload.creation_date                             IS '作成日'

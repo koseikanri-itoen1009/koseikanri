@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,8 +28,9 @@ AS
  *  2009/10/20    1.3   久保島 豊        障害0001350対応
  *  2010/04/16    1.4   久保島 豊        障害E_本稼動_02295対応 出荷元保管場所の項目追加
  *  2011/11/28    1.5   窪 和重          障害E_本稼動_07553対応 EDI関連の項目追加
- *  2012/03/13    1.6   仁木 重人        障害E_本稼動_009272対応 訪問対象区分の項目追加
- *                                                               情報欄を最終項目に修正
+ *  2012/03/13    1.6   仁木 重人        障害E_本稼動_09272対応 訪問対象区分の項目追加
+ *                                                              情報欄を最終項目に修正
+ *  2013/03/29    1.7   仁木 重人        障害E_本稼動_09963追加対応 顧客追加情報、法人情報の項目追加
  *
  *****************************************************************************************/
 --
@@ -124,6 +125,9 @@ AS
   cv_gyotai_sho              CONSTANT VARCHAR2(14)  := '業態（小分類）';              --パラメータ・業態（小分類）
   cv_chiku_code              CONSTANT VARCHAR2(10)  := '地区コード';                  --パラメータ・地区コード
   cv_file_name               CONSTANT VARCHAR2(9)   := 'FILE_NAME';                   --ファイル名トークン
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+  cv_date_fmt_std            CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                  --日付書式(YYYY/MM/DD)
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
 --
   --エラーメッセージ
   cv_profile_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00002';  --プロファイル取得エラー
@@ -419,6 +423,11 @@ AS
     lv_output_excute               VARCHAR2(1)     := 'Y';                      --出力有無
     ln_credit_limit                xxcmm_mst_corporate.credit_limit%TYPE;       --顧客法人情報.与信限度額
     lv_decide_div                  xxcmm_mst_corporate.decide_div%TYPE;         --顧客法人情報.判定区分
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+    lt_tdb_code                    xxcmm_mst_corporate.tdb_code%TYPE;           --顧客法人情報.TDBコード
+    lt_approval_date               xxcmm_mst_corporate.approval_date%TYPE;      --顧客法人情報.決裁日付
+    lt_base_code                   xxcmm_mst_corporate.base_code%TYPE;          --顧客法人情報.本部担当拠点
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
     lv_information                 VARCHAR2(100)   := NULL;
     lv_sales_base_name             VARCHAR2(50)    := NULL;
     lv_payment_term                VARCHAR2(100)   := NULL;                     --ローカル変数・支払条件
@@ -474,6 +483,10 @@ AS
                xca.sales_chain_code                   sales_chain_code,     --チェーン店コード（販売先）
                xca.delivery_chain_code                delivery_chain_code,  --チェーン店コード（納品先）
                xca.policy_chain_code                  policy_chain_code,    --チェーン店コード（営業政策用）
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+               xca.intro_chain_code1                  intro_chain_code1,    --紹介者チェーンコード１
+               xca.intro_chain_code2                  intro_chain_code2,    --紹介者チェーンコード２
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
                xca.chain_store_code                   chain_store_code,     --チェーン店コード（ＥＤＩ）
                xca.store_code                         store_code,           --店舗コード
                xca.business_low_type                  business_low_type     --業態（小分類）
@@ -483,6 +496,15 @@ AS
               ,xca.bill_base_code                     bill_base_code        --請求拠点
               ,xca.receiv_base_code                   receiv_base_code      --入金拠点
               ,xca.delivery_base_code                 delivery_base_code    --納品拠点
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+              ,xca.sales_head_base_code               sales_head_base_code  --販売先本部担当拠点
+              ,xca.cnvs_base_code                     cnvs_base_code        --獲得拠点
+              ,xca.cnvs_business_person               cnvs_business_person  --獲得営業員
+              ,xca.new_point_div                      new_point_div         --新規ポイント区分
+              ,xca.new_point                          new_point             --新規ポイント
+              ,xca.intro_base_code                    intro_base_code       --紹介拠点
+              ,xca.intro_business_person              intro_person          --紹介営業員
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
               ,xca.selling_transfer_div               selling_transfer_div  --売上実績振替
               ,xca.card_company                       card_company          --カード会社
               ,xca.wholesale_ctrl_code                wholesale_ctrl_code   --問屋管理コード
@@ -699,8 +721,18 @@ AS
           -- ===============================
           BEGIN
             SELECT xmc.credit_limit  credit_limit,
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+                   xmc.tdb_code      tdb_code,       --TDBコード
+                   xmc.approval_date approval_date,  --決裁日付
+                   xmc.base_code     base_code,      --本部担当拠点
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
                    xmc.decide_div    decide_div
             INTO   ln_credit_limit,
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+                   lt_tdb_code,                      --TDBコード
+                   lt_approval_date,                 --決裁日付
+                   lt_base_code,                     --本部担当拠点
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
                    lv_decide_div
             FROM   xxcmm_mst_corporate xmc
             WHERE  xmc.customer_id = cust_data_rec.customer_id;
@@ -868,6 +900,10 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_chain_code,1,9);  --チェーン店コード（納品先）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_delivery_kigyou_code,1,6);            --企業コード（納品先）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.policy_chain_code,1,30);   --チェーン店コード（営業政策用）
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code1,1,9);    --紹介者チェーンコード１
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code2,1,9);    --紹介者チェーンコード２
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.chain_store_code,1,4);     --チェーン店コード（ＥＤＩ）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_code,1,10);          --店舗コード
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.business_low_type,1,2);    --業態（小分類）
@@ -883,6 +919,18 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bill_base_code,1,4);       --請求拠点
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.receiv_base_code,1,4);     --入金拠点
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_base_code,1,4);   --納品拠点
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_head_base_code,1,4); --販売先本部担当拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_base_code,1,4);       --獲得拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_business_person,1,5); --獲得営業員
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point_div,1,1);        --新規ポイント区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point,1,3);            --新規ポイント
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_base_code,1,4);      --紹介拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_person,1,5);         --紹介営業員
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code,1,12);                       --TDBコード
+        lv_output_str := lv_output_str || cv_comma || TO_CHAR(lt_approval_date ,cv_date_fmt_std);      --決済日付
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code,1,4);                       --本部担当拠点
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.selling_transfer_div,1,4); --売上実績振替
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.card_company,1,9);         --カード会社
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.wholesale_ctrl_code,1,9);  --問屋管理コード
@@ -947,6 +995,11 @@ AS
 -- 2009/10/20 Ver1.3 add start by Y.Kuboshima
       lv_price_list           := NULL;
 -- 2009/10/20 Ver1.3 add end by Y.Kuboshima
+-- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+      lt_tdb_code             := NULL;    --TDBコード
+      lt_approval_date        := NULL;    --決裁日付
+      lt_base_code            := NULL;    --本部担当拠点
+-- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
 --
     END LOOP cust_for_loop;
 --

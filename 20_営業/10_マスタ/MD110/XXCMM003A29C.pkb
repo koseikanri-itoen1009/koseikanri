@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,8 +33,9 @@ AS
  *                                                          CSV項目数のチェックを追加
  *                                                          実行した職責によるセキュリティを追加
  *  2011/11/28    1.7   窪 和重          障害E_本稼動_07553対応 EDI関連の項目追加
- *  2012/04/19    1.8   仁木 重人        障害E_本稼動_009272対応 訪問対象区分の項目追加
+ *  2012/04/19    1.8   仁木 重人        障害E_本稼動_09272対応 訪問対象区分の項目追加
  *                                                               情報欄を最終項目に修正
+ *  2013/04/17    1.9   中野 徹也        障害E_本稼動_09963追加対応 項目追加および使用制限変更
  *
  *****************************************************************************************/
 --
@@ -159,6 +160,17 @@ AS
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
   cv_item_num_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00028';                --データ項目数エラー
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+  cv_cust_class_kbn_err_msg   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00357';                --顧客区分ステータスチェックエラー
+  cv_code_person_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00358';                --獲得拠点営業員相関チェックエラー
+  cv_code_relation_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00359';                --獲得拠点従業員紐付きチェックエラー
+  cv_person_relation_err_msg  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00360';                --獲得従業員拠点紐付きチェックエラー
+  cv_new_point_err_msg        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00361';                --新規ポイント範囲チェックエラー
+  cv_intro_err_msg            CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00362';                --未登録チェックエラー
+  cv_intro_person_err_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00363';                --獲得営業員紹介者チェックエラー
+  cv_mst_intro_per_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00364';                --紹介者マスタチェックエラー
+  cv_base_code_err_msg        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00365';                --本部担当拠点必須エラー
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -317,6 +329,25 @@ AS
   cv_vist_target_div          CONSTANT VARCHAR2(30)  := '訪問対象区分';                    --訪問対象区分
   cv_homon_taisyo_kbn         CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_HOMON_TAISYO_KBN';     --参照コード・訪問対象区分
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+  cv_approved_status          CONSTANT VARCHAR2(2)   := '30';                              --顧客ステータス・承認済
+  cv_cnvs_base_code           CONSTANT VARCHAR2(30)  := '獲得拠点コード';                  --獲得拠点コード
+  cv_cnvs_business_person     CONSTANT VARCHAR2(30)  := '獲得営業員';                      --獲得営業員
+  cv_new_point_div            CONSTANT VARCHAR2(30)  := '新規ポイント区分';                --新規ポイント区分
+  cv_new_point_div_type       CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_SHINKI_POINT_KBN';     --参照タイプ・新規ポイント区分
+  cv_new_point                CONSTANT VARCHAR2(30)  := '新規ポイント';                    --新規ポイント
+  cv_intro_base_code          CONSTANT VARCHAR2(30)  := '紹介拠点コード';                  --紹介拠点コード
+  cv_intro_base_code_val      CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';                 --値セット・紹介拠点コード
+  cv_intro_business_person    CONSTANT VARCHAR2(30)  := '紹介営業員';                      --紹介営業員
+  cv_base_code                CONSTANT VARCHAR2(30)  := '本部担当拠点';                    --本部担当拠点
+  cv_tdb_code                 CONSTANT VARCHAR2(30)  := 'TDBコード';                       --TDBコード
+  cv_approval_date            CONSTANT VARCHAR2(30)  := '決裁日付';                        --決裁日付
+  cv_intro_chain_code1        CONSTANT VARCHAR2(30)  := '紹介者チェーンコード１';          --紹介者チェーンコード１
+  cv_intro_chain_code2        CONSTANT VARCHAR2(30)  := '紹介者チェーンコード２';          --紹介者チェーンコード２
+  cv_sales_head_base_code     CONSTANT VARCHAR2(30)  := '販売先本部担当拠点';              --販売先本部担当拠点
+  cn_point_min                CONSTANT NUMBER        := 0;                                 --新規ポイント最小値
+  cn_point_max                CONSTANT NUMBER        := 999;                               --新規ポイント最大値
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -500,6 +531,42 @@ AS
     lv_vist_target_div          VARCHAR2(100)   := NULL;                  --ローカル変数・訪問対象区分
     lv_vist_target_div_mst      xxcmm_cust_accounts.vist_target_div%TYPE; --訪問対象区分確認用変数
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+    lv_cnvs_base_code           VARCHAR2(100)   := NULL;                  --ローカル変数・獲得拠点コード
+    lv_cnvs_base_code_mst1       xxcmm_cust_accounts.cnvs_base_code%TYPE; --獲得拠点コード確認用変数1
+    lv_cnvs_base_code_mst2       xxcmm_cust_accounts.cnvs_base_code%TYPE; --獲得拠点コード確認用変数2
+    lv_cnvs_business_person     VARCHAR2(100)   := NULL;                  --ローカル変数・獲得営業員
+    lv_cnvs_business_person_mst1 xxcmm_cust_accounts.cnvs_business_person%TYPE;  --獲得営業員確認用変数1
+    lv_cnvs_business_person_mst2 xxcmm_cust_accounts.cnvs_business_person%TYPE;  --獲得営業員確認用変数2
+    lv_base_code_flag1          VARCHAR2(1)     := NULL;                  --獲得拠点コード入力チェック用1
+    lv_business_person_flag1    VARCHAR2(1)     := NULL;                  --獲得営業員入力チェック用1
+    lv_base_code_flag2          VARCHAR2(1)     := NULL;                  --獲得拠点コード入力チェック用2
+    lv_business_person_flag2    VARCHAR2(1)     := NULL;                  --獲得営業員入力チェック用2
+    lv_base_code_flag3          VARCHAR2(1)     := NULL;                  --獲得拠点コード入力チェック用3
+    lv_business_person_flag3    VARCHAR2(1)     := NULL;                  --獲得営業員入力チェック用3
+    lv_base_code_flag4          VARCHAR2(1)     := NULL;                  --獲得拠点コード入力チェック用4
+    lv_business_person_flag4    VARCHAR2(1)     := NULL;                  --獲得営業員入力チェック用4
+    lv_new_point_div            VARCHAR2(1)     := NULL;                  --ローカル変数・新規ポイント区分
+    lv_new_point_div_mst        xxcmm_cust_accounts.new_point_div%TYPE;   --新規ポイント区分確認用変数
+    lv_new_point                VARCHAR2(100)   := NULL;                  --ローカル変数・新規ポイント
+    ln_new_point                NUMBER          := NULL;                  --ローカル変数・新規ポイント(数値)
+    lv_intro_base_code          VARCHAR2(100)   := NULL;                  --ローカル変数・紹介拠点コード
+    lv_intro_base_code_mst1     xxcmm_cust_accounts.intro_base_code%TYPE; --紹介拠点コード確認用変数1
+    lv_intro_base_code_mst2     xxcmm_cust_accounts.intro_base_code%TYPE; --紹介拠点コード確認用変数2
+    lv_intro_business_person    VARCHAR2(100)   := NULL;                  --ローカル変数・紹介営業員
+    lv_intro_business_person_mst1 xxcmm_cust_accounts.intro_business_person%TYPE; --紹介営業員確認用変数1
+    lv_intro_business_person_mst2 xxcmm_cust_accounts.intro_business_person%TYPE; --紹介営業員確認用変数2
+    lv_int_bus_per_flag1        VARCHAR2(1)     := NULL;                  --紹介営業員チェック用1
+    lv_int_bus_per_flag2        VARCHAR2(1)     := NULL;                  --紹介営業員チェック用2
+    lv_base_code                VARCHAR2(100)   := NULL;                  --ローカル変数・本部担当拠点
+    lv_base_code_mst            xxcmm_mst_corporate.base_code%TYPE;       --紹介営業員確認用変数1
+    lv_tdb_code                 VARCHAR2(100)   := NULL;                  --ローカル変数・TDBコード
+    lv_corp_approval_date       VARCHAR2(100)   := NULL;                  --ローカル変数・決裁日付
+    lv_intro_chain_code1        VARCHAR2(100)   := NULL;                  --ローカル変数・紹介者チェーンコード１
+    lv_intro_chain_code2        VARCHAR2(100)   := NULL;                  --ローカル変数・紹介者チェーンコード２
+    lv_sales_head_base_code     VARCHAR2(100)   := NULL;                  --ローカル変数・販売先本部担当拠点
+    lv_sales_head_base_code_mst xxcmm_cust_accounts.sales_head_base_code%TYPE; --販売先本部担当拠点確認用変数
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -889,6 +956,145 @@ AS
     -- 訪問対象区分チェックカーソルレコード型
     check_homon_taisyo_kbn_rec  check_homon_taisyo_kbn_cur%ROWTYPE;
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+    -- 獲得拠点コード、営業員チェックカーソル
+    CURSOR check_db_code_person_cur(
+      iv_customer_code IN VARCHAR2)
+    IS
+      SELECT xca.cnvs_base_code         cnvs_base_code
+            ,xca.cnvs_business_person   cnvs_business_person
+      FROM   hz_cust_accounts     hca,
+             xxcmm_cust_accounts  xca
+      WHERE  hca.cust_account_id     = xca.customer_id
+      AND    hca.account_number      = iv_customer_code 
+      ;
+    -- 獲得拠点コード、営業員チェックカーソルレコード型
+    check_db_code_person_rec  check_db_code_person_cur%ROWTYPE;
+--
+    -- 獲得営業員と拠点コードの紐付きチェックカーソル
+    CURSOR check_db_person_relation_cur(
+      iv_business_person IN VARCHAR2)
+    IS
+      SELECT paa.ass_attribute5   new_base_code
+      FROM   per_all_people_f pap            -- 従業員マスタ
+            ,per_all_assignments_f paa       -- アサインメントマスタ
+      WHERE  pap.person_id       = paa.person_id
+      AND    pap.effective_start_date <= gd_process_date
+      AND    pap.effective_end_date   >  gd_process_date
+      AND    paa.effective_start_date <= gd_process_date
+      AND    paa.effective_end_date   >  gd_process_date
+      AND    pap.employee_number = iv_business_person
+      ;
+    -- 獲得営業員と拠点コードの紐付きチェックカーソルレコード型
+    check_db_person_relation_rec  check_db_person_relation_cur%ROWTYPE;
+--
+    -- 獲得営業員と拠点コードの紐付き権限用チェックカーソル
+    CURSOR check_db_person_rel_auth_cur(
+      iv_business_person IN VARCHAR2)
+    IS
+      SELECT paa.ass_attribute6   old_base_code
+      FROM   per_all_people_f pap            -- 従業員マスタ
+            ,per_all_assignments_f paa       -- アサインメントマスタ
+      WHERE  pap.person_id       = paa.person_id
+      AND    pap.effective_start_date <= gd_process_date
+      AND    pap.effective_end_date   >  gd_process_date
+      AND    paa.effective_start_date <= gd_process_date
+      AND    paa.effective_end_date   >  gd_process_date
+      AND    ADD_MONTHS(TRUNC(gd_process_date, 'MM') ,-3) <= TO_DATE(paa.ass_attribute2 ,'YYYY/MM/DD')
+      AND    pap.employee_number = iv_business_person
+      ;
+    -- 獲得営業員と拠点コードの紐付き権限用チェックカーソルレコード型
+    check_db_person_rel_auth_rec  check_db_person_rel_auth_cur%ROWTYPE;
+--
+    -- 拠点コードと獲得営業員の紐付きチェックカーソル
+    CURSOR check_db_code_relation_cur(
+      iv_base_code       IN VARCHAR2
+     ,iv_business_person IN VARCHAR2)
+    IS
+      SELECT pap.employee_number   new_employee_number
+      FROM   per_all_people_f pap            -- 従業員マスタ
+            ,per_all_assignments_f paa       -- アサインメントマスタ
+      WHERE  pap.person_id       = paa.person_id
+      AND    pap.effective_start_date <= gd_process_date
+      AND    pap.effective_end_date   >  gd_process_date
+      AND    paa.effective_start_date <= gd_process_date
+      AND    paa.effective_end_date   >  gd_process_date
+      AND    paa.ass_attribute5  = iv_base_code
+      AND    pap.employee_number = iv_business_person
+      ;
+    -- 拠点コードと獲得営業員の紐付きチェックレコード型
+    check_db_code_relation_rec  check_db_code_relation_cur%ROWTYPE;
+--
+    -- 拠点コードと獲得営業員の紐付き権限用チェックカーソル
+    CURSOR check_db_code_rel_auth_cur(
+      iv_base_code       IN VARCHAR2
+     ,iv_business_person IN VARCHAR2)
+    IS
+      SELECT pap.employee_number   old_employee_number
+      FROM   per_all_people_f pap            -- 従業員マスタ
+            ,per_all_assignments_f paa       -- アサインメントマスタ
+      WHERE  pap.person_id       = paa.person_id
+      AND    pap.effective_start_date <= gd_process_date
+      AND    pap.effective_end_date   >  gd_process_date
+      AND    paa.effective_start_date <= gd_process_date
+      AND    paa.effective_end_date   >  gd_process_date
+      AND    ADD_MONTHS(TRUNC(gd_process_date, 'MM') ,-3) <= TO_DATE(paa.ass_attribute2 ,'YYYY/MM/DD')
+      AND    paa.ass_attribute6  = iv_base_code
+      AND    pap.employee_number = iv_business_person
+      ;
+    -- 拠点コードと獲得営業員の紐付き権限用チェックレコード型
+    check_db_code_rel_auth_rec  check_db_code_rel_auth_cur%ROWTYPE;
+--
+    -- 新規ポイント区分チェックカーソル
+    CURSOR check_new_point_div_cur(
+      iv_new_point_div IN VARCHAR2)
+    IS
+      SELECT flvv.lookup_code      new_point_div
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type = cv_new_point_div_type
+      AND    flvv.lookup_code = iv_new_point_div
+      ;
+    -- 顧客ステータスチェックカーソルレコード型
+    check_new_point_div_rec  check_new_point_div_cur%ROWTYPE;
+--
+    -- 紹介営業員存在チェックカーソル
+    CURSOR check_db_intro_person_cur(
+      iv_customer_code IN VARCHAR2)
+    IS
+      SELECT xca.intro_business_person  intro_business_person
+      FROM   hz_cust_accounts     hca,
+             xxcmm_cust_accounts  xca
+      WHERE  hca.cust_account_id     = xca.customer_id
+      AND    hca.account_number      = iv_customer_code 
+      ;
+    -- 紹介営業員存在チェックカーソルレコード型
+    check_db_intro_person_rec  check_db_intro_person_cur%ROWTYPE;
+--
+    -- 従業員マスタチェックカーソル
+    CURSOR check_db_mst_person_cur(
+      iv_business_person IN VARCHAR2)
+    IS
+      SELECT pap.employee_number      employee_number
+      FROM   per_all_people_f pap     -- 従業員マスタ
+      WHERE  pap.employee_number = iv_business_person
+      ;
+    -- 従業員マスタチェックカーソルレコード型
+    check_db_mst_person_rec  check_db_mst_person_cur%ROWTYPE;
+--
+    -- 紹介拠点存在チェックカーソル
+    CURSOR check_db_intro_base_code_cur(
+      iv_customer_code IN VARCHAR2)
+    IS
+      SELECT xca.intro_base_code  intro_base_code
+      FROM   hz_cust_accounts     hca,
+             xxcmm_cust_accounts  xca
+      WHERE  hca.cust_account_id     = xca.customer_id
+      AND    hca.account_number      = iv_customer_code 
+      ;
+    -- 紹介拠点存在チェックカーソルレコード型
+    check_db_intro_base_code_rec  check_db_intro_base_code_cur%ROWTYPE;
+--
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
 --
   BEGIN
 --
@@ -1324,7 +1530,10 @@ AS
         --業態（小分類）取得
         lv_business_low_type := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,30);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                       ,30);
+                                                                       ,32);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2009/10/23 Ver1.2 modify start by Yutaka.Kuboshima
 --        --業態（小分類）の必須チェック
 --        IF (lv_business_low_type = cv_null_bar) THEN
@@ -2683,10 +2892,101 @@ AS
           END IF;
         END IF;
 --
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+--
+        --紹介者チェーン1取得
+        lv_intro_chain_code1 := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,28);
+        --紹介者チェーン1が-でない場合
+        IF (lv_intro_chain_code1 <> cv_null_bar) THEN
+          --紹介者チェーン1型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_intro_chain_code1 --紹介者チェーン1
+                                              ,lv_intro_chain_code1 --紹介者チェーン1
+                                              ,30                   --項目長
+                                              ,NULL                 --項目長（小数点以下）
+                                              ,cv_null_ok           --必須フラグ
+                                              ,cv_element_vc2       --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf       --エラーバッファ
+                                              ,lv_item_retcode      --エラーコード
+                                              ,lv_item_errmsg);     --エラーメッセージ
+          --紹介者チェーン1型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --紹介者チェーン1エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_intro_chain_code1
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_intro_chain_code1
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+        END IF;
+--
+        --紹介者チェーン2取得
+        lv_intro_chain_code2 := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,29);
+        --紹介者チェーン2が-でない場合
+        IF (lv_intro_chain_code2 <> cv_null_bar) THEN
+          --紹介者チェーン2型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_intro_chain_code2 --紹介者チェーン2
+                                              ,lv_intro_chain_code2 --紹介者チェーン2
+                                              ,30                   --項目長
+                                              ,NULL                 --項目長（小数点以下）
+                                              ,cv_null_ok           --必須フラグ
+                                              ,cv_element_vc2       --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf       --エラーバッファ
+                                              ,lv_item_retcode      --エラーコード
+                                              ,lv_item_errmsg);     --エラーメッセージ
+          --紹介者チェーン2型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --紹介者チェーン2エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_intro_chain_code2
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_intro_chain_code2
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+        END IF;
+--
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+--
         --チェーン店コード（ＥＤＩ）取得
         lv_edi_chain_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                     ,cv_comma
-                                                                    ,28);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                    ,28);
+                                                                    ,30);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --チェーン店コード（ＥＤＩ）が-でない場合
         IF (lv_edi_chain_code <> cv_null_bar) THEN
           --チェーン店コード（ＥＤＩ）存在チェック
@@ -2754,7 +3054,10 @@ AS
         --店舗コード取得
         lv_store_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                 ,cv_comma
-                                                                ,29);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                ,29);
+                                                                ,31);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --店舗コードが-でない場合
         IF (lv_store_code <> cv_null_bar) THEN
           --店舗コード型・桁数チェック
@@ -2796,7 +3099,10 @@ AS
         --郵便番号取得
         lv_postal_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                  ,cv_comma
-                                                                 ,31);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                 ,31);
+                                                                 ,33);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --郵便番号の必須チェック
         IF (lv_postal_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -2878,7 +3184,10 @@ AS
         --都道府県取得
         lv_state := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                            ,cv_comma
-                                                           ,32);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                           ,32);
+                                                           ,34);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --都道府県の必須チェック
         IF (lv_state = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -2958,7 +3267,10 @@ AS
         --市・区取得
         lv_city := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                           ,cv_comma
-                                                          ,33);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                          ,33);
+                                                          ,35);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --市・区の必須チェック
         IF (lv_city = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -3038,7 +3350,10 @@ AS
         --住所1取得
         lv_address1 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                               ,cv_comma
-                                                              ,34);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                              ,34);
+                                                              ,36);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --住所1の必須チェック
         IF (lv_address1 = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -3118,7 +3433,10 @@ AS
         --住所2取得
         lv_address2 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                               ,cv_comma
-                                                              ,35);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                              ,35);
+                                                              ,37);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --住所2取得が-でない場合
         IF (lv_address2 <> cv_null_bar) THEN
           --住所2型・桁数チェック
@@ -3181,7 +3499,10 @@ AS
         --地区コード取得
         lv_address3 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                               ,cv_comma
-                                                              ,36);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                              ,36);
+                                                              ,38);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --地区コードの必須チェック
         IF (lv_address3 = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -3451,7 +3772,10 @@ AS
         -- 請求書用コード取得
         lv_invoice_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                   ,cv_comma
-                                                                  ,37);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                  ,37);
+                                                                  ,39);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --請求書用コード型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_invoice_code   --請求書用コード
                                             ,lv_invoice_code   --請求書用コード
@@ -3547,7 +3871,10 @@ AS
         -- 業種取得
         lv_industry_div := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                   ,cv_comma
-                                                                  ,38);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                  ,38);
+                                                                  ,40);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --業種型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_industry_div   --業種
                                             ,lv_industry_div   --業種
@@ -3641,7 +3968,10 @@ AS
         -- 請求拠点取得
         lv_bill_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                     ,cv_comma
-                                                                    ,39);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                    ,39);
+                                                                    ,41);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --請求拠点型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_bill_base_code --請求拠点
                                             ,lv_bill_base_code --請求拠点
@@ -3731,7 +4061,10 @@ AS
         -- 入金拠点取得
         lv_receiv_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                       ,cv_comma
-                                                                      ,40);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                      ,40);
+                                                                      ,42);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --入金拠点型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_receiv_base_code --入金拠点
                                             ,lv_receiv_base_code --入金拠点
@@ -3821,7 +4154,10 @@ AS
         -- 納品拠点取得
         lv_delivery_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                         ,cv_comma
-                                                                        ,41);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                        ,41);
+                                                                        ,43);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --納品拠点型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_delivery_base_code --納品拠点
                                             ,lv_delivery_base_code --納品拠点
@@ -3911,10 +4247,1074 @@ AS
           END IF;
         END IF;
         --
+--
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+        --顧客区分「10：顧客」「14：売掛管理先顧客」「19：百貨店伝区」の場合
+        IF ( lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_urikake_kbn, cv_hyakkaten_kbn) ) THEN
+          --
+          --販売先本部担当拠点取得
+          lv_sales_head_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                            ,cv_comma
+                                                                            ,44);
+          --
+          --CSVに設定された販売先本部担当拠点が任意の値の場合
+          IF (lv_sales_head_base_code <> cv_null_bar) THEN
+            --販売先本部担当拠点存在チェック
+            << check_head_base_code_loop >>
+            FOR check_flex_value_rec IN check_flex_value_cur( lv_sales_head_base_code )
+            LOOP
+              lv_sales_head_base_code_mst := check_flex_value_rec.flex_value;
+            END LOOP check_head_base_code_loop;
+            IF (lv_sales_head_base_code_mst IS NULL) THEN
+              lv_check_status    := cv_status_error;
+              lv_retcode         := cv_status_error;
+              --販売先本部担当拠点参照表存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_flex_value_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_sales_head_base_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_sales_head_base_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+        IF ( lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+        --
+          -- 獲得拠点コード 取得
+          lv_cnvs_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                      ,cv_comma
+                                                                      ,45);
+--
+          -- 獲得営業員 取得
+          lv_cnvs_business_person := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                            ,cv_comma
+                                                                            ,46);
+--
+          -- 獲得拠点コード、獲得営業員のチェック
+          --
+          --CSVに設定された獲得拠点コードがNULLの場合
+          IF ( lv_cnvs_base_code IS NULL ) THEN
+            --
+            --獲得拠点コードのDB存在チェック
+            << check_db_base_code_loop >>
+            FOR check_db_code_person_rec IN check_db_code_person_cur( lv_customer_code )
+            LOOP
+              lv_cnvs_base_code_mst1  := check_db_code_person_rec.cnvs_base_code;
+            END LOOP check_db_base_code_loop;
+            --
+            --DBに設定された獲得拠点コードがNULLの場合
+            IF (lv_cnvs_base_code_mst1 IS NULL) THEN
+              --
+              --CSVに設定された獲得営業員が'-'ではない場合(任意の値)
+              IF ( lv_cnvs_business_person <> cv_null_bar ) THEN
+              --
+                --エラー対象
+                lv_business_person_flag3 := cv_yes;
+              --
+              ELSIF ( lv_cnvs_business_person = cv_null_bar ) THEN
+              --CSVに設定された獲得営業員が'-'の場合
+                --
+                --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上の場合、獲得営業員は必須
+                IF ( lv_cust_customer_class = cv_kokyaku_kbn  AND
+                    TO_NUMBER(cv_approved_status) <= TO_NUMBER(lv_get_cust_status) ) THEN
+                    --エラー対象
+                    lv_business_person_flag1 := cv_yes;
+                END IF;
+                --
+              --
+              END IF;
+            --
+            ELSE
+            --DBに設定された獲得拠点コードが任意の値の場合
+            --
+              --CSVに設定された獲得営業員が'-'の場合
+              IF ( lv_cnvs_business_person = cv_null_bar ) THEN
+                --
+                --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上の場合、獲得営業員は必須
+                IF ( lv_cust_customer_class = cv_kokyaku_kbn  AND
+                    TO_NUMBER(cv_approved_status) <= TO_NUMBER(lv_get_cust_status) ) THEN
+                  --
+                  --エラー対象
+                  lv_business_person_flag1 := cv_yes;
+                ELSE
+                  --エラー対象
+                  lv_business_person_flag2 := cv_yes;
+                END IF;
+              --
+              END IF;
+            --
+            END IF;
+          --
+          ELSIF ( lv_cnvs_base_code = cv_null_bar ) THEN
+          --CSVに設定された獲得拠点コードが'-'の場合
+          --
+            --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上の場合、獲得拠点コードは必須
+            IF ( lv_cust_customer_class = cv_kokyaku_kbn  AND
+                 TO_NUMBER(cv_approved_status) <= TO_NUMBER(lv_get_cust_status) ) THEN
+              --エラー対象
+              lv_base_code_flag1 := cv_yes;
+              --
+              --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上の場合、獲得営業員は必須
+              IF ( lv_cnvs_business_person = cv_null_bar ) THEN
+                --エラー対象
+                lv_business_person_flag1 := cv_yes;
+                --
+              END IF;
+            --
+            ELSE
+              --CSVに設定された獲得営業員がNULLの場合
+              IF ( lv_cnvs_business_person IS NULL ) THEN
+                --
+                --獲得営業員のDB存在チェック
+                << check_db_business_person_loop >>
+                FOR check_db_code_person_rec IN check_db_code_person_cur( lv_customer_code )
+                LOOP
+                  lv_cnvs_business_person_mst1  := check_db_code_person_rec.cnvs_business_person;
+                END LOOP check_db_business_person_loop;
+                --
+                --DBに設定された獲得営業員が任意の値の場合
+                IF (lv_cnvs_business_person_mst1 IS NOT NULL) THEN
+                  --
+                  --エラー対象
+                  lv_base_code_flag2 := cv_yes;
+                END IF;
+              --
+              ELSIF ( lv_cnvs_business_person <> cv_null_bar ) THEN
+              --CSVに設定された獲得営業員が'-'ではない場合(任意の値)
+                --
+                --エラー対象
+                lv_base_code_flag2 := cv_yes;
+              --
+              END IF;
+            --
+            END IF;
+          --
+          ELSE 
+          --CSVに設定された獲得拠点コードに任意の値が設定されている場合
+          --
+            --CSVに設定された獲得営業員がNULLの場合
+            IF ( lv_cnvs_business_person IS NULL ) THEN
+              --
+              --獲得営業員のDB存在チェック
+              << check_db_business_person_loop >>
+              FOR check_db_code_person_rec IN check_db_code_person_cur( lv_customer_code )
+              LOOP
+                lv_cnvs_business_person_mst1  := check_db_code_person_rec.cnvs_business_person;
+              END LOOP check_db_business_person_loop;
+              --
+              --DBに設定された獲得営業員がNULLの場合
+              IF (lv_cnvs_business_person_mst1 IS NULL) THEN
+                --
+                --エラー対象
+                lv_base_code_flag3 := cv_yes;
+              END IF;
+            --
+            ELSIF ( lv_cnvs_business_person = cv_null_bar ) THEN
+            --CSVに設定された獲得営業員が'-'の場合
+              --
+              --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上の場合、獲得営業員は必須
+              IF ( lv_cust_customer_class = cv_kokyaku_kbn  AND
+                   TO_NUMBER(cv_approved_status) <= TO_NUMBER(lv_get_cust_status) ) THEN
+              --
+                --エラー対象
+                lv_business_person_flag1 := cv_yes;
+              --
+              ELSE
+                --エラー対象
+                lv_business_person_flag2 := cv_yes;
+              END IF;
+            --
+            END IF;
+          --
+          END IF;
+--
+          --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上で、
+          --獲得拠点コードに'-'を設定した場合、エラーとする
+          --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上で、
+          --獲得営業員に'-'を設定した場合、エラーとする
+          IF ( lv_base_code_flag1 = cv_yes OR lv_business_person_flag1 = cv_yes ) THEN
+          --
+            --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上で、
+            --獲得拠点コードに'-'を設定した場合、エラーとする
+            IF ( lv_base_code_flag1 = cv_yes ) THEN
+              --エラーメッセージの設定
+              lv_check_status   := cv_status_error;
+              lv_retcode        := cv_status_error;
+              --顧客区分ステータスチェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_cust_class_kbn_err_msg
+                              ,iv_token_name1  => cv_col_name
+                              ,iv_token_value1 => cv_cnvs_base_code
+                              ,iv_token_name2  => cv_cust_code
+                              ,iv_token_value2 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            END IF;
+            --
+            --顧客区分「10：顧客」かつ顧客ステータス「30：承認済」以上で、
+            --獲得営業員に'-'を設定した場合、エラーとする
+            IF (lv_business_person_flag1 = cv_yes) THEN
+              --
+              --エラーメッセージの設定
+              lv_check_status   := cv_status_error;
+              lv_retcode        := cv_status_error;
+              --顧客区分ステータスチェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_cust_class_kbn_err_msg
+                              ,iv_token_name1  => cv_col_name
+                              ,iv_token_value1 => cv_cnvs_business_person
+                              ,iv_token_name2  => cv_cust_code
+                              ,iv_token_value2 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            END IF;
+          --
+          ELSIF (lv_base_code_flag2 = cv_yes) THEN
+          --CSVに設定された獲得拠点コードが'-'で、
+          --CSVに設定された獲得営業員、またはDBに登録された獲得営業員が任意の値の場合エラーとする
+            --
+            --エラーメッセージの設定
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --獲得拠点営業員相関チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_code_person_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_cnvs_base_code
+                            ,iv_token_name2  => cv_cond_col_name
+                            ,iv_token_value2 => cv_cnvs_business_person
+                            ,iv_token_name3  => cv_cust_code
+                            ,iv_token_value3 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          --
+          ELSIF (lv_business_person_flag2 = cv_yes) THEN
+          --CSVに設定された獲得営業員が'-'の場合、
+          --CSVに設定された獲得拠点コード、またはDBに登録された獲得拠点コードが任意の値の場合エラーとする
+            --
+            --エラーメッセージの設定
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --獲得拠点営業員相関チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_code_person_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_cnvs_business_person
+                            ,iv_token_name2  => cv_cond_col_name
+                            ,iv_token_value2 => cv_cnvs_base_code
+                            ,iv_token_name3  => cv_cust_code
+                            ,iv_token_value3 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          --
+          ELSIF (lv_base_code_flag3 = cv_yes) THEN
+          --CSVに設定された獲得拠点コードが任意の値で、
+          --CSVに設定された獲得営業員がNULLで、DBに登録された獲得営業員がNULLの場合エラーとする
+            --
+            --エラーメッセージの設定
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --未登録チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_intro_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_cnvs_base_code
+                            ,iv_token_name2  => cv_cond_col_name
+                            ,iv_token_value2 => cv_cnvs_business_person
+                            ,iv_token_name3  => cv_cust_code
+                            ,iv_token_value3 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          --
+          ELSIF (lv_business_person_flag3 = cv_yes) THEN
+          --CSVに設定された獲得営業員が任意の値で、
+          --CSVに設定された獲得拠点コードがNULLで、DBに登録された獲得拠点コードがNULLの場合エラーとする
+            --
+            --エラーメッセージの設定
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --未登録チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_intro_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_cnvs_business_person
+                            ,iv_token_name2  => cv_cond_col_name
+                            ,iv_token_value2 => cv_cnvs_base_code
+                            ,iv_token_name3  => cv_cust_code
+                            ,iv_token_value3 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          --
+          ELSE
+          --
+            --CSVに設定された獲得拠点がNULLの場合
+            IF ( lv_cnvs_base_code IS NULL ) THEN
+            --
+              --DBに設定された獲得拠点が任意の値の場合
+              IF ( lv_cnvs_base_code_mst1 IS NOT NULL ) THEN
+              --
+                --CSVに設定された獲得従業員がNULLではない、かつ'-'以外の場合(任意の値)
+                IF ( lv_cnvs_business_person <> cv_null_bar ) THEN
+                --
+                  --拠点コードと獲得営業員の紐付き権限用チェック
+                  << check_db_code_relation_loop >>
+                  FOR check_db_code_relation_rec IN check_db_code_relation_cur( lv_cnvs_base_code_mst1,
+                                                                                lv_cnvs_business_person )
+                  LOOP
+                    lv_cnvs_business_person_mst2  := check_db_code_relation_rec.new_employee_number;
+                  END LOOP check_db_code_relation_loop;
+                  --
+                  --職責管理フラグが'N'の場合
+                  IF (gv_resp_flag = cv_no) THEN
+                  --
+                    --DBの獲得拠点でCSVに設定された獲得従業員が取得できない場合
+                    IF ( lv_cnvs_business_person_mst2 IS NULL ) THEN
+                    --
+                      --拠点コードと獲得営業員の紐付き権限用チェック
+                      << check_db_code_rel_auth_loop >>
+                      FOR check_db_code_rel_auth_rec IN check_db_code_rel_auth_cur( lv_cnvs_base_code_mst1,
+                                                                                    lv_cnvs_business_person )
+                      LOOP
+                        lv_cnvs_business_person_mst2  := check_db_code_rel_auth_rec.old_employee_number;
+                      END LOOP check_db_code_rel_auth_loop;
+                      --
+                      --DBの獲得拠点でCSVに設定された獲得従業員が取得できない場合(権限用)
+                      IF ( lv_cnvs_business_person_mst2 IS NULL ) THEN
+                        --
+                        --エラー対象
+                        lv_business_person_flag4 := cv_yes;
+                      END IF;
+                    --
+                    END IF;
+                  --
+                  ELSE
+                  --職責管理フラグが'Y'の場合
+                    --
+                    --DBの獲得拠点でCSVに設定された獲得従業員が取得できない場合
+                    IF ( lv_cnvs_business_person_mst2 IS NULL ) THEN
+                      --
+                      --エラー対象
+                      lv_business_person_flag4 := cv_yes;
+                    END IF;
+                  --
+                  END IF;
+                --
+                END IF;
+              --
+              END IF;
+            --
+            ELSIF ( lv_cnvs_base_code <> cv_null_bar ) THEN
+            --CSVに設定された獲得拠点が'-'以外の場合(任意の値)
+            --
+              --CSVに設定された獲得従業員がNULLの場合
+              IF ( lv_cnvs_business_person IS NULL ) THEN
+              --
+                --DBに設定された獲得営業員が任意の値の場合
+                IF ( lv_cnvs_business_person_mst1 IS NOT NULL ) THEN
+                --
+                  --獲得営業員と拠点コードの紐付きチェック
+                  << check_db_person_relation_loop >>
+                  FOR check_db_person_relation_rec IN check_db_person_relation_cur( lv_cnvs_business_person_mst1 )
+                  LOOP
+                    lv_cnvs_base_code_mst2  := check_db_person_relation_rec.new_base_code;
+                  END LOOP check_db_person_relation_loop;
+                  --
+                  --職責管理フラグが'N'の場合
+                  IF (gv_resp_flag = cv_no) THEN
+                  --
+                    --CSVに設定された獲得拠点とDBの獲得従業員に紐付く獲得拠点が異なる場合
+                    IF (lv_cnvs_base_code <> lv_cnvs_base_code_mst2) THEN
+                    --
+                      --獲得営業員と拠点コードの紐付き権限用チェック
+                      << check_db_person_rel_auth_loop >>
+                      FOR check_db_person_rel_auth_rec IN check_db_person_rel_auth_cur( lv_cnvs_business_person_mst1 )
+                      LOOP
+                        lv_cnvs_base_code_mst2  := check_db_person_rel_auth_rec.old_base_code;
+                      END LOOP check_db_person_rel_auth_loop;
+                      --
+                      --CSVに設定された獲得拠点とDBの獲得従業員に紐付く獲得拠点が異なる場合(権限用)
+                      IF (lv_cnvs_base_code <> lv_cnvs_base_code_mst2) THEN
+                        --
+                        --エラー対象
+                        lv_base_code_flag4 := cv_yes;
+                      END IF;
+                    --
+                    END IF;
+                  --
+                  ELSE
+                  --職責管理フラグが'Y'の場合
+                  --
+                    --CSVに設定された獲得拠点とDBの獲得従業員に紐付く獲得拠点が異なる場合
+                    IF (lv_cnvs_base_code <> lv_cnvs_base_code_mst2) THEN
+                      --
+                      --エラー対象
+                      lv_base_code_flag4 := cv_yes;
+                    END IF;
+                  --
+                  END IF;
+                --
+                END IF;
+              --
+              ELSIF ( lv_cnvs_business_person <> cv_null_bar ) THEN
+              --CSVに設定された獲得従業員が'-'以外の場合(任意の値)
+              --
+                --獲得営業員と拠点コードの紐付きチェック
+                << check_db_person_relation_loop >>
+                FOR check_db_person_relation_rec IN check_db_person_relation_cur( lv_cnvs_business_person )
+                LOOP
+                  lv_cnvs_base_code_mst2  := check_db_person_relation_rec.new_base_code;
+                END LOOP check_db_person_relation_loop;
+                --
+                --拠点コードと獲得営業員の紐付き権限用チェック
+                << check_db_code_relation_loop >>
+                FOR check_db_code_relation_rec IN check_db_code_relation_cur( lv_cnvs_base_code,
+                                                                              lv_cnvs_business_person )
+                LOOP
+                  lv_cnvs_business_person_mst2  := check_db_code_relation_rec.new_employee_number;
+                END LOOP check_db_code_relation_loop;
+                --
+                --職責管理フラグが'N'の場合
+                IF (gv_resp_flag = cv_no) THEN
+                --
+                  --CSVに設定された獲得拠点とCSVに設定された獲得従業員に紐付く獲得拠点が異なる場合
+                  IF (lv_cnvs_base_code <> lv_cnvs_base_code_mst2) THEN
+                  --
+                    --獲得営業員と拠点コードの紐付き権限用チェック
+                    << check_db_person_rel_auth_loop >>
+                    FOR check_db_person_rel_auth_rec IN check_db_person_rel_auth_cur( lv_cnvs_business_person )
+                    LOOP
+                      lv_cnvs_base_code_mst2  := check_db_person_rel_auth_rec.old_base_code;
+                    END LOOP check_db_person_rel_auth_loop;
+                    --
+                    --CSVに設定された獲得拠点とCSVに設定された獲得従業員に紐付く獲得拠点が異なる場合(権限用)
+                    IF (lv_cnvs_base_code <> lv_cnvs_base_code_mst2) THEN
+                      --
+                      --エラー対象
+                      lv_base_code_flag4 := cv_yes;
+                    END IF;
+                  --
+                  END IF;
+                  --
+                  --CSVに設定された獲得拠点獲得拠点でCSVに設定された獲得従業員が取得できない場合
+                  IF ( lv_cnvs_business_person_mst2 IS NULL ) THEN
+                  --
+                    --拠点コードと獲得営業員の紐付き権限用チェックチェック
+                    << check_db_code_rel_auth_loop >>
+                    FOR check_db_code_rel_auth_rec IN check_db_code_rel_auth_cur( lv_cnvs_base_code,
+                                                                                  lv_cnvs_business_person )
+                    LOOP
+                      lv_cnvs_business_person_mst2 := check_db_code_rel_auth_rec.old_employee_number;
+                    END LOOP check_db_code_rel_auth_loop;
+                    --
+                    --CSVに設定された獲得拠点でCSVに設定された獲得従業員が取得できない場合(権限用)
+                    IF ( lv_cnvs_business_person_mst2 IS NULL ) THEN
+                      --
+                      --エラー対象
+                      lv_business_person_flag4 := cv_yes;
+                    END IF;
+                  --
+                  END IF;
+                --
+                ELSE
+                --職責管理フラグが'Y'の場合
+                --
+                  --CSVに設定された獲得拠点とCSVに設定された獲得従業員に紐付く獲得拠点が異なる場合
+                  IF (lv_cnvs_base_code <> lv_cnvs_base_code_mst2) THEN
+                    --
+                    --エラー対象
+                    lv_base_code_flag4 := cv_yes;
+                  END IF;
+                  --
+                  --CSVに設定された獲得拠点でCSVに設定された獲得従業員が取得できない場合
+                  IF ( lv_cnvs_business_person_mst2 IS NULL ) THEN
+                    --
+                    --エラー対象
+                    lv_business_person_flag4 := cv_yes;
+                  END IF;
+                --
+                END IF;
+              --
+              END IF;
+            --
+            END IF;
+          --
+            --CSVに設定された獲得拠点とDBの獲得従業員に紐付く獲得拠点が異なる場合
+            --または、CSVに設定された獲得拠点とCSVに設定された獲得従業員に紐付く獲得拠点が異なる場合
+            IF ( lv_base_code_flag4 = cv_yes ) THEN
+              --エラーメッセージの設定
+              lv_check_status   := cv_status_error;
+              lv_retcode        := cv_status_error;
+              --獲得拠点従業員紐付きチェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_code_relation_err_msg
+                              ,iv_token_name1  => cv_input_val
+                              ,iv_token_value1 => lv_cnvs_base_code
+                              ,iv_token_name2  => cv_cust_code
+                              ,iv_token_value2 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            --
+            ELSIF ( lv_business_person_flag4 = cv_yes ) THEN
+            --DBの獲得拠点でCSVに設定された獲得従業員が取得できない場合
+            --または、CSVに設定された獲得拠点でCSVに設定された獲得従業員が取得できない場合
+              --エラーメッセージの設定
+              lv_check_status   := cv_status_error;
+              lv_retcode        := cv_status_error;
+              --獲得従業員拠点紐付きチェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_person_relation_err_msg
+                              ,iv_token_name1  => cv_input_val
+                              ,iv_token_value1 => lv_cnvs_business_person
+                              ,iv_token_name2  => cv_cust_code
+                              ,iv_token_value2 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            --
+            END IF;
+          --
+          END IF;
+--
+        END IF;
+--
+        --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+        IF ( lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+          --
+          --新規ポイント区分取得
+          lv_new_point_div := xxccp_common_pkg.char_delim_partition(    lv_temp
+                                                                       ,cv_comma
+                                                                       ,47);
+          --CSVに設定された新規ポイント区分が任意の値の場合
+          IF (lv_new_point_div <> cv_null_bar) THEN
+            --新規ポイント区分存在チェック
+            << check_new_point_div_loop >>
+            FOR check_new_point_div_rec IN check_new_point_div_cur( lv_new_point_div )
+            LOOP
+              lv_new_point_div_mst := check_new_point_div_rec.new_point_div;
+            END LOOP check_new_point_div_loop;
+            IF (lv_new_point_div_mst IS NULL) THEN
+              lv_check_status    := cv_status_error;
+              lv_retcode         := cv_status_error;
+              --新規ポイント区分参照表存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_lookup_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_new_point_div
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_new_point_div
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+        IF ( lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+        --
+          --新規ポイント取得
+          lv_new_point     := xxccp_common_pkg.char_delim_partition(    lv_temp
+                                                                       ,cv_comma
+                                                                       ,48);
+          --CSVに設定された新規ポイントが任意の値の場合
+          IF ( lv_new_point <> cv_null_bar ) THEN
+            --新規ポイント型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_new_point   --新規ポイント
+                                                ,lv_new_point   --新規ポイント
+                                                ,3                 --項目長
+                                                ,0                 --項目長（小数点以下）
+                                                ,cv_null_ok        --必須フラグ
+                                                ,cv_element_num    --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf    --エラーバッファ
+                                                ,lv_item_retcode   --エラーコード
+                                                ,lv_item_errmsg);  --エラーメッセージ
+            --新規ポイント型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal) THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --新規ポイントエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_new_point
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_new_point
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg
+              );
+            ELSE
+              --型・桁数正常時のみ数値として扱い、新規ポイント数値範囲チェック
+              ln_new_point := TO_NUMBER(lv_new_point);
+              IF  ((ln_new_point < cn_point_min)
+                OR (ln_new_point > cn_point_max)) THEN
+                lv_check_status   := cv_status_error;
+                lv_retcode        := cv_status_error;
+                --新規ポイントエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_new_point_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_new_point
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_new_point
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+              END IF;
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+        IF ( lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+        --
+          --紹介拠点取得
+          lv_intro_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,49);
+          --CSVに設定された紹介拠点が任意の値の場合
+          IF (lv_intro_base_code <> cv_null_bar) THEN
+            --紹介拠点存在チェック
+            << check_intro_base_code_loop >>
+            FOR check_flex_value_rec IN check_flex_value_cur( lv_intro_base_code )
+            LOOP
+              lv_intro_base_code_mst1 := check_flex_value_rec.flex_value;
+            END LOOP check_intro_base_code_loop;
+            IF (lv_intro_base_code_mst1 IS NULL) THEN
+              lv_check_status    := cv_status_error;
+              lv_retcode         := cv_status_error;
+              --紹介拠点参照表存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_flex_value_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_intro_base_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_intro_base_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+        IF ( lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+          --
+          --紹介営業員取得
+          lv_intro_business_person := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                             ,cv_comma
+                                                                             ,50);
+          --CSVに設定された紹介営業員がNULLの場合
+          IF ( lv_intro_business_person IS NULL ) THEN
+          --
+            --紹介営業員存在チェック
+            << check_db_intro_person_loop >>
+            FOR check_db_intro_person_rec IN check_db_intro_person_cur( lv_customer_code )
+            LOOP
+              lv_intro_business_person_mst1 := check_db_intro_person_rec.intro_business_person;
+            END LOOP check_db_intro_person_loop;
+            IF ( lv_intro_business_person_mst1 IS NOT NULL ) THEN
+            --
+              --獲得拠点コード、獲得営業員のチェックでエラーがない場合
+              IF (  lv_base_code_flag1 IS NULL AND lv_business_person_flag1 IS NULL
+                AND lv_base_code_flag2 IS NULL AND lv_business_person_flag2 IS NULL
+                AND lv_base_code_flag3 IS NULL AND lv_business_person_flag3 IS NULL
+                AND lv_base_code_flag4 IS NULL AND lv_business_person_flag4 IS NULL ) THEN
+                --
+                --CSVに設定された獲得営業員とDBに設定された紹介営業員が同じ場合
+                IF ( lv_cnvs_business_person_mst2 = lv_intro_business_person_mst1 ) THEN
+                --
+                  lv_check_status   := cv_status_error;
+                  lv_retcode        := cv_status_error;
+                  --獲得営業員紹介者チェックエラーメッセージ取得
+                  gv_out_msg := xxccp_common_pkg.get_msg(
+                                   iv_application  => gv_xxcmm_msg_kbn
+                                  ,iv_name         => cv_intro_person_err_msg
+                                  ,iv_token_name1  => cv_cust_code
+                                  ,iv_token_value1 => lv_customer_code
+                                 );
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.LOG
+                    ,buff   => gv_out_msg
+                  );
+                --
+                END IF;
+              --
+              END IF;
+            --
+            END IF;
+          --
+          ELSIF ( lv_intro_business_person <> cv_null_bar ) THEN
+          --CSVに設定された紹介営業員取得が任意の値の場合
+          --
+            --CSVに設定された紹介拠点がNULLの場合
+            IF ( lv_intro_base_code IS NULL ) THEN
+            --
+              --紹介拠点コード存在チェック
+              << check_intro_base_code_loop >>
+              FOR check_db_intro_base_code_rec IN check_db_intro_base_code_cur( lv_customer_code )
+              LOOP
+                lv_intro_base_code_mst2 := check_db_intro_base_code_rec.intro_base_code;
+              END LOOP check_intro_base_code_loop;
+              IF (lv_intro_base_code_mst2 IS NULL) THEN
+                --エラー対象
+                lv_int_bus_per_flag1 := cv_yes;
+              --
+              END IF;
+            --
+            ELSIF ( lv_intro_base_code = cv_null_bar ) THEN
+            --CSVに設定された紹介拠点が'-'の場合
+              --エラー対象
+              lv_int_bus_per_flag1 := cv_yes;
+            --
+            END IF;
+            --
+            --CSVに設定された紹介営業員が任意の値で、
+            --CSVに設定された紹介拠点がNULL、DBに登録された紹介拠点がNULLの場合
+            --または、CSVに設定された紹介拠点が'-'の場合
+            IF ( lv_int_bus_per_flag1 = cv_yes ) THEN
+              lv_check_status   := cv_status_error;
+              lv_retcode        := cv_status_error;
+              --未登録チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_intro_err_msg
+                              ,iv_token_name1  => cv_col_name
+                              ,iv_token_value1 => cv_intro_business_person
+                              ,iv_token_name2  => cv_cond_col_name
+                              ,iv_token_value2 => cv_intro_base_code
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            --
+            ELSE
+            --
+              --紹介者マスタチェックカーソル
+              << check_db_mst_person_loop >>
+              FOR check_db_mst_person_rec IN check_db_mst_person_cur( lv_intro_business_person )
+              LOOP
+                lv_intro_business_person_mst2 := check_db_mst_person_rec.employee_number;
+              END LOOP check_db_mst_person_loop;
+              --
+              IF ( lv_intro_business_person_mst2 IS NULL ) THEN
+                lv_check_status   := cv_status_error;
+                lv_retcode        := cv_status_error;
+                --紹介者マスタチェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_mst_intro_per_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+              --
+              ELSE
+              --
+                --獲得拠点コード、獲得営業員のチェックでエラーがない場合
+                IF (  lv_base_code_flag1 IS NULL AND lv_business_person_flag1 IS NULL
+                  AND lv_base_code_flag2 IS NULL AND lv_business_person_flag2 IS NULL
+                  AND lv_base_code_flag3 IS NULL AND lv_business_person_flag3 IS NULL
+                  AND lv_base_code_flag4 IS NULL AND lv_business_person_flag4 IS NULL ) THEN
+                --
+                  --CSVの獲得営業員がNULLの場合
+                  IF (lv_cnvs_business_person IS NULL) THEN
+                  --
+                    --DBに獲得営業員が設定されている場合(CSVにはNULLが設定されている)
+                    IF ( lv_cnvs_business_person_mst1 IS NOT NULL ) THEN
+                      --
+                      --DBに設定された獲得営業員とCSVに設定されている紹介営業員が同じ場合
+                      IF ( lv_cnvs_business_person_mst1 = lv_intro_business_person ) THEN
+                        --エラー対象
+                        lv_int_bus_per_flag2 := cv_yes;
+                      END IF;
+                    --
+                    ELSE
+                      --獲得拠点コード、獲得営業員のCSVの両項目にNULLが設定されている場合、
+                      --獲得営業員のDBに登録された値は取得されていない為、DBから取得する
+                      --獲得営業員のDB存在チェック
+                      << check_db_get_bus_per_loop >>
+                      FOR check_db_code_person_rec IN check_db_code_person_cur( lv_customer_code )
+                      LOOP
+                        lv_cnvs_business_person_mst1  := check_db_code_person_rec.cnvs_business_person;
+                      END LOOP check_db_get_bus_per_loop;
+                      --
+                      --DBに設定された獲得営業員とCSVに設定されている紹介営業員が同じ場合
+                      IF ( lv_cnvs_business_person_mst1 = lv_intro_business_person ) THEN
+                        --エラー対象
+                        lv_int_bus_per_flag2 := cv_yes;
+                      END IF;
+                    --
+                    END IF;
+                  --
+                  ELSIF ( lv_cnvs_business_person_mst2 IS NOT NULL ) THEN
+                  --CSVに獲得営業員が設定されている場合
+                    --
+                    --CSVに設定された獲得営業員とCSVに設定されている紹介営業員が同じ場合
+                    IF ( lv_cnvs_business_person_mst2 = lv_intro_business_person ) THEN
+                      --エラー対象
+                      lv_int_bus_per_flag2 := cv_yes;
+                    END IF;
+                  --
+                  END IF;
+                  --
+                  --DBに設定された獲得営業員とCSVに設定されている紹介営業員が同じ場合
+                  --または、CSVに設定された獲得営業員とCSVに設定されている紹介営業員が同じ場合
+                  IF ( lv_int_bus_per_flag2 = cv_yes ) THEN
+                    lv_check_status   := cv_status_error;
+                    lv_retcode        := cv_status_error;
+                    --獲得営業員紹介者チェックエラーメッセージ取得
+                    gv_out_msg := xxccp_common_pkg.get_msg(
+                                     iv_application  => gv_xxcmm_msg_kbn
+                                    ,iv_name         => cv_intro_person_err_msg
+                                    ,iv_token_name1  => cv_cust_code
+                                    ,iv_token_value1 => lv_customer_code
+                                   );
+                    FND_FILE.PUT_LINE(
+                       which  => FND_FILE.LOG
+                      ,buff   => gv_out_msg
+                    );
+                  --
+                  END IF;
+                --
+                END IF;
+              --
+              END IF;
+            --
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「13：法人顧客」の場合
+        IF ( lv_cust_customer_class = cv_trust_corp ) THEN
+        --
+          --TDBコード取得
+          lv_tdb_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                ,cv_comma
+                                                                ,51);
+          --CSVに設定されたTDBコードが任意の値の場合
+          IF ( lv_tdb_code <> cv_null_bar ) THEN
+            --TDBコードの型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_tdb_code         --項目名称
+                                                ,lv_tdb_code         --TDBコード
+                                                ,12                  --項目長
+                                                ,NULL                --項目長（小数点以下）
+                                                ,cv_null_ok          --必須フラグ
+                                                ,cv_element_vc2      --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf      --エラーバッファ
+                                                ,lv_item_retcode     --エラーコード
+                                                ,lv_item_errmsg);    --エラーメッセージ
+            --TDBコード型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal) THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --TDBコードエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_tdb_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_tdb_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg);
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「13：法人顧客」の場合
+        IF ( lv_cust_customer_class = cv_trust_corp ) THEN
+        --
+          --決裁日付取得
+          lv_corp_approval_date := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                     ,cv_comma
+                                                                     ,52);
+--
+          --CSVに設定された決裁日付取得が任意の値の場合
+          IF ( lv_corp_approval_date <> cv_null_bar ) THEN
+            --決裁日付の型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_approval_date    --項目名称
+                                                ,lv_corp_approval_date  --決裁日付
+                                                ,NULL                --項目長
+                                                ,NULL                --項目長（小数点以下）
+                                                ,cv_null_ok          --必須フラグ
+                                                ,cv_element_dat      --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf      --エラーバッファ
+                                                ,lv_item_retcode     --エラーコード
+                                                ,lv_item_errmsg);    --エラーメッセージ
+            --決裁日付型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal) THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --決裁日付エラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_approval_date
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_corp_approval_date
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg);
+            END IF;
+          --
+          END IF;
+        --
+        END IF;
+--
+        --顧客区分「13：法人顧客」の場合
+        IF ( lv_cust_customer_class = cv_trust_corp ) THEN
+          --
+          --本部担当拠点取得
+          lv_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                 ,cv_comma
+                                                                 ,53);
+          --CSVに設定された本部担当拠点が任意の値の場合
+          IF (lv_base_code <> cv_null_bar) THEN
+            --本部担当拠点存在チェック
+            << check_base_code_loop >>
+            FOR check_flex_value_rec IN check_flex_value_cur( lv_base_code )
+            LOOP
+              lv_base_code_mst := check_flex_value_rec.flex_value;
+            END LOOP check_base_code_loop;
+            IF (lv_base_code_mst IS NULL) THEN
+              lv_check_status    := cv_status_error;
+              lv_retcode         := cv_status_error;
+              --本部担当拠点参照表存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_flex_value_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_base_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_base_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          --
+          ELSIF (lv_base_code = cv_null_bar) THEN 
+          --CSVに設定された本部担当拠点が'-'の場合
+            lv_check_status    := cv_status_error;
+            lv_retcode         := cv_status_error;
+            --本部担当拠点必須エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_base_code_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_base_code
+                            ,iv_token_name2  => cv_cust_code
+                            ,iv_token_value2 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+          --
+          END IF;
+        --
+        END IF;
+--
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+--
         -- 売上実績振替取得
         lv_selling_transfer_div := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                           ,cv_comma
-                                                                          ,42);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                          ,42);
+                                                                          ,54);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --売上実績振替型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_selling_transfer_div   --売上実績振替
                                             ,lv_selling_transfer_div   --売上実績振替
@@ -3983,7 +5383,10 @@ AS
         -- カード会社取得
         lv_card_company := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                   ,cv_comma
-                                                                  ,43);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                  ,43);
+                                                                  ,55);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --カード会社型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_card_company   --カード会社
                                             ,lv_card_company   --カード会社
@@ -4076,7 +5479,10 @@ AS
         -- 問屋管理コード取得
         lv_wholesale_ctrl_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                          ,cv_comma
-                                                                         ,44);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                         ,44);
+                                                                         ,56);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --問屋管理コード型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_wholesale_ctrl_code   --問屋管理コード
                                             ,lv_wholesale_ctrl_code   --問屋管理コード
@@ -4145,7 +5551,10 @@ AS
         -- 価格表取得
         lv_price_list := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                 ,cv_comma
-                                                                ,45);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                ,45);
+                                                                ,57);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --価格表型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_price_list    --価格表
                                             ,lv_price_list    --価格表
@@ -4216,12 +5625,17 @@ AS
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
 --
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add start by Yutaka.Kuboshima
-        -- 職責管理フラグが'Y'の場合
-        IF (gv_resp_flag = cv_yes) THEN
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--        -- 職責管理フラグが'Y'の場合
+--        IF (gv_resp_flag = cv_yes) THEN
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
           -- 出荷元保管場所取得
           lv_ship_storage_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                          ,cv_comma
-                                                                         ,46);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                         ,46);
+                                                                         ,58);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
           --出荷元保管場所型・桁数チェック
           xxccp_common_pkg2.upload_item_check( cv_ship_storage_code    --出荷元保管場所
                                               ,lv_ship_storage_code    --出荷元保管場所
@@ -4288,10 +5702,12 @@ AS
               END IF;
             END IF;
           END IF;
-        ELSE
-          -- 職責管理プロファイルが'N'の場合、出荷元保管場所にNULLをセット
-          lv_ship_storage_code := NULL;
-        END IF;
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--        ELSE
+--          -- 職責管理プロファイルが'N'の場合、出荷元保管場所にNULLをセット
+--          lv_ship_storage_code := NULL;
+--        END IF;
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add start by K.Kubo
@@ -4303,7 +5719,10 @@ AS
                                                                     ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                    ,48);
-                                                                    ,47);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                    ,47);
+                                                                    ,59);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --配送順（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_delivery_order        --配送順（EDI）
@@ -4348,7 +5767,10 @@ AS
                                                                        ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                       ,49);
-                                                                       ,48);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                       ,48);
+                                                                       ,60);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区コード（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_district_code     --EDI地区コード（EDI）
@@ -4413,7 +5835,10 @@ AS
                                                                        ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                       ,50);
-                                                                       ,49);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                       ,49);
+                                                                       ,61);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区名（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_district_name     --EDI地区名（EDI）
@@ -4480,7 +5905,10 @@ AS
                                                                        ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                       ,51);
-                                                                       ,50);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                       ,50);
+                                                                       ,62);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区名カナ（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_district_kana     --EDI地区名カナ（EDI）
@@ -4545,7 +5973,10 @@ AS
                                                                         ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                        ,52);
-                                                                        ,51);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                        ,51);
+                                                                        ,63);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --通過在庫型区分（EDI） 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_tsukagatazaiko_div    --通過在庫型区分（EDI）
@@ -4682,7 +6113,10 @@ AS
                                                                       ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                      ,53);
-                                                                      ,52);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                      ,52);
+                                                                      ,64);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI納品センターコード 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_deli_center_code      --EDI納品センターコード
@@ -4727,7 +6161,10 @@ AS
                                                                       ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                      ,54);
-                                                                      ,53);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                      ,53);
+                                                                      ,65);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI納品センター名 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_deli_center_name      --EDI納品センター名
@@ -4772,7 +6209,10 @@ AS
                                                                         ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                        ,55);
-                                                                        ,54);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                        ,54);
+                                                                        ,66);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI伝送追番 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_edi_forward_number    --EDI伝送追番
@@ -4817,7 +6257,10 @@ AS
                                                                      ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                     ,56);
-                                                                     ,55);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                     ,55);
+                                                                     ,67);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --顧客店舗名称 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_cust_store_name       --顧客店舗名称
@@ -4884,7 +6327,10 @@ AS
                                                                        ,cv_comma
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod start by S.Niki
 --                                                                       ,57);
-                                                                       ,56);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                       ,56);
+                                                                       ,68);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --取引先コード 型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_torihikisaki_code     --取引先コード
@@ -4946,7 +6392,10 @@ AS
         --訪問対象区分取得
         lv_vist_target_div := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,57);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
+--                                                                     ,57);
+                                                                     ,69);
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --訪問対象区分が-でない場合
         IF (lv_vist_target_div <> cv_null_bar) THEN
           --訪問対象区分存在チェック
@@ -5037,6 +6486,10 @@ AS
               ,sales_chain_code
               ,delivery_chain_code
               ,policy_chain_code
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+              ,intro_chain_code1
+              ,intro_chain_code2
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
               ,chain_store_code
               ,store_code
               ,business_low_type
@@ -5052,6 +6505,18 @@ AS
               ,bill_base_code
               ,receiv_base_code
               ,delivery_base_code
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+              ,sales_head_base_code
+              ,cnvs_base_code
+              ,cnvs_business_person
+              ,new_point_div
+              ,new_point
+              ,intro_base_code
+              ,intro_business_person
+              ,tdb_code
+              ,corp_approval_date
+              ,base_code
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
               ,selling_transfer_div
               ,card_company
               ,wholesale_ctrl_code
@@ -5108,6 +6573,10 @@ AS
               ,lv_sales_chain_code
               ,lv_delivery_chain_code
               ,lv_policy_chain_code
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+              ,lv_intro_chain_code1
+              ,lv_intro_chain_code2
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
               ,lv_edi_chain_code
               ,lv_store_code
               ,lv_business_low_type
@@ -5123,6 +6592,18 @@ AS
               ,lv_bill_base_code
               ,lv_receiv_base_code
               ,lv_delivery_base_code
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+              ,lv_sales_head_base_code
+              ,lv_cnvs_base_code
+              ,lv_cnvs_business_person
+              ,lv_new_point_div
+              ,lv_new_point
+              ,lv_intro_base_code
+              ,lv_intro_business_person
+              ,lv_tdb_code
+              ,lv_corp_approval_date
+              ,lv_base_code
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
               ,lv_selling_transfer_div
               ,lv_card_company
               ,lv_wholesale_ctrl_code
@@ -5247,6 +6728,42 @@ AS
       lv_vist_target_div_mst      := NULL;  --訪問対象区分確認用変数
 -- 2012/04/19 Ver1.8 E_本稼動_09272 add end by S.Niki
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+      lv_cnvs_base_code           := NULL;  --獲得拠点コード
+      lv_cnvs_base_code_mst1      := NULL;  --獲得拠点コード確認用変数1
+      lv_cnvs_base_code_mst2      := NULL;  --獲得拠点コード確認用変数2
+      lv_cnvs_business_person     := NULL;  --獲得営業員
+      lv_cnvs_business_person_mst1 := NULL; --獲得営業員確認用変数1
+      lv_cnvs_business_person_mst2 := NULL; --獲得営業員確認用変数2
+      lv_base_code_flag1          := NULL;  --獲得拠点コード入力チェック用1
+      lv_business_person_flag1    := NULL;  --獲得営業員入力チェック用1
+      lv_base_code_flag2          := NULL;  --獲得拠点コード入力チェック用2
+      lv_business_person_flag2    := NULL;  --獲得営業員入力チェック用2
+      lv_base_code_flag3          := NULL;  --獲得拠点コード入力チェック用3
+      lv_business_person_flag3    := NULL;  --獲得営業員入力チェック用3
+      lv_base_code_flag4          := NULL;  --獲得拠点コード入力チェック用4
+      lv_business_person_flag4    := NULL;  --獲得営業員入力チェック用4
+      lv_new_point_div            := NULL;  --新規ポイント区分
+      lv_new_point_div_mst        := NULL;  --新規ポイント区分チェック用
+      lv_new_point                := NULL;  --新規ポイント
+      ln_new_point                := NULL;  --新規ポイント(数値)
+      lv_intro_base_code          := NULL;  --紹介拠点
+      lv_intro_base_code_mst1     := NULL;  --紹介拠点コード確認用1
+      lv_intro_base_code_mst2     := NULL;  --紹介拠点コード確認用2
+      lv_intro_business_person    := NULL;  --紹介営業員
+      lv_intro_business_person_mst1 := NULL;  --紹介営業員チェック用1
+      lv_intro_business_person_mst2 := NULL;  --紹介営業員チェック用2
+      lv_int_bus_per_flag1        := NULL;  --紹介営業員チェック用1
+      lv_int_bus_per_flag2        := NULL;  --紹介営業員チェック用2
+      lv_base_code                := NULL;  --本部担当拠点
+      lv_base_code_mst            := NULL;  --本部担当拠点チェック用
+      lv_tdb_code                 := NULL;  --TDBコード
+      lv_corp_approval_date       := NULL;  --決裁日付
+      lv_intro_chain_code1        := NULL;  --紹介者チェーンコード１
+      lv_intro_chain_code2        := NULL;  --紹介者チェーンコード２
+      lv_sales_head_base_code     := NULL;  --販売先本部担当拠点
+      lv_sales_head_base_code_mst := NULL;  --販売先本部担当拠点チェック用
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -5401,6 +6918,10 @@ AS
     -- 顧客追加情報マスタ更新用変数
     l_xxcmm_cust_accounts             xxcmm_cust_accounts%ROWTYPE;
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+    -- 顧客法人情報マスタ更新用変数
+    l_xxcmm_mst_corporate             xxcmm_mst_corporate%ROWTYPE;
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
     --
     -- ===============================
     -- ローカル・カーソル
@@ -5521,6 +7042,32 @@ AS
              ,xwcbr.vist_target_div       vist_target_div             --訪問対象区分
              ,xca.vist_target_div         addon_vist_target_div       --顧客追加情報・訪問対象区分
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+             ,xwcbr.intro_chain_code1      intro_chain_code1         --紹介者チェーンコード１
+             ,xca.intro_chain_code1        addon_intro_chain_code1   --顧客追加情報・紹介者チェーンコード１
+             ,xwcbr.intro_chain_code2      intro_chain_code2         --紹介者チェーンコード２
+             ,xca.intro_chain_code2        addon_intro_chain_code2   --顧客追加情報・紹介者チェーンコード２
+             ,xwcbr.sales_head_base_code   sales_head_base_code      --販売先本部担当拠点
+             ,xca.sales_head_base_code     addon_sales_head_base_code  --顧客追加情報・販売先本部担当拠点
+             ,xwcbr.cnvs_base_code         cnvs_base_code            --獲得拠点コード
+             ,xca.cnvs_base_code           addon_cnvs_base_code      --顧客追加情報・獲得拠点コード
+             ,xwcbr.cnvs_business_person   cnvs_business_person      --獲得営業員
+             ,xca.cnvs_business_person     addon_cnvs_business_person  --顧客追加情報・獲得営業員
+             ,xwcbr.new_point_div          new_point_div             --新規ポイント区分
+             ,xca.new_point_div            addon_new_point_div       --顧客追加情報・新規ポイント区分
+             ,xwcbr.new_point              new_point                 --新規ポイント
+             ,xca.new_point                addon_new_point           --顧客追加情報・新規ポイント
+             ,xwcbr.intro_base_code        intro_base_code           --紹介拠点コード
+             ,xca.intro_base_code          addon_intro_base_code     --顧客追加情報・紹介拠点コード
+             ,xwcbr.intro_business_person  intro_business_person     --紹介営業員
+             ,xca.intro_business_person    addon_intro_business_person  --顧客追加情報・紹介営業員
+             ,xwcbr.tdb_code               tdb_code                  --TDBコード
+             ,xmc.tdb_code                 addon_tdb_code            --顧客法人情報・TDBコード
+             ,xwcbr.corp_approval_date     corp_approval_date        --決裁日付
+             ,xmc.approval_date            addon_corp_approval_date  --顧客法人情報・決裁日付
+             ,xwcbr.base_code              base_code                 --本部担当拠点
+             ,xmc.base_code                addon_base_code           --顧客法人情報・本部担当拠点
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -6543,6 +8090,271 @@ AS
       l_xxcmm_cust_accounts.vist_target_div := cust_data_rec.vist_target_div;
     END IF;
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+    -- ===============================
+    -- 紹介者チェーンコード１
+    -- ===============================
+    -- 紹介者チェーンコード１が'-'の場合
+    IF (cust_data_rec.intro_chain_code1 = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.intro_chain_code1 := NULL;
+    -- 紹介者チェーンコード１がNULLの場合
+    ELSIF (cust_data_rec.intro_chain_code1 IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.intro_chain_code1 := cust_data_rec.addon_intro_chain_code1;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.intro_chain_code1 := cust_data_rec.intro_chain_code1;
+    END IF;
+--
+    -- ===============================
+    -- 紹介者チェーンコード２
+    -- ===============================
+    -- 紹介者チェーンコード２が'-'の場合
+    IF (cust_data_rec.intro_chain_code2 = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.intro_chain_code2 := NULL;
+    -- 紹介者チェーンコード２がNULLの場合
+    ELSIF (cust_data_rec.intro_chain_code2 IS NULL) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.intro_chain_code2 := cust_data_rec.addon_intro_chain_code2;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.intro_chain_code2 := cust_data_rec.intro_chain_code2;
+    END IF;
+--
+    -- ===============================
+    -- 販売先本部担当拠点
+    -- ===============================
+    --顧客区分「10：顧客」「14：売掛管理先顧客」「19：百貨店伝区」の場合
+    IF ( cust_data_rec.customer_class_code IN (cv_kokyaku_kbn, cv_urikake_kbn, cv_hyakkaten_kbn) ) THEN
+      -- 販売先本部担当拠点が'-'の場合
+      IF (cust_data_rec.sales_head_base_code = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.sales_head_base_code := NULL;
+      -- 販売先本部担当拠点がNULLの場合
+      ELSIF (cust_data_rec.sales_head_base_code IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.sales_head_base_code := cust_data_rec.addon_sales_head_base_code;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.sales_head_base_code := cust_data_rec.sales_head_base_code;
+      END IF;
+    --
+    ELSE
+    --顧客区分「10：顧客」「14：売掛管理先顧客」「19：百貨店伝区」以外の場合、設定不可
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.sales_head_base_code := cust_data_rec.addon_sales_head_base_code;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 獲得拠点コード
+    -- ===============================
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+      -- 獲得拠点コードが'-'の場合
+      IF (cust_data_rec.cnvs_base_code = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.cnvs_base_code := NULL;
+      -- 獲得拠点コードがNULLの場合
+      ELSIF (cust_data_rec.cnvs_base_code IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.cnvs_base_code := cust_data_rec.addon_cnvs_base_code;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.cnvs_base_code := cust_data_rec.cnvs_base_code;
+      END IF;
+    --
+    ELSE
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」以外の場合、設定不可
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.cnvs_base_code := cust_data_rec.addon_cnvs_base_code;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 獲得営業員
+    -- ===============================
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+      -- 獲得営業員が'-'の場合
+      IF (cust_data_rec.cnvs_business_person = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.cnvs_business_person := NULL;
+      -- 獲得営業員がNULLの場合
+      ELSIF (cust_data_rec.cnvs_business_person IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.cnvs_business_person := cust_data_rec.addon_cnvs_business_person;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.cnvs_business_person := cust_data_rec.cnvs_business_person;
+      END IF;
+    --
+    ELSE
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」以外の場合、設定不可
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.cnvs_business_person := cust_data_rec.addon_cnvs_business_person;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 新規ポイント区分
+    -- ===============================
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+      -- 新規ポイント区分が'-'の場合
+      IF (cust_data_rec.new_point_div = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.new_point_div := NULL;
+      -- 新規ポイント区分がNULLの場合
+      ELSIF (cust_data_rec.new_point_div IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.new_point_div := cust_data_rec.addon_new_point_div;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.new_point_div := cust_data_rec.new_point_div;
+      END IF;
+    --
+    ELSE
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」以外の場合、設定不可
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.new_point_div := cust_data_rec.addon_new_point_div;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 新規ポイント
+    -- ===============================
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+      -- 新規ポイントが'-'の場合
+      IF (cust_data_rec.new_point = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.new_point := NULL;
+      -- 新規ポイントがNULLの場合
+      ELSIF (cust_data_rec.new_point IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.new_point := cust_data_rec.addon_new_point;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.new_point := TO_NUMBER(cust_data_rec.new_point, 999);
+      END IF;
+    --
+    ELSE
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」以外の場合、設定不可
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.new_point := cust_data_rec.addon_new_point;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 紹介拠点コード
+    -- ===============================
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+      -- 紹介拠点コードが'-'の場合
+      IF (cust_data_rec.intro_base_code = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.intro_base_code := NULL;
+      -- 紹介拠点コードがNULLの場合
+      ELSIF (cust_data_rec.intro_base_code IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.intro_base_code := cust_data_rec.addon_intro_base_code;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.intro_base_code := cust_data_rec.intro_base_code;
+      END IF;
+    ELSE
+      --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」以外の場合、設定不可
+      l_xxcmm_cust_accounts.intro_base_code := cust_data_rec.addon_intro_base_code;
+    END IF;
+--
+    -- ===============================
+    -- 紹介営業員
+    -- ===============================
+    --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn, cv_tenpo_kbn, cv_keikaku_kbn ) ) THEN
+      -- 紹介営業員が'-'の場合
+      IF (cust_data_rec.intro_business_person = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_cust_accounts.intro_business_person := NULL;
+      -- 紹介営業員がNULLの場合
+      ELSIF (cust_data_rec.intro_business_person IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_cust_accounts.intro_business_person := cust_data_rec.addon_intro_business_person;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_cust_accounts.intro_business_person := cust_data_rec.intro_business_person;
+      END IF;
+    ELSE
+      --顧客区分「10：顧客」「15：店舗営業」「17：計画立案用」以外の場合、設定不可
+      l_xxcmm_cust_accounts.intro_business_person := cust_data_rec.addon_intro_business_person;
+    END IF;
+--
+    -- ===============================
+    -- TDBコード
+    -- ===============================
+    --顧客区分「13：法人顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_trust_corp ) THEN
+      -- TDBコードが'-'の場合
+      IF (cust_data_rec.tdb_code = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_mst_corporate.tdb_code := NULL;
+      -- TDBコードがNULLの場合
+      ELSIF (cust_data_rec.tdb_code IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_mst_corporate.tdb_code := cust_data_rec.addon_tdb_code;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_mst_corporate.tdb_code := cust_data_rec.tdb_code;
+      END IF;
+    ELSE
+      --顧客区分「13：法人顧客」以外の場合、設定不可
+      l_xxcmm_mst_corporate.tdb_code := cust_data_rec.addon_tdb_code;
+    END IF;
+--
+    -- ===============================
+    -- 決裁日付
+    -- ===============================
+    --顧客区分「13：法人顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_trust_corp ) THEN
+      -- 決裁日付が'-'の場合
+      IF (cust_data_rec.corp_approval_date = cv_null_bar) THEN
+        -- NULLをセット
+        l_xxcmm_mst_corporate.approval_date := NULL;
+      -- 決裁日付がNULLの場合
+      ELSIF (cust_data_rec.corp_approval_date IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_mst_corporate.approval_date := cust_data_rec.addon_corp_approval_date;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_mst_corporate.approval_date := TO_DATE(cust_data_rec.corp_approval_date, cv_date_format);
+      END IF;
+    ELSE
+      --顧客区分「13：法人顧客」以外の場合、設定不可
+      l_xxcmm_mst_corporate.approval_date := cust_data_rec.addon_corp_approval_date;
+    END IF;
+--
+    -- ===============================
+    -- 本部担当拠点
+    -- ===============================
+    --顧客区分「13：法人顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_trust_corp ) THEN
+      -- 本部担当拠点がNULLの場合
+      IF (cust_data_rec.base_code IS NULL) THEN
+        -- 更新前の値をセット
+        l_xxcmm_mst_corporate.base_code := cust_data_rec.addon_base_code;
+      ELSE
+        -- CSVの項目値をセット
+        l_xxcmm_mst_corporate.base_code := cust_data_rec.base_code;
+      END IF;
+    ELSE
+      --顧客区分「13：法人顧客」以外の場合、設定不可
+      l_xxcmm_mst_corporate.base_code := cust_data_rec.addon_base_code;
+    END IF;
+--
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -6586,6 +8398,17 @@ AS
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
           ,xca.vist_target_div        = l_xxcmm_cust_accounts.vist_target_div            --訪問対象区分
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+          ,xca.intro_chain_code1      = l_xxcmm_cust_accounts.intro_chain_code1          --紹介者チェーンコード１
+          ,xca.intro_chain_code2      = l_xxcmm_cust_accounts.intro_chain_code2          --紹介者チェーンコード２
+          ,xca.sales_head_base_code   = l_xxcmm_cust_accounts.sales_head_base_code       --販売先本部担当拠点
+          ,xca.cnvs_base_code         = l_xxcmm_cust_accounts.cnvs_base_code             --獲得拠点コード
+          ,xca.cnvs_business_person   = l_xxcmm_cust_accounts.cnvs_business_person       --獲得営業員
+          ,xca.new_point_div          = l_xxcmm_cust_accounts.new_point_div              --新規ポイント区分
+          ,xca.new_point              = l_xxcmm_cust_accounts.new_point                  --新規ポイント
+          ,xca.intro_base_code        = l_xxcmm_cust_accounts.intro_base_code            --紹介拠点コード
+          ,xca.intro_business_person  = l_xxcmm_cust_accounts.intro_business_person      --紹介営業員
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
@@ -6612,6 +8435,11 @@ AS
                                                  NULL,
                                                  cust_data_rec.addon_decide_div,
                                                  cust_data_rec.decide_div),
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add start by T.Nakano
+             xmc.tdb_code               = l_xxcmm_mst_corporate.tdb_code,           --TDBコード
+             xmc.approval_date          = l_xxcmm_mst_corporate.approval_date,      --決裁日付
+             xmc.base_code              = l_xxcmm_mst_corporate.base_code,          --本部担当拠点
+-- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
              xmc.last_updated_by        = fnd_global.user_id,                       --最終更新者
              xmc.last_update_date       = sysdate,                                  --最終更新日
              xmc.request_id             = fnd_profile.value(cv_conc_request_id),    --要求ID

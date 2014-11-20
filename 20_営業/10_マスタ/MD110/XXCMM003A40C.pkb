@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A40C(body)
  * Description      : 顧客一括登録ワークテーブルに取込済のデータから顧客レコードを登録します。
  * MD.050           : 顧客一括登録 MD050_CMM_003_A40
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  *  regist_resource_no_api 組織プロファイル拡張(担当営業員)登録処理 (A-5)
  *  ins_cmm_cust_acct      顧客追加情報マスタ登録処理
  *  ins_cmm_mst_crprt      顧客法人情報登録処理
+ *  ins_rcpmia             顧客支払方法OIF登録処理
+ *  submit_request_racust  顧客インタフェース発行処理 (A-7)
  *  loop_main              顧客一括登録ワークデータ取得 (A-3)
  *  get_if_data            ファイルアップロードIFデータ取得 (A-2)
  *  proc_comp              終了処理 (A-6)
@@ -39,6 +41,7 @@ AS
  *  2010/10/05    1.0   Shigeto.Niki     新規作成
  *  2010/11/05    1.1   Shigeto.Niki     E_本稼動_05492対応  担当営業員登録時のチェック追加
  *  2012/12/14    1.2   K.Furuyama       E_本稼動_09963対応  顧客区分：13、14追加
+ *  2013/04/18    1.3   K.Nakamura       E_本稼動_09963追加対応  支払方法、カード会社区分追加
  *
  *****************************************************************************************/
 --
@@ -113,6 +116,15 @@ AS
   cv_msg_xxcmm_00023     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00023';                                  -- FILE_IDノート
   cv_msg_xxcmm_00024     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00024';                                  -- フォーマットノート
   cv_msg_xxcmm_00028     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00028';                                  -- データ項目数エラー
+-- Ver1.3 K.Nakamura add start
+  cv_msg_xxcmm_00366     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00366';                                  -- 顧客支払方法OIF登録エラー
+  cv_msg_xxcmm_00367     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00367';                                  -- 顧客インタフェース起動ノート
+  cv_msg_xxcmm_00368     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00368';                                  -- 顧客インタフェース起動エラー
+  cv_msg_xxcmm_00369     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00369';                                  -- 顧客インタフェース待機エラー
+  cv_msg_xxcmm_00370     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00370';                                  -- 顧客インタフェース正常終了メッセージ
+  cv_msg_xxcmm_00371     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00371';                                  -- 顧客インタフェース警告終了メッセージ
+  cv_msg_xxcmm_00372     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00372';                                  -- 顧客インタフェースエラー終了メッセージ
+-- Ver1.3 K.Nakamura add end
   --
   cv_msg_xxcmm_10323     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10323';                                  -- パラメータNULLエラー
   cv_msg_xxcmm_10324     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10324';                                  -- 取得失敗エラー
@@ -137,7 +149,9 @@ AS
   cv_msg_xxcmm_10341     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10341';                                  -- 顧客登録時のログ見出し
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add start
   cv_msg_xxcmm_10344     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10344';                                  -- 顧客法人情報マスタ登録エラー
-  cv_msg_xxcmm_10345     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10345';                                  -- 決裁日付チェックエラー
+-- Ver1.3 K.Nakamura del start
+--  cv_msg_xxcmm_10345     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10345';                                  -- 決裁日付チェックエラー
+-- Ver1.3 K.Nakamura del end
   cv_msg_xxcmm_10346     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10346';                                  -- データ存在チェックエラー
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
   -- トークン名
@@ -160,11 +174,19 @@ AS
   cv_tkn_seq_num         CONSTANT VARCHAR2(20)  := 'SEQ_NUM';                                           -- シーケンス番号
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add start
   cv_tkn_cust_id         CONSTANT VARCHAR2(20)  := 'CUST_ID';                                           -- 顧客ID
-  cv_tkn_approval_date   CONSTANT VARCHAR2(20)  := 'APPROVAL_DATE';                                     -- 決裁日付
+-- Ver1.3 K.Nakamura del start
+--  cv_tkn_approval_date   CONSTANT VARCHAR2(20)  := 'APPROVAL_DATE';                                     -- 決裁日付
+-- Ver1.3 K.Nakamura del end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+  cv_tkn_req_id          CONSTANT VARCHAR2(20)  := 'REQ_ID';                                            -- 要求ID
+-- Ver1.3 K.Nakamura add end
   --
   cv_appl_name_xxcmm     CONSTANT VARCHAR2(5)   := 'XXCMM';                                             -- アプリケーション短縮名
   cv_appl_short_name     CONSTANT VARCHAR2(10)  := 'XXCCP';                                             -- アドオン：共通・IF領域
+-- Ver1.3 K.Nakamura add start
+  cv_appl_name_ar        CONSTANT VARCHAR2(5)   := 'AR';                                                -- アプリケーション短縮名：AR
+-- Ver1.3 K.Nakamura add end
   cv_log                 CONSTANT VARCHAR2(5)   := 'LOG';                                               -- ログ
   cv_output              CONSTANT VARCHAR2(6)   := 'OUTPUT';                                            -- アウトプット
   -- プロファイル名
@@ -206,6 +228,12 @@ AS
   cv_prf_ur_yobi2        CONSTANT VARCHAR2(60)  := 'XXCMM1_003A40_URIKAKE_YOBI2';                        -- プロファイル「顧客一括登録（売掛管理先顧客）用_予備２」
   cv_prf_ur_yobi2_n      CONSTANT VARCHAR2(60)  := 'XXCMM:顧客一括登録（売掛管理先顧客）用_予備２';      -- プロファイル「顧客一括登録（売掛管理先顧客）用_予備２」名称
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+  cv_prf_inter_racust    CONSTANT VARCHAR2(60)  := 'XXCMM1_INTERVAL_RACUST';                             -- プロファイル「待機間隔（顧客インタフェース）」
+  cv_prf_inter_racust_n  CONSTANT VARCHAR2(60)  := 'XXCMM:待機間隔（顧客インタフェース）';               -- プロファイル「待機間隔（顧客インタフェース）」名称
+  cv_prf_max_racust      CONSTANT VARCHAR2(60)  := 'XXCMM1_MAX_WAIT_RACUST';                             -- プロファイル「最大待機時間（顧客インタフェース）」
+  cv_prf_max_racust_n    CONSTANT VARCHAR2(60)  := 'XXCMM:最大待機時間（顧客インタフェース）';           -- プロファイル「最大待機時間（顧客インタフェース）」名称
+-- Ver1.3 K.Nakamura add end
   -- 値セット
   cv_aff_dept            CONSTANT VARCHAR2(15)  := 'XX03_DEPARTMENT';                                   -- LOOKUP：AFF部門マスタ
   -- LOOKUP
@@ -229,6 +257,9 @@ AS
   cv_lookup_cust_def_ho  CONSTANT VARCHAR2(30)  := 'XXCMM1_003A40_CUST_DEF_HO';                         -- LOOKUP：顧客一括登録データ項目定義(法人)
   cv_lookup_cust_def_ur  CONSTANT VARCHAR2(30)  := 'XXCMM1_003A40_CUST_DEF_UR';                         -- LOOKUP：顧客一括登録データ項目定義(売掛管理)
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+  cv_lookup_card_bkn     CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_CARD_COMPANY_KBN';                       -- LOOKUP：カード会社区分
+-- Ver1.3 K.Nakamura add end
   --
   cv_file_format_mc      CONSTANT VARCHAR2(3)   := '501';                                               -- ファイルフォーマット(MC)
   cv_file_format_st      CONSTANT VARCHAR2(3)   := '502';                                               -- ファイルフォーマット(店舗営業)
@@ -301,6 +332,10 @@ AS
   cv_receiv_base_code    CONSTANT VARCHAR2(30)  := '入金拠点';                                          -- 入金拠点
   cv_sales_head_base_cd  CONSTANT VARCHAR2(30)  := '販売先本部担当拠点';                                -- 販売先本部担当拠点
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+  cv_receipt_methods     CONSTANT VARCHAR2(30)  := '支払方法';                                          -- 支払方法
+  cv_card_company_kbn    CONSTANT VARCHAR2(30)  := 'カード会社区分';                                    -- カード会社区分
+-- Ver1.3 K.Nakamura add end
   -- 標準API名
   cv_api_cust_acct       CONSTANT VARCHAR2(60)  := 'hz_cust_account_v2pub.create_cust_account';         -- 標準API：顧客マスタ作成
   cv_api_location        CONSTANT VARCHAR2(60)  := 'hz_location_v2pub.create_location';                 -- 標準API：顧客所在地マスタ作成
@@ -345,6 +380,14 @@ AS
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add start
   cv_summary             CONSTANT VARCHAR2(10)  := 'SUMMARY';                                           -- 要約
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+  cv_rcpmia_start_date   CONSTANT VARCHAR2(10)  := '1900/01/01';                                        -- 顧客支払方法の 有効日（自）
+  -- コンカレント名
+  cv_conc_racust         CONSTANT VARCHAR2(10)  := 'RACUST';                                            -- コンカレントプログラム名：顧客インタフェース
+  -- コンカレントdevステータス
+  cv_dev_status_normal   CONSTANT VARCHAR2(10)  := 'NORMAL';                                            -- 正常
+  cv_dev_status_warn     CONSTANT VARCHAR2(10)  := 'WARNING';                                           -- 警告
+-- Ver1.3 K.Nakamura add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -409,6 +452,12 @@ AS
   gt_autocash_hierarchy_id      ar_autocash_hierarchies.autocash_hierarchy_id%TYPE;                     -- 自動消込基準セットID
   gt_payment_term_id            ra_terms.term_id%TYPE;                                                  -- 支払条件ID
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+  gv_loop_main_retcode          VARCHAR2(1);                                                            -- LOOP_MAINリターン・コード
+  gn_inter_racust               NUMBER;                                                                 -- 待機間隔（顧客インタフェース）
+  gn_max_racust                 NUMBER;                                                                 -- 最大待機時間（顧客インタフェース）
+  gn_rcpmia_cnt                 NUMBER;                                                                 -- 顧客支払方法OIF登録件数
+-- Ver1.3 K.Nakamura add end
   --
   gv_warning_prg_name           VARCHAR2(100);                                                          -- 警告発生プロシージャ名
   --
@@ -727,6 +776,24 @@ AS
         RAISE get_profile_expt;
       END IF;
       --
+-- Ver1.3 K.Nakamura add start
+      -- 待機間隔（顧客インタフェース）
+      gn_inter_racust := TO_NUMBER(FND_PROFILE.VALUE(cv_prf_inter_racust));
+      -- 取得エラー時
+      IF ( gn_inter_racust IS NULL ) THEN
+        lv_tkn_value := cv_prf_inter_racust_n;
+        RAISE get_profile_expt;
+      END IF;
+      --
+      -- 最大待機時間（顧客インタフェース）
+      gn_max_racust := TO_NUMBER(FND_PROFILE.VALUE(cv_prf_max_racust));
+      -- 取得エラー時
+      IF ( gn_max_racust IS NULL ) THEN
+        lv_tkn_value := cv_prf_max_racust_n;
+        RAISE get_profile_expt;
+      END IF;
+-- Ver1.3 K.Nakamura add end
+      --
     END IF;
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
     --
@@ -932,7 +999,7 @@ AS
     --==============================================================
     -- A-1.12 INパラメータの出力
     --==============================================================
-    lv_step := 'A-1.12';
+    lv_step := 'A-1.13';
     lv_up_name     := xxccp_common_pkg.get_msg(                                 -- アップロード名称の出力
                         iv_application  => cv_appl_name_xxcmm                   -- アプリケーション短縮名
                        ,iv_name         => cv_msg_xxcmm_00021                   -- メッセージコード
@@ -1214,18 +1281,38 @@ AS
       l_validate_cust_tab(14) := i_wk_cust_rec.address3;                              -- 地区コード
       l_validate_cust_tab(15) := i_wk_cust_rec.tel_no;                                -- 電話番号
       l_validate_cust_tab(16) := i_wk_cust_rec.fax;                                   -- FAX
-      l_validate_cust_tab(17) := i_wk_cust_rec.business_low_type;                     -- 業態小分類
-      l_validate_cust_tab(18) := i_wk_cust_rec.industry_div;                          -- 業種
-      l_validate_cust_tab(19) := i_wk_cust_rec.tax_div;                               -- 消費税区分
-      l_validate_cust_tab(20) := i_wk_cust_rec.tax_rounding_rule;                     -- 税金端数処理
-      l_validate_cust_tab(21) := i_wk_cust_rec.invoice_grp_code;                      -- 売掛コード1（請求書）
-      l_validate_cust_tab(22) := i_wk_cust_rec.output_form;                           -- 請求書出力形式
-      l_validate_cust_tab(23) := i_wk_cust_rec.prt_cycle;                             -- 請求書発行サイクル
-      l_validate_cust_tab(24) := i_wk_cust_rec.payment_term;                          -- 支払条件
-      l_validate_cust_tab(25) := i_wk_cust_rec.delivery_base_code;                    -- 納品拠点
-      l_validate_cust_tab(26) := i_wk_cust_rec.bill_base_code;                        -- 請求拠点
-      l_validate_cust_tab(27) := i_wk_cust_rec.receiv_base_code;                      -- 入金拠点
-      l_validate_cust_tab(28) := i_wk_cust_rec.sales_head_base_code;                  -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura add start
+      l_validate_cust_tab(17) := i_wk_cust_rec.receipt_method_name;                   -- 支払方法
+-- Ver1.3 K.Nakamura add end
+-- Ver1.3 K.Nakamura mod start
+--      l_validate_cust_tab(17) := i_wk_cust_rec.business_low_type;                     -- 業態小分類
+--      l_validate_cust_tab(18) := i_wk_cust_rec.industry_div;                          -- 業種
+--      l_validate_cust_tab(19) := i_wk_cust_rec.tax_div;                               -- 消費税区分
+--      l_validate_cust_tab(20) := i_wk_cust_rec.tax_rounding_rule;                     -- 税金端数処理
+--      l_validate_cust_tab(21) := i_wk_cust_rec.invoice_grp_code;                      -- 売掛コード1（請求書）
+--      l_validate_cust_tab(22) := i_wk_cust_rec.output_form;                           -- 請求書出力形式
+--      l_validate_cust_tab(23) := i_wk_cust_rec.prt_cycle;                             -- 請求書発行サイクル
+--      l_validate_cust_tab(24) := i_wk_cust_rec.payment_term;                          -- 支払条件
+--      l_validate_cust_tab(25) := i_wk_cust_rec.delivery_base_code;                    -- 納品拠点
+--      l_validate_cust_tab(26) := i_wk_cust_rec.bill_base_code;                        -- 請求拠点
+--      l_validate_cust_tab(27) := i_wk_cust_rec.receiv_base_code;                      -- 入金拠点
+--      l_validate_cust_tab(28) := i_wk_cust_rec.sales_head_base_code;                  -- 販売先本部担当拠点
+      l_validate_cust_tab(18) := i_wk_cust_rec.business_low_type;                     -- 業態小分類
+      l_validate_cust_tab(19) := i_wk_cust_rec.industry_div;                          -- 業種
+      l_validate_cust_tab(20) := i_wk_cust_rec.tax_div;                               -- 消費税区分
+      l_validate_cust_tab(21) := i_wk_cust_rec.tax_rounding_rule;                     -- 税金端数処理
+      l_validate_cust_tab(22) := i_wk_cust_rec.invoice_grp_code;                      -- 売掛コード1（請求書）
+      l_validate_cust_tab(23) := i_wk_cust_rec.output_form;                           -- 請求書出力形式
+      l_validate_cust_tab(24) := i_wk_cust_rec.prt_cycle;                             -- 請求書発行サイクル
+      l_validate_cust_tab(25) := i_wk_cust_rec.payment_term;                          -- 支払条件
+      l_validate_cust_tab(26) := i_wk_cust_rec.delivery_base_code;                    -- 納品拠点
+      l_validate_cust_tab(27) := i_wk_cust_rec.bill_base_code;                        -- 請求拠点
+      l_validate_cust_tab(28) := i_wk_cust_rec.receiv_base_code;                      -- 入金拠点
+      l_validate_cust_tab(29) := i_wk_cust_rec.sales_head_base_code;                  -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura mod end
+-- Ver1.3 K.Nakamura add start
+      l_validate_cust_tab(30) := i_wk_cust_rec.card_company_kbn;                      -- カード会社区分
+-- Ver1.3 K.Nakamura add end
     --
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
     END IF;
@@ -1917,10 +2004,54 @@ AS
         lv_check_flag := cv_status_error;
       END IF;
       --
+-- Ver1.3 K.Nakamura add start
       --==============================================================
-      -- A-4.19 業態小分類(仮)チェック
+      -- A-4.19 支払方法チェック
       --==============================================================
       lv_step := 'A-4.19';
+      -- フォーマットパターン「504:売掛管理」の場合
+      IF ( gv_format = cv_file_format_ur ) THEN
+        -- 支払方法存在チェック
+        SELECT COUNT(1)           cnt
+        INTO   ln_cnt
+        FROM   ar_receipt_methods arm                                  -- 支払方法マスタ
+        WHERE  arm.name = i_wk_cust_rec.receipt_method_name            -- 名称
+        AND    NVL(arm.start_date, gd_process_date) <= gd_process_date -- 開始日
+        AND    NVL(arm.end_date,   gd_process_date) >= gd_process_date -- 終了日
+        ;
+        IF (ln_cnt = 0) THEN
+            lv_check_status   := cv_status_error;
+            ov_retcode        := cv_status_error;
+            -- 支払方法存在チェックエラー
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_10346                    -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_input                          -- トークンコード1
+                          ,iv_token_value1 => cv_receipt_methods                    -- トークン値1
+                          ,iv_token_name2  => cv_tkn_value                          -- トークンコード2
+                          ,iv_token_value2 => i_wk_cust_rec.receipt_method_name     -- トークン値2
+                          ,iv_token_name3  => cv_tkn_input_line_no                  -- トークンコード3
+                          ,iv_token_value3 => i_wk_cust_rec.line_no                 -- トークン値3
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => gv_out_msg);
+            --
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+            lv_check_flag := cv_status_error;
+        END IF;
+      END IF;
+-- Ver1.3 K.Nakamura add end
+      --==============================================================
+      -- A-4.20 業態小分類(仮)チェック
+      --==============================================================
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.19';
+      lv_step := 'A-4.20';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」の場合
       IF ( gv_format = cv_file_format_mc ) THEN
         SELECT COUNT(1)
@@ -1960,9 +2091,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.20 店長名チェック
+      -- A-4.21 店長名チェック
       --==============================================================
-      lv_step := 'A-4.20';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.20';
+      lv_step := 'A-4.21';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」かつ、値が入っている場合
       IF ( gv_format = cv_file_format_mc )
         AND ( i_wk_cust_rec.manager_name IS NOT NULL )
@@ -1993,9 +2127,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.21 担当者休日チェック
+      -- A-4.22 担当者休日チェック
       --==============================================================
-      lv_step := 'A-4.21';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.21';
+      lv_step := 'A-4.22';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」かつ、値が入っている場合
       IF ( gv_format = cv_file_format_mc )
         AND ( i_wk_cust_rec.rest_emp_name IS NOT NULL )
@@ -2026,9 +2163,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.22 MC:重要度チェック
+      -- A-4.23 MC:重要度チェック
       --==============================================================
-      lv_step := 'A-4.22';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.22';
+      lv_step := 'A-4.23';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」かつ、値が入っている場合
       IF ( gv_format = cv_file_format_mc )
         AND ( i_wk_cust_rec.mc_importance_deg IS NOT NULL ) THEN
@@ -2070,9 +2210,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.23 MC:HOT度チェック
+      -- A-4.24 MC:HOT度チェック
       --==============================================================
-      lv_step := 'A-4.23';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.23';
+      lv_step := 'A-4.24';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」かつ、値が入っている場合
       IF ( gv_format = cv_file_format_mc )
         AND ( i_wk_cust_rec.mc_hot_deg IS NOT NULL ) THEN
@@ -2114,9 +2257,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.24 MC:競合情報チェック
+      -- A-4.25 MC:競合情報チェック
       --==============================================================
-      lv_step := 'A-4.24';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.24';
+      lv_step := 'A-4.25';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」かつ、値が入っている場合
       IF ( gv_format = cv_file_format_mc )
         AND ( i_wk_cust_rec.mc_conf_info IS NOT NULL )
@@ -2147,9 +2293,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.25 MC:商談経緯チェック
+      -- A-4.26 MC:商談経緯チェック
       --==============================================================
-      lv_step := 'A-4.25';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.25';
+      lv_step := 'A-4.26';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」かつ、値が入っている場合
       IF ( gv_format = cv_file_format_mc )
         AND ( i_wk_cust_rec.mc_business_talk_details IS NOT NULL )
@@ -2180,9 +2329,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.26 担当営業員チェック
+      -- A-4.27 担当営業員チェック
       --==============================================================
-      lv_step := 'A-4.26-1';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.26-1';
+      lv_step := 'A-4.27';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「501:MC顧客」の場合
       IF ( gv_format = cv_file_format_mc ) THEN
 -- 2010/11/05 Ver1.1 障害：E_本稼動_05492 modify start by Shigeto.Niki
@@ -2290,9 +2442,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.27 業態小分類チェック
+      -- A-4.28 業態小分類チェック
       --==============================================================
-      lv_step := 'A-4.27';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.27';
+      lv_step := 'A-4.28';
+-- Ver1.3 K.Nakamura add end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama mod start
       ---- フォーマットパターン「502:店舗営業」の場合
       --IF ( gv_format = cv_file_format_st ) THEN
@@ -2336,9 +2491,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.28 業種チェック
+      -- A-4.29 業種チェック
       --==============================================================
-      lv_step := 'A-4.28';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.28';
+      lv_step := 'A-4.29';
+-- Ver1.3 K.Nakamura add end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama mod start
       ---- フォーマットパターン「502:店舗営業」の場合
       --IF ( gv_format = cv_file_format_st ) THEN
@@ -2382,9 +2540,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.29 取引形態チェック
+      -- A-4.30 取引形態チェック
       --==============================================================
-      lv_step := 'A-4.29';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.29';
+      lv_step := 'A-4.30';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「502:店舗営業」の場合
       IF ( gv_format = cv_file_format_st ) THEN
         SELECT COUNT(1)
@@ -2424,9 +2585,12 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.30 配送形態チェック
+      -- A-4.31 配送形態チェック
       --==============================================================
-      lv_step := 'A-4.30';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.30';
+      lv_step := 'A-4.31';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「502:店舗営業」の場合
       IF ( gv_format = cv_file_format_st ) THEN
         SELECT COUNT(1)
@@ -2467,9 +2631,12 @@ AS
       --
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add start
       --==============================================================
-      -- A-4.31 本部担当拠点チェック
+      -- A-4.32 本部担当拠点チェック
       --==============================================================
-      lv_step := 'A-4.31';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.31';
+      lv_step := 'A-4.32';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「503:法人」の場合
       IF ( gv_format = cv_file_format_ho ) THEN
         -- 本部担当拠点チェック
@@ -2512,9 +2679,12 @@ AS
       END IF;
     --
       --==============================================================
-      -- A-4.32 判定区分チェック
+      -- A-4.33 判定区分チェック
       --==============================================================
-      lv_step := 'A-4.32';
+-- Ver1.3 K.Nakamura add start
+--      lv_step := 'A-4.32';
+      lv_step := 'A-4.33';
+-- Ver1.3 K.Nakamura add end
       -- フォーマットパターン「503:法人」の場合
       IF ( gv_format = cv_file_format_ho ) THEN
         -- 判定区分チェック
@@ -2553,37 +2723,39 @@ AS
           lv_check_flag := cv_status_error;
         END IF;
       END IF;
-      --==============================================================
-      -- A-4.33 決裁日付チェック
-      --==============================================================
-      lv_step := 'A-4.33';
-      -- フォーマットパターン「503:法人」の場合
-      IF ( gv_format = cv_file_format_ho ) THEN
-        -- 決裁日付が業務日付より過去の日付の場合
-        IF ( TO_DATE(i_wk_cust_rec.approval_date, cv_date_fmt_std) < gd_process_date ) THEN
-          lv_check_status   := cv_status_error;
-          ov_retcode        := cv_status_error;
-          --決裁日付チェックエラー
-          gv_out_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
-                        ,iv_name         => cv_msg_xxcmm_10345                    -- メッセージコード
-                        ,iv_token_name1  => cv_tkn_approval_date                  -- トークンコード1
-                        ,iv_token_value1 => i_wk_cust_rec.approval_date           -- トークン値1
-                        ,iv_token_name2  => cv_tkn_input_line_no                  -- トークンコード3
-                        ,iv_token_value2 => i_wk_cust_rec.line_no                 -- トークン値3
-                       );
-          -- メッセージ出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => gv_out_msg);
-          lv_check_flag := cv_status_error;
-          --
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => gv_out_msg);
-          lv_check_flag := cv_status_error;
-        END IF;
-      END IF;
+-- Ver1.3 K.Nakamura del start
+--      --==============================================================
+--      -- A-4.33 決裁日付チェック
+--      --==============================================================
+--      lv_step := 'A-4.33';
+--      -- フォーマットパターン「503:法人」の場合
+--      IF ( gv_format = cv_file_format_ho ) THEN
+--        -- 決裁日付が業務日付より過去の日付の場合
+--        IF ( TO_DATE(i_wk_cust_rec.approval_date, cv_date_fmt_std) < gd_process_date ) THEN
+--          lv_check_status   := cv_status_error;
+--          ov_retcode        := cv_status_error;
+--          --決裁日付チェックエラー
+--          gv_out_msg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+--                        ,iv_name         => cv_msg_xxcmm_10345                    -- メッセージコード
+--                        ,iv_token_name1  => cv_tkn_approval_date                  -- トークンコード1
+--                        ,iv_token_value1 => i_wk_cust_rec.approval_date           -- トークン値1
+--                        ,iv_token_name2  => cv_tkn_input_line_no                  -- トークンコード3
+--                        ,iv_token_value2 => i_wk_cust_rec.line_no                 -- トークン値3
+--                       );
+--          -- メッセージ出力
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.OUTPUT
+--            ,buff   => gv_out_msg);
+--          lv_check_flag := cv_status_error;
+--          --
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.LOG
+--            ,buff   => gv_out_msg);
+--          lv_check_flag := cv_status_error;
+--        END IF;
+--      END IF;
+-- Ver1.3 K.Nakamura del end
       --==============================================================
       -- A-4.34 消費税区分存在チェック
       --==============================================================
@@ -2973,7 +3145,11 @@ AS
       --==============================================================
       lv_step := 'A-4.43';
       -- フォーマットパターン「504:売掛管理」の場合
-      IF ( gv_format = cv_file_format_ur ) THEN
+-- Ver1.3 K.Nakamura mod start
+--      IF ( gv_format = cv_file_format_ur ) THEN
+      IF ( gv_format = cv_file_format_ur )
+        AND ( i_wk_cust_rec.sales_head_base_code IS NOT NULL ) THEN
+-- Ver1.3 K.Nakamura mod end
         -- 販売先本部担当拠点チェック
         SELECT COUNT(1)
         INTO   ln_cnt
@@ -3012,6 +3188,51 @@ AS
           lv_check_flag := cv_status_error;
         END IF;
       END IF;
+-- Ver1.3 K.Nakamura add start
+      --==============================================================
+      -- A-4.44 カード会社区分チェック
+      --==============================================================
+      lv_step := 'A-4.44';
+      -- フォーマットパターン「504:売掛管理」かつ、値が入っている場合
+      IF ( gv_format = cv_file_format_ur )
+        AND ( i_wk_cust_rec.card_company_kbn IS NOT NULL ) THEN
+        -- カード会社区分存在チェック
+        SELECT COUNT(1)
+        INTO   ln_cnt
+        FROM   fnd_lookup_values_vl flv                                           -- LOOKUP表
+        WHERE  flv.lookup_type  = cv_lookup_card_bkn                              -- タイプ
+        AND    flv.lookup_code  = i_wk_cust_rec.card_company_kbn                  -- コード
+        AND    flv.enabled_flag = cv_yes                                          -- 使用可能フラグ
+        AND    NVL( flv.start_date_active, gd_process_date ) <= gd_process_date   -- 適用開始日
+        AND    NVL( flv.end_date_active,   gd_process_date ) >= gd_process_date   -- 適用終了日
+        ;
+        --
+        IF (ln_cnt = 0) THEN
+          lv_check_status   := cv_status_error;
+          ov_retcode        := cv_status_error;
+          -- カード会社区分存在チェックエラー
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_10330                    -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                          -- トークンコード1
+                        ,iv_token_value1 => cv_card_company_kbn                   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                          -- トークンコード2
+                        ,iv_token_value2 => i_wk_cust_rec.card_company_kbn        -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no                  -- トークンコード3
+                        ,iv_token_value3 => i_wk_cust_rec.line_no                 -- トークン値3
+                       );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => gv_out_msg);
+          --
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+          lv_check_flag := cv_status_error;
+        END IF;
+      END IF;
+-- Ver1.3 K.Nakamura add end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
     END IF;
   --
@@ -4855,6 +5076,9 @@ AS
     lv_delivery_chain_code      xxcmm_cust_accounts.delivery_chain_code%TYPE;            -- 納品先チェーンコード
     lv_tax_div                  xxcmm_cust_accounts.tax_div%TYPE;                        -- 消費税区分
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+    lv_card_company_kbn         xxcmm_cust_accounts.card_company_div%TYPE;               -- カード会社区分
+-- Ver1.3 K.Nakamura add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -4940,6 +5164,9 @@ AS
         lv_delivery_chain_code   := i_wk_cust_rec.delivery_chain_code;     -- 納品先チェーンコード
         lv_tax_div               := i_wk_cust_rec.tax_div;                 -- 消費税区分
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+        lv_card_company_kbn      := i_wk_cust_rec.card_company_kbn;        -- カード会社区分
+-- Ver1.3 K.Nakamura add end
       END IF;
       --
       -- 顧客追加情報テーブルの登録
@@ -5130,7 +5357,10 @@ AS
         NULL,                                           -- 百貨店伝区コード
         NULL,                                           -- 百貨店伝区コード【親レコード用】
         NULL,                                           -- 前月顧客ステータス
-        NULL,                                           -- カード会社区分
+-- Ver1.3 K.Nakamura mod start
+--        NULL,                                           -- カード会社区分
+        lv_card_company_kbn,                            -- カード会社区分
+-- Ver1.3 K.Nakamura mod end
         NULL,                                           -- カード会社
         lv_invoice_printing_unit,                       -- 請求書印刷単位
         NULL,                                           -- 請求書用コード
@@ -5378,6 +5608,389 @@ AS
 --
   END ins_cmm_mst_crprt;
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 SCSK K.Nakamura add start
+  /**********************************************************************************
+   * Procedure Name   : ins_rcpmia
+   * Description      : 顧客支払方法OIF登録処理
+   ***********************************************************************************/
+  PROCEDURE ins_rcpmia(
+    i_wk_cust_rec              IN  xxcmm_wk_cust_upload%ROWTYPE  -- 顧客一括登録ワーク情報
+   ,io_save_cust_key_info_rec  IN OUT save_cust_key_info_rtype   -- 退避KEY情報レコード
+   ,ov_errbuf                  OUT VARCHAR2          --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode                 OUT VARCHAR2          --   リターン・コード             --# 固定 #
+   ,ov_errmsg                  OUT VARCHAR2          --   ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_rcpmia'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_step                     VARCHAR2(10);                                            -- ステップ
+    lv_sql_errm                 VARCHAR2(2000);                                          -- SQLERRM
+--
+    -- 退避用
+    lv_account_number           hz_cust_accounts.account_number%TYPE;                    -- 退避_顧客コード
+--
+    lv_receipt_method_name      ra_cust_pay_method_int_all.payment_method_name%TYPE;     -- 支払方法
+    ln_cust_acct_site_id        ra_cust_pay_method_int_all.orig_system_address_ref%TYPE; -- 顧客サイトID
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカルユーザー定義例外 ***
+    ins_rcpmia_expt             EXCEPTION;                                               -- 顧客支払方法OIF登録エラー
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==============================================================
+    -- A-5.4 顧客支払方法OIF登録
+    --==============================================================
+    lv_step := 'A-5.4';
+    BEGIN
+      lv_account_number        := io_save_cust_key_info_rec.lv_account_number;    -- 顧客コード
+      lv_receipt_method_name   := i_wk_cust_rec.receipt_method_name;              -- 支払方法
+      ln_cust_acct_site_id     := io_save_cust_key_info_rec.ln_cust_acct_site_id; -- 退避_顧客サイトID
+      -- 顧客支払方法OIFの登録
+      INSERT INTO ra_cust_pay_method_int_all
+      (
+          orig_system_customer_ref                       -- オリジナルシステム顧客KEY
+         ,payment_method_name                            -- 支払方法名
+         ,primary_flag                                   -- 主フラグ
+         ,orig_system_address_ref                        -- オリジナルシステム顧客サイトKEY
+         ,start_date                                     -- 有効日（自）
+         ,end_date                                       -- 有効日（至）
+         ,request_id                                     -- 要求ID
+         ,interface_status                               -- インターフェースステータス
+         ,validated_flag                                 -- 有効フラグ
+         ,attribute_category                             -- ATTRIBUTEカテゴリ
+         ,attribute1                                     -- ATTRIBUTE1
+         ,attribute2                                     -- ATTRIBUTE2
+         ,attribute3                                     -- ATTRIBUTE3
+         ,attribute4                                     -- ATTRIBUTE4
+         ,attribute5                                     -- ATTRIBUTE5
+         ,attribute6                                     -- ATTRIBUTE6
+         ,attribute7                                     -- ATTRIBUTE7
+         ,attribute8                                     -- ATTRIBUTE8
+         ,attribute9                                     -- ATTRIBUTE9
+         ,attribute10                                    -- ATTRIBUTE10
+         ,attribute11                                    -- ATTRIBUTE11
+         ,attribute12                                    -- ATTRIBUTE12
+         ,attribute13                                    -- ATTRIBUTE13
+         ,attribute14                                    -- ATTRIBUTE14
+         ,attribute15                                    -- ATTRIBUTE15
+         ,last_update_date                               -- 最終更新日
+         ,last_updated_by                                -- 最終更新者
+         ,created_by                                     -- 作成者
+         ,creation_date                                  -- 作成日
+         ,last_update_login                              -- 最終更新ﾛｸﾞｲﾝ
+         ,org_id                                         -- 組織ID
+      ) VALUES (
+          io_save_cust_key_info_rec.ln_cust_account_id   -- 顧客アカウントID
+         ,lv_receipt_method_name                         -- 支払方法名
+         ,cv_y                                           -- 主フラグ
+         ,ln_cust_acct_site_id                           -- オリジナルシステム顧客サイトKEY
+         ,TO_DATE(cv_rcpmia_start_date, cv_date_fmt_std) -- 有効日（自）
+         ,NULL                                           -- 有効日（至）
+         ,cn_request_id                                  -- 要求ID
+         ,NULL                                           -- インターフェースステータス 
+         ,NULL                                           -- 有効フラグ
+         ,NULL                                           -- ATTRIBUTEカテゴリ
+         ,NULL                                           -- ATTRIBUTE1
+         ,NULL                                           -- ATTRIBUTE2
+         ,NULL                                           -- ATTRIBUTE3
+         ,NULL                                           -- ATTRIBUTE4
+         ,NULL                                           -- ATTRIBUTE5
+         ,NULL                                           -- ATTRIBUTE6
+         ,NULL                                           -- ATTRIBUTE7
+         ,NULL                                           -- ATTRIBUTE8
+         ,NULL                                           -- ATTRIBUTE9
+         ,NULL                                           -- ATTRIBUTE10
+         ,NULL                                           -- ATTRIBUTE11
+         ,NULL                                           -- ATTRIBUTE12
+         ,NULL                                           -- ATTRIBUTE13
+         ,NULL                                           -- ATTRIBUTE14
+         ,NULL                                           -- ATTRIBUTE15
+         ,cd_last_update_date                            -- 最終更新日
+         ,cn_last_updated_by                             -- 最終更新者
+         ,cn_created_by                                  -- 作成者
+         ,cd_creation_date                               -- 作成日
+         ,cn_last_update_login                           -- 最終更新ログイン
+         ,gv_sal_org_id                                  -- 組織ID
+      )
+      ;
+      -- 支払方法OIF登録件数取得
+      gn_rcpmia_cnt := SQL%ROWCOUNT;
+    --
+    EXCEPTION
+      WHEN OTHERS THEN                   -- 顧客支払方法OIF登録エラー
+        -- エラーメッセージ取得
+        lv_sql_errm := SQLERRM;
+        RAISE ins_rcpmia_expt;
+    END;
+--
+  EXCEPTION
+    --*** 顧客支払方法OIF登録エラー ***
+    WHEN ins_rcpmia_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_xxcmm            -- アプリケーション短縮名
+                    ,iv_name         => cv_msg_xxcmm_00366            -- メッセージ
+                    ,iv_token_name1  => cv_tkn_seq_num                -- トークンコード1
+                    ,iv_token_value1 => i_wk_cust_rec.line_no         -- トークン値1
+                    ,iv_token_name2  => cv_tkn_cust_code              -- トークンコード2
+                    ,iv_token_value2 => lv_account_number             -- トークン値2
+                    ,iv_token_name3  => cv_tkn_errmsg                 -- トークンコード3
+                    ,iv_token_value3 => lv_sql_errm                   -- トークン値3
+                   );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+      --
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+       ,buff   => lv_errmsg
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errmsg
+      );
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_rcpmia;
+--
+  /**********************************************************************************
+   * Procedure Name   : submit_request_racust
+   * Description      :顧客インタフェース発行処理 (A-7)
+   ***********************************************************************************/
+  PROCEDURE submit_request_racust(
+    ov_errbuf     OUT VARCHAR2          --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode    OUT VARCHAR2          --   リターン・コード             --# 固定 #
+   ,ov_errmsg     OUT VARCHAR2          --   ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+--
+--#####################  固定ローカル定数変数宣言部 START   ####################
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'submit_request_racust'; -- プログラム名
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_step                   VARCHAR2(10);   -- ステップ
+    lv_phase                  VARCHAR2(50);   -- 要求フェーズ
+    lv_status                 VARCHAR2(50);   -- 要求ステータス
+    lv_dev_phase              VARCHAR2(50);   -- 要求フェーズコード
+    lv_dev_status             VARCHAR2(50);   -- 要求ステータスコード
+    lv_message                VARCHAR2(5000); -- 完了メッセージ
+    ln_request_id             NUMBER;         -- 要求ID
+    lb_wait_request           BOOLEAN;        -- 終了待機結果
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカルユーザー定義例外 ***
+    racust_expt               EXCEPTION;                                        -- 顧客インタフェースエラー
+--
+  BEGIN
+    --
+--##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+--###########################  固定部 END   ############################
+    --
+    --==============================================================
+    -- A-7  顧客インタフェース発行処理
+    --  A-7.7-1  顧客インタフェース発行
+    --==============================================================
+    lv_step := 'A-7.1';
+    ln_request_id := fnd_request.submit_request(
+                       application => cv_appl_name_ar -- アプリケーション短縮名
+                      ,program     => cv_conc_racust  -- コンカレントプログラム名
+                      ,description => NULL            -- 摘要
+                      ,start_time  => NULL            -- 開始時間
+                      ,sub_request => FALSE           -- サブ要求
+                      ,argument1   => cv_no           -- 相互関連顧客アカウント関連の作成に対して、No
+                     );
+    -- 顧客インタフェース起動メッセージ
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application => cv_appl_name_xxcmm -- アプリケーション短縮名
+                  ,iv_name        => cv_msg_xxcmm_00367 -- メッセージ
+                  ,iv_token_name1  => cv_tkn_req_id     -- トークンコード1
+                  ,iv_token_value1 => ln_request_id     -- トークン値1
+                 );
+    --
+    -- メッセージ出力
+    FND_FILE.PUT_LINE(
+      which  => FND_FILE.OUTPUT
+     ,buff   => lv_errmsg
+    );
+    -- 正常以外の場合
+    IF ( ln_request_id = 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_xxcmm -- アプリケーション短縮名
+                    ,iv_name         => cv_msg_xxcmm_00368 -- メッセージ
+                    ,iv_token_name1  => cv_tkn_errmsg      -- トークンコード1
+                    ,iv_token_value1 => SQLERRM            -- トークン値1
+                   );
+      -- 顧客インタフェースエラー
+      RAISE racust_expt;
+    END IF;
+--
+    --コンカレント起動のためコミット
+    COMMIT;
+--
+    --==============================================================
+    -- A-7  顧客インタフェース発行処理
+    --  A-7.7-2  終了待機
+    --==============================================================
+    lv_step := 'A-7.2';
+    lb_wait_request := fnd_concurrent.wait_for_request(
+                         request_id => ln_request_id   -- 要求ID
+                        ,interval   => gn_inter_racust -- コンカレント監視間隔
+                        ,max_wait   => gn_max_racust   -- コンカレント監視最大時間
+                        ,phase      => lv_phase        -- 要求フェーズ
+                        ,status     => lv_status       -- 要求ステータス
+                        ,dev_phase  => lv_dev_phase    -- 要求フェーズコード
+                        ,dev_status => lv_dev_status   -- 要求ステータスコード
+                        ,message    => lv_message      -- 完了メッセージ
+                       );
+    -- 戻り値がFALSEの場合
+    IF ( lb_wait_request = FALSE ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_xxcmm -- アプリケーション短縮名
+                    ,iv_name         => cv_msg_xxcmm_00369 -- メッセージ
+                    ,iv_token_name1  => cv_tkn_errmsg      -- トークンコード1
+                    ,iv_token_value1 => lv_message         -- トークン値1
+                   );
+      -- 顧客インタフェースエラー
+      RAISE racust_expt;
+    ELSE
+      -- 正常終了メッセージ出力
+      IF ( lv_dev_status = cv_dev_status_normal ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_name_xxcmm
+                      ,iv_name         => cv_msg_xxcmm_00370
+                     );
+      -- 警告終了メッセージ出力
+      ELSIF ( lv_dev_status = cv_dev_status_warn ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_name_xxcmm
+                      ,iv_name         => cv_msg_xxcmm_00371
+                      ,iv_token_name1  => cv_tkn_errmsg
+                      ,iv_token_value1 => lv_message
+                     );
+        ov_retcode := cv_status_warn;
+      -- エラー終了メッセージ出力
+      ELSE
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_name_xxcmm
+                      ,iv_name         => cv_msg_xxcmm_00372
+                      ,iv_token_name1  => cv_tkn_errmsg
+                      ,iv_token_value1 => lv_message
+                     );
+        -- 顧客インタフェースエラー
+        RAISE racust_expt;
+      END IF;
+      --
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_errmsg
+      );
+      --
+      --空行挿入
+      FND_FILE.PUT_LINE(
+         which => FND_FILE.OUTPUT
+        ,buff  => ''
+      );
+    END IF;
+--
+  EXCEPTION
+    --*** 顧客インタフェースエラー ***
+    WHEN racust_expt THEN
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END submit_request_racust;
+-- Ver1.3 SCSK K.Nakamura add end
 --
   /**********************************************************************************
    * Procedure Name   : loop_main
@@ -5482,6 +6095,10 @@ AS
                 ,xwcu.receiv_base_code                    -- 入金拠点
                 ,xwcu.sales_head_base_code                -- 販売先本部担当拠点
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+                ,xwcu.receipt_method_name                 -- 支払方法
+                ,xwcu.card_company_kbn                    -- カード会社区分
+-- Ver1.3 K.Nakamura add end
       FROM       xxcmm_wk_cust_upload  xwcu               -- 顧客一括登録ワーク
       WHERE      xwcu.request_id = cn_request_id          -- 要求ID
       ORDER BY   xwcu.line_no                             -- ファイルSEQ
@@ -5711,6 +6328,26 @@ AS
             lv_error_flag := lv_retcode;
         END IF;
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+        -- 処理結果チェック
+        IF ( lv_retcode = cv_status_normal )
+          -- フォーマットパターン「504:売掛管理」の場合
+          AND ( gv_format = cv_file_format_ur ) THEN
+          --==============================================================
+          -- A-5  データ登録
+          --  A-5.4-1 顧客支払方法OIF登録処理
+          --==============================================================
+          ins_rcpmia(
+            i_wk_cust_rec               => get_data_rec             -- 顧客一括登録ワーク情報
+           ,io_save_cust_key_info_rec   => l_save_cust_key_info_rec -- 退避KEY情報レコード
+           ,ov_errbuf                   => lv_errbuf                -- エラー・メッセージ
+           ,ov_retcode                  => lv_retcode               -- リターン・コード
+           ,ov_errmsg                   => lv_errmsg                -- ユーザー・エラー・メッセージ
+          );
+        ELSE
+            lv_error_flag := lv_retcode;
+        END IF;
+-- Ver1.3 K.Nakamura add end
         -- 処理結果チェック
         IF ( lv_retcode = cv_status_normal ) THEN
           -- 顧客登録結果をログ出力用テーブルに格納する
@@ -5751,6 +6388,9 @@ AS
   IF ( lv_retcode = cv_status_normal ) THEN
     COMMIT;
   ELSE
+-- Ver1.3 K.Nakamura add start
+    ov_retcode := cv_status_error;
+-- Ver1.3 K.Nakamura add end
     ROLLBACK;
   END IF;
     --
@@ -5949,6 +6589,10 @@ AS
              ,receiv_base_code              -- 入金拠点
              ,sales_head_base_code          -- 販売先本部担当拠点
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+             ,receipt_method_name           -- 支払方法
+             ,card_company_kbn              -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,created_by                    -- 作成者
              ,creation_date                 -- 作成日
              ,last_updated_by               -- 最終更新者
@@ -6011,6 +6655,10 @@ AS
              ,NULL                          -- 入金拠点
              ,NULL                          -- 販売先本部担当拠点
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+             ,NULL                          -- 支払方法
+             ,NULL                          -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,cn_created_by                 -- 作成者
              ,cd_creation_date              -- 作成日
              ,cn_last_updated_by            -- 最終更新者
@@ -6076,6 +6724,10 @@ AS
              ,receiv_base_code              -- 入金拠点
              ,sales_head_base_code          -- 販売先本部担当拠点
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+             ,receipt_method_name           -- 支払方法
+             ,card_company_kbn              -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,created_by                    -- 作成者
              ,creation_date                 -- 作成日
              ,last_updated_by               -- 最終更新者
@@ -6135,6 +6787,10 @@ AS
              ,NULL                          -- 入金拠点
              ,NULL                          -- 販売先本部担当拠点
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.3 K.Nakamura add start
+             ,NULL                          -- 支払方法
+             ,NULL                          -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,cn_created_by                 -- 作成者
              ,cd_creation_date              -- 作成日
              ,cn_last_updated_by            -- 最終更新者
@@ -6196,6 +6852,10 @@ AS
              ,bill_base_code                -- 請求拠点
              ,receiv_base_code              -- 入金拠点
              ,sales_head_base_code          -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura add start
+             ,receipt_method_name           -- 支払方法
+             ,card_company_kbn              -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,created_by                    -- 作成者
              ,creation_date                 -- 作成日
              ,last_updated_by               -- 最終更新者
@@ -6253,6 +6913,10 @@ AS
              ,NULL                          -- 請求拠点
              ,NULL                          -- 入金拠点
              ,NULL                          -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura add start
+             ,NULL                          -- 支払方法
+             ,NULL                          -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,cn_created_by                 -- 作成者
              ,cd_creation_date              -- 作成日
              ,cn_last_updated_by            -- 最終更新者
@@ -6294,6 +6958,9 @@ AS
              ,mc_business_talk_details      -- MC：商談経緯
              ,resource_no                   -- 担当営業員
              ,resource_s_date               -- 適用開始日(担当営業員)
+-- Ver1.3 K.Nakamura add start
+             ,receipt_method_name           -- 支払方法
+-- Ver1.3 K.Nakamura add end
              ,business_low_type             -- 業態小分類
              ,industry_div                  -- 業種
              ,torihiki_form                 -- 取引形態
@@ -6313,6 +6980,9 @@ AS
              ,bill_base_code                -- 請求拠点
              ,receiv_base_code              -- 入金拠点
              ,sales_head_base_code          -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura add start
+             ,card_company_kbn              -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,created_by                    -- 作成者
              ,creation_date                 -- 作成日
              ,last_updated_by               -- 最終更新者
@@ -6351,8 +7021,15 @@ AS
              ,NULL                          -- MC：商談経緯
              ,NULL                          -- 担当営業員
              ,NULL                          -- 適用開始日(担当営業員)
-             ,l_wk_item_tab(17)             -- 業態小分類
-             ,l_wk_item_tab(18)             -- 業種
+-- Ver1.3 K.Nakamura add start
+             ,l_wk_item_tab(17)             -- 支払方法
+-- Ver1.3 K.Nakamura add end
+-- Ver1.3 K.Nakamura mod start
+--             ,l_wk_item_tab(17)             -- 業態小分類
+--             ,l_wk_item_tab(18)             -- 業種
+             ,l_wk_item_tab(18)             -- 業態小分類
+             ,l_wk_item_tab(19)             -- 業種
+-- Ver1.3 K.Nakamura mod end
              ,NULL                          -- 取引形態
              ,NULL                          -- 配送形態
              ,NULL                          -- TDBコード
@@ -6360,16 +7037,31 @@ AS
              ,NULL                          -- 与信限度額
              ,NULL                          -- 判定区分
              ,NULL                          -- 決裁日付
-             ,l_wk_item_tab(19)             -- 消費税区分
-             ,l_wk_item_tab(20)             -- 税金端数処理
-             ,l_wk_item_tab(21)             -- 売掛コード1（請求書）
-             ,l_wk_item_tab(22)             -- 請求書出力形式
-             ,l_wk_item_tab(23)             -- 請求書発行サイクル
-             ,l_wk_item_tab(24)             -- 支払条件
-             ,l_wk_item_tab(25)             -- 納品拠点
-             ,l_wk_item_tab(26)             -- 請求拠点
-             ,l_wk_item_tab(27)             -- 入金拠点
-             ,l_wk_item_tab(28)             -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura mod start
+--             ,l_wk_item_tab(19)             -- 消費税区分
+--             ,l_wk_item_tab(20)             -- 税金端数処理
+--             ,l_wk_item_tab(21)             -- 売掛コード1（請求書）
+--             ,l_wk_item_tab(22)             -- 請求書出力形式
+--             ,l_wk_item_tab(23)             -- 請求書発行サイクル
+--             ,l_wk_item_tab(24)             -- 支払条件
+--             ,l_wk_item_tab(25)             -- 納品拠点
+--             ,l_wk_item_tab(26)             -- 請求拠点
+--             ,l_wk_item_tab(27)             -- 入金拠点
+--             ,l_wk_item_tab(28)             -- 販売先本部担当拠点
+             ,l_wk_item_tab(20)             -- 消費税区分
+             ,l_wk_item_tab(21)             -- 税金端数処理
+             ,l_wk_item_tab(22)             -- 売掛コード1（請求書）
+             ,l_wk_item_tab(23)             -- 請求書出力形式
+             ,l_wk_item_tab(24)             -- 請求書発行サイクル
+             ,l_wk_item_tab(25)             -- 支払条件
+             ,l_wk_item_tab(26)             -- 納品拠点
+             ,l_wk_item_tab(27)             -- 請求拠点
+             ,l_wk_item_tab(28)             -- 入金拠点
+             ,l_wk_item_tab(29)             -- 販売先本部担当拠点
+-- Ver1.3 K.Nakamura mod end
+-- Ver1.3 K.Nakamura add start
+             ,l_wk_item_tab(30)             -- カード会社区分
+-- Ver1.3 K.Nakamura add end
              ,cn_created_by                 -- 作成者
              ,cd_creation_date              -- 作成日
              ,cn_last_updated_by            -- 最終更新者
@@ -6717,11 +7409,36 @@ AS
      ,ov_retcode => lv_retcode          -- リターン・コード
      ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
     );
+-- Ver1.3 K.Nakamura add start
+    -- loop_mainのリターンコードを退避
+    gv_loop_main_retcode := lv_retcode;
+-- Ver1.3 K.Nakamura add end
     --
     -- 処理結果チェック
     IF ( lv_retcode <> cv_status_normal ) THEN
       RAISE sub_proc_expt;
     END IF;
+--
+-- Ver1.3 K.Nakamura add start
+    --
+    -- 顧客支払方法OIFに1件以上登録した場合
+    IF ( gn_rcpmia_cnt > 0 ) THEN
+      --==============================================================
+      -- A-7  顧客インターフェース発行処理
+      --==============================================================
+      lv_step := 'A-7';
+      submit_request_racust(
+        ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+       ,ov_retcode => lv_retcode          -- リターン・コード
+       ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+      );
+      --
+      -- 処理結果チェック
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE sub_proc_expt;
+      END IF;
+    END IF;
+-- Ver1.3 K.Nakamura add end
 --
     --==============================================================
     -- A-6  終了処理
@@ -6869,8 +7586,12 @@ AS
       );
     END IF;
     --
-    --Submainのリターンコードが正常であれば顧客登録結果を出力
-    IF ( lv_submain_retcode = cv_status_normal ) THEN
+-- Ver1.3 K.Nakamura mod start
+--    --Submainのリターンコードが正常であれば顧客登録結果を出力
+--    IF ( lv_submain_retcode = cv_status_normal ) THEN
+    --loop_mainのリターンコードが正常であれば顧客登録結果を出力
+    IF ( gv_loop_main_retcode = cv_status_normal ) THEN
+-- Ver1.3 K.Nakamura mod end
         disp_report(
           lv_errbuf   -- エラー・メッセージ           --# 固定 #
          ,lv_retcode  -- リターン・コード             --# 固定 #
