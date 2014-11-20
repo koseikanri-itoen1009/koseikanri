@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
  *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
  *  2009/05/18    1.6   T.Nakamura       [T1_1044]HHT倉庫保管場所コードの取得条件変更
+ *  2009/06/03    1.7   H.Sasaki         [T1_1287][T1_1288]アサイメントの有効日を条件に追加
  *
  *****************************************************************************************/
 --
@@ -213,22 +214,26 @@ AS
       ld_target_date := id_target_date;
     END IF;
     BEGIN
-      SELECT CASE
-             WHEN aaf.ass_attribute2 IS NULL                -- 発令日
-             THEN aaf.ass_attribute5
-             WHEN TO_DATE(aaf.ass_attribute2,'YYYYMMDD') > ld_target_date
-             THEN aaf.ass_attribute6                        -- 拠点コード（旧）
-             ELSE aaf.ass_attribute5                        -- 拠点コード（新）
-             END  AS base_code
-      INTO   lv_base_code                                   -- 自拠点コード
-      FROM   fnd_user                 fnu                   -- ユーザーマスタ
-            ,per_all_people_f         apf                   -- 従業員マスタ
-            ,per_all_assignments_f    aaf                   -- 従業員割当マスタ(アサイメント)
-            ,per_person_types         ppt                   -- 従業員区分マスタ
-      WHERE  fnu.user_id            = ln_user_id            -- FND_GLOBAL.USER_ID
-      AND    apf.person_id          = fnu.employee_id
-      AND    TRUNC(ld_target_date) BETWEEN TRUNC(apf.effective_start_date)
-      AND    TRUNC(NVL(apf.effective_end_date,ld_target_date))
+      SELECT  CASE
+                WHEN aaf.ass_attribute2 IS NULL                   -- 発令日
+                  THEN aaf.ass_attribute5
+                WHEN TO_DATE(aaf.ass_attribute2,'YYYYMMDD') > ld_target_date
+                  THEN aaf.ass_attribute6                         -- 拠点コード（旧）
+                  ELSE aaf.ass_attribute5                         -- 拠点コード（新）
+              END  AS base_code
+      INTO    lv_base_code                                        -- 自拠点コード
+      FROM    fnd_user                 fnu                        -- ユーザーマスタ
+             ,per_all_people_f         apf                        -- 従業員マスタ
+             ,per_all_assignments_f    aaf                        -- 従業員割当マスタ(アサイメント)
+             ,per_person_types         ppt                        -- 従業員区分マスタ
+      WHERE   fnu.user_id            = ln_user_id                 -- FND_GLOBAL.USER_ID
+      AND     apf.person_id          = fnu.employee_id
+      AND     TRUNC(ld_target_date) BETWEEN TRUNC(apf.effective_start_date)
+      AND     TRUNC(NVL(apf.effective_end_date,ld_target_date))
+-- == 2009/06/03 V1.7 Added START ===============================================================
+      AND     TRUNC(ld_target_date) BETWEEN TRUNC(aaf.effective_start_date)
+      AND     TRUNC(NVL(aaf.effective_end_date,ld_target_date))
+-- == 2009/06/03 V1.7 Added END   ===============================================================
       AND    ppt.business_group_id  = cn_business_group_id
       AND    ppt.system_person_type = 'EMP'
       AND    ppt.active_flag        = 'Y'
