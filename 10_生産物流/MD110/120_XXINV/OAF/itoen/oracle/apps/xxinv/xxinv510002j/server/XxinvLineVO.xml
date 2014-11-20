@@ -61,7 +61,10 @@ SELECT /* 表示情報 */
       ,xilv1.short_name              shipped_locat_name          -- 出庫元保管場所名
       ,xmrih.ship_to_locat_id        ship_to_locat_id            -- 入庫先ID
       ,xmrih.ship_to_locat_code      ship_to_locat_code          -- 入庫先保管場所
-      ,xilv1.short_name              ship_to_locat_name          -- 入庫元保管場所名
+-- 2009/02/03 H.Itou Mod Start
+--      ,xilv1.short_name              ship_to_locat_name          -- 入庫元保管場所名
+      ,xilv2.short_name              ship_to_locat_name          -- 入庫元保管場所名
+-- 2009/02/03 H.Itou Mod End
       ,xmrih.actual_ship_date        actual_ship_date            -- 出庫実績日
       ,xmrih.actual_arrival_date     actual_arrival_date         -- 入庫実績日
       ,xmrih.schedule_ship_date      schedule_ship_date          -- 出庫予定日

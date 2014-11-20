@@ -3,7 +3,7 @@
 
 <ViewObject
    Name="XxinvMovementResultsLnVO"
-   OrderBy="LINE_NUMBER"
+   OrderBy="ITEM_CODE"
    BindingStyle="Oracle"
    CustomQuery="true"
    RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
