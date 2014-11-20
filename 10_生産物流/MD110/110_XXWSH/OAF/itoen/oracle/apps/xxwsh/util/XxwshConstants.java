@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwshConstants
 * 概要説明   : 出荷・引当/配車共通定数
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-03-27 1.0  伊藤ひとみ     新規作成
-* 2008-06-27 1.1  伊藤ひとみ   結合不具合TE080_400#157
+* 2008-03-27 1.0  伊藤ひとみ   新規作成
+* 2008-06-27 1.1  伊藤ひとみ   結合不具合TE080_400#157対応
+* 2008-09-25 1.2  伊藤ひとみ   T_TE080_BPO_400指摘93対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -15,7 +16,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通定数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxwshConstants 
@@ -303,8 +304,10 @@ public class XxwshConstants
   public static final String LOT_BIZ_CLASS_MOVE_INS = "5";
   /** 自動手動引当区分：「20 :手動引当」　 */
   public static final String AM_RESERVE_CLASS_MAN = "20";
-// 2008-06-27 H.Itou ADD Start
+  /** 在庫調整区分：「1 :」　 */
+  public static final String ADJS_CLASS_1 = "1"; // 2008-09-25 H.Itou Add
+  /** 在庫調整区分：「2 :」　 */
+  public static final String ADJS_CLASS_2 = "2"; // 2008-09-25 H.Itou Add
   /** コンカレント名：出荷依頼/出荷実績作成処理　 */
-  public static final String CONC_NAME_XXWSH420001C = "XXWSH420001C";
-// 2008-06-27 H.Itou ADD End
+  public static final String CONC_NAME_XXWSH420001C = "XXWSH420001C";// 2008-06-27 H.Itou ADD
 }

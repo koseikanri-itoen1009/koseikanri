@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2008-06-27 1.3  伊藤ひとみ   結合不具合TE080_400#157
 * 2008-07-23 1.4  伊藤ひとみ   内部課題#32  換算する場合で、ケース入数が0以下はエラー
 *                              内部変更#174 実績計上済区分がYの場合のみ受注コピー処理を行う
+* 2008-09-25 1.5  伊藤ひとみ   T_TE080_BPO_400指摘93 受注タイプ：廃棄・見本の場合、ロットステータスチェックを行わない
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -40,7 +41,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 入出荷実績ロット入力画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.3
+ * @version 1.5
  ***************************************************************************
  */
 public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -621,6 +622,9 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     String shipSupplyCategory = (String)lineRow.getAttribute("ShipSupplyCategory"); // 出荷支給受払カテゴリ
     String lotCtl             = (String)lineRow.getAttribute("LotCtl");             // ロット管理区分
     String itemClassCode      = (String)lineRow.getAttribute("ItemClassCode");      // 品目区分
+// 2008-09-25 H.Itou Add Start ロットステータスチェック実施判断のため、在庫調整区分取得
+    String adjsClass          = (String)lineRow.getAttribute("AdjsClass" );         // 在庫調整区分
+// 2008-09-25 H.Itou Add End
       
     // 実績ロットVO取得
     OAViewObject resultLotVo = getXxwshResultLotVO1();
@@ -759,9 +763,12 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
         // 換算数量に値のない場合または、換算実績数量が0でない場合はロットステータスチェックを行う。
         if (XxcmnUtility.isBlankOrNull(actualQuantity) || (actualQuantityD != 0))
         {
-          // 呼出画面区分が1:出荷依頼入力画面かつ、拠点実績有無区分が1:売上拠点でなく、出荷依頼(実績)がN:対象外の場合
+          // 呼出画面区分が1:出荷依頼入力画面かつ、拠点実績有無区分が1:売上拠点かつ、出荷依頼(実績)がN:対象外の場合
           if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn)
-            && !XxwshConstants.INCLUDE_EXCLUD_INCLUDE.equals(locationRelCode)
+            && XxwshConstants.INCLUDE_EXCLUD_INCLUDE.equals(locationRelCode)
+// 2008-09-25 H.Itou Add Start 在庫調整区分が2の場合はロットステータスエラーとしない
+            && !XxwshConstants.ADJS_CLASS_2.equals(adjsClass)
+// 2008-09-25 H.Itou Add End
             && XxcmnConstants.STRING_N.equals(shipReqRel))
           {
             // ロットステータスエラー

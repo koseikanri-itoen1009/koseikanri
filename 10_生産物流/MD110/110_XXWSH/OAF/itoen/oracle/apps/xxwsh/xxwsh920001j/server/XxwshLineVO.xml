@@ -72,6 +72,9 @@ SELECT /* 表示情報 */
 -- 2008/07/23 H.Itou ADD Start
       ,xoha.actual_confirm_class         actual_confirm_class       -- 実績計上済区分
 -- 2008/07/23 H.Itou ADD End
+-- 2008/09/25 H.Itou ADD Start T_TE080_BPO_400 指摘93 受注タイプ廃棄・見本判断のため、在庫調整区分取得を追加
+      ,xottv.adjs_class                  adjs_class                 -- 在庫調整区分
+-- 2008/09/25 H.Itou ADD End
 FROM   xxwsh_order_lines_all             xola                       -- 受注明細アドオン
       ,xxwsh_order_headers_all           xoha                       -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v     xottv                      -- 受注タイプ情報VIEW2
@@ -534,6 +537,16 @@ AND    xoha.latest_external_flag       = 'Y'
       ColumnType="VARCHAR2"
       AliasName="ACTUAL_CONFIRM_CLASS"
       Expression="ACTUAL_CONFIRM_CLASS"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdjsClass"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ADJS_CLASS"
+      Expression="ADJS_CLASS"
       SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
