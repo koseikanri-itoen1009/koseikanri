@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *                                                 (A-10) 受注明細更新処理の追加
  *  2010/02/01    1.13  S.Karikomi       [E_T4_00195] カレンダのクローズの確認をINVカレンダに変更
  *  2010/03/08    1.14  N.Maeda          [E_本稼動_01725] 販売実績連携用売上拠点の判定条件修正
+ *  2010/05/11    1.15  M.Sano           [E_本稼動_02628] A-4.の異常終了を警告スキップに変更
  *
  *****************************************************************************************/
 --
@@ -204,6 +205,10 @@ AS
   cv_update_err_msg         CONSTANT fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00011';
 -- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
+-- 2010/05/11 Ver.1.15 M.Sano Add Start
+  ct_msg_others_err         CONSTANT fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-11536';   -- 内部エラーメッセージ
+-- 2010/05/11 Ver.1.15 M.Sano Add End
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -232,6 +237,12 @@ AS
   cv_tkn_result_emp_code  CONSTANT  VARCHAR2(100)  :=  'RESULT_EMP_CODE';   -- 成績計上者コード
   cv_tkn_result_base_code CONSTANT  VARCHAR2(100)  :=  'RESULT_BASE_CODE';  -- 成績計上者の所属拠点コード
 -- 2009/09/24 Ver.1.11 M.Sano Add End
+-- 2010/05/11 Ver.1.15 M.Sano Add Start
+  cv_tkn_order_qty        CONSTANT  VARCHAR2(100)  :=  'ORDER_QTY';         -- 受注数量
+  cv_tkn_order_uom        CONSTANT  VARCHAR2(100)  :=  'ORDER_UOM';         -- 受注単位
+  cv_tkn_base_uom         CONSTANT  VARCHAR2(100)  :=  'BASE_UOM';          -- 基準単位
+  cv_tkn_unit_price       CONSTANT  VARCHAR2(100)  :=  'UNIT_PRICE';        -- 販売単価
+-- 2010/05/11 Ver.1.15 M.Sano Add End
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
@@ -2353,8 +2364,46 @@ AS
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- 2010/05/11 Ver.1.15 M.Sano Add Start
+      ov_errmsg  := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_appl_short_nm
+                      ,iv_name         => ct_msg_others_err
+                      ,iv_token_name1  => cv_tkn_order_number
+                      ,iv_token_value1 => io_order_rec.order_number         -- 受注番号
+                      ,iv_token_name2  => cv_tkn_line_number
+                      ,iv_token_value2 => io_order_rec.line_number          -- 受注明細番号
+                      ,iv_token_name3  => cv_tkn_item_code
+                      ,iv_token_value3 => io_order_rec.item_code            -- 品目コード
+                      ,iv_token_name4  => cv_tkn_order_qty
+                      ,iv_token_value4 => io_order_rec.ordered_quantity     -- 受注数量
+                      ,iv_token_name5  => cv_tkn_order_uom
+                      ,iv_token_value5 => io_order_rec.order_quantity_uom   -- 受注単位
+                      ,iv_token_name6  => cv_tkn_base_uom
+                      ,iv_token_value6 => io_order_rec.base_uom             -- 基準単位
+                      ,iv_token_name7  => cv_tkn_unit_price
+                      ,iv_token_value7 => io_order_rec.unit_selling_price   -- 販売単価
+                    );
+-- 2010/05/11 Ver.1.15 M.Sano Add End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
+-- 2010/05/11 Ver.1.15 M.Sano Mod Start
+--      ov_retcode := cv_status_error;
+      -- ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ov_errbuf
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ov_errmsg
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ''
+      );
+      -- ステータスの更新
+      ov_retcode := cv_status_warn;
+      io_order_rec.check_status := cn_check_status_error;
+-- 2010/05/11 Ver.1.15 M.Sano Mod End
 --
 --#####################################  固定部 END   ##########################################
 --
