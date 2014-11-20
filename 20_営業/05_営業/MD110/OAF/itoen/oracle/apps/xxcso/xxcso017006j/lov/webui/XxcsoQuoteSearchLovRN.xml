@@ -11,7 +11,8 @@ Search quote information LOV region by shared for quote.
 @see itoen.oracle.apps.xxcso.xxcso017006j.lov.server.XxcsoQuoteSearchLovAMImpl.java
 
 HISTORY
-2008/12/23  kichi.cho        new-->
+2008/12/23  kichi.cho        new
+2012/06/19  Ver1.1 kazuyuki.kiriu E_–{‰Ò“®_09712‘Î‰ž-->
 <oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxcso.xxcso017006j.lov.server.XxcsoQuoteSearchLovAM">
    <ui:contents>
       <oa:table name="XxcsoQuoteSearchLovRN" id="XxcsoQuoteSearchLovTIRN" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/XxcsoQuoteSearchLovTIRN">
@@ -20,7 +21,7 @@ HISTORY
             <oa:messageStyledText id="QuoteTypeName" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteTypeSearch" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteTypeName" sortState="yes" initSortSeq="first" maximumLength="30"/>
             <oa:messageStyledText id="QuoteNumber" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteNumber" maximumLength="12" queryable="true" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteNumberSearch" sortState="yes" initSortSeq="second"/>
             <oa:messageStyledText id="QuoteRevisionNumber" dataType="NUMBER" viewName="XxcsoQuoteSearchLovVO1" viewAttr="QuoteRevisionNumber" maximumLength="2" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteRevisionSearch" queryable="true" sortState="yes" initSortSeq="third"/>
-            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="AccountNumber" maximumLength="9" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/AccountNumber" queryable="true" sortState="yes"/>
+            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="AccountNumber" maximumLength="9" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/AccountNumber" queryable="true" sortState="yes"/>
             <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="PartyName" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/PartyName" queryable="true" sortState="yes"/>
             <oa:messageStyledText id="Meaning" dataType="VARCHAR2" viewName="XxcsoQuoteSearchLovVO1" viewAttr="Meaning" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/Meaning" sortState="yes"/>
          </ui:contents>
