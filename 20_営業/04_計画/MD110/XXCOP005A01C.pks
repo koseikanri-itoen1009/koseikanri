@@ -1,0 +1,36 @@
+create or replace PACKAGE XXCOP005A01C
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name     : XXCOP005A01C(spec)
+ * Description      : 工場出荷計画
+ * MD.050           : 工場出荷計画 MD050_COP_005_A01
+ * Version          : 1.00
+ *
+ * Program List
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  main                 コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/12/02    1.00 SCS 宇田耕太     main新規作成
+ *  2009/02/25    1.1   SCS Uda          結合テスト仕様変更（結合障害No.014）
+ *
+ *****************************************************************************************/
+--
+  --コンカレント実行ファイル登録プロシージャ
+  PROCEDURE main(
+    errbuf           OUT VARCHAR2,         --   エラーメッセージ #固定#
+    retcode          OUT VARCHAR2,         --   エラーコード     #固定#
+    iv_plan_type     IN  VARCHAR2,         --   1.計画区分
+    iv_pace_from     IN  VARCHAR2,         --   2.出荷ペース(実績)期間FROM
+    iv_pace_to       IN  VARCHAR2,         --   3.出荷ペース（実績）期間TO
+    iv_forcast_type  IN  VARCHAR2          --   4.出荷予測期間
+   );
+END XXCOP005A01C;
+/
