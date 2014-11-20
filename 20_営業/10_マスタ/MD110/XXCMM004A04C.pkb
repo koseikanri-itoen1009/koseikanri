@@ -2281,10 +2281,6 @@ AS
     parent_status_chk_expt     EXCEPTION;    -- 親品目ステータスチェックエラー
 -- End
     --
--- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」時のチェックを追加
-    item_no_use_expt           EXCEPTION;    -- 現在の品目ステータス「Ｄ」時のチェックエラー
--- End
-    --
   BEGIN
     --
 --##################  固定ステータス初期化部 START   ###################
@@ -2335,14 +2331,6 @@ AS
         RAISE parent_status_chk_expt;
       END IF;
       --
-    END IF;
--- End
-    --
--- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
-    lv_step := 'STEP-07030';
-    IF  ( i_update_item_rec.b_item_status = cn_itm_status_no_use )
-    AND ( i_update_item_rec.item_status IS NULL ) THEN
-      RAISE item_no_use_expt;
     END IF;
 -- End
     --
@@ -2657,20 +2645,6 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
       --
--- End
---
--- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
-    -- *** 現在の品目ステータスチェック例外ハンドラ ***
-    WHEN item_no_use_expt THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
-                     ,iv_name         => cv_msg_xxcmm_00430                    -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
-                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
-                    );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
 -- End
 --
     -- *** データチェック例外ハンドラ ***
@@ -3524,6 +3498,10 @@ AS
     -- ユーザー定義例外
     -- ===============================
     sub_proc_expt                EXCEPTION;
+    --
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」時のチェックを追加
+    item_no_use_expt           EXCEPTION;    -- 現在の品目ステータス「Ｄ」時のチェックエラー
+-- End
 --
   BEGIN
 --
@@ -3578,6 +3556,14 @@ AS
         RAISE sub_proc_expt;
       END IF;
       --
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
+    ELSE
+      lv_step := 'STEP-3025';
+      IF  ( i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
+        RAISE item_no_use_expt;
+      END IF;
+-- End
+    --
     END IF;
     --
     --==============================================================
@@ -3649,6 +3635,20 @@ AS
       ov_errbuf  := lv_errbuf;
       ov_retcode := cv_status_error;
     --
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
+    -- *** 現在の品目ステータスチェック例外ハンドラ ***
+    WHEN item_no_use_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00430                    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- End
+--
 --#################################  固定例外処理部 START   ###################################
 --
     -- *** 共通関数例外ハンドラ ***

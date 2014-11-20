@@ -51,8 +51,11 @@ AS
  *                                       OPM品目マスタの「マスタ受信日時」にSYSDATEをセットする
  *                                       OPM品目マスタの「試験有無区分」をセットする
  *  2009/04/10    1.7   H.Yoshikawa      障害T1_0215,T1_0219,T1_0220,T1_0437 対応
- *  2009/05/18    1.8   H.Yoshikawa      障害T1_0317,T1_0318,T1_0322,T1_0737,T1_0906 対応 
+ *  2009/05/18    1.8   H.Yoshikawa      障害T1_0317,T1_0318,T1_0322,T1_0737,T1_0906 対応
  *  2009/05/27    1.9   H.Yoshikawa      障害T1_0219 再対応
+ *  2009/06/04    1.10  N.Nishimura      障害T1_1319 重量または容積がNULLの場合、'0'をセットするように修正
+ *                                                   品名コードの半角数値チェックを追加
+ *                                       障害T1_1323 品名コードの１桁目が５、６の場合、「ロット」を０に設定する(プロファイルから)
  *
  *****************************************************************************************/
 --
@@ -154,6 +157,9 @@ AS
 -- Ver.1.5 20090224 Add END
   cv_msg_xxcmm_00438     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00438';                              -- 標準原価エラー
   cv_msg_xxcmm_00439     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00439';                              -- データ抽出エラー
+-- 2009/06/04 Ver1.8 障害T1_1319 Add start
+  cv_msg_xxcmm_00474     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00474';                              -- 品名コード数値エラー
+-- 2009/06/04 Ver1.8 障害T1_1319 End
 --
   -- トークン
   cv_tkn_value           CONSTANT VARCHAR2(20)  := 'VALUE';                                         --
@@ -204,6 +210,10 @@ AS
   cv_prof_item_num       CONSTANT VARCHAR2(30)  := 'XXCMM1_004A05_ITEM_NUM';                        -- 品目一括登録データ項目数
   cv_lookup_item_def     CONSTANT VARCHAR2(30)  := 'XXCMM1_004A05_ITEM_DEF';                        -- 品目一括登録データ項目定義
   cv_lookup_item_defname CONSTANT VARCHAR2(60)  := 'XXCMM:品目一括登録データ項目数';                -- 「品目一括登録データ項目定義」名
+--Ver1.10 2009/06/04 Add start
+  cv_prof_lot_ctl        CONSTANT VARCHAR2(30)  := 'XXCMM1_004A01F_INI_LOT_VALUE';                  -- XXCMM:品目登録画面_ロットデフォルト値
+  cv_lot_ctl_defname     CONSTANT VARCHAR2(60)  := 'XXCMM:品目登録画面_ロットデフォルト値';         -- 「XXCMM:品目登録画面_ロットデフォルト値」名
+--Ver1.10 End
 -- Ver.1.5 20090224 Add START
   cv_process_date        CONSTANT VARCHAR2(30)  := '業務日付';                                      -- 業務日付
 -- Ver.1.5 20090224 Add END
@@ -376,6 +386,7 @@ AS
       ,case_conv_inc_num        xxcmm_system_items_b.case_conv_inc_num%TYPE                         -- ケース換算入数
 -- End
       ,net                      VARCHAR2(240)                                                       -- NET
+      ,weight_volume_class      VARCHAR2(240)                                                       -- 重量容積区分
       ,weight_volume            VARCHAR2(240)                                                       -- 重量／体積
       ,jan_code                 VARCHAR2(240)                                                       -- JANコード
       ,item_um                  ic_item_mst_b.item_um%TYPE                                          -- 基準単位
@@ -388,6 +399,9 @@ AS
       ,lot_suffix               ic_item_mst_b.lot_suffix%TYPE                                       -- ロット・サフィックス
       ,ssk_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(商品製品区分)
       ,ssk_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(商品製品区分)
+--Ver1.10 2009/06/04 Add start
+      ,hon_product_class        VARCHAR2(240)                                                       -- 本社商品区分
+--Ver1.10 2009/06/04 End
       ,hsk_category_set_id      mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(本社商品区分)
       ,hsk_category_id          mtl_categories_b.category_id%TYPE                                   -- カテゴリID(本社商品区分)
       ,sg_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(政策群)
@@ -436,6 +450,9 @@ AS
   gn_item_num               NUMBER;                                                                 -- 品目一括登録データ項目数格納用
   gd_process_date           DATE;                                                                   -- 業務日付
   g_item_def_tab            g_item_def_ttype;                                                       -- テーブル型変数の宣言
+--Ver1.10 2009/06/04 Add start
+  gn_lot_ctl                NUMBER;                                                                 -- XXCMM:品目登録画面_ロットデフォルト値格納用
+--Ver1.10 End
   --
   -- ===============================
   -- ユーザー定義例外
@@ -996,7 +1013,7 @@ AS
              ,xsib.case_conv_inc_num
 -- End
              ,iimb.attribute12   AS net
-             --,iimb.attribute10   AS weight_volume_class  --2009/03/13 追加
+             ,iimb.attribute10   AS weight_volume_class  --2009/03/13 追加
              ,( CASE iimb.attribute10
                      WHEN cv_weight THEN iimb.attribute25
                      WHEN cv_volume THEN iimb.attribute16
@@ -1014,6 +1031,9 @@ AS
              ,ssk.lot_suffix
              ,ssk.ssk_category_set_id
              ,ssk.ssk_category_id
+--Ver1.10 2009/06/04 Add start
+             ,hsk.hon_product_class
+--Ver1.10 2009/06/04 End
              ,hsk.hsk_category_set_id
              ,hsk.hsk_category_id
              ,sg.sg_category_set_id
@@ -1174,7 +1194,13 @@ AS
       l_set_parent_item_rec.ssk_category_id          := i_item_ctg_rec.ssk_category_id;
       l_set_parent_item_rec.ssk_category_set_id      := i_item_ctg_rec.ssk_category_set_id;
       l_set_parent_item_rec.dualum_ind               := i_item_ctg_rec.dualum_ind;
-      l_set_parent_item_rec.lot_ctl                  := i_item_ctg_rec.lot_ctl;
+--Ver1.10 2009/06/04 Add start
+      IF ( SUBSTRB( i_wk_item_rec.item_code, 1, 1 ) IN ( '5', '6' ) ) THEN
+        l_set_parent_item_rec.lot_ctl                := gn_lot_ctl;
+      ELSE
+        l_set_parent_item_rec.lot_ctl                := i_item_ctg_rec.lot_ctl;
+      END IF;
+--Ver1.10 End
       l_set_parent_item_rec.autolot_active_indicator := i_item_ctg_rec.autolot_active_indicator;
       l_set_parent_item_rec.lot_suffix               := i_item_ctg_rec.lot_suffix;
       l_set_parent_item_rec.hsk_category_id          := i_item_ctg_rec.hsk_category_id;
@@ -1243,7 +1269,14 @@ AS
     l_opm_item_rec.deviation_lo             := 0;                                                   -- 偏差係数-
     l_opm_item_rec.deviation_hi             := 0;                                                   -- 偏差係数+
 --    l_opm_item_rec.level_code               := NULL;                                                --
-    l_opm_item_rec.lot_ctl                  := l_set_parent_item_rec.lot_ctl;                       -- ロット(子品目の場合、親値継承項目)
+--Ver1.10 2009/06/04 Add start
+    --l_opm_item_rec.lot_ctl                  := l_set_parent_item_rec.lot_ctl;                       -- ロット(子品目の場合、親値継承項目)
+      IF ( SUBSTRB( i_wk_item_rec.item_code, 1, 1 ) IN ( '5', '6' ) ) THEN
+        l_opm_item_rec.lot_ctl              := gn_lot_ctl;
+      ELSE
+        l_opm_item_rec.lot_ctl              := l_set_parent_item_rec.lot_ctl;                       -- ロット(子品目の場合、親値継承項目)
+      END IF;
+--Ver1.10 End
     l_opm_item_rec.lot_indivisible          := 0;                                                   -- 分割不可
     l_opm_item_rec.sublot_ctl               := 0;                                                   -- サブロット
 -- Ver1.8  2009/05/18 Mod  T1_0737 保管場所に 1:検証済み を設定
@@ -1302,12 +1335,12 @@ AS
     l_opm_item_rec.program_update_date      := cd_program_update_date;                              -- プログラムによる更新日
     l_opm_item_rec.request_id               := cn_request_id;                                       -- 要求ID
     -- 政策群は子品目の場合のみセットします。
-    -- ※親品目は変更予約適用で反映されます。
-    IF ( i_wk_item_rec.item_code <> i_wk_item_rec.parent_item_code ) THEN
-      l_opm_item_rec.attribute1               := NULL;                                              -- 旧・群ｺｰﾄﾞ
-      l_opm_item_rec.attribute2               := i_wk_item_rec.policy_group;                        -- 新・群ｺｰﾄﾞ
-      l_opm_item_rec.attribute3               := TO_CHAR(gd_process_date, cv_date_format_rmd);      -- 群ｺｰﾄﾞ適用開始日
-    END IF;
+--    -- ※親品目は変更予約適用で反映されます。
+--    IF ( i_wk_item_rec.item_code <> i_wk_item_rec.parent_item_code ) THEN
+--      l_opm_item_rec.attribute1               := NULL;                                              -- 旧・群ｺｰﾄﾞ
+--      l_opm_item_rec.attribute2               := i_wk_item_rec.policy_group;                        -- 新・群ｺｰﾄﾞ
+--      l_opm_item_rec.attribute3               := TO_CHAR(gd_process_date, cv_date_format_rmd);      -- 群ｺｰﾄﾞ適用開始日
+--    END IF;
 --    l_opm_item_rec.attribute4               := NULL;                                                -- 旧・定価
 --    l_opm_item_rec.attribute5               := NULL;                                                -- 新・定価
 --    l_opm_item_rec.attribute6               := NULL;                                                -- 定価適用開始日
@@ -1322,10 +1355,14 @@ AS
 --↓2009/03/13 Add Start
       -- 本社商品区分が「1:リーフ」の場合、重量容積区分は「2:容積」
       --               「2:ドリンク」の場合、重量容積区分は「1:重量」
-      IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf ) THEN
-        l_opm_item_rec.attribute10          := cv_volume;                                           -- 重量容積区分(DFF)
-      ELSIF ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink ) THEN
-        l_opm_item_rec.attribute10          := cv_weight;                                           -- 重量容積区分(DFF)
+      IF ( i_wk_item_rec.item_code = i_wk_item_rec.parent_item_code ) THEN
+        IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf ) THEN
+          l_opm_item_rec.attribute10          := cv_volume;                                           -- 重量容積区分(DFF)
+        ELSIF ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink ) THEN
+          l_opm_item_rec.attribute10          := cv_weight;                                           -- 重量容積区分(DFF)
+        END IF;
+      ELSE
+        l_opm_item_rec.attribute10          := l_set_parent_item_rec.weight_volume_class;
       END IF;
 --↑Add End
     l_opm_item_rec.attribute11              := l_set_parent_item_rec.case_number;                   -- ケース入数(子品目の場合、親値継承項目)
@@ -1336,11 +1373,22 @@ AS
 --    l_opm_item_rec.attribute16              := NULL;                                                -- 容積
 --
 --↓2009/03/13 Add Start
-    IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf ) THEN
-      l_opm_item_rec.attribute16              := i_wk_item_rec.weight_volume;
+    IF ( i_wk_item_rec.item_code = i_wk_item_rec.parent_item_code ) THEN
+      IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf ) THEN
+        l_opm_item_rec.attribute16              := i_wk_item_rec.weight_volume;
+      ELSE
+-- 2009/06/04 Ver1.10 障害T1_1319 Add start
+      --l_opm_item_rec.attribute16              := NULL;
+        l_opm_item_rec.attribute16              := 0;
+      END IF;
     ELSE
-      l_opm_item_rec.attribute16              := NULL;
-    END IF;                                                                                           -- 容積
+      IF ( l_set_parent_item_rec.weight_volume_class = cv_volume ) THEN
+        l_opm_item_rec.attribute16              :=l_set_parent_item_rec.weight_volume;
+      ELSE
+        l_opm_item_rec.attribute16              := 0;
+      END IF;
+-- 2009/06/04 Ver1.10 障害T1_1319 End
+    END IF;                                                                                          -- 容積
 --↑Add End
 --    l_opm_item_rec.attribute17              := NULL;                                                -- 代表入数
 -- Ver1.8  2009/05/18 Mod  T1_0318 出荷区分に 1:出荷可 を設定
@@ -1353,20 +1401,40 @@ AS
     l_opm_item_rec.attribute22              := l_set_parent_item_rec.itf_code;                      -- ITFコード(子品目の場合、親値継承項目)
 --    l_opm_item_rec.attribute23              := NULL;                                                -- 試験有無区分
 --↓2009/03/17 Add Start
-    IF ( ( i_wk_item_rec.item_product_class = cn_item_prod_prod )
-      AND ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink) ) THEN
-      l_opm_item_rec.attribute23              := cv_exam_class_1;                                   -- 試験有無区分
+    IF ( i_wk_item_rec.item_code = i_wk_item_rec.parent_item_code ) THEN
+      IF ( ( i_wk_item_rec.item_product_class = cn_item_prod_prod )
+        AND ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink) ) THEN
+        l_opm_item_rec.attribute23              := cv_exam_class_1;                                   -- 試験有無区分
+      ELSE
+        l_opm_item_rec.attribute23              := cv_exam_class_0;                                   -- 試験有無区分
+      END IF;
     ELSE
-      l_opm_item_rec.attribute23              := cv_exam_class_0;                                   -- 試験有無区分
+      IF ( ( l_set_parent_item_rec.item_product_class = cn_item_prod_prod )
+        AND ( l_set_parent_item_rec.hon_product_class = cn_hon_prod_drink) ) THEN
+        l_opm_item_rec.attribute23              := cv_exam_class_1;                                   -- 試験有無区分
+      ELSE
+        l_opm_item_rec.attribute23              := cv_exam_class_0;                                   -- 試験有無区分
+      END IF;
     END IF;
 -- Add End
 --    l_opm_item_rec.attribute24              := NULL;                                                -- 入出庫換算単位
 --    l_opm_item_rec.attribute25              := l_set_parent_item_rec.weight_volume;                 -- 重量(子品目の場合、親値継承項目)
 --↓2009/03/13 Add Start
-    IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink ) THEN
-      l_opm_item_rec.attribute25              := i_wk_item_rec.weight_volume;
+    IF ( i_wk_item_rec.item_code = i_wk_item_rec.parent_item_code ) THEN
+      IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink ) THEN
+        l_opm_item_rec.attribute25              := i_wk_item_rec.weight_volume;
+      ELSE
+-- 2009/06/04 Ver1.10 障害T1_1319 Add start
+      --l_opm_item_rec.attribute25              := NULL;
+        l_opm_item_rec.attribute25              := 0;
+      END IF;
     ELSE
-      l_opm_item_rec.attribute25              := NULL;
+      IF ( l_set_parent_item_rec.weight_volume_class = cv_weight ) THEN
+        l_opm_item_rec.attribute25              :=l_set_parent_item_rec.weight_volume;
+      ELSE
+        l_opm_item_rec.attribute25              := 0;
+      END IF;
+-- 2009/06/04 Ver1.10 障害T1_1319 End
     END IF;                                                                                           -- 重量(子品目の場合、親値継承項目)
 --↑Add End
     l_opm_item_rec.attribute26              := l_set_parent_item_rec.sales_target;                  -- 売上対象区分(子品目の場合、親値継承項目)
@@ -2039,7 +2107,7 @@ AS
         lv_check_flag := cv_status_error;
       END IF;
     END LOOP validate_column_loop;
-    -- 
+    --
     IF ( lv_check_flag = cv_status_normal ) THEN
       --==============================================================
       -- A-4.2 品目存在チェック
@@ -2419,6 +2487,29 @@ AS
         lv_check_flag := cv_status_error;
       END IF;
       --
+-- 2009/06/04 Ver1.10 障害T1_1319 Add start
+      lv_step := 'A-4.6.4';
+      IF ( xxccp_common_pkg.chk_number( i_wk_item_rec.item_code ) <> TRUE ) THEN
+        -- 品名コード数値エラー
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_name_xxcmm          -- アプリケーション短縮名
+                      ,iv_name         => cv_msg_xxcmm_00474          -- メッセージコード
+                      ,iv_token_name1  => cv_tkn_input_line_no        -- トークンコード1
+                      ,iv_token_value1 => i_wk_item_rec.line_no       -- トークン値1
+                      ,iv_token_name2  => cv_tkn_input_item_code      -- トークンコード2
+                      ,iv_token_value2 => i_wk_item_rec.item_code     -- トークン値2
+                     );
+        -- メッセージ出力
+        xxcmm_004common_pkg.put_message(
+          iv_message_buff => lv_errmsg
+         ,ov_errbuf       => lv_errbuf
+         ,ov_retcode      => lv_retcode
+         ,ov_errmsg       => lv_errmsg
+        );
+        lv_check_flag := cv_status_error;
+      END IF;
+-- 2009/06/04 Ver1.10 障害T1_1319 End
+--
       --==============================================================
       -- A-4.7 正式名チェック
       --==============================================================
@@ -4067,6 +4158,14 @@ AS
     -- 取得エラー時
     IF ( gn_item_num IS NULL ) THEN
       lv_tkn_value := cv_lookup_item_defname;
+      RAISE get_profile_expt;
+    END IF;
+    --
+    -- XXCMM:品目登録画面_ロットデフォルト値
+    gn_lot_ctl := TO_NUMBER(FND_PROFILE.VALUE(cv_prof_lot_ctl));
+    -- 取得エラー時
+    IF ( gn_lot_ctl IS NULL ) THEN
+      lv_tkn_value := cv_lot_ctl_defname;
       RAISE get_profile_expt;
     END IF;
     --
