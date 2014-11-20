@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -128,6 +128,8 @@ AS
  *  2008/12/11    1.33 Oracle 福田 直樹  本番障害対応#630,#664(mov_zero_updtで"指示にあって実績にない品目は実績0で更新する"の"指示にあって"の判断が抜けていた)
  *  2008/12/11    1.33 Oracle 福田 直樹  本番障害対応#644(拠点実績有でなければロットステータス合格以外でも保留にせず取り込めるようにする)
  *  2008/12/15    1.34 Oracle 福田 直樹  本番障害対応#648(42A出荷実績登録処理ship_results_regist_processを行わないようにする)
+ *  2008/12/16    1.35 Oracle 福田 直樹  本番障害対応#759(出荷の外部倉庫指示なし実績計上時、受注ヘッダの実績計上済区分に何もセットされていない)
+ *  2008/12/16    1.35 Oracle 福田 直樹  本番障害対応#758(移動の出庫倉庫と入庫倉庫が同じ場合はエラーにする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -290,6 +292,8 @@ AS
   gv_msg_93a_155                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13155';  -- 2008/08/13 内部変更#177 Add
   -- 顧客発注番号エラーメッセージ                                             -- 2008/10/30 統合指摘#390 Add
   gv_msg_93a_156                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13156';  -- 2008/10/30 統合指摘#390 Add
+  -- 出庫倉庫・入庫倉庫同一エラーメッセージ                                   -- 2008/12/16 本番障害#758 Add
+  gv_msg_93a_157                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13157';  -- 2008/12/16 本番障害#758 Add
   -- 重量容積小口個数更新関数エラーメッセージ
   gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   -- ＰＧでのコンカレント呼び出しエラー
@@ -5723,6 +5727,53 @@ AS
 --
       END IF;
 --
+      -- 2008/12/16 本番障害#758 Add Start -----------------------------------------------------------
+      -- 移動の場合に出庫倉庫と入庫倉庫が同じ場合はエラーにする
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
+        IF ((lt_eos_data_type = gv_eos_data_cd_220)  OR
+            (lt_eos_data_type = gv_eos_data_cd_230)) THEN    -- 移動のみチェックする
+--
+          IF (gr_interface_info_rec(i).location_code = gr_interface_info_rec(i).ship_to_location) THEN
+--
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_msg_kbn                                     -- 'XXWSH'
+                          ,gv_msg_93a_157                                 -- 出庫倉庫・入庫倉庫同一エラーメッセージ
+                          ,gv_param1_token
+                          ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
+                          ,gv_param2_token
+                          ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
+                          ,gv_param3_token
+                          ,gr_interface_info_rec(i).location_code         -- IF_H.出庫倉庫
+                          ,gv_param4_token
+                          ,gr_interface_info_rec(i).ship_to_location      -- IF_H.入庫倉庫
+                          )
+                          ,1
+                          ,5000);
+--
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
+            set_deliveryno_unit_errflg(
+              lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          END IF;
+--
+        END IF;
+--
+      END IF;
+      -- 2008/12/16 本番障害#758 Add End -----------------------------------------------------------------
+--
 --*HHT*      -- 出庫元が引当可能倉庫でなければエラーにする
 --*HHT*      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --*HHT*--
@@ -9883,6 +9934,7 @@ AS
        ,shipped_date                                -- 出荷日
        ,arrival_date                                -- 着荷日
        ,weight_capacity_class                       -- 重量容積区分
+       ,actual_confirm_class                        -- 実績計上済区分       -- 2008/12/16 本番障害#759 Add
        ,notif_status                                -- 通知ステータス
        ,prev_notif_status                           -- 前回通知ステータス
        ,notif_date                                  -- 確定通知実施日時
@@ -9947,6 +9999,7 @@ AS
        ,gr_order_h_rec.shipped_date                 -- 出荷日
        ,gr_order_h_rec.arrival_date                 -- 着荷日
        ,gr_order_h_rec.weight_capacity_class        -- 重量容積区分
+       ,gv_yesno_n                                  -- 実績計上済区分        -- 2008/12/16 本番障害#759 Add
        ,gr_order_h_rec.notif_status                 -- 通知ステータス
        ,gr_order_h_rec.prev_notif_status            -- 前回通知ステータス
        ,gr_order_h_rec.notif_date                   -- 確定通知実施日時
