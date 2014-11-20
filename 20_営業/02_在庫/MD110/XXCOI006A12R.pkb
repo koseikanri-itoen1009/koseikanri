@@ -9,7 +9,7 @@ AS
  *                    を元に月次在庫受払表に存在する品目及び、手持ち数量に存在する品目の一
  *                    覧を作成します。
  * MD.050           : 商品実地棚卸票    MD050_COI_006_A12
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/15    1.0   Sai.u            新規作成
  *  2009/03/05    1.1   T.Nakamura       [障害COI_035] 件数出力の不具合対応
+ *  2009/09/08    1.2   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
+ *  2009/09/09    1.3   N.Abe            [0001325]月首在庫の取得対応
  *
  *****************************************************************************************/
 --
@@ -278,7 +280,10 @@ AS
       FROM    (SELECT   sub_xirm.subinventory_code              subinventory_code
                        ,sub_xirm.inventory_item_id              inventory_item_id
                        ,sub_xirm.organization_id                organization_id
-                       ,SUM(sub_xirm.month_begin_quantity)      month_begin_quantity
+-- == 2009/09/09 V1.3 Modified START ===============================================================
+--                       ,SUM(sub_xirm.month_begin_quantity)      month_begin_quantity
+                       ,SUM(sub_xirm.inv_result)                month_begin_quantity
+-- == 2009/09/09 V1.3 Modified END   ===============================================================
                FROM     xxcoi_inv_reception_monthly     sub_xirm            -- 月次在庫受払表(月次)
                WHERE    sub_xirm.subinventory_code      =   NVL(iv_tenant, sub_xirm.subinventory_code)
                AND      sub_xirm.organization_id        =   gn_organization_id
@@ -302,7 +307,12 @@ AS
       AND     xirm.organization_id        =   msib.organization_id
       AND     msib.segment1               =   iib.item_no
       AND     iib.item_id                 =   imb.item_id
-      AND     imb.item_id                 =   sib.item_id;
+      AND     imb.item_id                 =   sib.item_id
+-- == 2009/09/08 V1.2 Added START ===============================================================
+      AND     TRUNC(gd_target_date) BETWEEN imb.start_date_active
+                                    AND     NVL(imb.end_date_active, TRUNC(gd_target_date));
+-- == 2009/09/08 V1.2 Added END   ===============================================================
+
     --
     CURSOR onhand_cur
     IS
@@ -341,6 +351,10 @@ AS
       AND     msib.segment1               =   iib.item_no
       AND     iib.item_id                 =   imb.item_id
       AND     imb.item_id                 =   sib.item_id
+-- == 2009/09/08 V1.2 Added START ===============================================================
+      AND     TRUNC(gd_target_date) BETWEEN imb.start_date_active
+                                    AND     NVL(imb.end_date_active, TRUNC(gd_target_date))
+-- == 2009/09/08 V1.2 Added END   ===============================================================
       AND NOT EXISTS(
                 SELECT  1
                 FROM    xxcoi_rep_practice_inventory    xrpi
