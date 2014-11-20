@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------        ---- ----- --------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/09/18   1.2   Oracle 山根 一浩T_S_453対応(WFファイルコピー)
  *  2008/09/30   1.3   Yuko Kawano      OPM在庫会計期間CLOSE年月取得関数 T_S_500対応
  *  2008/10/29   1.4   T.Yoshimoto     統合指摘対応(No.251)
+ *  2008/12/29   1.5   A.Shiina        [採番関数]動的に修正
  *
  *****************************************************************************************/
 --
@@ -993,7 +994,10 @@ AS
 --
     BEGIN
       -- 採番を1つのシーケンスで行う場合
-      SELECT xxcmn_slip_no_s1.NEXTVAL INTO ln_no FROM dual;
+-- 2008/12/29 v1.5 UPDATE START
+--      SELECT xxcmn_slip_no_s1.NEXTVAL INTO ln_no FROM dual;
+      EXECUTE IMMEDIATE 'SELECT xxcmn_slip_no_s1.NEXTVAL FROM dual' INTO ln_no;
+-- 2008/12/29 v1.5 UPDATE END
 --
     EXCEPTION
       WHEN OTHERS THEN
