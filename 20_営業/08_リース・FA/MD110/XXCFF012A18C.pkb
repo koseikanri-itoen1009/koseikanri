@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF012A18C(body)
  * Description      : リース債務残高レポート
  * MD.050           : リース債務残高レポート MD050_CFF_012_A18
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                                         ・取得価額、減価償却累計額の取得条件を修正
  *                                         ・支払利息相当額、当期支払リース料（控除額）の取得条件修正
  *                                         ・リース契約情報取得カーソルをリース種類で分割
+ *  2009/08/28    1.5   SCS 渡辺         [統合テスト障害0001063(PT対応)]
  *
  *****************************************************************************************/
 --
@@ -576,7 +577,15 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR planning_cur
     IS
-      SELECT xcl.lease_kind
+      SELECT 
+-- 0001063 2009/08/28 ADD START --
+           /*+
+             LEADING(XCH XCL)
+             INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
+             INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+           */
+-- 0001063 2009/08/28 ADD END --
+           xcl.lease_kind
 -- 0000417 2009/07/17 ADD START --
           ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
 -- 0000417 2009/07/17 ADD END --
@@ -991,23 +1000,33 @@ AS
     --FIN、旧FINリース取得対象カーソル
     CURSOR contract_cur
     IS
-      SELECT xcl.lease_kind                     -- リース種類
+      SELECT
+-- 0001063 2009/08/28 ADD START --
+            /*+
+              LEADING(XCH XCL XLK FAB FRET FDP FDS)
+              INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
+              INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+              NO_USE_MERGE(XCH XLK)
+              USE_NL(XCL FAB)
+            */
+-- 0001063 2009/08/28 ADD START --
+             xcl.lease_kind                     -- リース種類
 
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN fdp.period_name = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN fdp.period_name = iv_period_to THEN
                       xcl.second_charge
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_charge  -- 月間リース料
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN fdp.period_name = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN fdp.period_name = iv_period_to THEN
                       xcl.gross_charge
                     ELSE 0 END)
                  ELSE 0 END) AS gross_charge    -- リース料総額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN fdp.period_name = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN fdp.period_name = iv_period_to THEN
                       xcl.original_cost
                     ELSE 0 END)
                  ELSE 0 END) AS original_cost   -- 取得価額総額
@@ -1021,13 +1040,13 @@ AS
 
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN fdp.period_name = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN fdp.period_name = iv_period_to THEN
                       xcl.second_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
                            fret.status <> cv_processed   THEN
-                   (CASE WHEN fdp.period_name = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN fdp.period_name = iv_period_to THEN
                    xcl.gross_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS gross_deduction -- リース料総額（控除額）
@@ -1038,13 +1057,21 @@ AS
        INNER JOIN xxcff_lease_kind_v xlk      -- リース種類ビュー
           ON xcl.lease_kind = xlk.lease_kind_code
        INNER JOIN fa_additions_b fab           -- 資産詳細情報
-          ON fab.attribute10 = xcl.contract_line_id
+-- 0001063 2009/08/28 MOD START --
+--          ON fab.attribute10 = xcl.contract_line_id
+          ON fab.attribute10 = to_char(xcl.contract_line_id)
+-- 0001063 2009/08/28 MOD END --
        LEFT JOIN fa_retirements fret  -- 除売却
           ON fret.asset_id                  = fab.asset_id
          AND fret.book_type_code            = xlk.book_type_code
          AND fret.transaction_header_id_out IS NULL
        INNER JOIN fa_deprn_periods fdp         -- 減価償却期間
           ON fdp.book_type_code = xlk.book_type_code
+-- 0001063 2009/08/28 ADD START --
+         AND fdp.fiscal_year = in_fiscal_year
+         AND fdp.period_num >= in_period_num_1st
+         AND fdp.period_num <= in_period_num_now
+-- 0001063 2009/08/28 ADD END --
        LEFT JOIN fa_deprn_summary fds         -- 減価償却サマリ
           ON fds.asset_id = fab.asset_id
          AND fds.book_type_code = fdp.book_type_code
@@ -1052,9 +1079,11 @@ AS
          AND fds.deprn_source_code = 'DEPRN'
        WHERE xch.lease_type = cv_lease_type1
          AND xcl.contract_status > cv_contr_st_201
-         AND fdp.fiscal_year = in_fiscal_year
-         AND fdp.period_num >= in_period_num_1st
-         AND fdp.period_num <= in_period_num_now
+-- 0001063 2009/08/28 DEL START --
+--         AND fdp.fiscal_year = in_fiscal_year
+--         AND fdp.period_num >= in_period_num_1st
+--         AND fdp.period_num <= in_period_num_now
+-- 0001063 2009/08/28 DEL END --
       GROUP BY xcl.lease_kind
       ;
 --
