@@ -7,7 +7,7 @@ AS
  * Description      : ファイルアップロードIFに取込まれたデータを
  *                    物件マスタ情報(IB)に登録します。
  * MD.050           : MD050_CSO_012_A02_自動販売機データ格納
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009-03-18    1.0   T.Matsunaka      新規作成
  *  2009-03-26    1.1   T.Matsunaka      【ST障害対応183】自動販売機データ格納でIB拡張属性値テーブル登録不正
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009-05-22    1.3   M.Ohtsuki        T1_1141対応      廃棄フラグに0を設定
  *
  *****************************************************************************************/
 --
@@ -2975,7 +2976,11 @@ AS
     -- 廃棄フラグ
     ln_cnt := ln_cnt + 1;
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ven_haiki_flg;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+    /*20090522_Ohtsuki_T1_1141 START*/
+--    l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := cv_kbn0;                                     --( 0 = 未設定 )
+    /*20090522_Ohtsuki_T1_1141 END  */
 --
     -- 資産区分
     ln_cnt := ln_cnt + 1;

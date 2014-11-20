@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *                                       設置用物件コード不正エラーチェック（T1_0530）
  *  2009-05-19    1.8   K.Satomura       【T1_0959対応】発注依頼番号を比較チェック不正
  *                                       【T1_1066対応】T1_0530対応の取消
+ *  2009-05-26    1.9   M.Ohtsuki        【T1_1141対応】初回取引日更新漏れの対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4959,6 +4960,11 @@ AS
     END IF;
     l_instance_rec.attribute1                 := lv_un_number;                 -- 機種(コード)
     l_instance_rec.attribute2                 := lv_install_number;            -- 機番
+    /* 2009.05.26 M.Ohtsuki T1_1141対応 START*/
+    IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
+      l_instance_rec.attribute3               := io_inst_base_data_rec.first_install_date;          -- 初回設置日
+    END IF;
+    /* 2009.05.26 M.Ohtsuki T1_1141対応 END*/
     l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
     l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
     IF (io_inst_base_data_rec.po_req_number IS NOT NULL AND
