@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/03/05    1.1   T.Nakamura       [障害COI_036] 件数出力の不具合対応
  *  2009/05/13    1.2   T.Nakamura       [障害T1_0709] 出力区分チェックを削除
  *  2009/06/19    1.3   H.Sasaki         [障害T1_1444] PT対応
+ *  2009/07/22    1.4   H.Sasaki         [0000685]パラメータ日付項目のPT対応
  *
  *****************************************************************************************/
 --
@@ -130,6 +131,9 @@ AS
   cv_p_token5        CONSTANT VARCHAR2(30) := 'P_BASE_CODE';
   cv_p_token6        CONSTANT VARCHAR2(30) := 'P_STORE_CODE';
   cv_p_token7        CONSTANT VARCHAR2(30) := 'P_CUSTOMER_CODE';
+-- == 2009/07/22 V1.4 Added START ===============================================================
+  cv_replace_sign    CONSTANT VARCHAR2(1)  := '/';
+-- == 2009/07/22 V1.4 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1982,7 +1986,11 @@ AS
     submain(
        iv_output_kbn      => iv_output_kbn        -- 出力区分
       ,iv_inventory_kbn   => iv_inventory_kbn     -- 棚卸区分
-      ,iv_inventory_date  => iv_inventory_date    -- 棚卸日
+-- == 2009/07/22 V1.4 Modified START ===============================================================
+--      ,iv_inventory_date  => iv_inventory_date    -- 棚卸日
+      ,iv_inventory_date  => REPLACE(SUBSTRB(iv_inventory_date, 1, 10), cv_replace_sign)    -- 棚卸日
+-- == 2009/07/22 V1.4 Modified END   ===============================================================
+
       ,iv_inventory_month => iv_inventory_month   -- 棚卸月
       ,iv_base_code       => iv_base_code         -- 拠点
       ,iv_warehouse       => iv_warehouse         -- 倉庫

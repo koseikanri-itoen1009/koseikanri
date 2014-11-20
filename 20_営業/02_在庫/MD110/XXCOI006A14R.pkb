@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/26    1.0   N.Abe            新規作成
  *  2009/07/14    1.1   N.Abe            [0000462]群コード取得方法修正
+ *  2009/07/22    1.2   H.Sasaki         [0000685]パラメータ日付項目のPT対応
  *
  *****************************************************************************************/
 --
@@ -110,6 +111,9 @@ AS
   cv_2                CONSTANT VARCHAR2(1)   := '2';
   cv_y                CONSTANT VARCHAR2(1)   := 'Y';
   cv_type_emp         CONSTANT VARCHAR2(3)   := 'EMP';
+-- == 2009/07/22 V1.2 Added START ===============================================================
+  cv_replace_sign     CONSTANT VARCHAR2(1)   := '/';
+-- == 2009/07/22 V1.2 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -338,6 +342,10 @@ AS
     cv_xxcoi1_msg_10203   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-10203';          --営業員存在チェック
     cv_xxcoi1_msg_00005   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-00005';          --在庫組織コード
     cv_xxcoi1_msg_00006   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-00006';          --在庫組織ID
+-- == 2009/07/22 V1.2 Added START ===============================================================
+    cv_xxcoi1_msg_10197   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-10197';          --棚卸日未来日チェックエラーメッセージ
+    cv_xxcoi1_msg_10198   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-10198';          --棚卸月未来日チェックエラーメッセージ
+-- == 2009/07/22 V1.2 Added END   ===============================================================
     --トークン
     cv_tkn_inv_type       CONSTANT  VARCHAR2(16)  := 'P_INVENTORY_TYPE';          --トークン棚卸区分
     cv_tkn_inv_date       CONSTANT  VARCHAR2(16)  := 'P_INVENTORY_DATE';          --トークン棚卸日
@@ -491,6 +499,19 @@ AS
         WHEN OTHERS THEN
           RAISE inv_date_type_expt;
       END;
+-- == 2009/07/22 V1.2 Added START ===============================================================
+      -- 未来日チェック
+      IF (ld_inv_date > gd_process_date) THEN
+        -- 棚卸日未来日チェックエラーメッセージ(APP-XXCOI1-10197)
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcoi_short_name
+                     ,iv_name         => cv_xxcoi1_msg_10197
+                     );
+        lv_errbuf := lv_errmsg;
+        lv_retcode := cv_status_error;    -- 異常:2
+        RAISE global_process_expt;
+      END IF;
+-- == 2009/07/22 V1.2 Added END   ===============================================================
 -- == 2009/07/14 V1.1 Added START ===============================================================
       gd_target_date := ld_inv_date;
 -- == 2009/07/14 V1.1 Added END   ===============================================================
@@ -504,6 +525,19 @@ AS
       IF (iv_inventory_month IS NULL) THEN
         RAISE inv_month_null_expt;
       END IF;
+-- == 2009/07/22 V1.2 Added START ===============================================================
+      -- 未来日チェック
+      IF (ld_inv_date > gd_process_date) THEN
+        -- 棚卸月未来日チェックエラーメッセージ(APP-XXCOI1-10198)
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcoi_short_name
+                     ,iv_name         => cv_xxcoi1_msg_10198
+                     );
+        lv_errbuf := lv_errmsg;
+        lv_retcode := cv_status_error;    -- 異常:2
+        RAISE global_process_expt;
+      END IF;
+-- == 2009/07/22 V1.2 Added END   ===============================================================
 -- == 2009/07/14 V1.1 Added START ===============================================================
       gd_target_date := LAST_DAY(TO_DATE(iv_inventory_month, cv_ym_sla));
 -- == 2009/07/14 V1.1 Added END   ===============================================================
@@ -681,6 +715,11 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 #
 --
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -1455,7 +1494,10 @@ AS
     -- ===============================================
     submain(
        iv_inventory_kbn   =>  iv_inventory_kbn    -- 1.棚卸区分
-      ,iv_inventory_date  =>  iv_inventory_date   -- 2.棚卸日
+-- == 2009/07/22 V1.2 Modified START ===============================================================
+--      ,iv_inventory_date  =>  iv_inventory_date   -- 2.棚卸日
+      ,iv_inventory_date  =>  REPLACE(SUBSTRB(iv_inventory_date, 1, 10), cv_replace_sign)   -- 2.棚卸日
+-- == 2009/07/22 V1.2 Modified END   ===============================================================
       ,iv_inventory_month =>  iv_inventory_month  -- 3.棚卸月
       ,iv_base_code       =>  iv_base_code        -- 4.拠点
       ,iv_business        =>  iv_business         -- 5.営業員
