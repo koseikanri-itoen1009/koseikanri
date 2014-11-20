@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/08    1.0   S.Moriyama       main新規作成
  *  2009/03/05    1.1   H.Wada           障害番号 #034 成功件数修正
  *  2009/04/15    1.2   H.Sasaki         [T1_0397]拠点情報取得Viewの変更
+ *  2009/04/23    1.3   H.Sasaki         [T1_0385]出庫拠点名の整形（8byte切捨て）
  *
  *****************************************************************************************/
 --
@@ -209,8 +210,12 @@ AS
               THEN xsi.ship_base_code ELSE NULL END                   -- 出庫拠点コード
                                                   AS ship_base_code
         ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN ship_base.ship_base_name ELSE NULL END AS ship_base_name
-                                                                      -- 出庫拠点名
+-- == 2009/04/23 V1.3 Modified START ===============================================================
+--                THEN ship_base.ship_base_name
+                THEN SUBSTRB(ship_base.ship_base_name, 1, 8)
+-- == 2009/04/23 V1.3 Modified END   ===============================================================
+                ELSE NULL
+              END                                 AS ship_base_name   -- 出庫拠点名
         ,CASE WHEN xsi.summary_data_flag = cv_yes
               THEN cv_summary_kbn ELSE cv_detail_kbn END AS data_type -- データ種別
   FROM   xxcoi_storage_information xsi
@@ -228,11 +233,14 @@ AS
                     AND      xsi.slip_type = cv_slip_type_2
                     UNION
                     SELECT   xsi.transaction_id
-                           , mil.description ship_base_name
-                    FROM     xxcoi_storage_information xsi
-                           , mtl_item_locations mil
+-- == 2009/04/23 V1.3 Modified START ===============================================================
+--                           , mil.description ship_base_name
+                           , mil.attribute12    ship_base_name
+-- == 2009/04/23 V1.3 Modified END   ===============================================================
+                    FROM     xxcoi_storage_information  xsi
+                           , mtl_item_locations         mil
                     WHERE    xsi.ship_base_code = mil.segment1
-                    AND      xsi.slip_type = cv_slip_type_1
+                    AND      xsi.slip_type      = cv_slip_type_1
                    ) ship_base
                    , xxcoi_storage_information xsi
           WHERE  xsi.transaction_id = ship_base.transaction_id
@@ -618,81 +626,81 @@ AS
     --入庫未確認リスト帳票ワークテーブルへのデータ登録
     --==============================================================
     INSERT INTO xxcoi_rep_storage_info (
-        unconfirmed_storage_id
-      , prm_output_kbn
-      , prm_base_code
-      , prm_base_name
-      , prm_date_from
-      , prm_date_to
-      , base_code
-      , base_name
-      , slip_date
-      , slip_num
-      , warehouse_code
-      , item_code
-      , item_name
-      , taste_term
-      , factory_unique_mark
-      , case_in_qty
-      , ship_case_qty
-      , ship_singly_qty
-      , ship_qty
-      , check_case_qty
-      , check_singly_qty
-      , check_qty
-      , difference_summary_qty
-      , slip_type
-      , ship_base_code
-      , ship_base_name
-      , data_type
-      , no_data_msg
-      , last_update_date
-      , last_updated_by
-      , creation_date
-      , created_by
-      , last_update_login
-      , request_id
-      , program_application_id
-      , program_id
-      , program_update_date
+        unconfirmed_storage_id                      -- 01.入庫未確認情報ID
+      , prm_output_kbn                              -- 02.パラメータ出力区分
+      , prm_base_code                               -- 03.パラメータ拠点コード
+      , prm_base_name                               -- 04.パラメータ拠点名
+      , prm_date_from                               -- 05.パラメータ日付(From)
+      , prm_date_to                                 -- 06.パラメータ日付(To)
+      , base_code                                   -- 07.拠点コード
+      , base_name                                   -- 08.拠点名
+      , slip_date                                   -- 09.伝票日付
+      , slip_num                                    -- 10.伝票No
+      , warehouse_code                              -- 11.倉庫コード
+      , item_code                                   -- 12.商品コード
+      , item_name                                   -- 13.商品名
+      , taste_term                                  -- 14.賞味期限
+      , factory_unique_mark                         -- 15.工場固有記号
+      , case_in_qty                                 -- 16.入数 
+      , ship_case_qty                               -- 17.出庫数量ケース数
+      , ship_singly_qty                             -- 18.出庫数量バラ数
+      , ship_qty                                    -- 19.出庫数量本数
+      , check_case_qty                              -- 20.確認数量ケース数
+      , check_singly_qty                            -- 21.確認数量バラ数
+      , check_qty                                   -- 22.確認数量本数
+      , difference_summary_qty                      -- 23.差引合計数量
+      , slip_type                                   -- 24.伝票区分
+      , ship_base_code                              -- 25.出庫元拠点コード
+      , ship_base_name                              -- 26.出庫元拠点名称
+      , data_type                                   -- 27.データ種別
+      , no_data_msg                                 -- 28.0件メッセージ格納エリア
+      , last_update_date                            -- 29.最終更新日
+      , last_updated_by                             -- 30.最終更新者
+      , creation_date                               -- 31.作成日
+      , created_by                                  -- 32.作成者
+      , last_update_login                           -- 33.最終更新ユーザ
+      , request_id                                  -- 34.要求ID
+      , program_application_id                      -- 35.プログラムアプリケーションID
+      , program_id                                  -- 36.プログラムID
+      , program_update_date                         -- 37.プログラム更新日
     ) VALUES (
-        xxcoi_rep_storage_info_s01.nextval
-      , iv_output_type
-      , iv_base_code
-      , iv_base_name
-      , iv_date_from
-      , iv_date_to
-      , storage_info_rec.base_code
-      , storage_info_rec.base_name
-      , storage_info_rec.slip_date
-      , storage_info_rec.slip_num
-      , storage_info_rec.check_warehouse_code
-      , storage_info_rec.item_code
-      , storage_info_rec.item_name
-      , storage_info_rec.taste_term
-      , storage_info_rec.factory_unique_mark
-      , storage_info_rec.case_in_qty
-      , storage_info_rec.ship_case_qty
-      , storage_info_rec.ship_singly_qty
-      , storage_info_rec.ship_summary_qty
-      , storage_info_rec.check_case_qty
-      , storage_info_rec.check_singly_qty
-      , storage_info_rec.check_summary_qty
-      , storage_info_rec.difference_summary_qty
-      , storage_info_rec.slip_type
-      , storage_info_rec.ship_base_code
-      , storage_info_rec.ship_base_name
-      , storage_info_rec.data_type
-      , iv_zero_message
-      , cd_last_update_date                                           -- 最終更新日
-      , cn_last_updated_by                                            -- 最終更新者
-      , cd_creation_date                                              -- 作成日
-      , cn_created_by                                                 -- 作成者
-      , cn_last_update_login                                          -- 最終更新ログイン
-      , cn_request_id                                                 -- 要求ID
-      , cn_program_application_id                                     -- アプリケーションID
-      , cn_program_id                                                 -- プログラムID
-      , cd_program_update_date                                        -- プログラム更新日
+        xxcoi_rep_storage_info_s01.nextval          -- 01
+      , iv_output_type                              -- 02
+      , iv_base_code                                -- 03
+      , iv_base_name                                -- 04
+      , iv_date_from                                -- 05
+      , iv_date_to                                  -- 06
+      , storage_info_rec.base_code                  -- 07
+      , storage_info_rec.base_name                  -- 08
+      , storage_info_rec.slip_date                  -- 09
+      , storage_info_rec.slip_num                   -- 10
+      , storage_info_rec.check_warehouse_code       -- 11
+      , storage_info_rec.item_code                  -- 12
+      , storage_info_rec.item_name                  -- 13
+      , storage_info_rec.taste_term                 -- 14
+      , storage_info_rec.factory_unique_mark        -- 15
+      , storage_info_rec.case_in_qty                -- 16
+      , storage_info_rec.ship_case_qty              -- 17
+      , storage_info_rec.ship_singly_qty            -- 18
+      , storage_info_rec.ship_summary_qty           -- 19
+      , storage_info_rec.check_case_qty             -- 20
+      , storage_info_rec.check_singly_qty           -- 21
+      , storage_info_rec.check_summary_qty          -- 22
+      , storage_info_rec.difference_summary_qty     -- 23
+      , storage_info_rec.slip_type                  -- 24
+      , storage_info_rec.ship_base_code             -- 25
+      , storage_info_rec.ship_base_name             -- 26
+      , storage_info_rec.data_type                  -- 27
+      , iv_zero_message                             -- 28
+      , cd_last_update_date                         -- 29
+      , cn_last_updated_by                          -- 30
+      , cd_creation_date                            -- 31
+      , cn_created_by                               -- 32
+      , cn_last_update_login                        -- 33
+      , cn_request_id                               -- 34
+      , cn_program_application_id                   -- 35
+      , cn_program_id                               -- 36
+      , cd_program_update_date                      -- 37
     );
 --
     gn_normal_cnt := gn_normal_cnt + 1 ;
