@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/08/06    1.6   Oracle 山根 一浩 課題#32対応
  *  2008/09/25    1.7   Oracle 山根 一浩 指摘23対応
  *  2008/12/30    1.8   Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
+ *  2008/12/30    1.9   Oracle 吉元 強樹 在庫調整APIパラメータ不備対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2540,6 +2541,9 @@ AS
     lr_qty_rec.from_whse_code := ir_mst_rec.from_whse_code;      -- 倉庫
     lr_qty_rec.co_code        := ir_mst_rec.co_code;             -- 会社
     lr_qty_rec.orgn_code      := ir_mst_rec.orgn_code;           -- 組織
+-- 2008/12/30 v1.9 T.Yoshimoto Add Start
+    lr_qty_rec.attribute1     := ir_mst_rec.txns_id;             -- 取引ID
+-- 2008/12/30 v1.9 T.Yoshimoto Add End
 --
     ln_qty := ir_mst_rec.rcv_quantity;
 --
