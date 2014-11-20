@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  * Package Name     : XXCSM002A03C(spec)
  * Description      : 商品計画参考資料出力
  * MD.050           : 商品計画参考資料出力 MD050_CSM_002_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- --------------------------------------------------------
@@ -37,6 +37,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  *  2009/02/18    1.2   SCS K.Sai        [障害CT027]粗利益額の小数点2桁表示不具合＆ヘッダ日付表示対応
  *  2009/05/25    1.3   SCS M.Ohtsuki    [障害T1_1020]
  *  2009/06/10    1.4   SCS M.Ohtsuki    [障害T1_1399]
+ *  2009/07/10    1.5   SCS T.Tsukino    [障害0000637]PT(政策群２ビューへのヒント句追加）
  *
  ******************************************************************************/
 --
@@ -647,7 +648,12 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     CURSOR   
         get_sales_plan_data_cur
     IS
-          SELECT   
+--//+DEL START 2009/07/10 障害0000637 T.Tsukino
+--          SELECT
+--//+DEL END 2009/07/10 障害0000637 T.Tsukino
+--//+ADD START 2009/07/10 障害0000637 T.Tsukino
+          SELECT /*+ INDEX(xcgv.xsib XXCMM_SYSTEM_ITEMS_B_U01) */ 
+--//+ADD END 2009/07/10 障害0000637 T.Tsukino
                  xiph.plan_year                         AS  year                     -- 対象年度
                 ,xipl.month_no                          AS  month                    -- 月
                 ,SUM(NVL(xipl.amount,0))                AS  amount                   -- 数量
@@ -686,8 +692,12 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
                                 in_year IN NUMBER
                                 ,in_group_id IN VARCHAR2)
     IS
-
-            SELECT   
+--//+DEL START 2009/07/10 障害0000637 T.Tsukino
+--          SELECT
+--//+DEL END 2009/07/10 障害0000637 T.Tsukino
+--//+ADD START 2009/07/10 障害0000637 T.Tsukino
+          SELECT /*+ INDEX(xcgv.xsib XXCMM_SYSTEM_ITEMS_B_U01) */ 
+--//+ADD END 2009/07/10 障害0000637 T.Tsukino
                 SUM(NVL(xipl.sales_budget,0))      AS g2_sales                        -- 年間売上
             FROM     
                 xxcsm_item_plan_lines             xipl                                -- 商品計画明細テーブル
@@ -1298,7 +1308,12 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     CURSOR   
         get_sales_result_data_cur
     IS
-        SELECT   
+--//+DEL START 2009/07/10 障害0000637 T.Tsukino
+--          SELECT
+--//+DEL END 2009/07/10 障害0000637 T.Tsukino
+--//+ADD START 2009/07/10 障害0000637 T.Tsukino
+          SELECT /*+ INDEX(xcgv.xsib XXCMM_SYSTEM_ITEMS_B_U01) */ 
+--//+ADD END 2009/07/10 障害0000637 T.Tsukino
              xipr.subject_year                      AS  year                        -- 対象年度
             ,xipr.month_no                          AS  month                       -- 月
             ,SUM(NVL(xipr.amount,0))                AS  amount                      -- 数量
@@ -1336,7 +1351,12 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
                                     in_year IN NUMBER
                                     ,in_group_id IN VARCHAR2)
     IS
-        SELECT   
+--//+DEL START 2009/07/10 障害0000637 T.Tsukino
+--          SELECT
+--//+DEL END 2009/07/10 障害0000637 T.Tsukino
+--//+ADD START 2009/07/10 障害0000637 T.Tsukino
+          SELECT /*+ INDEX(xcgv.xsib XXCMM_SYSTEM_ITEMS_B_U01) */ 
+--//+ADD END 2009/07/10 障害0000637 T.Tsukino
               SUM(NVL(xipr.sales_budget,0))       AS g2_sales                    -- 年間売上
         FROM     
               xxcsm_item_plan_result        xipr                                     -- 商品計画用販売実績テーブル
