@@ -1,1 +1,0 @@
-DROP SYNONYM apps.xxcsm_tmp_sales_result;

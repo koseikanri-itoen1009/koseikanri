@@ -1,1 +1,0 @@
-CREATE OR REPLACE SYNONYM apps.xxcsm_tmp_sales_result FOR xxcsm.xxcsm_tmp_sales_result;
