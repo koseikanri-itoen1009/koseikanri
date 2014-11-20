@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上実績振替情報の作成（振替割合） 販売物流 MD050_COK_008_A06
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -45,6 +45,11 @@ AS
  *                                                    1.A-5集計条件「納品日」の精度を"年月"までに修正
  *                                                    2.A-6、A-11集計条件「売上計上日」でA-5で取得した「納品日」の
  *                                                      の年月を参照するよう修正
+ *  2009/04/27    1.3   M.Hiruta         [障害T1_0715]振替元となるデータのうち数量が1のデータにおいて、
+ *                                                    1.振替割合が偏っている場合、振替割合の大きいデータへ
+ *                                                      金額を寄せるよう修正
+ *                                                    2.振替割合が均等である場合、顧客コードの若いレコードへ
+ *                                                      金額を寄せるよう修正
  *
  *****************************************************************************************/
   -- ===============================
@@ -678,6 +683,24 @@ AS
       ln_unit_qty := ( in_dlv_qty_detail + ( in_dlv_qty_from - in_dlv_qty_to ));
       ln_unit_amt := ( in_sale_amount_detail + ( in_sale_amount_from - in_sale_amount_to ));
 --
+-- Start 2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+    -- 振替元の数量が1で割合により振替後の数量が0となるレコードの金額調整
+    ELSIF ( iv_from_base_code = iv_to_base_code AND
+            iv_from_cust_code = iv_to_cust_code AND
+            in_dlv_qty_detail = 0               AND
+            ib_adj_flg        = FALSE )
+    THEN
+      --  パターン5
+      ln_dlv_qty       := ( in_dlv_qty_from * -1 );
+      ln_sale_amount   := ( in_sale_amount_from * -1 );
+      ln_pure_amount   := ( in_pure_amount_from * -1 );
+      ln_business_cost := ( in_business_cost_from * -1 );
+--
+      -- 単価計算用数値
+      ln_unit_qty := ln_dlv_qty;
+      ln_unit_amt := ln_sale_amount;
+-- End   2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+--
     ELSIF ( iv_from_base_code = iv_to_base_code AND
             iv_from_cust_code = iv_to_cust_code AND
             ib_adj_flg        = FALSE )
@@ -692,6 +715,23 @@ AS
       ln_unit_qty := in_dlv_qty_detail;
       ln_unit_amt := in_sale_amount_detail;
 --
+-- Start 2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+    -- 振替先の数量が0で割合により振替後の数量が1となるレコードの金額調整
+    ELSIF ( iv_from_cust_code <> iv_to_cust_code   AND
+            in_dlv_qty_detail  = 0                 AND
+            ib_adj_flg         = TRUE )
+    THEN
+      --  パターン6
+      ln_dlv_qty       := in_dlv_qty_from;
+      ln_sale_amount   := in_sale_amount_from;
+      ln_pure_amount   := in_pure_amount_from;
+      ln_business_cost := in_business_cost_from;
+--
+      -- 単価計算用数値
+      ln_unit_qty := ln_dlv_qty;
+      ln_unit_amt := ln_sale_amount;
+-- End   2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+--
     ELSIF ( iv_from_cust_code <> iv_to_cust_code AND
             ib_adj_flg         = TRUE )
     THEN
@@ -704,6 +744,23 @@ AS
       -- 単価計算用数値
       ln_unit_qty := ln_dlv_qty;
       ln_unit_amt := ln_sale_amount;
+--
+-- Start 2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+    -- 振替元の数量が1で割合が偏っているレコードの金額調整
+    ELSIF ( iv_from_cust_code <> iv_to_cust_code   AND
+            in_dlv_qty_from    = in_dlv_qty_detail AND
+            ib_adj_flg         = FALSE )
+    THEN
+      --  パターン7
+      ln_dlv_qty       := in_dlv_qty_from;
+      ln_sale_amount   := in_sale_amount_from;
+      ln_pure_amount   := in_pure_amount_from;
+      ln_business_cost := in_business_cost_from;
+--
+      -- 単価計算用数値
+      ln_unit_qty := ln_dlv_qty;
+      ln_unit_amt := ln_sale_amount;
+-- End   2009/04/27 Ver_1.3 T1_0715 M.Hiruta
 --
     ELSIF ( iv_from_cust_code <> iv_to_cust_code AND
             ib_adj_flg         = FALSE )
@@ -723,7 +780,10 @@ AS
     -- 2.納品単価算出
     -- ===============================
     -- 算出した数量が0ならば単価をNULLとし、売上実績振替レコード追加をスキップします
-    IF ( ln_unit_qty <> 0 ) THEN
+-- Start 2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+--    IF ( ln_unit_qty <> 0 ) THEN
+    IF ( ln_unit_qty <> 0 AND ln_dlv_qty <> 0 ) THEN
+-- End   2009/04/27 Ver_1.3 T1_0715 M.Hiruta
       ln_dlv_unit_price := ROUND( ln_unit_amt / ln_unit_qty , 1);
     END IF;
 --
@@ -1383,7 +1443,10 @@ AS
            , ROUND(xsel.sale_amount / xsel.dlv_qty , 1) -- 単価
            , xsri.selling_trns_rate                     -- 売上振替割合
       ORDER BY
-             ABS(ROUND(SUM(xsel.dlv_qty) * ( xsri.selling_trns_rate / 100 ))) DESC;
+             ABS(ROUND(SUM(xsel.dlv_qty) * ( xsri.selling_trns_rate / 100 ))) DESC
+-- Start 2009/04/27 Ver_1.3 T1_0715 M.Hiruta
+           , hca.account_number ASC;
+-- End   2009/04/27 Ver_1.3 T1_0715 M.Hiruta
 --
     -- カーソル型レコード
     l_sales_exp_rec sales_exp_cur%ROWTYPE;
