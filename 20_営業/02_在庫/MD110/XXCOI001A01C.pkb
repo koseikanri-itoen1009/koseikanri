@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2010/01/04    1.15  H.Sasaki         [E_本稼動_00760]サマリデータの更新方法を修正
  *  2010/01/06    1.16  H.Sasaki         [E_本稼動_00908]既存一時表データの修正方法変更
  *  2010/01/13    1.17  H.Sasaki         [E_本稼動_00837]エラーメッセージ修正
+ *  2010/02/15    1.18  H.Sasaki         [E_本稼動_01567]倉庫コード違いの入庫情報編集内容を修正
  *
  *****************************************************************************************/
 --
@@ -399,9 +400,14 @@ AS
       SELECT  1
       FROM    xxcoi_storage_information     xsi
       WHERE   xsi.slip_num          = gv_slip_num
-      AND     xsi.slip_date        <> g_summary_tab ( in_slip_cnt ) .slip_date
+-- == 2010/02/15 V1.18 Modified START ===============================================================
+--      AND     xsi.slip_date        <> g_summary_tab ( in_slip_cnt ) .slip_date
+--      AND     xsi.warehouse_code    = iv_store_code
+      AND     (   xsi.slip_date       <>  g_summary_tab ( in_slip_cnt ) .slip_date
+               OR xsi.warehouse_code  <>  iv_store_code
+              )
+-- == 2010/02/15 V1.18 Modified END   ===============================================================
       AND     xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
-      AND     xsi.warehouse_code    = iv_store_code
       AND     xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
       AND     xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
       AND     xsi.slip_type         = cv_slip_type
@@ -441,9 +447,14 @@ AS
              ,program_id              = cn_program_id
              ,program_update_date     = SYSDATE
       WHERE   xsi.slip_num          = gv_slip_num
-      AND     xsi.slip_date        <> g_summary_tab ( in_slip_cnt ) .slip_date
+-- == 2010/02/15 V1.18 Modified START ===============================================================
+--      AND     xsi.slip_date        <> g_summary_tab ( in_slip_cnt ) .slip_date
+--      AND     xsi.warehouse_code    = iv_store_code
+      AND     (   xsi.slip_date       <>  g_summary_tab ( in_slip_cnt ) .slip_date
+               OR xsi.warehouse_code  <>  iv_store_code
+              )
+-- == 2010/02/15 V1.18 Modified END   ===============================================================
       AND     xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
-      AND     xsi.warehouse_code    = iv_store_code
       AND     xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
       AND     xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
       AND     xsi.slip_type         = cv_slip_type;
