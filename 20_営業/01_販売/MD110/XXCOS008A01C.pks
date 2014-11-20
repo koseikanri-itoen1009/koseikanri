@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(spec)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/04/06    1.4   T.Kitajima       [T1_0175]出荷依頼No採番ルール変更[9]→[97]
  *  2009/04/16    1.5   T.Kitajima       [T1_0609]出荷依頼No採番ルール変更[97]→[98]
  *  2009/05/15    1.6   S.Tomita         [T1_1004]生産物流SへのUO切替/戻し、[顧客発注からの自動作成]機能呼出対応
+ *  2009/05/26    1.7   T.Kitajima       [T1_0457]再送対応
  *
  *****************************************************************************************/
 --
@@ -32,8 +33,13 @@ AS
   PROCEDURE main(
     errbuf           OUT    VARCHAR2,         -- エラーメッセージ #固定#
     retcode          OUT    VARCHAR2,         -- エラーコード     #固定#
-    iv_base_code     IN     VARCHAR2,         -- 1.拠点コード
-    iv_order_number  IN     VARCHAR2          -- 2.受注番号
+--****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
+--    iv_base_code     IN     VARCHAR2,         -- 1.拠点コード
+--    iv_order_number  IN     VARCHAR2          -- 2.受注番号
+    iv_send_flg      IN     VARCHAR2,         -- 1.新規/再送区分
+    iv_base_code     IN     VARCHAR2,         -- 2.拠点コード
+    iv_order_number  IN     VARCHAR2          -- 3.受注番号
+--****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
   );
 END XXCOS008A01C;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/04/06    1.4   T.Kitajima       [T1_0175]出荷依頼No採番ルール変更[9]→[97]
  *  2009/04/16    1.5   T.Kitajima       [T1_0609]出荷依頼No採番ルール変更[97]→[98]
  *  2009/05/15    1.6   S.Tomita         [T1_1004]生産物流SへのUO切替/戻し、[顧客発注からの自動作成]機能呼出対応
+ *  2009/05/26    1.7   T.Kitajima       [T1_0457]再送対応
  *
  *****************************************************************************************/
 --
@@ -147,8 +148,11 @@ AS
   cv_pf_ou_mfg                  CONSTANT VARCHAR2(30) := 'XXCOS1_ITOE_OU_MFG';  -- 生産営業単位
   -- メッセージトークン
   cv_tkn_profile                CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
-  cv_tkn_param1                 CONSTANT VARCHAR2(20) := 'PARAM1';              -- パラメータ1(拠点コード)
-  cv_tkn_param2                 CONSTANT VARCHAR2(20) := 'PARAM2';              -- パラメータ2(受注番号)
+  cv_tkn_param1                 CONSTANT VARCHAR2(20) := 'PARAM1';              -- パラメータ1
+  cv_tkn_param2                 CONSTANT VARCHAR2(20) := 'PARAM2';              -- パラメータ2
+--****************************** 2009/05/26 1.7 T.Kitajima ADD START ******************************--
+  cv_tkn_param3                 CONSTANT VARCHAR2(20) := 'PARAM3';              -- パラメータ3
+--****************************** 2009/05/26 1.7 T.Kitajima ADD  END  ******************************--
   cv_tkn_table_name             CONSTANT VARCHAR2(20) := 'TABLE_NAME';          -- テーブル名
   cv_tkn_key_data               CONSTANT VARCHAR2(20) := 'KEY_DATA';            -- キー情報
   cv_tkn_order_no               CONSTANT VARCHAR2(20) := 'ORDER_NO';            -- 受注番号
@@ -199,6 +203,11 @@ AS
   cv_blank                      CONSTANT VARCHAR2(1) := '';               -- 空文字
   -- リードタイム
   cn_lead_time_non              CONSTANT NUMBER := 0;                     -- リードタイムなし
+--****************************** 2009/05/15 1.7 T.Kitajima ADD START ******************************--
+  --送信フラグ
+  cv_new_send                   CONSTANT VARCHAR2(1)  := '1';
+  cv_re_send                    CONSTANT VARCHAR2(1)  := '2';
+--****************************** 2009/05/15 1.7 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -213,6 +222,9 @@ AS
   -- ユーザー定義グローバルカーソル
   -- ===============================
   CURSOR order_data_cur(
+--****************************** 2009/05/15 1.7 T.Kitajima ADD START ******************************--
+    iv_send_flg     IN  VARCHAR2,     -- 新規/再送区分
+--****************************** 2009/05/15 1.7 T.Kitajima ADD  END  ******************************--
     iv_base_code    IN  VARCHAR2,     -- 拠点コード
     iv_order_number IN  VARCHAR2)     -- 受注番号
   IS
@@ -280,7 +292,25 @@ AS
     AND   msi.attribute13                         = gv_hokan_direct_class                     -- 保管場所区分
     AND   xca.delivery_base_code                  = NVL(iv_base_code, xca.delivery_base_code) -- 納品拠点コード
     AND   ooha.order_number                       = NVL(iv_order_number, ooha.order_number)   -- 受注ヘッダ番号
-    AND   oola.packing_instructions               IS NULL                                     -- 出荷依頼
+--****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
+--    AND   oola.packing_instructions               IS NULL                                     -- 出荷依頼
+    AND   ( 
+            ( --新規
+                  ( iv_send_flg               = cv_new_send )
+              AND ( oola.packing_instructions IS NULL       )
+            )
+            OR
+            ( --再送
+                  ( iv_send_flg               = cv_re_send  )
+              AND ( oola.packing_instructions IS NOT NULL   )
+              AND NOT EXISTS (
+                              SELECT xoha.request_no
+                                FROM xxwsh_order_headers_all xoha                    -- 受注ヘッダアドオン
+                               WHERE xoha.request_no    = oola.packing_instructions  -- 依頼No = 受注明細.出荷依頼No(梱包指示)
+                             )
+            )
+          )
+--****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
     AND   xca.customer_id                         = hca.cust_account_id                       -- 顧客ID
     AND   oola.org_id                             = gt_org_id                                 -- 営業単位
     AND   oola.ordered_item                       = msib.segment1                             -- 品目コード
@@ -462,8 +492,13 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
-    iv_base_code     IN  VARCHAR2,            -- 1.拠点コード
-    iv_order_number  IN  VARCHAR2,            -- 2.受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD START ******************************--
+--    iv_base_code     IN  VARCHAR2,            -- 1.拠点コード
+--    iv_order_number  IN  VARCHAR2,            -- 2.受注番号
+    iv_send_flg      IN  VARCHAR2,            -- 1.新規/再送区分
+    iv_base_code     IN  VARCHAR2,            -- 2.拠点コード
+    iv_order_number  IN  VARCHAR2,            -- 3.受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD  END  ******************************--
     ov_errbuf        OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode       OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg        OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -509,11 +544,19 @@ AS
     lv_out_msg := xxccp_common_pkg.get_msg(
        iv_application  => cv_xxcos_short_name
       ,iv_name         => cv_msg_conc_parame      -- コンカレントパラメータ
-      ,iv_token_name1  => cv_tkn_param1           -- 拠点コード
-      ,iv_token_value1 => iv_base_code
-      ,iv_token_name2  => cv_tkn_param2         -- 受注番号
-      ,iv_token_value2 => iv_order_number
-    );
+--****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
+--      ,iv_token_name1  => cv_tkn_param1           -- 拠点コード
+--      ,iv_token_value1 => iv_base_code
+--      ,iv_token_name2  => cv_tkn_param2         -- 受注番号
+--      ,iv_token_value2 => iv_order_number
+      ,iv_token_name1  => cv_tkn_param1           -- 新規/再送区分
+      ,iv_token_value1 => iv_send_flg
+      ,iv_token_name2  => cv_tkn_param2           -- 拠点コード
+      ,iv_token_value2 => iv_base_code
+      ,iv_token_name3  => cv_tkn_param3           -- 受注番号
+      ,iv_token_value3 => iv_order_number
+--****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
+   );
     --
     -- ===============================
     --  コンカレント・メッセージ出力
@@ -718,9 +761,14 @@ AS
    * Description      : 受注データ取得(A-2)
    ***********************************************************************************/
   PROCEDURE get_order_data(
-    iv_base_code      IN  VARCHAR2,            -- 1.拠点コード
-    iv_order_number   IN  VARCHAR2,            -- 2.受注番号
-    ov_errbuf         OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
+--    iv_base_code      IN  VARCHAR2,            -- 1.拠点コード
+--    iv_order_number   IN  VARCHAR2,            -- 2.受注番号
+    iv_send_flg       IN  VARCHAR2,            -- 1.新規/再送区分
+    iv_base_code      IN  VARCHAR2,            -- 2.拠点コード
+    iv_order_number   IN  VARCHAR2,            -- 3.受注番号
+ --****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
+   ov_errbuf         OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
@@ -759,8 +807,13 @@ AS
     BEGIN
       -- カーソルオープン
       OPEN order_data_cur(
-         iv_base_code     => iv_base_code      -- 拠点コード
+--****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
+--         iv_base_code     => iv_base_code      -- 拠点コード
+--        ,iv_order_number  => iv_order_number   -- 受注番号
+         iv_send_flg      => iv_send_flg       -- 新規/再送区分
+        ,iv_base_code     => iv_base_code      -- 拠点コード
         ,iv_order_number  => iv_order_number   -- 受注番号
+--****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
       );
       --
       -- レコード読込み
@@ -2983,27 +3036,32 @@ AS
       -- ログインユーザの所属拠点コードを入力拠点に設定
       BEGIN
       --
-        SELECT
-            xcav.party_number AS input_base_code
-        INTO
-            lt_input_base_code
-        FROM
-            fnd_user              fu
-           ,per_all_people_f      papf
-           ,per_all_assignments_f paaf
-           ,xxcmn_locations_v     xlv
-           ,xxcmn_cust_accounts_v xcav 
-        WHERE 
-            fu.user_id        = fnd_profile.value( cv_user_id ) 
-        AND fu.employee_id    = papf.person_id
-        AND nvl( papf.effective_start_date, TRUNC( gd_business_date ) ) <= TRUNC( gd_business_date )
-        AND nvl( papf.effective_end_date,   TRUNC( gd_business_date ) ) >= TRUNC( gd_business_date )
-        AND papf.person_id    = paaf.person_id
-        AND nvl( paaf.effective_start_date, TRUNC( gd_business_date ) ) <= TRUNC( gd_business_date )
-        AND nvl( paaf.effective_end_date,   TRUNC( gd_business_date ) ) >= TRUNC( gd_business_date )
-        AND paaf.location_id  = xlv.location_id
-        AND xlv.location_code = xcav.party_number
+--****************************** 2009/05/26 1.7 T.Kitajima ADD START ******************************--
+--        SELECT
+--            xcav.party_number AS input_base_code
+--        INTO
+--            lt_input_base_code
+--        FROM
+--            fnd_user              fu
+--           ,per_all_people_f      papf
+--           ,per_all_assignments_f paaf
+--           ,xxcmn_locations_v     xlv
+--           ,xxcmn_cust_accounts_v xcav 
+--        WHERE 
+--            fu.user_id        = fnd_profile.value( cv_user_id ) 
+--        AND fu.employee_id    = papf.person_id
+--        AND nvl( papf.effective_start_date, TRUNC( gd_business_date ) ) <= TRUNC( gd_business_date )
+--        AND nvl( papf.effective_end_date,   TRUNC( gd_business_date ) ) >= TRUNC( gd_business_date )
+--        AND papf.person_id    = paaf.person_id
+--        AND nvl( paaf.effective_start_date, TRUNC( gd_business_date ) ) <= TRUNC( gd_business_date )
+--        AND nvl( paaf.effective_end_date,   TRUNC( gd_business_date ) ) >= TRUNC( gd_business_date )
+--        AND paaf.location_id  = xlv.location_id
+--        AND xlv.location_code = xcav.party_number
+        SELECT xlobi.base_code             input_base_code
+          INTO lt_input_base_code
+          FROM xxcos_login_own_base_info_v xlobi
         ;
+--****************************** 2009/05/26 1.7 T.Kitajima ADD  END  ******************************--
       --
       EXCEPTION
         WHEN OTHERS THEN
@@ -3128,8 +3186,13 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    iv_base_code     IN  VARCHAR2,     -- 1.拠点コード
-    iv_order_number  IN  VARCHAR2,     -- 2.受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD START ******************************--
+--    iv_base_code     IN  VARCHAR2,     -- 1.拠点コード
+--    iv_order_number  IN  VARCHAR2,     -- 2.受注番号
+    iv_send_flg      IN  VARCHAR2,         -- 1.新規/再送区分
+    iv_base_code     IN  VARCHAR2,         -- 2.拠点コード
+    iv_order_number  IN  VARCHAR2,         -- 3.受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD  END ******************************--
     ov_errbuf        OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode       OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg        OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3183,8 +3246,13 @@ AS
     -- 初期処理(A-1)
     -- ===============================
     init(
-       iv_base_code     => iv_base_code        -- 拠点コード
+--****************************** 2009/05/15 1.7 T.Kitajima MOD START ******************************--
+--       iv_base_code     => iv_base_code        -- 拠点コード
+--      ,iv_order_number  => iv_order_number     -- 受注番号
+       iv_send_flg      => iv_send_flg         -- 新規/再送区分
+      ,iv_base_code     => iv_base_code        -- 拠点コード
       ,iv_order_number  => iv_order_number     -- 受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD  END ******************************--
       ,ov_errbuf        => lv_errbuf           -- エラー・メッセージ
       ,ov_retcode       => lv_retcode          -- リターン・コード
       ,ov_errmsg        => lv_errmsg           -- ユーザー・エラー・メッセージ
@@ -3198,8 +3266,13 @@ AS
     -- 受注データ取得(A-2)
     -- ===============================
     get_order_data(
-       iv_base_code     => iv_base_code        -- 拠点コード
+--****************************** 2009/05/15 1.7 T.Kitajima MOD START ******************************--
+--       iv_base_code     => iv_base_code        -- 拠点コード
+--      ,iv_order_number  => iv_order_number     -- 受注番号
+       iv_send_flg      => iv_send_flg         -- 新規/再送区分
+      ,iv_base_code     => iv_base_code        -- 拠点コード
       ,iv_order_number  => iv_order_number     -- 受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD  END ******************************--
       ,ov_errbuf        => lv_errbuf           -- エラー・メッセージ
       ,ov_retcode       => lv_retcode          -- リターン・コード
       ,ov_errmsg        => lv_errmsg           -- ユーザー・エラー・メッセージ
@@ -3456,8 +3529,13 @@ AS
   PROCEDURE main(
     errbuf           OUT VARCHAR2,         --   エラー・メッセージ  --# 固定 #
     retcode          OUT VARCHAR2,         --   リターン・コード    --# 固定 #
-    iv_base_code     IN  VARCHAR2,         -- 1.拠点コード
-    iv_order_number  IN  VARCHAR2          -- 2.受注番号
+--****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
+--    iv_base_code     IN     VARCHAR2,         -- 1.拠点コード
+--    iv_order_number  IN     VARCHAR2          -- 2.受注番号
+    iv_send_flg      IN     VARCHAR2,         -- 1.新規/再送区分
+    iv_base_code     IN     VARCHAR2,         -- 2.拠点コード
+    iv_order_number  IN     VARCHAR2          -- 3.受注番号
+--****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
   )
 --
 --
@@ -3509,8 +3587,13 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_base_code       -- 拠点コード
+--****************************** 2009/05/15 1.7 T.Kitajima MOD START ******************************--
+--       iv_base_code       -- 拠点コード
+--      ,iv_order_number    -- 受注番号
+       iv_send_flg        -- 新規/再送区分
+      ,iv_base_code       -- 拠点コード
       ,iv_order_number    -- 受注番号
+--****************************** 2009/05/15 1.7 T.Kitajima MOD  END  ******************************--
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
