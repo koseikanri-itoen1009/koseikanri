@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.13
+ * Version          : 3.14
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2010/12/13    3.12  S.Niki           [E_本稼動_01844] 販売実績の抽出条件に登録業務日付を追加
  *                                       [E_本稼動_01896] 計算対象顧客の判別を、販売実績の存在有無に差し戻し
  *  2011/04/01    3.13  M.Watanabe       [E_本稼動_06757] 販売実績にて変動電気代のみの場合でも電気料の計算対象とする
+ *  2012/02/23    3.14  S.Niki           [E_本稼動_09144] 売上金額（税込）に変動電気代を加算しないよう修正
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -2309,70 +2310,72 @@ GROUP BY CASE
          , NULL                                   AS dlv_qty                  -- 納品数量
          , NULL                                   AS dlv_uom_code             -- 納品単位
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR START
---         , CASE
---             WHEN EXISTS ( SELECT 'X'
---                           FROM xxcok_mst_bm_contract     xmbc
---                           WHERE xmbc.cust_code               = xt0c.ship_cust_code
---                             AND xmbc.calc_target_flag        = cv_enable
---                             AND xmbc.calc_type              IN ( cv_calc_type_sales_price
---                                                                , cv_calc_type_container
---                                                                , cv_calc_type_uniform_rate
---                                                                , cv_calc_type_flat_rate
---                                                                )
---                             AND ROWNUM = 1
---                  )
---             THEN
---               0
---             ELSE
---               ( SELECT NVL( SUM( xsel.pure_amount + xsel.tax_amount ), 0 )
---                 FROM xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
---                    , xxcos_sales_exp_lines       xsel  -- 販売実績明細
---                 WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
---                   AND xseh.delivery_date         <= xt0c.closing_date
---                   AND xseh.delivery_date         >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
---                   AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
---                   AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
---                   AND EXISTS ( SELECT  'X'
---                                FROM fnd_lookup_values flv -- 販手計算対象売上区分
---                                WHERE flv.lookup_type         = cv_lookup_type_07             -- 参照タイプ：販手計算対象売上区分
---                                  AND flv.lookup_code         = xsel.sales_class
---                                  AND flv.language            = cv_lang
---                                  AND flv.enabled_flag        = cv_enable
---                                  AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
---                                                            AND NVL( flv.end_date_active  , gd_process_date )
---                                  AND ROWNUM = 1
---                       )
---                   AND NOT EXISTS ( SELECT 'X'
---                                    FROM fnd_lookup_values flv -- 非在庫品目
---                                    WHERE flv.lookup_type         = cv_lookup_type_05         -- 参照タイプ：非在庫品目
---                                      AND flv.lookup_code         = xsel.item_code
---                                      AND flv.language            = cv_lang
---                                      AND flv.enabled_flag        = cv_enable
---                                      AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
---                                                                AND NVL( flv.end_date_active  , gd_process_date )
---                                      AND ROWNUM = 1
---                       )
---               )
---           END                           AS amount_inc_tax           -- 売上金額（税込）
-        , SUM(
-            CASE
-              WHEN EXISTS ( SELECT 'X'
-                            FROM xxcok_mst_bm_contract     xmbc
-                            WHERE xmbc.cust_code               = xt0c.ship_cust_code
-                              AND xmbc.calc_target_flag        = cv_enable
-                              AND xmbc.calc_type              IN ( cv_calc_type_sales_price
-                                                                 , cv_calc_type_container
-                                                                 , cv_calc_type_uniform_rate
-                                                                 , cv_calc_type_flat_rate
-                                                                 )
-                              AND ROWNUM = 1
-                   )
-              THEN
-                0
-              ELSE
-                NVL( xsel.pure_amount + xsel.tax_amount, 0 )
-            END
-          )                             AS amount_inc_tax           -- 売上金額（税込）
+-- 2012/02/23 Ver.3.14 [E_本稼動_09144] SCSK S.Niki REPAIR START
+         , CASE
+             WHEN EXISTS ( SELECT 'X'
+                           FROM xxcok_mst_bm_contract     xmbc   -- 販手条件マスタ
+                           WHERE xmbc.cust_code               = xt0c.ship_cust_code
+                             AND xmbc.calc_target_flag        = cv_enable
+                             AND xmbc.calc_type              IN ( cv_calc_type_sales_price    -- 売価別条件
+                                                                , cv_calc_type_container      -- 容器区分別条件
+                                                                , cv_calc_type_uniform_rate   -- 一律条件
+                                                                , cv_calc_type_flat_rate      -- 定額
+                                                                )
+                             AND ROWNUM = 1
+                  )
+             THEN
+               0
+             ELSE
+               ( SELECT NVL( SUM( xsel.pure_amount + xsel.tax_amount ), 0 )
+                 FROM xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
+                    , xxcos_sales_exp_lines       xsel  -- 販売実績明細
+                 WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                   AND xseh.delivery_date         <= xt0c.closing_date
+                   AND xseh.delivery_date         >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                   AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                   AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                   AND EXISTS ( SELECT  'X'
+                                FROM fnd_lookup_values flv -- 販手計算対象売上区分
+                                WHERE flv.lookup_type         = cv_lookup_type_07             -- 参照タイプ：販手計算対象売上区分
+                                  AND flv.lookup_code         = xsel.sales_class
+                                  AND flv.language            = cv_lang
+                                  AND flv.enabled_flag        = cv_enable
+                                  AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                            AND NVL( flv.end_date_active  , gd_process_date )
+                                  AND ROWNUM = 1
+                       )
+                   AND NOT EXISTS ( SELECT 'X'
+                                    FROM fnd_lookup_values flv -- 非在庫品目
+                                    WHERE flv.lookup_type         = cv_lookup_type_05         -- 参照タイプ：非在庫品目
+                                      AND flv.lookup_code         = xsel.item_code
+                                      AND flv.language            = cv_lang
+                                      AND flv.enabled_flag        = cv_enable
+                                      AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                AND NVL( flv.end_date_active  , gd_process_date )
+                                      AND ROWNUM = 1
+                       )
+               )
+           END                           AS amount_inc_tax           -- 売上金額（税込）
+--        , SUM(
+--            CASE
+--              WHEN EXISTS ( SELECT 'X'
+--                            FROM xxcok_mst_bm_contract     xmbc
+--                            WHERE xmbc.cust_code               = xt0c.ship_cust_code
+--                              AND xmbc.calc_target_flag        = cv_enable
+--                              AND xmbc.calc_type              IN ( cv_calc_type_sales_price
+--                                                                 , cv_calc_type_container
+--                                                                 , cv_calc_type_uniform_rate
+--                                                                 , cv_calc_type_flat_rate
+--                                                                 )
+--                              AND ROWNUM = 1
+--                   )
+--              THEN
+--                0
+--              ELSE
+--                NVL( xsel.pure_amount + xsel.tax_amount, 0 )
+--            END
+--          )                             AS amount_inc_tax           -- 売上金額（税込）
+-- 2012/02/23 Ver.3.14 [E_本稼動_09144] SCSK S.Niki REPAIR END
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR END
          , NULL                          AS container_code           -- 容器区分コード
          , NULL                          AS dlv_unit_price           -- 売価金額
