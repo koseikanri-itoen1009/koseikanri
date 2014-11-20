@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2009-10-15    1.10  Daisuke.Abe      0001537対応
  *  2009-11-26    1.11  Kazuo.Satomura   E_本稼動_00109対応
  *  2009-12-18    1.12  Daisuke.Abe      E_本稼動_00536対応
+ *  2010-01-06    1.13  Kazuyo.Hosoi     E_本稼動_00890,00891対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -825,6 +826,9 @@ AS
             /* 2009.11.26 K.Satomura E_本稼動_00109対応 START */
             AND    bau.primary_flag                            =  cv_flag_yes
             /* 2009.11.26 K.Satomura E_本稼動_00109対応 END */
+            /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+            AND    bau.vendor_site_id                          =  lt_vendor_site_id
+            /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
             ;
             --
           EXCEPTION
@@ -2110,6 +2114,9 @@ AS
     cv_tkn_value_mst_bm  CONSTANT VARCHAR2(100) := '販手条件マスタ';
     cv_tkn_value_sp_info CONSTANT VARCHAR2(100) := '販売手数料情報登録/更新処理時：ＳＰ専決ヘッダテーブル・ＳＰ専決明細';
     cv_tkn_value_sp_id   CONSTANT VARCHAR2(100) := 'ＳＰ専決ヘッダＩＤ';
+    /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+    cn_zero              CONSTANT NUMBER        := 0;
+    /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
     --
     -- *** ローカル変数 ***
     ln_sp_decision_count  NUMBER := 0;
@@ -2325,12 +2332,38 @@ AS
                        ,cv_cond_business_type_02, lt_sp_decision_rec.sales_price
                        ,NULL
                        ) -- 売価
-                ,lt_sp_decision_rec.bm1_bm_rate   -- BM1率(%)
-                ,lt_sp_decision_rec.bm1_bm_amount -- BM1金額
-                ,lt_sp_decision_rec.bm2_bm_rate   -- BM2率(%)
-                ,lt_sp_decision_rec.bm2_bm_amount -- BM2金額
-                ,lt_sp_decision_rec.bm3_bm_rate   -- BM3率(%)
-                ,lt_sp_decision_rec.bm3_bm_amount -- BM3金額
+                /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+                --,lt_sp_decision_rec.bm1_bm_rate   -- BM1率(%)
+                --,lt_sp_decision_rec.bm1_bm_amount -- BM1金額
+                --,lt_sp_decision_rec.bm2_bm_rate   -- BM2率(%)
+                --,lt_sp_decision_rec.bm2_bm_amount -- BM2金額
+                --,lt_sp_decision_rec.bm3_bm_rate   -- BM3率(%)
+                --,lt_sp_decision_rec.bm3_bm_amount -- BM3金額
+                ,DECODE(lt_sp_decision_rec.bm1_bm_rate
+                       ,cn_zero, NULL
+                       ,lt_sp_decision_rec.bm1_bm_rate
+                       ) -- BM1率(%)
+                ,DECODE(lt_sp_decision_rec.bm1_bm_amount
+                       ,cn_zero, NULL
+                       ,lt_sp_decision_rec.bm1_bm_amount
+                       ) -- BM1金額
+                ,DECODE(lt_sp_decision_rec.bm2_bm_rate
+                       ,cn_zero, NULL
+                       ,lt_sp_decision_rec.bm2_bm_rate
+                       ) -- BM2率(%)
+                ,DECODE(lt_sp_decision_rec.bm2_bm_amount
+                       ,cn_zero, NULL
+                       ,lt_sp_decision_rec.bm2_bm_amount
+                       ) -- BM2金額
+                ,DECODE(lt_sp_decision_rec.bm3_bm_rate
+                       ,cn_zero, NULL
+                       ,lt_sp_decision_rec.bm3_bm_rate
+                       ) -- BM3率(%)
+                ,DECODE(lt_sp_decision_rec.bm3_bm_amount
+                       ,cn_zero, NULL
+                       ,lt_sp_decision_rec.bm3_bm_amount
+                       ) -- BM3金額
+                /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
                 ,cv_flag_yes                      -- 計算対象フラグ
                 ,cd_process_date                  -- 有効日(From)
                 ,cn_created_by                    -- 作成者
@@ -2366,12 +2399,39 @@ AS
             -- ================================
             BEGIN
               UPDATE xxcok_mst_bm_contract xmb -- 販手条件マスタ
-              SET    xmb.bm1_pct                = lt_sp_decision_rec.bm1_bm_rate   -- BM1率(%)
-                    ,xmb.bm1_amt                = lt_sp_decision_rec.bm1_bm_amount -- BM1金額
-                    ,xmb.bm2_pct                = lt_sp_decision_rec.bm2_bm_rate   -- BM2率(%)
-                    ,xmb.bm2_amt                = lt_sp_decision_rec.bm2_bm_amount -- BM2金額
-                    ,xmb.bm3_pct                = lt_sp_decision_rec.bm3_bm_rate   -- BM3率(%)
-                    ,xmb.bm3_amt                = lt_sp_decision_rec.bm3_bm_amount -- BM3金額
+              /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+              --SET    xmb.bm1_pct                = lt_sp_decision_rec.bm1_bm_rate   -- BM1率(%)
+              --      ,xmb.bm1_amt                = lt_sp_decision_rec.bm1_bm_amount -- BM1金額
+              --      ,xmb.bm2_pct                = lt_sp_decision_rec.bm2_bm_rate   -- BM2率(%)
+              --      ,xmb.bm2_amt                = lt_sp_decision_rec.bm2_bm_amount -- BM2金額
+              --      ,xmb.bm3_pct                = lt_sp_decision_rec.bm3_bm_rate   -- BM3率(%)
+              --      ,xmb.bm3_amt                = lt_sp_decision_rec.bm3_bm_amount -- BM3金額
+              SET    xmb.bm1_pct                = DECODE(lt_sp_decision_rec.bm1_bm_rate
+                                                        ,cn_zero, NULL
+                                                        ,lt_sp_decision_rec.bm1_bm_rate
+                                                        ) -- BM1率(%)
+                    ,xmb.bm1_amt                = DECODE(lt_sp_decision_rec.bm1_bm_amount
+                                                        ,cn_zero, NULL
+                                                        ,lt_sp_decision_rec.bm1_bm_amount
+                                                        ) -- BM1金額
+                    ,xmb.bm2_pct                = DECODE(lt_sp_decision_rec.bm2_bm_rate
+                                                        ,cn_zero, NULL
+                                                        ,lt_sp_decision_rec.bm2_bm_rate
+                                                        ) -- BM2率(%)
+                    ,xmb.bm2_amt                = DECODE(lt_sp_decision_rec.bm2_bm_amount
+                                                        ,cn_zero, NULL
+                                                        ,lt_sp_decision_rec.bm2_bm_amount
+                                                        ) -- BM2金額
+                    ,xmb.bm3_pct                = DECODE(lt_sp_decision_rec.bm3_bm_rate
+                                                        ,cn_zero, NULL
+                                                        ,lt_sp_decision_rec.bm3_bm_rate
+                                                        ) -- BM3率(%)
+                    ,xmb.bm3_amt                = DECODE(lt_sp_decision_rec.bm3_bm_amount
+                                                        ,cn_zero, NULL
+                                                        ,lt_sp_decision_rec.bm3_bm_amount
+                                                        ) -- BM3金額
+                    ,xmb.end_date_active        = NULL    -- 有効日(To)
+              /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
                     ,xmb.calc_target_flag       = cv_flag_yes                      -- 計算対象フラグ
                     ,xmb.last_updated_by        = cn_last_updated_by               -- 最終更新者
                     ,xmb.last_update_date       = cd_last_update_date              -- 最終更新日
@@ -2515,6 +2575,9 @@ AS
         BEGIN
           UPDATE xxcok_mst_bm_contract xmb -- 販手条件マスタ
           SET    xmb.bm1_amt                = lt_electricity_amount     -- BM1金額
+                /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+                ,xmb.end_date_active        = NULL                      -- 有効日(To)
+                /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
                 ,xmb.calc_target_flag       = cv_flag_yes               -- 計算対象フラグ
                 ,xmb.last_updated_by        = cn_last_updated_by        -- 最終更新者
                 ,xmb.last_update_date       = cd_last_update_date       -- 最終更新日
@@ -2726,9 +2789,16 @@ AS
             ,lt_party_id
       FROM   hz_locations     hlo -- 顧客事業所マスタ
             ,hz_party_sites   hps -- パーティサイトマスタ
+            /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+            ,hz_cust_acct_sites hcas -- 顧客サイトマスタ
+            /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
             ,hz_cust_accounts hca -- 顧客マスタ
       WHERE  hca.cust_account_id = it_mst_regist_info_rec.install_account_id
       AND    hca.party_id        = hps.party_id
+      /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+      AND    hcas.party_site_id   = hps.party_site_id
+      AND    hcas.cust_account_id = hca.cust_account_id
+      /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
       AND    hps.location_id     = hlo.location_id
       ;
       --
@@ -3231,7 +3301,14 @@ AS
       SELECT hps.party_site_id -- パーティサイトＩＤ
       INTO   lt_party_site_id
       FROM   hz_party_sites hps -- パーティサイトマスタ
-      WHERE  hps.party_id = it_party_id
+      /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+            ,hz_cust_accounts   hca  -- 顧客マスタ
+            ,hz_cust_acct_sites hcas -- 顧客サイトマスタ
+      --WHERE  hps.party_id = it_party_id
+      WHERE  hca.party_id        = it_party_id
+      AND    hca.cust_account_id = hcas.cust_account_id
+      AND    hcas.party_site_id  = hps.party_site_id
+      /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
       ;
     EXCEPTION
       WHEN OTHERS THEN
