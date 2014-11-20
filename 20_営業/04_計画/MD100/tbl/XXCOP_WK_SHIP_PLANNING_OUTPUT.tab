@@ -1,0 +1,71 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_WK_SHIP_PLANNING_OUTPUT
+ * Description     : 工場出荷計画出力ワークテーブル
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-02-23    1.0   SCS.Uchida      新規作成
+ *  2009-03-19    1.1   SCS.Kayahara    コメント作成文にスキーマ追加
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_WK_SHIP_PLANNING_OUTPUT
+(
+   transaction_id                 NUMBER(6)
+  ,shipping_date                  DATE
+  ,receipt_date                   DATE
+  ,ship_org_code                  VARCHAR2(4)
+  ,ship_org_name                  VARCHAR2(50)
+  ,receipt_org_code               VARCHAR2(4)
+  ,receipt_org_name               VARCHAR2(50)
+  ,item_no                        VARCHAR2(7)
+  ,item_name                      VARCHAR2(50)
+  ,schedule_qty                   NUMBER
+  ,before_stock                   NUMBER
+  ,after_stock                    NUMBER
+  ,stock_days                     NUMBER
+  ,shipping_pace                  NUMBER
+  ,plant_mark                     VARCHAR2(6)
+  ,schedule_date                  DATE
+  ,created_by                     NUMBER(15)
+  ,creation_date                  DATE
+  ,last_updated_by                NUMBER(15)
+  ,last_update_date               DATE
+  ,last_update_login              NUMBER(15)
+  ,request_id                     NUMBER(15)
+  ,program_application_id         NUMBER(15)
+  ,program_id                     NUMBER(15)
+  ,program_update_date            DATE
+);
+--
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.transaction_id                   IS '出力ワークテーブルID';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.shipping_date                    IS '出荷日';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_date                     IS '着日';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_org_code                    IS '移動元倉庫ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_org_name                    IS '移動元倉庫名';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_org_code                 IS '移動先倉庫ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_org_name                 IS '移動先倉庫名';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.item_no                          IS '品目ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.item_name                        IS '品目名';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.schedule_qty                     IS '計画数';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.before_stock                     IS '前在庫';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.after_stock                      IS '後在庫';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.stock_days                       IS '在庫日数';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.shipping_pace                    IS '出荷ペース';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.plant_mark                       IS '工場固有記号';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.schedule_date                    IS '生産予定日';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.created_by                       IS '作成者';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.creation_date                    IS '作成日';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.last_updated_by                  IS '最終更新者';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.last_update_date                 IS '最終更新日';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.last_update_login                IS '最終更新ログイン';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.request_id                       IS '要求ID';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.program_application_id           IS 'プログラムアプリケーションID';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.program_id                       IS 'プログラムID';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.program_update_date              IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxcop.xxcop_wk_ship_planning_output IS '工場出荷計画出力ワークテーブル';

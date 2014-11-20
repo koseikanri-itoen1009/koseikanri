@@ -1,0 +1,99 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_WK_YOKO_PLAN_OUTPUT
+ * Description     : 横持計画出力ワークテーブル
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-02-23    1.0   SCS.Uchida      新規作成
+ *  2009-03-19    1.1   SCS.Kayahara    コメント作成文にスキーマ追加
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_WK_YOKO_PLAN_OUTPUT
+(
+   transaction_id                 NUMBER(6)
+  ,group_id                       NUMBER
+  ,shipping_date                  DATE
+  ,receipt_date                   DATE
+  ,ship_org_code                  VARCHAR2(4)
+  ,ship_org_name                  VARCHAR2(50)
+  ,receipt_org_code               VARCHAR2(4)
+  ,receipt_org_name               VARCHAR2(50)
+  ,item_id                        NUMBER
+  ,item_no                        VARCHAR2(7)
+  ,item_name                      VARCHAR2(50)
+  ,freshness_priority             NUMBER
+  ,freshness_condition            VARCHAR2(2)
+  ,manu_date                      DATE
+  ,lot_status                     VARCHAR2(2)
+  ,plan_min_qty                   NUMBER
+  ,plan_max_qty                   NUMBER
+  ,plan_bal_qty                   NUMBER
+  ,plan_lot_qty                   NUMBER
+  ,delivery_unit                  VARCHAR2(10)
+  ,before_stock                   NUMBER
+  ,after_stock                    NUMBER
+  ,safety_days                    NUMBER
+  ,max_days                       NUMBER
+  ,shipping_pace                  NUMBER(6)
+  ,special_yoko_type              VARCHAR2(1)
+  ,supp_bad_type                  VARCHAR2(1)
+  ,lot_revers_type                VARCHAR2(1)
+  ,earliest_manu_date             DATE
+  ,start_manu_date                DATE
+  ,created_by                     NUMBER(15)    NOT NULL
+  ,creation_date                  DATE          NOT NULL
+  ,last_updated_by                NUMBER(15)    NOT NULL
+  ,last_update_date               DATE          NOT NULL
+  ,last_update_login              NUMBER(15)
+  ,request_id                     NUMBER(15)
+  ,program_application_id         NUMBER(15)
+  ,program_id                     NUMBER(15)
+  ,program_update_date            DATE
+);
+--
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.transaction_id                       IS '出力ワークテーブルID';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.group_id                             IS '横持計画グループID';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.shipping_date                        IS '出荷日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.receipt_date                         IS '着日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.ship_org_code                        IS '移動元倉庫ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.ship_org_name                        IS '移動元倉庫名';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.receipt_org_code                     IS '移動先倉庫ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.receipt_org_name                     IS '移動先倉庫名';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.item_id                              IS '品目ＩＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.item_no                              IS '品目ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.item_name                            IS '品目名';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.freshness_priority                   IS '優先順位';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.freshness_condition                  IS '鮮度条件';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.manu_date                            IS '製造年月日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.lot_status                           IS '品質';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.plan_min_qty                         IS '計画数（最小）';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.plan_max_qty                         IS '計画数（最大）';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.plan_bal_qty                         IS '計画数（バランス）';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.plan_lot_qty                         IS '計画数（ロット）';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.delivery_unit                        IS '配送単位';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.before_stock                         IS '横持前在庫';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.after_stock                          IS '横持後在庫';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.safety_days                          IS '安全在庫日数';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.max_days                             IS '最大在庫日数';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.shipping_pace                        IS '出荷ペース';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.special_yoko_type                    IS '特別横持区分';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.supp_bad_type                        IS '補充不可区分';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.lot_revers_type                      IS 'ロット逆転区分';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.earliest_manu_date                   IS '最大製造年月日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.start_manu_date                      IS '開始製造年月日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.created_by                           IS '作成者';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.creation_date                        IS '作成日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.last_updated_by                      IS '最終更新者';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.last_update_date                     IS '最終更新日';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.last_update_login                    IS '最終更新ログイン';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.request_id                           IS '要求ID';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.program_application_id               IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.program_id                           IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_plan_output.program_update_date                  IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxcop.xxcop_wk_yoko_plan_output IS '横持計画出力ワークテーブル';
