@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,7 +39,8 @@ AS
  *  2008/11/28   1.1   Oracle 北寒寺正夫 本番障害246対応
  *  2008/11/29   1.2   SCS宮田           ロック対応
  *  2008/12/02   1.3   SCS二瓶           本番障害#251対応（条件追加）
- *  2008/12/15   1.4   SCS伊藤           本番障害#645対応（引当可能数取得条件を予定日から実績日に変更）
+ *  2008/12/15   1.4   SCS伊藤           本番障害#645対応（D4需要数 S4供給数 予定日から実績日に変更）
+ *  2008/12/19   1.5   SCS伊藤           本番障害#648対応（I5実績未取在庫数 I6 実績未取在庫数 抽出項目を実績数－前回数に変更）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -825,9 +826,15 @@ AS
     SELECT  /*+ leading(oha otta ola mld) */
             NVL(SUM(CASE
                       WHEN (otta.order_category_code = cv_cate_order) THEN
-                        mld.actual_quantity
+-- 2008/12/19 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity
+                        NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
+-- 2008/12/19 H.Itou Mod End
                       WHEN (otta.order_category_code = cv_cate_return) THEN
-                        mld.actual_quantity * -1
+-- 2008/12/19 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity * -1
+                       (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
+-- 2008/12/19 H.Itou Mod End
                     END), 0)
     INTO    ln_inv_lot_ship_qty
     FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
@@ -853,9 +860,15 @@ AS
     SELECT  /*+ leading(oha otta ola mld) */
             NVL(SUM(CASE
                       WHEN (otta.order_category_code = cv_cate_order) THEN
-                        mld.actual_quantity
+-- 2008/12/19 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity
+                        NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
+-- 2008/12/19 H.Itou Mod End
                       WHEN (otta.order_category_code = cv_cate_return) THEN
-                        mld.actual_quantity * -1
+-- 2008/12/19 H.Itou Mod Start 本番障害#648
+--                        mld.actual_quantity * -1
+                       (NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)) * -1
+-- 2008/12/19 H.Itou Mod End
                     END), 0)
     INTO    ln_inv_lot_provide_qty
     FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
