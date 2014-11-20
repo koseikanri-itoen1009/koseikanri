@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_cust_bm_info_n01
+ON xxcok.xxcok_cust_bm_info(
+     last_fix_closing_date
+   , last_fix_delivery_date
+)
+TABLESPACE xxidx2
+/

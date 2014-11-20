@@ -1,0 +1,6 @@
+CREATE UNIQUE INDEX xxcok.xxcok_cust_bm_info_u01
+ON xxcok.xxcok_cust_bm_info(
+     cust_code
+)
+TABLESPACE xxidx2
+/
