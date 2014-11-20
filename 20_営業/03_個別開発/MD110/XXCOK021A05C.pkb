@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       ・マイナス支払金額時のAPOIF請求書タイプの設定値変更
  *                                       ・補助科目名称取得時の条件追加
  *  2012/03/27    1.8   S.Niki           [E_本稼動_08315]支払起算日の設定値変更
+ *  2014/04/09    1.9   K.Kiriu          [E_本稼動_11765]消費税増税対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -113,8 +114,10 @@ AS
   cv_prof_invoice_source     CONSTANT VARCHAR2(40)  := 'XXCOK1_INVOICE_SOURCE';          -- 請求書ソース
 -- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCS K.Yamaguchi DELETE START
 --  cv_prof_pay_group          CONSTANT VARCHAR2(40)  := 'XXCOK1_PAY_GROUP';               -- 支払グループ
--- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCS K.Yamaguchi DELETE END
-  cv_prof_invoice_tax_code   CONSTANT VARCHAR2(40)  := 'XXCOK1_INVOICE_TAX_CODE';        -- 請求書税コード
+-- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCSK K.Yamaguchi DELETE END
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu DELETE START
+--  cv_prof_invoice_tax_code   CONSTANT VARCHAR2(40)  := 'XXCOK1_INVOICE_TAX_CODE';        -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCS K.Kiriu DELETE END
   cv_prof_dept_fin           CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF2_DEPT_FIN';           -- 部門コード_財務経理部
   cv_prof_customer_dummy     CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF5_CUSTOMER_DUMMY';     -- 顧客コード_ダミー値
   cv_prof_company_dummy      CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF6_COMPANY_DUMMY';      -- 企業コード_ダミー値
@@ -162,6 +165,16 @@ AS
   -- 書式
   cv_format_mm               CONSTANT VARCHAR2(2)   := 'MM';
 -- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+  cv_format_yyyymm           CONSTANT VARCHAR2(6)   := 'YYYYMM';
+  cv_format_yyyymm_sla       CONSTANT VARCHAR2(7)   := 'YYYY/MM';
+  cv_format_yyyymmdd_sla     CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
+  -- 汎用フラグ
+  cv_yes                     CONSTANT VARCHAR2(1)   := 'Y';
+  cv_no                      CONSTANT VARCHAR2(1)   := 'N';
+  -- 参照タイプ
+  cv_lookup_type_invoice     CONSTANT VARCHAR2(23)  := 'XXCOK1_INVOICE_TAX_CODE';  -- 請求書税金コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -172,6 +185,9 @@ AS
   gn_error_cnt               NUMBER       DEFAULT 0;      -- エラー件数
   gn_detail_num              NUMBER       DEFAULT 1;      -- OIFヘッダー内明細連番(ヘッダー毎にリセット)
   gn_sell_detail_num         NUMBER       DEFAULT 0;      -- 問屋支払テーブルで取得した明細用データの件数
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+  gn_invoice_tax_err_cnt     NUMBER       DEFAULT 0;      -- 請求書税金コード取得エラー件数
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
   -- 初期処理(A-1) 取得データ格納
   gv_prof_books_id           VARCHAR2(40) DEFAULT NULL;   -- プロファイル：会計帳簿ID
   gv_prof_org_id             VARCHAR2(40) DEFAULT NULL;   -- プロファイル：組織ID
@@ -180,7 +196,9 @@ AS
   gv_prof_detail_type_item   VARCHAR2(50) DEFAULT NULL;   -- プロファイル：OIF明細タイプ_明細
   gv_prof_invoice_source     VARCHAR2(50) DEFAULT NULL;   -- プロファイル：請求書ソース
   gv_prof_pay_group          VARCHAR2(50) DEFAULT NULL;   -- プロファイル：支払グループ
-  gv_prof_invoice_tax_code   VARCHAR2(50) DEFAULT NULL;   -- プロファイル：請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu DELETE START
+--  gv_prof_invoice_tax_code   VARCHAR2(50) DEFAULT NULL;   -- プロファイル：請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu DELETE END
   gv_prof_dept_fin           VARCHAR2(50) DEFAULT NULL;   -- プロファイル：部門コード_財務経理部
   gv_prof_customer_dummy     VARCHAR2(50) DEFAULT NULL;   -- プロファイル：顧客コード_ダミー値
   gv_prof_company_dummy      VARCHAR2(50) DEFAULT NULL;   -- プロファイル：企業コード_ダミー値
@@ -200,6 +218,9 @@ AS
 -- 2012/03/22 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
   gd_prof_process_date       DATE         DEFAULT NULL;   -- 業務日付格納
   gn_tax_rate                NUMBER       DEFAULT NULL;   -- 税率
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+  gv_tax_code                VARCHAR2(50) DEFAULT NULL;   -- 税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
   gn_payment_ccid            NUMBER       DEFAULT NULL;   -- 負債勘定科目CCID
   gn_tax_ccid                NUMBER       DEFAULT NULL;   -- 仮払消費税科目CCID
   -- AP請求書OIFヘッダー登録金額
@@ -209,6 +230,10 @@ AS
 -- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD START
   gt_employee_number         per_all_people_f.employee_number%TYPE;  -- 従業員番号
 -- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+  -- 請求書税金コードエラーフラグ
+  gv_invoice_tax_err_flag    VARCHAR2(1)  DEFAULT 'N';
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
@@ -310,6 +335,19 @@ AS
          , xwp.acct_code                               -- 勘定科目コード
          , xwp.sub_acct_code                           -- 補助科目コード
   ;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+  -- 請求書税コード
+  CURSOR g_invoice_tax_cur
+  IS
+    SELECT flvv.meaning            tax_code           --税コード
+         , flvv.description        tax_rate           --税率
+         , flvv.start_date_active  start_date_active  --適用開始日
+         , flvv.end_date_active    end_date_active    --適用終了日
+    FROM   fnd_lookup_values_vl flvv
+    WHERE  flvv.lookup_type   = cv_lookup_type_invoice
+    AND    flvv.enabled_flag  = cv_yes
+  ;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
   -- ===============================================
   -- グローバルカーソルテーブルタイプ
   -- ===============================================
@@ -319,6 +357,15 @@ AS
   -- 問屋請求書明細取得結果格納テーブル型
   TYPE g_sell_detail_ttype IS TABLE OF g_sell_detail_cur%ROWTYPE
   INDEX BY BINARY_INTEGER;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+  -- 請求書税コード
+  TYPE g_invoice_tax_ttype IS TABLE OF g_invoice_tax_cur%ROWTYPE
+  INDEX BY BINARY_INTEGER;
+  -- ===============================================
+  -- グローバルテーブル型変数
+  -- ===============================================
+  gt_invoice_tax_tab  g_invoice_tax_ttype;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
   -- ===============================================
   -- グローバル例外
   -- ===============================================
@@ -938,7 +985,10 @@ AS
       , gn_detail_num                         -- ヘッダー内での連番
       , gv_prof_detail_type_tax               -- 明細タイプ：税金
       , ln_tax                                -- 金額：税金
-      , gv_prof_invoice_tax_code              -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--      , gv_prof_invoice_tax_code              -- 請求書税コード
+      , gv_tax_code                           -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
       , gn_tax_ccid                           -- 仮払消費税CCID
       , cn_last_updated_by                    -- 最終更新者
       , SYSDATE                               -- 最終更新日
@@ -1075,7 +1125,10 @@ AS
         , gn_detail_num                                     -- ヘッダー内での連番
         , gv_prof_detail_type_item                          -- 明細タイプ：明細
         , ir_detail_data_rec.backmargin                     -- 金額：販売手数料
-        , gv_prof_invoice_tax_code                          -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--        , gv_prof_invoice_tax_code                          -- 請求書税コード
+        , gv_tax_code                                       -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
         , ln_backmargin_ccid                                -- 販売手数料CCID
         , cn_last_updated_by                                -- 最終更新者
         , SYSDATE                                           -- 最終更新日
@@ -1157,7 +1210,10 @@ AS
         , gn_detail_num                                     -- ヘッダー内での連番
         , gv_prof_detail_type_item                          -- 明細タイプ：明細
         , ir_detail_data_rec.sales_support_amt              -- 金額：販売協賛金
-        , gv_prof_invoice_tax_code                          -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--        , gv_prof_invoice_tax_code                          -- 請求書税コード
+        , gv_tax_code                                       -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
         , ln_support_amt_ccid                               -- 販売手数料CCID
         , cn_last_updated_by                                -- 最終更新者
         , SYSDATE                                           -- 最終更新日
@@ -1239,7 +1295,10 @@ AS
         , gn_detail_num                                       -- ヘッダー内での連番
         , gv_prof_detail_type_item                            -- 明細タイプ：明細
         , ir_detail_data_rec.misc_acct_amt                    -- 金額：その他金額
-        , gv_prof_invoice_tax_code                            -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--        , gv_prof_invoice_tax_code                            -- 請求書税コード
+        , gv_tax_code                                         -- 請求書税コード
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
         , ln_misc_acct_amt_ccid                               -- 販売手数料CCID
         , cn_last_updated_by                                  -- 最終更新者
         , SYSDATE                                             -- 最終更新日
@@ -1324,6 +1383,10 @@ AS
 -- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
     lt_invoice_type              ap_invoices_interface.invoice_type_lookup_code%TYPE; -- 請求書タイプ
 -- ************ 2010/09/21 1.7 M.Watanabe ADD END   ************ --
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+    ln_tax_data_cnt              NUMBER         DEFAULT 0;                -- 請求書税金コードデータ件数
+    ld_selling_month             DATE           DEFAULT NULL;             -- 売上計上日(売上計上日の１日)
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
     -- ===============================================
     -- ローカルテーブル型変数
     -- ===============================================
@@ -1332,6 +1395,9 @@ AS
     -- ローカル例外
     -- ===============================================
     ap_oif_create_expt           EXCEPTION;                               -- ヘッダー登録エラー
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+    invoice_tax_expt             EXCEPTION;                               -- 請求書税金コード取得エラー
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -1341,6 +1407,51 @@ AS
     -- サイト月数初期化
     ln_due_months_forword := 0;
 -- 2012/03/27 Ver.1.8 [E_本稼動_08315] SCSK S.Niki ADD END
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+    -- 消費税関連項目初期化
+    gv_tax_code      := NULL;
+    gn_tax_rate      := NULL;
+    -- 売上計上日の1日を取得
+    ld_selling_month := TO_DATE( ir_sell_head_data_rec.selling_month, cv_format_yyyymm );
+    -- 請求書税金コードより消費税率の取得
+    <<get_tax_loop>>
+    FOR i IN 1..gt_invoice_tax_tab.LAST LOOP
+      -- 請求書税金コードより売上計上月に該当する税コード・税率を取得
+      IF (
+              ( ld_selling_month >= NVL( gt_invoice_tax_tab(i).start_date_active, ld_selling_month ) )
+          AND ( ld_selling_month <= NVL( gt_invoice_tax_tab(i).end_date_active, ld_selling_month ) )
+         )
+      THEN
+        -- 消費税の数値チェック
+        BEGIN
+          gn_tax_rate     := TO_NUMBER( gt_invoice_tax_tab(i).tax_rate / 100 ); -- 消費税率数値変換
+          gv_tax_code     := gt_invoice_tax_tab(i).tax_code;                    -- 消費税コード
+          ln_tax_data_cnt := ln_tax_data_cnt + 1;                               -- データ件数
+        EXCEPTION
+          WHEN VALUE_ERROR THEN
+            ln_tax_data_cnt := 0;
+            EXIT;
+        END;
+      END IF;
+    END LOOP get_tax_loop;
+    --エラーチェック(消費税率が取得できない、複数件存在する場合エラー)
+    IF ( ln_tax_data_cnt <> 1 ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00089
+                    , iv_token_name1  => cv_token_payment_date                      -- 支払予定日
+                    , iv_token_value1 => TO_CHAR( ir_sell_head_data_rec.expect_payment_date , cv_format_yyyymmdd_sla )
+                    , iv_token_name2  => cv_token_sales_month                       -- 売上対象年月
+                    , iv_token_value2 => TO_CHAR( 
+                        TO_DATE( ir_sell_head_data_rec.selling_month, cv_format_yyyymm_sla ), cv_format_yyyymm_sla )
+                    , iv_token_name3  => cv_token_vender_code                       -- 支払先コード
+                    , iv_token_value3 => ir_sell_head_data_rec.supplier_code
+                    , iv_token_name4  => cv_token_base_code                         -- 拠点コード
+                    , iv_token_value4 => ir_sell_head_data_rec.base_code
+                    );
+      gv_invoice_tax_err_flag := cv_yes; --請求書税金コードエラー(件数取得の為、処理は継続する)
+    END IF;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
     -- ===============================================
     -- セーブポイント設定
     -- ===============================================
@@ -1493,6 +1604,12 @@ AS
     gn_sell_detail_num := lt_detail_tab.COUNT;
     -- 対象件数に追加
     gn_target_cnt := gn_target_cnt + gn_sell_detail_num;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+    -- 請求書税金コード取得エラーの場合、以降の処理はスキップ
+    IF ( gv_invoice_tax_err_flag = cv_yes ) THEN
+      RAISE invoice_tax_expt;
+    END IF;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
     -- ===============================================
     -- AP請求書OIF明細登録(A-5)
     -- ===============================================
@@ -1570,6 +1687,13 @@ AS
       ov_retcode := cv_status_error;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg , 1 , 5000 );
       ov_errmsg  := lv_errmsg;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+    -- *** 消費税率取得エラー ***
+    WHEN invoice_tax_expt THEN
+      ov_retcode := lv_retcode;  --全データチェックの為、ここでは正常で返す。
+      ov_errbuf  := lv_errbuf;
+      ov_errmsg  := lv_errmsg;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
     -- *** 共通関数例外 ***
     WHEN global_api_expt THEN
       -- セーブポイントまでロールバック
@@ -1777,19 +1901,21 @@ AS
                     );
       RAISE get_data_err_expt;
     END IF;    
-    -- カスタム・プロファイル：請求書税区分の取得
-    gv_prof_invoice_tax_code := FND_PROFILE.VALUE(
-                                  cv_prof_invoice_tax_code
-                                );
-    IF ( gv_prof_invoice_tax_code IS NULL ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcok_appl_short_name
-                    , iv_name         => cv_msg_code_00003
-                    , iv_token_name1  => cv_token_profile             -- プロファイル名
-                    , iv_token_value1 => cv_prof_invoice_tax_code     -- 請求書税区分
-                    );
-      RAISE get_data_err_expt;
-    END IF;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu DELETE START
+--    -- カスタム・プロファイル：請求書税区分の取得
+--    gv_prof_invoice_tax_code := FND_PROFILE.VALUE(
+--                                  cv_prof_invoice_tax_code
+--                                );
+--    IF ( gv_prof_invoice_tax_code IS NULL ) THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl_short_name
+--                    , iv_name         => cv_msg_code_00003
+--                    , iv_token_name1  => cv_token_profile             -- プロファイル名
+--                    , iv_token_value1 => cv_prof_invoice_tax_code     -- 請求書税区分
+--                    );
+--      RAISE get_data_err_expt;
+--    END IF;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu DELETE END
     -- カスタム・プロファイル：部門コード_財務経理部の取得
     gv_prof_dept_fin := FND_PROFILE.VALUE(
                           cv_prof_dept_fin
@@ -1956,23 +2082,28 @@ AS
     -- ===============================================
     -- 消費税率の取得
     -- ===============================================
-    BEGIN
-      SELECT ( atc.tax_rate / 100 ) AS tax_rate              -- ( 消費税率/100 )
-      INTO   gn_tax_rate
-      FROM   ap_tax_codes              atc                   -- 税金コード
-      WHERE  atc.name            = gv_prof_invoice_tax_code     -- 請求書税コード
-      AND    atc.set_of_books_id = TO_NUMBER(gv_prof_books_id)  -- 会計帳簿ID
-      AND    atc.enabled_flag    = 'Y'
-      AND    atc.start_date     <= TRUNC( gd_prof_process_date )
-      AND    NVL( atc.inactive_date , TRUNC( gd_prof_process_date ) ) >= TRUNC( gd_prof_process_date );
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_xxcok_appl_short_name
-                      , iv_name         => cv_msg_code_00089
-                      );
-        RAISE get_data_err_expt;
-    END;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--    BEGIN
+--      SELECT ( atc.tax_rate / 100 ) AS tax_rate              -- ( 消費税率/100 )
+--      INTO   gn_tax_rate
+--      FROM   ap_tax_codes              atc                   -- 税金コード
+--      WHERE  atc.name            = gv_prof_invoice_tax_code     -- 請求書税コード
+--      AND    atc.set_of_books_id = TO_NUMBER(gv_prof_books_id)  -- 会計帳簿ID
+--      AND    atc.enabled_flag    = 'Y'
+--      AND    atc.start_date     <= TRUNC( gd_prof_process_date )
+--      AND    NVL( atc.inactive_date , TRUNC( gd_prof_process_date ) ) >= TRUNC( gd_prof_process_date );
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_xxcok_appl_short_name
+--                      , iv_name         => cv_msg_code_00089
+--                      );
+--        RAISE get_data_err_expt;
+--    END;
+   OPEN  g_invoice_tax_cur;
+   FETCH g_invoice_tax_cur BULK COLLECT INTO gt_invoice_tax_tab;
+   CLOSE g_invoice_tax_cur;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
     -- ===============================================
     -- 負債勘定CCIDの取得
     -- ===============================================
@@ -2132,8 +2263,23 @@ AS
       -- ===============================================
       -- 終了ステータスによって、件数処理を変更する。
       -- ===============================================
-      -- 正常終了時
-      IF ( lv_retcode = cv_status_normal ) THEN
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--      -- 正常終了時
+--      IF ( lv_retcode = cv_status_normal ) THEN
+      -- 請求書税金コード取得エラー時
+      IF ( gv_invoice_tax_err_flag = cv_yes ) THEN
+        -- 明細件数をエラー件数に追加する。
+        gn_invoice_tax_err_cnt  := gn_invoice_tax_err_cnt + gn_sell_detail_num;
+        -- 請求書税金コードエラーフラグ初期化
+        gv_invoice_tax_err_flag := cv_no;
+        -- lv_errmsgをログに出力する。
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.LOG      -- 出力区分
+                      , iv_message  => lv_errmsg         -- メッセージ
+                      , in_new_line => cn_number_0       -- 改行
+                      );
+      ELSIF ( lv_retcode = cv_status_normal ) THEN
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
         -- 明細件数を正常終了件数に追加する。
         gn_normal_cnt := gn_normal_cnt + gn_sell_detail_num;
       -- 警告終了時
@@ -2148,12 +2294,22 @@ AS
                       );
       -- エラー終了時
       ELSIF ( lv_retcode = cv_status_error ) THEN
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD START
+        gn_invoice_tax_err_cnt := 0;  --請求書税金コードエラー以外(システムエラー)とする為、初期化
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu ADD END
         -- 共通関数例外に飛ぶ
         RAISE global_api_expt;
       END IF;
     END LOOP ap_oif_header_loop;
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--    -- 警告(スキップ)件数件数が0件以外の場合、リターンコードに警告を代入する。
+--    IF ( gn_skip_cnt != 0 ) THEN
+    -- 請求書税金コード取得エラーが発生している場合
+    IF ( gn_invoice_tax_err_cnt != 0 ) THEN
+      ov_retcode := cv_status_error;
     -- 警告(スキップ)件数件数が0件以外の場合、リターンコードに警告を代入する。
-    IF ( gn_skip_cnt != 0 ) THEN
+    ELSIF ( gn_skip_cnt != 0 ) THEN
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
       ov_retcode := cv_status_warn;
     END IF;
 --
@@ -2222,8 +2378,19 @@ AS
     , ov_retcode    => lv_retcode            -- リターン・コード
     , ov_errmsg     => lv_errmsg             -- ユーザ・エラー・メッセージ
     );
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--    -- submainが警告終了の場合、空白行を1行追加する。
+--    If ( lv_retcode = cv_status_warn ) THEN
+    -- 請求書税金コードエラーが発生している場合、空白行を1行追加する。
+    IF ( gn_invoice_tax_err_cnt != 0 ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG      -- 出力区分
+                    , iv_message  => NULL              -- メッセージ
+                    , in_new_line => cn_number_1       -- 改行
+                    );
     -- submainが警告終了の場合、空白行を1行追加する。
-    If ( lv_retcode = cv_status_warn ) THEN
+    ELSIF ( lv_retcode = cv_status_warn ) THEN
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
       lb_retcode := xxcok_common_pkg.put_message_f(
                       in_which    => FND_FILE.LOG      -- 出力区分
                     , iv_message  => NULL              -- メッセージ
@@ -2259,8 +2426,15 @@ AS
                   , iv_message  => lv_errmsg                     -- メッセージ
                   , in_new_line => cn_number_0                   -- 改行
                   );
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR START
+--    -- エラー発生時、成功件数:0件 スキップ件数:0件 エラー件数:1件
+--    IF ( lv_retcode = cv_status_error ) THEN
+    -- 請求書税金コードエラー発生時、エラー件数は該当のエラーとなった件数を設定
+    IF ( gn_invoice_tax_err_cnt != 0 ) THEN
+      gn_error_cnt  := gn_invoice_tax_err_cnt;
     -- エラー発生時、成功件数:0件 スキップ件数:0件 エラー件数:1件
-    IF ( lv_retcode = cv_status_error ) THEN
+    ELSIF ( lv_retcode = cv_status_error ) THEN
+-- 2014/04/07 Ver.1.9 [E_本稼動_11765] SCSK K.Kiriu REPAIR END
       gn_normal_cnt := 0;
       gn_skip_cnt   := 0;
       gn_error_cnt  := 1;
