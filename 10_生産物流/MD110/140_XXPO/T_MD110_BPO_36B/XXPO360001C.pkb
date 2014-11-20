@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,10 @@ AS
  *  2008/06/10    1.5   Y.Ishikawa       ロットマスタに同じロットNoが存在する場合、2明細出力される
  *  2008/06/17    1.6   T.Ikehara        TEMP領域エラー回避のため、xxpo_categories_vを
  *                                       使用しないようにする
+ *  2008/06/25    1.7   I.Higa           特定文字列を出力しようとすると、エラーとなり帳票が出力
+ *                                       されない現象への対応
+ *  2008/06/27    1.8   R.Tomoyose       明細が最大行出力（６行出力）の時に、
+ *                                       合計が次ページに表示される現象を修正
  *
  *****************************************************************************************/
 --
@@ -319,7 +323,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>' ;
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
@@ -1053,6 +1057,7 @@ AS
     lc_price_text1    VARCHAR2(50)  := '（万一納期が遅れる場合は必ず事前にご連絡下さい。）' ;
     lc_price_text2    VARCHAR2(100) := '本注文書の単価は、消費税等抜きの単価です。支払期日' ||
                                        'には、現行法定税率の消費税等を加算して支払います。' ;
+    lc_zero           NUMBER        := 0 ;
 --
     -- *** ローカル変数 ***
     -- キーブレイク判断用
@@ -1188,44 +1193,48 @@ AS
           IF ((ln_cnt <= lc_max_cnt ) OR ( (ln_cnt > lc_max_cnt)
             AND (ln_cnt MOD lc_max_cnt <= lc_max_cnt))) THEN
 --
-            -- 空行の作成
-            <<blank_loop>>
-            FOR i IN 1 .. lc_max_cnt - ( ln_cnt MOD lc_max_cnt ) LOOP
+            IF ((ln_cnt MOD lc_max_cnt) <> lc_zero) THEN
 --
-              -- -----------------------------------------------------
-              -- ロットLＧ開始タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_lot' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-              -- -----------------------------------------------------
-              -- ロットＧ開始タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := 'g_lot' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-              -- -----------------------------------------------------
-              -- ロットＧデータタグ出力
-              -- -----------------------------------------------------
-              -- 品目コード
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-              gt_xml_data_table(gl_xml_idx).tag_value := NULL;
-              -- -----------------------------------------------------
-              -- ロットＧ終了タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := '/g_lot' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-              -- -----------------------------------------------------
-              -- ロットLＧ終了タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_lot' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+              -- 空行の作成
+              <<blank_loop>>
+              FOR i IN 1 .. lc_max_cnt - ( ln_cnt MOD lc_max_cnt ) LOOP
 --
-            END LOOP blank_loop;
+                -- -----------------------------------------------------
+                -- ロットLＧ開始タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_lot' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- ロットＧ開始タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := 'g_lot' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- ロットＧデータタグ出力
+                -- -----------------------------------------------------
+                -- 品目コード
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+                gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+                -- -----------------------------------------------------
+                -- ロットＧ終了タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := '/g_lot' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- ロットLＧ終了タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_lot' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--
+              END LOOP blank_loop;
+--
+            END IF;
 --
           END IF;
 --
@@ -1689,44 +1698,48 @@ AS
     IF ((ln_cnt <= lc_max_cnt ) OR ( (ln_cnt > lc_max_cnt)
          AND (ln_cnt MOD lc_max_cnt <= lc_max_cnt))) THEN
 --
-      -- 空行の作成
-      <<blank_loop>>
-      FOR i IN 1 .. lc_max_cnt - ( ln_cnt MOD lc_max_cnt ) LOOP
+      IF ((ln_cnt MOD lc_max_cnt) <> lc_zero) THEN
 --
-        -- -----------------------------------------------------
-        -- ロットLＧ開始タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_lot' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-        -- -----------------------------------------------------
-        -- ロットＧ開始タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'g_lot' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-        -- -----------------------------------------------------
-        -- ロットＧデータタグ出力
-        -- -----------------------------------------------------
-        -- 品目コード
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := NULL;
-        -- -----------------------------------------------------
-        -- ロットＧ終了タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := '/g_lot' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-        -- -----------------------------------------------------
-        -- ロットLＧ終了タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_lot' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+        -- 空行の作成
+        <<blank_loop>>
+        FOR i IN 1 .. lc_max_cnt - ( ln_cnt MOD lc_max_cnt ) LOOP
 --
-      END LOOP blank_loop;
+          -- -----------------------------------------------------
+          -- ロットLＧ開始タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_lot' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- ロットＧ開始タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'g_lot' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- ロットＧデータタグ出力
+          -- -----------------------------------------------------
+          -- 品目コード
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+          -- -----------------------------------------------------
+          -- ロットＧ終了タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := '/g_lot' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- ロットLＧ終了タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_lot' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--
+        END LOOP blank_loop;
+--
+      END IF;
 --
     END IF;
 --

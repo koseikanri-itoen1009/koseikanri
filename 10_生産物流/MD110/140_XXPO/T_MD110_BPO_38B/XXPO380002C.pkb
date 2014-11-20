@@ -7,7 +7,7 @@ AS
  * Description      : 発注依頼書
  * MD.050/070       : 発注依頼作成Issue1.0  (T_MD050_BPO_380)
  *                    発注依頼作成Issue1.0  (T_MD070_BPO_38B)
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -26,6 +26,10 @@ AS
  *  2008/03/06    1.0   Syogo Chinen     新規作成
  *  2008/06/17    1.1   T.Ikehara        TEMP領域エラー回避のため、xxpo_categories_vを
  *                                       使用しないようにする
+ *  2008/06/24    1.2   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
+ *                                       されない現象への対応
+ *  2008/06/27    1.3   T.Ikehara        明細が最大行出力（30行出力）の時に、
+ *                                       合計が次ページに表示される現象を修正
  *
  *****************************************************************************************/
 --
@@ -207,7 +211,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>' ;
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
@@ -756,8 +760,6 @@ AS
     <<main_data_loop>>
     FOR i IN 1..gt_main_data.COUNT LOOP
 --
-      -- 明細件数カウント
-      ln_cnt := ln_cnt + 1;
       -- =====================================================
       -- 発注番号ブレイク
       -- =====================================================
@@ -773,45 +775,47 @@ AS
           IF ((ln_cnt <= lc_max_cnt ) OR ( (ln_cnt > lc_max_cnt)
             AND (ln_cnt MOD lc_max_cnt <= lc_max_cnt))) THEN
 --
-            -- 空行の作成
-            <<blank_loop>>
-            FOR i IN 1 .. lc_max_cnt - ln_cnt LOOP
+            IF ((ln_cnt MOD lc_max_cnt) <> 0) THEN
+              -- 空行の作成
+              <<blank_loop>>
+              FOR i IN 1 .. lc_max_cnt - (ln_cnt MOD lc_max_cnt) LOOP
 --
-              -- -----------------------------------------------------
-              -- 明細LＧ開始タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-              -- -----------------------------------------------------
-              -- 明細Ｇ開始タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := 'g_item' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-              -- -----------------------------------------------------
-              -- 明細Ｇデータタグ出力
-              -- -----------------------------------------------------
-              -- 品目コード
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-              gt_xml_data_table(gl_xml_idx).tag_value := NULL;
-              -- -----------------------------------------------------
-              -- 明細Ｇ終了タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := '/g_item' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-              -- -----------------------------------------------------
-              -- 明細LＧ終了タグ出力
-              -- -----------------------------------------------------
-              gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-              gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item' ;
-              gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- 明細LＧ開始タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- 明細Ｇ開始タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := 'g_item' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- 明細Ｇデータタグ出力
+                -- -----------------------------------------------------
+                -- 品目コード
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+                gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+                -- -----------------------------------------------------
+                -- 明細Ｇ終了タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := '/g_item' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+                -- -----------------------------------------------------
+                -- 明細LＧ終了タグ出力
+                -- -----------------------------------------------------
+                gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+                gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item' ;
+                gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
-            END LOOP blank_loop;
+              END LOOP blank_loop;
 --
+            END IF;
           END IF;
 --
           -- -----------------------------------------------------
@@ -848,7 +852,7 @@ AS
           gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
           -- 件数、合計クリア
-          ln_cnt   := 1;
+          ln_cnt   := 0;
           ln_total := 0;
 --
           -- -----------------------------------------------------
@@ -1059,50 +1063,54 @@ AS
          ln_cnt := 0;
       END IF;
 --
+      -- 明細件数カウント
+      ln_cnt := ln_cnt + 1;
     END LOOP main_data_loop ;
 --
     IF ((ln_cnt <= lc_max_cnt ) OR ( (ln_cnt > lc_max_cnt)
       AND (ln_cnt MOD lc_max_cnt <= lc_max_cnt))) THEN
 --
-      -- 空行の作成
-      <<blank_loop>>
-      FOR i IN 1 .. lc_max_cnt - ln_cnt -1 LOOP
+      IF ((ln_cnt MOD lc_max_cnt) <> 0) THEN
+        -- 空行の作成
+        <<blank_loop>>
+        FOR i IN 1 .. lc_max_cnt - ln_cnt LOOP
 --
-        -- -----------------------------------------------------
-        -- 明細LＧ開始タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-        -- -----------------------------------------------------
-        -- 明細Ｇ開始タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'g_item' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-        -- -----------------------------------------------------
-        -- 明細Ｇデータタグ出力
-        -- -----------------------------------------------------
-        -- 品目コード
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := NULL;
-        -- -----------------------------------------------------
-        -- 明細Ｇ終了タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := '/g_item' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
-        -- -----------------------------------------------------
-        -- 明細LＧ終了タグ出力
-        -- -----------------------------------------------------
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- 明細LＧ開始タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- 明細Ｇ開始タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'g_item' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- 明細Ｇデータタグ出力
+          -- -----------------------------------------------------
+          -- 品目コード
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'item_code' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := NULL;
+          -- -----------------------------------------------------
+          -- 明細Ｇ終了タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := '/g_item' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+          -- -----------------------------------------------------
+          -- 明細LＧ終了タグ出力
+          -- -----------------------------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
-      END LOOP blank_loop;
+        END LOOP blank_loop;
 --
+      END IF;
     END IF;
 --
     -- -----------------------------------------------------
