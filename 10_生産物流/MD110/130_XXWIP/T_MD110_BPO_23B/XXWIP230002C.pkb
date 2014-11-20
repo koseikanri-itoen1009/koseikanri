@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/12/17    1.7   Daisuke  Nihei      本番障害#709対応
  *  2008/12/24    1.8   Akiyoshi Shiina     本番障害#849,#823対応
  *  2008/12/25    1.9   Akiyoshi Shiina     本番障害#823再対応
+ *  2009/02/04    1.10  Yasuhisa Yamamoto   本番障害#4対応 ランク３出力対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -230,6 +231,9 @@ AS
       ,l_item_type        xxcmn_lookup_values_v.meaning%TYPE          -- 参照コード.摘要
       ,l_item_rank1       gme_material_details.attribute2%TYPE        -- 生産原料詳細.DFF2(ランク1)
       ,l_item_rank2       gme_material_details.attribute3%TYPE        -- 生産原料詳細.DFF3(ランク2)
+-- 2009/02/04 v1.10 Y.Yamamoto #4 add start
+      ,l_item_rank3       gme_material_details.attribute26%TYPE       -- 生産原料詳細.DFF26(ランク3)
+-- 2009/02/04 v1.10 Y.Yamamoto #4 add end
       ,l_item_tekiyo      gme_material_details.attribute4%TYPE        -- 生産原料詳細.DFF4(摘要)
       ,l_lot_no           ic_lots_mst.lot_no%TYPE                     -- OPMロットマスタ.ロットNO
       ,l_move_cd          gme_material_details.attribute12%TYPE       -- 生産原料詳細.DFF12(移動場所コード)
@@ -937,6 +941,14 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'item_rank2';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
     gt_xml_data_table(gl_xml_idx).tag_value := ir_head_data.l_item_rank2;
+-- 2009/02/04 v1.10 Y.Yamamoto #4 add start
+--
+    -- 【データ】ランク３
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'item_rank3';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := ir_head_data.l_item_rank3;
+-- 2009/02/04 v1.10 Y.Yamamoto #4 add end
 --
     -- 【データ】摘要
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -2424,6 +2436,9 @@ AS
           ,xlv1v3.meaning                                          AS item_type        -- 参照コード.摘要
           ,gmd.attribute2                                          AS item_rank1       -- 生産原料詳細.DFF2(ランク1)
           ,gmd.attribute3                                          AS item_rank2       -- 生産原料詳細.DFF3(ランク2)
+-- 2009/02/04 v1.10 Y.Yamamoto #4 add start
+          ,gmd.attribute26                                         AS item_rank3       -- 生産原料詳細.DFF26(ランク3)
+-- 2009/02/04 v1.10 Y.Yamamoto #4 add end
           ,RTRIM(SUBSTRB(gmd.attribute4 , 1 , 100))                AS item_tekiyo      -- 生産原料詳細.DFF4(摘要)
           ,ilm.lot_no                                              AS lot_no           -- OPMロットマスタ.ロットNO
           ,gmd.attribute12                                         AS move_cd          -- 生産原料詳細.DFF12(移動場所コード)
