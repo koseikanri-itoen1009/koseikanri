@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/14    1.0   T.Kojima        新規作成
+ *  2009/03/26    1.1   H.Sasaki        [障害T1_0120]
  *
  *****************************************************************************************/
 --
@@ -96,7 +97,6 @@ AS
   cv_appl_short_name_sqlgl   CONSTANT VARCHAR2(10)  := 'SQLGL';            -- General Ledger
   cv_normal_record           CONSTANT VARCHAR2(1)   := 'Y';                -- 通常レコード
   cv_error_record            CONSTANT VARCHAR2(1)   := 'N';                -- エラーレコード
-
   -- メッセージ
   cv_msg_no_prm              CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
   cv_msg_profile_get_err     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00032'; -- プロファイル値取得エラー
@@ -112,14 +112,16 @@ AS
   cv_msg_unit_cost_sum       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10340'; -- 原価差額集約単位件数メッセージ
 --
   -- トークン
-  cv_tkn_profile             CONSTANT VARCHAR2(25)  := 'PRO_TOK';          -- プロファイル名
-  cv_tkn_source              CONSTANT VARCHAR2(25)  := 'SOURCE';           -- 仕訳ソース名
-  cv_tkn_account_id          CONSTANT VARCHAR2(25)  := 'ACCOUNT_ID';       -- 勘定科目ID
-  cv_tkn_account             CONSTANT VARCHAR2(25)  := 'ACCOUNT';          -- 勘定科目
-  cv_tkn_item_code           CONSTANT VARCHAR2(25)  := 'ITEM_CODE';        -- 品目コード
-  cv_tkn_dept                CONSTANT VARCHAR2(25)  := 'DEPT';             -- 部門
-  cv_tkn_period              CONSTANT VARCHAR2(25)  := 'PERIOD';           -- 会計期間
-
+  cv_tkn_profile             CONSTANT VARCHAR2(25)  := 'PRO_TOK';           -- プロファイル名
+  cv_tkn_source              CONSTANT VARCHAR2(25)  := 'SOURCE';            -- 仕訳ソース名
+  cv_tkn_account_id          CONSTANT VARCHAR2(25)  := 'ACCOUNT_ID';        -- 勘定科目ID
+  cv_tkn_account             CONSTANT VARCHAR2(25)  := 'ACCOUNT';           -- 勘定科目
+  cv_tkn_item_code           CONSTANT VARCHAR2(25)  := 'ITEM_CODE';         -- 品目コード
+  cv_tkn_dept                CONSTANT VARCHAR2(25)  := 'DEPT';              -- 部門
+  cv_tkn_period              CONSTANT VARCHAR2(25)  := 'PERIOD';            -- 会計期間
+-- == 2009/03/26 V1.1 Added START ===============================================================
+  cv_tkn_subacct             CONSTANT VARCHAR2(25)  := 'SUBACCT';           -- 補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -132,14 +134,17 @@ AS
     , xwcv_adj_dept_code         gl_code_combinations.segment2%TYPE                   --  3.調整部門コード
     , mta_account_id             mtl_transaction_accounts.reference_account%TYPE      --  4.勘定科目ID
     , gcc_account_code           gl_code_combinations.segment3%TYPE                   --  5.勘定科目コード
-    , mta_inventory_item_id      mtl_transaction_accounts.inventory_item_id%TYPE      --  6.品目ID
-    , msib_item_code             mtl_system_items_b.segment1%TYPE                     --  7.品目コード
-    , mta_transaction_date       mtl_transaction_accounts.transaction_date%TYPE       --  8.取引日
-    , mta_transaction_value      mtl_transaction_accounts.transaction_value%TYPE      --  9.取引金額
-    , mta_primary_quantity       mtl_transaction_accounts.primary_quantity%TYPE       -- 10.取引数量
-    , mta_base_transaction_value mtl_transaction_accounts.base_transaction_value%TYPE -- 11.基準単位金額
-    , mta_organization_id        mtl_transaction_accounts.organization_id%TYPE        -- 12.組織ID
-    , mta_gl_batch_id            mtl_transaction_accounts.gl_batch_id%TYPE            -- 13.GLバッチID
+-- == 2009/03/26 V1.1 Added Start ===============================================================
+    , gcc_subacct_code           gl_code_combinations.segment4%TYPE                   --  6.補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
+    , mta_inventory_item_id      mtl_transaction_accounts.inventory_item_id%TYPE      --  7.品目ID
+    , msib_item_code             mtl_system_items_b.segment1%TYPE                     --  8.品目コード
+    , mta_transaction_date       mtl_transaction_accounts.transaction_date%TYPE       --  9.取引日
+    , mta_transaction_value      mtl_transaction_accounts.transaction_value%TYPE      -- 10.取引金額
+    , mta_primary_quantity       mtl_transaction_accounts.primary_quantity%TYPE       -- 11.取引数量
+    , mta_base_transaction_value mtl_transaction_accounts.base_transaction_value%TYPE -- 12.基準単位金額
+    , mta_organization_id        mtl_transaction_accounts.organization_id%TYPE        -- 13.組織ID
+    , mta_gl_batch_id            mtl_transaction_accounts.gl_batch_id%TYPE            -- 14.GLバッチID
   );
   TYPE g_mtl_txn_acct_ttype IS TABLE OF g_mtl_txn_acct_rtype INDEX BY BINARY_INTEGER;
 --
@@ -288,12 +293,14 @@ AS
       RAISE profile_expt;
     END IF;
 --
+-- == 2009/03/26 V1.1 Deleted START ===============================================================
     -- 補助科目_ダミー値
-    gt_aff4_dummy := fnd_profile.value( cv_prf_aff4_subacct_dummy );
-    IF( gt_aff4_dummy IS NULL ) THEN
-      lv_tkn_profile := cv_prf_aff4_subacct_dummy;
-      RAISE profile_expt;
-    END IF;
+--    gt_aff4_dummy := fnd_profile.value( cv_prf_aff4_subacct_dummy );
+--    IF( gt_aff4_dummy IS NULL ) THEN
+--      lv_tkn_profile := cv_prf_aff4_subacct_dummy;
+--      RAISE profile_expt;
+--    END IF;
+-- == 2009/03/26 V1.1 Deleted END   ===============================================================
 --
     -- 顧客コード_ダミー値
     gt_aff5_dummy := fnd_profile.value( cv_prf_aff5_customer_dummy );
@@ -464,14 +471,17 @@ AS
              END                         AS xwcv_adj_dept_code           --  3.調整部門コード
            , mta.reference_account       AS mta_account_id               --  4.勘定科目ID
            , gcc.segment3                AS gcc_account_code             --  5.勘定科目コード
-           , mta.inventory_item_id       AS mta_inventory_item_id        --  6.品目ID
-           , msib.segment1               AS msib_item_code               --  7.品目コード
-           , mta.transaction_date        AS mta_transaction_date         --  8.取引日
-           , mta.transaction_value       AS mta_transaction_value        --  9.取引金額
-           , mta.primary_quantity        AS mta_primary_quantity         -- 10.取引数量
-           , mta.base_transaction_value  AS mta_base_transaction_value   -- 11.基準単位金額
-           , mta.organization_id         AS mta_organization_id          -- 12.組織ID
-           , mta.gl_batch_id             AS mta_gl_batch_id              -- 13.GLバッチID
+-- == 2009/03/26 V1.1 Added START ===============================================================
+           , gcc.segment4                AS gcc_subacct_code             --  6.補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
+           , mta.inventory_item_id       AS mta_inventory_item_id        --  7.品目ID
+           , msib.segment1               AS msib_item_code               --  8.品目コード
+           , mta.transaction_date        AS mta_transaction_date         --  9.取引日
+           , mta.transaction_value       AS mta_transaction_value        -- 10.取引金額
+           , mta.primary_quantity        AS mta_primary_quantity         -- 11.取引数量
+           , mta.base_transaction_value  AS mta_base_transaction_value   -- 12.基準単位金額
+           , mta.organization_id         AS mta_organization_id          -- 13.組織ID
+           , mta.gl_batch_id             AS mta_gl_batch_id              -- 14.GLバッチID
       FROM   mtl_transaction_accounts    mta                             -- 資材配賦テーブル
            , gl_code_combinations        gcc                             -- 勘定科目テーブル
            , mtl_system_items_b          msib                            -- Disc品目マスタ
@@ -565,10 +575,8 @@ AS
     -- ロック取得
     OPEN  del_xwcv_tbl_cur;
     CLOSE del_xwcv_tbl_cur;
-
     -- 原価差額ワークテーブル削除 
     DELETE FROM xxcoi_wk_cost_variance  xwcv;
-
 --
   EXCEPTION
     -- *** ロックエラーハンドラ ***
@@ -734,6 +742,10 @@ AS
                      , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
                      , iv_token_name4  => cv_tkn_account
                      , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
+-- == 2009/03/26 V1.1 Added START ===============================================================
+                     , iv_token_name5  => cv_tkn_subacct
+                     , iv_token_value5 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_subacct_code
+-- == 2009/03/26 V1.1 Added END   ===============================================================
                    );
       lv_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf_cmpnt_cost, 1, 5000 );
       FND_FILE.PUT_LINE(
@@ -759,6 +771,10 @@ AS
                      , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
                      , iv_token_name4  => cv_tkn_account
                      , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
+-- == 2009/03/26 V1.1 Added START ===============================================================
+                     , iv_token_name5  => cv_tkn_subacct
+                     , iv_token_value5 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_subacct_code
+-- == 2009/03/26 V1.1 Added END   ===============================================================
                    );
       lv_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf_discrete_cost, 1, 5000 );
       FND_FILE.PUT_LINE(
@@ -784,42 +800,42 @@ AS
     ELSE
       ln_cost_variance := 0;
     END IF;
-
     -- 戻り値セット
     ion_standard_cost  := ln_standard_cost;
     ion_operation_cost := ln_operation_cost;
     ion_cost_variance  := ln_cost_variance;
-
+-- == 2009/03/26 V1.1 Deleted START ===============================================================
     -- ===============================
     -- 必須項目チェック処理
     -- ===============================
     -- 部門コードと勘定科目コードのNULLチェック
-    IF   g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_dept_code    IS NULL
-      OR g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code IS NULL 
-    THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_appl_short_name_xxcoi
-                     , iv_name         => cv_msg_acct_tbl_chk_err
-                     , iv_token_name1  => cv_tkn_account_id
-                     , iv_token_value1 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_account_id )
-                     , iv_token_name2  => cv_tkn_period
-                     , iv_token_value2 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date, 'YYYY-MM' )
-                     , iv_token_name3  => cv_tkn_dept
-                     , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
-                     , iv_token_name4  => cv_tkn_account
-                     , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
-                   );
-      lv_errbuf := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
-      FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-        , buff   => lv_errmsg
-      );
-      FND_FILE.PUT_LINE(
-          which  => FND_FILE.LOG
-        , buff   => lv_errbuf
-      );
-      lv_retcode := cv_status_warn;
-    END IF;
+--    IF   g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_dept_code    IS NULL
+--      OR g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code IS NULL 
+--    THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_appl_short_name_xxcoi
+--                     , iv_name         => cv_msg_acct_tbl_chk_err
+--                     , iv_token_name1  => cv_tkn_account_id
+--                     , iv_token_value1 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_account_id )
+--                     , iv_token_name2  => cv_tkn_period
+--                     , iv_token_value2 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date, 'YYYY-MM' )
+--                     , iv_token_name3  => cv_tkn_dept
+--                     , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
+--                     , iv_token_name4  => cv_tkn_account
+--                     , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
+--                   );
+--      lv_errbuf := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
+--      FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--        , buff   => lv_errmsg
+--      );
+--      FND_FILE.PUT_LINE(
+--          which  => FND_FILE.LOG
+--        , buff   => lv_errbuf
+--      );
+--      lv_retcode := cv_status_warn;
+--    END IF;
+-- == 2009/03/26 V1.1 Deleted END   ===============================================================
 --
     -- リターン・コードセット
     ov_retcode := lv_retcode;
@@ -886,51 +902,57 @@ AS
       , dept_code                                                            --  2.部門コード
       , adj_dept_code                                                        --  3.調整部門コード
       , account_code                                                         --  4.勘定科目コード
-      , inventory_item_id                                                    --  5.品目ID
-      , transaction_date                                                     --  6.取引日
-      , transaction_value                                                    --  7.取引金額
-      , primary_quantity                                                     --  8.取引数量
-      , base_transaction_value                                               --  9.基準単位金額
-      , organization_id                                                      -- 10.組織ID
-      , gl_batch_id                                                          -- 11.GLバッチID
-      , standard_cost                                                        -- 12.標準原価
-      , operation_cost                                                       -- 13.営業原価
-      , cost_variance                                                        -- 14.原価差額
-      , status                                                               -- 15.ステータス
-      , created_by                                                           -- 16.作成者
-      , creation_date                                                        -- 17.作成日
-      , last_updated_by                                                      -- 18.最終更新者
-      , last_update_date                                                     -- 19.最終更新日
-      , last_update_login                                                    -- 20.最終更新ログイン
-      , request_id                                                           -- 21.要求ID
-      , program_application_id                                               -- 22.コンカレント・プログラム・アプリケーションID
-      , program_id                                                           -- 23.コンカレント・プログラムID
-      , program_update_date                                                  -- 24.プログラム更新日
+-- == 2009/03/26 V1.1 Added Start ===============================================================
+      , subacct_code                                                         --  5.補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
+      , inventory_item_id                                                    --  6.品目ID
+      , transaction_date                                                     --  7.取引日
+      , transaction_value                                                    --  8.取引金額
+      , primary_quantity                                                     --  9.取引数量
+      , base_transaction_value                                               -- 10.基準単位金額
+      , organization_id                                                      -- 11.組織ID
+      , gl_batch_id                                                          -- 12.GLバッチID
+      , standard_cost                                                        -- 13.標準原価
+      , operation_cost                                                       -- 14.営業原価
+      , cost_variance                                                        -- 15.原価差額
+      , status                                                               -- 16.ステータス
+      , created_by                                                           -- 17.作成者
+      , creation_date                                                        -- 18.作成日
+      , last_updated_by                                                      -- 19.最終更新者
+      , last_update_date                                                     -- 20.最終更新日
+      , last_update_login                                                    -- 21.最終更新ログイン
+      , request_id                                                           -- 22.要求ID
+      , program_application_id                                               -- 23.コンカレント・プログラム・アプリケーションID
+      , program_id                                                           -- 24.コンカレント・プログラムID
+      , program_update_date                                                  -- 25.プログラム更新日
     ) VALUES (
         g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_id         --  1.在庫取引ID
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_dept_code              --  2.部門コード
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code         --  3.調整部門コード
       , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code           --  4.勘定科目コード
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id      --  5.品目ID
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date       --  6.取引日
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_value      --  7.取引金額
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity       --  8.取引数量
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_base_transaction_value --  9.基準単位金額
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_organization_id        -- 10.組織ID
-      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_gl_batch_id            -- 11.GLバッチID
-      , in_standard_cost                                                     -- 12.標準原価
-      , in_operation_cost                                                    -- 13.営業原価
-      , in_cost_variance                                                     -- 14.原価差額
-      , iv_status                                                            -- 15.ステータス
-      , cn_created_by                                                        -- 16.作成者
-      , SYSDATE                                                              -- 17.システム日付
-      , cn_last_updated_by                                                   -- 18.最終更新者
-      , SYSDATE                                                              -- 19.システム日付
-      , cn_last_update_login                                                 -- 20.最終更新ログイン
-      , cn_request_id                                                        -- 21.要求ID
-      , cn_program_application_id                                            -- 22.コンカレント・プログラム・アプリケーションID
-      , cn_program_id                                                        -- 23.コンカレント・プログラムID
-      , SYSDATE                                                              -- 24.システム日付
+-- == 2009/03/26 V1.1 Added Start ===============================================================
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_subacct_code           --  5.補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id      --  6.品目ID
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date       --  7.取引日
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_value      --  8.取引金額
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity       --  9.取引数量
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_base_transaction_value -- 10.基準単位金額
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_organization_id        -- 11.組織ID
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_gl_batch_id            -- 12.GLバッチID
+      , in_standard_cost                                                     -- 13.標準原価
+      , in_operation_cost                                                    -- 14.営業原価
+      , in_cost_variance                                                     -- 15.原価差額
+      , iv_status                                                            -- 16.ステータス
+      , cn_created_by                                                        -- 17.作成者
+      , SYSDATE                                                              -- 18.作成日
+      , cn_last_updated_by                                                   -- 19.最終更新者
+      , SYSDATE                                                              -- 20.最終更新日
+      , cn_last_update_login                                                 -- 21.最終更新ログイン
+      , cn_request_id                                                        -- 22.要求ID
+      , cn_program_application_id                                            -- 23.コンカレント・プログラム・アプリケーションID
+      , cn_program_id                                                        -- 24.コンカレント・プログラムID
+      , SYSDATE                                                              -- 25.プログラム更新日
     );
 --
   EXCEPTION
@@ -999,6 +1021,9 @@ AS
     IS
       SELECT   xwcv.adj_dept_code           AS xwcv_adj_dept_code          -- 調整部門コード
              , xwcv.account_code            AS xwcv_account_code           -- 勘定科目コード
+-- == 2009/03/26 V1.1 Added START ===============================================================
+             , xwcv.subacct_code            AS xwcv_subacct_code           -- 補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
              , xwcv.transaction_date        AS xwcv_transaction_date       -- 取引日
              , xwcv.gl_batch_id             AS xwcv_gl_batch_id            -- GLバッチID
              , SUM( xwcv.cost_variance )    AS xwcv_cost_variance_sum      -- 原価差額(集約値)
@@ -1011,6 +1036,9 @@ AS
       AND      xwcv.status                <> cv_error_record               -- エラーレコードでない
       GROUP BY xwcv.adj_dept_code
              , xwcv.account_code
+-- == 2009/03/26 V1.1 Added START ===============================================================
+             , xwcv.subacct_code
+-- == 2009/03/26 V1.1 Added END   ===============================================================
              , xwcv.transaction_date
              , xwcv.gl_batch_id
              , gp.period_name
@@ -1053,6 +1081,10 @@ AS
                        , iv_token_value2 => xwcv_sumr_rec.xwcv_adj_dept_code
                        , iv_token_name3  => cv_tkn_account
                        , iv_token_value3 => xwcv_sumr_rec.xwcv_account_code
+-- == 2009/03/26 V1.1 Added START ===============================================================
+                       , iv_token_name4  => cv_tkn_subacct
+                       , iv_token_value4 => xwcv_sumr_rec.xwcv_subacct_code
+-- == 2009/03/26 V1.1 Added END   ===============================================================
                      );
         lv_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
         FND_FILE.PUT_LINE(
@@ -1119,7 +1151,10 @@ AS
           , gt_aff1_company_code                      -- 10.プロファイル値：会社コード
           , xwcv_sumr_rec.xwcv_adj_dept_code          -- 11.調整部門コード
           , xwcv_sumr_rec.xwcv_account_code           -- 12.勘定科目コード
-          , gt_aff4_dummy                             -- 13.プロファイル値：補助科目_ダミー値
+-- == 2009/03/26 V1.1 Added START ===============================================================
+--          , gt_aff4_dummy                             -- 13.プロファイル値：補助科目_ダミー値
+          , xwcv_sumr_rec.xwcv_subacct_code           -- 13.補助科目コード
+-- == 2009/03/26 V1.1 Added END   ===============================================================
           , gt_aff5_dummy                             -- 14.プロファイル値：顧客コード_ダミー値
           , gt_aff6_dummy                             -- 15.プロファイル値：企業コード_ダミー値
           , gt_aff7_dummy                             -- 16.プロファイル値：予備１_ダミー値
@@ -1206,7 +1241,6 @@ AS
     ln_operation_cost    NUMBER DEFAULT 0;  -- 営業原価
     ln_cost_variance     NUMBER DEFAULT 0;  -- 原価差額
     lv_status            VARCHAR2(1);       -- ステータス
-    
 --
   BEGIN
 --
@@ -1262,7 +1296,6 @@ AS
       );
       RETURN;
     END IF;
-    
     -- 対象件数セット(資材配賦情報単位)
     gn_target_cnt := ln_mtl_txn_acct_cnt;
 --

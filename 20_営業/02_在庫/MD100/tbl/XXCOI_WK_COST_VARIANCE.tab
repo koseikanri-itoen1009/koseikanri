@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOI_WK_COST_VARIANCE
  * Description : 原価差額ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/14    1.0   T.Kojima        新規作成
+ *  2009/03/26    1.1   H.Sasaki        [障害T1_0120]
  *
  **************************************************************************************/
 CREATE TABLE XXCOI.XXCOI_WK_COST_VARIANCE (
@@ -17,6 +18,9 @@ CREATE TABLE XXCOI.XXCOI_WK_COST_VARIANCE (
     ,dept_code                    VARCHAR2(4)
     ,adj_dept_code                VARCHAR2(4)
     ,account_code                 VARCHAR2(5)
+-- == 2009/03/26 V1.1 Added START ===============================================================
+    ,subacct_code                 VARCHAR2(5)
+-- == 2009/03/26 V1.1 Added END   ===============================================================
     ,inventory_item_id            NUMBER        NOT NULL
     ,transaction_date             DATE          NOT NULL
     ,transaction_value            NUMBER
@@ -49,6 +53,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.adj_dept_code                    
 /
 COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.account_code                            IS '勘定科目コード'
 /
+-- == 2009/03/26 V1.1 Added START ===============================================================
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.subacct_code                            IS '補助科目コード'
+/
+-- == 2009/03/26 V1.1 Added END   ===============================================================
 COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.inventory_item_id                       IS '品目ID'
 /
 COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_date                        IS '取引日'
