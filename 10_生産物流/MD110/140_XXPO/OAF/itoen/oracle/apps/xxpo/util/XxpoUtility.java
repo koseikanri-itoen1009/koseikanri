@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.20
+* バージョン : 1.21
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -28,6 +28,7 @@
 * 2008-12-06 1.18 吉元強樹     本番障害#788対応
 * 2008-12-24 1.19 二瓶大輔     本番障害#743対応
 * 2008-12-26 1.20 伊藤ひとみ   本番障害#809対応
+* 2009-01-16 1.21 吉元強樹     本番障害#1006対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -10583,4 +10584,158 @@ public class XxpoUtility
     }
   } // chkAmountFixClass 
 // 2008-10-22 T.Yoshimoto ADD END
+
+// 2009-01-16 v1.21 T.Yoshimoto Add Start
+  /*****************************************************************************
+   * コンカレント：要求セットで受入取引処理を発行します。
+   * @param trans トランザクション
+   * @param groupId グループID
+   * @return HashMap 処理結果/要求ID
+   * @throws OAException OA例外
+   ****************************************************************************/
+  public static HashMap doRVCTP2(
+    OADBTransaction trans,
+    String[] groupId
+  ) throws OAException
+  {
+    String apiName      = "doRVCTP2";
+
+    // OUTパラメータ用
+    HashMap retHash = new HashMap();
+    retHash.put("RetFlag", XxcmnConstants.RETURN_NOT_EXE); // 戻り値
+
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    
+    sb.append("DECLARE "                                                        );
+    // ローカル変数
+    sb.append("  ln_req_id                NUMBER; "                             );
+    sb.append("  lv_rcv_stage    CONSTANT VARCHAR2(50) := 'STAGE10'; "          );
+    sb.append("  lv_rcv_stage2   CONSTANT VARCHAR2(50) := 'STAGE20'; "          );
+    sb.append("  lv_errbuf                VARCHAR2(5000); "                     );  // エラー・メッセージ
+    sb.append("  lv_retcode               VARCHAR2(1); "                        );  // リターン・コード
+    sb.append("  lv_errmsg                VARCHAR2(5000); "                     );  // ユーザー・エラー・メッセージ
+    sb.append("  lb_ret                   BOOLEAN; "                            );
+    // 処理部共通例外
+    sb.append("  process_expt             EXCEPTION; "                          );
+    sb.append("BEGIN "                                                          );
+    // 要求セットの準備
+    sb.append("  lb_ret := FND_SUBMIT.SET_REQUEST_SET('XXPO', 'XXPO320001Q'); " );
+
+    sb.append("  IF (NOT lb_ret) THEN "                                         );
+    sb.append("    RAISE process_expt; "                                        );
+    sb.append("  END IF; "                                                      );
+
+    // 受入取引処理起動(要求セット用訂正1)
+    sb.append("  lb_ret := FND_SUBMIT.SUBMIT_PROGRAM('PO', "                    );
+    sb.append("                                      'RVCTP', "                 );
+    sb.append("                                      'STAGE10', "               );
+    sb.append("                                      'BATCH', "                 );
+    sb.append("                                      :1); "                     );
+
+    sb.append("  IF (NOT lb_ret) THEN "                                         );
+    sb.append("    RAISE process_expt; "                                        );
+    sb.append("  END IF; "                                                      );
+
+    // 受入取引処理起動(要求セット用訂正2)
+    sb.append("  lb_ret := FND_SUBMIT.SUBMIT_PROGRAM('PO', "                    );
+    sb.append("                                      'RVCTP', "                 );
+    sb.append("                                      'STAGE20', "               );
+    sb.append("                                      'BATCH', "                 );
+    sb.append("                                      :2); "                     );
+
+    sb.append("  IF (NOT lb_ret) THEN "                                         );
+    sb.append("    RAISE process_expt; "                                        );
+    sb.append("  END IF; "                                                      );
+
+    // 要求セットの発行
+    sb.append("  ln_req_id := FND_SUBMIT.SUBMIT_SET(null,FALSE); "              );
+
+    // 処理失敗
+    sb.append("  IF (ln_req_id > 0) THEN "                                      );
+    sb.append("    :3 := '1'; "                                                 );
+    sb.append("  ELSE "                                                         );
+    sb.append("    RAISE process_expt; "                                        );
+    sb.append("  END IF; "                                                      );
+
+    sb.append("EXCEPTION "                                                      );
+    sb.append("  WHEN OTHERS THEN "                                             );
+    sb.append("    :3 := '0'; "                                                 );
+    sb.append("    ROLLBACK; "                                                  );
+    sb.append("END; "                                                           );
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = trans.createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+
+    try
+    {
+    
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(1, groupId[0]);                    // グループID
+      cstmt.setString(2, groupId[1]);                    // グループID
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(3, Types.VARCHAR);   // リターンコード
+
+      //PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値取得
+      String retFlag = cstmt.getString(3);    // リターンコード
+
+      // 正常終了の場合
+      if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag)) 
+      {
+        // リターンコード正常をセット
+        retHash.put("RetFlag", XxcmnConstants.RETURN_SUCCESS);
+        
+      // 正常終了でない場合、エラー  
+      } else
+      {
+        //トークン生成
+        MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
+                                                   XxpoConstants.TOKEN_NAME_RVCTP) };
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXPO, 
+                               XxpoConstants.XXPO10055, 
+                               tokens);
+      }
+      
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+
+    return retHash;
+  } // doRVCTP2.
+// 2009-01-16 v1.21 T.Yoshimoto Add End
 }

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-11-04 1.6  吉元強樹     統合指摘#546対応
 * 2008-11-05 1.7  伊藤ひとみ   統合テスト指摘71,103,104対応
 * 2008-12-05 1.8  伊藤ひとみ   本番障害#481対応
+* 2009-01-16 1.9  吉元強樹     本番障害#1006対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -2555,9 +2556,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     if (XxcmnUtility.isBlankOrNull(firstTimeDeliveryDate)
       || XxcmnUtility.chkCompareDate(1, firstTimeDeliveryDate, deliveryDate))
     {
-
-      setParams.put("FirstTimeDeliveryDate", deliveryDate.toString());    // 納入日(初回)
-
+// 2009-01-16 v1.9 T.Yoshimoto Mod Start 本番#1006
+      //setParams.put("FirstTimeDeliveryDate", deliveryDate.toString());    // 納入日(初回)
+      setParams.put("FirstTimeDeliveryDate", XxcmnUtility.stringValue(deliveryDate));    // 納入日(初回)
+// 2009-01-16 v1.9 T.Yoshimoto Mod End 本番#1006
     }
 
     // OPMロットMST.納入日(最終)がブランク(Null)である、
@@ -2565,8 +2567,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     if (XxcmnUtility.isBlankOrNull(finalDeliveryDate)
       || XxcmnUtility.chkCompareDate(1, deliveryDate, finalDeliveryDate))
     {
-
-      setParams.put("FinalDeliveryDate", deliveryDate.toString());       // 納入日(最終)
+// 2009-01-16 v1.9 T.Yoshimoto Mod Start 本番#1006
+      //setParams.put("FinalDeliveryDate", deliveryDate.toString());       // 納入日(最終)
+      setParams.put("FinalDeliveryDate", XxcmnUtility.stringValue(deliveryDate));       // 納入日(最終)
+// 2009-01-16 v1.9 T.Yoshimoto Mod End 本番#1006
 
     }
 
@@ -4013,7 +4017,9 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     Number txnsId = null;
 
     // グループID
-    Number[] groupId = new Number[2];
+// 2009-01-16 v1.16 T.Yoshimoto Add Start
+    Number[] groupId;
+// 2009-01-16 v1.16 T.Yoshimoto Add End
 
     // 返却用グループID
     String[] retGroupId = new String[2];
@@ -4037,6 +4043,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // 受入明細が取得できる間、処理を継続
     while(receiptDetailsVO.getCurrentRow() != null)
     {
+
+// 2009-01-16 v1.16 T.Yoshimoto Add Start
+      groupId = new Number[2];  // 配列初期化
+// 2009-01-16 v1.16 T.Yoshimoto Add End
 
       receiptDetailsVORow = (OARow)receiptDetailsVO.getCurrentRow();
 
@@ -4347,7 +4357,8 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
         // OIF訂正処理の場合
         } else if (groupId.length > 1)
         {
-
+// 2009-01-16 v1.16 T.Yoshimoto Mod Start
+/*
           for (int i = 0; i < groupId.length; i++) 
           {
             retHashMap.put("RetFlag", XxcmnConstants.RETURN_NOT_EXE);
@@ -4362,6 +4373,20 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
               return retHashMap;
             }
           }
+*/
+          retHashMap.put("RetFlag", XxcmnConstants.RETURN_NOT_EXE);
+
+          retHashMap = XxpoUtility.doRVCTP2(
+                         getOADBTransaction(),
+                         retGroupId);
+
+          String retFlag = (String)retHashMap.get("RetFlag");
+
+          if (XxcmnConstants.RETURN_NOT_EXE.equals(retFlag))
+          {
+            return retHashMap;
+          }
+// 2009-01-16 v1.16 T.Yoshimoto Mod End
         }
       }
       
@@ -5480,9 +5505,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     if (XxcmnUtility.isBlankOrNull(firstTimeDeliveryDate)
       || XxcmnUtility.chkCompareDate(1, firstTimeDeliveryDate, minTxnsDate))
     {
-
-      setParams.put("FirstTimeDeliveryDate", minTxnsDate.toString());    // 納入日(初回)
-
+// 2009-01-16 v1.9 T.Yoshimoto Mod Start 本番#1006
+      //setParams.put("FirstTimeDeliveryDate", minTxnsDate.toString());    // 納入日(初回)
+      setParams.put("FirstTimeDeliveryDate", XxcmnUtility.stringValue(minTxnsDate));    // 納入日(初回)
+// 2009-01-16 v1.9 T.Yoshimoto Mod End 本番#1006
     }
 
     // OPMロットMST.納入日(最終)がブランク(Null)である、
@@ -5490,9 +5516,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     if (XxcmnUtility.isBlankOrNull(finalDeliveryDate)
       || XxcmnUtility.chkCompareDate(1, maxTxnsDate, finalDeliveryDate))
     {
-
-      setParams.put("FinalDeliveryDate", maxTxnsDate.toString());       // 納入日(最終)
-
+// 2009-01-16 v1.9 T.Yoshimoto Mod Start #1006
+      //setParams.put("FinalDeliveryDate", maxTxnsDate.toString());       // 納入日(最終)
+      setParams.put("FinalDeliveryDate", XxcmnUtility.stringValue(maxTxnsDate));       // 納入日(最終)
+// 2009-01-16 v1.9 T.Yoshimoto Mod End #1006
     }
 
     // ロック取得処理
