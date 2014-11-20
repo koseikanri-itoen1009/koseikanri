@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/07/15    1.8   熊本  和郎       TE080指摘事項#3対応(受注明細アドオン.削除フラグを条件に追加)
  *  2008/07/31    1.9   Yuko  Kawano     結合テスト不具合対応(総重量/総容積の算出ロジック変更)
  *  2008/10/20    1.10  Yuko  Kawano     課題＃32,48,62、統合指摘＃294、T_S_627対応
+ *  2008/11/14    1.11  大橋  孝郎       指摘567,599,605対応
  *
  *****************************************************************************************/
 --
@@ -584,8 +585,12 @@ AS
             ,xcas2v.party_site_full_name                                -- 配送先
             ,xoha.mixed_no                                              -- 混載元no
             ,xoha.cust_po_number                                        -- 顧客発注番号
-            ,xoha.schedule_ship_date                                    -- 出庫日
-            ,xoha.schedule_arrival_date                                 -- 着日
+-- mod start ver1.11
+--            ,xoha.schedule_ship_date                                    -- 出庫日
+--            ,xoha.schedule_arrival_date                                 -- 着日
+            ,NVL(xoha.schedule_ship_date,xoha.shipped_date)             -- 出庫日
+            ,NVL(xoha.schedule_arrival_date,xoha.arrival_date)          -- 着日
+-- mod end ver1.11
             ,xoha.arrival_time_from                                     -- 時間指定（from）
             ,xoha.arrival_time_to                                       -- 時間指定（to）
             ,xott2v.transaction_type_name                               -- 出庫形態
@@ -603,8 +608,12 @@ AS
             ,xola.layer_quantity                                        -- パレット段数
             ,xola.case_quantity                                         -- ケース数
             ,CASE
-              WHEN xim2v.conv_unit IS NULL THEN xola.quantity
-              ELSE xola.quantity / CASE
+-- mod start ver1.11
+--              WHEN xim2v.conv_unit IS NULL THEN xola.quantity
+              WHEN xim2v.conv_unit IS NULL THEN DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity)
+--              ELSE xola.quantity / CASE
+              ELSE DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity) / CASE
+-- mod end ver1.11
                                     WHEN xim2v.num_of_cases IS NULL THEN '1'
                                     WHEN xim2v.num_of_cases = '0'   THEN '1'
                                     ELSE                                 xim2v.num_of_cases
@@ -713,26 +722,41 @@ AS
                                        -- 受注ヘッダアドオン.管轄拠点＝パラメータ.管轄拠点
         AND xoha.input_sales_branch          = iv_input_sales_branch
                                        -- 受注ヘッダアドオン.入力拠点＝パラメータ.入力拠点
-        AND xoha.deliver_to                  = NVL(iv_deliver_to, xoha.deliver_to)
+-- mod start ver1.11
+--        AND xoha.deliver_to                  = NVL(iv_deliver_to, xoha.deliver_to)
+        AND DECODE(xoha.schedule_arrival_date,NULL,xoha.result_deliver_to,xoha.deliver_to) = NVL(iv_deliver_to, DECODE(xoha.schedule_arrival_date,NULL,xoha.result_deliver_to,xoha.deliver_to))
+-- mod end ver1.11
                                        -- 受注ヘッダアドオン.出荷先＝パラメータ.配送先かつ
         AND xoha.deliver_from                = NVL(iv_deliver_from, xoha.deliver_from)
                                        -- 受注ヘッダアドオン.出荷元保管場所＝パラメータ.出荷元
-        AND xoha.schedule_ship_date          >= 
+-- mod start ver1.11
+--        AND xoha.schedule_ship_date          >= 
+--            NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
+--                                                                          xoha.schedule_ship_date)
+        AND NVL(xoha.schedule_ship_date,xoha.shipped_date) >= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
                                        -- 受注ヘッダアドオン.出荷予定日≧パラメータ.出庫日From
-        AND xoha.schedule_ship_date          <= 
+--        AND xoha.schedule_ship_date          <= 
+--            NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_to,gc_char_d_format),
+--                                                                          xoha.schedule_ship_date)
+        AND NVL(xoha.schedule_ship_date,xoha.shipped_date) <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_to,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
                                        -- 受注ヘッダアドオン.出荷予定日≦パラメータ.出庫日To
-        AND xoha.schedule_arrival_date       >= 
+--        AND xoha.schedule_arrival_date       >= 
+        AND NVL(xoha.schedule_arrival_date,xoha.arrival_date) >= 
         NVL(FND_DATE.STRING_TO_DATE(iv_arrival_date_from,gc_char_d_format),
-                                                                       xoha.schedule_arrival_date)
+--                                                                       xoha.schedule_arrival_date)
+                                                                       NVL(xoha.schedule_arrival_date,xoha.arrival_date))
                                        -- 受注ヘッダアドオン.着荷予定日≧パラメータ.着日From
-        AND xoha.schedule_arrival_date       <= 
+--        AND xoha.schedule_arrival_date       <= 
+        AND NVL(xoha.schedule_arrival_date,xoha.arrival_date) <= 
         NVL(FND_DATE.STRING_TO_DATE(iv_arrival_date_to,gc_char_d_format),
-                                                                       xoha.schedule_arrival_date)
+--                                                                       xoha.schedule_arrival_date)
+                                                                       NVL(xoha.schedule_arrival_date,xoha.arrival_date))
                                        -- 受注ヘッダアドオン.着荷予定日≦パラメータ.着日To
+-- mod end ver1.11
         AND xoha.order_type_id               = NVL(iv_order_type_id, xoha.order_type_id)
                                        -- 受注ヘッダアドオン.受注タイプID＝パラメータ.出庫形態                                                                       
         AND xoha.request_no                  = NVL(iv_request_no, xoha.request_no)
@@ -754,15 +778,24 @@ AS
                       -- クイックコード(物流区分).タイプ＝物流区分
         AND xoha.deliver_from_id             = xil2v.inventory_location_id
                                        -- 受注ヘッダアドオン.出荷元ID＝OPM保管場所マスタ.保管棚ID
-        AND xoha.deliver_to_id               = xcas2v.party_site_id
+-- mod start ver1.11
+--        AND xoha.deliver_to_id               = xcas2v.party_site_id
+        AND DECODE(xoha.schedule_arrival_date,NULL,xoha.result_deliver_to_id,xoha.deliver_to_id) = xcas2v.party_site_id
+-- mod end ver1.11
                       -- 受注ヘッダアドオン.出荷先ID＝顧客サイト情報VIEW2.パーティサイトID
         AND xcas2v.start_date_active         <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- 顧客サイト情報VIEW2.適用開始日≦パラメータ.出庫日From
         AND (xcas2v.end_date_active          >= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- 顧客サイト情報VIEW2.適用終了日≧パラメータ.出庫日From
             OR xcas2v.end_date_active        IS NULL)
                                        -- 顧客サイト情報VIEW2.適用終了日 = NULL
@@ -770,11 +803,17 @@ AS
                       -- 受注ヘッダアドオン.管轄拠点＝顧客情報VIEW2(管轄拠点).組織番号
         AND xca2v2.start_date_active         <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- 顧客情報VIEW2(管轄拠点).適用開始日≦パラメータ.出庫日From
         AND (xca2v2.end_date_active          >= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- 顧客情報VIEW2(管轄拠点).適用終了日≧パラメータ.出庫日From
             OR xca2v2.end_date_active        IS NULL)
                                        -- 顧客情報VIEW2(管轄拠点).適用終了日 = NULL
@@ -782,11 +821,17 @@ AS
                       -- 受注ヘッダアドオン.顧客ID＝顧客情報VIEW2(顧客情報).パーティID
         AND xca2v.start_date_active          <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- 顧客情報VIEW2(顧客情報).適用開始日≦パラメータ.出庫日From
         AND (xca2v.end_date_active           >= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- 顧客情報VIEW2(顧客情報).適用終了日≧パラメータ.出庫日From
             OR xca2v.end_date_active         IS NULL)
                                        -- 顧客情報VIEW2(顧客情報).適用終了日 = NULL
@@ -798,10 +843,12 @@ AS
         AND NVL(xola.delete_flag,gv_nodelete) = gv_nodelete
                                        -- 受注明細アドオン.削除フラグ＝未削除
 --add end 1.8
+-- del statr ver1.11
 -- v1.10 Add Start
-        AND xoha.schedule_ship_date          IS NOT NULL
+--        AND xoha.schedule_ship_date          IS NOT NULL
                                        -- 受注ヘッダアドオン.出荷予定日IS NOT NULL 出荷の指示無し実績は除外
 -- v1.10 Add End
+-- del end ver1.11
 -- 2008/07/04 ST不具合対応#406 Start
 --        AND xim2v.item_id                    = xic4v.item_id
                                        -- OPM品目マスタ.品目ID＝OPM品目カテゴリマスタ.品目ID
@@ -813,11 +860,15 @@ AS
             -- 品目カテゴリマスタ. 商品区分＝プロファイル（商品区分）:1=リーフ,2=ドリンク
         AND xim2v.start_date_active          <= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+-- mod start ver1.11
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
                                        -- OPM品目アドオンマスタ.適用開始日≦パラメータ.出庫日From
         AND (xim2v.end_date_active           >= 
             NVL(FND_DATE.STRING_TO_DATE(iv_ship_date_from,gc_char_d_format),
-                                                                          xoha.schedule_ship_date)
+--                                                                          xoha.schedule_ship_date)
+                                                                          NVL(xoha.schedule_ship_date,xoha.shipped_date))
+-- mod end ver1.11
                                        -- OPM品目アドオンマスタ.適用終了日≧パラメータ.出庫日From
             OR xim2v.end_date_active         IS NULL)
                                        -- OPM品目アドオンマスタ.適用終了日 = NULL
