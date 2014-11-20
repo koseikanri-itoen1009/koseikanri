@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_get_qty_pkg(BODY)
  * Description            : 共通関数引当数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2009/01/21   1.1   SCS二瓶           本番障害#1020
  *  2009/11/25   1.2   SCS北寒寺         営業障害管理表No11
  *  2009/11/27   1.3   SCS伊藤           営業障害管理表No11
+ *  2010/02/23   1.4   SCS伊藤           E_本稼動_01612対応
  *****************************************************************************************/
 --
   cv_doc_type_10 CONSTANT VARCHAR2(2) := '10';
@@ -91,7 +92,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
         WHERE   mrih.ship_to_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status            IN (cv_status_02,cv_status_03)
@@ -131,7 +135,10 @@ AS
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
         WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
         AND     gbh.plan_start_date   <= id_target_date
@@ -156,7 +163,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
         WHERE   mrih.ship_to_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             = cv_status_04
@@ -173,7 +183,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
         WHERE   oha.deliver_from_id       = it_loc_id
         AND     oha.req_status            = cv_status_03
@@ -194,7 +207,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
         WHERE   oha.deliver_from_id       = it_loc_id
         AND     oha.req_status            = cv_status_07
@@ -215,7 +231,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
         WHERE   mrih.shipped_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status            IN (cv_status_02,cv_status_03)
@@ -232,7 +251,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
         WHERE   mrih.shipped_locat_id   = it_loc_id
         AND     mrih.comp_actual_flg    = cv_flag_n
         AND     mrih.status             = cv_status_05
@@ -249,7 +271,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
         WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
@@ -276,7 +301,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
         AND     msib.organization_id   = it_org_id
@@ -319,7 +347,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -346,7 +377,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -379,7 +413,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -419,7 +456,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -449,7 +489,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -476,7 +519,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mil.segment1           <> mil.attribute5
@@ -511,7 +557,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -535,7 +584,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -565,7 +617,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -602,7 +657,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -629,7 +687,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -653,7 +714,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -685,7 +749,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -729,7 +796,10 @@ AS
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,mtl_item_locations    mil
         WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
@@ -763,7 +833,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -789,7 +862,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -819,7 +895,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.attribute5            = it_head_loc
@@ -849,7 +928,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -875,7 +957,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.attribute5          = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -894,7 +979,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,mtl_item_locations    mil
@@ -927,7 +1015,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations    mil
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
@@ -953,7 +1044,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -995,7 +1089,10 @@ AS
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,xxwsh_frq_item_locations xfil
         WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
@@ -1027,7 +1124,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -1051,7 +1151,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -1079,7 +1182,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
@@ -1107,7 +1213,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -1131,7 +1240,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
         WHERE   xfil.frq_item_location_code = it_head_loc
         AND     xfil.item_id            = it_item_id
@@ -1151,7 +1263,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,xxwsh_frq_item_locations xfil
@@ -1181,7 +1296,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations xfil
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
@@ -1229,7 +1347,10 @@ AS
 
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1258,7 +1379,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1293,7 +1417,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
 -- 2009/01/21 D.Nihei MOD START
@@ -1335,7 +1462,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
 -- 2009/01/21 D.Nihei MOD START
@@ -1367,7 +1497,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1396,7 +1529,10 @@ AS
 -- Ver1.2 2009/11/25 START
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1430,7 +1566,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1481,7 +1620,10 @@ AS
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,xxwsh_frq_item_locations xfil
         WHERE   gbh.batch_status        IN (cn_type_1,cn_type_2)
@@ -1517,7 +1659,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1546,7 +1691,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
 -- 2009/01/21 D.Nihei MOD START
@@ -1579,7 +1727,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,xxwsh_frq_item_locations   xfil
 -- 2009/01/21 D.Nihei MOD START
@@ -1612,7 +1763,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1641,7 +1795,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations    xfil
 -- 2009/01/21 D.Nihei MOD START
 --        WHERE   xfil.frq_item_location_code = it_loc_code
@@ -1666,7 +1823,10 @@ AS
         SELECT  NVL(SUM(mld.actual_quantity), 0)
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,xxwsh_frq_item_locations xfil
@@ -1700,7 +1860,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,xxwsh_frq_item_locations xfil
         WHERE   iimb.item_id            = it_item_id
         AND     msib.segment1           = iimb.item_no
@@ -1750,7 +1913,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -1773,7 +1939,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -1802,7 +1971,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -1838,7 +2010,10 @@ AS
                     END),0)
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta   -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -1864,7 +2039,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -1887,7 +2065,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -1915,7 +2096,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -1959,7 +2143,10 @@ AS
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,mtl_item_locations    mil
         WHERE   gbh.batch_status      IN (cn_type_1,cn_type_2)
@@ -1990,7 +2177,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.ship_to_locat_id   = mil.inventory_location_id
@@ -2013,7 +2203,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -2040,7 +2233,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-               ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,oe_transaction_types_all   otta  -- 受注タイプ
                ,mtl_item_locations         mil
         WHERE   mil.segment1              = it_head_loc
@@ -2067,7 +2263,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -2090,7 +2289,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations          mil
         WHERE   mil.segment1            = it_head_loc
         AND     mrih.shipped_locat_id   = mil.inventory_location_id
@@ -2113,7 +2315,10 @@ AS
 -- Ver1.2 2009/11/25 END
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
-               ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,gmd_routings_b        grb  -- 工順マスタ
                ,ic_tran_pnd           itp  -- 保留在庫トランザクション
                ,mtl_item_locations    mil
@@ -2142,7 +2347,10 @@ AS
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
                ,po_headers_all        pha     -- 発注ヘッダ
-               ,xxinv_mov_lot_details mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--               ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+               ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                ,mtl_item_locations    mil
         WHERE   iimb.item_id           = it_item_id
         AND     msib.segment1          = iimb.item_no
@@ -2357,7 +2565,10 @@ AS
           SELECT  NVL(SUM(mld.actual_quantity), 0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                 ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
           WHERE   mrih.ship_to_locat_id   = it_loc_id
           AND     mrih.comp_actual_flg    = cv_flag_n
           AND     mrih.status            IN (cv_status_05,cv_status_06)
@@ -2374,7 +2585,10 @@ AS
           SELECT  NVL(SUM(mld.actual_quantity), 0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                 ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
           WHERE   mrih.shipped_locat_id   = it_loc_id
           AND     mrih.comp_actual_flg    = cv_flag_n
           AND     mrih.status            IN (cv_status_04,cv_status_06)
@@ -2397,7 +2611,10 @@ AS
                       END),0)
           FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                  ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-                 ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                 ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                  ,oe_transaction_types_all   otta -- 受注タイプ
           WHERE   oha.deliver_from_id       = it_loc_id
           AND     oha.req_status            = cv_status_04
@@ -2424,7 +2641,10 @@ AS
                       END),0)
           FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                  ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
-                 ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                 ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
                  ,oe_transaction_types_all   otta   -- 受注タイプ
           WHERE   oha.deliver_from_id       = it_loc_id
           AND     oha.req_status            = cv_status_08
@@ -2444,7 +2664,10 @@ AS
           SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                 ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
           WHERE   mrih.ship_to_locat_id   = it_loc_id
           AND     mrih.comp_actual_flg    = cv_flag_y
           AND     mrih.correct_actual_flg = cv_flag_y
@@ -2461,7 +2684,10 @@ AS
           SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod Start
+--                 ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                 ,xxinv_mov_lot_details_v     mld     -- 移動ロット詳細（アドオン）
+-- Ver1.4 H.Itou Mod End
           WHERE   mrih.shipped_locat_id   = it_loc_id
           AND     mrih.comp_actual_flg    = cv_flag_y
           AND     mrih.correct_actual_flg = cv_flag_y

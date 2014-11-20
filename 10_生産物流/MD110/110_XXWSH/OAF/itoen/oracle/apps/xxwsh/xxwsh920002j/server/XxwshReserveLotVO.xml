@@ -223,7 +223,10 @@ SELECT ilm.lot_no                            lot_no,                            
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
+--                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                ,xxinv_mov_lot_details_v       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
          WHERE   mrih.comp_actual_flg        = 'N'
          AND     mrih.status                IN ('02','03')
          AND     mrih.schedule_arrival_date >= TO_DATE(:16, 'YYYY/MM/DD') -- 予定なのでOPEN日付のデータのみ対象。
@@ -275,7 +278,10 @@ SELECT ilm.lot_no                            lot_no,                            
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
+--                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                ,xxinv_mov_lot_details_v       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
          WHERE   mrih.comp_actual_flg    = 'N'
          AND     mrih.status             = '04'
          AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) >= TO_DATE(:23, 'YYYY/MM/DD')  -- 予定なのでOPEN日付のデータのみ対象。
@@ -295,7 +301,10 @@ SELECT ilm.lot_no                            lot_no,                            
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
-                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
+--                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                ,xxinv_mov_lot_details_v       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
          WHERE (((mrih.comp_actual_flg    = 'N')   -- 2010/01/05 Add 本稼動障害#861 I1,I2 入庫は常に取得
              AND (mld.record_type_code    = '30')  -- 2010/01/05 Add 本稼動障害#861
              AND (mld.actual_quantity     > 0))    -- 2010/01/05 Add 本稼動障害#861
@@ -326,7 +335,10 @@ SELECT ilm.lot_no                            lot_no,                            
                 ,mld.item_id  item_id
          FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                 ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
-                ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
+--                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+                ,xxinv_mov_lot_details_v       mld     -- 移動ロット詳細（アドオン）
+-- 2010/02/23 H.Itou Mod Start
 -- 2010/01/27 M.Hokkanji 本稼働障害#1320 Add Start
                 ,oe_transaction_types_all   otta   -- 受注タイプ
 -- 2010/01/27 M.Hokkanji 本稼働障害#1320 Add End
