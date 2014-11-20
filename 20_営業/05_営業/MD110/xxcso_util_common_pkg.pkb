@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_util_common_pkg(BODY)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -28,7 +28,7 @@ AS
  *                            P    -     訪問売上計画管理表出力判定関数
  *  get_working_days          F    N     営業日数取得関数
  *  chk_responsibility        F    -     ログイン者職責判定関数
- *
+ *  conv_multi_byte           F    -     半角文字全角置換関数
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -57,6 +57,7 @@ AS
  *  2009/02/02    1.0   K.Boku           chk_responsibility新規作成
  *  2009/02/23    1.0   T.Mori           chk_exe_report_visite_sales（訪問売上計画管理表出力判定関数）に
  *                                       メッセージを追加
+ *  2009/04/16    1.1   K.Satomura       conv_multi_byte新規作成(T1_0172対応)
  *****************************************************************************************/
 --
   -- ===============================
@@ -1481,5 +1482,100 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_responsibility;
 --
+  /* 2009.04.16 K.Satomura T1_0172対応 START */
+  /**********************************************************************************
+   * Function Name    : conv_multi_byte
+   * Description      :半角文字全角置換関数
+   ***********************************************************************************/
+  FUNCTION conv_multi_byte(
+    iv_char IN VARCHAR2 -- 文字列
+  ) RETURN VARCHAR2 IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100) := 'conv_multi_byte';
+    --
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_char   VARCHAR2(5000);
+    lv_return VARCHAR2(5000);
+    --
+  BEGIN
+    --
+    lv_char   := iv_char;
+    lv_return := NULL;
+    --
+    IF (lv_char IS NULL) THEN
+      RETURN NULL;
+      --
+    END IF;
+    --
+    -- 濁点・半濁付き文字の置換
+    IF (INSTRB(lv_char, 'ﾞ') > 0
+      OR INSTRB(lv_char, 'ﾟ') > 0)
+    THEN
+      lv_char := REPLACE(lv_char, 'ｶﾞ', 'ガ');
+      lv_char := REPLACE(lv_char, 'ｷﾞ', 'ギ');
+      lv_char := REPLACE(lv_char, 'ｸﾞ', 'グ');
+      lv_char := REPLACE(lv_char, 'ｹﾞ', 'ゲ');
+      lv_char := REPLACE(lv_char, 'ｺﾞ', 'ゴ');
+      lv_char := REPLACE(lv_char, 'ｻﾞ', 'ザ');
+      lv_char := REPLACE(lv_char, 'ｼﾞ', 'ジ');
+      lv_char := REPLACE(lv_char, 'ｽﾞ', 'ズ');
+      lv_char := REPLACE(lv_char, 'ｾﾞ', 'ゼ');
+      lv_char := REPLACE(lv_char, 'ｿﾞ', 'ゾ');
+      lv_char := REPLACE(lv_char, 'ﾀﾞ', 'ダ');
+      lv_char := REPLACE(lv_char, 'ﾁﾞ', 'ヂ');
+      lv_char := REPLACE(lv_char, 'ﾂﾞ', 'ヅ');
+      lv_char := REPLACE(lv_char, 'ﾃﾞ', 'デ');
+      lv_char := REPLACE(lv_char, 'ﾄﾞ', 'ド');
+      lv_char := REPLACE(lv_char, 'ﾊﾞ', 'バ');
+      lv_char := REPLACE(lv_char, 'ﾋﾞ', 'ビ');
+      lv_char := REPLACE(lv_char, 'ﾌﾞ', 'ブ');
+      lv_char := REPLACE(lv_char, 'ﾍﾞ', 'ベ');
+      lv_char := REPLACE(lv_char, 'ﾎﾞ', 'ボ');
+      lv_char := REPLACE(lv_char, 'ﾊﾟ', 'パ');
+      lv_char := REPLACE(lv_char, 'ﾋﾟ', 'ピ');
+      lv_char := REPLACE(lv_char, 'ﾌﾟ', 'プ');
+      lv_char := REPLACE(lv_char, 'ﾍﾟ', 'ペ');
+      lv_char := REPLACE(lv_char, 'ﾎﾟ', 'ポ');
+      --
+    END IF;
+    --
+    -- 半角カナ文字・半角英数字の置換
+    lv_char := TRANSLATE(lv_char
+               ,'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｬｭｮｯｰ' ||
+                'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '
+               ,'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォャュョッー' ||
+                'ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ' ||
+                '０１２３４５６７８９　');
+               --
+    -- その他の半角文字の置換
+    FOR i IN 1..LENGTH(lv_char) LOOP
+      IF (LENGTHB(SUBSTR(lv_char, i, 1)) = 1) THEN
+        -- １文字が１バイトの場合
+        lv_return := lv_return || '＊';
+        --
+      ELSE
+        lv_return := lv_return || SUBSTR(lv_char, i, 1);
+        --
+      END IF;
+      --
+    END LOOP;
+    --
+    RETURN lv_return;
+    --
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END conv_multi_byte;
+
+  /* 2009.04.16 K.Satomura T1_0172対応 END */
 END xxcso_util_common_pkg;
 /

@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_016_A03_情報系-EBSインターフェース：
  *                    (OUT)見積情報データ
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-09    1.0   Kazuyo.Hosoi     新規作成
  *  2009-02-25    1.1   K.Sai            レビュー結果反映 
- *
+ *  2009-04-16    1.2   K.Satomura       システムテスト障害対応(T1_0172,T1_0508)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -178,14 +178,21 @@ AS
     ,account_number          xxcso_quote_headers.account_number%TYPE           -- 顧客コード
     ,publish_date            xxcso_quote_headers.publish_date%TYPE             -- 発行日
     ,employee_number         xxcso_quote_headers.employee_number%TYPE          -- 担当者コード
-    ,deliv_place             xxcso_quote_headers.deliv_place%TYPE              -- 納入場所
-    ,name                    ra_terms_vl.name%TYPE                             -- 支払条件        
+    /* 2009.04.16 K.Satomura T1_0172対応 START */
+    --,deliv_place             xxcso_quote_headers.deliv_place%TYPE              -- 納入場所
+    ,deliv_place             VARCHAR2(60)                                      -- 納入場所
+    /* 2009.04.16 K.Satomura T1_0172対応 END */
+    ,name                    ra_terms_vl.name%TYPE                             -- 支払条件
     ,quote_info_start_date   xxcso_quote_headers.quote_info_start_date%TYPE    -- 見積情報期間(自)
     ,quote_info_end_date     xxcso_quote_headers.quote_info_end_date%TYPE      -- 見積情報期間(至)
-    ,quote_submit_name       xxcso_quote_headers.quote_submit_name%TYPE        -- 見積書提出先名称
-    ,special_note            xxcso_quote_headers.special_note%TYPE             -- 特記事項
+    /* 2009.04.16 K.Satomura T1_0172対応 START */
+    --,quote_submit_name       xxcso_quote_headers.quote_submit_name%TYPE        -- 見積書提出先名称
+    --,special_note            xxcso_quote_headers.special_note%TYPE             -- 特記事項
+    ,quote_submit_name       VARCHAR2(40)                                      -- 見積書提出先名称
+    ,special_note            VARCHAR2(100)                                     -- 特記事項
+    /* 2009.04.16 K.Satomura T1_0172対応 END */
     ,status                  xxcso_quote_headers.status%TYPE                   -- ステータス
-    ,deliv_price_tax_type    xxcso_quote_headers.deliv_price_tax_type%TYPE     -- 店納価格税区分  
+    ,deliv_price_tax_type    xxcso_quote_headers.deliv_price_tax_type%TYPE     -- 店納価格税区分
     ,unit_type               xxcso_quote_headers.unit_type%TYPE                -- 単価区分
     ,cprtn_date              DATE                                              -- 連携日時
   );
@@ -208,7 +215,10 @@ AS
     ,business_price             xxcso_quote_lines.business_price%TYPE              -- 営業原価
     ,quote_start_date           xxcso_quote_lines.quote_start_date%TYPE            -- 有効期間(自)
     ,quote_end_date             xxcso_quote_lines.quote_end_date%TYPE              -- 有効期間(至)
-    ,remarks                    xxcso_quote_lines.remarks%TYPE                     -- 備考
+    /* 2009.04.16 K.Satomura T1_0172対応 START */
+    --,remarks                    xxcso_quote_lines.remarks%TYPE                     -- 備考
+    ,remarks                    VARCHAR2(20)                                       -- 備考
+    /* 2009.04.16 K.Satomura T1_0172対応 END */
     ,line_order                 xxcso_quote_lines.line_order%TYPE                  -- 並び順
     ,usuall_net_price           xxcso_quote_lines.usuall_net_price%TYPE            -- 通常NET価格
     ,cprtn_date                 DATE                                               -- 連携日時
@@ -1782,22 +1792,43 @@ AS
     -- 見積ヘッダ情報抽出カーソル
     CURSOR get_headers_data_cur
     IS
-      SELECT   xqh.quote_header_id          quote_header_id         -- 見積ヘッダーID
-              ,xqh.quote_number             quote_number            -- 見積書番号
-              ,xqh.reference_quote_number   reference_quote_number  -- 参照見積書番号
-              ,xqh.quote_revision_number    quote_revision_number   -- 版
-              ,xqh.quote_type               quote_type              -- 見積種類
-              ,xqh.account_number           account_number          -- 顧客コード
-              ,xqh.publish_date             publish_date            -- 発行日
-              ,xqh.employee_number          employee_number         -- 担当者コード
-              ,xqh.deliv_place              deliv_place             -- 納入場所
-              ,xqh.quote_info_start_date    quote_info_start_date   -- 見積情報期	間(自)
-              ,xqh.quote_info_end_date      quote_info_end_date     -- 見積情報期間(至)
-              ,xqh.quote_submit_name        quote_submit_name       -- 見積書提出先名称
-              ,xqh.special_note             special_note            -- 特記事項
-              ,xqh.status                   status                  -- ステータス
-              ,xqh.deliv_price_tax_type     deliv_price_tax_type    -- 店納価格税区分
-              ,xqh.unit_type                unit_type               -- 単価区分
+      /* 2009.04.16 K.Satomura T1_0172,T1_0508対応 START */
+      --SELECT   xqh.quote_header_id          quote_header_id         -- 見積ヘッダーID
+      --        ,xqh.quote_number             quote_number            -- 見積書番号
+      --        ,xqh.reference_quote_number   reference_quote_number  -- 参照見積書番号
+      --        ,xqh.quote_revision_number    quote_revision_number   -- 版
+      --        ,xqh.quote_type               quote_type              -- 見積種類
+      --        ,xqh.account_number           account_number          -- 顧客コード
+      --        ,xqh.publish_date             publish_date            -- 発行日
+      --        ,xqh.employee_number          employee_number         -- 担当者コード
+      --        ,xqh.deliv_place              deliv_place             -- 納入場所
+      --        ,xqh.quote_info_start_date    quote_info_start_date   -- 見積情報期間(自)
+      --        ,xqh.quote_info_end_date      quote_info_end_date     -- 見積情報期間(至)
+      --        ,xqh.quote_submit_name        quote_submit_name       -- 見積書提出先名称
+      --        ,xqh.special_note             special_note            -- 特記事項
+      --        ,xqh.status                   status                  -- ステータス
+      --        ,xqh.deliv_price_tax_type     deliv_price_tax_type    -- 店納価格税区分
+      --        ,xqh.unit_type                unit_type               -- 単価区分
+      SELECT TRANSLATE(xqh.quote_header_id, CHR(10) || CHR(13), '  ')        quote_header_id        -- 見積ヘッダーID
+            ,TRANSLATE(xqh.quote_number, CHR(10) || CHR(13), '  ')           quote_number           -- 見積書番号
+            ,TRANSLATE(xqh.reference_quote_number, CHR(10) || CHR(13), '  ') reference_quote_number -- 参照見積書番号
+            ,TRANSLATE(xqh.quote_revision_number, CHR(10) || CHR(13), '  ')  quote_revision_number  -- 版
+            ,TRANSLATE(xqh.quote_type, CHR(10) || CHR(13), '  ')             quote_type             -- 見積種類
+            ,TRANSLATE(xqh.account_number, CHR(10) || CHR(13), '  ')         account_number         -- 顧客コード
+            ,TRANSLATE(xqh.publish_date, CHR(10) || CHR(13), '  ')           publish_date           -- 発行日
+            ,TRANSLATE(xqh.employee_number, CHR(10) || CHR(13), '  ')        employee_number        -- 担当者コード
+            ,SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(TRANSLATE(
+                     xqh.deliv_place, CHR(10) || CHR(13), '  ')),1, 60)      deliv_place            -- 納入場所
+            ,TRANSLATE(xqh.quote_info_start_date, CHR(10) || CHR(13), '  ')  quote_info_start_date  -- 見積情報期間(自)
+            ,TRANSLATE(xqh.quote_info_end_date, CHR(10) || CHR(13), '  ')    quote_info_end_date    -- 見積情報期間(至)
+            ,SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(TRANSLATE(
+                     xqh.quote_submit_name, CHR(10) || CHR(13), '  ')), 1, 40) quote_submit_name    -- 見積書提出先名称
+            ,SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(TRANSLATE(
+                     xqh.special_note ,CHR(10) || CHR(13), '  ')), 1, 100)   special_note           -- 特記事項
+            ,TRANSLATE(xqh.status, CHR(10) || CHR(13), '  ')                 status                 -- ステータス
+            ,TRANSLATE(xqh.deliv_price_tax_type, CHR(10) || CHR(13), '  ')   deliv_price_tax_type   -- 店納価格税区分
+            ,TRANSLATE(xqh.unit_type, CHR(10) || CHR(13), '  ')              unit_type              -- 単価区分
+      /* 2009.04.16 K.Satomura T1_0172,T1_0508対応 END */
       FROM  xxcso_quote_headers  xqh      -- 見積ヘッダーテーブル
       WHERE (TRUNC(xqh.last_update_date)
               BETWEEN ld_from_value AND ld_to_value
@@ -1810,26 +1841,49 @@ AS
              it_qt_hdr_id IN xxcso_quote_headers.quote_header_id%TYPE  -- 見積ヘッダーID
            )
     IS
-      SELECT xql.quote_line_id                quote_line_id                -- 明細ID
-             ,xrh.quote_number                quote_number                 -- 見積書番号
-             ,msib.segment1                   inventory_item_code          -- 商品コード
-             ,xql.quote_div                   quote_div                    -- 見積区分
-             ,xql.usually_deliv_price         usually_deliv_price          -- 通常店納価格
-             ,xql.this_time_deliv_price       this_time_deliv_price        -- 今回店納価格
-             ,xql.usually_store_sale_price    usually_store_sale_price     -- 通常店頭価格
-             ,xql.quotation_price             quotation_price              -- 建値
-             ,xql.this_time_store_sale_price  this_time_store_sale_price   -- 今回店頭価格
-             ,xql.usuall_net_price            usuall_net_price             -- 通常NET価格
-             ,xql.this_time_net_price         this_time_net_price          -- 今回NET価格
-             ,xql.amount_of_margin            amount_of_margin             -- マージン額
-             ,xql.margin_rate                 margin_rate                  -- マージン率
-             ,xql.sales_discount_price        sales_discount_price         -- 売上値引
-             ,xql.business_price              business_price               -- 営業原価
-             ,xql.quote_start_date            quote_start_date             -- 有効期間(自)
-             ,xql.quote_end_date              quote_end_date               -- 有効期間(至)
-             ,xql.remarks                     remarks                      -- 備考
-             ,xql.line_order                  line_order                   -- 並び順
-             ,xql.last_update_date            last_update_date             -- 最終更新日
+      /* 2009.04.16 K.Satomura T1_0172,T1_0508対応 START */
+      --SELECT xql.quote_line_id                quote_line_id                -- 明細ID
+      --       ,xrh.quote_number                quote_number                 -- 見積書番号
+      --       ,msib.segment1                   inventory_item_code          -- 商品コード
+      --       ,xql.quote_div                   quote_div                    -- 見積区分
+      --       ,xql.usually_deliv_price         usually_deliv_price          -- 通常店納価格
+      --       ,xql.this_time_deliv_price       this_time_deliv_price        -- 今回店納価格
+      --       ,xql.usually_store_sale_price    usually_store_sale_price     -- 通常店頭価格
+      --       ,xql.quotation_price             quotation_price              -- 建値
+      --       ,xql.this_time_store_sale_price  this_time_store_sale_price   -- 今回店頭価格
+      --       ,xql.usuall_net_price            usuall_net_price             -- 通常NET価格
+      --       ,xql.this_time_net_price         this_time_net_price          -- 今回NET価格
+      --       ,xql.amount_of_margin            amount_of_margin             -- マージン額
+      --       ,xql.margin_rate                 margin_rate                  -- マージン率
+      --       ,xql.sales_discount_price        sales_discount_price         -- 売上値引
+      --       ,xql.business_price              business_price               -- 営業原価
+      --       ,xql.quote_start_date            quote_start_date             -- 有効期間(自)
+      --       ,xql.quote_end_date              quote_end_date               -- 有効期間(至)
+      --       ,xql.remarks                     remarks                      -- 備考
+      --       ,xql.line_order                  line_order                   -- 並び順
+      --       ,xql.last_update_date            last_update_date             -- 最終更新日
+      SELECT TRANSLATE(xql.quote_line_id, CHR(10), ' ')              quote_line_id              -- 明細ID
+            ,TRANSLATE(xrh.quote_number, CHR(10), ' ')               quote_number               -- 見積書番号
+            ,TRANSLATE(msib.segment1, CHR(10), ' ')                  inventory_item_code        -- 商品コード
+            ,TRANSLATE(xql.quote_div, CHR(10), ' ')                  quote_div                  -- 見積区分
+            ,TRANSLATE(xql.usually_deliv_price, CHR(10), ' ')        usually_deliv_price        -- 通常店納価格
+            ,TRANSLATE(xql.this_time_deliv_price, CHR(10), ' ')      this_time_deliv_price      -- 今回店納価格
+            ,TRANSLATE(xql.usually_store_sale_price, CHR(10), ' ')   usually_store_sale_price   -- 通常店頭価格
+            ,TRANSLATE(xql.quotation_price, CHR(10), ' ')            quotation_price            -- 建値
+            ,TRANSLATE(xql.this_time_store_sale_price, CHR(10), ' ') this_time_store_sale_price -- 今回店頭価格
+            ,TRANSLATE(xql.usuall_net_price, CHR(10), ' ')           usuall_net_price           -- 通常NET価格
+            ,TRANSLATE(xql.this_time_net_price, CHR(10), ' ')        this_time_net_price        -- 今回NET価格
+            ,TRANSLATE(xql.amount_of_margin, CHR(10), ' ')           amount_of_margin           -- マージン額
+            ,TRANSLATE(xql.margin_rate, CHR(10), ' ')                margin_rate                -- マージン率
+            ,TRANSLATE(xql.sales_discount_price, CHR(10), ' ')       sales_discount_price       -- 売上値引
+            ,TRANSLATE(xql.business_price, CHR(10), ' ')             business_price             -- 営業原価
+            ,TRANSLATE(xql.quote_start_date, CHR(10), ' ')           quote_start_date           -- 有効期間(自)
+            ,TRANSLATE(xql.quote_end_date, CHR(10), ' ')             quote_end_date             -- 有効期間(至)
+            ,SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(TRANSLATE(
+                     xql.remarks, CHR(10) || CHR(13), '  ')), 1, 20)  remarks                    -- 備考
+            ,TRANSLATE(xql.line_order, CHR(10), ' ')                 line_order                 -- 並び順
+            ,TRANSLATE(xql.last_update_date, CHR(10), ' ')           last_update_date           -- 最終更新日
+      /* 2009.04.16 K.Satomura T1_0172,T1_0508対応 END */
       FROM   xxcso_quote_lines     xql        -- 見積明細テーブル
              ,xxcso_quote_headers  xrh        -- 見積ヘッダーテーブル
              ,mtl_system_items_b   msib       -- Disc品目マスタ

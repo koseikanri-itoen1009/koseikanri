@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_016_A02_情報系-EBSインターフェース：
  *                    (OUT)営業員マスタ
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,7 +32,7 @@ AS
  *  2008-11-26    1.0   Kazuyo.Hosoi     新規作成
  *  2009-02-26    1.1   K.Sai            レビュー結果反映
  *  2009-03-26    1.2   M.Maruyama      【ST障害T01_208】データ取得元をリソース関連マスタビューに変更
- *
+ *  2009-04-16    1.3   K.Satomura      【ST障害T01_0172】営業員名称、営業員名称（カナ）を全角置換
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -150,8 +150,12 @@ AS
      company_cd         VARCHAR2(3)                                                        -- 会社コード
     ,employee_number    per_people_f.employee_number%TYPE                                  -- 営業員コード
     ,base_code          VARCHAR2(150)                                                      -- 拠点コード
-    ,person_name        VARCHAR2(42)                                                       -- 営業員名称
-    ,person_name_kana   VARCHAR2(42)                                                       -- 営業員氏名(カナ)
+    /* 2009.04.16 K.Satomura T1_0172対応 START */
+    --,person_name        VARCHAR2(42)                                                       -- 営業員名称
+    --,person_name_kana   VARCHAR2(42)                                                       -- 営業員氏名(カナ)
+    ,person_name        VARCHAR2(40)                                                       -- 営業員名称
+    ,person_name_kana   VARCHAR2(40)                                                       -- 営業員氏名(カナ)
+    /* 2009.04.16 K.Satomura T1_0172対応 END */
     ,business_form      jtf_rs_resource_extns.attribute10%TYPE                             -- 営業形態
     ,group_leader_flag  jtf_rs_group_members.attribute1%TYPE                               -- グループ長区分
     ,group_cd           jtf_rs_group_members.attribute2%TYPE                               -- グループコード
@@ -1130,10 +1134,18 @@ AS
                    xrrv.work_dept_code_old          -- 勤務地拠点コード(旧)
                  END
               )  base_code                          -- 拠点コード
-             ,SUBSTRB(xrrv.last_name,1,cn_name_lengthb) || cv_space ||
-               SUBSTRB(xrrv.first_name,1,cn_name_lengthb)  person_name            -- 営業員名称
-             ,SUBSTRB(xrrv.last_name_kana,1,cn_name_lengthb) || cv_space ||
-               SUBSTRB(xrrv.first_name_kana,1,cn_name_lengthb)  person_name_kana  -- 営業員氏名（カナ）
+             /* 2009.04.16 K.Satomura T1_0172対応 START */
+             --,SUBSTRB(xrrv.last_name,1,cn_name_lengthb) || cv_space ||
+             --  SUBSTRB(xrrv.first_name,1,cn_name_lengthb)  person_name            -- 営業員名称
+             --,SUBSTRB(xrrv.last_name_kana,1,cn_name_lengthb) || cv_space ||
+             --  SUBSTRB(xrrv.first_name_kana,1,cn_name_lengthb)  person_name_kana  -- 営業員氏名（カナ）
+             ,SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(
+                SUBSTRB(xrrv.last_name,1,cn_name_lengthb) || cv_space || SUBSTRB(xrrv.first_name,1,cn_name_lengthb)
+             ),1,40) person_name -- 営業員名称
+             ,SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(
+                SUBSTRB(xrrv.last_name_kana,1,cn_name_lengthb) || cv_space || SUBSTRB(xrrv.first_name_kana,1,cn_name_lengthb)
+             ),1,40) person_name_kana -- 営業員氏名（カナ）
+             /* 2009.04.16 K.Satomura T1_0172対応 END */
              ,xrrv.sales_style  sales_style         -- 営業形態
              ,xrrv.resource_id  resource_id         -- リソースID
              ,( CASE

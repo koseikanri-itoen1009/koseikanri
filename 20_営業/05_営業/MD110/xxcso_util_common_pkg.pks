@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_UTIL_COMMON_PKG(SPEC)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *                            P    -     訪問売上計画管理表出力判定関数
  *  get_working_days          F    N     営業日数取得関数
  *  chk_responsibility        F    -     ログイン者職責判定関数
+ *  conv_multi_byte           F    -     半角文字全角置換関数
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -47,6 +48,7 @@ AS
  *                                       （訪問売上計画管理表出力判定関数）を追加
  *                                       get_working_days（営業日数取得関数）を追加
  *  2009/02/02    1.0   K.Boku           chk_responsibility新規作成
+ *  2009/04/16    1.1   K.Satomura       conv_multi_byte新規作成(T1_0172対応)
  *****************************************************************************************/
 --
   /**********************************************************************************
@@ -215,5 +217,15 @@ AS
    ,iv_report_type           IN  VARCHAR2                -- 帳票タイプ（1:営業員別、2:営業員グループ別、その他は指定不可）
   ) RETURN VARCHAR2;                                     -- 'TRUE':チェックＯＫ 'FALSE':チェックＮＧ
 --
+  /* 2009.04.16 K.Satomura T1_0172対応 START */
+  /**********************************************************************************
+   * Function Name    : conv_multi_byte
+   * Description      :半角文字全角置換関数
+   ***********************************************************************************/
+  FUNCTION conv_multi_byte(
+    iv_char IN VARCHAR2 -- 文字列
+  ) RETURN VARCHAR2;
+  /* 2009.04.16 K.Satomura T1_0172対応 END */
 END xxcso_util_common_pkg;
+--
 /
