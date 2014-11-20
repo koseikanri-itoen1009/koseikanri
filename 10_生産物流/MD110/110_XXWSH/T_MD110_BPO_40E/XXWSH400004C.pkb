@@ -51,7 +51,7 @@ AS
  *  2008/12/17   1.13  SCS    上原/福田  本番#81
  *  2008/12/17   1.13  SCS    福田       APP-XXWSH-11204エラー発生時に即時終了しないようにする
  *  2008/12/23   1.14  SCS    上原       本番#81 再締め処理時の抽出条件にリードタイムを追加
- *  2009/01/16   1.15  SCS    菅原大輔   本番#1009 ロックセッション切断対応
+ *  2009/01/21   1.15  SCS    伊藤       本番#1053 対象データなし時の締めステータスチェック追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1644,6 +1644,16 @@ AS
                                  gv_cnst_tkn_para,
                                  gv_msg_null_07) || gv_line_feed;
       END IF;
+-- 2009/01/21 H.Itou Add Start 本番障害#1053対応
+      -- 内部処理用の変数「拠点カテゴリ」を設定
+      -- 入力パラメータ「拠点カテゴリ」が'0'ALLの場合、文字列'ALL'をセット
+      IF (iv_sales_base_category = gv_sales_base_category_0) THEN
+        gv_sales_base_category := gv_ALL;
+      -- 入力パラメータ「拠点カテゴリ」が'0'ALL場合、入力パラメータ「拠点カテゴリ」をセット
+      ELSE
+        gv_sales_base_category := iv_sales_base_category;
+      END IF;
+-- 2009/01/21 H.Itou Add End
 --
     END IF;
 --
@@ -2113,10 +2123,7 @@ AS
         INTO   ln_order_header_id_lock
         FROM   xxwsh_order_headers_all xoha
         WHERE  xoha.order_header_id = lr_u_rec.order_header_id
---2009/01/16 D.Sugahara #1009 Mod Start
---        FOR UPDATE NOWAIT;
-        FOR UPDATE ;  --ロックしていた場合、待機し、親コンカレントによる切断を待つ
---2009/01/16 D.Sugahara #1009 Mod End
+        FOR UPDATE NOWAIT;
       EXCEPTION
         WHEN OTHERS THEN
           ln_lock_error_flg := 1;
@@ -2137,7 +2144,6 @@ AS
 --
         IF (iv_tightening_status_chk_class = cv_tightening_status_chk_cla_1) THEN
           -- 締めステータスチェック区分が1:チェック有りの場合
---
           -- **************************************************
           -- *** 締めステータスチェック(E-3)
           -- **************************************************
@@ -2151,6 +2157,7 @@ AS
                                                    lr_u_rec.schedule_ship_date,   -- E-2出庫日
                                                    lr_u_rec.prod_class);    -- E-2商品区分
 --
+FND_FILE.PUT_LINE(FND_FILE.LOG,'締めステータス:'||lv_status);
           -- 締めステータスが'2'または'4'の場合はエラー
           IF ((lv_status = cv_status_2) OR (lv_status = cv_status_4)) THEN
             -- 2008/12/17 Del Start Ver1.13 -----------------------------------
@@ -2384,6 +2391,39 @@ AS
     IF ( reupd_status_cur%ISOPEN ) THEN
       CLOSE reupd_status_cur;
     END IF;
+--
+-- 2009/01/21 H.Itou Add Start 本番#1053対応 対象データが0件の場合に締めステータスチェックが行われていなかったので、締めステータスチェックを追加
+    -- 対象データが0件の場合
+    IF ( ln_data_cnt = 0 ) THEN
+      -- **************************************************
+      -- *** 締めステータスチェック(E-3)
+      -- **************************************************
+      lv_status := xxwsh_common_pkg.check_tightening_status(
+                     in_order_type_id,        -- パラメータ.受注タイプID
+                     iv_deliver_from,         -- パラメータ.出荷元
+                     iv_sales_base,           -- パラメータ.拠点
+                     gv_sales_base_category,  -- パラメータ.拠点カテゴリ
+                     in_lead_time_day,        -- パラメータ.生産物流LT
+                     id_schedule_ship_date,   -- パラメータ.出庫日
+                     iv_prod_class);          -- パラメータ.商品区分
+--
+      -- 締めステータスが'2'または'4'の場合はエラー
+      IF ((lv_status = cv_status_2) OR (lv_status = cv_status_4)) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG,
+          '締めステータスチェックエラー'             ||
+          '/受注タイプID:' || in_order_type_id       ||
+          '/出荷元:'       || iv_deliver_from        ||
+          '/拠点:'         || iv_sales_base          ||
+          '/拠点カテゴリ:' || gv_sales_base_category ||
+          '/生産物流LT:'   || in_lead_time_day       ||
+          '/出庫日:'       || id_schedule_ship_date  ||
+          '/商品区分:'     || iv_prod_class);
+--
+        ln_stschk_error_flg := 1;
+--
+      END IF;
+    END IF;
+-- 2009/01/21 H.Itou Add End
 --
     -- 2008/12/17 Add Start Ver1.13 --------------------------------
     IF (ln_stschk_error_flg = 1) THEN
