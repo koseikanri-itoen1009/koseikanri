@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_LINES_V
  * Description : 問屋請求見積書突き合わせ画面（明細）ビュー
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,8 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/03/12    1.1   K.Yamaguchi      [障害T1_0014]項目追加
+ *  2009/04/21    1.2   K.Yamaguchi      [障害T1_0531]支払単価が０の場合、
+ *                                                    見積書の検索を行わない
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_lines_v(
@@ -77,14 +79,27 @@ SELECT xwbl.ROWID                       AS row_id
      , xwbl.payment_unit_price          AS payment_unit_price         -- 支払単価
      , xwbl.revise_flag                 AS revise_flag                -- 業管訂正フラグ
      , xwbl.status                      AS status                     -- ステータスコード
-     , xxcok_common_pkg.get_wholesale_req_est_type_f(
-         xca.wholesale_ctrl_code    -- 問屋管理コード
-       , xwbl.sales_outlets_code    -- 問屋帳合先コード
-       , xwbl.item_code             -- 品目コード
-       , xwbl.payment_unit_price    -- 請求単価
-       , xwbl.demand_unit_type      -- 請求単位
-       , xwbl.selling_month         -- 売上対象年月
-       )                                AS status_func                -- 関数戻り値（ステータス）
+-- 2009/04/21 Ver.1.2 [障害T1_0531] SCS K.Yamaguchi REPAIR START
+--     , xxcok_common_pkg.get_wholesale_req_est_type_f(
+--         xca.wholesale_ctrl_code    -- 問屋管理コード
+--       , xwbl.sales_outlets_code    -- 問屋帳合先コード
+--       , xwbl.item_code             -- 品目コード
+--       , xwbl.payment_unit_price    -- 請求単価
+--       , xwbl.demand_unit_type      -- 請求単位
+--       , xwbl.selling_month         -- 売上対象年月
+--       )                                AS status_func                -- 関数戻り値（ステータス）
+     , CASE
+       WHEN xwbl.payment_unit_price <> 0 THEN
+         xxcok_common_pkg.get_wholesale_req_est_type_f(
+           xca.wholesale_ctrl_code    -- 問屋管理コード
+         , xwbl.sales_outlets_code    -- 問屋帳合先コード
+         , xwbl.item_code             -- 品目コード
+         , xwbl.payment_unit_price    -- 請求単価
+         , xwbl.demand_unit_type      -- 請求単位
+         , xwbl.selling_month         -- 売上対象年月
+         )
+       END                              AS status_func                -- 関数戻り値（ステータス）
+-- 2009/04/21 Ver.1.2 [障害T1_0531] SCS K.Yamaguchi REPAIR END
      , xwbl.payment_creation_date       AS payment_creation_date      -- 支払データ作成年月日
      , xwbl.item_code                   AS item_code                  -- 品目コード（実）
      , flv.attribute1                   AS gyotai_chu                 -- 中分類
