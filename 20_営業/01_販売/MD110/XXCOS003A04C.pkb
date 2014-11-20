@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2011/04/14   1.9    S.Ochiai         [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応
  *  2011/09/27   1.10   Y.Horikawa       [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応（再）
  *  2011/10/24   1.11   Y.Horikawa       [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応（再）（PT追加対応）
+ *  2011/10/27   1.12   Y.Horikawa       [障害No.E_本稼動_08442対応]消化VDの処理対象外にする。
  *
  *****************************************************************************************/
 --
@@ -208,6 +209,9 @@ AS
   cv_cust_stat_pause     CONSTANT VARCHAR2(30) := '50';
   cv_last_time           CONSTANT VARCHAR2(10) := '23:59:59';
 -- 2011/09/27 Add Ver.1.10 End
+-- 2011/10/27 Add Ver.1.12 Start
+  cv_actual_dlv_if_output_target  CONSTANT VARCHAR2(1) := 'Y';  -- ベンダ納品実績IF出力対象
+-- 2011/10/27 Add Ver.1.12 End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -353,6 +357,9 @@ AS
               AND   TRUNC(SYSDATE)  BETWEEN flv.start_date_active
                                     AND NVL(flv.end_date_active, TRUNC(SYSDATE))
               AND   flv.enabled_flag = cv_flag_on
+-- 2011/10/27 Add Ver.1.12 Start
+              AND   flv.attribute1 = cv_actual_dlv_if_output_target
+-- 2011/10/27 Add Ver.1.12 End
               AND   xca.business_low_type = flv.meaning
               AND   hca.cust_account_id = xca.customer_id
               AND   hp.party_id = hca.party_id
