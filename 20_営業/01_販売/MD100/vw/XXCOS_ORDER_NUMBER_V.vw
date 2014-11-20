@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_number_v
  * Description     : 記帳済受注番号取得
- * Version         : 1.3
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,15 +13,22 @@
  *  2009/06/04    1.1   T.Miyata         T1_1314対応
  *  2009/07/07    1.2   T.Miyata         0000478対応
  *  2009/07/14    1.3   K.Kiriu          0000063対応
+ *  2009/10/21    1.4   K.Atsushiba      0001113対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_number_v (
   order_number,                         -- 受注番号
   shipping_instructions                 -- 出荷指示
+/* 2009/10/21 Ver1.4 Add Start */
+  ,delivery_base_code                   -- 納品拠点
+/* 2009/10/21 Ver1.4 Add End */
 )
 AS
   SELECT DISTINCT
          ooha.order_number                               order_number
          ,SUBSTRB( ooha.shipping_instructions, 1, 20 )   shipping_instructions
+/* 2009/10/21 Ver1.4 Add Start */
+         ,xca.delivery_base_code                         delivery_base_code
+/* 2009/10/21 Ver1.4 Add End */
   FROM   oe_order_headers_all                   ooha               -- 受注ヘッダ
         ,oe_order_lines_all                     oola               -- 受注明細
         ,hz_cust_accounts                       hca                -- 顧客マスタ
@@ -96,8 +103,16 @@ AS
   AND   flv_hokan.lookup_code                   = 'XXCOS_DIRECT_11'
   AND   flv_hokan.language                      = USERENV('LANG')
   AND   flv_hokan.enabled_flag                  = 'Y'
+/* 2009/10/21 Ver1.4 Add Start */
+  AND   msib.organization_id                    = xxcoi_common_pkg.get_organization_id( FND_PROFILE.VALUE('XXCOI1_ORGANIZATION_CODE'))
+  AND   msi.organization_id                     = xxcoi_common_pkg.get_organization_id( FND_PROFILE.VALUE('XXCOI1_ORGANIZATION_CODE'))
+/* 2009/10/21 Ver1.4 Add End */
+  
   ;
 COMMENT ON  COLUMN  xxcos_order_number_v.order_number           IS  '受注番号';
 COMMENT ON  COLUMN  xxcos_order_number_v.shipping_instructions  IS  '出荷指示';
+/* 2009/10/21 Ver1.4 Add Start */
+COMMENT ON  COLUMN  xxcos_order_number_v.delivery_base_code     IS  '納品拠点';
+/* 2009/10/21 Ver1.4 Add End */
 --
 COMMENT ON  TABLE   xxcos_order_number_v                        IS  '記帳済受注番号取得';
