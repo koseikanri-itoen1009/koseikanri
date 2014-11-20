@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産依頼書兼生産指図書）
  * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産依頼書兼生産指図書）          (T_MD070_BPO_23A)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,7 +35,8 @@ AS
  *  2008/05/20    1.2   Daisuke  Nihei      結合テスト不具合対応（資材：依頼数が表示されない）
  *  2008/05/30    1.3   Daisuke  Nihei      結合テスト不具合対応（条件：予定区分不備)
  *  2008/06/04    1.4   Daisuke  Nihei      結合テスト不具合対応（生産指示書表示不正)
- *  2008/07/02    1.5   Satoshi Yunba       禁則文字対応
+ *  2008/07/02    1.5   Satoshi  Yunba      禁則文字対応
+ *  2008/07/18    1.6   Hitomi   Itou       結合テスト 指摘23対応 生産依頼書の時、保留中・手配済も対象とする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -60,10 +61,21 @@ AS
   -- ===============================
   gv_pkg_name                   CONSTANT VARCHAR2(20) := 'XXWIP230001' ;                       -- パッケージ名
   gc_report_id                  CONSTANT VARCHAR2(12) := 'XXWIP230001T' ;                      -- 帳票ID
+--
+  -- 業務ステータス
+-- 2008/07/18 H.Itou ADD START
+  gv_status_horyu               CONSTANT VARCHAR2(10) := '1';                                  -- 保留中
+  gv_status_tehai_zumi          CONSTANT VARCHAR2(10) := '3';                                  -- 手配済
+  gv_status_kanryou             CONSTANT VARCHAR2(10) := '7';                                  -- 完了
+  gv_status_close               CONSTANT VARCHAR2(10) := '8';                                  -- クローズ
+  gv_status_cancel              CONSTANT VARCHAR2(10) := '-1';                                 -- 取消
+-- 2008/07/18 H.Itou ADD END
   gv_status_irai_zumi           CONSTANT VARCHAR2(10) := '2';                                  -- 依頼済
   gv_status_kakunin_zumi        CONSTANT VARCHAR2(10) := '5';                                  -- 確認済
   gv_status_sasizu_zumi         CONSTANT VARCHAR2(10) := '4';                                  -- 指図済
   gv_status_uketuke_zumi        CONSTANT VARCHAR2(10) := '6';                                  -- 受付済
+--
+  -- 品目区分
   gv_hinmoku_kbn_genryou        CONSTANT VARCHAR2(10) := '1';                                  -- 原料
   gv_hinmoku_kbn_sizai          CONSTANT VARCHAR2(10) := '2';                                  -- 資材
   gv_hinmoku_kbn_hanseihin      CONSTANT VARCHAR2(10) := '4';                                  -- 半製品
@@ -1647,9 +1659,13 @@ AS
       AND ximv.item_no                = NVL(iv_hinmoku_cd, ximv.item_no)
       AND (
             (    iv_chohyo_kbn        = gv_chohyo_kbn_irai
-             AND gbh.attribute4         IN( gv_status_irai_zumi
-                                           ,gv_status_kakunin_zumi
-                                           ,gv_status_uketuke_zumi )
+             AND gbh.attribute4         IN( gv_status_irai_zumi     -- 依頼済
+-- 2008/07/18 H.Itou ADD START  帳票区分が依頼書の場合、保留中・手配済も対象とする。
+                                           ,gv_status_horyu         -- 保留中
+                                           ,gv_status_tehai_zumi    -- 手配済
+-- 2008/07/18 H.Itou ADD END
+                                           ,gv_status_kakunin_zumi  -- 確認済
+                                           ,gv_status_uketuke_zumi )-- 受付済
             )
            OR
             (    iv_chohyo_kbn        = gv_chohyo_kbn_sasizu
