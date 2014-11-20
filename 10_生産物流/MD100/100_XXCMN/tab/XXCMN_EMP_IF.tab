@@ -1,0 +1,23 @@
+CREATE TABLE xxcmn.xxcmn_emp_if 
+(seq_num           NUMBER(15,0), 
+ proc_code         NUMBER(1,0), 
+ employee_num      VARCHAR2(5), 
+ base_code         VARCHAR2(4), 
+ user_name         VARCHAR2(20), 
+ user_name_alt     VARCHAR2(10), 
+ position_id       VARCHAR2(2), 
+ qualification_id  VARCHAR2(3), 
+ spare             VARCHAR2(26)
+);
+--
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.seq_num           IS 'SEQ番号';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.proc_code         IS '更新区分';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.employee_num      IS '営業員コード';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.base_code         IS '担当拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.user_name         IS '氏名';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.user_name_alt     IS '氏名（カナ）';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.position_id       IS '職位';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.qualification_id  IS '資格ポイント';
+COMMENT ON COLUMN xxcmn.xxcmn_emp_if.spare             IS '予備';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_emp_if IS '社員インタフェース';

@@ -1,0 +1,34 @@
+create table xxcmn.xxcmn_outbound
+(
+  wf_ope_div              VARCHAR2(150) NOT NULL,
+  wf_class                VARCHAR2(150) NOT NULL,
+  wf_notification         VARCHAR2(150) NOT NULL,
+  file_last_update_date   DATE          NOT NULL,
+  created_by              NUMBER(15,0)  NOT NULL,
+  creation_date           DATE          NOT NULL,
+  last_updated_by         NUMBER(15,0)  NOT NULL,
+  last_update_date        DATE          NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxcmn_outbound_pk PRIMARY KEY ( wf_ope_div, wf_class, wf_notification )
+  USING INDEX TABLESPACE XXIDX
+) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.wf_ope_div                     IS '処理区分';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.wf_class                       IS '対象';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.wf_notification                IS '宛先';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.file_last_update_date          IS 'ファイル最終更新日時';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.created_by                     IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.creation_date                  IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.last_updated_by                IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.last_update_date               IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.last_update_login              IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.request_id                     IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.program_application_id         IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.program_id                     IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_outbound.program_update_date            IS 'プログラムによる更新日';
+
+COMMENT ON TABLE  xxcmn.xxcmn_outbound IS 'アウトバウンド';
