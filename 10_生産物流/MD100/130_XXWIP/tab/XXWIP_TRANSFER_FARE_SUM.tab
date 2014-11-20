@@ -1,0 +1,42 @@
+CREATE TABLE xxwip.xxwip_transfer_fare_sum
+(
+  transfer_fare_sum_id    NUMBER(10,0)  NOT NULL,
+  target_date             VARCHAR2(6)   NOT NULL,
+  request_no              VARCHAR2(12)  NOT NULL,
+  goods_classe            VARCHAR2(1)   NOT NULL,
+  jurisdicyional_hub      VARCHAR2(4)   NOT NULL,
+  actual_qty              NUMBER(8,0)   NOT NULL,
+  leaf_amount             NUMBER(10,0),
+  drink_amount            NUMBER(10,0),
+  created_by              NUMBER(15,0)  NOT NULL,
+  creation_date           DATE          NOT NULL,
+  last_updated_by         NUMBER(15,0)  NOT NULL,
+  last_update_date        DATE          NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxwip_transfer_fare_sum_pk PRIMARY KEY ( transfer_fare_sum_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.transfer_fare_sum_id         IS '振替運賃情報サマリーID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.target_date                  IS '対象年月';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.request_no                   IS '依頼Ｎｏ';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.goods_classe                 IS '商品区分';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.jurisdicyional_hub           IS '管轄拠点';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.actual_qty                   IS '振替数量';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.leaf_amount                  IS 'リーフ振替金額';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.drink_amount                 IS 'ドリンク振替金額';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.created_by                   IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.creation_date                IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.last_updated_by              IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.last_update_date             IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.last_update_login            IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.request_id                   IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.program_application_id       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.program_id                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_sum.program_update_date          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwip.xxwip_transfer_fare_sum IS '運賃振替情報サマリーアドオン';

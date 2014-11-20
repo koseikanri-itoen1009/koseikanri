@@ -1,0 +1,34 @@
+CREATE TABLE xxwip.xxwip_deliverys_ctrl
+(
+  deliverys_ctrl_id       NUMBER(10,0)    NOT NULL,
+  concurrent_no           VARCHAR2(1)     NOT NULL,
+  concurrent_name         VARCHAR2(200)   NOT NULL,
+  last_process_date       DATE            NOT NULL,
+  created_by              NUMBER(15,0)    NOT NULL,
+  creation_date           DATE            NOT NULL,
+  last_updated_by         NUMBER(15,0)    NOT NULL,
+  last_update_date        DATE            NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxwip_deliverys_ctrl_pk PRIMARY KEY ( deliverys_ctrl_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.deliverys_ctrl_id       IS '運賃計算用コントロールID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.concurrent_no           IS 'コンカレントNo';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.concurrent_name         IS 'コンカレント名';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.last_process_date       IS '前回処理日付';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.created_by              IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.creation_date           IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.request_id              IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_ctrl.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwip.xxwip_deliverys_ctrl IS '運賃計算用コントロールアドオン';

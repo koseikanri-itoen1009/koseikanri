@@ -1,0 +1,108 @@
+CREATE TABLE xxwip.xxwip_deliverys
+(
+  deliverys_header_id         NUMBER(10)  NOT NULL,
+  delivery_company_code       VARCHAR2(4) NOT NULL,
+  delivery_no                 VARCHAR2(12)NOT NULL,
+  invoice_no                  VARCHAR2(20),
+  p_b_classe                  VARCHAR2(1) NOT NULL,
+  payments_judgment_classe    VARCHAR2(1),
+  ship_date                   DATE        NOT NULL,
+  arrival_date                DATE        NOT NULL,
+  report_date                 DATE,
+  judgement_date              DATE,
+  goods_classe                VARCHAR2(1),
+  mixed_code                  VARCHAR2(2) NOT NULL,
+  charged_amount              NUMBER(7),
+  contract_rate               NUMBER(7),
+  balance                     NUMBER(7),
+  total_amount                NUMBER(7)   NOT NULL,
+  many_rate                   NUMBER(7),
+  distance                    NUMBER(4)   NOT NULL,
+  delivery_classe             VARCHAR2(2) NOT NULL,
+  whs_code                    VARCHAR2(4) NOT NULL,
+  code_division               VARCHAR2(1) NOT NULL,
+  shipping_address_code       VARCHAR2(9) NOT NULL,
+  qty1                        NUMBER(4)   NOT NULL,
+  qty2                        NUMBER(4),
+  delivery_weight1            NUMBER(6)   NOT NULL,
+  delivery_weight2            NUMBER(6),
+  consolid_surcharge          NUMBER(7),
+  actual_distance             NUMBER(4),
+  congestion_charge           NUMBER(7),
+  picking_charge              NUMBER(7),
+  consolid_qty                NUMBER(2),
+  order_type                  VARCHAR2(1),
+  weight_capacity_class       VARCHAR2(1),
+  outside_contract            VARCHAR2(1),
+  output_flag                 VARCHAR2(1),
+  defined_flag                VARCHAR2(1),
+  return_flag                 VARCHAR2(1),
+  form_update_flag            VARCHAR2(1),
+  transfer_location           VARCHAR2(4),
+  outside_up_count            NUMBER(2),
+  description                 VARCHAR2(40),
+  created_by                  NUMBER(15)  NOT NULL,
+  creation_date               DATE        NOT NULL,
+  last_updated_by             NUMBER(15)  NOT NULL,
+  last_update_date            DATE        NOT NULL,
+  last_update_login           NUMBER(15),
+  request_id                  NUMBER(15),
+  program_application_id      NUMBER(15),
+  program_id                  NUMBER(15),
+  program_update_date         DATE,
+  CONSTRAINT xxwip_deliverys_pk PRIMARY KEY ( deliverys_header_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_deliverys.deliverys_header_id       IS '運賃ヘッダーアドオンID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.delivery_company_code     IS '運送業者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.delivery_no               IS '配送No';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.invoice_no                IS '送り状No';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.p_b_classe                IS '支払請求区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.payments_judgment_classe  IS '支払判断区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.ship_date                 IS '出庫日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.arrival_date              IS '到着日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.report_date               IS '報告日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.judgement_date            IS '判断日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.goods_classe              IS '商品区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.mixed_code                IS '混載区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.charged_amount            IS '請求運賃';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.contract_rate             IS '契約運賃';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.balance                   IS '差額';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.total_amount              IS '合計';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.many_rate                 IS '諸料金';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.distance                  IS '最長距離';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.delivery_classe           IS '配送区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.whs_code                  IS '代表出庫倉庫コード';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.code_division             IS '代表配送先コード区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.shipping_address_code     IS '代表配送先コード';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.qty1                      IS '個数１';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.qty2                      IS '個数２';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.delivery_weight1          IS '重量１';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.delivery_weight2          IS '重量２';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.consolid_surcharge        IS '混載割増金額';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.actual_distance           IS '最長実際距離';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.congestion_charge         IS '通行料';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.picking_charge            IS 'ピッキング料';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.consolid_qty              IS '混載数';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.order_type                IS '代表タイプ';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.weight_capacity_class     IS '重量容積区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.outside_contract          IS '契約外区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.output_flag               IS '差異区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.defined_flag              IS '支払確定区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.return_flag               IS '支払確定戻';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.form_update_flag          IS '画面更新有無区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.transfer_location         IS '振替先';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.outside_up_count          IS '外部業者変更回数';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.description               IS '運賃摘要';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.created_by                IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.creation_date             IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.request_id                IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwip.xxwip_deliverys IS '運賃ヘッダーアドオン';

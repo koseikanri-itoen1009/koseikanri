@@ -1,0 +1,100 @@
+CREATE TABLE xxwip.xxwip_adj_charges
+(
+  adj_charges_id                VARCHAR2(1)  NOT NULL
+, goods_classe                  VARCHAR2(1)  NOT NULL
+, delivery_company_code         VARCHAR2(4)  NOT NULL
+, billing_code                  VARCHAR2(4)  NOT NULL
+, billing_date                  VARCHAR2(6)  NOT NULL
+, item_payment1                 VARCHAR2(20)
+, amount_payment1               NUMBER(7)
+, tax_free_payment1             VARCHAR2(1)
+, item_payment2                 VARCHAR2(20)
+, amount_payment2               NUMBER(7)
+, tax_free_payment2             VARCHAR2(1)
+, item_payment3                 VARCHAR2(20)
+, amount_payment3               NUMBER(7)
+, tax_free_payment3             VARCHAR2(1)
+, item_payment4                 VARCHAR2(20)
+, amount_payment4               NUMBER(7)
+, tax_free_payment4             VARCHAR2(1)
+, item_payment5                 VARCHAR2(20)
+, amount_payment5               NUMBER(7)
+, tax_free_payment5             VARCHAR2(1)
+, adj_tax_extra                 NUMBER(7)
+, item_billing1                 VARCHAR2(20)
+, amount_billing1               NUMBER(7)
+, tax_free_billing1             VARCHAR2(1)
+, item_billing2                 VARCHAR2(20)
+, amount_billing2               NUMBER(7)
+, tax_free_billing2             VARCHAR2(1)
+, item_billing3                 VARCHAR2(20)
+, amount_billing3               NUMBER(7)
+, tax_free_billing3             VARCHAR2(1)
+, item_billing4                 VARCHAR2(20)
+, amount_billing4               NUMBER(7)
+, tax_free_billing4             VARCHAR2(1)
+, item_billing5                 VARCHAR2(20)
+, amount_billing5               NUMBER(7)
+, tax_free_billing5             VARCHAR2(1)
+, no_tax_billing_total          NUMBER(8)
+, created_by                    NUMBER(15,0)  NOT NULL
+, creation_date                 DATE          NOT NULL
+, last_updated_by               NUMBER(15,0)  NOT NULL
+, last_update_date              DATE          NOT NULL
+, last_update_login             NUMBER(15,0)
+, request_id                    NUMBER(15,0)
+, program_application_id        NUMBER(15,0)
+, program_id                    NUMBER(15,0)
+, program_update_date           DATE
+, CONSTRAINT xxwip_adj_charges_pk PRIMARY KEY ( adj_charges_id )
+  USING INDEX TABLESPACE XXIDX
+);
+--
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.adj_charges_id         IS '運賃調整アドオンID';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.goods_classe           IS '商品区分';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.delivery_company_code  IS '運送業者';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.billing_code           IS '請求先';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.billing_date           IS '年月';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_payment1          IS '支払項目1';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_payment1        IS '支払金額1';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_payment1      IS '支払非課税1';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_payment2          IS '支払項目2';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_payment2        IS '支払金額2';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_payment2      IS '支払非課税2';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_payment3          IS '支払項目3';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_payment3        IS '支払金額3';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_payment3      IS '支払非課税3';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_payment4          IS '支払項目4';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_payment4        IS '支払金額4';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_payment4      IS '支払非課税4';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_payment5          IS '支払項目5';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_payment5        IS '支払金額5';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_payment5      IS '支払非課税5';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.adj_tax_extra          IS '消費税調整';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_billing1          IS '請求項目1';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_billing1        IS '請求金額1';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_billing1      IS '請求非課税1';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_billing2          IS '請求項目2';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_billing2        IS '請求金額2';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_billing2      IS '請求非課税2';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_billing3          IS '請求項目3';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_billing3        IS '請求金額3';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_billing3      IS '請求非課税3';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_billing4          IS '請求項目4';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_billing4        IS '請求金額4';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_billing4      IS '請求非課税4';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.item_billing5          IS '請求項目5';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.amount_billing5        IS '請求金額5';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.tax_free_billing5      IS '請求非課税5';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.no_tax_billing_total   IS '非課税請求金額合計';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.created_by             IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.creation_date          IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.request_id             IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_adj_charges.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwip.xxwip_adj_charges IS '運賃調整アドオン';

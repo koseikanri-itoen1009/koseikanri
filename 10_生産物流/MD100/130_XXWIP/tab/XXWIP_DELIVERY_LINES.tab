@@ -1,0 +1,78 @@
+CREATE TABLE xxwip.xxwip_delivery_lines
+(
+  delivery_lines_id           NUMBER(10)      NOT NULL,
+  request_no                  VARCHAR2(12)    NOT NULL,
+  invoice_no                  VARCHAR2(20),
+  delivery_no                 VARCHAR2(12)    NOT NULL,
+  small_lot_class             VARCHAR2(1)     NOT NULL,
+  delivery_company_code       VARCHAR2(4)     NOT NULL,
+  whs_code                    VARCHAR2(4)     NOT NULL,
+  dellivary_classe            VARCHAR2(2)     NOT NULL,
+  code_division               VARCHAR2(2)     NOT NULL,
+  shipping_address_code       VARCHAR2(9)     NOT NULL,
+  payments_judgment_classe    VARCHAR2(1)     NOT NULL,
+  ship_date                   DATE            NOT NULL,
+  arrival_date                DATE            NOT NULL,
+  report_date                 DATE,
+  judgement_date              DATE            NOT NULL,
+  goods_classe                VARCHAR2(1)     NOT NULL,
+  weight_capacity_class       VARCHAR2(1),
+  distance                    NUMBER(4),
+  actual_distance             NUMBER(4),
+  qty                         NUMBER(4),
+  delivery_weight             NUMBER(6),
+  order_type                  VARCHAR2(1)     NOT NULL,
+  mixed_code                  VARCHAR2(2)     NOT NULL,
+  outside_contract            VARCHAR2(1),
+  transfer_location           VARCHAR2(4),
+  description                 VARCHAR2(40),
+  created_by                  NUMBER(15)      NOT NULL,
+  creation_date               DATE            NOT NULL,
+  last_updated_by             NUMBER(15)      NOT NULL,
+  last_update_date            DATE            NOT NULL,
+  last_update_login           NUMBER(15),
+  request_id                  NUMBER(15),
+  program_application_id      NUMBER(15),
+  program_id                  NUMBER(15),
+  program_update_date         DATE,
+  CONSTRAINT xxwip_delivery_lines_pk PRIMARY KEY ( delivery_lines_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.delivery_lines_id        IS '運賃明細アドオンID';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.request_no               IS '依頼No';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.invoice_no               IS '送り状No';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.delivery_no              IS '配送No';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.small_lot_class          IS 'リーフ小口区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.delivery_company_code    IS '運送業者';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.whs_code                 IS '出庫倉庫コード';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.dellivary_classe         IS '配送区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.code_division            IS '配送先コード区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.shipping_address_code    IS '配送先コード';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.payments_judgment_classe IS '支払判断区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.ship_date                IS '出庫日';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.arrival_date             IS '到着日';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.report_date              IS '報告日';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.judgement_date           IS '判断日';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.goods_classe             IS '商品区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.weight_capacity_class    IS '重量容積区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.distance                 IS '距離';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.actual_distance          IS '実際距離';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.qty                      IS '個数';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.delivery_weight          IS '重量';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.order_type               IS 'タイプ';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.mixed_code               IS '混載区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.outside_contract         IS '契約外区分';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.transfer_location        IS '振替先';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.description              IS '摘要';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.created_by               IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.creation_date            IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.request_id               IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_delivery_lines.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwip.xxwip_delivery_lines IS '運賃明細アドオン';

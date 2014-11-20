@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwip_adj_charges_s1 FOR xxwip.xxwip_adj_charges_s1;

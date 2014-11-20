@@ -1,0 +1,73 @@
+CREATE TABLE xxwip.xxwip_qt_inspection
+(
+  qt_inspect_req_no         NUMBER(10)      NOT NULL,
+  inspect_class             VARCHAR2(1)     NOT NULL,
+  item_id                   NUMBER(15,0)    NOT NULL,
+  lot_id                    NUMBER(15,0)    NOT NULL,
+  vendor_line               VARCHAR2(5),
+  product_date              DATE,
+  qty                       NUMBER(12,3),
+  prod_dely_date            DATE,
+  inspect_due_date1         DATE,
+  test_date1                DATE,
+  qt_effect1                VARCHAR2(2),
+  inspect_due_date2         DATE,
+  test_date2                DATE,
+  qt_effect2                VARCHAR2(2),
+  inspect_due_date3         DATE,
+  test_date3                DATE,
+  qt_effect3                VARCHAR2(2),
+  inspect_period            NUMBER(2),
+  use_by_date               DATE,
+  inherence_code            VARCHAR2(4),
+  remarks_column            VARCHAR2(250),
+  unique_sign               VARCHAR2(6), 
+  division                  VARCHAR2(1)     NOT NULL,
+  batch_po_id               NUMBER(15,0),
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT XXWIP_QT_INSPECT_PK PRIMARY KEY ( qt_inspect_req_no )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.qt_inspect_req_no       IS '検査依頼No';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inspect_class           IS '検査種別';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.item_id                 IS '品目ID';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.lot_id                  IS 'ロットID';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.vendor_line             IS '仕入先コード/ラインNo';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.product_date            IS '製造日';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.qty                     IS '数量';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.prod_dely_date          IS '生産/納入日';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inspect_due_date1       IS '検査予定日１';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.test_date1              IS '検査日１';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.qt_effect1              IS '結果１';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inspect_due_date2       IS '検査予定日２';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.test_date2              IS '検査日２';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.qt_effect2              IS '結果２';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inspect_due_date3       IS '検査予定日３';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.test_date3              IS '検査日３';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.qt_effect3              IS '結果３';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inspect_period          IS '検査期間';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.use_by_date             IS '賞味期限';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.inherence_code          IS '固有記号';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.remarks_column          IS '備考';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.division                IS '区分';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.batch_po_id             IS '番号';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.created_by              IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.creation_date           IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.request_id              IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_qt_inspection.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwip.xxwip_qt_inspection IS '品質検査依頼情報アドオン';

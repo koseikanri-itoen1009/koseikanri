@@ -1,0 +1,62 @@
+CREATE TABLE xxwip.xxwip_deliverys_if
+(
+  delivery_id             NUMBER(10)  NOT NULL,
+  pattern_flag            VARCHAR2(1) NOT NULL,
+  delivery_company_code   VARCHAR2(4) NOT NULL,
+  delivery_no             VARCHAR2(12)NOT NULL,
+  invoice_no              VARCHAR2(20),
+  p_b_classe              VARCHAR2(1) NOT NULL,
+  delivery_classe         VARCHAR2(2) ,
+  charged_amount          NUMBER(7)   NOT NULL,
+  qty1                    NUMBER(4),
+  qty2                    NUMBER(4),
+  delivery_weight1        NUMBER(6),
+  delivery_weight2        NUMBER(6),
+  distance                NUMBER(4),
+  many_rate               NUMBER(7),
+  congestion_charge       NUMBER(7),
+  picking_charge          NUMBER(7),
+  consolid_surcharge      NUMBER(7),
+  total_amount            NUMBER(7),
+  created_by              NUMBER(15)  NOT NULL,
+  creation_date           DATE        NOT NULL,
+  last_updated_by         NUMBER(15)  NOT NULL,
+  last_update_date        DATE        NOT NULL,
+  last_update_login       NUMBER(15),
+  request_id              NUMBER(15),
+  program_application_id  NUMBER(15),
+  program_id              NUMBER(15),
+  program_update_date     DATE,
+  CONSTRAINT xxwip_deliverys_if_pk PRIMARY KEY ( delivery_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.delivery_id            IS '運賃アドオンID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.pattern_flag           IS 'パターン区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.delivery_company_code  IS '運送業者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.delivery_no            IS '配送No';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.invoice_no             IS '送り状No';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.p_b_classe             IS '支払請求区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.delivery_classe        IS '配送区分';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.charged_amount         IS '請求運賃';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.qty1                   IS '個数１';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.qty2                   IS '個数２';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.delivery_weight1       IS '重量１';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.delivery_weight2       IS '重量２';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.distance               IS '距離';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.many_rate              IS '諸料金';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.congestion_charge      IS '通行料';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.picking_charge         IS 'ピッキング料';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.consolid_surcharge     IS '混載割増金額';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.total_amount           IS '合計';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.created_by             IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.creation_date          IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.request_id             IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_deliverys_if.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwip.xxwip_deliverys_if IS '運賃アドオンインタフェース';
