@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/21    1.0   SCS Okuyama      新規作成
  *  2009/02/29    1.1   Yutaka.Kuboshima 顧客ステータス更新処理を変更
+ *  2009/03/18    1.2   Yuuki.Nakamura   タスクステータス名定義テーブル．名称の取得条件を「クローズ」に変更
  *
  *****************************************************************************************/
 --
@@ -134,7 +135,10 @@ AS
   cv_flag_yes               CONSTANT VARCHAR2(1)  := 'Y';                   -- フラグ（Yes）
   cv_flag_no                CONSTANT VARCHAR2(1)  := 'N';                   -- フラグ（No）
   cv_tsk_type_visit         CONSTANT VARCHAR2(4)  := '訪問';                -- タスクタイプ名（訪問）
-  cv_tsk_status_cmp         CONSTANT VARCHAR2(4)  := '完了';                -- タスクステータス名（完了）
+-- 2009/03/18 mod start
+--  cv_tsk_status_cmp         CONSTANT VARCHAR2(4)  := '完了';                -- タスクステータス名（完了）
+  cv_tsk_status_cmp         CONSTANT VARCHAR2(8)  := 'クローズ';            -- タスクステータス名（クローズ）
+-- 2009/03/18 mod end
   cv_sgl_space              CONSTANT VARCHAR2(1)  := CHR(32);               -- 半角スペース文字
   cv_ui_flag_new            CONSTANT VARCHAR2(1)  := '1';                   -- 新規／更新フラグ（新規）
   cv_cust_status_mc_cnd     CONSTANT VARCHAR2(2)  := '10';                  -- 顧客ステータス（ＭＣ候補）
