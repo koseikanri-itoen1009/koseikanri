@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2010-01-26    1.26  K.Hosoi          E_本稼動_00533,00319対応
  *  2010-03-01    1.27  K.Hosoi          E_本稼動_01761対応
  *  2014-05-19    1.28  Y.Shoji          E_本稼動_11853⑧対応
+ *  2014-07-08    1.29  T.Kobori         E_本稼動_11853⑩対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2330,7 +2331,9 @@ AS
     gr_ext_attribs_id_rec.vd_shutoku_kg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
                                               cv_vd_shutoku_kg
                                              ,ld_process_date);
-    gr_ext_attribs_id_rec.vd_shutoku_kg := NULL;
+    /* 2014-07-08 T.Kobori E_本稼動_11853⑩対応 DEL START */
+--    gr_ext_attribs_id_rec.vd_shutoku_kg := NULL;
+    /* 2014-07-08 T.Kobori E_本稼動_11853⑩対応 DEL END */
     IF (gr_ext_attribs_id_rec.vd_shutoku_kg IS NULL) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name                  -- アプリケーション短縮名
