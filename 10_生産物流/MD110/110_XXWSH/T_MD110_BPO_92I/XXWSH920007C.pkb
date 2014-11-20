@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/04/03   1.11  SCS 野村          本番障害#1367（1321）調査用対応
  *  2009/04/17   1.12  SCS 野村          本番障害#1367（1321）リトライ対応
  *  2009/05/01   1.13  SCS 野村          本番障害#1367（1321）子除外対応
+ *  2009/05/19   1.14  SCS 伊藤          本番障害#1447対応
  *
  *****************************************************************************************/
 --
@@ -531,9 +532,12 @@ AS
   , in_deliver_from_id IN  NUMBER   DEFAULT NULL  -- 出庫元
   , in_deliver_type    IN  NUMBER   DEFAULT NULL  -- 出庫形態
 -- 2009/01/28 H.Itou Add Start 本番障害#1028対応
-  , iv_instruction_dept IN  VARCHAR2)             -- 指示部署
+  , iv_instruction_dept IN  VARCHAR2              -- 指示部署
 -- 2009/01/28 H.Itou Add End
-  
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+  , iv_item_code        IN  VARCHAR2              -- 品目コード
+-- 2009/05/19 H.Itou Add End
+  )
   RETURN VARCHAR2
   IS
     -- ===============================
@@ -656,6 +660,11 @@ AS
         lv_fwd_sql := lv_fwd_sql || ' AND oh.instruction_dept = '''|| iv_instruction_dept ||'''';
       END IF;
 -- 2009/01/28 H.Itou Add End
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+      IF (iv_item_code IS NOT NULL) THEN
+        lv_fwd_sql := lv_fwd_sql || ' AND im2.item_no = '''|| iv_item_code ||'''';
+      END IF;
+-- 2009/05/19 H.Itou Add End
       -- ***********
       -- GROUP BY句(出荷)
       -- ***********
@@ -736,6 +745,11 @@ AS
         lv_fwd_sql := lv_fwd_sql || ' AND ih.instruction_post_code = '''|| iv_instruction_dept ||'''';
       END IF;
 -- 2009/01/28 H.Itou Add End
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+      IF (iv_item_code IS NOT NULL) THEN
+        lv_fwd_sql := lv_fwd_sql || ' AND im2.item_no = '''|| iv_item_code ||'''';
+      END IF;
+-- 2009/05/19 H.Itou Add End
       -- ***********
       -- GROUP BY句(移動)
       -- ***********
@@ -1336,6 +1350,9 @@ AS
 -- 2009/01/28 H.Itou Add Start 本番障害#1028対応
    , iv_instruction_dept   IN     VARCHAR2     -- 指示部署
 -- 2009/01/28 H.Itou Add End
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+   , iv_item_code          IN     VARCHAR2     -- 品目コード
+-- 2009/05/19 H.Itou Add End
    , ov_errbuf             OUT  NOCOPY   VARCHAR2     -- エラー・メッセージ           --# 固定 #
    , ov_retcode            OUT  NOCOPY   VARCHAR2     -- リターン・コード             --# 固定 #
    , ov_errmsg             OUT  NOCOPY   VARCHAR2)    -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1442,8 +1459,12 @@ AS
                                , in_deliver_from_id -- 出庫元
                                , in_deliver_type    -- 出庫形態
 -- 2009/01/28 H.Itou Add Start 本番障害#1028対応
-                               , iv_instruction_dept);   -- 指示部署
+                               , iv_instruction_dept   -- 指示部署
 -- 2009/01/28 H.Itou Add End
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+                               , iv_item_code       -- 品目コード
+-- 2009/05/19 H.Itou Add End
+                                 );
 -- Ver1.3 M.Hokkanji Start
     ld_loop_date := TO_DATE(iv_deliver_date_from,'YYYY/MM/DD');
     gr_data_cnt_tbl.delete;
@@ -1661,6 +1682,9 @@ AS
 -- 2009/01/28 H.Itou Add Start 本番障害#1028対応
     iv_instruction_dept   IN           VARCHAR2       -- 指示部署
 -- 2009/01/28 H.Itou Add End
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+   ,iv_item_code          IN           VARCHAR2       -- 品目コード
+-- 2009/05/19 H.Itou Add End
   )
 --
 --###########################  固定部 START   ###########################
@@ -1763,6 +1787,12 @@ AS
     -- 入力パラメータ「出庫日To」出力
     gv_out_msg := xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh, 'APP-XXWSH-02859', 'D_TO'     , iv_deliver_date_to);
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+    -- 入力パラメータ「指示部署」出力
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'指示部署：'|| iv_instruction_dept);
+    -- 入力パラメータ「品目コード」出力
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'品目コード：'|| iv_item_code);
+-- 2009/05/19 H.Itou Add End
 --
     --区切り文字列出力
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
@@ -1792,6 +1822,9 @@ AS
 -- 2009/01/28 H.Itou Add Start 本番障害#1028対応
       iv_instruction_dept,  -- 指示部署
 -- 2009/01/28 H.Itou Add End
+-- 2009/05/19 H.Itou Add Start 本番障害#1447対応
+      iv_item_code,         -- 品目
+-- 2009/05/19 H.Itou Add End
       lv_errbuf,            -- エラー・メッセージ           --# 固定 #
       lv_retcode,           -- リターン・コード             --# 固定 #
       lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
