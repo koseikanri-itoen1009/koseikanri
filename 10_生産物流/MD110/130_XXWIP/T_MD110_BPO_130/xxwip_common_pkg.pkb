@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.22
+ * Version                : 1.23
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2009/02/16   1.20  Oracle 二瓶 大輔   本番障害#1198対応
  *  2009/02/16   1.21  Oracle 伊藤 ひとみ 本番障害#32,1096対応(品質検査依頼情報作成 数量加算 ロットステータス初期化)
  *  2009/02/27   1.22  Oracle 伊藤 ひとみ 本番障害#32再対応(品質検査依頼情報作成)
+ *  2009/03/09   1.23  Oracle 伊藤 ひとみ 本番障害#32再対応(品質検査依頼情報作成)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -2870,38 +2871,40 @@ AS
       FOR UPDATE NOWAIT
       ;
 --
-      -- 処理区分が2:更新かつ区分が1:生産以外の場合
-      IF (iv_disposal_div = gv_disposal_div_upd)
-      AND(it_division <> gt_division_gme)  THEN
-        -- 検査日のいづれかに入力があるかチェック
-        IF (lr_xxwip_qt_inspection.test_date1 IS NOT NULL)
-        OR (lr_xxwip_qt_inspection.test_date2 IS NOT NULL)
-        OR (lr_xxwip_qt_inspection.test_date3 IS NOT NULL) THEN
---
--- 2008/07/02 H.Itou ADD START
-          ov_errmsg := '警告：処理区分が2:更新かつ区分が1:生産以外で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があります。';
-          ov_errbuf := ov_errmsg;
--- 2008/07/02 H.Itou ADD END
-          -- 警告
-          ov_retcode :=gv_status_warn;
-        END IF;
---
-      -- 処理区分が3:削除の場合
-      ELSIF (iv_disposal_div = gv_disposal_div_del) THEN
-        -- 検査日のいづれかに入力があるかチェック
-        IF (lr_xxwip_qt_inspection.test_date1 IS NOT NULL)
-        OR (lr_xxwip_qt_inspection.test_date2 IS NOT NULL)
-        OR (lr_xxwip_qt_inspection.test_date3 IS NOT NULL) THEN
---
--- 2008/07/02 H.Itou ADD START
-          lv_errmsg := 'エラー：処理区分が3:削除で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があります。';
-          lv_errbuf := lv_errmsg;
--- 2008/07/02 H.Itou ADD END
-          -- エラー
-          RAISE global_api_expt;
---
-        END IF;
-      END IF;
+-- 2009/03/09 H.Itou Del Start 本番障害#32 生産以外は警告も正常終了なので、チェック不要。削除廃止のため、チェック不要。
+--      -- 処理区分が2:更新かつ区分が1:生産以外の場合
+--      IF (iv_disposal_div = gv_disposal_div_upd)
+--      AND(it_division <> gt_division_gme)  THEN
+--        -- 検査日のいづれかに入力があるかチェック
+--        IF (lr_xxwip_qt_inspection.test_date1 IS NOT NULL)
+--        OR (lr_xxwip_qt_inspection.test_date2 IS NOT NULL)
+--        OR (lr_xxwip_qt_inspection.test_date3 IS NOT NULL) THEN
+----
+---- 2008/07/02 H.Itou ADD START
+--          ov_errmsg := '警告：処理区分が2:更新かつ区分が1:生産以外で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があります。';
+--          ov_errbuf := ov_errmsg;
+---- 2008/07/02 H.Itou ADD END
+--          -- 警告
+--          ov_retcode :=gv_status_warn;
+--        END IF;
+----
+--      -- 処理区分が3:削除の場合
+--      ELSIF (iv_disposal_div = gv_disposal_div_del) THEN
+--        -- 検査日のいづれかに入力があるかチェック
+--        IF (lr_xxwip_qt_inspection.test_date1 IS NOT NULL)
+--        OR (lr_xxwip_qt_inspection.test_date2 IS NOT NULL)
+--        OR (lr_xxwip_qt_inspection.test_date3 IS NOT NULL) THEN
+----
+---- 2008/07/02 H.Itou ADD START
+--          lv_errmsg := 'エラー：処理区分が3:削除で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があります。';
+--          lv_errbuf := lv_errmsg;
+---- 2008/07/02 H.Itou ADD END
+--          -- エラー
+--          RAISE global_api_expt;
+----
+--        END IF;
+--      END IF;
+-- 2009/03/09 H.Itou Del End
 --
     -- ====================================
     -- OUTパラメータセット

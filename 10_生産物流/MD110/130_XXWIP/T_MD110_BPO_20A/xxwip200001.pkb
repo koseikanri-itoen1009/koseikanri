@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/01/05   1.8   D.Nihei          本番障害#912対応（抽出SQL追加) 
  *  2009/02/02   1.9   D.Nihei          本番障害#1112対応（総引当ベースロジック追加) 
  *  2009/02/18   1.10  N.Yoshida        統合障害#701対応（条件追加) 
+ *  2009/03/03   1.11  D.Nihei          本番障害#@@@@対応（手配コピー時の条件追加) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -77,6 +78,9 @@ AS
     TYPE wk_cur IS REF CURSOR;
     wk_cv   wk_cur;
     ln_cnt                   NUMBER;                                              -- 配列の添字
+-- 2009/03/03 D.Nihei ADD START
+    ln_inst_cnt              NUMBER;                                              -- 予定区分4の件数取得
+-- 2009/03/03 D.Nihei ADD END
 -- 2008/10/22 D.Nihei ADD START
     lt_dummy                 ic_lots_mst.attribute23%TYPE;                        -- 
 -- 2008/10/22 D.Nihei ADD END
@@ -1712,6 +1716,24 @@ AS
            , ior_ilm_data(ln_cnt).xmd_last_update_date
            , ior_ilm_data(ln_cnt).whse_inside_outside_div;
         EXIT WHEN wk_cv%NOTFOUND;
+-- 2009/03/03 D.Nihei ADD START 本番障害#@@@@
+        IF ( ior_ilm_data(ln_cnt).instructions_qty IS NOT NULL ) THEN
+          SELECT COUNT(1)
+          INTO   ln_inst_cnt
+          FROM   xxwip_material_detail xmd
+          WHERE  xmd.material_detail_id = ior_ilm_data(ln_cnt).material_detail_id
+          AND    xmd.item_id            = ior_ilm_data(ln_cnt).item_id
+          AND    xmd.lot_id             = ior_ilm_data(ln_cnt).lot_id
+          AND    xmd.location_code      = ior_ilm_data(ln_cnt).storehouse_code
+          AND    xmd.plan_type          = '4' -- 予定区分
+          AND    ROWNUM                 = 1
+          ;
+          -- 予定区分4が存在しない場合、手配コピーからの遷移なので元指示総数を0にする
+          IF ( ln_inst_cnt = 0 ) THEN
+            ior_ilm_data(ln_cnt).instructions_qty_orig := 0; -- 元指示総数
+          END IF;
+        END IF;
+-- 2009/03/03 D.Nihei ADD END
 -- 2009/02/02 D.Nihei MOD START
 --        ior_ilm_data(ln_cnt).enabled_qty := ior_ilm_data(ln_cnt).stock_qty + ior_ilm_data(ln_cnt).inbound_qty - ior_ilm_data(ln_cnt).outbound_qty;
         -- 引当可能数(有効日ベース)

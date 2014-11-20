@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2009-02-04 1.9  二瓶大輔     本番障害#4
 *                              本番障害#666
 * 2009-02-09 1.10 二瓶大輔     本番障害#32
+* 2009-03-06 1.11 伊藤ひとみ   内部気づき
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -54,7 +55,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.10
+ * @version 1.11
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1782,6 +1783,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row       = null;
     boolean exeFlag = false;
 
+// 2009-03-06 H.Itou Add Start
+    getOADBTransaction().executeCommand("SAVEPOINT " + XxwipConstants.SAVE_POINT_XXWIP200001J);
+// 2009-03-06 H.Itou Add End
     // 投入情報
     if (XxwipConstants.TAB_TYPE_INVEST.equals(tabType)) 
     {

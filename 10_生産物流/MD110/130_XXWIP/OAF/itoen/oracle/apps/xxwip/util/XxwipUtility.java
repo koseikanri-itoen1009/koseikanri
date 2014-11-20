@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipUtility
 * 概要説明   : 生産共通関数
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-10-31 1.2  二瓶大輔     在庫会計クローズ関数追加
 * 2009-02-04 1.3  二瓶大輔     本番障害#4
 * 2009-02-09 1.4  二瓶大輔     本番障害#32
+* 2009-03-06 1.5  伊藤ひとみ   本番障害#32(再対応)
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.util;
@@ -34,7 +35,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 生産共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxwipUtility 
@@ -1609,14 +1610,16 @@ public class XxwipUtility
     sb.append("  lv_disposal_div  := :1; ");
     sb.append("  lt_lot_id        := :2; ");
     sb.append("  lt_item_id       := :3; ");
-    sb.append("  SELECT COUNT(1) ");
-    sb.append("  INTO   ln_cnt   ");
-    sb.append("  FROM   ic_lots_mst ilm ");
-    sb.append("  WHERE  ilm.item_id     = lt_item_id ");
-    sb.append("  AND    ilm.lot_id      = lt_lot_id  ");
-    sb.append("  AND    ilm.attribute24 = '5'        ");
-    sb.append("  ; ");
-    sb.append("  IF ( ln_cnt > 0 ) THEN ");
+// 2009-03-06 v1.5 H.Itou Del Start 本番障害#32(再対応) 作成区分は見ない。
+//    sb.append("  SELECT COUNT(1) ");
+//    sb.append("  INTO   ln_cnt   ");
+//    sb.append("  FROM   ic_lots_mst ilm ");
+//    sb.append("  WHERE  ilm.item_id     = lt_item_id ");
+//    sb.append("  AND    ilm.lot_id      = lt_lot_id  ");
+//    sb.append("  AND    ilm.attribute24 = '5'        ");
+//    sb.append("  ; ");
+//    sb.append("  IF ( ln_cnt > 0 ) THEN ");
+// 2009-03-06 v1.5 H.Itou Del End
 // 2009-02-09 v1.4 D.Nihei Add End
     sb.append("    xxwip_common_pkg.make_qt_inspection( ");
     sb.append("      it_division          => 1    "); // 区分：生産(固定)
@@ -1637,11 +1640,13 @@ public class XxwipUtility
     sb.append("     ,ov_retcode           => :9   ");
     sb.append("     ,ov_errmsg            => :10  ");
     sb.append("    ); ");
-// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
-    sb.append("  ELSE ");
-    sb.append("    NULL; ");
-    sb.append("  END IF; ");
-// 2009-02-09 v1.4 D.Nihei Add End
+// 2009-03-06 v1.5 H.Itou Del Start 本番障害#32(再対応)
+//// 2009-02-09 v1.4 D.Nihei Add Start 本番障害#32対応
+//    sb.append("  ELSE ");
+//    sb.append("    NULL; ");
+//    sb.append("  END IF; ");
+//// 2009-02-09 v1.4 D.Nihei Add End
+// 2009-03-06 v1.5 H.Itou Del End
     sb.append("END; ");
 
     //PL/SQLの設定を行います

@@ -42,7 +42,11 @@ AS
   , NVL(gmd.attribute25, gmd.original_qty)
                                     original_qty           -- 計画数
 -- 2009/01/20 D.Nihei Mod End
-  , TO_NUMBER( gmd.attribute7 )     request_qty_all        -- 依頼総数
+-- 2009/03/06 D.Nihei Mod Start 本番障害#1278
+--  , TO_NUMBER( gmd.attribute7 )     request_qty_all        -- 依頼総数
+  , NVL(TO_NUMBER( gmd.attribute7 ), 0)
+                                    request_qty_all        -- 依頼総数
+-- 2009/03/06 D.Nihei Mod End
   , NVL( xmd_sq.instructions_qty, 0 )
                                     instructions_qty_all   -- 指示総数
   , gmd.attribute13                 out_whse_1             -- 出倉庫1
@@ -90,7 +94,14 @@ AS
       FROM
         xxwip_material_detail           xmd     -- 生産原料詳細アドオン
       WHERE
-        xmd.plan_type IN ( '1', '2', '3' )
+            xmd.plan_type IN ( '1', '2', '3' )
+-- 2009/03/06 D.Nihei Add Start 本番障害#1280
+      AND   EXISTS(SELECT 1
+                   FROM   xxwip_material_detail xmdd
+                   WHERE  xmdd.material_detail_id = xmd.material_detail_id
+                   AND    xmdd.plan_type          = '4'
+                   AND    ROWNUM                  = 1)
+-- 2009/03/06 D.Nihei Add End
       GROUP BY
         batch_id
       , material_detail_id
