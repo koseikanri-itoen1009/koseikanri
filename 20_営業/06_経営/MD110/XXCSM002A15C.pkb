@@ -8,7 +8,7 @@ AS
  *                  : 商品計画データを抽出し、生産システムに連携するためのIFテーブルにデータを
  *                  : 登録します。
  * MD.050           : MD050_CSM_002_A15_年間商品計画生産システムIF
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-08    1.0   T.Tsukino        新規作成
  *  2009-02-24    1.1   M.Ohtsuki        [CT_063]  数量0のレコードの不具合の対応
+ *  2009-03-24    1.2   M.Ohtsuki        [T1_0117] バラ数生産連携不具合の対応
+ *  2009-03-24    1.2   M.Ohtsuki        [T1_0097] パージ条件不具合の対応
  *
  *****************************************************************************************/
 --
@@ -96,8 +98,9 @@ AS
   cv_xxcsm_msg_10001      CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10001';                             -- 取得データ0件エラーメッセージ
   cv_xxcsm_msg_10134      CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10134';                             -- 販売計画/引取計画I/Fテーブルロックエラーメッセージ
   cv_xxcsm_msg_10137      CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10137';                             -- 商品計画数量取得エラーメッセージ
-  
-
+--//+ADD END        2009/03/24   T1_0097 M.Ohtsuki
+  cv_xxcsm_msg_10154      CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10154';                             -- 販売計画/引取計画I/Fテーブルロックエラーメッセージ(既存)
+--//+ADD END        2009/03/24   T1_0097 M.Ohtsuki
   --プロファイル名
   cv_yearplan_calender    CONSTANT VARCHAR2(100) := 'XXCSM1_YEARPLAN_CALENDER';                     -- XXCSM:年間販売計画カレンダー名
   -- トークンコード
@@ -279,6 +282,115 @@ AS
 --
   END init;
 --
+--//+ADD START     2009/03/24   T1_0097 M.Ohtsuki
+  /**********************************************************************************
+   * Procedure Name   : del_existing_data
+   * Description      : 既存データ削除処理
+   ***********************************************************************************/
+  PROCEDURE del_existing_data(           
+     ov_errbuf           OUT NOCOPY VARCHAR2                                                        -- エラー・メッセージ
+    ,ov_retcode          OUT NOCOPY VARCHAR2                                                        -- リターン・コード
+    ,ov_errmsg           OUT NOCOPY VARCHAR2                                                        -- ユーザー・エラー・メッセージ
+    )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name          CONSTANT VARCHAR2(100)   := 'del_existing_data';                           -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf            VARCHAR2(4000);                                                            -- エラー・メッセージ
+    lv_retcode           VARCHAR2(1);                                                               -- リターン・コード
+    lv_errmsg            VARCHAR2(4000);                                                            -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_forecast_designator  CONSTANT VARCHAR2(2)   := '05';                                         -- Forecast分類 固定値：'05’ (販売計画)
+    cv_item_kbn             CONSTANT VARCHAR2(1)   := '1';                                          -- 商品区分:'1'
+    -- *** ローカル・カーソル ***
+    CURSOR del_existing_data_cur
+    IS
+      SELECT ROWID
+      FROM   xxinv_mrp_forecast_interface xxmfi
+      WHERE  xxmfi.forecast_designator = cv_forecast_designator                                     -- 固定値:'5'（販売計画）
+      AND    NOT EXISTS 
+              (SELECT 'X'
+               FROM   xxcsm_item_plan_headers  xxiph
+                     ,xxcsm_item_plan_lines    xxipl
+               WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
+               AND    xxiph.plan_year           = gn_active_year                                    -- 対象年度
+               AND    xxipl.item_kbn            = cv_item_kbn                                       -- 固定値:'1'（商品単品）
+               AND    xxipl.item_no             = xxmfi.item_code                                   -- 商品コード
+               AND    xxiph.location_cd         = xxmfi.base_code                                   -- 拠点コード
+               AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
+               AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date  -- 終了日付
+               )
+      FOR UPDATE NOWAIT
+      ;
+    -- *** ローカル例外 ***
+    rock_err_expt        EXCEPTION; 
+--
+  BEGIN
+--
+--
+    -- ロックの取得
+    BEGIN
+      OPEN  del_existing_data_cur;
+      CLOSE del_existing_data_cur;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE rock_err_expt;
+    END;
+--
+    --対象データ削除処理
+    DELETE FROM xxinv_mrp_forecast_interface  xxmfi                                                 -- 販売計画/引取計画I/Fテーブル
+    WHERE  xxmfi.forecast_designator    = cv_forecast_designator                                    -- 固定値:'5'（販売計画）
+    AND    xxmfi.program_application_id = cn_program_application_id                                 -- コンカレント・プログラム・アプリケーションID
+    AND    xxmfi.program_id             = cn_program_id                                             -- コンカレント・プログラムID
+    AND    NOT  EXISTS
+               (SELECT 'X'
+                FROM   xxcsm_item_plan_headers  xxiph                                               -- 商品計画用販売実績ヘッダ
+                      ,xxcsm_item_plan_lines    xxipl                                               -- 商品計画用販売実績明細
+                WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id                        -- ヘッダID紐付け
+                AND    xxiph.plan_year           = gn_active_year                                   -- 対象年度
+                AND    xxipl.item_kbn            = cv_item_kbn                                      -- 固定値:'1'（商品単品）
+                AND    xxipl.item_no             = xxmfi.item_code                                  -- 商品コード
+                AND    xxiph.location_cd         = xxmfi.base_code                                  -- 拠点コード
+                AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date     -- 開始日付
+                AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date -- 終了日付
+               );
+  EXCEPTION
+    -- *** 販売計画/引取計画I/Fテーブルロック例外ハンドラ ***
+    WHEN rock_err_expt THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                                                -- アプリケーション短縮名
+                     ,iv_name         => cv_xxcsm_msg_10154                                         -- メッセージコード
+                   );
+      lv_errbuf := lv_errmsg;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_error;                                                                -- ステータス:エラー
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,4000);
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_existing_data;
+--
+--//+ADD END        2009/03/24   T1_0097 M.Ohtsuki
   /**********************************************************************************
    * Procedure Name   : del_forecast_firstif
    * Argument         : iv_kyoten_cd   [拠点コード]
@@ -311,7 +423,7 @@ AS
 --//+UPD START 2009/02/24   CT063 M.Ohtsuki
 --    cv_forecast_designator  CONSTANT VARCHAR2(1)   := '5';                      -- Forecast分類 固定値：’5’ (販売計画)
     cv_forecast_designator  CONSTANT VARCHAR2(2)   := '05';                      -- Forecast分類 固定値：'05’ (販売計画)
---//+UPD START 2009/02/24   CT063 M.Ohtsuki
+--//+UPD END   2009/02/24   CT063 M.Ohtsuki
     cv_item_kbn             CONSTANT VARCHAR2(1)   := '1';                      -- 商品区分:'1'
     -- *** ローカル・カーソル ***
     CURSOR del_forecast_firstif_cur
@@ -400,6 +512,8 @@ AS
    *                  : in_amount    [数量]
    * Description      : 単位換算処理（A-4）
    ***********************************************************************************/
+--//+DEL START 2009/03/24   T1_0117 M.Ohtsuki
+/*
   PROCEDURE get_compute_count(
      iv_item_cd          IN  VARCHAR2                                           -- 商品コード
     ,in_amount           IN  NUMBER                                             -- 数量
@@ -485,6 +599,8 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_compute_count;
+*/
+--//+DEL END   2009/03/24   T1_0117 M.Ohtsuki
   /**********************************************************************************
    * Procedure Name   : insert_forecast_if
    * Argument         : iv_kyoten_cd    [拠点コード]
@@ -499,7 +615,9 @@ AS
      iv_kyoten_cd        IN  VARCHAR2                                           -- 拠点コード
     ,iv_item_cd          IN  VARCHAR2                                           -- 商品コード
     ,in_year_month       IN  NUMBER                                             -- 年月
-    ,in_case_count       IN  NUMBER                                             -- ケース数量
+--//+DEL START 2009/03/24  T1_0117 M.Ohtsuki
+--    ,in_case_count       IN  NUMBER                                             -- ケース数量
+--//+DEL END   2009/03/24  T1_0117 M.Ohtsuki
     ,in_bara_count       IN  NUMBER                                             -- バラ数量
     ,in_sales_budget     IN  NUMBER                                             -- 売上金額
     ,ov_errbuf           OUT NOCOPY VARCHAR2                                    -- エラー・メッセージ
@@ -564,7 +682,11 @@ AS
       ,iv_item_cd
       ,TRUNC(TO_DATE(in_year_month,'YYYYMM'), 'MONTH')
       ,TRUNC(TO_DATE(in_year_month,'YYYYMM'), 'MONTH')
-      ,in_case_count
+--//+UPD  START 2009/03/24  T1_0117 M.Ohtsuki
+--      ,in_case_count
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+      ,0
+--//+UPD  END   2009/03/24  T1_0117  M.Ohtsuki
       ,in_bara_count
       ,in_sales_budget
       ,cn_created_by
@@ -624,8 +746,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル変数 ***
-    ln_case_count     NUMBER;
-    ln_bara_count     NUMBER;
+--//+DEL START 2009/03/24  T1_0117 M.Ohtsuki
+--    ln_case_count     NUMBER;
+--    ln_bara_count     NUMBER;
+--//+DEL END   2009/03/24  T1_0117 M.Ohtsuki
     lt_kyoten_cd      XXCSM_ITEM_PLAN_HEADERS.LOCATION_CD%TYPE;
     ln_sts_flg        NUMBER;
     ln_location_count NUMBER;
@@ -707,6 +831,20 @@ AS
     IF (lv_retcode <> cv_status_normal) THEN
       RAISE global_process_expt;
     END IF;
+--//+ADD START  2009/03/24  T1_0097 M.Ohtsuki
+    -- ======================================
+    -- 既存データ削除処理
+    -- ======================================
+    del_existing_data(
+       ov_errbuf       => lv_errbuf                                             -- エラー・メッセージ
+      ,ov_retcode      => lv_retcode                                            -- リターン・コード
+      ,ov_errmsg       => lv_errmsg                                             -- ユーザー・エラー・メッセージ
+    );
+--
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+--//+ADD END    2009/03/24  T1_0097 M.Ohtsuki
     -- ======================================
     -- ローカル・カーソルオープン
     -- ======================================
@@ -780,6 +918,8 @@ AS
         -- ======================================
         -- A-3.単位換算処理
         -- ======================================
+--//+DEL START 2009/03/24  T1_0117 M.Ohtsuki
+/*
         get_compute_count(
            iv_item_cd      => year_item_date_rec.syouhin_cd                        -- 商品コード
           ,in_amount       => year_item_date_rec.suryo                             -- 数量(数量は小数点第1まで持つ)
@@ -792,7 +932,9 @@ AS
         -- エラーならば、処理をスキップする。
         IF (lv_retcode <> cv_status_normal) THEN
           RAISE global_api_expt;
-        END IF;      
+        END IF;
+*/
+--//+DEL END     2009/03/24  T1_0117 M.Ohtsuki
         -- ======================================
         -- A-5.年間商品計画データ登録
         -- ======================================
@@ -800,8 +942,12 @@ AS
            iv_kyoten_cd    => year_item_date_rec.kyoten_cd                        -- 拠点コード
           ,iv_item_cd      => year_item_date_rec.syouhin_cd                       -- 商品コード
           ,in_year_month   => year_item_date_rec.nengetsu                         -- 対象年月
-          ,in_case_count   => ln_case_count                                       -- ケース数量
-          ,in_bara_count   => ln_bara_count                                       -- バラ数量
+--//+UPD START 2009/03/24   T1_0117 M.Ohtsuki
+--          ,in_case_count   => ln_case_count                                       -- ケース数量
+--          ,in_bara_count   => ln_bara_count                                       -- バラ数量
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+          ,in_bara_count   => year_item_date_rec.suryo                            -- バラ数量          
+--//+UPD END   2009/03/24   T1_0117 M.Ohtsuki
           ,in_sales_budget => year_item_date_rec.urikin                           -- 売上金額
           ,ov_errbuf       => lv_errbuf                                           -- エラー・メッセージ
           ,ov_retcode      => lv_retcode                                          -- リターン・コード

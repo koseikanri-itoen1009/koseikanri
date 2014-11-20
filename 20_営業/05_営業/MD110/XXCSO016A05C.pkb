@@ -41,6 +41,8 @@ AS
  *  2009-03-11    1.1   M.Maruyama       【不具合対応054】物件マスタ関連情報取得時に
  *                                       機器状態2(滞留)かつインスタンスタイプ1(自販機)の
  *                                       場合の取得拠点コードの間違いを修正
+ *  2009-03-27    1.2   N.Yabuki         【ST障害管理T1_0191_T1_0192_T1_0193_T1_0194】
+ *                                        (※障害管理番号、障害内容は障害管理番号採番後に記入)
  *
  *****************************************************************************************/
 --
@@ -103,8 +105,16 @@ AS
   cv_source_obj_type_cd  CONSTANT VARCHAR2(10)  := 'PARTY';         -- ソースオブジェクトタイプコード
   cv_delete_flg          CONSTANT VARCHAR2(10)  := 'N';             -- 削除フラグ
   cn_job_kbn             CONSTANT NUMBER        := 5;               -- 作業テーブルの作業区分(引揚:5)
+/*20090327_yabuki_T1_0193 START*/
+  cn_job_kbn_new_replace CONSTANT NUMBER        := 3;               -- 作業テーブルの作業区分(新台代替:3)
+  cn_job_kbn_old_replace CONSTANT NUMBER        := 4;               -- 作業テーブルの作業区分(旧台代替:4)
+/*20090327_yabuki_T1_0193 END*/
   cn_completion_kbn      CONSTANT NUMBER        := 1;               -- 作業テーブルの完了区分(完了:1)
   cv_category_kbn        CONSTANT VARCHAR2(10)  := '50';            -- 発注依頼明細情報ビューの引揚情報(引揚情報:50)
+/*20090327_yabuki_T1_0193 START*/  
+  cv_category_kbn_new_rplc  CONSTANT VARCHAR2(10)  := '20';            -- 発注依頼明細情報ビューの新台代替情報(新台代替情報:20)
+  cv_category_kbn_old_rplc  CONSTANT VARCHAR2(10)  := '40';            -- 発注依頼明細情報ビューの旧台代替情報(旧台代替情報:40)
+/*20090327_yabuki_T1_0193 END*/
   cv_withdrawal_type     CONSTANT VARCHAR2(10)  := '1:引揚';        -- 発注依頼明細情報ビューの引揚(引揚:1)
   cv_instance_status     CONSTANT VARCHAR2(50)  := 'XXCSO1_INSTANCE_STATUS';  -- クイックコードのルックアップタイプ
   cv_enabled_flag        CONSTANT VARCHAR2(50)  := 'Y';             -- クイックコードの有効フラグ
@@ -968,13 +978,24 @@ AS
               ,po_requisition_lines_all prla             -- 発注依頼明細テーブル
               ,xxcso_requisition_lines_v xrlv            -- 発注依頼明細情報ビュー
         WHERE  xiwd.install_code2 = l_get_rec.install_code
-          AND  xiwd.job_kbn = cn_job_kbn
+/*20090327_yabuki_T1_0193 START*/
+--          AND  xiwd.job_kbn = cn_job_kbn
+/*20090327_yabuki_T1_0193 END*/
           AND  xiwd.completion_kbn = cn_completion_kbn
           AND  TO_CHAR(xiwd.po_req_number) = prha.segment1
           AND  prha.requisition_header_id = prla.requisition_header_id
           AND  xiwd.line_num = xrlv.requisition_line_id
-          AND  xrlv.category_kbn = cv_category_kbn
-          AND  xrlv.withdrawal_type = cv_withdrawal_type;
+/*20090327_yabuki_T1_0193 START*/
+          AND  (( xiwd.job_kbn = cn_job_kbn
+             AND xrlv.category_kbn = cv_category_kbn
+             AND xrlv.withdrawal_type = cv_withdrawal_type )
+          OR   ( xiwd.job_kbn = cn_job_kbn_new_replace
+             AND xrlv.category_kbn = cv_category_kbn_new_rplc )
+          OR   ( xiwd.job_kbn = cn_job_kbn_old_replace
+             AND xrlv.category_kbn = cv_category_kbn_old_rplc ));
+--          AND xrlv.category_kbn = cv_category_kbn
+--          AND xrlv.withdrawal_type = cv_withdrawal_type;
+/*20090327_yabuki_T1_0193 END*/
       EXCEPTION
         -- 抽出失敗した場合
         WHEN OTHERS THEN
@@ -1074,9 +1095,14 @@ AS
     -- ==================================================
     -- 再リース区分とリース料 月額リース料(税抜)をを抽出
     -- ==================================================
-    -- リース区分が「1:自社リース」又は「2:お客様リース」の場合
-    lv_install_code := SUBSTR(l_get_rec.install_code,1,3) || SUBSTR(l_get_rec.install_code,5,6);
-    IF ((l_get_rec.lease_kbn = cv_lease_kbn_1) OR (l_get_rec.lease_kbn = cv_lease_kbn_2)) THEN
+    /*20090327_yabuki_T1_0191_T1_0194 START*/
+    -- リース区分が「1:自社リース」の場合
+    lv_install_code := l_get_rec.install_code;
+    IF (l_get_rec.lease_kbn = cv_lease_kbn_1) THEN
+--    -- リース区分が「1:自社リース」又は「2:お客様リース」の場合
+--    lv_install_code := SUBSTR(l_get_rec.install_code,1,3) || SUBSTR(l_get_rec.install_code,5,6);
+--    IF ((l_get_rec.lease_kbn = cv_lease_kbn_1) OR (l_get_rec.lease_kbn = cv_lease_kbn_2)) THEN
+    /*20090327_yabuki_T1_0191_T1_0194 END*/
       BEGIN
         SELECT  xch.lease_type lease_type       -- 再リース区分
                ,xcl.second_charge second_charge -- リース料 月額リース料(税抜)
@@ -1090,6 +1116,13 @@ AS
           AND   xcl.contract_header_id = xch.contract_header_id   -- 契約内部ID
           AND   xch.re_lease_times = xoh.re_lease_times;          -- 再リース回数
       EXCEPTION
+        /*20090327_yabuki_T1_0192 START*/
+        -- 該当するレコードが存在しない場合
+        WHEN NO_DATA_FOUND THEN
+          lv_lease_type    := NULL;    -- 再リース区分
+          ln_second_charge := NULL;    -- リース料 月額リース料(税抜)
+        /*20090327_yabuki_T1_0192 END*/
+        --
         -- 検索結果がない場合、抽出失敗した場合
         WHEN OTHERS THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
