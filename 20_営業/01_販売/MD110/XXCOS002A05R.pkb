@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *                                       MainSQL,INSERT文にヒント句の追加、検索条件の最適化
  *  2009/09/30    1.16  S.Miyakoshi      障害[0001378]帳票テーブルの桁あふれ対応
  *  2009/11/27    1.17  K.Atsushiba      [E_本稼動_00128]営業員を指定時に他営業員のデータが出力されないように変更
+ *  2009/12/12    1.18  N.Maeda          [E_本稼動_00140]ソート順修正に伴う取得項目、設定項目の追加
  *
  *****************************************************************************************/
 --
@@ -241,6 +242,9 @@ AS
   -- 言語コード
   ct_lang                       CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
 -- 2009/09/01 Ver.1.15 M.Sano Add End
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+  cv_fmt_time_default           CONSTANT  VARCHAR2(7)                                     :=  'HH24:MI';
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -979,6 +983,10 @@ AS
         ,infd.tax_rounding_rule                    AS tax_rounding_rule               -- 端数処理区分
         ,infd.tax_rate                             AS tax_rate                        -- 消費税税率
         ,infd.consumption_tax_class                AS consumption_tax_class           -- 消費税区分
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+        ,infh.hht_dlv_input_date                   AS hht_dlv_input_date              -- HHT納品入力日時
+        ,infd.dlv_invoice_line_number              AS dlv_invoice_line_number         -- 納品明細番号
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
       FROM
          hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
@@ -1008,6 +1016,10 @@ AS
              ,seh.consumption_tax_class       AS consumption_tax_class        -- 消費税区分
              ,seh.invoice_class               AS invoice_class                -- 伝票区分
              ,seh.create_class                AS create_class                 -- 作成元区分
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT納品入力日時
+             ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- 納品明細番号
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
              ,SUM(
                CASE sel.item_code
                  WHEN diit.lookup_code THEN sel.sale_amount
@@ -1056,6 +1068,10 @@ AS
              ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_class                      -- 伝票区分
              ,seh.create_class                       -- 作成元区分
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+             ,seh.hht_dlv_input_date                 -- HHT納品入力日時
+             ,sel.dlv_invoice_line_number            -- 納品明細番号
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
          ) disc         -- 売上値引額
         ,(
            SELECT
@@ -1075,6 +1091,9 @@ AS
              ,seh.create_class                AS create_class                 -- 作成元区分
              ,SUM( seh.sale_amount_sum )      AS sale_amount_sum              -- 売上額
              ,SUM( seh.tax_amount_sum  )      AS tax_amount_sum               -- 消費税金額合計
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT納品入力日時
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
            FROM
               xxcos_sales_exp_headers   seh          -- 販売実績ヘッダテーブル
            WHERE
@@ -1101,6 +1120,9 @@ AS
              ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_class                      -- 伝票区分
              ,seh.create_class                       -- 作成元区分
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+             ,seh.hht_dlv_input_date                 -- HHT納品入力日時
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
          ) infh         -- ヘッダ情報
         ,(
            SELECT
@@ -1145,6 +1167,10 @@ AS
              ,MAX( xchv.bill_tax_round_rule )          AS tax_rounding_rule             -- 端数処理区分
 -- ******************** 2009/06/10 Var.1.10 T.Tominaga MOD END    *****************************************
              ,MAX( seh.tax_rate )                    AS tax_rate                        -- 消費税税率
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT納品入力日時
+             ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- 納品明細番号
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
            FROM
                xxcos_sales_exp_lines     sel           -- 販売実績明細テーブル
               ,xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
@@ -1205,6 +1231,10 @@ AS
              ,sel.standard_unit_price                -- 卸単価
              ,sel.column_no                          -- コラム
              ,sel.hot_cold_class                     -- H/C区分
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+             ,seh.hht_dlv_input_date                 -- HHT納品入力日時
+             ,sel.dlv_invoice_line_number            -- 納品明細番号
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
          ) infd     -- 明細情報
         ,(
             SELECT  look_val.meaning      meaning 
@@ -1397,6 +1427,9 @@ AS
       AND cuac.business_low_type     = gysm.meaning(+)                                                   -- 業態小分類
       AND cuac.business_low_type     = gysm1.meaning(+)
       AND infd.quantity             != cn_zero                                                           -- 納品数量 != 0
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+      AND disc.dlv_invoice_line_number = infd.dlv_invoice_line_number                -- 納品明細番号
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
       ;
 -- ******************** 2009/06/02 Var.1.9 T.Tominaga MOD END    ******************************************
 --
@@ -1757,6 +1790,12 @@ AS
         -- ﾌﾟﾛｸﾞﾗﾑ更新日
         gt_dlv_chk_list(ln_num).program_update_date          := cd_program_update_date;
 --
+-- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
+        -- 訪問時間
+        gt_dlv_chk_list(ln_num).visit_time                := TO_CHAR(lt_get_sale_data(in_no).hht_dlv_input_date,cv_fmt_time_default);
+        -- 明細番号
+        gt_dlv_chk_list(ln_num).dlv_invoice_line_number   := lt_get_sale_data(in_no).dlv_invoice_line_number;
+-- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
