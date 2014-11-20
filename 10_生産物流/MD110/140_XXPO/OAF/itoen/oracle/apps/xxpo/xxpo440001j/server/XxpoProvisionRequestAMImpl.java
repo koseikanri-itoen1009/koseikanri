@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-07-04 1.4  二瓶大輔     変更要求#91対応
 * 2008-07-29 1.5  二瓶大輔     内部変更要求#164,166,173、課題#32
 * 2008-08-13 1.6  二瓶大輔     ST不具合#249対応
+* 2008-08-27 1.7  伊藤ひとみ   内部変更要求#209対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -943,6 +944,10 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         {
           // 想定外のため参照のみ
           handleEventAllOffHdr(prow);
+// 2008-08-27 H.Itou Add Start 内部変更要求#209 出荷実績計上済の場合など、明細画面へ遷移できなくなるので、
+//   handleEventAllOffHdr内で次へボタン制御をしないで下さい。
+          prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
+// 2008-08-27 H.Itou Add End
         }
 
       // 起動タイプが「12：パッカー･外注工場用」の場合
@@ -1053,6 +1058,10 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         {
           // 想定外のため参照のみ
           handleEventAllOffHdr(prow);
+// 2008-08-27 H.Itou Add Start 内部変更要求#209 出荷実績計上済の場合など、明細画面へ遷移できなくなるので、
+//   handleEventAllOffHdr内で次へボタン制御をしないで下さい。
+          prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
+// 2008-08-27 H.Itou Add End
 
         }
       }
@@ -1090,6 +1099,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public void handleEventAllOffHdr(OARow prow)
   {
+// 出荷実績計上済の場合など、明細画面へ遷移できなくなるので、
+//   handleEventAllOffHdr内で次へボタン制御をしないで下さい。
     prow.setAttribute("FixBtnReject"                 , Boolean.TRUE); // 確定ボタン
     prow.setAttribute("RcvBtnReject"                 , Boolean.TRUE); // 受領ボタン
     prow.setAttribute("ManualFixBtnReject"           , Boolean.TRUE); // 手動指示確定ボタン
@@ -1177,6 +1188,10 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       OARow prow = (OARow)pvo.first();
       // 参照のみ
       handleEventAllOffHdr(prow);
+// 2008-08-27 H.Itou Add Start 内部変更要求#209 出荷実績計上済の場合など、明細画面へ遷移できなくなるので、
+//   handleEventAllOffHdr内で次へボタン制御をしないで下さい。
+      prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
+// 2008-08-27 H.Itou Add End
       // エラーメッセージ出力
       throw new OAException(XxcmnConstants.APPL_XXCMN, 
                             XxcmnConstants.XXCMN10500);
