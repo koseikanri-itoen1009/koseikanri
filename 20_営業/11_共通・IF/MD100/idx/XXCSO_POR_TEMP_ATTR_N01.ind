@@ -12,4 +12,3 @@
  *  2009/06/24    1.0  K.Satomura    èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX icx.xxcso_por_temp_attr_n01 ON icx.por_template_attributes_tl (attribute_name) TABLESPACE apps_ts_tx_idx;
-/

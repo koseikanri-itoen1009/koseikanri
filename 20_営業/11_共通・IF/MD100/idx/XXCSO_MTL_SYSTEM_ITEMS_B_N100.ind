@@ -1,2 +1,1 @@
 CREATE INDEX inv.xxcso_mtl_system_items_b_n100 ON mtl_system_items_b (UPPER(segment1)) TABLESPACE apps_ts_tx_idx;
-/

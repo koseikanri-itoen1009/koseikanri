@@ -1,2 +1,1 @@
 CREATE INDEX ap.xxcso_ap_bank_branches_n08 ON ap_bank_branches (UPPER(bank_branch_name)) TABLESPACE apps_ts_tx_idx;
-/

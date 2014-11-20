@@ -11,4 +11,4 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/06/23    1.0  N.Yanagitaira [è·äQ0000101]èââÒçÏê¨
  ************************************************************************/
-CREATE INDEX jtf.xxcso_jtf_tasks_b_n19 ON jtf.jtf_tasks_b ( TRUNC(NVL(actual_end_date, scheduled_end_date)) ) TABLESPACE APPS_TS_TX_IDX; 
+CREATE INDEX jtf.xxcso_jtf_tasks_b_n19 ON jtf.jtf_tasks_b ( TRUNC(NVL(actual_end_date, scheduled_end_date)) ) TABLESPACE APPS_TS_TX_IDX;
