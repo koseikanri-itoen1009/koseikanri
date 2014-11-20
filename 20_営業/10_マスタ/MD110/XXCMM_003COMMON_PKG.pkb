@@ -29,6 +29,7 @@ AS
  *  2009/04/07    1.3  Yutaka.Kuboshima áŠQT1_0303‚Ì‘Î‰
  *  2009/05/22    1.4  Yutaka.Kuboshima áŠQT1_1089‚Ì‘Î‰
  *  2009/06/19    1.5  Yutaka.Kuboshima áŠQT1_1500‚Ì‘Î‰
+ *  2009/07/14    1.6  Yutaka.Kuboshima “‡ƒeƒXƒgáŠQ0000674‚Ì‘Î‰
  *****************************************************************************************/
   -- ===============================
   -- ƒOƒ[ƒoƒ‹•Ï”
@@ -108,7 +109,10 @@ AS
         RETURN cv_success;
       ELSIF (iv_cust_status = cv_cust) AND ((iv_cust_will_status = cv_rested) OR (iv_cust_will_status = cv_rectif_credit) OR (iv_cust_will_status = cv_stop_approved)) THEN
         RETURN cv_success;
-      ELSIF (iv_cust_status = cv_rested) AND ((iv_cust_will_status = cv_mc) OR (iv_cust_will_status = cv_cust) OR (iv_cust_will_status = cv_rectif_credit) OR (iv_cust_will_status = cv_stop_approved)) THEN
+-- 2009/07/14 Ver1.6 modify start by Yutaka.Kuboshima
+--      ELSIF (iv_cust_status = cv_rested) AND ((iv_cust_will_status = cv_mc) OR (iv_cust_will_status = cv_cust) OR (iv_cust_will_status = cv_rectif_credit) OR (iv_cust_will_status = cv_stop_approved)) THEN
+      ELSIF (iv_cust_status = cv_rested) AND ((iv_cust_will_status = cv_cust) OR (iv_cust_will_status = cv_rectif_credit) OR (iv_cust_will_status = cv_stop_approved)) THEN
+-- 2009/07/14 Ver1.6 modify end by Yutaka.Kuboshima
         RETURN cv_success;
       ELSIF (iv_cust_status = cv_rectif_credit) AND (iv_cust_will_status = cv_stop_approved)  THEN
         RETURN cv_success;
