@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/01/19    1.0   Y.Goto           新規作成
  *  2009/04/07    1.1   Y.Goto           T1_0273,T1_0274,T1_0289,T1_0366,T1_0367対応
  *  2009/04/14    1.2   Y.Goto           T1_0539,T1_0541対応
+ *  2009/04/28    1.3   Y.Goto           T1_0846,T1_0920対応
  *
  *****************************************************************************************/
 --
@@ -139,7 +140,9 @@ AS
   cv_msg_00055              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00055';       -- パラメータエラー
   cv_msg_00056              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00056';       -- 設定期間中稼働日チェックエラーメッセージ
   cv_msg_00057              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00057';       -- 配送単位取得エラー
-  cv_msg_00058              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00058';       -- 按分ゼロ計算不正エラーメッセージ
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_START
+--  cv_msg_00058              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00058';       -- 按分ゼロ計算不正エラーメッセージ
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_END
   cv_msg_00059              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00059';       -- 配送単位ゼロエラー
   cv_msg_00060              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00060';       -- 経路情報ループエラーメッセージ
   cv_msg_00061              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00061';       -- ケース入数不正エラーメッセージ
@@ -147,6 +150,9 @@ AS
   cv_msg_10039              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10039';       -- 開始製造年月日未登録エラー
   cv_msg_10040              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10040';       -- 出荷倉庫鮮度条件未登録エラー
   cv_msg_10041              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10041';       -- 鮮度条件在庫日数チェックエラー
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_START
+  cv_msg_00064              CONSTANT VARCHAR2(100) := 'APP-XXCOP1-00064';       -- 按分ゼロ計算不正警告
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_END
   --メッセージトークン
   cv_msg_00002_token_1      CONSTANT VARCHAR2(100) := 'PROF_NAME';
   cv_msg_00011_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
@@ -162,8 +168,10 @@ AS
   cv_msg_00056_token_1      CONSTANT VARCHAR2(100) := 'FROM_DATE';
   cv_msg_00056_token_2      CONSTANT VARCHAR2(100) := 'TO_DATE';
   cv_msg_00057_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
-  cv_msg_00058_token_1      CONSTANT VARCHAR2(100) := 'ITEM_NAME1';
-  cv_msg_00058_token_2      CONSTANT VARCHAR2(100) := 'ITEM_NAME2';
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_START
+--  cv_msg_00058_token_1      CONSTANT VARCHAR2(100) := 'ITEM_NAME1';
+--  cv_msg_00058_token_2      CONSTANT VARCHAR2(100) := 'ITEM_NAME2';
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_END
   cv_msg_00059_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
   cv_msg_00060_token_1      CONSTANT VARCHAR2(100) := 'WHSE_NAME';
   cv_msg_00061_token_1      CONSTANT VARCHAR2(100) := 'ITEM';
@@ -172,11 +180,16 @@ AS
   cv_msg_10040_token_1      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
   cv_msg_10041_token_1      CONSTANT VARCHAR2(100) := 'ITEM_NAME';
   cv_msg_10041_token_2      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_START
+  cv_msg_00064_token_1      CONSTANT VARCHAR2(100) := 'WHSE_CODE';
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_END
   --メッセージトークン値
   cv_table_xwypo            CONSTANT VARCHAR2(100) := '横持計画出力ワークテーブル';
   cv_table_xwsp             CONSTANT VARCHAR2(100) := '物流計画ワークテーブル';
-  cv_msg_00058_value_1      CONSTANT VARCHAR2(100) := '計画数';
-  cv_msg_00058_value_2      CONSTANT VARCHAR2(100) := '出荷ペース';
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_START
+--  cv_msg_00058_value_1      CONSTANT VARCHAR2(100) := '計画数';
+--  cv_msg_00058_value_2      CONSTANT VARCHAR2(100) := '出荷ペース';
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_END
   cv_msg_10041_value_1      CONSTANT VARCHAR2(100) := '在庫維持日数';
   cv_msg_10041_value_2      CONSTANT VARCHAR2(100) := '最大在庫日数';
   --入力パラメータ
@@ -834,24 +847,40 @@ AS
             ,ilmv.manufacture_date          manufacture_date
             ,ilmv.lot_status                lot_status
       FROM (
-        --OPMロットマスタ
-        SELECT ili.loct_onhand                                             lot_quantity
-              ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
-              ,ilm.attribute23                                             lot_status
-        FROM ic_lots_mst ilm
-            ,ic_loct_inv ili
-        WHERE ilm.item_id          = ili.item_id
-          AND ilm.lot_id           = ili.lot_id
-          AND ili.item_id          = in_item_id
-          AND ili.whse_code        = iv_whse_code
+--20090511_Ver1.3_T1_0920_SCS.Goto_MOD_START
+--        --OPMロットマスタ
+--        SELECT ili.loct_onhand                                             lot_quantity
+--              ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
+--              ,ilm.attribute23                                             lot_status
+--        FROM ic_lots_mst ilm
+--            ,ic_loct_inv ili
+--        WHERE ilm.item_id          = ili.item_id
+--          AND ilm.lot_id           = ili.lot_id
+--          AND ili.item_id          = in_item_id
+--          AND ili.whse_code        = iv_whse_code
+--          --最終期限ルール
+--          AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+--                           - gn_deadline_buffer_days
+--                           - in_stock_days
+--                           - gn_freshness_buffer_days
+--          --開始製造年月日(特別横持計画)
+--          AND TO_DATE(ilm.attribute1, cv_date_format) >= NVL(id_manufacture_date
+--                                                            ,TO_DATE(ilm.attribute1, cv_date_format))
+        --計画_手持在庫ビュー
+        SELECT xliv.loct_onhand + xliv.stock_qty                           lot_quantity
+              ,xliv.manufacture_date                                       manufacture_date
+              ,xliv.lot_status                                             lot_status
+        FROM xxcop_loct_inv_v xliv
+        WHERE xliv.item_id           = in_item_id
+          AND xliv.organization_code = iv_whse_code
           --最終期限ルール
-          AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+          AND id_plan_date < ADD_MONTHS(xliv.expiration_date, - gn_deadline_months)
                            - gn_deadline_buffer_days
                            - in_stock_days
                            - gn_freshness_buffer_days
           --開始製造年月日(特別横持計画)
-          AND TO_DATE(ilm.attribute1, cv_date_format) >= NVL(id_manufacture_date
-                                                            ,TO_DATE(ilm.attribute1, cv_date_format))
+          AND xliv.manufacture_date >= NVL(id_manufacture_date, xliv.manufacture_date)
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_END
         UNION ALL
         --入出庫予定情報ビュー
         SELECT NVL(xstv.stock_quantity, 0) - NVL(xstv.leaving_quantity, 0) lot_quantity
@@ -906,30 +935,51 @@ AS
             ,ilmv.manufacture_date          manufacture_date
             ,ilmv.lot_status                lot_status
       FROM (
-        --OPMロットマスタ
-        SELECT ili.loct_onhand                                             lot_quantity
-              ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
-              ,ilm.attribute23                                             lot_status
-        FROM ic_lots_mst ilm
-            ,ic_loct_inv ili
-        WHERE ilm.item_id          = ili.item_id
-          AND ilm.lot_id           = ili.lot_id
-          AND ili.item_id          = in_item_id
-          AND ili.whse_code        = iv_whse_code
+--20090511_Ver1.3_T1_0920_SCS.Goto_MOD_START
+--        --OPMロットマスタ
+--        SELECT ili.loct_onhand                                             lot_quantity
+--              ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
+--              ,ilm.attribute23                                             lot_status
+--        FROM ic_lots_mst ilm
+--            ,ic_loct_inv ili
+--        WHERE ilm.item_id          = ili.item_id
+--          AND ilm.lot_id           = ili.lot_id
+--          AND ili.item_id          = in_item_id
+--          AND ili.whse_code        = iv_whse_code
+--          --最終期限ルール
+--          AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+--                           - gn_deadline_buffer_days
+--          --鮮度条件
+--          AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
+--                           + CEIL(( TO_DATE(ilm.attribute3, cv_date_format)
+--                                  - TO_DATE(ilm.attribute1, cv_date_format)
+--                                  ) / i_cp_rec.condition_value
+--                             )
+--                           - in_stock_days
+--                           - gn_freshness_buffer_days
+--          --開始製造年月日(特別横持計画)
+--          AND TO_DATE(ilm.attribute1, cv_date_format) >= NVL(id_manufacture_date
+--                                                            ,TO_DATE(ilm.attribute1, cv_date_format))
+        --計画_手持在庫ビュー
+        SELECT xliv.loct_onhand + xliv.stock_qty                           lot_quantity
+              ,xliv.manufacture_date                                       manufacture_date
+              ,xliv.lot_status                                             lot_status
+        FROM xxcop_loct_inv_v xliv
+        WHERE xliv.item_id           = in_item_id
+          AND xliv.organization_code = iv_whse_code
           --最終期限ルール
-          AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+          AND id_plan_date < ADD_MONTHS(xliv.expiration_date, - gn_deadline_months)
                            - gn_deadline_buffer_days
           --鮮度条件
-          AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
-                           + CEIL(( TO_DATE(ilm.attribute3, cv_date_format)
-                                  - TO_DATE(ilm.attribute1, cv_date_format)
-                                  ) / i_cp_rec.condition_value
+          AND id_plan_date < xliv.manufacture_date
+                           + CEIL(( xliv.expiration_date - xliv.manufacture_date )
+                                  / i_cp_rec.condition_value
                              )
                            - in_stock_days
                            - gn_freshness_buffer_days
           --開始製造年月日(特別横持計画)
-          AND TO_DATE(ilm.attribute1, cv_date_format) >= NVL(id_manufacture_date
-                                                            ,TO_DATE(ilm.attribute1, cv_date_format))
+          AND xliv.manufacture_date >= NVL(id_manufacture_date, xliv.manufacture_date)
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_END
         UNION ALL
         --入出庫予定情報ビュー
         SELECT NVL(xstv.stock_quantity, 0) - NVL(xstv.leaving_quantity, 0) lot_quantity
@@ -990,28 +1040,47 @@ AS
             ,ilmv.manufacture_date          manufacture_date
             ,ilmv.lot_status                lot_status
       FROM (
-        --OPMロットマスタ
-        SELECT ili.loct_onhand                                             lot_quantity
-              ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
-              ,ilm.attribute23                                             lot_status
-        FROM ic_lots_mst ilm
-            ,ic_loct_inv ili
-            ,fnd_lookup_values flv
-        WHERE ilm.item_id          = ili.item_id
-          AND ilm.lot_id           = ili.lot_id
-          AND ili.item_id          = in_item_id
-          AND ili.whse_code        = iv_whse_code
+--20090511_Ver1.3_T1_0920_SCS.Goto_MOD_START
+--        --OPMロットマスタ
+--        SELECT ili.loct_onhand                                             lot_quantity
+--              ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
+--              ,ilm.attribute23                                             lot_status
+--        FROM ic_lots_mst ilm
+--            ,ic_loct_inv ili
+--            ,fnd_lookup_values flv
+--        WHERE ilm.item_id          = ili.item_id
+--          AND ilm.lot_id           = ili.lot_id
+--          AND ili.item_id          = in_item_id
+--          AND ili.whse_code        = iv_whse_code
+--          --最終期限ルール
+--          AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+--                           - gn_deadline_buffer_days
+--          --鮮度条件
+--          AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
+--                           + i_cp_rec.condition_value
+--                           - in_stock_days
+--                           - gn_freshness_buffer_days
+--          --開始製造年月日(特別横持計画)
+--          AND TO_DATE(ilm.attribute1, cv_date_format) >= NVL(id_manufacture_date
+--                                                            ,TO_DATE(ilm.attribute1, cv_date_format))
+        --計画_手持在庫ビュー
+        SELECT xliv.loct_onhand + xliv.stock_qty                           lot_quantity
+              ,xliv.manufacture_date                                       manufacture_date
+              ,xliv.lot_status                                             lot_status
+        FROM xxcop_loct_inv_v xliv
+        WHERE xliv.item_id           = in_item_id
+          AND xliv.organization_code = iv_whse_code
           --最終期限ルール
-          AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+          AND id_plan_date < ADD_MONTHS(xliv.expiration_date, - gn_deadline_months)
                            - gn_deadline_buffer_days
           --鮮度条件
-          AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
+          AND id_plan_date < xliv.manufacture_date
                            + i_cp_rec.condition_value
                            - in_stock_days
                            - gn_freshness_buffer_days
           --開始製造年月日(特別横持計画)
-          AND TO_DATE(ilm.attribute1, cv_date_format) >= NVL(id_manufacture_date
-                                                            ,TO_DATE(ilm.attribute1, cv_date_format))
+          AND xliv.manufacture_date >= NVL(id_manufacture_date, xliv.manufacture_date)
+--20090511_Ver1.3_T1_0920_SCS.Goto_MOD_END
         UNION ALL
         --入出庫予定情報ビュー
         SELECT NVL(xstv.stock_quantity, 0) - NVL(xstv.leaving_quantity, 0) lot_quantity
@@ -1019,7 +1088,9 @@ AS
               ,ilm.attribute23                                             lot_status
         FROM ic_lots_mst ilm
             ,xxcop_stc_trans_v xstv
-            ,fnd_lookup_values flv
+--20090511_Ver1.3_T1_0920_SCS.Goto_DEL_START
+--            ,fnd_lookup_values flv
+--20090511_Ver1.3_T1_0920_SCS.Goto_DEL_END
         WHERE ilm.item_id          = xstv.item_id
           AND ilm.lot_id           = xstv.lot_id
           AND xstv.item_id         = in_item_id
@@ -2481,20 +2552,33 @@ AS
         SELECT NVL(SUM(ilmv.stock_quantity), 0) stock_quantity
               ,ilmv.manufacture_date            manufacture_date
         FROM (
-          --OPMロットマスタ
-          SELECT ili.loct_onhand                                             stock_quantity
-                ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
-          FROM ic_lots_mst ilm
-              ,ic_loct_inv ili
-          WHERE ilm.item_id          = ili.item_id
-            AND ilm.lot_id           = ili.lot_id
-            AND ili.item_id          = in_item_id
-            AND ili.whse_code        = iv_whse_code
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_START
+--          --OPMロットマスタ
+--          SELECT ili.loct_onhand                                             stock_quantity
+--                ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
+--          FROM ic_lots_mst ilm
+--              ,ic_loct_inv ili
+--          WHERE ilm.item_id          = ili.item_id
+--            AND ilm.lot_id           = ili.lot_id
+--            AND ili.item_id          = in_item_id
+--            AND ili.whse_code        = iv_whse_code
+--            --最終期限ルール
+--            AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+--                             - gn_deadline_buffer_days
+--                             - in_stock_days
+--                             - gn_freshness_buffer_days
+          --計画_手持在庫ビュー
+          SELECT xliv.loct_onhand + xliv.stock_qty                           stock_quantity
+                ,xliv.manufacture_date                                       manufacture_date
+          FROM xxcop_loct_inv_v xliv
+          WHERE xliv.item_id           = in_item_id
+            AND xliv.organization_code = iv_whse_code
             --最終期限ルール
-            AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+            AND id_plan_date < ADD_MONTHS(xliv.expiration_date, - gn_deadline_months)
                              - gn_deadline_buffer_days
                              - in_stock_days
                              - gn_freshness_buffer_days
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_END
           UNION ALL
           --入出庫予定情報ビュー
           SELECT NVL(xstv.stock_quantity, 0) - NVL(xstv.leaving_quantity, 0) stock_quantity
@@ -2538,26 +2622,44 @@ AS
         SELECT NVL(SUM(ilmv.stock_quantity), 0) stock_quantity
               ,ilmv.manufacture_date            manufacture_date
         FROM (
-          --OPMロットマスタ
-          SELECT ili.loct_onhand                                             stock_quantity
-                ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
-          FROM ic_lots_mst ilm
-              ,ic_loct_inv ili
-          WHERE ilm.item_id          = ili.item_id
-            AND ilm.lot_id           = ili.lot_id
-            AND ili.item_id          = in_item_id
-            AND ili.whse_code        = iv_whse_code
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_START
+--          --OPMロットマスタ
+--          SELECT ili.loct_onhand                                             stock_quantity
+--                ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
+--          FROM ic_lots_mst ilm
+--              ,ic_loct_inv ili
+--          WHERE ilm.item_id          = ili.item_id
+--            AND ilm.lot_id           = ili.lot_id
+--            AND ili.item_id          = in_item_id
+--            AND ili.whse_code        = iv_whse_code
+--            --最終期限ルール
+--            AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+--                             - gn_deadline_buffer_days
+--            --鮮度条件
+--            AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
+--                             + CEIL(( TO_DATE(ilm.attribute3, cv_date_format)
+--                                    - TO_DATE(ilm.attribute1, cv_date_format)
+--                                    ) / i_cp_rec.condition_value
+--                               )
+--                             - in_stock_days
+--                             - gn_freshness_buffer_days
+          --計画_手持在庫ビュー
+          SELECT xliv.loct_onhand + xliv.stock_qty                           stock_quantity
+                ,xliv.manufacture_date                                       manufacture_date
+          FROM xxcop_loct_inv_v xliv
+          WHERE xliv.item_id           = in_item_id
+            AND xliv.organization_code = iv_whse_code
             --最終期限ルール
-            AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+            AND id_plan_date < ADD_MONTHS(xliv.expiration_date, - gn_deadline_months)
                              - gn_deadline_buffer_days
             --鮮度条件
-            AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
-                             + CEIL(( TO_DATE(ilm.attribute3, cv_date_format)
-                                    - TO_DATE(ilm.attribute1, cv_date_format)
-                                    ) / i_cp_rec.condition_value
+            AND id_plan_date < xliv.manufacture_date
+                             + CEIL(( xliv.expiration_date - xliv.manufacture_date )
+                                    / i_cp_rec.condition_value
                                )
                              - in_stock_days
                              - gn_freshness_buffer_days
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_END
           UNION ALL
           --入出庫予定情報ビュー
           SELECT NVL(xstv.stock_quantity, 0) - NVL(xstv.leaving_quantity, 0) stock_quantity
@@ -2607,23 +2709,39 @@ AS
         SELECT NVL(SUM(ilmv.stock_quantity), 0) stock_quantity
               ,ilmv.manufacture_date            manufacture_date
         FROM (
-          --OPMロットマスタ
-          SELECT ili.loct_onhand                                             stock_quantity
-                ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
-          FROM ic_lots_mst ilm
-              ,ic_loct_inv ili
-          WHERE ilm.item_id          = ili.item_id
-            AND ilm.lot_id           = ili.lot_id
-            AND ili.item_id          = in_item_id
-            AND ili.whse_code        = iv_whse_code
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_START
+--          --OPMロットマスタ
+--          SELECT ili.loct_onhand                                             stock_quantity
+--                ,TO_DATE(ilm.attribute1, cv_date_format)                     manufacture_date
+--          FROM ic_lots_mst ilm
+--              ,ic_loct_inv ili
+--          WHERE ilm.item_id          = ili.item_id
+--            AND ilm.lot_id           = ili.lot_id
+--            AND ili.item_id          = in_item_id
+--            AND ili.whse_code        = iv_whse_code
+--            --最終期限ルール
+--            AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+--                             - gn_deadline_buffer_days
+--            --鮮度条件
+--            AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
+--                             + i_cp_rec.condition_value
+--                             - in_stock_days
+--                             - gn_freshness_buffer_days
+          --計画_手持在庫ビュー
+          SELECT xliv.loct_onhand + xliv.stock_qty                           stock_quantity
+                ,xliv.manufacture_date                                       manufacture_date
+          FROM xxcop_loct_inv_v xliv
+          WHERE xliv.item_id           = in_item_id
+            AND xliv.organization_code = iv_whse_code
             --最終期限ルール
-            AND id_plan_date < ADD_MONTHS(TO_DATE(ilm.attribute3, cv_date_format), - gn_deadline_months)
+            AND id_plan_date < ADD_MONTHS(xliv.expiration_date, - gn_deadline_months)
                              - gn_deadline_buffer_days
             --鮮度条件
-            AND id_plan_date < TO_DATE(ilm.attribute1, cv_date_format)
+            AND id_plan_date < xliv.manufacture_date
                              + i_cp_rec.condition_value
                              - in_stock_days
                              - gn_freshness_buffer_days
+--20090508_Ver1.3_T1_0920_SCS.Goto_MOD_END
           UNION ALL
           --入出庫予定情報ビュー
           SELECT NVL(xstv.stock_quantity, 0) - NVL(xstv.leaving_quantity, 0) stock_quantity
@@ -5162,51 +5280,75 @@ AS
               l_xwypo_tab(ln_xwypo_idx).under_lvl_pace := l_xwypo_tab(ln_xwypo_idx).under_lvl_pace
                                                         + l_xwypo_tab(ln_xwypo_idx).shipping_pace;
             END LOOP xwypo_loop;
-            --計画数(バランス)の算出
-            proc_balance_plan_qty(
-               i_xwsp_rec          => l_xwsp_rec
-              ,io_xwypo_tab        => l_xwypo_tab
-              ,ov_errbuf           => lv_errbuf
-              ,ov_retcode          => lv_retcode
-              ,ov_errmsg           => lv_errmsg
-            );
-            IF ( lv_retcode <> cv_status_normal ) THEN
-              IF ( lv_errbuf IS NULL ) THEN
-                RAISE internal_api_expt;
-              ELSE
-                RAISE global_api_expt;
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_START
+            BEGIN
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_END
+              --計画数(バランス)の算出
+              proc_balance_plan_qty(
+                 i_xwsp_rec          => l_xwsp_rec
+                ,io_xwypo_tab        => l_xwypo_tab
+                ,ov_errbuf           => lv_errbuf
+                ,ov_retcode          => lv_retcode
+                ,ov_errmsg           => lv_errmsg
+              );
+              IF ( lv_retcode <> cv_status_normal ) THEN
+                IF ( lv_errbuf IS NULL ) THEN
+                  RAISE internal_api_expt;
+                ELSE
+                  RAISE global_api_expt;
+                END IF;
               END IF;
-            END IF;
-            --計画数(最小)の算出
-            proc_minimum_plan_qty(
-               i_xwsp_rec          => l_xwsp_rec
-              ,io_xwypo_tab        => l_xwypo_tab
-              ,ov_errbuf           => lv_errbuf
-              ,ov_retcode          => lv_retcode
-              ,ov_errmsg           => lv_errmsg
-            );
-            IF ( lv_retcode <> cv_status_normal ) THEN
-              IF ( lv_errbuf IS NULL ) THEN
-                RAISE internal_api_expt;
-              ELSE
-                RAISE global_api_expt;
+              --計画数(最小)の算出
+              proc_minimum_plan_qty(
+                 i_xwsp_rec          => l_xwsp_rec
+                ,io_xwypo_tab        => l_xwypo_tab
+                ,ov_errbuf           => lv_errbuf
+                ,ov_retcode          => lv_retcode
+                ,ov_errmsg           => lv_errmsg
+              );
+              IF ( lv_retcode <> cv_status_normal ) THEN
+                IF ( lv_errbuf IS NULL ) THEN
+                  RAISE internal_api_expt;
+                ELSE
+                  RAISE global_api_expt;
+                END IF;
               END IF;
-            END IF;
-            --計画数(最大)の算出
-            proc_maximum_plan_qty(
-               i_xwsp_rec          => l_xwsp_rec
-              ,io_xwypo_tab        => l_xwypo_tab
-              ,ov_errbuf           => lv_errbuf
-              ,ov_retcode          => lv_retcode
-              ,ov_errmsg           => lv_errmsg
-            );
-            IF ( lv_retcode <> cv_status_normal ) THEN
-              IF ( lv_errbuf IS NULL ) THEN
-                RAISE internal_api_expt;
-              ELSE
-                RAISE global_api_expt;
+              --計画数(最大)の算出
+              proc_maximum_plan_qty(
+                 i_xwsp_rec          => l_xwsp_rec
+                ,io_xwypo_tab        => l_xwypo_tab
+                ,ov_errbuf           => lv_errbuf
+                ,ov_retcode          => lv_retcode
+                ,ov_errmsg           => lv_errmsg
+              );
+              IF ( lv_retcode <> cv_status_normal ) THEN
+                IF ( lv_errbuf IS NULL ) THEN
+                  RAISE internal_api_expt;
+                ELSE
+                  RAISE global_api_expt;
+                END IF;
               END IF;
-            END IF;
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_START
+            EXCEPTION
+              WHEN zero_divide_expt THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_msg_appl_cont
+                               ,iv_name         => cv_msg_00064
+                               ,iv_token_name1  => cv_msg_00064_token_1
+                               ,iv_token_value1 => l_xwsp_rec.ship_org_code
+                             );
+                --警告メッセージ出力
+                fnd_file.put_line(
+                   which  => FND_FILE.LOG
+                  ,buff => lv_errmsg
+                );
+                lv_errmsg := NULL;
+                --警告件数のカウント
+                gn_target_cnt := gn_target_cnt + 1;
+                gn_warn_cnt   := gn_warn_cnt   + 1;
+                ov_retcode    := cv_status_warn;
+            END;
+--20090428_Ver1.3_T1_0846_SCS.Goto_ADD_END
             --計画ロットの決定
             fix_plan_lots(
                i_xwsp_rec          => l_xwsp_rec
@@ -5234,16 +5376,18 @@ AS
                          ,iv_token_value1 => lv_receipt_org_code
                        );
           RAISE internal_api_expt;
-        WHEN zero_divide_expt THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_msg_appl_cont
-                         ,iv_name         => cv_msg_00058
-                         ,iv_token_name1  => cv_msg_00058_token_1
-                         ,iv_token_value1 => cv_msg_00058_value_1
-                         ,iv_token_name2  => cv_msg_00058_token_2
-                         ,iv_token_value2 => cv_msg_00058_value_2
-                       );
-          RAISE internal_api_expt;
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_START
+--        WHEN zero_divide_expt THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_msg_appl_cont
+--                         ,iv_name         => cv_msg_00058
+--                         ,iv_token_name1  => cv_msg_00058_token_1
+--                         ,iv_token_value1 => cv_msg_00058_value_1
+--                         ,iv_token_name2  => cv_msg_00058_token_2
+--                         ,iv_token_value2 => cv_msg_00058_value_2
+--                       );
+--          RAISE internal_api_expt;
+--20090428_Ver1.3_T1_0846_SCS.Goto_DEL_END
       END;
     END LOOP xwsp_ro_loop;
 --
@@ -5395,7 +5539,10 @@ AS
             ,xwypo.lot_status         ASC;
 --
     --対象件数をセット
-    gn_target_cnt := l_xwypo_csv_tab.COUNT;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--    gn_target_cnt := l_xwypo_csv_tab.COUNT;
+    gn_target_cnt := gn_target_cnt + l_xwypo_csv_tab.COUNT;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
     --CSVファイルヘッダ出力
     lv_csvbuff := cv_csv_char_bracket || cv_put_column_01 || cv_csv_char_bracket || cv_csv_delimiter
                || cv_csv_char_bracket || cv_put_column_02 || cv_csv_char_bracket || cv_csv_delimiter
@@ -5629,9 +5776,14 @@ AS
         ,lv_retcode                     -- リターン・コード             --# 固定 #
         ,lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF ( lv_retcode <> cv_status_normal ) THEN
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
       -- ===============================
       -- A-2．横持計画制御マスタ取得
       -- ===============================
@@ -5640,9 +5792,14 @@ AS
         ,lv_retcode                     -- リターン・コード             --# 固定 #
         ,lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF ( lv_retcode <> cv_status_normal ) THEN
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
       -- ===============================
       -- A-3．物流計画ワークテーブル取得
       -- ===============================
@@ -5651,9 +5808,16 @@ AS
         ,lv_retcode                     -- リターン・コード             --# 固定 #
         ,lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF ( lv_retcode <> cv_status_normal ) THEN
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
+      ELSIF ( lv_retcode = cv_status_warn ) THEN
+        ov_retcode := lv_retcode;
       END IF;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
       -- ===============================
       -- A-4．横持計画CSV出力
       -- ===============================
@@ -5662,9 +5826,14 @@ AS
         ,lv_retcode                     -- リターン・コード             --# 固定 #
         ,lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF ( lv_retcode <> cv_status_normal ) THEN
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+      IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
     EXCEPTION
       WHEN global_process_expt THEN
         --対象件数、エラー件数のカウント
@@ -5672,9 +5841,19 @@ AS
         gn_error_cnt  := gn_error_cnt + 1;
     END;
 --
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--    IF ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      --終了ステータスがエラーの場合、ワークテーブルを残すためコミットする。
+--      COMMIT;
+--      IF ( lv_errbuf IS NOT NULL ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      ov_errmsg  := lv_errmsg;
+--      ov_retcode := cv_status_error;
+--    END IF;
+    IF ( lv_retcode = cv_status_error ) THEN
       --終了ステータスがエラーの場合、ワークテーブルを残すためコミットする。
       COMMIT;
       IF ( lv_errbuf IS NOT NULL ) THEN
@@ -5682,7 +5861,10 @@ AS
       END IF;
       ov_errmsg  := lv_errmsg;
       ov_retcode := cv_status_error;
+    ELSE
+      NULL;
     END IF;
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ###################################
@@ -5773,7 +5955,10 @@ AS
       ,lv_errmsg                        -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
-    IF (lv_retcode = cv_status_error) THEN
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_START
+--    IF (lv_retcode = cv_status_error) THEN
+    IF (lv_retcode <> cv_status_normal) THEN
+--20090507_Ver1.3_T1_0846_SCS.Goto_MOD_END
 --      --エラー出力
 --      fnd_file.put_line(
 --         which  => FND_FILE.OUTPUT
