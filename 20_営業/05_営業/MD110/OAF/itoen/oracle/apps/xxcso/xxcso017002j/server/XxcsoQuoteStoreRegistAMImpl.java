@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistAMImpl
 * 概要説明   : 帳合問屋用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-06-16 1.6  SCS阿部大輔  【T1_1257】マージン額の変更修正
 * 2009-07-23 1.7  SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
 * 2009-09-10 1.8  SCS阿部大輔  【0001331】マージン額の計算時にページ遷移を指定
+* 2009-12-21 1.9  SCS阿部大輔  【E_本稼動_00535】営業原価対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -3073,38 +3074,44 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
           //double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
           /* 20090518_abe_T1_1023 END*/      
 /* 20090616_abe_T1_1257 END*/
-          double businessPrice      = lineRow.getBusinessPrice().doubleValue();
-
-          try
+          /* 20091221_abe_E_本稼動_00535 START*/
+          if (lineRow.getBusinessPrice() != null)
           {
-            double usuallNetPrice  = Double.parseDouble(usuallNetPriceRep);
-
-            // 通常NET価格
-            /* 20090518_abe_T1_1023 START*/
-            if ( (usuallNetPrice <= businessPrice && unittype.equals("1") ) ||
-                 ((usuallNetPrice / caseincnum <= businessPrice ||
-                  caseincnum == 0) && unittype.equals("2") ) || 
-                 ((usuallNetPrice / bowlincnum <= businessPrice ||
-                  bowlincnum == 0) && unittype.equals("3"))
-               )
-            //if ( usuallNetPrice <= businessPrice )
-            /* 20090518_abe_T1_1023 END*/
+          /* 20091221_abe_E_本稼動_00535 END*/
+            double businessPrice = lineRow.getBusinessPrice().doubleValue();
+            try
             {
-              OAException error
-                = XxcsoMessage.createErrorMessage(
-                    XxcsoConstants.APP_XXCSO1_00498,
-                    XxcsoConstants.TOKEN_COLUMN,
-                    XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
-                    XxcsoConstants.TOKEN_INDEX,
-                    String.valueOf(index)
-                  );
-              errorList.add(error);
+              double usuallNetPrice  = Double.parseDouble(usuallNetPriceRep);
+
+              // 通常NET価格
+              /* 20090518_abe_T1_1023 START*/
+              if ( (usuallNetPrice <= businessPrice && unittype.equals("1") ) ||
+                   ((usuallNetPrice / caseincnum <= businessPrice ||
+                    caseincnum == 0) && unittype.equals("2") ) || 
+                   ((usuallNetPrice / bowlincnum <= businessPrice ||
+                    bowlincnum == 0) && unittype.equals("3"))
+                 )
+              //if ( usuallNetPrice <= businessPrice )
+              /* 20090518_abe_T1_1023 END*/
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00498,
+                      XxcsoConstants.TOKEN_COLUMN,
+                      XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
             }
+            catch ( NumberFormatException e )
+            {
+              XxcsoUtils.debug(txn, "NumberFormatException");
+            }
+          /* 20091221_abe_E_本稼動_00535 START*/
           }
-          catch ( NumberFormatException e )
-          {
-            XxcsoUtils.debug(txn, "NumberFormatException");
-          }
+          /* 20091221_abe_E_本稼動_00535 END*/
 /* 20090723_abe_0000806 START*/
         }
       }
@@ -3146,38 +3153,45 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
             String thisTimeNetPriceRep 
               = lineRow.getThisTimeNetPrice().replaceAll(",", "");
             String unittype        = headerRow.getUnitType();
-            double businessPrice   = lineRow.getBusinessPrice().doubleValue();
+            /* 20091221_abe_E_本稼動_00535 START*/
+            if (lineRow.getBusinessPrice() != null)
+            {
+            /* 20091221_abe_E_本稼動_00535 END*/
+              double businessPrice = lineRow.getBusinessPrice().doubleValue();
 /* 20090723_abe_0000806 END*/
-            try
-            {
-              double thisTimeNetPrice = Double.parseDouble(thisTimeNetPriceRep);
-
-              // 今回NET価格
-              /* 20090518_abe_T1_1023 START*/
-              if ( (thisTimeNetPrice <= businessPrice && unittype.equals("1") ) ||
-                   ((thisTimeNetPrice / caseincnum <= businessPrice ||
-                    caseincnum == 0) && unittype.equals("2") ) || 
-                   ((thisTimeNetPrice / bowlincnum <= businessPrice ||
-                    bowlincnum == 0) && unittype.equals("3"))
-                 )
-              //if ( thisTimeNetPrice <= businessPrice )
-              /* 20090518_abe_T1_1023 END*/
+              try
               {
-                OAException error
-                  = XxcsoMessage.createErrorMessage(
-                      XxcsoConstants.APP_XXCSO1_00498,
-                      XxcsoConstants.TOKEN_COLUMN,
-                      XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
-                      XxcsoConstants.TOKEN_INDEX,
-                      String.valueOf(index)
-                    );
-                errorList.add(error);
+                double thisTimeNetPrice = Double.parseDouble(thisTimeNetPriceRep);
+
+                // 今回NET価格
+                /* 20090518_abe_T1_1023 START*/
+                if ( (thisTimeNetPrice <= businessPrice && unittype.equals("1") ) ||
+                     ((thisTimeNetPrice / caseincnum <= businessPrice ||
+                      caseincnum == 0) && unittype.equals("2") ) || 
+                     ((thisTimeNetPrice / bowlincnum <= businessPrice ||
+                      bowlincnum == 0) && unittype.equals("3"))
+                   )
+                //if ( thisTimeNetPrice <= businessPrice )
+                /* 20090518_abe_T1_1023 END*/
+                {
+                  OAException error
+                    = XxcsoMessage.createErrorMessage(
+                        XxcsoConstants.APP_XXCSO1_00498,
+                        XxcsoConstants.TOKEN_COLUMN,
+                        XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
+                        XxcsoConstants.TOKEN_INDEX,
+                        String.valueOf(index)
+                      );
+                  errorList.add(error);
+                }
               }
+              catch ( NumberFormatException e )
+              {
+                XxcsoUtils.debug(txn, "NumberFormatException");
+              }
+            /* 20091221_abe_E_本稼動_00535 START*/
             }
-            catch ( NumberFormatException e )
-            {
-              XxcsoUtils.debug(txn, "NumberFormatException");
-            }
+            /* 20091221_abe_E_本稼動_00535 END*/
 /* 20090723_abe_0000806 START*/
           }
 /* 20090723_abe_0000806 END*/
