@@ -7,7 +7,7 @@ AS
  * Description      : 手数料を現金支払する際の支払案内書（領収書付き）を
  *                    各売上計上拠点で印刷します。
  * MD.050           : 支払案内書印刷（領収書付き） MD050_COK_015_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/01/20    1.0   K.Yamaguchi      新規作成
  *  2009/02/18    1.1   K.Suenaga        [障害COK_044]最新の仕入先サイト情報を取得・更新する
  *  2009/05/29    1.2   K.Yamaguchi      [障害T1_1261]販手残高テーブル更新項目追加
+ *  2009/09/10    1.3   S.Moriyama       [障害0000060]住所の桁数変更対応
  *
  *****************************************************************************************/
   --==================================================
@@ -540,17 +541,32 @@ AS
          , cn_program_id                AS program_id
          , SYSDATE                      AS program_update_date
     FROM ( SELECT xbb.supplier_code                                   AS payment_code
-                , pvsa.zip                                            AS payment_zip_code
-                , pvsa.state || pvsa.city || pvsa.address_line1       AS payment_addr_1
-                , pvsa.address_line2                                  AS payment_addr_2
-                , SUBSTR( pv.vendor_name,  1, 15 )                    AS payment_name_1
-                , SUBSTR( pv.vendor_name, 16     )                    AS payment_name_2
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD START
+--                , pvsa.zip                                            AS payment_zip_code
+--                , pvsa.state || pvsa.city || pvsa.address_line1       AS payment_addr_1
+--                , pvsa.address_line2                                  AS payment_addr_2
+--                , SUBSTR( pv.vendor_name,  1, 15 )                    AS payment_name_1
+--                , SUBSTR( pv.vendor_name, 16     )                    AS payment_name_2
+                , SUBSTRB( pvsa.zip , 1 , 8 )                         AS payment_zip_code
+                , SUBSTR( pvsa.city  || pvsa.address_line1
+                                     || pvsa.address_line2 , 1 , 20 ) AS payment_addr_1
+                , SUBSTR( pvsa.city  || pvsa.address_line1
+                                     || pvsa.address_line2 , 21, 20 ) AS payment_addr_2
+                , SUBSTR( pv.vendor_name,  1, 20 )                    AS payment_name_1
+                , SUBSTR( pv.vendor_name, 21, 20 )                    AS payment_name_2
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD END
                 , hca.base_area_code                                  AS contact_base_section_code
                 , hca.base_code                                       AS contact_base_code
-                , hca.base_name                                       AS contact_base_name
-                , hca.base_address1                                   AS contact_addr_1
-                , hca.base_address2                                   AS contact_addr_2
-                , hca.base_phone_num                                  AS contact_phone_no
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD START
+--                , hca.base_name                                       AS contact_base_name
+--                , hca.base_address1                                   AS contact_addr_1
+--                , hca.base_address2                                   AS contact_addr_2
+--                , hca.base_phone_num                                  AS contact_phone_no
+                , SUBSTR( hca.base_name , 1 , 20 )                    AS contact_base_name
+                , SUBSTR( hca.base_address1 , 1 , 20 )                AS contact_addr_1
+                , SUBSTR( hca.base_address1 , 21, 20 )                AS contact_addr_2
+                , SUBSTRB( hca.base_phone_num , 1 ,15 )               AS contact_phone_no
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD END
                 , MAX( xbb.closing_date )                             AS closing_date
                 , SUM( xbb.selling_amt_tax )                          AS selling_amt_sum
                 , SUM(   NVL( xbb.backmargin    , 0 )
@@ -566,10 +582,15 @@ AS
               , ( SELECT hca.account_number            AS base_code
                        , hp.party_name                 AS base_name
                        , hl.address3                   AS base_area_code
-                       ,    hl.state
-                         || hl.city
-                         || hl.address1                AS base_address1
-                       , hl.address2                   AS base_address2
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD START
+--                       ,    hl.state
+--                         || hl.city
+--                         || hl.address1                AS base_address1
+--                       , hl.address2                   AS base_address2
+                       ,    hl.city
+                         || hl.address1
+                         || hl.address2                  AS base_address1
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD END
                        , hl.address_lines_phonetic     AS base_phone_num
                   FROM hz_cust_accounts           hca       -- 顧客マスタ
                      , hz_cust_acct_sites_all     hcasa     -- 顧客所在地マスタ
@@ -597,15 +618,22 @@ AS
              AND ( pvsa.inactive_date             < gd_process_date OR pvsa.inactive_date IS NULL )
            GROUP BY xbb.supplier_code
                   , pvsa.zip
-                  , pvsa.state || pvsa.city || pvsa.address_line1
-                  , pvsa.address_line2
-                  , SUBSTR( pv.vendor_name,  1, 15 )
-                  , SUBSTR( pv.vendor_name, 16     )
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD START
+--                  , pvsa.state || pvsa.city || pvsa.address_line1
+--                  , pvsa.address_line2
+--                  , SUBSTR( pv.vendor_name,  1, 15 )
+--                  , SUBSTR( pv.vendor_name, 16     )
+                  , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+                  , SUBSTR( pv.vendor_name,  1, 20 )
+                  , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama UPD END
                   , hca.base_code
                   , hca.base_name
                   , hca.base_area_code
                   , hca.base_address1
-                  , hca.base_address2
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama DEL START
+--                  , hca.base_address2
+-- 2009/09/10 Ver.1.3 [障害0000060] SCS S.Moriyama DEL END
                   , hca.base_phone_num
          )
     ;
