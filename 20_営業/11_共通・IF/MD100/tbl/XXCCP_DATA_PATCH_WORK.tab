@@ -1,0 +1,105 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCCP_DATA_PATCH_WORK
+ * Description : パッチ用ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/09/20    1.0   M.Nagai         [E_本稼動_10054]新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCCP.XXCCP_DATA_PATCH_WORK(
+   file_id             NUMBER
+  ,data_sequence       NUMBER
+  ,execute_mode        VARCHAR2(1)
+  ,condition_1         VARCHAR2(150)
+  ,condition_2         VARCHAR2(150)
+  ,condition_3         VARCHAR2(150)
+  ,condition_4         VARCHAR2(150)
+  ,condition_5         VARCHAR2(150)
+  ,condition_6         VARCHAR2(150)
+  ,condition_7         VARCHAR2(150)
+  ,condition_8         VARCHAR2(150)
+  ,condition_9         VARCHAR2(150)
+  ,condition_10        VARCHAR2(150)
+  ,num_column_1        NUMBER
+  ,num_column_2        NUMBER
+  ,num_column_3        NUMBER
+  ,num_column_4        NUMBER
+  ,num_column_5        NUMBER
+  ,num_column_6        NUMBER
+  ,num_column_7        NUMBER
+  ,num_column_8        NUMBER
+  ,num_column_9        NUMBER
+  ,num_column_10       NUMBER
+  ,chr_column_1        VARCHAR2(150)
+  ,chr_column_2        VARCHAR2(150)
+  ,chr_column_3        VARCHAR2(150)
+  ,chr_column_4        VARCHAR2(150)
+  ,chr_column_5        VARCHAR2(150)
+  ,chr_column_6        VARCHAR2(150)
+  ,chr_column_7        VARCHAR2(150)
+  ,chr_column_8        VARCHAR2(150)
+  ,chr_column_9        VARCHAR2(150)
+  ,chr_column_10       VARCHAR2(150)
+  ,date_column_1       DATE
+  ,date_column_2       DATE
+  ,date_column_3       DATE
+  ,date_column_4       DATE
+  ,date_column_5       DATE
+  ,date_column_6       DATE
+  ,date_column_7       DATE
+  ,date_column_8       DATE
+  ,date_column_9       DATE
+  ,date_column_10      DATE
+);
+--
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.FILE_ID         IS  'ファイルID';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATA_SEQUENCE   IS  'データシーケンス';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.EXECUTE_MODE    IS  '実行モード';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_1     IS  '条件値１';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_2     IS  '条件値２';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_3     IS  '条件値３';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_4     IS  '条件値４';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_5     IS  '条件値５';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_6     IS  '条件値６';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_7     IS  '条件値７';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_8     IS  '条件値８';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_9     IS  '条件値９';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CONDITION_10    IS  '条件値１０';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_1    IS  '汎用数字項目１';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_2    IS  '汎用数字項目２';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_3    IS  '汎用数字項目３';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_4    IS  '汎用数字項目４';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_5    IS  '汎用数字項目５';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_6    IS  '汎用数字項目６';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_7    IS  '汎用数字項目７';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_8    IS  '汎用数字項目８';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_9    IS  '汎用数字項目９';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.NUM_COLUMN_10   IS  '汎用数字項目１０';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_1    IS  '汎用文字項目１';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_2    IS  '汎用文字項目２';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_3    IS  '汎用文字項目３';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_4    IS  '汎用文字項目４';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_5    IS  '汎用文字項目５';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_6    IS  '汎用文字項目６';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_7    IS  '汎用文字項目７';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_8    IS  '汎用文字項目８';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_9    IS  '汎用文字項目９';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.CHR_COLUMN_10   IS  '汎用文字項目１０';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_1   IS  '汎用日付項目１';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_2   IS  '汎用日付項目２';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_3   IS  '汎用日付項目３';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_4   IS  '汎用日付項目４';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_5   IS  '汎用日付項目５';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_6   IS  '汎用日付項目６';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_7   IS  '汎用日付項目７';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_8   IS  '汎用日付項目８';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_9   IS  '汎用日付項目９';
+COMMENT ON COLUMN XXCCP.XXCCP_DATA_PATCH_WORK.DATE_COLUMN_10  IS  '汎用日付項目１０';
+--
+COMMENT ON TABLE  XXCCP.XXCCP_DATA_PATCH_WORK                 IS  'パッチ用ワークテーブル';
