@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.9
+ * Version          : 1.10
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -81,6 +81,7 @@ AS
  *  2008/07/01    1.7  Oracle 宮田 隆史  ST不具合#333対応
  *  2008/07/02    1.8  Oracle 宮田 隆史  ST不具合#365対応
  *  2008/07/03    1.9  Oracle 宮田 隆史  ST不具合#392対応
+ *  2008/07/04    1.10 Oracle 宮田 隆史  TE080指摘事項#26対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -894,6 +895,8 @@ AS
     IS TABLE OF xxwsh_shipping_lines_if.reserved_status%TYPE INDEX BY BINARY_INTEGER; --IF_L.保留ステータス(更新用)
   TYPE request_id
     IS TABLE OF xxwsh_shipping_lines_if.request_id%TYPE INDEX BY BINARY_INTEGER;      --IF_L.要求ID
+  TYPE ship_order_source_ref
+    IS TABLE OF xxwsh_shipping_headers_if.order_source_ref%TYPE INDEX BY BINARY_INTEGER; --IF_H.受注ソース参照（メッセージ表示用）
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -955,6 +958,7 @@ AS
   gr_header_id             ship_header_id_del;        -- IFヘッダ.ヘッダID
   gr_line_id               ship_line_id_del;          -- IF明細.明細ID
   gr_request_id            request_id;                -- IF明細.要求ID
+  gr_order_source_ref      ship_order_source_ref;     -- IFヘッダ.受注ソース参照
   -- 抽出元エラーレコード削除用
   gr_header_id_del         ship_header_id_del;        -- IFヘッダ.ヘッダID
   gr_line_id_del           ship_line_id_del;          -- IF明細.明細ID
@@ -2946,6 +2950,7 @@ AS
     CURSOR ifh_exists_ifm_not_cur
     IS
     SELECT xshi.header_id
+          ,xshi.order_source_ref
     FROM   xxwsh_shipping_headers_if xshi
     WHERE NOT EXISTS (SELECT 'X'
                         FROM xxwsh_shipping_lines_if xsli
@@ -2982,6 +2987,7 @@ AS
     gr_line_not_header.delete;
     gr_header_id.delete;
     gr_request_id.delete;
+    gr_order_source_ref.delete;
 --
     BEGIN
       -- =============================================================
@@ -3063,7 +3069,7 @@ AS
     OPEN ifh_exists_ifm_not_cur;
 --
     -- データの一括取得
-    FETCH ifh_exists_ifm_not_cur BULK COLLECT INTO gr_header_id;
+    FETCH ifh_exists_ifm_not_cur BULK COLLECT INTO gr_header_id,gr_order_source_ref;
 --
     <<ifh_exists_ifm_not_loop>>
     FOR i IN 1 .. gr_header_id.COUNT LOOP
@@ -3072,7 +3078,9 @@ AS
                      gv_msg_kbn          -- 'XXWSH'
                     ,gv_msg_93a_006 -- 出荷依頼インタフェース明細(アドオン)非存在エラーメッセージ
                     ,gv_param1_token     -- トークン'param1'
-                    ,gr_header_id(i))    -- ヘッダID
+                    ,gr_header_id(i)     -- ヘッダID
+                    ,gv_param2_token          -- トークン'param2'
+                    ,gr_order_source_ref(i))  -- IF_H.受注ソース参照
                     ,1
                     ,5000);
 --
@@ -4342,7 +4350,7 @@ AS
 --*HHT*                          ,gv_param2_token
 --*HHT*                          ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
 --*HHT*                          ,gv_param3_token
---*HHT*                          ,gr_interface_info_rec(i).shipped_locat         -- IF_H.出庫元
+--*HHT*                          ,gr_interface_info_rec(i).location_code         -- IF_H.出庫元
 --*HHT*                          )
 --*HHT*                          ,1
 --*HHT*                          ,5000);
@@ -13874,11 +13882,12 @@ AS
     lv_reserve_flg          VARCHAR2(1);                                     --保留flag
     lt_delivery_no          xxwsh_shipping_headers_if.delivery_no%TYPE;      --IF_H.配送No
     lt_order_source_ref     xxwsh_shipping_headers_if.order_source_ref%TYPE; --IF_H.受注ソース参照
-    ln_segment1             mtl_item_locations.segment1%TYPE;
+    ln_inventory_location_id  mtl_item_locations.inventory_location_id%TYPE;
     iv_lot_biz_class        VARCHAR2(1);
     iv_item_no              xxcmn_item_mst_v.item_no%TYPE;
     iv_lot_no               ic_lots_mst.lot_no%TYPE;
     iv_move_to_id           xxcmn_party_sites2_v.party_site_id%TYPE;
+    in_move_to_code         NUMBER;
     id_arrival_date         DATE;
     id_standard_date        DATE;
     on_result               NUMBER;
@@ -13927,6 +13936,7 @@ AS
             iv_lot_biz_class := gv_lot_biz_class_2;        -- 1.ロット逆転処理種別
             ln_party_site_id := gr_interface_info_rec(i).deliver_to_id;
             iv_move_to_id    := ln_party_site_id;          -- 4.配送先ID/取引先サイトID/入庫先ID
+            in_move_to_code  := gr_interface_info_rec(i).party_site_code;
 --
           ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
                 (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
@@ -13937,8 +13947,8 @@ AS
 --
             IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220) THEN
 --
-              SELECT xilv2.segment1
-              INTO   ln_segment1
+              SELECT xilv2.inventory_location_id
+              INTO   ln_inventory_location_id
               FROM   xxcmn_item_locations2_v xilv2
               WHERE  xilv2.segment1 = gr_interface_info_rec(i).ship_to_location
                 AND  xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
@@ -13949,8 +13959,8 @@ AS
 --
             ELSIF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
 --
-              SELECT xilv2.segment1
-              INTO   ln_segment1
+              SELECT xilv2.inventory_location_id
+              INTO   ln_inventory_location_id
               FROM   xxcmn_item_locations2_v xilv2
               WHERE  xilv2.segment1 = gr_interface_info_rec(i).ship_to_location
                 AND  xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
@@ -13961,7 +13971,8 @@ AS
 --
             END IF;
 --
-            iv_move_to_id    := ln_segment1;               -- 4.配送先ID/取引先サイトID/入庫先ID
+            iv_move_to_id    := ln_inventory_location_id;     -- 4.配送先ID/取引先サイトID/入庫先ID
+            in_move_to_code  := gr_interface_info_rec(i).ship_to_location;
 --
           END IF;
 --
@@ -14022,7 +14033,7 @@ AS
                                ,gv_param3_token
                                ,iv_lot_no
                                ,gv_param4_token
-                               ,iv_move_to_id
+                               ,in_move_to_code
                                ,gv_param5_token
                                ,gr_interface_info_rec(i).delivery_no
                                ,gv_param6_token
@@ -14114,6 +14125,7 @@ AS
     ln_act_date_hikiate          NUMBER;     -- 有効日ベース引当可能数
     ln_act_total_hikiate         NUMBER;     -- 総引当可能数
     ln_act_hikiate               NUMBER;     -- 引当可能数
+    ln_shiped_quantity           NUMBER;     -- 出荷実績数
     lv_msg_buff                  VARCHAR2(5000);
 --
     lv_error_flg                 VARCHAR2(1);                                     --エラーflag
@@ -14142,6 +14154,7 @@ AS
     ln_act_date_hikiate      := 0;    -- 有効日ベース引当可能数
     ln_act_total_hikiate     := 0;    -- 総引当可能数
     ln_act_hikiate           := 0;    -- 引当可能数
+    ln_shiped_quantity       := 0;    -- 出荷実績数
 --
      <<status_update_loop>>
     FOR i IN 1..gr_interface_info_rec.COUNT LOOP
@@ -14153,8 +14166,9 @@ AS
 --
       IF (lv_error_flg = '0') AND (lv_reserve_flg = '0') THEN
 --
-        -- ロット管理品のものを対象とする
-        IF (gr_interface_info_rec(i).lot_ctl = gv_lotkr_kbn_cd_1) THEN
+        -- EOSデータ種別 <> 230:移動入庫確定報告
+        IF (gr_interface_info_rec(i).eos_data_type <> gv_eos_data_cd_230)
+        THEN
 --
           --共通関数：有効日ベース引当可能数算出API
           ln_act_date_hikiate := xxcmn_common_pkg.get_can_enc_in_time_qty(
@@ -14173,8 +14187,52 @@ AS
           -- 総引当可能数と有効日ベース引当可能数のうち小さい方を訂正可能数とする
           ln_act_hikiate := LEAST( ln_act_date_hikiate, ln_act_total_hikiate );
 --
-          -- 訂正可能数 < 出荷実績数量の場合、警告として、ステータスを保留にする。
-          IF (ln_act_hikiate < gr_interface_info_rec(i).shiped_quantity) THEN
+          -- 引当可能数と比較する出荷実績数量を算出
+          -- ロット管理区分の判定
+          IF (gr_interface_info_rec(i).lot_ctl = gv_lotkr_kbn_cd_0)
+          THEN
+            --ロット管理外の場合、出荷実績数量を使用
+            ln_shiped_quantity := gr_interface_info_rec(i).shiped_quantity;
+          ELSE
+            --ロット管理の場合、内訳数量を使用
+            ln_shiped_quantity := gr_interface_info_rec(i).detailed_quantity;
+          END IF;
+--
+          -- EOSデータ種別 = 拠点出荷確定報告 又は 庭先出荷確定報告の場合
+          IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+              (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+          THEN
+--
+            -- 以下の条件の場合のみ換算を行う
+            IF ((gr_interface_info_rec(i).conv_unit  IS NOT NULL) AND         --入出庫換算単位が設定済み 且つ
+                (gr_interface_info_rec(i).item_kbn_cd = gv_item_kbn_cd_5) AND --製品 且つ
+                ((gr_interface_info_rec(i).prod_kbn_cd = gv_prod_kbn_cd_1) OR --リーフ 又は
+                 (gr_interface_info_rec(i).prod_kbn_cd = gv_prod_kbn_cd_2)))  --ドリンク
+            THEN
+--
+              --出荷実績 x ケース入数を設定
+              ln_shiped_quantity := ln_shiped_quantity * gr_interface_info_rec(i).num_of_cases;
+--
+            END IF;
+--
+          -- EOSデータ種別 = 移動出庫確定報告の場合のみ換算を行う
+          ELSIF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220) THEN
+--
+            -- 以下の条件の場合のみ換算を行う
+            IF ((gr_interface_info_rec(i).conv_unit  IS NOT NULL) AND         --入出庫換算単位が設定済み 且つ
+                (gr_interface_info_rec(i).item_kbn_cd = gv_item_kbn_cd_5) AND --製品 且つ
+                (gr_interface_info_rec(i).prod_kbn_cd = gv_prod_kbn_cd_2))    --ドリンク
+            THEN
+             --出荷実績数量 x ケース入数を設定
+              ln_shiped_quantity := ln_shiped_quantity * gr_interface_info_rec(i).num_of_cases;
+--
+            END IF;
+--
+          END IF;
+--
+          -- 引当可能数 < 出荷実績数量の場合、警告として、ステータスを保留にする。
+          IF (ln_act_hikiate < ln_shiped_quantity) THEN
+--
             -- 警告メッセージ出力
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn          -- 'XXWSH'
@@ -14184,15 +14242,15 @@ AS
                           ,gv_param2_token
                           ,lt_order_source_ref                        -- 受注ソース参照
                           ,gv_param3_token
-                          ,gr_interface_info_rec(i).item_id           -- 品目ID
+                          ,gr_interface_info_rec(i).item_no           -- 品目
                           ,gv_param4_token
-                          ,gr_interface_info_rec(i).lot_id            -- ロットID
+                          ,gr_interface_info_rec(i).lot_no            -- ロットNo
                           ,gv_param5_token
-                          ,gr_interface_info_rec(i).shipped_locat     -- 保管場所ID
+                          ,gr_interface_info_rec(i).location_code     -- 出荷元
                           ,gv_param6_token
-                          ,ln_act_total_hikiate                       -- 総引当可能数
+                          ,ln_act_hikiate                             -- 引当可能数
                           ,gv_param7_token
-                          ,gr_interface_info_rec(i).shiped_quantity   -- 出荷実績数量
+                          ,ln_shiped_quantity                         -- 出荷実績数量
                           )
                           ,1
                           ,5000);
