@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : Issue3.9
+ * Version          : Issue3.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,14 @@ AS
  *                                       0001283 所属拠点の判定にNVLを追加
  *                                               従業員の割当てる順番を従業員番号 -> 職位並順の昇順,入社年月日の昇順に変更
  *                                               管理者割当カーソルに入社日の並び順を追加
+ *  2009/10/29    1.12 SCS 久保島 豊     障害E_最終移行リハ_00368 対応
+ *                                       ・管理者の割当を直UPDATEに変更
+ *                                         (APIの割当の場合 管理者の入社年月日 <= 従業員の入社年月日 の制約があるため)
+ *                                       ・管理者取得のSQLの入社年月日の条件を変更
+ *                                         (「管理者の入社年月日 <= 入社年月日 <= 管理者の退職年月日」 -> 退職していない管理者)
+ *                                       ・継続雇用時の退職処理の退職日設定を変更
+ *                                         (既存入社年月日 -> 新入社年月日 - 1)
+ *                                       ・PT対応 職責自動割当カーソルの抽出条件を追加
  *
  *****************************************************************************************/
 --
@@ -205,6 +213,10 @@ AS
   cv_retiree_err2              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00204';  -- 再雇用日エラー
 --  cv_out_resp_msg              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00206';  -- 職責自動割当て不可能(正常)
   cv_rep_msg                   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00207';  -- エラーの処理結果リストの見出し
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+  cv_announce_ymd_err          CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00222';  -- 入社日 > 発令日エラー
+  cv_hire_ymd_change_err       CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00223';  -- 入社日変更エラー
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
   -- メッセージ番号(共通・IF)
   cv_target_rec_msg            CONSTANT VARCHAR2(30)  := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
   cv_success_rec_msg           CONSTANT VARCHAR2(30)  := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
@@ -591,6 +603,9 @@ AS
   gt_report_normal_tbl         report_normal_tbl;    -- 結合配列の定義
   gt_report_warn_tbl           report_warn_tbl;      -- 結合配列の定義
   --
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+  gv_retcode                   VARCHAR2(1);          -- 処理結果
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
   -- 定数
   gn_created_by                NUMBER;               -- 作成者
   gd_creation_date             DATE;                 -- 作成日
@@ -741,9 +756,13 @@ AS
       AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) >  0                               -- 職位並順コード（新)
       AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER( iv_job_post_order )
       AND       paa.period_of_service_id                  = ppos.period_of_service_id       -- サービスID
-      AND       ppos.date_start                          <= id_hire_date                    -- 入社日
-      AND       NVL( ppos.actual_termination_date, id_hire_date )
-                                                         >= id_hire_date                    -- 退職日
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 管理者取得時の入社年月日チェックを変更
+--      AND       ppos.date_start                          <= id_hire_date                    -- 入社日
+--      AND       NVL( ppos.actual_termination_date, id_hire_date )
+--                                                         >= id_hire_date                    -- 退職日
+      AND       ppos.actual_termination_date IS NULL
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
       ORDER BY  paa.ass_attribute11                      -- 職位並順コード（新)
                ,ppos.actual_termination_date  DESC       -- 退職日の降順
 -- 2009/09/04 Ver1.11 add start by Yutaka.Kuboshima
@@ -772,12 +791,16 @@ AS
     --
     IF ( get_supervisor_cur%NOTFOUND ) THEN
       -- 管理者が取得できない場合
-      IF ( id_hire_date >= gn_person_start) THEN
-        --プロファイルの設定された社員のperson_idを設定
-        on_supervisor_id := gn_person_id;
-      ELSE
-        on_supervisor_id := NULL;
-      END IF;
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 管理者取得の時の入社年月日チェックを削除
+--      IF ( id_hire_date >= gn_person_start) THEN
+--        --プロファイルの設定された社員のperson_idを設定
+--        on_supervisor_id := gn_person_id;
+--      ELSE
+--        on_supervisor_id := NULL;
+--      END IF;
+      on_supervisor_id := gn_person_id;
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     ELSE
       -- 管理者が取得できた場合
       on_supervisor_id := ln_supervisor_id;
@@ -858,11 +881,15 @@ AS
       AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) >  0                               -- 職位並順コード（新)
       AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER( iv_job_post_order )
       AND       paa.period_of_service_id                  = ppos.period_of_service_id       -- サービスID
-      AND       ppos.date_start                          <= id_hire_date                    -- 入社日
-      AND       NVL( ppos.actual_termination_date, id_hire_date )
-                                                         >= id_hire_date                    -- 退職日
-      ORDER BY  paa.ass_attribute11                      -- 職位並順コード（新)
-               ,ppos.actual_termination_date  DESC       -- 退職日の降順
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 管理者取得の時の入社年月日チェックを変更、ソート順を削除
+--      AND       ppos.date_start                          <= id_hire_date                    -- 入社日
+--      AND       NVL( ppos.actual_termination_date, id_hire_date )
+--                                                         >= id_hire_date                    -- 退職日
+--      ORDER BY  paa.ass_attribute11                      -- 職位並順コード（新)
+--               ,ppos.actual_termination_date  DESC       -- 退職日の降順
+      AND       ppos.actual_termination_date IS NULL
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     ;
     --
     -- 役職ID取得カーソル
@@ -2552,6 +2579,24 @@ AS
         ir_masters_rec.ymd_kbn  := NULL;  -- 入社日変更なし
       ELSE
         ir_masters_rec.ymd_kbn  := gv_sts_yes;  -- 入社日変更
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+-- 警告エラーメッセージを表示
+-- 処理ステータスは警告にする(当該レコードは連携対象とする)
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_hire_ymd_change_err
+                    ,iv_token_name1  => cv_tkn_ng_word
+                    ,iv_token_value1 => cv_employee_nm
+                    ,iv_token_name2  => cv_tkn_ng_user
+                    ,iv_token_value2 => ir_masters_rec.employee_number
+                   );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+        ir_masters_rec.row_err_message := lv_errmsg;
+        gv_retcode := cv_status_warn;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
       END IF;
       --
       -- データ登録に必要なデータ格納
@@ -2679,7 +2724,7 @@ AS
     -- *** ローカル変数 ***
     lv_token_value2       VARCHAR2(30);
 -- 2009/08/06 Ver1.10 障害0000793 add start by Yutaka.Kuboshima
-    ld_announce_date           DATE;
+    ld_announce_date      DATE;
 -- 2009/08/06 Ver1.10 障害0000793 add end by Yutaka.Kuboshima
     --
     -- *** ローカル・カーソル ***
@@ -2785,6 +2830,19 @@ AS
 -- 2009/08/06 Ver1.10 障害0000793 modify end by Y.Kuboshima
       lv_token_value2 := cv_announce_date_nm2; -- '発令日未来日付'
       RAISE global_process_expt;
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+    -- 入社日 > 発令日の場合
+    ELSIF (ir_masters_rec.hire_date > ld_announce_date) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appl_short_name
+                   ,iv_name         => cv_announce_ymd_err
+                   ,iv_token_name1  => cv_tkn_ng_word
+                   ,iv_token_value1 => cv_employee_nm -- '社員番号'
+                   ,iv_token_name2  => cv_tkn_ng_user
+                   ,iv_token_value2 => ir_masters_rec.employee_number
+                   );
+      RAISE global_process2_expt;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     END IF;
     --
     --性別
@@ -3629,7 +3687,16 @@ AS
     --
     -- *** ローカル・カーソル ***
     -- 職責自動割当カーソル
-    CURSOR resp_cur
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- カーソル変数追加
+--    CURSOR resp_cur
+    CURSOR resp_cur(iv_location_code1 IN VARCHAR2
+                   ,iv_location_code2 IN VARCHAR2
+                   ,iv_location_code3 IN VARCHAR2
+                   ,iv_location_code4 IN VARCHAR2
+                   ,iv_location_code5 IN VARCHAR2
+                   ,iv_location_code6 IN VARCHAR2)
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     IS
 -- Ver1.9 Mod  2009/07/10  LOOKUPの設定を職責ID⇒職責KEYに変更  障害No.0000492
 --      SELECT flv.description        responsibility_id,  -- 職責ID
@@ -3654,6 +3721,14 @@ AS
              (NVL(flv.attribute5,cv_all) = ir_masters_rec.job_duty))     -- 職務コード
       AND   ((NVL(flv.attribute6,cv_all) = cv_all)  OR
              (NVL(flv.attribute6,cv_all) = ir_masters_rec.job_type))     -- 職種コード
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+      AND   ((flv.attribute1 = cv_level1 AND flv.attribute2 = iv_location_code1)
+        OR   (flv.attribute1 = cv_level2 AND flv.attribute2 = iv_location_code2)
+        OR   (flv.attribute1 = cv_level3 AND flv.attribute2 = iv_location_code3)
+        OR   (flv.attribute1 = cv_level4 AND flv.attribute2 = iv_location_code4)
+        OR   (flv.attribute1 = cv_level5 AND flv.attribute2 = iv_location_code5)
+        OR   (flv.attribute1 = cv_level6 AND flv.attribute2 = iv_location_code6))
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
       ORDER BY flv.attribute1,flv.attribute2;
     --
 -- Ver1.9 Add  2009/07/10  職責取得カーソルを追加  障害No.0000492
@@ -3760,46 +3835,85 @@ AS
         RAISE global_api_others_expt;
     END;
     --
-    <<resp_loop>>
-    FOR resp_rec IN resp_cur LOOP
-      IF   (resp_rec.location_level = cv_level1 AND resp_rec.location = lv_location_cd1)
-        OR (resp_rec.location_level = cv_level2 AND resp_rec.location = lv_location_cd2)
-        OR (resp_rec.location_level = cv_level3 AND resp_rec.location = lv_location_cd3)
-        OR (resp_rec.location_level = cv_level4 AND resp_rec.location = lv_location_cd4)
-        OR (resp_rec.location_level = cv_level5 AND resp_rec.location = lv_location_cd5)
-        OR (resp_rec.location_level = cv_level6 AND resp_rec.location = lv_location_cd6) THEN
-        --
--- Ver1.9 Mod  2009/07/10  LOOKUPの設定を職責ID⇒職責KEYに変更  障害No.0000492
---        BEGIN
---          -- 職責マスタ存在チェック
---          SELECT fres.application_id,
---                 fres.responsibility_key,
---                 fapp.application_short_name
---          INTO   ln_application_id,
---                 lv_responsibility_key,
---                 lv_application_short_name
---          FROM   fnd_application    fapp,
---                 fnd_responsibility fres       -- 職責マスタ
---        WHERE  fres.responsibility_id  = TO_NUMBER(resp_rec.responsibility_id)
----- Ver1.7 Mod  2009/06/25  基準日を業務日付+1に変更  障害No.0000161
-----          AND    NVL(fres.start_date,ld_st_date)  <= ld_st_date
-----          AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
---          AND    fres.start_date  <= cd_process_date + 1
---          AND    NVL( fres.end_date, cd_process_date + 1 ) >= cd_process_date + 1
----- End1.7
---          AND    fapp.application_id = fres.application_id
---          AND    ROWNUM = 1;
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 職責自動割当カーソルOPEN処理変更
+-- IF文を削除(SQLにIF文条件を移植)
+--    <<resp_loop>>
+--    FOR resp_rec IN resp_cur LOOP
+--      IF   (resp_rec.location_level = cv_level1 AND resp_rec.location = lv_location_cd1)
+--        OR (resp_rec.location_level = cv_level2 AND resp_rec.location = lv_location_cd2)
+--        OR (resp_rec.location_level = cv_level3 AND resp_rec.location = lv_location_cd3)
+--        OR (resp_rec.location_level = cv_level4 AND resp_rec.location = lv_location_cd4)
+--        OR (resp_rec.location_level = cv_level5 AND resp_rec.location = lv_location_cd5)
+--        OR (resp_rec.location_level = cv_level6 AND resp_rec.location = lv_location_cd6) THEN
 --        --
---        EXCEPTION
---          WHEN NO_DATA_FOUND THEN
---            ln_application_id := NULL;
---            lv_responsibility_key := NULL;
---            lv_application_short_name := NULL;
---          WHEN OTHERS THEN
---            RAISE global_api_others_expt;
---        END;
+---- Ver1.9 Mod  2009/07/10  LOOKUPの設定を職責ID⇒職責KEYに変更  障害No.0000492
+----        BEGIN
+----          -- 職責マスタ存在チェック
+----          SELECT fres.application_id,
+----                 fres.responsibility_key,
+----                 fapp.application_short_name
+----          INTO   ln_application_id,
+----                 lv_responsibility_key,
+----                 lv_application_short_name
+----          FROM   fnd_application    fapp,
+----                 fnd_responsibility fres       -- 職責マスタ
+----        WHERE  fres.responsibility_id  = TO_NUMBER(resp_rec.responsibility_id)
+------ Ver1.7 Mod  2009/06/25  基準日を業務日付+1に変更  障害No.0000161
+------          AND    NVL(fres.start_date,ld_st_date)  <= ld_st_date
+------          AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
+----          AND    fres.start_date  <= cd_process_date + 1
+----          AND    NVL( fres.end_date, cd_process_date + 1 ) >= cd_process_date + 1
+------ End1.7
+----          AND    fapp.application_id = fres.application_id
+----          AND    ROWNUM = 1;
+----        --
+----        EXCEPTION
+----          WHEN NO_DATA_FOUND THEN
+----            ln_application_id := NULL;
+----            lv_responsibility_key := NULL;
+----            lv_application_short_name := NULL;
+----          WHEN OTHERS THEN
+----            RAISE global_api_others_expt;
+----        END;
+----        --
+----        IF ln_application_id IS NOT NULL THEN
+----          BEGIN
+----            -- 職責自動割当ワークへ待避
+----            INSERT INTO xxcmm_wk_people_resp(
+----                employee_number,
+----                responsibility_id,
+----                user_id,
+----                employee_kbn,
+----                responsibility_key,
+----                application_id,
+----                application_short_name,
+----                start_date,
+----                end_date
+----            )VALUES(
+----                ir_masters_rec.employee_number,
+----                TO_NUMBER(resp_rec.responsibility_id),
+----                ir_masters_rec.user_id,
+----                ir_masters_rec.emp_kbn,
+----                lv_responsibility_key,
+----                ln_application_id,
+----                lv_application_short_name,
+----                ld_st_date,
+----                ir_masters_rec.actual_termination_date
+----            );
+----        ln_resp_cnt := ln_resp_cnt + 1;
+----          EXCEPTION
+----            WHEN DUP_VAL_ON_INDEX THEN  -- 同じ社員番号に同じ職責が存在した場合は、skipする
+----              ln_application_id := NULL;
+----              lv_responsibility_key := NULL;
+----              lv_application_short_name := NULL;
+----            WHEN OTHERS THEN
+----              RAISE global_api_others_expt;
+----          END;
+----        END IF;
 --        --
---        IF ln_application_id IS NOT NULL THEN
+--        <<effective_resp_loop>>
+--        FOR l_effective_resp_rec IN effective_resp_cur( resp_rec.responsibility_key ) LOOP
 --          BEGIN
 --            -- 職責自動割当ワークへ待避
 --            INSERT INTO xxcmm_wk_people_resp(
@@ -3814,64 +3928,75 @@ AS
 --                end_date
 --            )VALUES(
 --                ir_masters_rec.employee_number,
---                TO_NUMBER(resp_rec.responsibility_id),
+--                l_effective_resp_rec.responsibility_id,
 --                ir_masters_rec.user_id,
 --                ir_masters_rec.emp_kbn,
---                lv_responsibility_key,
---                ln_application_id,
---                lv_application_short_name,
+--                l_effective_resp_rec.responsibility_key,
+--                l_effective_resp_rec.application_id,
+--                l_effective_resp_rec.application_short_name,
 --                ld_st_date,
 --                ir_masters_rec.actual_termination_date
 --            );
---        ln_resp_cnt := ln_resp_cnt + 1;
+--            ln_resp_cnt := ln_resp_cnt + 1;
 --          EXCEPTION
---            WHEN DUP_VAL_ON_INDEX THEN  -- 同じ社員番号に同じ職責が存在した場合は、skipする
---              ln_application_id := NULL;
---              lv_responsibility_key := NULL;
---              lv_application_short_name := NULL;
+--            -- 同じ社員番号に同じ職責が存在した場合は、skipする
+--            WHEN DUP_VAL_ON_INDEX THEN
+--              NULL;
 --            WHEN OTHERS THEN
 --              RAISE global_api_others_expt;
 --          END;
---        END IF;
-        --
-        <<effective_resp_loop>>
-        FOR l_effective_resp_rec IN effective_resp_cur( resp_rec.responsibility_key ) LOOP
-          BEGIN
-            -- 職責自動割当ワークへ待避
-            INSERT INTO xxcmm_wk_people_resp(
-                employee_number,
-                responsibility_id,
-                user_id,
-                employee_kbn,
-                responsibility_key,
-                application_id,
-                application_short_name,
-                start_date,
-                end_date
-            )VALUES(
-                ir_masters_rec.employee_number,
-                l_effective_resp_rec.responsibility_id,
-                ir_masters_rec.user_id,
-                ir_masters_rec.emp_kbn,
-                l_effective_resp_rec.responsibility_key,
-                l_effective_resp_rec.application_id,
-                l_effective_resp_rec.application_short_name,
-                ld_st_date,
-                ir_masters_rec.actual_termination_date
-            );
-            ln_resp_cnt := ln_resp_cnt + 1;
-          EXCEPTION
-            -- 同じ社員番号に同じ職責が存在した場合は、skipする
-            WHEN DUP_VAL_ON_INDEX THEN
-              NULL;
-            WHEN OTHERS THEN
-              RAISE global_api_others_expt;
-          END;
-        END LOOP effective_resp_loop;
-        --
---End1.9
-      END IF;
+--        END LOOP effective_resp_loop;
+--        --
+----End1.9
+--      END IF;
+--    END LOOP resp_loop;
+--
+-- ↓ modify start
+    <<resp_loop>>
+    FOR resp_rec IN resp_cur(lv_location_cd1
+                            ,lv_location_cd2
+                            ,lv_location_cd3
+                            ,lv_location_cd4
+                            ,lv_location_cd5
+                            ,lv_location_cd6)
+    LOOP
+      <<effective_resp_loop>>
+      FOR l_effective_resp_rec IN effective_resp_cur( resp_rec.responsibility_key ) LOOP
+        BEGIN
+          -- 職責自動割当ワークへ待避
+          INSERT INTO xxcmm_wk_people_resp(
+              employee_number,
+              responsibility_id,
+              user_id,
+              employee_kbn,
+              responsibility_key,
+              application_id,
+              application_short_name,
+              start_date,
+              end_date
+          )VALUES(
+              ir_masters_rec.employee_number,
+              l_effective_resp_rec.responsibility_id,
+              ir_masters_rec.user_id,
+              ir_masters_rec.emp_kbn,
+              l_effective_resp_rec.responsibility_key,
+              l_effective_resp_rec.application_id,
+              l_effective_resp_rec.application_short_name,
+              ld_st_date,
+              ir_masters_rec.actual_termination_date
+          );
+          ln_resp_cnt := ln_resp_cnt + 1;
+        EXCEPTION
+          -- 同じ社員番号に同じ職責が存在した場合は、skipする
+          WHEN DUP_VAL_ON_INDEX THEN
+            NULL;
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+      END LOOP effective_resp_loop;
+      --
     END LOOP resp_loop;
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     --
     IF (ln_resp_cnt = 0) THEN
 /*  --職責が割当られなかった時の警告エラーはなし（コメントにしておく）
@@ -4447,6 +4572,9 @@ AS
     cv_warning    CONSTANT VARCHAR2(20) := '<<警告データ>>';  -- 見出し
     cv_errmsg     CONSTANT VARCHAR2(20) := ' [エラーメッセージ]';  -- エラーメッセージ
     lv_sep_com    CONSTANT VARCHAR2(1)  := ',';     -- カンマ
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+    cv_warnmsg    CONSTANT VARCHAR2(20) := ' [警告メッセージ]';  -- 警告メッセージ
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     --
     -- *** ローカル変数 ***
     lv_dspbuf     VARCHAR2(5000);  -- エラー・メッセージ
@@ -4601,6 +4729,11 @@ AS
                     gt_report_normal_tbl(ln_disp_cnt).consent_division_old||lv_sep_com||
                     gt_report_normal_tbl(ln_disp_cnt).agent_division_old
                     ;
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+        IF (gt_report_normal_tbl(ln_disp_cnt).message IS NOT NULL) THEN
+          lv_dspbuf := lv_dspbuf || lv_sep_com || cv_warnmsg || gt_report_normal_tbl(ln_disp_cnt).message;
+        END IF;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
         FND_FILE.PUT_LINE(
             which  => FND_FILE.LOG
            ,buff => lv_dspbuf --正常データログ
@@ -5500,7 +5633,11 @@ AS
         ,P_DATETRACK_UPDATE_MODE  =>  gv_upd_mode                              -- 'CORRECTION'
         ,P_ASSIGNMENT_ID          =>  ir_masters_rec.assignment_id             -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
         ,P_OBJECT_VERSION_NUMBER  =>  ir_masters_rec.paa_version               -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
-        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id             -- 管理者
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 管理者の割当をAPI -> 直UPDATEに変更
+--        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id             -- 管理者
+        ,P_SUPERVISOR_ID          =>  NULL                                     -- 管理者
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
         ,P_ASSIGNMENT_NUMBER      =>  ir_masters_rec.assignment_number         -- ｱｻｲﾝﾒﾝﾄ番号(ﾁｪｯｸ時取得)
 -- Ver1.3
 --        ,P_DEFAULT_CODE_COMB_ID   =>  gv_default                               -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
@@ -5604,6 +5741,15 @@ AS
           RAISE global_process_expt;
       END;
     END IF;
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+-- 管理者の割当をAPI -> 直UPDATEに変更
+    -- 管理者更新
+    UPDATE per_all_assignments_f
+    SET    supervisor_id        = ir_masters_rec.supervisor_id
+    WHERE  assignment_id        = ir_masters_rec.assignment_id
+    AND    effective_start_date = ir_masters_rec.effective_start_date
+    AND    effective_end_date   = ir_masters_rec.effective_end_date;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -6193,7 +6339,11 @@ AS
         ,P_DATETRACK_UPDATE_MODE  =>  gv_upd_mode                              -- 'CORRECTION'
         ,P_ASSIGNMENT_ID          =>  ir_masters_rec.assignment_id             -- ｱｻｲﾝﾒﾝﾄID(ﾁｪｯｸ時取得)
         ,P_OBJECT_VERSION_NUMBER  =>  ir_masters_rec.paa_version               -- ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
-        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id             -- 管理者
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 管理者の割当をAPI -> 直UPDATEに変更
+--        ,P_SUPERVISOR_ID          =>  ir_masters_rec.supervisor_id             -- 管理者
+        ,P_SUPERVISOR_ID          =>  NULL                                     -- 管理者
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
         ,P_ASSIGNMENT_NUMBER      =>  ir_masters_rec.assignment_number         -- ｱｻｲﾝﾒﾝﾄ番号(ﾁｪｯｸ時取得)
 -- Ver1.3
 --        ,P_DEFAULT_CODE_COMB_ID   =>  gv_default                               -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
@@ -6293,6 +6443,15 @@ AS
 --End Ver1.5
         RAISE global_process_expt;
     END;
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+-- 管理者の割当をAPI -> 直UPDATEに変更
+    -- 管理者更新
+    UPDATE per_all_assignments_f
+    SET    supervisor_id        = ir_masters_rec.supervisor_id
+    WHERE  assignment_id        = ir_masters_rec.assignment_id
+    AND    effective_start_date = ir_masters_rec.effective_start_date
+    AND    effective_end_date   = ir_masters_rec.effective_end_date;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -6554,7 +6713,11 @@ AS
         ,P_DATETRACK_UPDATE_MODE  => gv_upd_mode                             -- 'CORRECTION'
         ,P_ASSIGNMENT_ID          => ir_masters_rec.assignment_id            -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_ID
         ,P_OBJECT_VERSION_NUMBER  => ir_masters_rec.paa_version              -- IN/OUT(ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号)
-        ,P_SUPERVISOR_ID          => ir_masters_rec.supervisor_id            -- 管理者
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 管理者の割当をAPI -> 直UPDATEに変更
+--        ,P_SUPERVISOR_ID          => ir_masters_rec.supervisor_id            -- 管理者
+        ,P_SUPERVISOR_ID          => NULL                                    -- 管理者
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
         ,P_ASSIGNMENT_NUMBER      => ir_masters_rec.assignment_number        -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_NUMBER
 -- Ver1.3
 --        ,P_DEFAULT_CODE_COMB_ID   => gv_default                              -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
@@ -6652,6 +6815,15 @@ AS
 --End Ver1.5
           RAISE global_process_expt;
     END;
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+-- 管理者の割当をAPI -> 直UPDATEに変更
+    -- 管理者更新
+    UPDATE per_all_assignments_f
+    SET    supervisor_id        = ir_masters_rec.supervisor_id
+    WHERE  assignment_id        = ir_masters_rec.assignment_id
+    AND    effective_start_date = ir_masters_rec.effective_start_date
+    AND    effective_end_date   = ir_masters_rec.effective_end_date;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     --
     -- 退職処理 (退職区分=’Y’）** 新規登録社員データに退職年月日が設定されている場合 **
     IF ir_masters_rec.retire_kbn = gv_sts_yes THEN
@@ -6813,6 +6985,9 @@ AS
     lv_purchasing_flag          VARCHAR2(1);   -- 購買担当フラグ
     lv_shipping_flag            VARCHAR2(1);   -- 出荷担当フラグ
 -- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+    ld_actual_termination_date  DATE;          -- 退職日
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     --
     -- *** ローカル・カーソル ***
     --
@@ -6835,10 +7010,17 @@ AS
       -- 1.入社年月日を退職年月日として設定し、退職処理を行う。
       -- 2.新入社年月日で再雇用処理を行う。
     IF ir_masters_rec.ymd_kbn = gv_sts_yes THEN
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+      -- 入社年月日 - 1を退職日として設定
+      ld_actual_termination_date := ir_masters_rec.hire_date - 1;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
       -- 退職処理
       retire_proc(
         ir_masters_rec
-       ,ir_masters_rec.hire_date_old   -- 退職日に既存入社日セット
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+--       ,ir_masters_rec.hire_date_old   -- 退職日に既存入社日セット
+       ,ld_actual_termination_date       -- 退職日に既存入社日をセット
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -6851,7 +7033,10 @@ AS
       -- 再雇用処理
       re_hire_proc(
         ir_masters_rec
-       ,ir_masters_rec.hire_date_old        -- 退職日に既存入社日をセット
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+--       ,ir_masters_rec.hire_date_old        -- 退職日に既存入社日をセット
+       ,ld_actual_termination_date       -- 退職日に既存入社日をセット
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -7620,13 +7805,23 @@ AS
     l_if_clear_rec       masters_rec;       -- 処理対象データクリア用レコード
 -- Ver1.3 End
     --
-    lt_insert_masters    masters_tbl;       -- 各マスタへ登録するデータ
-    lt_update_masters    masters_tbl;       -- 各マスタへ更新するデータ
-    lt_delete_masters    masters_tbl;       -- 各マスタへ削除するデータ
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--    lt_insert_masters    masters_tbl;       -- 各マスタへ登録するデータ
+--    lt_update_masters    masters_tbl;       -- 各マスタへ更新するデータ
+--    lt_delete_masters    masters_tbl;       -- 各マスタへ削除するデータ
+    lt_proc_masters      masters_tbl;       -- 各マスタへ連携するデータ
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     --
-    ln_insert_cnt        NUMBER;            -- 登録件数
-    ln_update_cnt        NUMBER;            -- 更新件数
-    ln_delete_cnt        NUMBER;            -- 削除件数
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--    ln_insert_cnt        NUMBER;            -- 登録件数
+--    ln_update_cnt        NUMBER;            -- 更新件数
+--    ln_delete_cnt        NUMBER;            -- 削除件数
+    ln_proc_cnt          NUMBER;            -- 連携件数
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     ln_exec_cnt          NUMBER;
     ln_log_cnt           NUMBER;
     lc_flg               CHAR(1) := ' ';    -- 重複データ用フラグ
@@ -7690,9 +7885,14 @@ AS
       FROM   xxcmm_in_people_if xip
 -- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
 --      ORDER BY xip.employee_number;
-      ORDER BY xip.job_post_order
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 退職者を始めに割当てるように修正
+--      ORDER BY xip.job_post_order
+      ORDER BY xip.actual_termination_date
+              ,xip.job_post_order
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
               ,xip.hire_date;
--- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
+-- 2009/09/04 Ver1.11 modify end by Yutaka.Kuboshima
     --
     -- 職責自動割当ワーク
     CURSOR wk_pr2_cur(lv_emp_kbn IN VARCHAR2)
@@ -7725,9 +7925,16 @@ AS
     gn_skip_cnt   := 0; -- スキップ件数
     gn_rep_n_cnt  := 0; -- レポート件
     gn_rep_w_cnt  := 0; -- レポート件
-    ln_insert_cnt := 0;
-    ln_update_cnt := 0;
-    ln_delete_cnt := 0;
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--    ln_insert_cnt := 0;
+--    ln_update_cnt := 0;
+--    ln_delete_cnt := 0;
+    ln_proc_cnt   := 0; -- 連携件数
+    gv_retcode    := cv_status_normal; -- 処理結果
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
+--
 -- Ver1.3 Del 2009/04/16  不要ないため削除
 --    gn_if         := 0; -- 社員インターフェース件数
 -- End Ver1.3
@@ -8281,8 +8488,14 @@ AS
             -- 社員データ登録情報格納処理(A-8)
             -- =================================
             l_people_if_rec.proc_flg := gv_sts_update;  -- 処理対象
-            ln_insert_cnt := ln_insert_cnt + 1;
-            lt_insert_masters( ln_insert_cnt ) := l_people_if_rec;
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--            ln_insert_cnt := ln_insert_cnt + 1;
+--            lt_insert_masters( ln_insert_cnt ) := l_people_if_rec;
+            ln_proc_cnt := ln_proc_cnt + 1;
+            lt_proc_masters( ln_proc_cnt ) := l_people_if_rec;
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
           END IF;
           --
         --正常処理：既存社員異動データ・退職社員再雇用データ（更新）
@@ -8312,16 +8525,28 @@ AS
             -- 社員データ更新情報格納処理(A-9)
             -- =================================
             l_people_if_rec.proc_flg := gv_sts_update;  -- 処理対象
-            ln_update_cnt := ln_update_cnt + 1;
-            lt_update_masters( ln_update_cnt ) := l_people_if_rec;
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--            ln_update_cnt := ln_update_cnt + 1;
+--            lt_update_masters( ln_update_cnt ) := l_people_if_rec;
+            ln_proc_cnt := ln_proc_cnt + 1;
+            lt_proc_masters( ln_proc_cnt ) := l_people_if_rec;
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
           --正常処理：退職社員データ（更新）
           ELSIF ( l_people_if_rec.emp_kbn  = gv_kbn_retiree ) THEN
             -- =================================
             -- 社員データ削除情報格納処理(A-10)
             -- =================================
             l_people_if_rec.proc_flg := gv_sts_update;  -- 処理対象
-            ln_delete_cnt := ln_delete_cnt + 1;
-            lt_delete_masters( ln_delete_cnt ) := l_people_if_rec;
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--            ln_delete_cnt := ln_delete_cnt + 1;
+--            lt_delete_masters( ln_delete_cnt ) := l_people_if_rec;
+            ln_proc_cnt := ln_proc_cnt + 1;
+            lt_proc_masters( ln_proc_cnt ) := l_people_if_rec;
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
           END IF;
         END IF;
       ELSE
@@ -8374,13 +8599,92 @@ AS
     -- ================================
     -- 社員データ反映処理(A-12)
     -- ================================
-    IF ( ln_insert_cnt > 0 ) THEN
-      -- 新規社員登録処理
-      <<lt_insert_masters_loop>>
-      FOR ln_cnt IN 1 .. ln_insert_cnt LOOP
+-- 2009/10/29 Ver1.12 modify start by Yutaka.Kuboshima
+-- 各従業員データを登録、更新、削除に分けると、
+-- 正しい割当順序にならないので管理者または役職が正しく割当たらないため修正
+--    IF ( ln_insert_cnt > 0 ) THEN
+--      -- 新規社員登録処理
+--      <<lt_insert_masters_loop>>
+--      FOR ln_cnt IN 1 .. ln_insert_cnt LOOP
+--        -- 新規社員登録処理
+--        insert_proc(
+--           lt_insert_masters(ln_cnt)
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        END IF;
+--      END LOOP lt_insert_masters_loop;
+--      --
+--      -- 新規社員の職責は社員職責自動割当ワークより一括登録
+--      <<wk_pr2_loop>>
+--      FOR wk_pr2_rec IN wk_pr2_cur(gv_kbn_new) LOOP
+--      -- 新規社員登録処理
+--        insert_resp_all(
+--           wk_pr2_rec.employee_number
+--          ,wk_pr2_rec.responsibility_key
+--          ,wk_pr2_rec.application_short_name
+--          ,wk_pr2_rec.start_date
+--          ,wk_pr2_rec.end_date
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        END IF;
+--      END LOOP wk_pr2_loop;
+--    END IF;
+--    --
+--    IF (ln_update_cnt > 0) THEN
+--      -- 既存社員更新処理
+--      <<lt_update_masters_loop>>
+--      FOR ln_cnt IN 1 .. ln_update_cnt LOOP
+--        -- 既存社員異動処理
+--        update_proc(
+--           lt_update_masters(ln_cnt)
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        END IF;
+--      END LOOP lt_update_masters_loop;
+--    END IF;
+--    --
+--    IF (ln_delete_cnt > 0) THEN
+--      -- 退職者再雇用処理
+--      <<lt_delete_masters_loop>>
+--      FOR ln_cnt IN 1..ln_delete_cnt LOOP
+--        -- 退職者処理
+--        delete_proc(
+--           lt_delete_masters(ln_cnt)
+--          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--          ,lv_retcode  -- リターン・コード             --# 固定 #
+--          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_api_expt;
+--        END IF;
+--      END LOOP lt_update_masters_loop;
+--    END IF;
+--
+-- ↓ modify start
+    -- 連携対象データを抽出
+    <<lt_proc_masters_loop>>
+    FOR ln_cnt IN 1 .. ln_proc_cnt
+    LOOP
+      -- 登録処理の場合
+      IF (lt_proc_masters(ln_cnt).emp_kbn = gv_kbn_new) THEN
         -- 新規社員登録処理
         insert_proc(
-           lt_insert_masters(ln_cnt)
+           lt_proc_masters(ln_cnt)
           ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -8389,35 +8693,11 @@ AS
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         END IF;
-      END LOOP lt_insert_masters_loop;
-      --
-      -- 新規社員の職責は社員職責自動割当ワークより一括登録
-      <<wk_pr2_loop>>
-      FOR wk_pr2_rec IN wk_pr2_cur(gv_kbn_new) LOOP
-      -- 新規社員登録処理
-        insert_resp_all(
-           wk_pr2_rec.employee_number
-          ,wk_pr2_rec.responsibility_key
-          ,wk_pr2_rec.application_short_name
-          ,wk_pr2_rec.start_date
-          ,wk_pr2_rec.end_date
-          ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
-          ,lv_retcode  -- リターン・コード             --# 固定 #
-          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
-        END IF;
-      END LOOP wk_pr2_loop;
-    END IF;
-    --
-    IF (ln_update_cnt > 0) THEN
-      -- 既存社員更新処理
-      <<lt_update_masters_loop>>
-      FOR ln_cnt IN 1 .. ln_update_cnt LOOP
+      -- 更新処理の場合
+      ELSIF (lt_proc_masters(ln_cnt).emp_kbn = gv_kbn_employee) THEN
         -- 既存社員異動処理
         update_proc(
-           lt_update_masters(ln_cnt)
+           lt_proc_masters(ln_cnt)
           ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -8426,16 +8706,11 @@ AS
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         END IF;
-      END LOOP lt_update_masters_loop;
-    END IF;
-    --
-    IF (ln_delete_cnt > 0) THEN
-      -- 退職者再雇用処理
-      <<lt_delete_masters_loop>>
-      FOR ln_cnt IN 1..ln_delete_cnt LOOP
+      -- 退職処理の場合
+      ELSIF (lt_proc_masters(ln_cnt).emp_kbn = gv_kbn_retiree) THEN
         -- 退職者処理
         delete_proc(
-           lt_delete_masters(ln_cnt)
+           lt_proc_masters(ln_cnt)
           ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
           ,lv_retcode  -- リターン・コード             --# 固定 #
           ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -8444,8 +8719,28 @@ AS
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
         END IF;
-      END LOOP lt_update_masters_loop;
-    END IF;
+      END IF;
+    END LOOP lt_proc_masters_loop;
+    -- 新規社員の職責は社員職責自動割当ワークより一括登録
+    <<wk_pr2_loop>>
+    FOR wk_pr2_rec IN wk_pr2_cur(gv_kbn_new) 
+    LOOP
+    -- 新規社員登録処理
+      insert_resp_all(
+         wk_pr2_rec.employee_number
+        ,wk_pr2_rec.responsibility_key
+        ,wk_pr2_rec.application_short_name
+        ,wk_pr2_rec.start_date
+        ,wk_pr2_rec.end_date
+        ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode  -- リターン・コード             --# 固定 #
+        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+    END LOOP wk_pr2_loop;
+-- 2009/10/29 Ver1.12 modify end by Yutaka.Kuboshima
     --
     -- 初期化
     ov_retcode := cv_status_normal;
@@ -8666,6 +8961,17 @@ AS
       ,buff   => ''
     );
     --
+-- 2009/10/29 Ver1.12 add start by Yutaka.Kuboshima
+    -- 終了ステータスが正常かつ
+    -- 入社日の変更が行われている場合
+    IF (lv_retcode = cv_status_normal)
+      AND (gv_retcode = cv_status_warn)
+    THEN
+      -- 終了ステータスを警告にする
+      -- ※入社日の変更が行われた従業員は正常件数にカウントしています
+      lv_retcode := cv_status_warn;
+    END IF;
+-- 2009/10/29 Ver1.12 add end by Yutaka.Kuboshima
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
