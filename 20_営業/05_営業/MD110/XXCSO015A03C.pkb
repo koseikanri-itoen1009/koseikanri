@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.17
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,9 @@ AS
  *  2009-08-28    1.16  M.Maruyama       統合テスト障害対応(0001192)
  *  2009-09-14    1.17  K.Satomura       統合テスト障害対応(0001335)
  *  2009-11-29    1.18  T.Maruyama       E_本稼動_00120 新台以外はEBSのIBの機種CDを正とする
+ *  2009-12-07    1.19  K.Satomura       E_本稼動_00349 指定の作業会社コードの場合は処理を
+                                         スキップする（暫定対応）
+                                         物件データワークテーブル削除条件修正（恒久対応）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7152,8 +7155,10 @@ AS
                /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
                --AND    xiwd2.process_no_target_flag = cv_no
                /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
-               AND    xiwd2.completion_kbn         = ct_comp_kbn_comp
-               /* 2009.06.01 K.Satomura T1_1107対応 END */
+               --/* 2009.12.07 K.Satomura E_本稼動_00349対応 START */
+               --AND    xiwd2.completion_kbn         = ct_comp_kbn_comp
+               --/* 2009.06.01 K.Satomura T1_1107対応 END */
+               /* 2009.12.07 K.Satomura E_本稼動_00349対応 END */
              );
     EXCEPTION
       -- 削除に失敗した場合
@@ -7238,6 +7243,10 @@ AS
     /* 2009.06.15 K.Satomura T1_1239対応 START */
     cv_comp_kbn_comp          CONSTANT  VARCHAR2(100)   := '1'; -- 完了区分＝完了
     /* 2009.06.15 K.Satomura T1_1239対応 END */
+    /* 2009.12.07 K.Satomura E_本稼動_00349対応 START */
+    cv_skip_company_code      CONSTANT  VARCHAR2(100)   := '117777';
+    cv_skip_location_code     CONSTANT  VARCHAR2(100)   := '0010';
+    /* 2009.12.07 K.Satomura E_本稼動_00349対応 END */
 --
     -- *** ローカル変数 ***
     ld_sysdate                DATE;                    -- システム日付
@@ -7305,8 +7314,8 @@ AS
               ,xciid.delete_flag                    delete_flag                 -- 削除フラグ
               ,xciid.creation_date_time             creation_date_time          -- 作成日時時分秒
               ,xciid.update_date_time               update_date_time            -- 更新日時時分秒
-              ,xciwd.account_number1                account_number1             -- 顧客コード１（新設置先
-              ,xciwd.account_number2                account_number2             -- 顧客コード２（現設置先
+              ,xciwd.account_number1                account_number1             -- 顧客コード１（新設置先）
+              ,xciwd.account_number2                account_number2             -- 顧客コード２（現設置先）
               ,xciwd.po_number                      po_number                   -- 発注番号
               ,xciwd.po_line_number                 po_line_number              -- 発注明細番号
               ,xciwd.po_req_number                  po_req_number               -- 発注依頼番号
@@ -7510,6 +7519,35 @@ AS
         -- 顧客獲得日更新フラグの初期化
         gb_cust_cnv_upd_flg     := FALSE;
 --
+        /* 2009.12.07 K.Satomura E_本稼動_00349対応 START */
+        IF (
+             (
+                   l_g_get_data_rec.job_company_code = cv_skip_company_code
+               AND l_g_get_data_rec.location_code = cv_skip_location_code
+             )
+             OR
+             (
+                   l_g_get_data_rec.withdraw_company_code = cv_skip_company_code
+               AND l_g_get_data_rec.withdraw_location_code = cv_skip_location_code
+             )
+          )
+        THEN
+          -- 作業会社・事業所コード又は、引揚会社・事業所コードが該当のコードの場合、処理をスキップする
+          lv_errmsg := '作業会社・事業所コード又は、引揚会社・事業所コードが特殊会社コードの為、処理をスキップします。（'
+                    || 'シーケンス番号：' || l_g_get_data_rec.seq_no         || '、'
+                    || '伝票No： '        || l_g_get_data_rec.slip_no        || '、'
+                    || '伝票枝番：'       || l_g_get_data_rec.slip_branch_no || '、'
+                    || '行番号：'         || l_g_get_data_rec.line_number    || '、'
+                    || '物件コード1：'    || l_g_get_data_rec.install_code1  || '、'
+                    || '物件コード2：'    || l_g_get_data_rec.install_code2
+                    ;
+          lv_errbuf := lv_errmsg;
+          --
+          RAISE skip_process_expt;
+          --
+        END IF;
+        --
+        /* 2009.12.07 K.Satomura E_本稼動_00349対応 END */
         get_item_instances(
            io_inst_base_data_rec   => l_g_get_data_rec --(IN)物件マスタ情報
           ,id_process_date         => ld_process_date  -- 業務処理日付
