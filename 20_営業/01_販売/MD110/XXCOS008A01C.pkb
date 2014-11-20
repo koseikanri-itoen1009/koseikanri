@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *                                                (A-5)出荷区分、率区分、顧客受注可能フラグは子コードでチェックするよう変更
  *                                                (A-5)売上対象区分は、子コードがあればチェックせず、なければチェックするよう変更
  *  2009/11/24    1.16  N.Maeda          [E_本稼動_00014] 出荷指示の改行コード対応
+ *  2009/11/25    1.17  K.Atsushiba      [E_本稼動_00034]リーフの出荷依頼が明細毎に作成されないように修正
  *
  *****************************************************************************************/
 --
@@ -4579,7 +4580,14 @@ AS
                 -- ========================================
                 -- 出荷依頼I/F作成用PL/SQL表に設定
                 -- ========================================
+/* 2009/11/24 Ver1.17 Add Start */
+                IF ( lv_pre_head_sort_key <> gt_order_sort_wk_tbl(lv_index).head_sort_key ) THEN
+                -- ヘッダキーがブレイクした場合
+/* 2009/11/24 Ver1.17 Add End */
                 ln_delivery_unit := ln_delivery_unit + 1;
+/* 2009/11/24 Ver1.17 Add Start */
+                END IF;
+/* 2009/11/24 Ver1.17 Add End */
                 lv_index_wk := gt_order_sort_wk_tbl.FIRST;
                 <<head_loop>>
                 WHILE  lv_index_wk IS NOT NULL LOOP
@@ -4623,7 +4631,14 @@ AS
                 -- ========================================
                 -- 出荷依頼I/F作成用PL/SQL表に設定
                 -- ========================================
+/* 2009/11/24 Ver1.17 Add Start */
+                IF ( lv_pre_head_sort_key <> gt_order_sort_wk_tbl(lv_index).head_sort_key ) THEN
+                -- ヘッダキーがブレイクした場合
+/* 2009/11/24 Ver1.17 Add End */
                 ln_delivery_unit := ln_delivery_unit + 1;
+/* 2009/11/24 Ver1.17 Add Start */
+                END IF;
+/* 2009/11/24 Ver1.17 Add End */
                 lv_index_wk := gt_order_sort_wk_tbl.FIRST;
                 <<leaf_loop>>
                 WHILE  lv_index_wk IS NOT NULL LOOP
