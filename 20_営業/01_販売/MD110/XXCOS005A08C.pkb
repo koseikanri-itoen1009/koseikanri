@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/07/17    1.10  K.Kiriu          [0000469]オーダーNoデータ型不正対応
  *  2009/07/21    1.11  T.Miyata         [0000478指摘対応]TOO_MANY_ROWS例外取得
  *  2009/08/21    1.12  M.Sano           [0000302]JANコードからの品目取得を顧客品目経由に変更
+ *  2009/10/30    1.13  N.Maeda          [0001113]XXCMN_CUST_ACCT_SITES2_Vの絞込み時のOU切替処理を追加(org_id)
  *
  *****************************************************************************************/
 --
@@ -323,6 +324,14 @@ AS
   ct_msg_get_max_wait               CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-11326';                                 --XXCOS:最大待機時間
 --****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+  cv_msg_get_login                  CONSTANT fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-11638';                                 --ログイン情報取得エラー
+  cv_msg_get_resp                   CONSTANT fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-11639';                                 -- プロファイル(切替用職責)取得エラー
+  cv_msg_get_login_prod             CONSTANT fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-11640';                                 -- 切替先ログイン情報取得エラー
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
   --トークン
   cv_tkn_profile                    CONSTANT  VARCHAR2(512) := 'PROFILE';                            --プロファイル名
@@ -360,6 +369,9 @@ AS
   cv_tkn_upload_date_time           CONSTANT  VARCHAR2(512) := 'UPLOAD_DATE_TIME';                   --アップロード日時
   cv_tkn_file_upload_name           CONSTANT  VARCHAR2(512) := 'FILE_UPLOAD_NAME';                   --ファイルアップロード名
   cv_tkn_format_pattern             CONSTANT  VARCHAR2(512) := 'FORMAT_PATTERN';                     --フォーマットパターン
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+  cv_resp_prod                      CONSTANT VARCHAR2(50) := 'XXCOS1_RESPONSIBILITY_PRODUCTION';  -- プロファイル：生産への切替用職責
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
   cv_normal_order                   CONSTANT  VARCHAR2(64)  := 'XXCOS_005_A08_01';                   --通常受注
   cv_normal_shipment                CONSTANT  VARCHAR2(64)  := 'XXCOS_005_A08_02';                   --通常出荷
@@ -481,6 +493,13 @@ AS
   gn_interval                       NUMBER;                                                          --待機間隔
   gn_max_wait                       NUMBER;                                                          --最大待機時間
 --****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+  gn_user_id                        NUMBER;                                                          --ログインユーザーID
+  gn_resp_id                        NUMBER;                                                          --ログイン職責ID
+  gn_resp_appl_id                   NUMBER;                                                          --ログイン職責アプリケーションID
+  gn_prod_resp_id                   NUMBER;                                                          --切替先職責ID
+  gn_prod_resp_appl_id              NUMBER;                                                          --切替先職責アプリケーションID
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
   gt_order_source_id                oe_order_sources.order_source_id%TYPE;                           --受注ソースID
   gt_order_source_name              oe_order_sources.name%TYPE;                                      --受注ソース名
@@ -1067,6 +1086,9 @@ AS
     lv_key_info_sorec           VARCHAR2(5000);  --key情報
     lv_key_info_file_if         VARCHAR2(5000);  --key情報
     lv_get_format               VARCHAR2(128);   --フォーマットパターン
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+    lt_resp_prod                fnd_profile_option_values.profile_option_value%TYPE;
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
     -- *** ローカル・カーソル ***
     CURSOR get_data_cur
@@ -1330,6 +1352,65 @@ AS
       RAISE global_get_profile_expt;
     END IF;
 --****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
+--
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+    ------------------------------------
+    -- ログインユーザ情報取得
+    ------------------------------------
+    BEGIN
+      SELECT    fnd_global.user_id       -- ログインユーザID
+               ,fnd_global.resp_id       -- ログイン職責ID
+               ,fnd_global.resp_appl_id  -- ログイン職責アプリケーションID
+      INTO      gn_user_id
+               ,gn_resp_id
+               ,gn_resp_appl_id
+      FROM      dual;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application => ct_xxcos_appl_short_name,    -- XXCOS
+                       iv_name        => cv_msg_get_login             -- ログイン情報取得エラー
+                     );
+        RAISE global_api_expt;
+    END;
+    --
+    ------------------------------------
+    --プロファイル「XXCOS:生産への切替用職責名称」取得
+    ------------------------------------
+    lt_resp_prod := FND_PROFILE.VALUE(
+      name => cv_resp_prod);
+--
+--
+    IF ( lt_resp_prod IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => ct_xxcos_appl_short_name,      -- XXCOS
+                     iv_name        => cv_msg_get_resp           -- プロファイル(切替用職責)取得エラー
+                   );
+      RAISE global_api_expt;
+    END IF;
+--
+    ------------------------------------
+    --  切替先ログイン情報取得
+    ------------------------------------
+    BEGIN
+      SELECT   frv.responsibility_id    -- 切替先職責ID
+              ,frv.application_id       -- 切替先職責アプリケーションID
+      INTO     gn_prod_resp_id
+              ,gn_prod_resp_appl_id
+      FROM    fnd_responsibility_vl  frv
+      WHERE   responsibility_name = lt_resp_prod
+      AND     ROWNUM              = 1;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application => ct_xxcos_appl_short_name,    -- XXCOS
+                       iv_name        => cv_msg_get_login_prod   -- 切替先ログイン情報取得エラー
+                     );
+        RAISE global_api_expt;
+    END;
+--
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
   EXCEPTION
      --***** プロファイル取得例外ハンドラ(MO:営業単位の取得)
@@ -3299,6 +3380,17 @@ AS
       RAISE global_operation_day_err_expt;
     END IF;
 --
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+    ---------------------------
+    --ログインOU切替(営業⇒生産)
+    ---------------------------
+    FND_GLOBAL.APPS_INITIALIZE(
+       user_id         => gn_user_id                 -- ユーザID
+      ,resp_id         => gn_prod_resp_id            -- 職責ID
+      ,resp_appl_id    => gn_prod_resp_appl_id       -- アプリケーションID
+    );
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
+--
     ---------------------------
     --6.配送LT取得
     ---------------------------
@@ -3322,6 +3414,17 @@ AS
 --****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
       RAISE global_delivery_lt_err_expt;
     END IF;
+--
+-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+    ---------------------------
+    --ログインOU切替(生産⇒営業)
+    ---------------------------
+    FND_GLOBAL.APPS_INITIALIZE(
+       user_id         => gn_user_id            -- ユーザID
+      ,resp_id         => gn_resp_id            -- 職責ID
+      ,resp_appl_id    => gn_resp_appl_id       -- アプリケーションID
+    );
+-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
 --
     ---------------------------
     --7.出荷予定日
