@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_LINES_V
  * Description : 問屋請求見積書突き合わせ画面（明細）ビュー
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/03/12    1.1   K.Yamaguchi      [障害T1_0014]項目追加
  *  2009/04/21    1.2   K.Yamaguchi      [障害T1_0531]支払単価が０の場合、
  *                                                    見積書の検索を行わない
+ *  2009/09/01    1.3   S.Moriyama       [障害0001230]OPM品目マスタ取得条件追加
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_lines_v(
@@ -119,6 +120,10 @@ FROM xxcok_wholesale_bill_line     xwbl      -- 問屋請求書明細テーブル
    , ( SELECT iimb.item_no              AS item_no             -- 品名コード
             , ximb.item_short_name      AS item_short_name     -- 略称
             , xsib.vessel_group         AS vessel_group        -- 容器群
+-- 2009/09/01 Ver.1.3 [障害0001230] SCS S.Moriyama ADD START
+            , ximb.start_date_active    AS start_date_active   -- 適用開始日
+            , ximb.end_date_active      AS end_date_active     -- 適用終了日
+-- 2009/09/01 Ver.1.3 [障害0001230] SCS S.Moriyama ADD END
        FROM mtl_parameters         mp
           , mtl_system_items_b     msib
           , xxcmm_system_items_b   xsib
@@ -162,6 +167,10 @@ WHERE xwbl.wholesale_bill_header_id     = xwbh.wholesale_bill_header_id
   AND flv.lookup_type                   = 'XXCMM_CUST_GYOTAI_SHO'
   AND flv.lookup_code                   = hca.customer_class_code
   AND flv.language                      = USERENV( 'LANG' )
+-- 2009/09/01 Ver.1.3 [障害0001230] SCS S.Moriyama ADD START
+  AND xwbh.expect_payment_date BETWEEN item.start_date_active
+                                   AND NVL ( item.end_date_active , xwbh.expect_payment_date )
+-- 2009/09/01 Ver.1.3 [障害0001230] SCS S.Moriyama ADD END
 /
 COMMENT ON TABLE  apps.xxcok_021a02_lines_v                                IS '問屋請求見積書突き合わせ画面（明細）ビュー'
 /
