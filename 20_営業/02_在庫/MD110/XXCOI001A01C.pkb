@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/09/08    1.8   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2009/10/26    1.9   H.Sasaki         [E_T4_00076]倉庫コードの設定方法を修正
  *  2009/11/06    1.10  H.Sasaki         [E_T4_00143]PT対応
+ *  2009/11/13    1.11  N.Abe            [E_T4_00189]品目1桁目が5,6を資材として処理
  *
  *****************************************************************************************/
 --
@@ -3295,25 +3296,35 @@ AS
           AND      g_summary_tab( in_slip_cnt ).slip_date BETWEEN ximb.start_date_active
                                                           AND     NVL(ximb.end_date_active, g_summary_tab( in_slip_cnt ).slip_date)
 -- == 2009/09/08 V1.8 Added END   ===============================================================
-          AND      ( ximb.parent_item_id = iimbc.item_id
-                   AND iimbc.attribute26 != cv_1
-                   AND NOT EXISTS ( SELECT '1'
-                                    FROM   mtl_system_items_b     msib2
-                                         , mtl_category_sets_tl   mcst
-                                         , mtl_item_categories    mic
-                                         , mtl_categories_b       mcb
-                                    WHERE  msib2.organization_id  = gt_org_id
-                                    AND    mcst.category_set_name = fnd_profile.value ( cv_item_category )
-                                    AND    mcst.language          = USERENV('LANG')
-                                    AND    mic.category_set_id    = mcst.category_set_id
-                                    AND    mic.inventory_item_id  = msib2.inventory_item_id
-                                    AND    mic.organization_id    = msib2.organization_id
-                                    AND    mcb.category_id        = mic.category_id
-                                    AND    mcb.enabled_flag       = cv_y_flag
-                                    AND    mcb.segment1           = cv_2
-                                    AND    msib.inventory_item_id = msib2.inventory_item_id
-                                  )
-                  );
+-- == 2009/11/13 V1.11 Modified START ===============================================================
+--          AND      ( ximb.parent_item_id = iimbc.item_id
+--                   AND iimbc.attribute26 != cv_1
+--                   AND NOT EXISTS ( SELECT '1'
+--                                    FROM   mtl_system_items_b     msib2
+--                                         , mtl_category_sets_tl   mcst
+--                                         , mtl_item_categories    mic
+--                                         , mtl_categories_b       mcb
+--                                    WHERE  msib2.organization_id  = gt_org_id
+--                                    AND    mcst.category_set_name = fnd_profile.value ( cv_item_category )
+--                                    AND    mcst.language          = USERENV('LANG')
+--                                    AND    mic.category_set_id    = mcst.category_set_id
+--                                    AND    mic.inventory_item_id  = msib2.inventory_item_id
+--                                    AND    mic.organization_id    = msib2.organization_id
+--                                    AND    mcb.category_id        = mic.category_id
+--                                    AND    mcb.enabled_flag       = cv_y_flag
+--                                    AND    mcb.segment1           = cv_2
+--                                    AND    msib.inventory_item_id = msib2.inventory_item_id
+--                                  )
+--                  );
+          AND      iimbp.attribute26 != cv_1
+          AND      NOT EXISTS    ( SELECT  1
+                                   FROM    mtl_system_items_b    msib2
+                                   WHERE  msib2.organization_id   = gt_org_id
+                                   AND    msib2.inventory_item_id = msib.inventory_item_id
+                                   AND   (msib2.segment1          LIKE '5%'
+                                   OR     msib2.segment1          LIKE '6%')
+                                 );
+-- == 2009/11/13 V1.11 Modified END   ===============================================================
           IF (ln_item_cnt != 0) THEN
             RAISE item_disable_expt;
           END IF;

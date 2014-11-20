@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A07C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新 MD050_COI_001_A07
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/02/12    1.1   S.Moriyama       結合テスト障害No003対応
  *  2009/04/28    1.2   T.Nakamura       システムテスト障害T1_0640対応
  *  2009/05/18    1.3   T.Nakamura       システムテスト障害T1_0640対応
+ *  2009/11/13    1.4   N.Abe            [E_T4_00189]品目1桁目が5,6を資材として処理
  *
  *****************************************************************************************/
 --
@@ -769,7 +770,12 @@ AS
             , xsi.item_code                      AS item_code                                    -- 子品目コード
             , xsi.material_transaction_unset_qty AS material_transaction_unset_qty               -- 資材取引未連携数量 
             , xsi.slip_type                      AS slip_type                                    -- 伝票区分
-            , mcb.segment1                       AS segment1                                     -- 品目区分
+-- == 2009/11/13 V1.4 Modified START =============================================================
+--            , mcb.segment1                       AS segment1                                     -- 品目区分
+            , DECODE(SUBSTRB(xsi.parent_item_code, 1, 1), '5', '2'
+                                                        , '6', '2'
+                                                        , mcb.segment1) AS segment1              -- 品目区分
+-- == 2009/11/13 V1.4 Modified END   =============================================================
             , xsi.ship_base_code                 AS ship_base_code                               -- 出庫拠点コード
       FROM
               xxcoi_storage_information          xsi                                             -- 入庫情報一時表
@@ -794,6 +800,37 @@ AS
       AND     mcb.category_id                    = mic.category_id                               -- カテゴリID
       AND     mcb.enabled_flag                   = cv_flag_on                                    -- 使用可能フラグ
       AND     gd_date                            < NVL( TRUNC( mcb.disable_date ), gd_date + 1 ) -- 無効日
+-- == 2009/11/13 V1.4 Added START =============================================================
+      UNION
+      SELECT
+              xsi.transaction_id                 AS transaction_id                               -- 取引ID
+            , xsi.slip_num                       AS slip_num                                     -- 伝票No
+            , xsi.slip_date                      AS slip_date                                    -- 伝票日付
+            , xsi.base_code                      AS base_code                                    -- 拠点コード
+            , xsi.check_warehouse_code           AS check_warehouse_code                         -- 確認倉庫コード
+            , xsi.ship_warehouse_code            AS ship_warehouse_code                          -- 転送先倉庫コード
+            , xsi.parent_item_code               AS parent_item_code                             -- 親品目コード
+            , msib.inventory_item_id             AS inventory_item_id                            -- 品目ID
+            , xsi.item_code                      AS item_code                                    -- 子品目コード
+            , xsi.material_transaction_unset_qty AS material_transaction_unset_qty               -- 資材取引未連携数量 
+            , xsi.slip_type                      AS slip_type                                    -- 伝票区分
+            , '2'                                AS segment1                                     -- 品目区分
+            , xsi.ship_base_code                 AS ship_base_code                               -- 出庫拠点コード
+      FROM
+              xxcoi_storage_information          xsi                                             -- 入庫情報一時表
+            , mtl_system_items_b                 msib                                            -- Disc品目マスタ
+      WHERE
+              xsi.slip_num                       = gt_slip_num_tab( gn_slip_loop_cnt )           -- 伝票No
+      AND     xsi.store_check_flag               = cv_flag_on                                    -- 入庫確認フラグが「Y」
+      AND     xsi.material_transaction_set_flag  = cv_flag_off                                   -- 資材取引連携済フラグ
+      AND ( ( xsi.slip_type                      = cv_slip_type_10 )                             -- 伝票区分が「10」
+      OR  ( ( xsi.slip_type                      = cv_slip_type_20 )                             -- 伝票区分が「20」
+      AND   ( xsi.check_warehouse_code           <> xsi.ship_warehouse_code ) ) )                -- 確認倉庫コード <> 転送先倉庫コード
+      AND     msib.segment1                      = xsi.parent_item_code                          -- 親品目コード
+      AND     msib.organization_id               = gt_org_id                                     -- 在庫組織ID
+      AND   ( msib.segment1                      LIKE '5%'
+      OR      msib.segment1                      LIKE '6%' )
+-- == 2009/11/13 V1.4 Added END   =============================================================
 -- == 2009/04/28 V1.2 Added START ===============================================================
 -- == 2009/05/18 V1.3 Deleted START =============================================================
 --      AND     xsi.material_transaction_unset_qty <> 0                                            -- 資材取引未連携数量 <> 0
