@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/11/13    1.11  Naoki    Fukuda  統合指摘#603対応
  *  2008/11/17    1.12  Naoki    Fukuda  統合指摘#651対応(課題T_S_486再対応)
  *  2008/12/03    1.13  Naoki    Fukuda  本番障害#333対応
+ *  2008/12/06    1.14  Miyata           本番障害#516対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1481,7 +1482,10 @@ AS
               ,or_temp_tab.career_name  -- 運送業者名称
         FROM   wsh_carriers    wc
               ,xxcmn_parties   xp
-        WHERE  wc.carrier_id = ir_get_data.career_id
+-- 2008/12/07 T.Miyata Modify Start 本番障害#516 ユーザが入力するのはNoの方なので、結合条件をNoとする。
+        --WHERE  wc.carrier_id = ir_get_data.career_id
+        WHERE  wc.freight_code = ir_get_data.career_id
+-- 2008/12/07 T.Miyata Modify End   本番障害#516
         AND    xp.party_id = wc.carrier_id
         AND    gr_param.date_from BETWEEN xp.start_date_active AND xp.end_date_active
         AND    ROWNUM = 1
@@ -3245,11 +3249,14 @@ AS
             ,SUBSTRB(xil.description,1,20)    AS location_name    -- 出庫倉庫名称   2008/10/10 統合テスト障害#338 Add
             ,xshi.shipped_date                AS ship_date        -- 出庫日
             ,xshi.arrival_date                AS arvl_date        -- 入庫日
+      -- 2008/12/06 Modify Start T.Miyata #516 依頼Noに紐付く管轄拠点があれば表示する。配送先を表示する。
 -- mod start ver1.1
-            ,NULL                             AS head_sales_branch -- 検索条件：管轄拠点
+            , xshi.head_sales_branch            AS head_sales_branch -- 検索条件：管轄拠点
 --            ,NULL                             AS po_no            -- 検索条件：管轄拠点
 -- mod end ver1.1
-            ,xshi.party_site_code             AS deliver_id       -- 検索条件：配送先
+--            ,xshi.party_site_code             AS deliver_id       -- 検索条件：配送先
+            ,xpsv.party_site_id               AS deliver_id       -- 配送先
+      -- 2008/12/06 Modify End T.Miyata #51
             ,xshi.freight_carrier_code        AS career_id        -- 検索条件：運送業者
             ,xshi.shipping_method_code        AS ship_method_code -- 検索条件：配送区分
             ,xshi.eos_data_type               AS order_type       -- 業務種別（コード）
@@ -3277,6 +3284,9 @@ AS
           ,xxcmn_item_locations2_v    xil       -- ＯＰＭ保管場所マスタ
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW4
+          -- 2008/12/06 Modify Start T.Miyata #516 依頼Noに紐付く管轄拠点があれば表示する。配送先、入庫先の表示
+          ,xxcmn_party_sites_v        xpsv      -- 顧客サイトビュー
+          -- 2008/12/06 Modify End T.Miyata #516
 -- 2008/07/07 A.Shiina v1.5 ADD Start
           ,xxcmn_carriers2_v          xcv       -- 運送業者情報VIEW2
 -- 2008/07/07 A.Shiina v1.5 ADD End
@@ -3366,6 +3376,9 @@ AS
       AND   xshi.shipped_date                               >=   xcv.start_date_active(+)
       AND   xshi.shipped_date                               <=   xcv.end_date_active(+)
       -- 2008/10/31 統合指摘#461 Add End ---------------------------------------
+      -- 2008/12/06 T.Miyata Modify Start #516 配送先
+      AND   xshi.party_site_code  = xpsv.party_site_number(+)
+      -- 2008/12/06 T.Miyata Modify End #516
 --
     ;
 --
@@ -4274,7 +4287,9 @@ AS
 --            ,NULL                             AS po_no            -- 検索条件：管轄拠点
             ,NULL                             AS head_sales_branch -- 検索条件：管轄拠点
 -- mod end ver1.1
-            ,xshi.party_site_code             AS deliver_id       -- 検索条件：配送先
+            -- 2008/12/06 Modify T.Miyata Start #516 依頼Noに紐付く入庫先があれば表示する。
+            , xilv.inventory_location_id        AS deliver_id
+            -- 2008/12/06 Modify T.Miyata End #516
             ,xshi.freight_carrier_code        AS career_id        -- 検索条件：運送業者
             ,xshi.shipping_method_code        AS ship_method_code -- 検索条件：配送区分
             ,xshi.eos_data_type               AS order_type       -- 業務種別（コード）
@@ -4305,6 +4320,9 @@ AS
 -- 2008/07/07 A.Shiina v1.5 ADD Start
           ,xxcmn_carriers2_v          xcv       -- 運送業者情報VIEW2
 -- 2008/07/07 A.Shiina v1.5 ADD End
+          -- 2008/12/06 Modify T.Miyata Start #516 依頼Noに紐付く入庫先があれば表示する。
+          ,xxcmn_item_locations_v        xilv
+          -- 2008/12/06 Modify T.Miyata End #516
       WHERE
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ品目
@@ -4391,6 +4409,9 @@ AS
       AND   xshi.shipped_date            >=   xcv.start_date_active(+)
       AND   xshi.shipped_date            <=   xcv.end_date_active(+)
       -- 2008/10/31 統合指摘#461 Add End ---------------------------------------
+      -- 2008/12/06 Modify T.Miyata Start #516 依頼Noに紐付く入庫先があれば表示する。
+      AND   xshi.ship_to_location  = xilv.segment1(+)
+      -- 2008/12/06 Modify T.Miyata End #516
 --
     ;
 --
