@@ -7,7 +7,7 @@ AS
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#212対応
  *  2008/12/04    1.14  T.Mitaya         本番#379対応
+ *  2009/01/16    1.15  N.Yoshida        本番#1031対応
  *
  *****************************************************************************************/
 --
@@ -650,7 +651,9 @@ AS
       AND    itp.trans_date        BETWEEN xcup2.start_date_active(+) AND xcup2.end_date_active(+) 
 -- 2008/11/19 v1.12 UPDATE END
       AND    itp.doc_id            = gmd1.batch_id
-      AND    itp.doc_line          = gmd1.line_no
+-- 2009/01/16 v1.15 N.Yoshida mod start
+--      AND    itp.doc_line          = gmd1.line_no
+-- 2009/01/16 v1.15 N.Yoshida mod end
       AND    gbh1.batch_id         = gmd1.batch_id
       AND    grb1.routing_id       = gbh1.routing_id
       AND    xrpm.routing_class    = grb1.routing_class
@@ -888,7 +891,11 @@ AS
                                                                               ,gv_spare2_name
                                                                               ,gv_spare3_name))
                                                        )))),0))   tou_jitu 
-           , SUM(NVL((SELECT NVL(SUM(xpl.unit_price),0)
+-- 2009/01/16 v1.15 N.Yoshida mod start
+--           , SUM(NVL((SELECT NVL(SUM(xpl.unit_price),0)
+           -- 標準原価を一つだけ取得する為にMAX関数を使用
+           , MAX(NVL((SELECT NVL(SUM(xpl.unit_price),0)
+-- 2009/01/16 v1.15 N.Yoshida mod end
                       FROM   xxpo_price_headers    xph
                             ,xxpo_price_lines      xpl
                             ,xxcmn_lookup_values_v xlvv1
@@ -897,7 +904,10 @@ AS
                       AND    xpl.expense_item_type = xlvv1.attribute1
                       AND    xlvv1.attribute2      = xlvv2.lookup_code
                       AND    xph.price_type        = gv_lookup_code
-                      AND    xph.item_code         = iimb.item_no
+-- 2009/01/16 v1.15 N.Yoshida mod start
+--                      AND    xph.item_code         = iimb.item_no
+                      AND    xph.item_code         = iimb2.item_no
+-- 2009/01/16 v1.15 N.Yoshida mod end
                       AND    xlvv1.lookup_type     = gv_expense_item_type
                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
                       AND    xlvv2.meaning         = gv_raw_mat_cost_name)
@@ -927,7 +937,10 @@ AS
                       AND    xpl.expense_item_type = xlvv1.attribute1
                       AND    xlvv1.attribute2      = xlvv2.lookup_code
                       AND    xph.price_type        = gv_lookup_code
-                      AND    xph.item_code         = iimb.item_no
+-- 2009/01/16 v1.15 N.Yoshida mod start
+--                      AND    xph.item_code         = iimb.item_no
+                      AND    xph.item_code         = iimb2.item_no
+-- 2009/01/16 v1.15 N.Yoshida mod end
                       AND    xlvv1.lookup_type     = gv_expense_item_type
                       AND    xlvv2.lookup_type     = gv_cmpntcls_type
                       AND    xlvv2.meaning         = gv_raw_mat_cost_name),0)
@@ -936,7 +949,10 @@ AS
                            ), 0))) cmpnt_kin 
            , SUM(NVL(CASE  -- 投入品で資材以外
                      WHEN xrpm.line_type =   gc_tou  
-                     AND  mcb2.segment1 <>   gc_sizai  
+-- 2009/01/16 v1.15 N.Yoshida mod start
+--                     AND  mcb2.segment1 <>   gc_sizai  
+                     AND  mcb4.segment1 <>   gc_sizai  
+-- 2009/01/16 v1.15 N.Yoshida mod end
                      THEN ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                        * DECODE(iimb.attribute15
                                ,gc_cost_st
@@ -1052,6 +1068,10 @@ AS
            ,mtl_categories_tl        mct2
            ,gmi_item_categories      gic3
            ,mtl_categories_b         mcb3
+-- 2009/01/16 v1.15 N.Yoshida mod start
+           ,gmi_item_categories      gic4
+           ,mtl_categories_b         mcb4
+-- 2009/01/16 v1.15 N.Yoshida mod end
            ,ic_item_mst_b            iimb
            ,xxcmn_item_mst_b         ximb
            ,ic_item_mst_b            iimb2
@@ -1080,13 +1100,20 @@ AS
       AND    gic3.item_id          = gmd1.item_id
       AND    gic3.category_set_id  = cn_crowd_code_id
       AND    mcb3.category_id      = gic3.category_id
+-- 2009/01/16 v1.15 N.Yoshida mod start
+      AND    gic4.item_id          = itp.item_id
+      AND    gic4.category_set_id  = cn_item_class_id
+      AND    mcb4.category_id      = gic4.category_id
+-- 2009/01/16 v1.15 N.Yoshida mod end
       AND    iimb.item_id          = itp.item_id
       AND    ximb.item_id          = iimb.item_id
       AND    itp.trans_date        BETWEEN ximb.start_date_active AND ximb.end_date_active
       AND    xlc.item_id(+)        = itp.item_id
       AND    xlc.lot_id(+)         = itp.lot_id
       AND    itp.doc_id            = gmd1.batch_id
-      AND    itp.doc_line          = gmd1.line_no
+-- 2009/01/16 v1.15 N.Yoshida mod start
+--      AND    itp.doc_line          = gmd1.line_no
+-- 2009/01/16 v1.15 N.Yoshida mod end
       AND    gbh1.batch_id         = gmd1.batch_id
       AND    grb1.routing_id       = gbh1.routing_id
       AND    xrpm.routing_class    = grb1.routing_class
@@ -1554,6 +1581,9 @@ AS
 -- 2008/12/04 v1.14 DELETE START
 --                   + gt_main_data(ln_loop_index).uti_kin
 -- 2008/12/04 v1.14 DELETE END
+-- 2009/01/16 v1.15 ADD START
+                   + gt_main_data(ln_loop_index).uti_kin
+-- 2009/01/16 v1.15 ADD END
                    - gt_main_data(ln_loop_index).cmpnt_huku;
       prc_set_xml('D', 'piece_amount', ln_dekikin);
 --
