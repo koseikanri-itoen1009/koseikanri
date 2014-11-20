@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    計算書                                (T_MD070_BPO_78A)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                       ・メッセージコードを修正
  *  2008/03/10    1.2   Masayuki Ikeda   ・変更要求No.81対応
  *  2008/06/20    1.3  Yasuhisa Yamamoto ST不具合対応#135
+ *  2008/07/29    1.4   Satoshi Yunba    禁則文字対応
  *
  *****************************************************************************************/
 --
@@ -207,7 +208,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
