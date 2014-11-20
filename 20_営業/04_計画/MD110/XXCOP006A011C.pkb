@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A011C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 3.4
+ * Version          : 3.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2010/01/07    3.2   Y.Goto           E_本稼動_00936
  *  2010/01/25    3.3   Y.Goto           E_本稼動_01250
  *  2010/02/03    3.4   Y.Goto           E_本稼動_01222
+ *  2010/02/10    3.5   Y.Goto           E_本稼動_01560
  *
  *****************************************************************************************/
 --
@@ -2394,6 +2395,9 @@ AS
           FOR ln_ship_idx IN io_gbqt_tab.FIRST .. io_gbqt_tab.LAST LOOP
             --計画対象フラグ
             IF (l_ship_lot_tab(ln_ship_idx).adjust_proc_flag = cv_planning_yes) THEN
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_START
+              IF (ln_total_shipping_pace > 0) THEN
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_END
               --按分計算
               ln_div_quantity := CEIL(ln_total_lot_quantity
                                     * io_gbqt_tab(ln_ship_idx).shipping_pace
@@ -2414,6 +2418,9 @@ AS
                                            , GREATEST(l_ship_lot_tab(ln_ship_idx).lot_quantity, 0)
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
                                        );
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_START
+              END IF;
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_END
             END IF;
           END LOOP ship_proc_adjust_loop;
 --
@@ -2425,6 +2432,9 @@ AS
           FOR ln_rcpt_idx IN io_xwypo_tab.FIRST .. io_xwypo_tab.LAST LOOP
             --計画対象フラグ
             IF (l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag = cv_planning_yes) THEN
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_START
+              IF (ln_total_shipping_pace > 0) THEN
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_END
               --按分計算
               ln_div_quantity := CEIL(ln_total_lot_quantity
                                     * io_xwypo_tab(ln_rcpt_idx).shipping_pace
@@ -2467,6 +2477,9 @@ AS
 --20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
                 END IF;
               END IF;
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_START
+              END IF;
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_ADD_END
             END IF;
           END LOOP rcpt_proc_adjust_loop;
 --
@@ -4461,10 +4474,18 @@ AS
               ,xli.unique_sign                                unique_sign
               ,xli.lot_status                                 lot_status
               ,xli.loct_onhand                                unlimited_loct_onhand
-              ,CASE WHEN xli.schedule_date <= it_shipment_date
-                 THEN xli.loct_onhand
-                 ELSE 0
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_MOD_START
+--              ,CASE WHEN xli.schedule_date <= it_shipment_date
+--                 THEN xli.loct_onhand
+--                 ELSE 0
+--               END                                            limited_loct_onhand
+              ,CASE WHEN xli.schedule_date <= it_shipment_date AND xli.transaction_type NOT IN (cv_xli_type_lq)
+                      THEN xli.loct_onhand
+                    WHEN xli.schedule_date <  it_shipment_date AND xli.transaction_type IN (cv_xli_type_lq)
+                      THEN xli.loct_onhand
+                    ELSE 0
                END                                            limited_loct_onhand
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_MOD_END
         FROM xxcop_loct_inv          xli
             ,xxcop_wk_yoko_locations xwyl
         WHERE xli.transaction_id      = gn_transaction_id
@@ -4674,44 +4695,46 @@ AS
           NULL;
       END;
     END LOOP xliv_loop;
-    --ロットに引当出来ない鮮度条件がある場合、ロット情報なしで横持計画手持在庫テーブルに登録
-    IF (io_gsat_tab.COUNT > ln_alloc_fill) THEN
-      --ロット情報をクリア
-      l_xli_rec.lot_id             := NULL;
-      l_xli_rec.lot_no             := NULL;
-      l_xli_rec.manufacture_date   := cd_upper_limit_date;
-      l_xli_rec.expiration_date    := NULL;
-      l_xli_rec.unique_sign        := NULL;
-      l_xli_rec.lot_status         := NULL;
---20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
---      l_xli_rec.schedule_date      := it_shipment_date;
---      l_xli_rec.shipment_date      := cd_lower_limit_date;
-      l_xli_rec.schedule_date      := cd_lower_limit_date;
-      l_xli_rec.shipment_date      := it_shipment_date;
---20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
-      l_xli_rec.transaction_type   := cv_xli_type_sp;
-      <<no_lot_loop>>
-      FOR ln_gsat_idx IN io_gsat_tab.FIRST .. io_gsat_tab.LAST LOOP
-        BEGIN
-          IF (io_gsat_tab(ln_gsat_idx).shipping_pace > io_gsat_tab(ln_gsat_idx).allocate_quantity) THEN
-            l_xli_rec.loct_onhand  := (io_gsat_tab(ln_gsat_idx).shipping_pace
-                                     - io_gsat_tab(ln_gsat_idx).allocate_quantity)
-                                     * -1;
-            INSERT INTO xxcop_loct_inv VALUES l_xli_rec;
-          END IF;
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errbuf := SQLERRM;
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_msg_appl_cont
-                           ,iv_name         => cv_msg_00027
-                           ,iv_token_name1  => cv_msg_00027_token_1
-                           ,iv_token_value1 => cv_table_xli
-                         );
-            RAISE global_api_expt;
-        END;
-      END LOOP no_lot_loop;
-    END IF;
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_DEL_START
+--    --ロットに引当出来ない鮮度条件がある場合、ロット情報なしで横持計画手持在庫テーブルに登録
+--    IF (io_gsat_tab.COUNT > ln_alloc_fill) THEN
+--      --ロット情報をクリア
+--      l_xli_rec.lot_id             := NULL;
+--      l_xli_rec.lot_no             := NULL;
+--      l_xli_rec.manufacture_date   := cd_upper_limit_date;
+--      l_xli_rec.expiration_date    := NULL;
+--      l_xli_rec.unique_sign        := NULL;
+--      l_xli_rec.lot_status         := NULL;
+----20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_START
+----      l_xli_rec.schedule_date      := it_shipment_date;
+----      l_xli_rec.shipment_date      := cd_lower_limit_date;
+--      l_xli_rec.schedule_date      := cd_lower_limit_date;
+--      l_xli_rec.shipment_date      := it_shipment_date;
+----20100125_Ver3.3_E_本稼動_01250_SCS.Goto_MOD_END
+--      l_xli_rec.transaction_type   := cv_xli_type_sp;
+--      <<no_lot_loop>>
+--      FOR ln_gsat_idx IN io_gsat_tab.FIRST .. io_gsat_tab.LAST LOOP
+--        BEGIN
+--          IF (io_gsat_tab(ln_gsat_idx).shipping_pace > io_gsat_tab(ln_gsat_idx).allocate_quantity) THEN
+--            l_xli_rec.loct_onhand  := (io_gsat_tab(ln_gsat_idx).shipping_pace
+--                                     - io_gsat_tab(ln_gsat_idx).allocate_quantity)
+--                                     * -1;
+--            INSERT INTO xxcop_loct_inv VALUES l_xli_rec;
+--          END IF;
+--        EXCEPTION
+--          WHEN OTHERS THEN
+--            lv_errbuf := SQLERRM;
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_msg_appl_cont
+--                           ,iv_name         => cv_msg_00027
+--                           ,iv_token_name1  => cv_msg_00027_token_1
+--                           ,iv_token_value1 => cv_table_xli
+--                         );
+--            RAISE global_api_expt;
+--        END;
+--      END LOOP no_lot_loop;
+--    END IF;
+--20100210_Ver3.5_E_本稼動_01560_SCS.Goto_DEL_END
 --
   EXCEPTION
     WHEN internal_api_expt THEN
@@ -9124,6 +9147,7 @@ AS
                               || '(' || ln_git_idx || ')' || ','
                               || l_ship_tab(l_git_tab(ln_git_idx)).loct_code || ','
                               || l_item_tab(ln_item_idx).item_no             || ','
+                              || TO_CHAR(l_ship_tab(l_git_tab(ln_git_idx)).target_date, cv_date_format) || ','
             );
 --20100125_Ver3.3_E_本稼動_01250_SCS.Goto_ADD_START
             SAVEPOINT pre_balance_proc_svp;
