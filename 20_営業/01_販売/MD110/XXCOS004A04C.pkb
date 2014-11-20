@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.24
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,8 @@ AS
  *  set_lines              販売実績明細作成(A-5)
  *  set_headers            販売実績ヘッダ作成(A-6)
  *  update_digestion       消化ＶＤ用消化計算テーブル更新処理(A-7)
+ *  get_vd_column          VDコラム別取引情報取得処理(A-8)
+ *  get_cust_trx           AR取引情報取得処理(A-9)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -61,6 +63,11 @@ AS
  *                                       [E_本稼動_01110]赤黒フラグ判定条件変更
  *  2010/01/27   1.23  K.Atsushiba       [E_本稼動_01323]調整本体金額算出処理修正
  *  2010/02/01   1.24  K.Atsushiba       [E_本稼動_01386]販売実績ID保持対応
+ *  2010/02/08   1.25  N.Maeda           [E_本稼動_01393]AR取引情報と消化計算ヘッダの金額チェック処理追加
+ *                                                       INV入出庫情報と消化計算明細数量比較チェック処理追加
+ *                                       [E_本稼動_01477]締日の休日対応
+ *  2010/02/22   1.26  K.Atsushiba       [E_本稼動_01669]「締日」パラメター追加対応
+ *  2010/02/25   1.27  N.Maeda           [E_本稼動_01477]締日の休日対応修正
  *
  *****************************************************************************************/
 --
@@ -136,6 +143,10 @@ AS
   global_data_lock_expt             EXCEPTION;
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
 --****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  global_item_data_expt       EXCEPTION;
+  global_ar_data_err_expt     EXCEPTION;
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -218,6 +229,24 @@ AS
   ct_msg_vd_lock_err        CONSTANT fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-11178';               --ＶＤコラム別取引ヘッダテーブルロック取得エラーメッセージ
 --****************************** 2009/06/09 1.16 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  ct_msg_min_date               CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-00120';     --XXCOS:MIN日付
+  ct_msg_max_date               CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-00056';     --XXCOS:MAX日付
+  ct_msg_puantity_err           CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-11067';
+  ct_msg_column_item_err        CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-11068';
+  ct_msg_ar_amount_err          CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-11069';
+  ct_msg_check_sales_oprtn_day  CONSTANT fnd_new_messages.message_name%TYPE
+                                         :='APP-XXCOS1-11070';
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
+--****************************** 2010/02/25 1.26 N.Maeda MOD START ******************************--
+  ct_msg_standards_date         CONSTANT fnd_new_messages.message_name%TYPE
+                                         :='APP-XXCOS1-11071';
+--****************************** 2010/02/25 1.26 N.Maeda MOD  END   ******************************--
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -252,6 +281,12 @@ AS
   ct_qcc_hokan_type_mst        CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS_004_A04_%';                --保管場所分類特定マスタ
 --****************************** 2009/05/07 1.14 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  ct_qct_customer_trx_type      CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                         := 'XXCOS1_AR_TRX_TYPE_MST_004_A06';     --ＡＲ取引タイプ特定マスタ_004_A06
+  ct_qcc_customer_trx_type      CONSTANT fnd_lookup_types.lookup_type%TYPE
+                                         := 'XXCOS_004_A06%';                     --ＡＲ取引タイプ特定マ
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
 --
   --トークン
   cv_tkn_parm_data1            CONSTANT  VARCHAR2(10) :=  'PARAM1';        --パラメータ1
@@ -277,6 +312,14 @@ AS
   ct_prof_organization_code    CONSTANT  fnd_profile_options.profile_option_name%TYPE
                                       := 'XXCOI1_ORGANIZATION_CODE';       --XXCOI:在庫組織コード
 --****************************** 2009/04/22 1.13 T.Kitajima ADD START ******************************--
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  ct_prof_min_date              CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                         := 'XXCOS1_MIN_DATE';                    --XXCOS:MIN日付
+  ct_prof_max_date              CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                         := 'XXCOS1_MAX_DATE';                    --XXCOS:MAX日付
+  ct_prof_org_id                CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                         := 'ORG_ID';                             --営業単位
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
   --使用可能フラグ定数
   ct_enabled_flag_yes          CONSTANT  fnd_lookup_values.enabled_flag%TYPE
                                       := 'Y';                              --使用可能
@@ -294,6 +337,10 @@ AS
                                       := 0;                                --未計算フラグ
   ct_un_calc_flag_1            CONSTANT  xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
                                       := 1;                                --未計算フラグ
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  ct_un_calc_flag_4            CONSTANT  xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
+                                      := 4;                                --未計算フラグ
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
   --赤黒フラグ
   ct_red_black_flag_0          CONSTANT  xxcos_sales_exp_lines.red_black_flag%TYPE
                                       := '0';                              --赤
@@ -325,6 +372,12 @@ AS
                                       := 'Y';                              --Y:有効
   ct_apply_flag_yes            CONSTANT  xxcmm_system_items_b_hst.apply_flag%TYPE
                                       := 'Y';                              --Y:有効
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  ct_line_type_line             CONSTANT ra_customer_trx_lines_all.line_type%TYPE
+                                         := 'LINE';                   --LINE
+  ct_line_type_tax              CONSTANT ra_customer_trx_lines_all.line_type%TYPE
+                                         := 'TAX';                    --TAX
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
   --会計区分
   cv_inv                       CONSTANT  VARCHAR2(10) := '01';             --INV
   --カード売り区分
@@ -373,7 +426,6 @@ AS
   --棚卸対象区分
   ct_secondary_class_2         CONSTANT   mtl_secondary_inventories.attribute5%TYPE
                                           := '2';                     --消化
-  cv_exists_flag_yes            CONSTANT VARCHAR2(1) := 'Y';          --存在あり
 --****************************** 2009/03/23 1.9  T.kitajima ADD  END  ******************************--
 --****************************** 2009/04/22 1.13 T.Kitajima ADD START ******************************--
   --稼働日ステータス
@@ -384,6 +436,13 @@ AS
 --****************************** 2009/06/10 1.16 T.Kitajima ADD START ******************************--
   cv_snq_i                      CONSTANT VARCHAR2(1)  := 'I';
 --****************************** 2009/06/10 1.16 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  cv_fmt_date                   CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';
+  cv_exists_flag_yes            CONSTANT VARCHAR2(1)  := 'Y';          --存在あり
+  cv_exists_flag_no             CONSTANT VARCHAR2(1)  := 'N';          --存在なし
+  cn_amount_default             CONSTANT NUMBER       := 0;
+  cv_con                        CONSTANT VARCHAR2(1)  := ',';
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
 /* 2009/08/10 Ver1.19 Mod Start */
   ct_lang                       CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語
 /* 2009/08/10 Ver1.19 Mod Start */
@@ -458,6 +517,12 @@ AS
       vd_digestion_hdr_id     xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE,           -- 消化VD用消化計算ヘッダID
       sales_exp_header_id     xxcos_vd_digestion_hdrs.sales_exp_header_id%TYPE            -- 販売実績ヘッダID
   );
+--******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
+  TYPE g_item_sum_quantity    IS RECORD
+    (
+     sum_quantity             NUMBER
+    );
+--******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
   --更新用
   TYPE g_tab_vd_digestion_hdr_id IS TABLE OF g_rec_vd_digestion_hdr_id   INDEX BY PLS_INTEGER;   -- 消化ＶＤ用消化計算ヘッダID
 --  TYPE g_tab_vd_digestion_hdr_id IS TABLE OF xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE
@@ -468,6 +533,9 @@ AS
   TYPE g_tab_sales_exp_headers IS TABLE OF xxcos_sales_exp_headers%ROWTYPE INDEX BY PLS_INTEGER; --販売実績ヘッダ
   TYPE g_tab_sales_exp_lines IS TABLE OF xxcos_sales_exp_lines%ROWTYPE INDEX BY PLS_INTEGER;     --販売実績明細
   TYPE g_tab_for_comfunc_inpara IS TABLE OF g_rec_for_comfunc_inpara INDEX BY PLS_INTEGER;       --販売員ポイント計算共通関数格納用変数
+--******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
+  TYPE g_tab_item_sum_quantity_tab IS TABLE OF g_item_sum_quantity INDEX BY xxcos_vd_digestion_lns.item_code%TYPE; --品目数量サマリ用配列
+--******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -483,6 +551,9 @@ AS
   gt_tab_sales_exp_lines_ins          g_tab_sales_exp_lines;         --販売実績明細
   gt_tab_vd_digestion_hdr_id          g_tab_vd_digestion_hdr_id;     --消化ＶＤ用消化計算ヘッダID
   gt_tab_for_comfunc_inpara           g_tab_for_comfunc_inpara;      --販売員ポイント計算共通関数用
+--******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
+  g_tab_item_sum_quantity             g_tab_item_sum_quantity_tab; --品目数量サマリ用配列
+--******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
   gv_exec_div                         VARCHAR2(100);                 --定期随時区分
   gv_base_code                        VARCHAR2(100);                 --拠点コード
   gv_customer_number                  VARCHAR2(100);                 --顧客コード
@@ -501,6 +572,360 @@ AS
 --****************************** 2009/05/07 1.14 T.Kitajima ADD START ******************************--
   gv_sales_class_vd                   VARCHAR2(1);                           --消化・VD消化(売上区分)
 --****************************** 2009/05/07 1.14 T.Kitajima ADD  END  ******************************--
+--******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
+  gd_min_date                         DATE;
+  gd_max_date                         DATE;                         -- MAX日付
+  gn_org_id                           NUMBER;                       -- 営業単位
+--******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
+/* 2010/02/22 Ver1.26 Add Start */
+  gd_due_date                         DATE;                        -- 締日
+/* 2010/02/22 Ver1.26 Add Start */
+--
+--
+--****************************** 2010/02/08 1.25 N.Maeda ADD START ******************************--
+  /**********************************************************************************
+   * Procedure Name   : get_vd_column
+   * Description      : VDコラム別取引情報取得処理(A-8)
+   ***********************************************************************************/
+  PROCEDURE get_vd_column(
+    it_customer_number        IN      xxcos_vd_digestion_hdrs.customer_number%TYPE,
+                                                                      -- 顧客コード
+    it_digestion_due_date     IN      xxcos_vd_digestion_hdrs.digestion_due_date%TYPE,
+                                                                      -- 消化計算締年月日
+    it_pre_digestion_due_date IN      xxcos_vd_digestion_hdrs.pre_digestion_due_date%TYPE,
+                                                                      -- 前回消化計算締年月日
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_vd_column'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_out_msg           VARCHAR2(5000);
+    lt_item_code         xxcos_vd_digestion_lns.item_code%TYPE;
+    lv_err_item_codes    VARCHAR2(5000);
+    --
+    --
+--
+    -- *** ローカル・カーソル ***
+    -- VDコラム別取引情報取得処理(A-7-1)
+    CURSOR vdc_cur
+    IS
+      SELECT
+        /*+
+          INDEX( xvch XXCOS_VD_COLUMN_HEADERS_N04)
+        */
+        xvcl.item_code_self                 item_code_self,                --品名コード(自社)
+        SUM( xvcl.replenish_number )        replenish_number               --補充数
+      FROM
+        xxcos_vd_column_headers             xvch,                          --VDコラム別取引ヘッダテーブル
+        xxcos_vd_column_lines               xvcl                           --VDコラム別取引明細テーブル
+      WHERE
+        xvch.order_no_hht                   = xvcl.order_no_hht
+      AND xvch.digestion_ln_number          = xvcl.digestion_ln_number
+      AND xvch.customer_number              = it_customer_number
+      AND ( ( ( xvch.digestion_vd_rate_maked_date IS NULL)
+        AND ( xvch.dlv_date <= it_digestion_due_date) )
+        OR ( ( xvch.digestion_vd_rate_maked_date >= it_pre_digestion_due_date )
+        AND ( xvch.digestion_vd_rate_maked_date <= it_digestion_due_date ) ) )
+      GROUP BY
+        xvcl.item_code_self
+      ;
+    -- VDコラム別取引情報 レコード型
+    l_vdc_rec vdc_cur%ROWTYPE;
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル・プロシージャ ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --
+    -- ===================================================
+    --1.VDコラム別取引情報
+    -- ===================================================
+    <<get_vdc_loop>>
+    FOR vdc_rec IN vdc_cur LOOP
+      --
+      --対象品目が存在した場合
+      IF ( g_tab_item_sum_quantity.EXISTS( vdc_rec.item_code_self ) ) THEN
+--
+        -- 対象品目数量チェック
+        IF ( g_tab_item_sum_quantity( vdc_rec.item_code_self ).sum_quantity != vdc_rec.replenish_number  ) THEN
+          -- 数量チェックエラーメッセージ生成
+          lv_out_msg    := xxccp_common_pkg.get_msg(
+                             iv_application        => ct_xxcos_appl_short_name,
+                             iv_name               => ct_msg_puantity_err,
+                             iv_token_name1        => cv_tkn_parm_data1,
+                             iv_token_value1       => it_customer_number,           -- 顧客コード
+                             iv_token_name2        => cv_tkn_parm_data2,
+                             iv_token_value2       => vdc_rec.item_code_self,       -- 品目コード
+                             iv_token_name3        => cv_tkn_parm_data3,
+                             iv_token_value3       => TO_CHAR( it_digestion_due_date , cv_fmt_date ),
+                                                                                    -- 消化計算締年月日
+                             iv_token_name4        => cv_tkn_parm_data4,
+                             iv_token_value4       => TO_CHAR( it_pre_digestion_due_date  , cv_fmt_date )
+                                                                                    -- 前回消化計算締年月日
+                           );
+          RAISE global_item_data_expt;
+        END IF;
+--
+      --VDコラム別取引明細テーブルの品目が存在しない場合
+      ELSE
+        -- エラーメッセージ生成
+         lv_out_msg    := xxccp_common_pkg.get_msg(
+                             iv_application        => ct_xxcos_appl_short_name,
+                             iv_name               => ct_msg_column_item_err,
+                             iv_token_name1        => cv_tkn_parm_data1,
+                             iv_token_value1       => it_customer_number,           -- 顧客コード
+                             iv_token_name2        => cv_tkn_parm_data2,
+                             iv_token_value2       => vdc_rec.item_code_self,       -- 品目コード
+                             iv_token_name3        => cv_tkn_parm_data3,
+                             iv_token_value3       => TO_CHAR( it_digestion_due_date , cv_fmt_date ),
+                                                                                    -- 消化計算締年月日
+                             iv_token_name4        => cv_tkn_parm_data4,
+                             iv_token_value4       => TO_CHAR( it_pre_digestion_due_date  , cv_fmt_date )
+                                                                                    -- 前回消化計算締年月日
+                           );
+        RAISE global_item_data_expt;
+      END IF;
+      -- 
+    END LOOP get_vdc_loop;
+--
+  EXCEPTION
+    WHEN global_item_data_expt THEN
+      ov_errmsg  := lv_out_msg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_vd_column;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_cust_trx
+   * Description      : AR取引情報取得処理(A-9)
+   ***********************************************************************************/
+  PROCEDURE get_cust_trx(
+    it_cust_account_id             IN      xxcos_vd_digestion_hdrs.cust_account_id%TYPE,
+                                                                      --  1.顧客ID
+    it_customer_number             IN      xxcos_vd_digestion_hdrs.customer_number%TYPE,
+                                                                      --  2.顧客コード
+    id_start_gl_date               IN      DATE,                      --  3.開始GL記帳日
+    id_end_gl_date                 IN      DATE,                      --  4.終了GL記帳日
+    in_ar_sales_amount             IN      NUMBER,                    --  5.売上金額合計
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_cust_trx'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_ar_amount                        NUMBER;                       --売上金額合計
+    ln_tax_amount                       NUMBER;                       --消費税額合計
+    ln_work_tax_amount                  NUMBER;                       --ワーク用消費税額
+    lv_out_msg                          VARCHAR2(5000);
+--
+    -- *** ローカル・カーソル ***
+    -- AR取引情報取得(本体額)
+    CURSOR ar_cur
+    IS
+      SELECT
+        rctla.extended_amount               extended_amount,                --本体金額
+        rctla.customer_trx_line_id          customer_trx_line_id            --取引明細ID
+      FROM
+        ra_customer_trx_all                 rcta,                           --請求取引情報テーブル
+        ra_customer_trx_lines_all           rctla,                          --請求取引明細テーブル
+        ra_cust_trx_line_gl_dist_all        rctlgda,                        --請求取引明細会計配分テーブル
+        ra_cust_trx_types_all               rctta                           --請求取引タイプマスタ
+      WHERE
+        rcta.ship_to_customer_id            = it_cust_account_id
+      AND rcta.customer_trx_id              = rctla.customer_trx_id
+      AND rctla.customer_trx_id             = rctlgda.customer_trx_id
+      AND rctla.customer_trx_line_id        = rctlgda.customer_trx_line_id
+      AND rcta.cust_trx_type_id             = rctta.cust_trx_type_id
+      AND rctla.line_type                   = ct_line_type_line
+      AND rcta.complete_flag                = ct_enabled_flag_yes
+      AND rctlgda.gl_date                   >= id_start_gl_date
+      AND rctlgda.gl_date                   <= id_end_gl_date
+      AND rcta.org_id                       = gn_org_id
+      AND rcta.org_id                       = rctta.org_id
+      AND EXISTS(
+            SELECT
+              cv_exists_flag_yes            exists_flag
+            FROM
+              fnd_lookup_values             flv
+            WHERE
+              flv.lookup_type             = ct_qct_customer_trx_type
+            AND flv.lookup_code             LIKE ct_qcc_customer_trx_type
+            AND flv.meaning                 = rctta.name
+            AND rctlgda.gl_date             >= flv.start_date_active
+            AND rctlgda.gl_date             <= NVL( flv.end_date_active, gd_max_date )
+            AND flv.enabled_flag            = ct_enabled_flag_yes
+            AND flv.language                = ct_lang
+             )
+      ;
+    -- AR取引情報 レコード型
+    l_ar_rec ar_cur%ROWTYPE;
+--
+    -- AR取引情報(税金額）取得処理(A-5-2)
+    CURSOR tax_cur
+    IS
+      SELECT
+        NVL( SUM ( rctla.extended_amount ), 0 )
+                                          tax_amount                       --税金額
+      FROM
+        ra_customer_trx_lines_all         rctla                            --請求取引明細テーブル
+      WHERE
+        rctla.line_type                   = ct_line_type_tax
+      AND rctla.link_to_cust_trx_line_id  = l_ar_rec.customer_trx_line_id
+      GROUP BY
+        rctla.link_to_cust_trx_line_id
+      ;
+    -- AR取引情報(税金額） レコード型
+    l_tax_rec tax_cur%ROWTYPE;
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    ln_ar_amount              := cn_amount_default;
+    ln_tax_amount             := cn_amount_default;
+    --
+    -- ===================================================
+    --1.AR取引情報
+    -- ===================================================
+    <<ar_loop>>
+    FOR ar_rec IN ar_cur LOOP
+      --セット
+      l_ar_rec                := ar_rec;
+      -- ワーク用消費税額
+      ln_work_tax_amount      := cn_amount_default;
+      -- ===================================================
+      --2.AR取引情報(税金額）
+      -- ===================================================
+      <<tax_loop>>
+      FOR tax_rec IN tax_cur LOOP
+        --
+        l_tax_rec             := tax_rec;
+        ln_work_tax_amount    := ln_work_tax_amount + l_tax_rec.tax_amount;
+        --
+      END LOOP tax_loop;
+      -- ===================================================
+      -- A-6  売上金額集計処理
+      -- ===================================================
+      ln_ar_amount            := ln_ar_amount + l_ar_rec.extended_amount + ln_work_tax_amount;
+    --
+    END LOOP ar_loop;
+    --
+--
+    -- 金額比較
+    IF ( ROUND( ln_ar_amount ) !=  in_ar_sales_amount ) THEN
+      -- 金額不一致メッセージ
+      lv_out_msg    := xxccp_common_pkg.get_msg(
+                         iv_application        => ct_xxcos_appl_short_name,
+                         iv_name               => ct_msg_ar_amount_err,
+                         iv_token_name1        => cv_tkn_parm_data1,
+                         iv_token_value1       => it_customer_number,
+                         iv_token_name2        => cv_tkn_parm_data2,
+                         iv_token_value2       => TO_CHAR( id_start_gl_date , cv_fmt_date ),
+                         iv_token_name3        => cv_tkn_parm_data3,
+                         iv_token_value3       => TO_CHAR( id_end_gl_date , cv_fmt_date )
+                       );
+      RAISE global_ar_data_err_expt;
+    END IF;
+    --
+--
+  EXCEPTION
+    WHEN global_ar_data_err_expt THEN
+      ov_errmsg  := lv_out_msg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+      ov_retcode := cv_status_error;
+      
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_cust_trx;
+--
+--****************************** 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
 --
 --****************************** 2009/05/25 1.15 T.Kitajima ADD START ******************************--
   /**********************************************************************************
@@ -530,6 +955,9 @@ AS
     iv_exec_div        IN         VARCHAR2,     -- 1.定期随時区分
     iv_base_code       IN         VARCHAR2,     -- 2.拠点コード
     iv_customer_number IN         VARCHAR2,     -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+    iv_due_date       IN         VARCHAR2,      -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -586,6 +1014,10 @@ AS
                     iv_token_value2 => iv_base_code,
                     iv_token_name3  => cv_tkn_parm_data3,
                     iv_token_value3 => iv_customer_number
+/* 2010/02/22 Ver1.26 Add Start */
+                    ,iv_token_name4  => cv_tkn_parm_data4,
+                    iv_token_value4 => iv_due_date
+/* 2010/02/22 Ver1.26 Add Start */
                   );
     FND_FILE.PUT_LINE(
       which  => FND_FILE.OUTPUT,
@@ -594,8 +1026,8 @@ AS
 --
     -- 空行出力
     FND_FILE.PUT_LINE(
-       which  => FND_FILE.LOG
-      ,buff   => NULL
+      which  => FND_FILE.OUTPUT,
+      buff   => NULL
     );
 --
     -- メッセージログ
@@ -632,6 +1064,9 @@ AS
     iv_exec_div        IN       VARCHAR2,     -- 1.定期随時区分
     iv_base_code       IN       VARCHAR2,     -- 2.拠点コード
     iv_customer_number IN       VARCHAR2,     -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+    iv_due_date        IN       VARCHAR2,     -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
     ov_errbuf     OUT    NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode    OUT    NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg     OUT    NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -731,6 +1166,12 @@ AS
     gv_base_code       := iv_base_code;        --拠点コード
     gv_customer_number := iv_customer_number;  --顧客コード
 --
+/* 2010/02/22 Ver1.26 Add Start */
+    -- 随時モードの場合、「締日」パラメータを日付型に変換
+    IF ( iv_exec_div = cv_0 ) THEN
+      gd_due_date := TO_DATE(iv_due_date , cv_fmt_date);
+    END IF;
+/* 2010/02/22 Ver1.26 Add Start */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -819,6 +1260,10 @@ AS
 --****************************** 2009/04/27 1.13 N.Maeda ADD START ******************************--
     ln_record_date_flg            NUMBER;                             --基準日判定用
 --****************************** 2009/04/27 1.13 N.Maeda ADD  END  ******************************--
+--******************************* 2009/06/10 1.16 T.Kitajima MOD START ******************************--
+    lv_min_date                   VARCHAR2(5000);
+    lv_max_date                   VARCHAR2(5000);
+--******************************* 2009/06/10 1.16 T.Kitajima MOD  END  ******************************--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -956,7 +1401,10 @@ AS
     --初期化
     ld_work_delay_date := gd_business_date;
     ln_delay_days      := TO_NUMBER( gv_delay_days );
-    ln_date_index      := 0;
+--****************************** 2010/02/25 1.27 N.Maeda MOD START ******************************--
+--    ln_date_index      := 0;
+    ln_date_index      := 1;
+--****************************** 2010/02/25 1.27 N.Maeda MOD  END  ******************************--
     ln_sales_oprtn_day := NULL;
 --****************************** 2009/04/27 1.13 N.Maeda MOD START ******************************--
     ln_record_date_flg := 0;
@@ -987,6 +1435,81 @@ AS
 --
     ln_sales_oprtn_day := NULL;
 --
+--****************************** 2010/02/27 1.26 N.Maeda MOD START ******************************--
+--****************************** 2010/02/08 1.25 N.Maeda MOD START ******************************--
+--    -- 仮消化ＶＤ納品データ作成猶予日作成
+--    ld_work_delay_date := ld_work_delay_date - ln_delay_days;
+--    --
+--    -- ================================
+--    -- 消化ＶＤ納品データ作成猶予日稼働日判定
+--    -- ================================
+--    ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
+--                                             id_check_target_date     => ld_work_delay_date,
+--                                             iv_calendar_code         => gt_calendar_code
+--                                             );
+----
+--    -- 消化ＶＤ納品データ作成猶予日が稼働日の場合
+--    IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
+--      NULL;
+--    -- 消化ＶＤ納品データ作成猶予日が非稼働日の場合
+--    ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
+--      <<delay_day_loop>>
+--      WHILE ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) LOOP
+--      --
+--        ld_work_delay_date  := ld_work_delay_date - 1;
+--      --
+--        ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
+--                                                 id_check_target_date     => ld_work_delay_date,
+--                                                 iv_calendar_code         => gt_calendar_code
+--                                                 );
+----
+--        --共通関数エラー時
+--        IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_error ) THEN
+--          lv_str_api_name         := xxccp_common_pkg.get_msg(
+--                                             iv_application        => ct_xxcos_appl_short_name,
+--                                             iv_name               => ct_msg_check_sales_oprtn_day
+--                                           );
+--          RAISE global_call_api_expt;
+--        END IF;
+----
+--      END LOOP delay_day_loop;
+----
+--    ELSE
+--      lv_str_api_name         := xxccp_common_pkg.get_msg(
+--                                         iv_application        => ct_xxcos_appl_short_name,
+--                                         iv_name               => ct_msg_check_sales_oprtn_day
+--                                       );
+--      RAISE global_call_api_expt;
+--    END IF;
+----
+--    -- =================================
+--    -- 消化ＶＤ納品データ作成猶予日設定
+--    -- =================================
+--    gd_delay_date := ld_work_delay_date;
+----
+----    <<delay_day_loop>>
+----    WHILE ( ln_delay_days <> ln_date_index ) LOOP
+----      --
+----      ld_work_delay_date  := ld_work_delay_date - 1;
+----      ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
+----                                             id_check_target_date     => ld_work_delay_date,
+----                                             iv_calendar_code         => gt_calendar_code
+----                                           );
+----      --稼働日判定
+----      IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
+----        ln_date_index := ln_date_index + 1;
+----      ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_error ) THEN
+----        lv_str_api_name         := xxccp_common_pkg.get_msg(
+----                                           iv_application        => ct_xxcos_appl_short_name,
+----                                           iv_name               => ct_msg_get_calendar_code
+----                                         );
+----        RAISE global_call_api_expt;
+----      END IF;
+------
+----    END LOOP delay_day_loop;
+------
+----    gd_delay_date             := ld_work_delay_date;
+--
     <<delay_day_loop>>
     WHILE ( ln_delay_days <> ln_date_index ) LOOP
       --
@@ -1008,9 +1531,19 @@ AS
 --
     END LOOP delay_day_loop;
 --
-    gd_delay_date             := ld_work_delay_date;
+    -- 算出日の前日を猶予日として設定
+    gd_delay_date             := ld_work_delay_date - 1;
+    -- データ取得基準日出力
+    lv_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_standards_date,
+                                   iv_token_name1        => cv_tkn_parm_data1,
+                                   iv_token_value1       => TO_CHAR(gd_delay_date,cv_fmt_date)
+                                 );
+    FND_FILE.PUT_LINE( which => FND_FILE.LOG ,buff => lv_errmsg );
 --
---****************************** 2009/04/22 1.13 T.Kitajima MOD  END  ******************************--
+--****************************** 2010/02/08 1.25 N.Maeda MOD  END   ******************************--
+--****************************** 2010/02/25 1.26 N.Maeda MOD  END   ******************************--
 --
     --============================================
     -- 3. 会計帳簿ID
@@ -1035,6 +1568,49 @@ AS
       RAISE global_get_profile_expt;
     END IF;
 --****************************** 2009/04/21 1.12 T.Kitajima ADD  END  ******************************--
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+--
+    --============================================
+    -- 5.XXCOS:MIN日付
+    --============================================
+    lv_min_date := FND_PROFILE.VALUE( ct_prof_min_date );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_min_date IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_key_info     := ct_prof_min_date;
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    gd_min_date               := TO_DATE( lv_min_date, cv_fmt_date );
+    --============================================
+    -- 6.XXCOS:MAX日付
+    --============================================
+    lv_max_date := FND_PROFILE.VALUE( ct_prof_max_date );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_max_date IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_key_info     := ct_prof_max_date;
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    gd_max_date               := TO_DATE( lv_max_date, cv_fmt_date );
+    --============================================
+    -- 2.MO:営業単位
+    --============================================
+    gn_org_id    := FND_PROFILE.VALUE( ct_prof_org_id );
+    -- プロファイルが取得できない場合はエラー
+    IF ( gn_org_id IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_key_info     := ct_prof_org_id;
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
 --
 --****************************** 2009/05/07 1.14 T.Kitajima ADD START ******************************--
     --==============================================
@@ -1446,7 +2022,10 @@ AS
       WHERE  amt.account_number = xsdh.customer_number                    --ヘッダ.顧客コード           = 取得した顧客コード
       AND    xsdh.vd_digestion_hdr_id        = xsdl.vd_digestion_hdr_id   --ヘッダ.ヘッダID             = 明細.ヘッダID
       AND    xsdh.sales_result_creation_flag = ct_make_flag_no            --ヘッダ.販売実績作成済フラグ = 'N'
-      AND    xsdh.uncalculate_class          = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
+--******************************* 2010/02/08 1.25 N.Maeda MOD START ******************************--
+--      AND    xsdh.uncalculate_class          = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
+      AND    xsdh.uncalculate_class          IN ( ct_un_calc_flag_0 , ct_un_calc_flag_4 )  --ヘッダ.未計算区分 IN ( 0 , 4 )
+--******************************* 2010/02/08 1.25 N.Maeda MOD  END  ******************************--
       AND    xsdh.digestion_due_date        <= gd_delay_date              --ヘッダ.消化計算締年月日    <= 業務日付－猶予日数
       AND    xsdh.cust_account_id            = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
       AND    hnas.cust_account_id            = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
@@ -1802,6 +2381,9 @@ AS
       AND    hnas.party_id                   = part.party_id               --顧客マスタ.顧客ID = 顧客マスタ.顧客ID
  --****************************** 2009/05/07 1.14 T.Kitajima ADD START ******************************--
       AND    xsdl.sales_quantity            != cn_0
+/* 2010/02/22 Ver1.26 Add Start */
+      AND    xsdh.digestion_due_date         = gd_due_date
+/* 2010/02/22 Ver1.26 Add Start */
       AND   NOT EXISTS(
                         SELECT flv.lookup_code               not_inv_code
 /* 2009/08/10 Ver1.19 Mod Start */
@@ -1951,6 +2533,7 @@ AS
    * Description      : 納品データ計算処理(A-4)
    ***********************************************************************************/
   PROCEDURE calc_sales(
+    iv_exec_div        IN         VARCHAR2,     -- 定期随時区分
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2089,6 +2672,19 @@ AS
     <<keisan_loop>>
     FOR ln_i IN 1..gn_target_cnt LOOP
 --
+--****************************** 2010/02/08 1.25 N.Maeda ADD START ******************************--
+      -- 随時実行時のみチェック処理を実行
+      IF ( iv_exec_div = cv_0 ) THEN
+        IF ( g_tab_item_sum_quantity.EXISTS( gt_tab_work_data(ln_i).item_code ) ) THEN
+          -- 品目単位数量サマリ
+          g_tab_item_sum_quantity( gt_tab_work_data(ln_i).item_code ).sum_quantity
+            := NVL(g_tab_item_sum_quantity( gt_tab_work_data(ln_i).item_code ).sum_quantity,0) + gt_tab_work_data(ln_i).sales_quantity;
+        ELSE
+          g_tab_item_sum_quantity( gt_tab_work_data(ln_i).item_code ).sum_quantity := gt_tab_work_data(ln_i).sales_quantity;
+        END IF;
+      END IF;
+--****************************** 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
+
       --正常時のみ納品形態、単位換算を行う。
       IF ( lv_err_work = cv_status_normal ) THEN
 --**************************** 2009/03/23 1.9  T.kitajima MOD START ****************************
@@ -2696,6 +3292,7 @@ AS
         END IF;
 --**************************** 2009/03/23 1.9  T.kitajima MOD  END  ****************************
       END IF;
+-- 
       --
       --正常時のみ設定する
       --共通関数でエラーがあった場合は、設定処理スルー
@@ -2876,6 +3473,54 @@ AS
          ( ( gt_tab_work_data(ln_i).vd_digestion_hdr_id <> gt_tab_work_data(ln_i + cn_1).vd_digestion_hdr_id )
           OR ( gt_tab_work_data(ln_i).digestion_due_date <> gt_tab_work_data(ln_i + cn_1).digestion_due_date ) )
       THEN
+--
+--****************************** 2010/02/08 1.25 N.Maeda ADD START ******************************--
+--
+        -- 随時実行時のみチェック処理を実行
+        IF ( iv_exec_div = cv_0 ) THEN
+          -- ===================================================
+          -- A-8  VDコラム別取引情報取得処理
+          -- ===================================================
+          get_vd_column(
+            it_customer_number            => gt_tab_work_data(ln_i).customer_number,       -- 顧客コード
+            it_digestion_due_date         => gt_tab_work_data(ln_i).digestion_due_date,    -- 消化計算締年月日
+            it_pre_digestion_due_date     => NVL( gt_tab_work_data(ln_i).pre_digestion_due_date + 1, gd_min_date ),
+                                                                                           -- 前回消化計算締年月日
+            ov_errbuf                     => lv_errbuf,                                    -- エラー・メッセージ
+            ov_retcode                    => lv_retcode,                                   -- リターン・コード
+            ov_errmsg                     => lv_errmsg                                     -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+--
+          -- 品目単位数量サマリの初期化
+          g_tab_item_sum_quantity.DELETE;
+          --
+          -- ===================================================
+          -- A-9  AR取引情報取得処理
+          -- ===================================================
+          get_cust_trx(
+            it_cust_account_id            => gt_tab_work_data(ln_i).cust_account_id,        --  1.顧客ID
+            it_customer_number            => gt_tab_work_data(ln_i).customer_number,        --  2.顧客コード
+            id_start_gl_date              => NVL( gt_tab_work_data(ln_i).pre_digestion_due_date + 1, gd_min_date ),
+                                                                                            --  3.開始GL記帳日
+            id_end_gl_date                => gt_tab_work_data(ln_i).digestion_due_date,     --  4.終了GL記帳日
+            in_ar_sales_amount            => gt_tab_work_data(ln_i).ar_sales_amount,         --  5.売上金額合計
+            ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+            ov_retcode                    => lv_retcode,                -- リターン・コード
+            ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+--
+--****************************** 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
+--
         --１ヘッダの中でエラー明細が１件でも存在したか？
         IF ( ln_err_line_flag = cn_1 ) THEN --存在した
           --テーブル変数のエラーINDEX分を削除
@@ -3119,6 +3764,10 @@ AS
 --
   EXCEPTION
 --#####################################  固定部 START ##########################################
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -3746,6 +4395,7 @@ AS
 --
   END update_digestion;
 --
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3754,6 +4404,9 @@ AS
     iv_exec_div        IN         VARCHAR2,     -- 1.定期随時区分
     iv_base_code       IN         VARCHAR2,     -- 2.拠点コード
     iv_customer_number IN         VARCHAR2,     -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+    iv_due_date        IN         VARCHAR2,     -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3812,6 +4465,9 @@ AS
       iv_exec_div,        -- 1.定期随時区分
       iv_base_code,       -- 2.拠点コード
       iv_customer_number, -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+      iv_due_date,        -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3826,6 +4482,9 @@ AS
       iv_exec_div,        -- 1.定期随時区分
       iv_base_code,       -- 2.拠点コード
       iv_customer_number, -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+      iv_due_date,        -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3862,6 +4521,9 @@ AS
     -- A-4．納品データ計算処理
     -- ===============================
     calc_sales(
+--******************************* 2010/02/08 1.25 N.Maeda ADD START ******************************--
+      iv_exec_div,        -- 定期随時区分
+--******************************* 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3949,6 +4611,9 @@ AS
     iv_exec_div        IN  VARCHAR2,             -- 1.定期随時区分
     iv_base_code       IN  VARCHAR2,             -- 2.拠点コード
     iv_customer_number IN  VARCHAR2              -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+    ,iv_due_date        IN  VARCHAR2             -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
   )
 --
 --###########################  固定部 START   ###########################
@@ -4005,6 +4670,9 @@ AS
       iv_exec_div,        -- 1.定期随時区分
       iv_base_code,       -- 2.拠点コード
       iv_customer_number, -- 3.顧客コード
+/* 2010/02/22 Ver1.26 Add Start */
+      iv_due_date,        -- 4.締日
+/* 2010/02/22 Ver1.26 Add Start */
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
