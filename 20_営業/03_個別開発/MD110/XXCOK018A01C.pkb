@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                                    取得する際の抽出条件を変更
  *  2009/4/20     1.5   M.Hiruta         [障害T1_0512]請求配分OIFへ登録するデータの勘定科目が未収入金・売掛金の場合、
  *                                                    明細伝票番号に'1'を設定する。
+ *  2009/4/24     1.6   M.Hiruta         [障害T1_0736]取引タイプにより請求書保留ステータスを設定
  *
  *****************************************************************************************/
 --
@@ -49,14 +50,20 @@ AS
   cv_status_error            CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_error;  --異常:2
   --WHOカラム
   cn_created_by              CONSTANT NUMBER       := fnd_global.user_id;         --CREATED_BY
-  cd_creation_date           CONSTANT DATE         := SYSDATE;                    --CREATION_DATE
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--  cd_creation_date           CONSTANT DATE         := SYSDATE;                    --CREATION_DATE
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
   cn_last_updated_by         CONSTANT NUMBER       := fnd_global.user_id;         --LAST_UPDATED_BY
-  cd_last_update_date        CONSTANT DATE         := SYSDATE;                    --LAST_UPDATE_DATE
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--  cd_last_update_date        CONSTANT DATE         := SYSDATE;                    --LAST_UPDATE_DATE
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
   cn_last_update_login       CONSTANT NUMBER       := fnd_global.login_id;        --LAST_UPDATE_LOGIN
   cn_request_id              CONSTANT NUMBER       := fnd_global.conc_request_id; --REQUEST_ID
   cn_program_application_id  CONSTANT NUMBER       := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
   cn_program_id              CONSTANT NUMBER       := fnd_global.conc_program_id; --PROGRAM_ID
-  cd_program_update_date     CONSTANT DATE         := SYSDATE;                    --PROGRAM_UPDATE_DATE  
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--  cd_program_update_date     CONSTANT DATE         := SYSDATE;                    --PROGRAM_UPDATE_DATE  
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
   --記号
   cv_msg_part                CONSTANT VARCHAR2(1)  := ':';
   cv_msg_cont                CONSTANT VARCHAR2(1)  := '.';
@@ -79,7 +86,10 @@ AS
   cv_aff4_subacct_dummy      CONSTANT VARCHAR2(25) := 'XXCOK1_AFF4_SUBACCT_DUMMY';          --補助科目:ダミー値
   cv_sales_category          CONSTANT VARCHAR2(21) := 'XXCOK1_GL_CATEGORY_BM';              --販売手数料:仕訳カテゴリ
   cv_cust_trx_type_vd        CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_RECEIVABLE_VD'; --取引タイプ:VD未収入金売上
-  cv_cust_trx_type_elec_cost CONSTANT VARCHAR2(30) := 'XXCOK1_CUST_TRX_TYPE_ELEC_COST';     --取引タイプ:電気料相殺
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--  cv_cust_trx_type_elec_cost CONSTANT VARCHAR2(30) := 'XXCOK1_CUST_TRX_TYPE_ELEC_COST';     --取引タイプ:電気料相殺
+  cv_cust_trx_type_gnrl      CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_ALL_PAY';       --取引タイプ:入金値引高
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
   --メッセージ
   cv_90008_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90008'; --入力パラメータなし
   cv_00003_err_msg           CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00003'; --プロファイル値取得エラー
@@ -105,8 +115,12 @@ AS
   cv_proc_date_token         CONSTANT VARCHAR2(9)  := 'PROC_DATE';      --処理日
   cv_dept_code_token         CONSTANT VARCHAR2(9)  := 'DEPT_CODE';      --拠点コード
   cv_cust_code_token         CONSTANT VARCHAR2(9)  := 'CUST_CODE';      --顧客コード
-  cv_vend_code_token         CONSTANT VARCHAR2(9)  := 'VEND_CODE';      --仕入先コード
-  cv_vend_site_code_token    CONSTANT VARCHAR2(14) := 'VEND_SITE_CODE'; --仕入先サイトコード
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--  cv_vend_code_token         CONSTANT VARCHAR2(9)  := 'VEND_CODE';      --仕入先コード
+--  cv_vend_site_code_token    CONSTANT VARCHAR2(14) := 'VEND_SITE_CODE'; --仕入先サイトコード
+  cv_ship_cust_code_token    CONSTANT VARCHAR2(16) := 'SHIP_CUST_CODE'; --納品先顧客コード
+  cv_bill_cust_code_token    CONSTANT VARCHAR2(16) := 'BILL_CUST_CODE'; --請求先顧客コード
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
   cv_account_date_token      CONSTANT VARCHAR2(12) := 'ACCOUNT_DATE';   --計上日
   cv_cust_trx_type_token     CONSTANT VARCHAR2(13) := 'CUST_TRX_TYPE';  --取引タイプ
   cv_count_token             CONSTANT VARCHAR2(5)  := 'COUNT';          --件数
@@ -142,6 +156,9 @@ AS
 -- Start 2009/04/20 Ver_1.5 T1_0512 M.Hiruta
   cv_line_slip_rec           CONSTANT VARCHAR2(1)  := '1';       --明細行伝票番号
 -- End   2009/04/20 Ver_1.5 T1_0512 M.Hiruta
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+  cv_submit_bill_type_yes    CONSTANT VARCHAR2(1)  := 'Y';       --請求書出力対象：Yes
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
   -- ===============================
   -- グローバル変数
   -- ===============================
@@ -164,9 +181,12 @@ AS
   gv_aff4_subacct_dummy      VARCHAR2(50)   DEFAULT NULL; --補助科目:ダミー値
   gv_sales_category          VARCHAR2(50)   DEFAULT NULL; --販売手数料:仕訳カテゴリ
   gv_cust_trx_type_vd        VARCHAR2(50)   DEFAULT NULL; --取引タイプ:VD未収入金売上
-  gv_cust_trx_type_elec_cost VARCHAR2(50)   DEFAULT NULL; --取引タイプ:電気料相殺
-  gn_vd_trx_type_id          NUMBER         DEFAULT NULL; --取引タイプID:VD未収入金売上
-  gn_cust_trx_elec_id        NUMBER         DEFAULT NULL; --取引タイプID:電気料相殺
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--  gv_cust_trx_type_elec_cost VARCHAR2(50)   DEFAULT NULL; --取引タイプ:電気料相殺
+--  gn_vd_trx_type_id          NUMBER         DEFAULT NULL; --取引タイプID:VD未収入金売上
+--  gn_cust_trx_elec_id        NUMBER         DEFAULT NULL; --取引タイプID:電気料相殺
+  gv_cust_trx_type_gnrl      VARCHAR2(50)   DEFAULT NULL; --取引タイプ:入金値引高
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
   gn_csh_rcpt                NUMBER         DEFAULT NULL; --入金値引額－入金値引消費税額
   gd_operation_date          DATE           DEFAULT NULL; --業務処理日付
   gv_currency_code           VARCHAR2(50)   DEFAULT NULL; --機能通貨コード
@@ -216,10 +236,36 @@ AS
 -- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
            , xcbs.tax_code                                                        -- 税金コード
            , xcbs.term_code;                                                      -- 支払条件
+--
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+    --取引タイプ情報
+    CURSOR g_cust_trx_type_cur(
+      iv_cust_trx_type IN VARCHAR2
+    )
+    IS
+      SELECT   rctta.cust_trx_type_id AS cust_trx_type_id      --取引タイプID
+             , rctta.attribute1       AS submit_bill_type      --請求書出力対象区分
+             , CASE rctta.attribute1
+                 WHEN cv_submit_bill_type_yes THEN
+                   cv_open
+                 ELSE
+                   cv_hold
+               END                    AS charge_waiting_status --請求書保留ステータス
+      FROM     ra_cust_trx_types_all  rctta               --請求取引タイプマスタ
+      WHERE    rctta.name         = iv_cust_trx_type  --仕訳ソース名 = 初期処理で取得した取引タイプ
+      AND      rctta.org_id       = gn_org_id         --組織ID       = 組織ID
+      AND      gd_operation_date  BETWEEN rctta.start_date
+                                      AND NVL( rctta.end_date, gd_operation_date )
+    ;
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
   -- ===============================
   -- グローバルレコードタイプ
   -- ===============================
   g_discnt_amount_rtype g_discnt_amount_cur%ROWTYPE;
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+  g_cust_trx_type_vd    g_cust_trx_type_cur%ROWTYPE;
+  g_cust_trx_type_gnrl  g_cust_trx_type_cur%ROWTYPE;
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
   -- ===============================
   -- 共通例外
   -- ===============================
@@ -405,19 +451,34 @@ AS
       );
     EXCEPTION
       WHEN  OTHERS THEN
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--          -- *** AR入金値引連携データ登録エラー ***
+--          lv_out_msg := xxccp_common_pkg.get_msg(
+--                          cv_appli_xxcok_name
+--                        , cv_10280_err_msg
+--                        , cv_dept_code_token
+--                        , i_discnt_amount_rec.base_code
+--                        , cv_vend_code_token
+--                        , i_discnt_amount_rec.supplier_code
+--                        , cv_vend_site_code_token
+--                        , i_discnt_amount_rec.supplier_site_code
+--                        , cv_account_date_token
+--                        , TO_CHAR( i_discnt_amount_rec.closing_date, 'YYYYY/MM/DD' )
+--                        );
           -- *** AR入金値引連携データ登録エラー ***
           lv_out_msg := xxccp_common_pkg.get_msg(
                           cv_appli_xxcok_name
                         , cv_10280_err_msg
                         , cv_dept_code_token
                         , i_discnt_amount_rec.base_code
-                        , cv_vend_code_token
-                        , i_discnt_amount_rec.supplier_code
-                        , cv_vend_site_code_token
-                        , i_discnt_amount_rec.supplier_site_code
+                        , cv_ship_cust_code_token
+                        , i_discnt_amount_rec.delivery_cust_code
+                        , cv_bill_cust_code_token
+                        , i_discnt_amount_rec.demand_to_cust_code
                         , cv_account_date_token
                         , TO_CHAR( i_discnt_amount_rec.closing_date, 'YYYYY/MM/DD' )
                         );
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
           lb_retcode := xxcok_common_pkg.put_message_f( 
                           FND_FILE.OUTPUT    -- 出力区分
                         , lv_out_msg         -- メッセージ
@@ -574,19 +635,34 @@ AS
       );
     EXCEPTION
       WHEN  OTHERS THEN
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--          -- *** AR入金値引連携データ登録エラー ***
+--          lv_out_msg := xxccp_common_pkg.get_msg(
+--                          cv_appli_xxcok_name
+--                        , cv_10280_err_msg
+--                        , cv_dept_code_token
+--                        , i_discnt_amount_rec.base_code
+--                        , cv_vend_code_token
+--                        , i_discnt_amount_rec.supplier_code
+--                        , cv_vend_site_code_token
+--                        , i_discnt_amount_rec.supplier_site_code
+--                        , cv_account_date_token
+--                        , TO_CHAR(i_discnt_amount_rec.closing_date, 'YYYYY/MM/DD' )
+--                        );
           -- *** AR入金値引連携データ登録エラー ***
           lv_out_msg := xxccp_common_pkg.get_msg(
                           cv_appli_xxcok_name
                         , cv_10280_err_msg
                         , cv_dept_code_token
                         , i_discnt_amount_rec.base_code
-                        , cv_vend_code_token
-                        , i_discnt_amount_rec.supplier_code
-                        , cv_vend_site_code_token
-                        , i_discnt_amount_rec.supplier_site_code
+                        , cv_ship_cust_code_token
+                        , i_discnt_amount_rec.delivery_cust_code
+                        , cv_bill_cust_code_token
+                        , i_discnt_amount_rec.demand_to_cust_code
                         , cv_account_date_token
-                        , TO_CHAR(i_discnt_amount_rec.closing_date, 'YYYYY/MM/DD' )
+                        , TO_CHAR( i_discnt_amount_rec.closing_date, 'YYYYY/MM/DD' )
                         );
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
           lb_retcode := xxcok_common_pkg.put_message_f( 
                           FND_FILE.OUTPUT    -- 出力区分
                         , lv_out_msg         -- メッセージ
@@ -662,13 +738,23 @@ AS
     <<ins_ra_if_lines_all_loop>>
     FOR ln_cnt IN 1..2 LOOP
 --
+-- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+--      IF( gv_business_low_type = cv_low_type ) THEN
+--        lt_charge_waiting_status := cv_hold;             -- 小分類の区分HOLD
+--        lt_cust_trx_type_id      := gn_vd_trx_type_id;   -- 取引タイプID:VD未収入金売上
+--      ELSE
+--        lt_charge_waiting_status := cv_open;             -- 小分類の区分OPEN
+--        lt_cust_trx_type_id      := gn_cust_trx_elec_id; -- 取引タイプID:電気料相殺
+--      END IF;
+--
       IF( gv_business_low_type = cv_low_type ) THEN
-        lt_charge_waiting_status := cv_hold;             -- 小分類の区分HOLD
-        lt_cust_trx_type_id      := gn_vd_trx_type_id;   -- 取引タイプID:VD未収入金売上
+        lt_cust_trx_type_id      := g_cust_trx_type_vd.cust_trx_type_id;        -- VD未収入金売上：取引タイプID
+        lt_charge_waiting_status := g_cust_trx_type_vd.charge_waiting_status;   -- VD未収入金売上：請求書保留ステータス
       ELSE
-        lt_charge_waiting_status := cv_open;             -- 小分類の区分OPEN
-        lt_cust_trx_type_id      := gn_cust_trx_elec_id; -- 取引タイプID:電気料相殺
+        lt_cust_trx_type_id      := g_cust_trx_type_gnrl.cust_trx_type_id;      -- 入金値引高：取引タイプID
+        lt_charge_waiting_status := g_cust_trx_type_gnrl.charge_waiting_status; -- 入金値引高：請求書保留ステータス
       END IF;
+-- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
       --================================================================
       --内税フラグの取得する
       --================================================================
@@ -1387,18 +1473,20 @@ AS
     operation_date_expt EXCEPTION; -- 業務処理日付取得エラー
     get_trx_type_expt   EXCEPTION; -- 取引タイプ情報取得エラー
     currency_code_expt  EXCEPTION; -- 通貨コード取得エラー
-    -- ===============================
-    -- ローカル・カーソル
-    -- ===============================
-    CURSOR l_cust_trx_type_cur(
-      iv_cust_trx_type IN VARCHAR2
-    )
-    IS
-      SELECT rctta.cust_trx_type_id AS cust_trx_type_id --取引タイプID
-      FROM   ra_cust_trx_types_all  rctta               --請求取引タイプマスタ
-      WHERE  rctta.name             = iv_cust_trx_type  --仕訳ソース名 = 初期処理で取得した取引タイプ
-      AND    rctta.org_id           = gn_org_id         --組織ID       = 組織ID
-      AND    gd_operation_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, gd_operation_date );
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--    -- ===============================
+--    -- ローカル・カーソル
+--    -- ===============================
+--    CURSOR l_cust_trx_type_cur(
+--      iv_cust_trx_type IN VARCHAR2
+--    )
+--    IS
+--      SELECT rctta.cust_trx_type_id AS cust_trx_type_id --取引タイプID
+--      FROM   ra_cust_trx_types_all  rctta               --請求取引タイプマスタ
+--      WHERE  rctta.name             = iv_cust_trx_type  --仕訳ソース名 = 初期処理で取得した取引タイプ
+--      AND    rctta.org_id           = gn_org_id         --組織ID       = 組織ID
+--      AND    gd_operation_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, gd_operation_date );
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -1446,7 +1534,10 @@ AS
     gv_aff4_subacct_dummy      := FND_PROFILE.VALUE( cv_aff4_subacct_dummy      );  -- 補助科目:ダミー値
     gv_sales_category          := FND_PROFILE.VALUE( cv_sales_category          );  -- 販売手数料:仕訳カテゴリ
     gv_cust_trx_type_vd        := FND_PROFILE.VALUE( cv_cust_trx_type_vd        );  -- 取引タイプ:VD未収入金売上
-    gv_cust_trx_type_elec_cost := FND_PROFILE.VALUE( cv_cust_trx_type_elec_cost );  -- 取引タイプ:電気料相殺
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--    gv_cust_trx_type_elec_cost := FND_PROFILE.VALUE( cv_cust_trx_type_elec_cost );  -- 取引タイプ:電気料相殺
+    gv_cust_trx_type_gnrl      := FND_PROFILE.VALUE( cv_cust_trx_type_gnrl      );  -- 取引タイプ:入金値引高
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
 --
     IF( gn_set_of_bks_id IS NULL ) THEN
       lv_token_value := cv_set_of_bks_id;
@@ -1512,35 +1603,66 @@ AS
       lv_token_value := cv_cust_trx_type_vd;
       RAISE profile_expt;
 --      
-    ELSIF( gv_cust_trx_type_elec_cost IS NULL ) THEN
-      lv_token_value := cv_cust_trx_type_elec_cost;
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--    ELSIF( gv_cust_trx_type_elec_cost IS NULL ) THEN
+--      lv_token_value := cv_cust_trx_type_elec_cost;
+--      RAISE profile_expt;
+    ELSIF( gv_cust_trx_type_gnrl IS NULL ) THEN
+      lv_token_value := cv_cust_trx_type_gnrl;
       RAISE profile_expt;
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
 --
     END IF;
+-- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--    --==============================================================
+--    --VD未収入金売上の取引タイプIDを取得
+--    --==============================================================    
+--    OPEN l_cust_trx_type_cur(
+--           gv_cust_trx_type_vd -- VD未収入金売上の取引タイプ
+--         );
+--    FETCH l_cust_trx_type_cur INTO gn_vd_trx_type_id;
+--    CLOSE l_cust_trx_type_cur;
+--    IF( gn_vd_trx_type_id IS NULL ) THEN
+--      lv_token_value := gv_cust_trx_type_vd;
+--      RAISE get_trx_type_expt;
+--    END IF;
+--    --==============================================================
+--    --電気料相殺の取引タイプIDを取得
+--    --==============================================================    
+--    OPEN l_cust_trx_type_cur(
+--           gv_cust_trx_type_elec_cost -- 電気料相殺の取引タイプ
+--         );
+--    FETCH l_cust_trx_type_cur INTO gn_cust_trx_elec_id;
+--    CLOSE l_cust_trx_type_cur;
+--    IF( gn_cust_trx_elec_id IS NULL ) THEN
+--      lv_token_value := gv_cust_trx_type_elec_cost;
+--      RAISE get_trx_type_expt;
+--    END IF;
     --==============================================================
-    --VD未収入金売上の取引タイプIDを取得
-    --==============================================================    
-    OPEN l_cust_trx_type_cur(
+    --VD未収入金売上の取引タイプ情報を取得
+    --==============================================================
+    OPEN g_cust_trx_type_cur(
            gv_cust_trx_type_vd -- VD未収入金売上の取引タイプ
          );
-    FETCH l_cust_trx_type_cur INTO gn_vd_trx_type_id;
-    CLOSE l_cust_trx_type_cur;
-    IF( gn_vd_trx_type_id IS NULL ) THEN
+    FETCH g_cust_trx_type_cur INTO g_cust_trx_type_vd;
+    CLOSE g_cust_trx_type_cur;
+    IF( g_cust_trx_type_vd.cust_trx_type_id IS NULL ) THEN
       lv_token_value := gv_cust_trx_type_vd;
       RAISE get_trx_type_expt;
     END IF;
     --==============================================================
-    --電気料相殺の取引タイプIDを取得
-    --==============================================================    
-    OPEN l_cust_trx_type_cur(
-           gv_cust_trx_type_elec_cost -- 電気料相殺の取引タイプ
+    --入金値引高の取引タイプ情報を取得
+    --==============================================================
+    OPEN g_cust_trx_type_cur(
+           gv_cust_trx_type_gnrl -- 入金値引高の取引タイプ
          );
-    FETCH l_cust_trx_type_cur INTO gn_cust_trx_elec_id;
-    CLOSE l_cust_trx_type_cur;
-    IF( gn_cust_trx_elec_id IS NULL ) THEN
-      lv_token_value := gv_cust_trx_type_elec_cost;
+    FETCH g_cust_trx_type_cur INTO g_cust_trx_type_gnrl;
+    CLOSE g_cust_trx_type_cur;
+    IF( g_cust_trx_type_gnrl.cust_trx_type_id IS NULL ) THEN
+      lv_token_value := cv_cust_trx_type_gnrl;
       RAISE get_trx_type_expt;
     END IF;
+-- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
     --==============================================================
     --通貨コードの取得
     --==============================================================
