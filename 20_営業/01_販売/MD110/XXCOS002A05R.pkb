@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/09/01    1.15  M.Sano           障害[0000900]対応
  *                                       MainSQL,INSERT文にヒント句の追加、検索条件の最適化
  *  2009/09/30    1.16  S.Miyakoshi      障害[0001378]帳票テーブルの桁あふれ対応
+ *  2009/11/27    1.17  K.Atsushiba      [E_本稼動_00128]営業員を指定時に他営業員のデータが出力されないように変更
  *
  *****************************************************************************************/
 --
@@ -2134,6 +2135,9 @@ AS
         AND pay.payment_date    <= NVL( salv.effective_end_date, pay.payment_date )
         AND riv.base_code        = pay.base_code
         AND riv.employee_number  = NVL( iv_dlv_by_code, salv.employee_number )
+-- 2009/11/27 Ver.1.17 K.Atsushiba Add Start
+        AND ( iv_dlv_by_code IS NULL OR iv_dlv_by_code  = salv.employee_number )
+-- 2009/11/27 Ver.1.17 K.Atsushiba Add End
         AND pay.payment_date    >= NVL( riv.effective_start_date, pay.payment_date )
         AND pay.payment_date    <= NVL( riv.effective_end_date, pay.payment_date )
         AND pay.payment_date    >= riv.per_effective_start_date
