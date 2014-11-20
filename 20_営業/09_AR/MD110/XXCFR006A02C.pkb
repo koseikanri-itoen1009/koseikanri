@@ -7,7 +7,7 @@ AS
  * Description      : HHT入金処理
  * MD.050           : MD050_CFR_006_A02_HHT入金処理
  * MD.070           : MD050_CFR_006_A02_HHT入金処理
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  2008/12/02    1.00  SCS 濱中 亮一    初回作成
  *  2009/07/23    1.1   SCS T.KANEDA     T3時障害0000837対応
  *  2009/10/16    1.2   SCS T.KANEDA     T4時障害対応
+ *  2011/02/23    1.3   SCS Y.Nishino    [E_本稼動_02246]対応
+ *                                       AR入金情報に納品先拠点コードと納品先顧客コードを追加
  *
  *****************************************************************************************/
 --
@@ -99,6 +101,9 @@ AS
   cv_msg_006a02_003  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00003';     -- ロックエラーメッセージ
   cv_msg_006a02_004  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00017';     -- データ更新エラーメッセージ
   cv_msg_006a02_005  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00057';     -- データ更新エラーメッセージ
+-- Add 2011.02.23 Ver1.3 Start
+  cv_msg_006a02_006  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00004';     -- プロファイル取得エラーメッセージ
+-- Add 2011.02.23 Ver1.3 End
 --
 -- トークン
   cv_tkn_account     CONSTANT VARCHAR2(15) := 'ACCOUNT_CODE';         -- 顧客コード
@@ -109,6 +114,14 @@ AS
   cv_tkn_meathod     CONSTANT VARCHAR2(15) := 'RECEIPT_MEATHOD';      -- 支払方法
   cv_tkn_message     CONSTANT VARCHAR2(15) := 'MESSAGE';              -- X_MSG_DATA
   cv_tkn_table       CONSTANT VARCHAR2(15) := 'TABLE';                -- テーブル名
+-- Add 2011.02.23 Ver1.3 Start
+  cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';            -- プロファイル名
+-- Add 2011.02.23 Ver1.3 End
+--
+-- Add 2011.02.23 Ver1.3 Start
+  --プロファイル
+  cv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';               -- 営業単位
+-- Add 2011.02.23 Ver1.3 End
 --
   -- ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT';               -- メッセージ出力
@@ -121,6 +134,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- Add 2011.02.23 Ver1.3 Start
+  gn_org_id                   NUMBER;                                 -- 営業単位
+-- Add 2011.02.23 Ver1.3 End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -194,6 +210,24 @@ AS
     IF (lv_retcode <> cv_status_normal) THEN
       RAISE global_api_expt;
     END IF;
+--
+-- Add 2011.02.23 Ver1.3 Start
+    --==============================================================
+    -- プロファイル値の取得
+    --==============================================================
+    -- プロファイルから営業単位取得
+    gn_org_id      := TO_NUMBER(FND_PROFILE.VALUE(cv_org_id));
+    -- 取得エラー時
+    IF (gn_org_id IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_006a02_006 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_org_id))  -- 営業単位
+                                                   ,1
+                                                   ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- Add 2011.02.23 Ver1.3 End
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -360,6 +394,10 @@ AS
     in_receipt_name    IN  VARCHAR2,   -- 支払方法ID
 -- Modify 2009.07.23 Ver1.1 End
     id_payment_date    IN  DATE,       -- 入金日
+-- Add 2011.02.23 Ver1.3 Start
+    iv_base_code                 IN  VARCHAR2,  -- 拠点コード
+    iv_delivery_customer_number  IN  VARCHAR2,  -- 納品先顧客コード
+-- Add 2011.02.23 Ver1.3 End
     ov_errbuf          OUT VARCHAR2,   -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT VARCHAR2,   -- リターン・コード             --# 固定 #
     ov_errmsg          OUT VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -387,6 +425,9 @@ AS
     lv_return_status    VARCHAR2(1);
     ln_msg_count        NUMBER;
     lv_msg_data         VARCHAR2(2000);
+-- Add 2011.02.23 Ver1.3 Start
+    l_attribute_rec     ar_receipt_api_pub.attribute_rec_type  :=  NULL;  -- attribute用
+-- Add 2011.02.23 Ver1.3 End
 --
     -- *** ローカル・カーソル ***
 --
@@ -409,6 +450,13 @@ AS
     -- =====================================================
     --  API起動 (A-4)
     -- =====================================================
+-- Add 2011.02.23 Ver1.3 Start
+    -- 付加フレックスフィールドの設定
+    l_attribute_rec.attribute_category := TO_CHAR(gn_org_id);           -- 営業単位
+    l_attribute_rec.attribute2         := iv_base_code;                 -- 拠点コード
+    l_attribute_rec.attribute3         := iv_delivery_customer_number;  -- 納品先顧客コード
+-- Add 2011.02.23 Ver1.3 End
+--
     --Call API
     ar_receipt_api_pub.create_cash( 
        p_api_version          =>  1.0
@@ -422,6 +470,9 @@ AS
       ,p_receipt_date         =>  id_payment_date
       ,p_gl_date              =>  id_payment_date
       ,p_cr_id                =>  ln_cr_id
+-- Add 2011.02.23 Ver1.3 Start
+      ,p_attribute_rec        =>  l_attribute_rec           -- 付加フレックス
+-- Add 2011.02.23 Ver1.3 End
     );
 --
     IF (lv_return_status <> 'S') THEN
@@ -521,6 +572,9 @@ AS
     iv_base_code            IN         VARCHAR2,            -- 拠点コード
     id_payment_date         IN         DATE,                -- 入金日
     iv_payment_class        IN         VARCHAR2,            -- 入金区分
+-- Add 2011.02.23 Ver1.3 Start
+    iv_delivery_to_base_code  IN       VARCHAR2,            -- 拠点コード
+-- Add 2011.02.23 Ver1.3 End
     iv_customer_number      IN         VARCHAR2,            -- 顧客コード
     ov_errbuf               OUT NOCOPY VARCHAR2,            -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,            -- リターン・コード             --# 固定 #
@@ -599,16 +653,20 @@ AS
     WHERE  base_code        = iv_base_code        -- 拠点コード
     AND    payment_date     = id_payment_date     -- 入金日
     AND    payment_class    = iv_payment_class    -- 入金区分
--- Modify 2009.10.16 Ver1.2 Start
---    AND    customer_number  = iv_customer_number  -- 顧客コード
-    AND    customer_number  in ( SELECT xchv.ship_account_number  -- 顧客コード
-                                   FROM xxcfr_cust_hierarchy_v xchv
-                                  WHERE iv_customer_number = xchv.cash_account_number
-                                 UNION ALL
-                                 SELECT iv_customer_number  -- 顧客コード
-                                   FROM DUAL
-                                )
--- Modify 2009.10.16 Ver1.2 End
+-- Modify 2011.02.23 Ver1.3 Start
+---- Modify 2009.10.16 Ver1.2 Start
+----    AND    customer_number  = iv_customer_number  -- 顧客コード
+--    AND    customer_number  in ( SELECT xchv.ship_account_number  -- 顧客コード
+--                                   FROM xxcfr_cust_hierarchy_v xchv
+--                                  WHERE iv_customer_number = xchv.cash_account_number
+--                                 UNION ALL
+--                                 SELECT iv_customer_number  -- 顧客コード
+--                                   FROM DUAL
+--                                )
+---- Modify 2009.10.16 Ver1.2 End
+    AND    NVL( delivery_to_base_code , base_code )  = iv_delivery_to_base_code  -- 拠点コード
+    AND    customer_number                           = iv_customer_number        -- 顧客コード
+-- Modify 2011.02.23 Ver1.3 End
     AND    delete_flag      = 'N'                 -- 削除フラグ
     ;
 --
@@ -741,6 +799,10 @@ AS
              hht.payment_date        payment_date,
              hht.payment_class       payment_class,
              NVL(xchv.cash_account_id,cus.cust_account_id)     cust_account_id
+-- Add 2011.02.23 Ver1.3 Start
+            ,NVL( hht.delivery_to_base_code , hht.base_code )  delivery_to_base_code
+            ,hht.customer_number                               delivery_customer_number
+-- Add 2011.02.23 Ver1.3 End
       FROM xxcos_payment    hht,
            hz_cust_accounts cus,
            xxcfr_cust_hierarchy_v xchv
@@ -752,6 +814,10 @@ AS
               ,hht.payment_date
               ,hht.payment_class
               ,NVL(xchv.cash_account_id,cus.cust_account_id)
+-- Add 2011.02.23 Ver1.3 Start
+              ,NVL( hht.delivery_to_base_code , hht.base_code )
+              ,hht.customer_number
+-- Add 2011.02.23 Ver1.3 End
     ;
 -- Modify 2009.10.16 Ver1.2 End
 --
@@ -864,6 +930,10 @@ AS
             ,lt_receipt_name              -- 支払方法名
 -- Modify 2009.07.23 Ver1.1 End
             ,payment_rec.payment_date     -- 入金日
+-- Add 2011.02.23 Ver1.3 Start
+            ,payment_rec.delivery_to_base_code     -- 拠点コード
+            ,payment_rec.delivery_customer_number  -- 納品先顧客コード
+-- Add 2011.02.23 Ver1.3 End
             ,lv_errbuf                    -- エラー・メッセージ           --# 固定 #
             ,lv_retcode                   -- リターン・コード             --# 固定 #
             ,lv_errmsg                    -- ユーザー・エラー・メッセージ --# 固定 #
@@ -879,7 +949,11 @@ AS
                payment_rec.base_code       -- 拠点コード
               ,payment_rec.payment_date    -- 入金日
               ,payment_rec.payment_class   -- 入金区分
-              ,payment_rec.customer_number -- 顧客コード
+-- Modify 2011.02.23 Ver1.3 Start
+--              ,payment_rec.customer_number -- 顧客コード
+              ,payment_rec.delivery_to_base_code     -- 納品先拠点コード
+              ,payment_rec.delivery_customer_number  -- 納品先顧客コード
+-- Modify 2011.02.23 Ver1.3 End
               ,lv_errbuf                   -- エラー・メッセージ           --# 固定 #
               ,lv_retcode                  -- リターン・コード             --# 固定 #
               ,lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
