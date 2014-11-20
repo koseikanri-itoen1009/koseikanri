@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_sl_n01 ON xxwsh.xxwsh_shipping_lines_if ( header_id  ) TABLESPACE xxidx;
