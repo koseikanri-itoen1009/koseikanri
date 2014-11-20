@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 2.2
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,11 +38,12 @@ AS
  *  2008/08/22    1.5   Oracle 山根 一浩 T_S_597対応
  *  2008/09/04    1.6   Oracle 山根 一浩 PT 3-3_23 指摘37対応
  *  2008/09/18    1.7   Oracle 伊藤 ひとみ T_TE080_BPO_400 指摘79,T_S_630対応
- *  2008/11/06    1.8   Oracle 伊藤 ひとみ 統合テスト指摘560対応
- *  2008/12/01    1.9   Oracle 吉田 夏樹 本番#291対応
- *  2008/12/03    2.0   Oracle 宮田      本番#255対応
- *  2008/12/24    2.1   Oracle 椎名 昭圭 本番#827対応
- *  2009/01/21    2.2   Oracle 上原 正好 本番#1010対応
+ *  2008/11/06    1.8   SCS    伊藤 ひとみ 統合テスト指摘560対応
+ *  2008/12/01    1.9   SCS    吉田 夏樹 本番#291対応
+ *  2008/12/03    1.10  SCS    宮田      本番#255対応
+ *  2008/12/24    1.11  SCS    椎名 昭圭 本番#827対応
+ *  2009/01/21    1.12  SCS    上原 正好 本番#1010対応
+ *  2009/05/22    1.13  SCS    伊藤 ひとみ 本番#1398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -770,7 +771,13 @@ AS
 --
       -- 顧客区分取得
       SELECT xcav.customer_class_code                   -- 顧客区分
+-- 2009/05/22 H.Itou Add Start 本番障害#1398
+            ,xcav.party_number                          -- 顧客
+-- 2009/05/22 H.Itou Add End
       INTO   mst_rec.customer_class_code
+-- 2009/05/22 H.Itou Add Start 本番障害#1398 最新の配送先から顧客を取得し直す。
+            ,lr_mst_data_rec.customer_code              -- 顧客
+-- 2009/05/22 H.Itou Add End
       FROM   xxcmn_cust_accounts2_v          xcav       -- 顧客情報View2
             ,xxcmn_cust_acct_sites2_v        xcasv      -- 顧客サイト情報View2
       WHERE  xcasv.party_id                   = xcav.party_id
@@ -779,6 +786,11 @@ AS
       AND    xcasv.start_date_active         <= lr_mst_data_rec.shipped_date
       AND    xcasv.end_date_active           >= lr_mst_data_rec.shipped_date
       AND    xcasv.party_site_number          = lr_mst_data_rec.result_deliver_to
+-- 2009/05/22 H.Itou Add Start 本番障害#1398
+      AND    xcav.account_status              = 'A'
+      AND    xcasv.party_site_status          = 'A'
+      AND    xcasv.cust_acct_site_status      = 'A'
+-- 2009/05/22 H.Itou Add End
       AND    ROWNUM                           = 1;
 --
      -- 顧客配送先への出荷の場合
@@ -1027,7 +1039,13 @@ AS
 --
       -- 顧客区分取得
       SELECT xcav.customer_class_code                   -- 顧客区分
+-- 2009/05/22 H.Itou Add Start 本番障害#1398
+            ,xcav.party_number                          -- 顧客
+-- 2009/05/22 H.Itou Add End
       INTO   mst_rec.customer_class_code
+-- 2009/05/22 H.Itou Add Start 本番障害#1398 最新の配送先から顧客を取得し直す。
+            ,lr_mst_data_rec.customer_code              -- 顧客
+-- 2009/05/22 H.Itou Add End
       FROM   xxcmn_cust_accounts2_v          xcav       -- 顧客情報View2
             ,xxcmn_cust_acct_sites2_v        xcasv      -- 顧客サイト情報View2
       WHERE  xcasv.party_id                   = xcav.party_id
@@ -1036,6 +1054,11 @@ AS
       AND    xcasv.start_date_active         <= lr_mst_data_rec.shipped_date
       AND    xcasv.end_date_active           >= lr_mst_data_rec.shipped_date
       AND    xcasv.party_site_number          = lr_mst_data_rec.deliver_to
+-- 2009/05/22 H.Itou Add Start 本番障害#1398
+      AND    xcav.account_status              = 'A'
+      AND    xcasv.party_site_status          = 'A'
+      AND    xcasv.cust_acct_site_status      = 'A'
+-- 2009/05/22 H.Itou Add End
       AND    ROWNUM                           = 1;
 --
      -- 顧客配送先への出荷の場合
