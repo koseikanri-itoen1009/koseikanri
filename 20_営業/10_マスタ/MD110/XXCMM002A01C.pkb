@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : Issue3.12
+ * Version          : Issue3.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -89,6 +89,18 @@ AS
  *                                       ・継続雇用時の退職処理の退職日設定を変更
  *                                         (既存入社年月日 -> 新入社年月日 - 1)
  *                                       ・PT対応 職責自動割当カーソルの抽出条件を追加
+ *  2009/12/11    1.13 SCS 久保島 豊     障害E_本番_00148 対応
+ *                                       ・lr_check_recの変数初期化処理を追加
+ *                                       障害E_本稼動_00103 対応
+ *                                       ・新所属拠点に紐付く職責がない場合も、職責は無効化するように変更
+ *                                       ・ログの出力内容を所属コード(旧)と勤務地拠点コード(旧)の順番を入れ替えるように変更
+ *                                       ・職責・管理者変更の条件変更
+ *                                         管理者(所属コード(新)が変更された場合)
+ *                                         職責(所属コード(新)、資格コード(新)、職位コード(新)、職種コード(新)、職務コード(新)が変更された場合)
+ *                                       ・対象データ比較チェック変更
+ *                                         (資格名(新・旧)、職位名(新・旧)、職種名(新・旧)、職務名(新・旧)、適用労働名(新・旧)は除く)
+ *                                       ・管理者の導出元を変更
+ *                                         (勤務地拠点コード(新) -> 所属コード(新))
  *
  *****************************************************************************************/
 --
@@ -351,6 +363,9 @@ AS
     ymd_kbn                    VARCHAR2(1),     -- 入社日連携区分('Y':日付変更データ)
     retire_kbn                 VARCHAR2(1),     -- 退職区分('Y':退職するデータ)
     resp_kbn                   VARCHAR2(1),     -- 職責・管理者変更区分('Y':変更するデータ,'N':自動割当不可,NULL：変更しない)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+    supervisor_kbn             VARCHAR2(1),     -- 管理者変更区分('Y':変更する)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
     location_id_kbn            VARCHAR2(1),     -- 事業所変更区分('Y':変更する)
     row_err_message            VARCHAR2(1000),  -- 警告メッセージ
     -- 社員取込インタフェース
@@ -752,7 +767,10 @@ AS
       FROM      per_periods_of_service    ppos           -- 従業員サービス期間マスタ
                ,per_all_assignments_f     paa            -- アサインメントマスタ
       WHERE     paa.person_id                            != in_person_id                    -- 自身以外
-      AND       paa.ass_attribute3                        = iv_office_location_code         -- 勤務地拠点コード(新)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+--      AND       paa.ass_attribute3                        = iv_office_location_code         -- 勤務地拠点コード(新)
+      AND       paa.ass_attribute5                        = iv_office_location_code         -- 所属コード(新)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
       AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) >  0                               -- 職位並順コード（新)
       AND       TO_NUMBER(NVL(paa.ass_attribute11,'99')) <= TO_NUMBER( iv_job_post_order )
       AND       paa.period_of_service_id                  = ppos.period_of_service_id       -- サービスID
@@ -2478,14 +2496,20 @@ AS
       ir_masters_rec.ymd_kbn         := NULL;          -- 日付変更なし
       ir_masters_rec.resp_kbn        := gv_sts_yes;    -- 職責・管理者 変更
       ir_masters_rec.location_id_kbn := gv_sts_yes;    -- 事業所 変更
-      lr_check_rec.license_code      := NULL;          -- 資格コード（新）
-      lr_check_rec.job_post          := NULL;          -- 職位コード（新）
-      lr_check_rec.job_duty          := NULL;          -- 職務コード（新）
-      lr_check_rec.job_type          := NULL;          -- 職種コード（新）
-      lr_check_rec.job_system        := NULL;          -- 適用労働時間制コード（新）
-      lr_check_rec.job_post_order    := NULL;          -- 職位並順コード（新）
-      lr_check_rec.consent_division  := NULL;          -- 承認区分（新）
-      lr_check_rec.agent_division    := NULL;          -- 代行区分（新）
+--
+-- 2009/12/11 Ver1.13 E_本番_00148 modify start by Y.Kuboshima
+-- レコード全てを初期化するように修正
+--      lr_check_rec.license_code      := NULL;          -- 資格コード（新）
+--      lr_check_rec.job_post          := NULL;          -- 職位コード（新）
+--      lr_check_rec.job_duty          := NULL;          -- 職務コード（新）
+--      lr_check_rec.job_type          := NULL;          -- 職種コード（新）
+--      lr_check_rec.job_system        := NULL;          -- 適用労働時間制コード（新）
+--      lr_check_rec.job_post_order    := NULL;          -- 職位並順コード（新）
+--      lr_check_rec.consent_division  := NULL;          -- 承認区分（新）
+--      lr_check_rec.agent_division    := NULL;          -- 代行区分（新）
+      lr_check_rec := NULL;
+-- 2009/12/11 Ver1.13 E_本番_00148 modify end by Y.Kuboshima
+--
       IF (ir_masters_rec.actual_termination_date IS NOT NULL) THEN
         ir_masters_rec.retire_kbn    := gv_sts_yes;    -- 退職データ
       END IF;
@@ -2516,29 +2540,55 @@ AS
       END IF;
       --
       -- 入社年月日・退職年月日以外のデータ差異判断
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+-- 資格名(新・旧)、職位名(新・旧)、職種名(新・旧)、職務名(新・旧)、適用労働名(新・旧)の項目を除く
+--      IF (lr_check_rec.employee_number||lr_check_rec.last_name_kanji||lr_check_rec.first_name_kanji
+--        ||lr_check_rec.last_name||lr_check_rec.first_name||lr_check_rec.sex||lr_check_rec.employee_division
+--        ||lr_check_rec.location_code||lr_check_rec.change_code
+--        ||lr_check_rec.announce_date||lr_check_rec.office_location_code||lr_check_rec.license_code||lr_check_rec.license_name
+--        ||lr_check_rec.job_post||lr_check_rec.job_post_name||lr_check_rec.job_duty||lr_check_rec.job_duty_name
+--        ||lr_check_rec.job_type||lr_check_rec.job_type_name||lr_check_rec.job_system||lr_check_rec.job_system_name
+--        ||lr_check_rec.job_post_order||lr_check_rec.consent_division||lr_check_rec.agent_division
+--        ||lr_check_rec.office_location_code_old||lr_check_rec.location_code_old||lr_check_rec.license_code_old||lr_check_rec.license_code_name_old
+--        ||lr_check_rec.job_post_old||lr_check_rec.job_post_name_old||lr_check_rec.job_duty_old||lr_check_rec.job_duty_name_old
+--        ||lr_check_rec.job_type_old||lr_check_rec.job_type_name_old||lr_check_rec.job_system_old||lr_check_rec.job_system_name_old
+--        ||lr_check_rec.job_post_order_old||lr_check_rec.consent_division_old||lr_check_rec.agent_division_old)
+--          =
+--         (ir_masters_rec.employee_number||ir_masters_rec.last_name_kanji||ir_masters_rec.first_name_kanji
+--        ||ir_masters_rec.last_name||ir_masters_rec.first_name||ir_masters_rec.sex||ir_masters_rec.employee_division
+--        ||ir_masters_rec.location_code||ir_masters_rec.change_code
+--        ||ir_masters_rec.announce_date||ir_masters_rec.office_location_code||ir_masters_rec.license_code||ir_masters_rec.license_name
+--        ||ir_masters_rec.job_post||ir_masters_rec.job_post_name||ir_masters_rec.job_duty||ir_masters_rec.job_duty_name
+--        ||ir_masters_rec.job_type||ir_masters_rec.job_type_name||ir_masters_rec.job_system||ir_masters_rec.job_system_name
+--        ||ir_masters_rec.job_post_order||ir_masters_rec.consent_division||ir_masters_rec.agent_division
+--        ||ir_masters_rec.office_location_code_old||ir_masters_rec.location_code_old||ir_masters_rec.license_code_old||ir_masters_rec.license_code_name_old
+--        ||ir_masters_rec.job_post_old||ir_masters_rec.job_post_name_old||ir_masters_rec.job_duty_old||ir_masters_rec.job_duty_name_old
+--        ||ir_masters_rec.job_type_old||ir_masters_rec.job_type_name_old||ir_masters_rec.job_system_old||ir_masters_rec.job_system_name_old
+--        ||ir_masters_rec.job_post_order_old||ir_masters_rec.consent_division_old||ir_masters_rec.agent_division_old) THEN
       IF (lr_check_rec.employee_number||lr_check_rec.last_name_kanji||lr_check_rec.first_name_kanji
         ||lr_check_rec.last_name||lr_check_rec.first_name||lr_check_rec.sex||lr_check_rec.employee_division
         ||lr_check_rec.location_code||lr_check_rec.change_code
-        ||lr_check_rec.announce_date||lr_check_rec.office_location_code||lr_check_rec.license_code||lr_check_rec.license_name
-        ||lr_check_rec.job_post||lr_check_rec.job_post_name||lr_check_rec.job_duty||lr_check_rec.job_duty_name
-        ||lr_check_rec.job_type||lr_check_rec.job_type_name||lr_check_rec.job_system||lr_check_rec.job_system_name
+        ||lr_check_rec.announce_date||lr_check_rec.office_location_code||lr_check_rec.license_code
+        ||lr_check_rec.job_post||lr_check_rec.job_duty
+        ||lr_check_rec.job_type||lr_check_rec.job_system
         ||lr_check_rec.job_post_order||lr_check_rec.consent_division||lr_check_rec.agent_division
-        ||lr_check_rec.office_location_code_old||lr_check_rec.location_code_old||lr_check_rec.license_code_old||lr_check_rec.license_code_name_old
-        ||lr_check_rec.job_post_old||lr_check_rec.job_post_name_old||lr_check_rec.job_duty_old||lr_check_rec.job_duty_name_old
-        ||lr_check_rec.job_type_old||lr_check_rec.job_type_name_old||lr_check_rec.job_system_old||lr_check_rec.job_system_name_old
+        ||lr_check_rec.office_location_code_old||lr_check_rec.location_code_old||lr_check_rec.license_code_old
+        ||lr_check_rec.job_post_old||lr_check_rec.job_duty_old
+        ||lr_check_rec.job_type_old||lr_check_rec.job_system_old
         ||lr_check_rec.job_post_order_old||lr_check_rec.consent_division_old||lr_check_rec.agent_division_old)
           =
          (ir_masters_rec.employee_number||ir_masters_rec.last_name_kanji||ir_masters_rec.first_name_kanji
         ||ir_masters_rec.last_name||ir_masters_rec.first_name||ir_masters_rec.sex||ir_masters_rec.employee_division
         ||ir_masters_rec.location_code||ir_masters_rec.change_code
-        ||ir_masters_rec.announce_date||ir_masters_rec.office_location_code||ir_masters_rec.license_code||ir_masters_rec.license_name
-        ||ir_masters_rec.job_post||ir_masters_rec.job_post_name||ir_masters_rec.job_duty||ir_masters_rec.job_duty_name
-        ||ir_masters_rec.job_type||ir_masters_rec.job_type_name||ir_masters_rec.job_system||ir_masters_rec.job_system_name
+        ||ir_masters_rec.announce_date||ir_masters_rec.office_location_code||ir_masters_rec.license_code
+        ||ir_masters_rec.job_post||ir_masters_rec.job_duty
+        ||ir_masters_rec.job_type||ir_masters_rec.job_system
         ||ir_masters_rec.job_post_order||ir_masters_rec.consent_division||ir_masters_rec.agent_division
-        ||ir_masters_rec.office_location_code_old||ir_masters_rec.location_code_old||ir_masters_rec.license_code_old||ir_masters_rec.license_code_name_old
-        ||ir_masters_rec.job_post_old||ir_masters_rec.job_post_name_old||ir_masters_rec.job_duty_old||ir_masters_rec.job_duty_name_old
-        ||ir_masters_rec.job_type_old||ir_masters_rec.job_type_name_old||ir_masters_rec.job_system_old||ir_masters_rec.job_system_name_old
+        ||ir_masters_rec.office_location_code_old||ir_masters_rec.location_code_old||ir_masters_rec.license_code_old
+        ||ir_masters_rec.job_post_old||ir_masters_rec.job_duty_old
+        ||ir_masters_rec.job_type_old||ir_masters_rec.job_system_old
         ||ir_masters_rec.job_post_order_old||ir_masters_rec.consent_division_old||ir_masters_rec.agent_division_old) THEN
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
         --
         ir_masters_rec.proc_kbn := NULL;  -- 連携なし（差異なし）
         ir_masters_rec.resp_kbn := NULL;  -- 職責・管理者変更なし
@@ -2551,6 +2601,9 @@ AS
         IF (NVL(lr_check_rec.location_code, ' ') <> NVL(ir_masters_rec.location_code, ' ')) THEN
 -- 2009/09/04 Ver1.11 modify end by Yutaka.Kuboshima
           ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+          ir_masters_rec.supervisor_kbn := gv_sts_yes;  -- 管理者変更あり
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
         END IF;
         -- 勤務地拠点コード(新)の変更判断
 -- 2009/09/04 Ver1.11 modify start by Yutaka.Kuboshima
@@ -2610,6 +2663,10 @@ AS
 -- Ver1.6 Del  2009/06/23  T1_1389対応  管理者取得場所を更新の直前に変更のため削除
 --      ir_masters_rec.supervisor_id        := lr_check_rec.supervisor_id;             -- 管理者
 -- End1.6
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+-- 変更前の管理者情報を取得しておく
+      ir_masters_rec.supervisor_id        := lr_check_rec.supervisor_id;             -- 管理者
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
       ir_masters_rec.effective_start_date := lr_check_rec.paa_effective_start_date;  -- 登録年月日
       ir_masters_rec.effective_end_date   := lr_check_rec.paa_effective_end_date;    -- 登録期限年月日
       ir_masters_rec.paa_version          := lr_check_rec.paa_version;               -- バージョン番号
@@ -3382,7 +3439,10 @@ AS
       END IF;
       IF ( TO_NUMBER( lv_job_post_order ) >= 0 )
         AND ( TO_NUMBER( lv_job_post_order ) <= 99 ) THEN
-        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+          NULL;
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
       ELSE
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -3521,7 +3581,9 @@ AS
 --      ELSE
 -- End1.6
       IF ( TO_NUMBER( lv_job_post_order ) < 0 ) THEN
-        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+-- 2009/12/11 Ver1.13 E_本稼動_00103 delete start by Y.Kuboshima
+--        ir_masters_rec.resp_kbn := gv_sts_yes;  -- 職責・管理者変更あり
+-- 2009/12/11 Ver1.13 E_本稼動_00103 delete end by Y.Kuboshima
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_data_check_err
@@ -4327,6 +4389,9 @@ AS
           IF (ir_masters_rec.hire_date > lr_check_rec.actual_termination_date) THEN
             ir_masters_rec.ymd_kbn := gv_sts_yes;   -- 入社日連携区分('Y':日付変更データ)
             ir_masters_rec.resp_kbn := gv_sts_yes;   -- 職責・管理者変更区分('Y':日付変更データ)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+            ir_masters_rec.supervisor_kbn := gv_sts_yes;
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
           ELSE
           -- 社員インタフェース.入社日≦サービス期間マスタ.退職日の場合、エラーとします。
             lv_errmsg := xxccp_common_pkg.get_msg(
@@ -4640,8 +4705,13 @@ AS
                     gt_report_warn_tbl(ln_disp_cnt).job_post_order||lv_sep_com||
                     gt_report_warn_tbl(ln_disp_cnt).consent_division||lv_sep_com||
                     gt_report_warn_tbl(ln_disp_cnt).agent_division||lv_sep_com||
-                    gt_report_warn_tbl(ln_disp_cnt).office_location_code_old||lv_sep_com||
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+-- ログの出力内容の順番を入れ替え
+--                    gt_report_warn_tbl(ln_disp_cnt).office_location_code_old||lv_sep_com||
+--                    gt_report_warn_tbl(ln_disp_cnt).location_code_old||lv_sep_com||
                     gt_report_warn_tbl(ln_disp_cnt).location_code_old||lv_sep_com||
+                    gt_report_warn_tbl(ln_disp_cnt).office_location_code_old||lv_sep_com||
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
                     gt_report_warn_tbl(ln_disp_cnt).license_code_old||lv_sep_com||
                     gt_report_warn_tbl(ln_disp_cnt).license_code_name_old||lv_sep_com||
                     gt_report_warn_tbl(ln_disp_cnt).job_post_old||lv_sep_com||
@@ -4713,8 +4783,13 @@ AS
                     gt_report_normal_tbl(ln_disp_cnt).job_post_order||lv_sep_com||
                     gt_report_normal_tbl(ln_disp_cnt).consent_division||lv_sep_com||
                     gt_report_normal_tbl(ln_disp_cnt).agent_division||lv_sep_com||
-                    gt_report_normal_tbl(ln_disp_cnt).office_location_code_old||lv_sep_com||
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+-- ログの出力内容の順番を入れ替え
+--                    gt_report_normal_tbl(ln_disp_cnt).office_location_code_old||lv_sep_com||
+--                    gt_report_normal_tbl(ln_disp_cnt).location_code_old||lv_sep_com||
                     gt_report_normal_tbl(ln_disp_cnt).location_code_old||lv_sep_com||
+                    gt_report_normal_tbl(ln_disp_cnt).office_location_code_old||lv_sep_com||
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
                     gt_report_normal_tbl(ln_disp_cnt).license_code_old||lv_sep_com||
                     gt_report_normal_tbl(ln_disp_cnt).license_code_name_old||lv_sep_com||
                     gt_report_normal_tbl(ln_disp_cnt).job_post_old||lv_sep_com||
@@ -5605,25 +5680,49 @@ AS
     );
 -- 2009/08/06 Ver1.10 障害0000510,0000910 add end by Yutaka.Kuboshima
 --
--- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
-    -- 管理者取得
-    get_supervisor(
-      ir_masters_rec.person_id               -- IN ：従業員ID
-     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
-     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
-     ,ir_masters_rec.hire_date               -- IN ：入社日
-     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
-     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
-     ,lv_retcode                             -- リターン・コード             --# 固定 #
-     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
-    );
--- End1.6
--- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
-    -- 最上位の管理者の場合、管理者はNULLに設定します
-    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
-      ir_masters_rec.supervisor_id := NULL;
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+-- 所属コード(新)、職位並び順コード(新)が変更された場合のみ管理者を取得する
+---- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
+--    -- 管理者取得
+--    get_supervisor(
+--      ir_masters_rec.person_id               -- IN ：従業員ID
+--     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+--     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+--     ,ir_masters_rec.hire_date               -- IN ：入社日
+--     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+--     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+--     ,lv_retcode                             -- リターン・コード             --# 固定 #
+--     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+---- End1.6
+---- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
+--    -- 最上位の管理者の場合、管理者はNULLに設定します
+--    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+--      ir_masters_rec.supervisor_id := NULL;
+--    END IF;
+---- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
+--
+    IF (ir_masters_rec.supervisor_kbn = gv_sts_yes) THEN
+      -- 管理者取得
+      get_supervisor(
+        ir_masters_rec.person_id               -- IN ：従業員ID
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+--       ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+       ,ir_masters_rec.location_code           -- IN ：所属コード(新)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
+       ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+       ,ir_masters_rec.hire_date               -- IN ：入社日
+       ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+       ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode                             -- リターン・コード             --# 固定 #
+       ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      -- 最上位の管理者の場合、管理者はNULLに設定します
+      IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+        ir_masters_rec.supervisor_id := NULL;
+      END IF;
     END IF;
--- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
     --
     -- アサインメントマスタ(API)
     BEGIN
@@ -6311,25 +6410,49 @@ AS
     );
 -- 2009/08/06 Ver1.10 障害0000510 add end by Yutaka.Kuboshima
 --
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+-- 所属コード(新)、職位並び順コード(新)が変更された場合のみ管理者を取得する
 -- Ver1.6  Add  2009/06/22  管理者取得処理を追加  T1_1389
-    -- 管理者取得
-    get_supervisor(
-      ir_masters_rec.person_id               -- IN ：従業員ID
-     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
-     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
-     ,ir_masters_rec.hire_date               -- IN ：入社日
-     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
-     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
-     ,lv_retcode                             -- リターン・コード             --# 固定 #
-     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
-    );
--- End1.6
--- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
-    -- 最上位の管理者の場合、管理者はNULLに設定します
-    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
-      ir_masters_rec.supervisor_id := NULL;
+--    -- 管理者取得
+--    get_supervisor(
+--      ir_masters_rec.person_id               -- IN ：従業員ID
+--     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+--     ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+--     ,ir_masters_rec.hire_date               -- IN ：入社日
+--     ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+--     ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+--     ,lv_retcode                             -- リターン・コード             --# 固定 #
+--     ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+---- End1.6
+---- 2009/08/06 Ver1.10 障害0000794 add start by Yutaka.Kuboshima
+--    -- 最上位の管理者の場合、管理者はNULLに設定します
+--    IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+--      ir_masters_rec.supervisor_id := NULL;
+--    END IF;
+---- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
+--
+    IF (ir_masters_rec.supervisor_kbn = gv_sts_yes) THEN
+      -- 管理者取得
+      get_supervisor(
+        ir_masters_rec.person_id               -- IN ：従業員ID
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+--       ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+       ,ir_masters_rec.location_code           -- IN ：所属コード(新)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
+       ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
+       ,ir_masters_rec.hire_date               -- IN ：入社日
+       ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
+       ,lv_errbuf                              -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode                             -- リターン・コード             --# 固定 #
+       ,lv_errmsg                              -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      -- 最上位の管理者の場合、管理者はNULLに設定します
+      IF (ir_masters_rec.employee_number = gv_supervisor) THEN
+        ir_masters_rec.supervisor_id := NULL;
+      END IF;
     END IF;
--- 2009/08/06 Ver1.10 障害0000794 add end by Yutaka.Kuboshima
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
     --
     -- アサインメントマスタ(API)
     BEGIN
@@ -6689,7 +6812,10 @@ AS
     -- 管理者取得
     get_supervisor(
       ir_masters_rec.person_id               -- IN ：従業員ID
-     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+--     ,ir_masters_rec.office_location_code    -- IN ：勤務地拠点コード(新)
+     ,ir_masters_rec.location_code           -- IN ：所属コード(新)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
      ,ir_masters_rec.job_post_order          -- IN ：職位並順コード(新)
      ,ir_masters_rec.hire_date               -- IN ：入社日
      ,ir_masters_rec.supervisor_id           -- OUT：管理者ID
@@ -7091,7 +7217,11 @@ AS
       END IF;
     END IF;
     --
-    IF  (ir_masters_rec.resp_kbn = gv_sts_yes)
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify start by Y.Kuboshima
+-- 職責・管理者変更区分が'N'の場合も対象とする
+--    IF  (ir_masters_rec.resp_kbn = gv_sts_yes)
+    IF  (ir_masters_rec.resp_kbn IN (gv_sts_yes, gv_sts_no))
+-- 2009/12/11 Ver1.13 E_本稼動_00103 modify end by Y.Kuboshima
      OR (ir_masters_rec.retire_kbn = gv_sts_yes) THEN  --退職者
       --ユーザ職責マスタの無効化
       delete_resp_all(
@@ -8362,6 +8492,9 @@ AS
         l_people_if_rec.ymd_kbn                  := NULL;                                     -- 入社日連携区分
         l_people_if_rec.retire_kbn               := NULL;                                     -- 退職区分
         l_people_if_rec.resp_kbn                 := NULL;                                     -- 職責・管理者変更区分
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add start by Y.Kuboshima
+        l_people_if_rec.supervisor_kbn           := NULL;                                     -- 管理者変更区分
+-- 2009/12/11 Ver1.13 E_本稼動_00103 add end by Y.Kuboshima
         --
         -- 取得I/Fデータ格納
         l_people_if_rec.employee_number          := in_if_rec.employee_number;                -- 社員番号
