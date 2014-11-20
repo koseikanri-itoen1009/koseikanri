@@ -1,0 +1,15 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_sp_decision_headers_n02
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/08/07    1.0  M.Maruyama    èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_sp_decision_headers_n02 ON xxcso.xxcso_sp_decision_headers (UPPER(sp_decision_number)) TABLESPACE xxidx2;
+/
