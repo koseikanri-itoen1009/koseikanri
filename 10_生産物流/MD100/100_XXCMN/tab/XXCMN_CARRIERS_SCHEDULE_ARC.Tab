@@ -1,0 +1,166 @@
+CREATE TABLE xxcmn.xxcmn_carriers_schedule_arc (
+     transaction_id                 NUMBER        NOT NULL
+    ,transaction_type               VARCHAR2(2)   NOT NULL
+    ,mixed_type                     VARCHAR2(2)   NOT NULL
+    ,delivery_no                    VARCHAR2(12)  NOT NULL
+    ,default_line_number            VARCHAR2(12)
+    ,carrier_id                     NUMBER
+    ,carrier_code                   VARCHAR2(4)
+    ,deliver_from_id                NUMBER
+    ,deliver_from                   VARCHAR2(4)
+    ,deliver_to_id                  NUMBER
+    ,deliver_to                     VARCHAR2(9)
+    ,deliver_to_code_class          VARCHAR2(2)
+    ,delivery_type                  VARCHAR2(2)
+    ,order_type_id                  NUMBER
+    ,auto_process_type              VARCHAR2(1)
+    ,schedule_ship_date             DATE
+    ,schedule_arrival_date          DATE
+    ,description                    VARCHAR2(60)
+    ,payment_freight_flag           VARCHAR2(1)
+    ,demand_freight_flag            VARCHAR2(1)
+    ,sum_loading_weight             NUMBER
+    ,sum_loading_capacity           NUMBER
+    ,loading_efficiency_weight      NUMBER
+    ,loading_efficiency_capacity    NUMBER
+    ,based_weight                   NUMBER
+    ,based_capacity                 NUMBER
+    ,result_freight_carrier_id      NUMBER
+    ,result_freight_carrier_code    VARCHAR2(4)
+    ,result_shipping_method_code    VARCHAR2(2)
+    ,shipped_date                   DATE
+    ,arrival_date                   DATE
+    ,weight_capacity_class          VARCHAR2(1)
+    ,freight_charge_type            VARCHAR2(1)
+    ,slip_number                    VARCHAR2(20)
+    ,small_quantity                 NUMBER
+    ,label_quantity                 NUMBER
+    ,prod_class                     VARCHAR2(2)
+    ,non_slip_class                 VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,archive_date                   DATE
+    ,archive_request_id             NUMBER(15)
+    ,purge_date                     DATE
+    ,purge_request_id               NUMBER(15)
+  ,CONSTRAINT XXCMN_CARRIERS_SCHEDULE_ARC_PK PRIMARY KEY (transaction_id)
+   USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE xxidx)
+  PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING 
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+  TABLESPACE xxdata
+/
+COMMENT ON TABLE xxcmn.xxcmn_carriers_schedule_arc IS '配車配送計画（アドオン）バックアップ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.transaction_id               IS 'トランザクションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.transaction_type             IS '処理種別（配車）'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.mixed_type                   IS '混載種別'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.delivery_no                  IS '配送No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.default_line_number          IS '基準明細No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.carrier_id                   IS '運送業者ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.carrier_code                 IS '運送業者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.deliver_from_id              IS '配送元ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.deliver_from                 IS '配送元'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.deliver_to_id                IS '配送先ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.deliver_to                   IS '配送先'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.deliver_to_code_class        IS '配送先コード区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.delivery_type                IS '配送区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.order_type_id                IS '出庫形態'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.auto_process_type            IS '自動配車対象区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.schedule_ship_date           IS '出庫予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.schedule_arrival_date        IS '着荷予定日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.description                  IS '摘要'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.payment_freight_flag         IS '支払運賃計算対象フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.demand_freight_flag          IS '請求運賃計算対象フラグ'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.sum_loading_weight           IS '積載重量合計'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.sum_loading_capacity         IS '積載容積合計'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.loading_efficiency_weight    IS '重量積載効率'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.loading_efficiency_capacity  IS '容積積載効率'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.based_weight                 IS '基本重量'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.based_capacity               IS '基本容積'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.result_freight_carrier_id    IS '運送業者_実績ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.result_freight_carrier_code  IS '運送業者_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.result_shipping_method_code  IS '配送区分_実績'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.shipped_date                 IS '出荷日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.arrival_date                 IS '着荷日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.weight_capacity_class        IS '重量容積区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.freight_charge_type          IS '運賃形態'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.slip_number                  IS '送り状No'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.small_quantity               IS '小口個数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.label_quantity               IS 'ラベル枚数'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.prod_class                   IS '商品区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.non_slip_class               IS '伝票なし配車区分'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.created_by                   IS '作成者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.creation_date                IS '作成日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.last_updated_by              IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.last_update_date             IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.last_update_login            IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.request_id                   IS '要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.program_application_id       IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.program_id                   IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.program_update_date          IS 'プログラム更新日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.archive_date                 IS 'バックアップ登録日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.archive_request_id           IS 'バックアップ要求ID'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.purge_date                   IS 'パージ実行日'
+/
+COMMENT ON COLUMN xxcmn.xxcmn_carriers_schedule_arc.purge_request_id             IS 'パージ要求ID'
+/
