@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A03C(body)
  * Description      : 情報系システムへの連携の為、EBSの月次在庫受払表(アドオン)をCSVファイルに出力
  * MD.050           : 月別受払残高情報系連携 <MD050_COI_008_A03>
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2010/02/03    1.3   H.Sasaki         [E_本稼動_01424] 数量項目が全て０のレコードは
  *                                                        連携しないよう修正
  *  2010/03/10    1.4   H.Sasaki         [E_本稼動_01856] 月初数量が取得できない場合0を設定
+ *  2010/05/21    1.5   N.Abe            [E_本稼動_02770] 消化VD補充の入出庫を追加
  *
  *****************************************************************************************/
 --
@@ -294,6 +295,10 @@ AS
            , xirs.customer_support_ss_b    AS customer_support_ss_b     -- 顧客協賛見本出庫振戻
            , xirs.ccm_sample_ship          AS ccm_sample_ship           -- 顧客広告宣伝費A自社商品
            , xirs.ccm_sample_ship_b        AS ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+-- == 2010/05/21 V1.5 Added START ===============================================================
+           , xirs.vd_supplement_stock      AS vd_supplement_stock       -- 消化VD補充入庫
+           , xirs.vd_supplement_ship       AS vd_supplement_ship        -- 消化VD補充出庫
+-- == 2010/05/21 V1.5 Added END   ===============================================================
            , xirs.book_inventory_quantity  AS book_inventory_quantity   -- 帳簿在庫数
            , xirs.last_update_date         AS last_update_date          -- 最終更新日
            , msib.segment1                 AS segment1                  -- 品目コード
@@ -962,9 +967,14 @@ AS
     -- 工場入庫  = カーソルで抽出した工場入庫 - 工場入庫振戻
     ln_factory_stock := NVL( ir_recept_month_cur.factory_stock , 0 ) - NVL( ir_recept_month_cur.factory_stock_b , 0 );
     --
-    -- 拠点内入庫  = カーソルで抽出した倉庫からの入庫 + 営業車からの入庫 + 入出庫＿その他入庫
-    ln_sum_stock := NVL( ir_recept_month_cur.warehouse_stock , 0 )
-                       + NVL( ir_recept_month_cur.truck_stock , 0 ) + NVL( ir_recept_month_cur.others_stock , 0 );
+-- == 2010/05/21 V1.5 Modified START ===============================================================
+--    -- 拠点内入庫  = カーソルで抽出した倉庫からの入庫 + 営業車からの入庫 + 入出庫＿その他入庫
+--    ln_sum_stock := NVL( ir_recept_month_cur.warehouse_stock , 0 )
+--                       + NVL( ir_recept_month_cur.truck_stock , 0 ) + NVL( ir_recept_month_cur.others_stock , 0 );
+    -- 拠点内入庫  = カーソルで抽出した倉庫からの入庫 + 営業車からの入庫 + 入出庫＿その他入庫 + 消化VD補充入庫
+    ln_sum_stock := NVL( ir_recept_month_cur.warehouse_stock , 0 ) + NVL( ir_recept_month_cur.truck_stock , 0 )
+                       + NVL( ir_recept_month_cur.others_stock , 0 ) + NVL( ir_recept_month_cur.vd_supplement_stock , 0 );
+-- == 2010/05/21 V1.5 Modified END   ===============================================================
     --
     -- 売上出庫  = カーソルで抽出した売上出庫 - 売上出庫振戻
     ln_sales_shipped := NVL( ir_recept_month_cur.sales_shipped , 0 ) - NVL( ir_recept_month_cur.sales_shipped_b , 0 );
@@ -972,9 +982,14 @@ AS
     -- 顧客返品  = カーソルで抽出した返品ー返品振戻
     ln_return_goods := NVL( ir_recept_month_cur.return_goods , 0 ) - NVL( ir_recept_month_cur.return_goods_b , 0 );
     --
-    -- 拠点内出庫  = カーソルで抽出した倉庫へ出庫 + 営業車へ出庫 + 入出庫＿その他出庫
-    ln_sum_ship := NVL( ir_recept_month_cur.warehouse_ship , 0 )
-                     + NVL( ir_recept_month_cur.truck_ship , 0 ) + NVL( ir_recept_month_cur.others_ship , 0 );
+-- == 2010/05/21 V1.5 Modified START ===============================================================
+--    -- 拠点内出庫  = カーソルで抽出した倉庫へ出庫 + 営業車へ出庫 + 入出庫＿その他出庫
+--    ln_sum_ship := NVL( ir_recept_month_cur.warehouse_ship , 0 )
+--                     + NVL( ir_recept_month_cur.truck_ship , 0 ) + NVL( ir_recept_month_cur.others_ship , 0 );
+    -- 拠点内出庫  = カーソルで抽出した倉庫へ出庫 + 営業車へ出庫 + 入出庫＿その他出庫 + 消化VD補充出庫
+    ln_sum_ship := NVL( ir_recept_month_cur.warehouse_ship , 0 ) + NVL( ir_recept_month_cur.truck_ship , 0 )
+                      + NVL( ir_recept_month_cur.others_ship , 0 ) + NVL( ir_recept_month_cur.vd_supplement_ship , 0 );
+-- == 2010/05/21 V1.5 Modified END   ===============================================================
     --
 -- == 2010/01/06 V1.2 Modified START ===============================================================
 --    -- 基準在庫変更  = カーソルで抽出した基準在庫変更入庫 + 基準在庫変更出庫
