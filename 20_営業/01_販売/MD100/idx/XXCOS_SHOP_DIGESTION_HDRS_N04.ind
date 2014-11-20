@@ -1,0 +1,7 @@
+CREATE INDEX xxcos.xxcos_shop_digestion_hdrs_n04 ON xxcos.xxcos_shop_digestion_hdrs (
+   uncalculate_class             --未計算区分
+  ,sales_result_creation_flag    --販売実績作成済フラグ
+  ,customer_number               --顧客コード
+)
+TABLESPACE xxidx2
+;
