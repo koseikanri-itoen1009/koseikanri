@@ -1,0 +1,2 @@
+CREATE INDEX inv.xxcos_mtst_n01 ON mtl_txn_source_types ( transaction_source_type_name ) TABLESPACE apps_ts_tx_idx
+/

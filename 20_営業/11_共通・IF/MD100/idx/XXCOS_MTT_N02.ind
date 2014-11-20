@@ -1,0 +1,2 @@
+CREATE INDEX inv.xxcos_mtt_n02 ON mtl_transaction_types ( transaction_type_name ) TABLESPACE apps_ts_tx_idx
+/
