@@ -33,7 +33,11 @@ AS
   , xim2v.item_no                   item_no                -- 品目コード
   , xim2v.item_short_name           item_short_name        -- 品目(略称)
   , xim2v.item_um                   item_um                -- 単位
-  , gmd.original_qty                original_qty           -- 計画数
+-- 2009/01/20 D.Nihei Mod Start
+--  , gmd.original_qty                original_qty           -- 計画数
+  , NVL(gmd.attribute25, gmd.original_qty)
+                                    original_qty           -- 計画数
+-- 2009/01/20 D.Nihei Mod End
   , TO_NUMBER( gmd.attribute7 )     request_qty_all        -- 依頼総数
   , NVL( xmd_sq.instructions_qty, 0 )
                                     instructions_qty_all   -- 指示総数

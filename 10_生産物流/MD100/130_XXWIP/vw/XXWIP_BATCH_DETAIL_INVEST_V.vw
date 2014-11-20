@@ -37,7 +37,11 @@ AS
   , xim2v.item_um                   item_um                -- 単位
   , gbsi_sq.slit                    slit                   -- 投入口
   , gbsi_sq.slit_name               slit_name              -- 投入口(名称)
-  , gmd.original_qty                original_qty           -- 計画数
+-- 2009/01/20 D.Nihei Mod Start
+--  , gmd.original_qty                original_qty           -- 計画数
+  , NVL(gmd.attribute25, gmd.original_qty)
+                                    original_qty           -- 計画数
+-- 2009/01/20 D.Nihei Mod End
   , TO_NUMBER( gmd.attribute7 )     request_qty_all        -- 依頼総数
   , NVL( xmd_sq.instructions_qty, 0 )
                                     instructions_qty_all   -- 指示総数
