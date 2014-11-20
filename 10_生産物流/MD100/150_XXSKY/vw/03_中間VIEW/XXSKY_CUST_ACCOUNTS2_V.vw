@@ -24,7 +24,9 @@ SELECT  HP.party_id
  WHERE  HP.party_id = HCA.party_id
    AND  HP.party_id = XP.party_id
    AND  HP.status  = 'A'
-   AND  HCA.status = 'A'
+-- 2009/10/02 DEL START
+--   AND  HCA.status = 'A'
+-- 2009/10/02 DEL END
 /
 COMMENT ON TABLE APPS.XXSKY_CUST_ACCOUNTS2_V IS 'SKYLINKópíÜä‘VIEW å⁄ãqèÓïÒVIEW2'
 /

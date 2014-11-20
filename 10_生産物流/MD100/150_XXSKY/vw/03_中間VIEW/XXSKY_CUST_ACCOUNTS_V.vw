@@ -22,7 +22,9 @@ SELECT  HP.party_id
  WHERE  HP.party_id = HCA.party_id
    AND  HP.party_id = XP.party_id
    AND  HP.status  = 'A'
-   AND  HCA.status = 'A'
+-- 2009/10/02 DEL START
+--   AND  HCA.status = 'A'
+-- 2009/10/02 DEL END
    AND  XP.start_date_active <= TRUNC(SYSDATE)
    AND  XP.end_date_active   >= TRUNC(SYSDATE)
 /

@@ -157,8 +157,29 @@ SELECT
        ,FLV10.meaning                    --拠点_出荷管理元区分名
        ,HCA.attribute6                   --拠点_倉替対象可否区分
        ,FLV11.meaning                    --拠点_倉替対象可否区分名
-       ,HCA.attribute12                  --顧客拠点_中止客申請フラグ
-       ,FLV12.meaning                    --顧客拠点_中止客申請フラグ名
+-- 2009/10/27 Y.Kawano Mod Start 本番#1675
+--       ,HCA.attribute12                  --顧客拠点_中止客申請フラグ
+       ,CASE hca.customer_class_code
+        WHEN '1' THEN
+          CASE hp.duns_number_c
+          WHEN '30' THEN '0'
+          WHEN '40' THEN '0'
+          WHEN '99' THEN '0'
+          ELSE '2'
+          END
+        WHEN '10' THEN
+          CASE hp.duns_number_c
+          WHEN '30' THEN '0'
+          WHEN '40' THEN '0'
+          ELSE '2'
+          END
+        END cust_enable_flag               --顧客拠点_中止客申請フラグ
+--       ,FLV12.meaning                    --顧客拠点_中止客申請フラグ名
+       ,CASE hca.customer_class_code
+        WHEN '1'  THEN FLV12.meaning
+        WHEN '10' THEN FLV122.meaning
+        END meaning                      --顧客拠点_中止客申請フラグ名
+-- 2009/10/27 Y.Kawano Mod End 本番#1675
        ,HCA.attribute13                  --拠点_ドリンク拠点カテゴリ
        ,FLV13.meaning                    --拠点_ドリンク拠点カテゴリ名
        ,HCA.attribute16                  --拠点_リーフ拠点カテゴリ
@@ -262,6 +283,9 @@ SELECT
        ,fnd_lookup_values       FLV10    --クイックコード(拠点_出荷管理元区分名)
        ,fnd_lookup_values       FLV11    --クイックコード(拠点_倉替対象可否区分名)
        ,fnd_lookup_values       FLV12    --クイックコード(顧客拠点_中止客申請フラグ名)
+-- 2009/10/27 Y.Kawano Mod Start 本番#1675
+       ,fnd_lookup_values       FLV122   --クイックコード(顧客拠点_中止客申請フラグ名)
+-- 2009/10/27 Y.Kawano Mod End   本番#1675
        ,fnd_lookup_values       FLV13    --クイックコード(拠点_ドリンク拠点カテゴリ名)
        ,fnd_lookup_values       FLV14    --クイックコード(拠点_リーフ拠点カテゴリ名)
        ,fnd_lookup_values       FLV15    --クイックコード(拠点_出荷依頼自動作成区分名)
@@ -285,7 +309,9 @@ SELECT
         HP.status = 'A'                                    --ステータス：有効
    AND  XP.party_id = HP.party_id
    --顧客マスタ（顧客･拠点情報取得）との結合
-   AND  HCA.status = 'A'                                   --ステータス：有効
+-- 2009/10/02 DEL START
+--   AND  HCA.status = 'A'                                   --ステータス：有効
+-- 2009/10/02 DEL END
 -- 2009/03/30 H.Iida Add Start 本番障害#1346
    AND  HCA.customer_class_code IN ('1', '10')
 -- 2009/03/30 H.Iida Add End
@@ -358,7 +384,13 @@ SELECT
    --中止客申請フラグ名取得
    AND  FLV12.language(+)    = 'JA'
    AND  FLV12.lookup_type(+) = 'XXCMN_CUST_ENABLE_FLAG'
-   AND  FLV12.lookup_code(+) = HCA.attribute12
+-- 2009/10/27 Y.Kawano Mod Start 本番#1675
+--   AND  FLV12.lookup_code(+) = HCA.attribute12
+   AND  FLV12.lookup_code(+) = DECODE(HP.duns_number_c,'30','0','40','0','99','0','2')
+   AND  FLV122.language(+)    = 'JA'
+   AND  FLV122.lookup_type(+) = 'XXCMN_CUST_ENABLE_FLAG'
+   AND  FLV122.lookup_code(+) = DECODE(HP.duns_number_c,'30','0','40','0','2')
+-- 2009/10/27 Y.Kawano Mod End 本番#1675
    --ドリンク拠点カテゴリ名取得
    AND  FLV13.language(+)    = 'JA'
    AND  FLV13.lookup_type(+) = 'XXWSH_DRINK_BASE_CATEGORY'
