@@ -52,6 +52,7 @@ AS
  *  2008/12/02    1.8   Oracle 北寒寺正夫  本番障害対応
  *  2008/12/13    1.9   Oracle 二瓶 大輔   本番障害#568対応
  *  2008/12/15    1.10  Oracle 吉元 強樹   検証用ログ設定
+ *  2008/12/24    1.11  SCS    菅原 大輔   本番#845
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1521,8 +1522,12 @@ AS
     -- 出荷元保管場所
     IF (gt_deliver_from IS NOT NULL) THEN
       lv_select_where := lv_select_where
-          || ' AND    xoha.deliver_from =  ''' || gt_deliver_from || '''';
+--2008/12/24 D.Sugahara Mod Start
+--          || ' AND    xoha.deliver_from =  ''' || gt_deliver_from || '''';
+          || ' AND    xoha.deliver_from_id = xilv.inventory_location_id '
+          || ' AND    xilv.segment1        =  ''' || gt_deliver_from || '''';
     END IF;
+--2008/12/24 D.Sugahara Mod End    
 --
     -- ブロック
     IF (gt_block IS NOT NULL) THEN
