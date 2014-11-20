@@ -2,12 +2,18 @@
 
 ################################################################################
 ##                                                                            ##
+##   [ファイル名]                                                             ##
+##      ZCZZ_PEBSAP_LOGMNG_DAILY.ksh                                          ##
+##                                                                            ##
+##   [ジョブ名]                                                               ##
+##      日次APサーバログファイル削除                                          ##
+##                                                                            ##
 ##   [概要]                                                                   ##
-##      保存期間を過ぎたAPサーバのログファイルの削除を実施する。              ##
+##      日次で保存期間を過ぎたAPサーバのログファイルの削除を実施する。        ##
 ##                                                                            ##
 ##   [作成/更新履歴]                                                          ##
-##        作成者  ：   Oracle 堀井           2008/03/24 1.0.1                 ##
-##        更新履歴：   Oracle 堀井           2008/03/24 1.0.1                 ##
+##        作成者  ：   SCS 長濱              2009/07/06 1.0.1                 ##
+##        更新履歴：   SCS 長濱              2009/07/06 1.0.1                 ##
 ##                       初版                                                 ##
 ##                     SCS    川田           2009/11/26 1.0.2                 ##
 ##                                                                            ##
@@ -17,9 +23,6 @@
 ##                                                                            ##
 ##   [パラメータ]                                                             ##
 ##      なし                                                                  ##
-##                                                                            ##
-##   [使用方法]                                                               ##
-##      ZCZZ_PEBSAP_LOGMNG.ksh                                                ##
 ##                                                                            ##
 ##    Copyright 株式会社伊藤園 U5000プロジェクト 2007-2009                    ##
 ################################################################################
@@ -98,9 +101,9 @@ L_rogushuturyoku "環境設定ファイル読込み 終了"
 L_rogushuturyoku "ログファイル名称変更 開始"
 
 #ファイル読み込みチェック
-if [ ! -r ${TE_ZCZZAPDELFILE} ]
+if [ ! -r ${TE_ZCZZAPDELFILEDAILY} ]
 then
-   echo "ZCZZ00003:[Error] ZCZZAPDELFILE.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZAPDELFILEDAILY.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
@@ -123,7 +126,7 @@ do
          /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
       fi
    fi
-done < ${TE_ZCZZAPDELFILE}
+done < ${TE_ZCZZAPDELFILEDAILY}
 
 L_rogushuturyoku "ログファイル名称変更 終了"
 
@@ -160,7 +163,7 @@ do
          fi
       fi
    fi
-done < ${TE_ZCZZAPDELFILE}
+done < ${TE_ZCZZAPDELFILEDAILY}
 
 
 L_rogushuturyoku "削除対象ログファイル存在確認および削除 終了"
