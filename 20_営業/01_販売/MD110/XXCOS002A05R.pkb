@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *                                       [E_本稼動_00532]納品実績データの重複表示対応
  *  2010/01/07    1.20  N.Maeda          [E_本稼動_00849] 値引のみデータ対応
  *  2011/03/07    1.21  S.Ochiai         [E_本稼動_06590]オーダー№追加連携対応
+ *  2011/07/07    1.22  S.Niki           [E_本稼動_07848]販売実績明細の集約条件修正
  *
  *****************************************************************************************/
 --
@@ -1226,6 +1227,9 @@ AS
         ,(
            SELECT
               seh.delivery_date                      AS delivery_date                   -- 対象日付
+-- 2011/07/07 Ver.1.22 S.Niki ADD Start
+             ,seh.order_invoice_number               AS order_invoice_number            -- 注文伝票番号
+-- 2011/07/07 Ver.1.22 S.Niki ADD End
              ,seh.sales_base_code                    AS sales_base_code                 -- 拠点コード
              ,seh.dlv_by_code                        AS dlv_by_code                     -- 納品者コード
              ,seh.dlv_invoice_number                 AS dlv_invoice_number              -- 伝票番号
@@ -1320,6 +1324,9 @@ AS
            AND cuac.business_low_type    = gysm.meaning( + )                        -- 業態小分類
            GROUP BY
               seh.delivery_date                      -- 納品日
+-- 2011/07/07 Ver.1.22 S.Niki ADD Start
+             ,seh.order_invoice_number               -- 注文伝票番号
+-- 2011/07/07 Ver.1.22 S.Niki ADD End
              ,seh.sales_base_code                    -- 拠点コード
              ,seh.dlv_by_code                        -- 納品者コード
              ,seh.dlv_invoice_number                 -- 伝票番号
@@ -1479,6 +1486,9 @@ AS
       AND NVL( infh.invoice_class              , cv_x ) = NVL( disc.invoice_class              , cv_x )  --               伝票区分
       AND infh.create_class                             = disc.create_class                              --               作成元区分
       AND infh.delivery_date                            = infd.delivery_date                             -- [ヘッダ=明細] 対象日付
+-- 2011/07/07 Ver.1.22 S.Niki ADD Start
+      AND NVL( infh.order_invoice_number       , cv_x ) = NVL( infd.order_invoice_number       , cv_x )  --               注文伝票番号
+-- 2011/07/07 Ver.1.22 S.Niki ADD End
       AND infh.sales_base_code                          = infd.sales_base_code                           --               拠点コード
       AND infh.dlv_by_code                              = infd.dlv_by_code                               --               納品者コード
       AND infh.dlv_invoice_number                       = infd.dlv_invoice_number                        --               伝票番号
