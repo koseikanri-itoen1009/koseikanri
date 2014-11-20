@@ -104,11 +104,18 @@ WHERE   xev.user_id            = fnd_global.user_id
           FROM    po_hazard_classes_vl  phcv
                  ,po_un_numbers_vl      punv
                  ,csi_item_instances    cii
-          WHERE   phcv.hazard_class          = '”Ì”„‹@'
+                 ,fnd_lookup_values_vl  flvv
+          WHERE   phcv.hazard_class          = flvv.lookup_code
             AND   punv.hazard_class_id       = phcv.hazard_class_id
             AND   cii.attribute1             = punv.un_number
             AND   cii.owner_party_id         = xcasv.party_id
             AND   cii.owner_party_account_id = xcasv.cust_account_id
+            AND   flvv.lookup_type           = 'XXCSO1_SP_DISPLAY_KIKI_TYPE'
+            AND   flvv.enabled_flag          = 'Y'
+            AND   NVL(flvv.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                             <= TRUNC(xxccp_common_pkg2.get_process_date)
+            AND   NVL(flvv.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                             >= TRUNC(xxccp_common_pkg2.get_process_date)
         )
 UNION ALL
 SELECT  '2'  application_type
