@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI在庫情報ワークテーブルに取込まれたEDI在庫情報データを
  *                     EDI在庫情報テーブルにそれぞれ登録します。
  * MD.050           : 在庫情報データ取込（MD050_COS_011_A02）
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                      [T1_0243]品目取得時、子品目対象外条件追加
  *  2009/05/28    1.3   T.Kitajima      [T1_0711]処理後件数対応
  *  2009/06/04    1.4   T.Kitajima      [T1_1289]処理後件数対応
+ *  2009/06/26    1.5   N.Nishimura     [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]対応
  *
  *****************************************************************************************/
 --
@@ -210,6 +211,7 @@ AS
 --****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
   cv_format_yyyymmdd        CONSTANT   VARCHAR2(20)  := 'YYYY/MM/DD';        -- 日付フォーマット
 --****************************** 2009/05/19 1.2 T.Kitajima ADD  END  ******************************--
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -712,7 +714,10 @@ AS
   gv_prf_case_code           VARCHAR2(50) DEFAULT NULL;  -- XXCOS:ケース単位コード
   gv_prf_orga_code           VARCHAR2(50) DEFAULT NULL;  -- XXCOI:在庫組織コード
   gv_prf_orga_id             VARCHAR2(50) DEFAULT NULL;  -- XXCOS:在庫組織ID
-  gv_inv_invoice_number_key  VARCHAR2(12) DEFAULT NULL;  -- 伝票番号 
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod Start
+--  gv_inv_invoice_number_key  VARCHAR2(12) DEFAULT NULL;  -- 伝票番号 
+  gv_inv_invoice_number_key  VARCHAR2(20) DEFAULT NULL;  -- 伝票番号 
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
   gv_err_ediinv_work_flag    VARCHAR2(1)  DEFAULT NULL;  -- 在庫情報エラーフラグ 
   gv_dummy_item_code         mtl_system_items_b.segment1%TYPE  DEFAULT NULL;  -- ダミー品目設定有無
   --
@@ -2524,32 +2529,38 @@ AS
     -- 商品コード（先方）
     gt_req_edi_inv_data(in_line_cnt).product_code_other_party  
                         := gt_ediinv_work_data(in_line_cnt).product_code_other_party;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Add Start
+    -- 品目コード
+    gt_req_edi_inv_data(in_line_cnt).item_code       := NULL;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Add End
     --==============================================================
     lv_invoice_number_err_flag := NULL;
     --==============================================================
-    --==============================================================
-    -- 店コードチェック
-    --==============================================================
-    IF  ( gt_req_edi_inv_data(in_line_cnt).shop_code  IS NULL )  THEN
-      -- 店コード
-      gv_tkn_shop_code    :=  xxccp_common_pkg.get_msg(
-                          iv_application        =>  cv_application,
-                          iv_name               =>  cv_msg_shop_code
-                          );
-      lv_errmsg           :=  xxccp_common_pkg.get_msg(
-                          iv_application        =>  cv_application,
-                          iv_name               =>  gv_msg_in_none_err,
-                          iv_token_name1        =>  cv_tkn_item,
-                          iv_token_value1       =>  gv_tkn_shop_code
-                          );
-      ov_errbuf  :=  lv_errbuf;
-      ov_errmsg  :=  lv_errmsg;
-      lv_retcode :=  cv_status_warn;
-      ov_retcode :=  cv_status_warn;
-      lv_invoice_number_err_flag := cv_inv_num_err_flag;
-      -- 在庫情報ワークID(error)
-      gv_err_ediinv_work_flag  := cv_1;
-    END IF;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Del Start
+--    --==============================================================
+--    -- 店コードチェック
+--    --==============================================================
+--    IF ( gt_req_edi_inv_data(in_line_cnt).shop_code  IS NULL )  THEN
+--      -- 店コード
+--      gv_tkn_shop_code    :=  xxccp_common_pkg.get_msg(
+--                          iv_application        =>  cv_application,
+--                          iv_name               =>  cv_msg_shop_code
+--                          );
+--      lv_errmsg           :=  xxccp_common_pkg.get_msg(
+--                          iv_application        =>  cv_application,
+--                          iv_name               =>  gv_msg_in_none_err,
+--                          iv_token_name1        =>  cv_tkn_item,
+--                          iv_token_value1       =>  gv_tkn_shop_code
+--                          );
+--      ov_errbuf  :=  lv_errbuf;
+--      ov_errmsg  :=  lv_errmsg;
+--      lv_retcode :=  cv_status_warn;
+--      ov_retcode :=  cv_status_warn;
+--      lv_invoice_number_err_flag := cv_inv_num_err_flag;
+--      -- 在庫情報ワークID(error)
+--      gv_err_ediinv_work_flag  := cv_1;
+--    END IF;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Del End
     --
     --==============================================================
     -- 「顧客コード」の妥当性 チェック
@@ -2572,25 +2583,29 @@ AS
 --
       EXCEPTION
         WHEN NO_DATA_FOUND THEN  -- （対象データ無しエラー）
-          --* -------------------------------------------------------------
-          --顧客コード変換エラーメッセージ  gv_msg_cust_num_chg_err
-          --* -------------------------------------------------------------
-          lv_errmsg     :=  xxccp_common_pkg.get_msg(
-                        iv_application        =>  cv_application,
-                        iv_name               =>  gv_msg_cust_num_chg_err,
-                        iv_token_name1        =>  cv_chain_shop_code,
-                        iv_token_name2        =>  cv_shop_code,
-                        iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).edi_chain_code,
-                        iv_token_value2       =>  gt_req_edi_inv_data(in_line_cnt).shop_code
-                        );
-          ov_errbuf     :=  lv_errbuf;
-          ov_errmsg     :=  lv_errmsg;
-          ov_retcode    :=  cv_status_warn;
-          lv_invoice_number_err_flag := cv_inv_num_err_flag;
-          -- 在庫情報ワークID(error)
-          gv_err_ediinv_work_flag  := cv_1;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Add Start
+--          --* -------------------------------------------------------------
+--          --顧客コード変換エラーメッセージ  gv_msg_cust_num_chg_err
+--          --* -------------------------------------------------------------
+--          lv_errmsg     :=  xxccp_common_pkg.get_msg(
+--                        iv_application        =>  cv_application,
+--                        iv_name               =>  gv_msg_cust_num_chg_err,
+--                        iv_token_name1        =>  cv_chain_shop_code,
+--                        iv_token_name2        =>  cv_shop_code,
+--                        iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).edi_chain_code,
+--                        iv_token_value2       =>  gt_req_edi_inv_data(in_line_cnt).shop_code
+--                        );
+--          ov_errbuf     :=  lv_errbuf;
+--          ov_errmsg     :=  lv_errmsg;
+--          ov_retcode    :=  cv_status_warn;
+--          lv_invoice_number_err_flag := cv_inv_num_err_flag;
+--          -- 在庫情報ワークID(error)
+--          gv_err_ediinv_work_flag  := cv_1;
+          gt_req_cust_acc_data(in_line_cnt).account_number := NULL;
       END;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Del End
     END IF;
+--
     --* -------------------------------------------------------------
     -- 「商品コード」の妥当性チェック
     --* -------------------------------------------------------------
@@ -2617,22 +2632,25 @@ AS
          ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-          --* -------------------------------------------------------------
-          --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
-          --* -------------------------------------------------------------
-          lv_errmsg    :=  xxccp_common_pkg.get_msg(
-                       iv_application        =>  cv_application,
-                       iv_name               =>  gv_msg_item_code_err,
-                       iv_token_name1        =>  cv_chain_shop_code,
-                       iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).edi_chain_code
-                       );
-          ov_errbuf  :=  lv_errbuf;
-          ov_errmsg  :=  lv_errmsg;
-          ov_retcode :=  cv_status_warn;
-          lv_invoice_number_err_flag := cv_inv_num_err_flag;
-          --
-          -- 在庫情報ワークID(error)
-          gv_err_ediinv_work_flag  := cv_1;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod Start
+--          --* -------------------------------------------------------------
+--          --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
+--          --* -------------------------------------------------------------
+--          lv_errmsg    :=  xxccp_common_pkg.get_msg(
+--                       iv_application        =>  cv_application,
+--                       iv_name               =>  gv_msg_item_code_err,
+--                       iv_token_name1        =>  cv_chain_shop_code,
+--                       iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).edi_chain_code
+--                       );
+--          ov_errbuf  :=  lv_errbuf;
+--          ov_errmsg  :=  lv_errmsg;
+--          ov_retcode :=  cv_status_warn;
+--          lv_invoice_number_err_flag := cv_inv_num_err_flag;
+--          --
+--          -- 在庫情報ワークID(error)
+--          gv_err_ediinv_work_flag  := cv_1;
+        NULL;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
       END;
       --* -------------------------------------------------------------
       IF  ( lv_invoice_number_err_flag IS NULL )  THEN
@@ -2642,21 +2660,24 @@ AS
         IF  (( lt_head_edi_item_code_div IS NULL ) 
         OR   ( lt_head_edi_item_code_div  = 0 ))
         THEN
-          --* -------------------------------------------------------------
-          --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
-          --* -------------------------------------------------------------
-          lv_errmsg    :=  xxccp_common_pkg.get_msg(
-                       iv_application        =>  cv_application,
-                       iv_name               =>  gv_msg_item_code_err,
-                       iv_token_name1        =>  cv_chain_shop_code,
-                       iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).edi_chain_code
-                       );
-          ov_errbuf    :=  lv_errbuf;
-          ov_errmsg    :=  lv_errmsg;
-          ov_retcode   :=  cv_status_warn;
-          lv_invoice_number_err_flag := cv_inv_num_err_flag;
-          -- 在庫情報ワークID(error)
-          gv_err_ediinv_work_flag  := cv_1;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod Start
+--          --* -------------------------------------------------------------
+--          --EDI連携品目コード区分エラーメッセージ  gv_msg_item_code_err
+--          --* -------------------------------------------------------------
+--          lv_errmsg    :=  xxccp_common_pkg.get_msg(
+--                       iv_application        =>  cv_application,
+--                       iv_name               =>  gv_msg_item_code_err,
+--                       iv_token_name1        =>  cv_chain_shop_code,
+--                       iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).edi_chain_code
+--                       );
+--          ov_errbuf    :=  lv_errbuf;
+--          ov_errmsg    :=  lv_errmsg;
+--          ov_retcode   :=  cv_status_warn;
+--          lv_invoice_number_err_flag := cv_inv_num_err_flag;
+--          -- 在庫情報ワークID(error)
+--          gv_err_ediinv_work_flag  := cv_1;
+          NULL;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
         --
         --* -------------------------------------------------------------
         -- 「EDI連携品目コード区分」が「2：JANコード」の場合
@@ -2762,45 +2783,46 @@ AS
                 lt_unit_of_measure := gv_prf_case_code;
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
-              --* -------------------------------------------------------------
-              --* ケースＪＡＮコードの場合でエラーの場合、ダミー品目コードを取得
-              --* -------------------------------------------------------------
-                BEGIN
-                  --* -------------------------------------------------------------
-                  -- JANコード 商品コード変換エラー
-                  --* -------------------------------------------------------------
-                  gv_tkn_jan_code  :=  xxccp_common_pkg.get_msg(
-                                         iv_application        =>  cv_application,
-                                         iv_name               =>  cv_msg_jan_code
-                                         );
-                  --商品コード変換エラーメッセージ  gv_msg_product_code_err
-                  lv_errmsg             :=  xxccp_common_pkg.get_msg(
-                                        iv_application        =>  cv_application,
-                                        iv_name               =>  gv_msg_product_code_err,
-                                        iv_token_name1        =>  cv_prod_code,
-                                        iv_token_name2        =>  cv_prod_type,
-                                        iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).product_code_other_party,
-                                        iv_token_value2       =>  gv_tkn_jan_code
-                                        );
-                  ov_errbuf  :=  lv_errbuf;
-                  ov_errmsg  :=  lv_errmsg;
-                  ov_retcode :=  cv_status_warn;
-                  --
-                  --== ルックアップマスタデータ抽出 ==--
-                  SELECT  flvv.lookup_code        -- コード
-                  INTO   gt_req_edi_inv_data(in_line_cnt).item_code
-                  FROM    fnd_lookup_values_vl  flvv        -- ルックアップマスタ
-                  WHERE   flvv.lookup_type  = cv_lookup_type  -- ルックアップ.タイプ
-                   AND    flvv.enabled_flag       = cv_y                -- 有効
-                   AND    flvv.attribute1         = cv_1
-                   AND (( flvv.start_date_active IS NULL )
-                   OR   ( flvv.start_date_active <= cd_process_date ))
-                   AND (( flvv.end_date_active   IS NULL )
-                   OR   ( flvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
-                   ;
-                --
-                gv_dummy_item_code := gt_req_edi_inv_data(in_line_cnt).item_code;
-                END;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod Start
+--              --* -------------------------------------------------------------
+--              --* ケースＪＡＮコードの場合でエラーの場合、ダミー品目コードを取得
+--              --* -------------------------------------------------------------
+--                BEGIN
+--                  --* -------------------------------------------------------------
+--                  -- JANコード 商品コード変換エラー
+--                  --* -------------------------------------------------------------
+--                  gv_tkn_jan_code  :=  xxccp_common_pkg.get_msg(
+--                                         iv_application        =>  cv_application,
+--                                         iv_name               =>  cv_msg_jan_code
+--                                         );
+--                  --商品コード変換エラーメッセージ  gv_msg_product_code_err
+--                  lv_errmsg             :=  xxccp_common_pkg.get_msg(
+--                                        iv_application        =>  cv_application,
+--                                        iv_name               =>  gv_msg_product_code_err,
+--                                        iv_token_name1        =>  cv_prod_code,
+--                                        iv_token_name2        =>  cv_prod_type,
+--                                        iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).product_code_other_party,
+--                                        iv_token_value2       =>  gv_tkn_jan_code
+--                                        );
+--                  ov_errbuf  :=  lv_errbuf;
+--                  ov_errmsg  :=  lv_errmsg;
+--                  ov_retcode :=  cv_status_warn;
+--                  --
+--                  --== ルックアップマスタデータ抽出 ==--
+--                  SELECT  flvv.lookup_code        -- コード
+--                  INTO   gt_req_edi_inv_data(in_line_cnt).item_code
+--                  FROM    fnd_lookup_values_vl  flvv        -- ルックアップマスタ
+--                  WHERE   flvv.lookup_type  = cv_lookup_type  -- ルックアップ.タイプ
+--                   AND    flvv.enabled_flag       = cv_y                -- 有効
+--                   AND    flvv.attribute1         = cv_1
+--                  AND (( flvv.start_date_active IS NULL )
+--                   OR   ( flvv.start_date_active <= cd_process_date ))
+--                   AND (( flvv.end_date_active   IS NULL )
+--                   OR   ( flvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
+--                   ;
+--                --
+--                gv_dummy_item_code := gt_req_edi_inv_data(in_line_cnt).item_code;
+--                END;
             --* -------------------------------------------------------------
 /*            WHEN OTHERS THEN
                 --* -------------------------------------------------------------
@@ -2827,6 +2849,8 @@ AS
                 gn_error_cnt := gn_error_cnt + 1;
                 gv_err_ediinv_work_flag  := cv_1;
 */                --
+              NULL;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
             END;
           END;
           --
@@ -2870,45 +2894,48 @@ AS
           --
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
-              --* -------------------------------------------------------------
-              --== ルックアップマスタデータ抽出
-              --* -------------------------------------------------------------
-              BEGIN
-                --== ルックアップマスタデータ抽出 ==--
-                SELECT   flvv.lookup_code        -- コード
-                 INTO    gt_req_edi_inv_data(in_line_cnt).item_code
-                 FROM   fnd_lookup_values_vl  flvv        -- ルックアップマスタ
-                 WHERE  flvv.lookup_type       = cv_lookup_type  -- ルックアップ.タイプ
-                 AND    flvv.enabled_flag       = cv_y                -- 有効
-                 AND    flvv.attribute1         = cv_1
-                 AND (( flvv.start_date_active IS NULL )
-                 OR   ( flvv.start_date_active <= cd_process_date ))
-                 AND (( flvv.end_date_active   IS NULL )
-                 OR   ( flvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
-                 ;
-                gv_dummy_item_code := gt_req_edi_inv_data(in_line_cnt).item_code;
-                --
-                --* -------------------------------------------------------------
-                --顧客品目 商品コード変換エラー
-                --* -------------------------------------------------------------
-                gv_tkn_mtl_cust_items  :=  xxccp_common_pkg.get_msg(
-                                       iv_application        =>  cv_application,
-                                       iv_name               =>  cv_msg_mtl_cust_items
-                                       );
-                --商品コード変換エラーメッセージ  gv_msg_product_code_err
-                lv_errmsg             :=  xxccp_common_pkg.get_msg(
-                                      iv_application        =>  cv_application,
-                                      iv_name               =>  gv_msg_product_code_err,
-                                      iv_token_name1        =>  cv_prod_code,
-                                      iv_token_name2        =>  cv_prod_type,
-                                      iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).product_code_other_party,
-                                      iv_token_value2       =>  gv_tkn_mtl_cust_items
-                                      );
-                ov_errbuf  :=  lv_errbuf;
-                ov_errmsg  :=  lv_errmsg;
-                ov_retcode :=  cv_status_warn;
-                --
-              END;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod Start
+--              --* -------------------------------------------------------------
+--              --== ルックアップマスタデータ抽出
+--              --* -------------------------------------------------------------
+--              BEGIN
+--                --== ルックアップマスタデータ抽出 ==--
+--                SELECT   flvv.lookup_code        -- コード
+--                 INTO    gt_req_edi_inv_data(in_line_cnt).item_code
+--                 FROM   fnd_lookup_values_vl  flvv        -- ルックアップマスタ
+--                 WHERE  flvv.lookup_type       = cv_lookup_type  -- ルックアップ.タイプ
+--                 AND    flvv.enabled_flag       = cv_y                -- 有効
+--                 AND    flvv.attribute1         = cv_1
+--                 AND (( flvv.start_date_active IS NULL )
+--                 OR   ( flvv.start_date_active <= cd_process_date ))
+--                 AND (( flvv.end_date_active   IS NULL )
+--                 OR   ( flvv.end_date_active   >= cd_process_date ))  -- 業務日付がFROM-TO内
+--                 ;
+--                gv_dummy_item_code := gt_req_edi_inv_data(in_line_cnt).item_code;
+--                --
+--                --* -------------------------------------------------------------
+--                --顧客品目 商品コード変換エラー
+--                --* -------------------------------------------------------------
+--                gv_tkn_mtl_cust_items  :=  xxccp_common_pkg.get_msg(
+--                                       iv_application        =>  cv_application,
+--                                       iv_name               =>  cv_msg_mtl_cust_items
+--                                       );
+--                --商品コード変換エラーメッセージ  gv_msg_product_code_err
+--                lv_errmsg             :=  xxccp_common_pkg.get_msg(
+--                                      iv_application        =>  cv_application,
+--                                      iv_name               =>  gv_msg_product_code_err,
+--                                      iv_token_name1        =>  cv_prod_code,
+--                                      iv_token_name2        =>  cv_prod_type,
+--                                      iv_token_value1       =>  gt_req_edi_inv_data(in_line_cnt).product_code_other_party,
+--                                      iv_token_value2       =>  gv_tkn_mtl_cust_items
+--                                      );
+--                ov_errbuf  :=  lv_errbuf;
+--                ov_errmsg  :=  lv_errmsg;
+--                ov_retcode :=  cv_status_warn;
+--                --
+--              END;
+            NULL;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
           END;
         END IF;
       END IF;
@@ -2960,9 +2987,15 @@ AS
     --  伝票番号キーブレイク編集
     --* -------------------------------------------------------------
     --* -------------------------------------------------------------
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod start
+--    IF  (( gv_inv_invoice_number_key IS NULL )  
+--    OR   ( gv_inv_invoice_number_key <> gt_req_edi_inv_data(in_line_cnt).invoice_number ))
+--    THEN
     IF  (( gv_inv_invoice_number_key IS NULL )  
-    OR   ( gv_inv_invoice_number_key <> gt_req_edi_inv_data(in_line_cnt).invoice_number ))
+    OR   ( gv_inv_invoice_number_key <> gt_req_edi_inv_data(in_line_cnt).shop_code 
+                                     || gt_req_edi_inv_data(in_line_cnt).invoice_number ))
     THEN
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
       --
       gn_normal_inventry_cnt     := gn_normal_inventry_cnt + 1;
       --* -------------------------------------------------------------
@@ -3001,8 +3034,13 @@ AS
 --
     END IF;
 --
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod start
+    -- ブレーク用変数を店舗コード+伝票番号に変更
     -- 伝票番号のセット
-    gv_inv_invoice_number_key  := gt_req_edi_inv_data(in_line_cnt).invoice_number;
+--    gv_inv_invoice_number_key  := gt_req_edi_inv_data(in_line_cnt).invoice_number;
+    gv_inv_invoice_number_key  := gt_req_edi_inv_data(in_line_cnt).shop_code
+                               || gt_req_edi_inv_data(in_line_cnt).invoice_number;
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Mod End
 --
   EXCEPTION
 --
@@ -4279,7 +4317,10 @@ AS
       AND (( lv_cur_param2 IS NOT NULL
         AND   ediinvwk.edi_chain_code   =    lv_cur_param2 )              -- EDIチェーン店コード
         OR ( lv_cur_param2 IS NULL ))
-    ORDER BY ediinvwk.invoice_number                                      -- ソート条件（伝票番号）
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Add start
+    ORDER BY ediinvwk.shop_code,                                          -- 店コード
+-- Ver1.5  [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]  2009/06/26 N.Nishimura Add End
+             ediinvwk.invoice_number                                      -- ソート条件（伝票番号）
     FOR UPDATE OF
             ediinvwk.stk_info_work_id NOWAIT;
     -- *** ローカル・レコード ***
