@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIシステム用I/F連携機能（INBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.4                                                       ##
+## Version          : 1.5                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -34,6 +34,8 @@
 ##  2009/04/03    1.4   Masayuki.Sano    障害番号[T1-0286]                      ##
 ##                                       ・処理開始時に"AZBZZAPPS.env"を 　　　 ##
 ##                                         読み込むように修正。                 ##
+##  2009/04/03    1.5   Masayuki.Sano    障害番号[T1-0312]                      ##
+##                                       ・警告終了を"4"、異常終了を"8"に変更   ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -48,9 +50,13 @@ C_program_id="ZBZZEXINBOUND"  #プログラムID
 L_logpath="/var/tmp/jp1/log"  #ログファイルパス
 
 # 戻り値
+#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 Start
 C_ret_code_norm=0     #正常終了
-C_ret_code_warn=3     #警告終了
-C_ret_code_eror=7     #異常終了
+#C_ret_code_warn=3     #警告終了
+#C_ret_code_eror=7     #異常終了
+C_ret_code_warn=4     #警告終了
+C_ret_code_eror=8     #異常終了
+#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 End
 
 # 日時
 C_date=$(/bin/date "+%Y%m%d%H%M%S") #処理日時
@@ -751,7 +757,15 @@ DELSQL2
   rm -f "${L_path_sql_log}"
 
   #実行結果の戻り値を返す
-  return ${L_ret_code}
+#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 Start
+#  return ${L_ret_code}
+  if [ ${L_ret_code} -ne 0 ]
+  then
+    return ${C_ret_code_eror}
+  fi
+
+  return ${C_ret_code_norm}
+#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 End
 }
 
 #===============================================================================
