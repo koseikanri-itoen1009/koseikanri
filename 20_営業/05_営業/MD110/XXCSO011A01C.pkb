@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,7 +31,9 @@ AS
  *  update_withdraw_ib_info   引揚用物件更新処理(A-15)
  *  update_abo_appl_ib_info   廃棄申請用物件更新処理(A-16)
  *  update_abo_aprv_ib_info   廃棄決裁用物件更新処理(A-17)
- *  insert_wk_req_proc        作業依頼／発注情報連携対象テーブル登録処理(A-18)
+ *  chk_wk_req_proc           作業依頼／発注情報連携対象テーブル存在チェック処理(A-18)
+ *  insert_wk_req_proc        作業依頼／発注情報連携対象テーブル登録処理(A-19)
+ *  update_wk_req_proc        作業依頼／発注情報連携対象テーブル更新処理(A-20)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
@@ -45,6 +47,7 @@ AS
  *                                       ・カテゴリ区分がNULL(営業TM以外)の場合、後続処理をスキップする処理を追加
  *  2009-04-02    1.2   N.Yabuki         【ST障害対応177】顧客ステータスチェックに「25：SP承認済」を追加
  *  2009-04-03    1.3   N.Yabuki         【ST障害対応297】経費購買品（カテゴリ区分がNULL）を抽出対象外に修正
+ *  2009-04-06    1.4   N.Yabuki         【ST障害対応101】作業依頼／発注情報連携対象テーブルの存在チェック、更新処理追加
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -178,10 +181,12 @@ AS
   cv_tkn_api_err_msg    CONSTANT VARCHAR2(20) := 'API_ERR_MSG';
   cv_tkn_req_num        CONSTANT VARCHAR2(20) := 'REQUISITION_NUM';
   cv_tkn_req_line_num   CONSTANT VARCHAR2(20) := 'REQUISITION_LINE_NUM';
-/*20090403_yabuki_ST297 START*/
-  -- 固定の数値
+/*20090406_yabuki_ST297 START*/
   cv_tkn_req_header_num CONSTANT VARCHAR2(20) := 'REQ_HEADER_NUM';
-/*20090403_yabuki_ST297 END*/
+/*20090406_yabuki_ST297 END*/
+/*20090406_yabuki_ST101 START*/
+  cv_tkn_process        CONSTANT VARCHAR2(20) := 'PROCESS';
+/*20090406_yabuki_ST101 START*/
   --
   -- 複数エラーメッセージの区切り文字（カンマ）
   cv_msg_comma CONSTANT VARCHAR2(3) := ' , ';
@@ -213,15 +218,15 @@ AS
   cv_attr_nm_ven_haiki_flg   CONSTANT VARCHAR2(30) := '廃棄フラグ';
   --
   -- 入力チェック処理内のチェック区分番号
-  cv_input_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';
-  cv_input_chk_kbn_02  CONSTANT VARCHAR2(2) := '02';
-  cv_input_chk_kbn_03  CONSTANT VARCHAR2(2) := '03';
-  cv_input_chk_kbn_04  CONSTANT VARCHAR2(2) := '04';
-  cv_input_chk_kbn_05  CONSTANT VARCHAR2(2) := '05';
-  cv_input_chk_kbn_06  CONSTANT VARCHAR2(2) := '06';
-  cv_input_chk_kbn_07  CONSTANT VARCHAR2(2) := '07';
-  cv_input_chk_kbn_08  CONSTANT VARCHAR2(2) := '08';
-  cv_input_chk_kbn_09  CONSTANT VARCHAR2(2) := '09';
+  cv_input_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- 機種コード必須入力チェック
+  cv_input_chk_kbn_02  CONSTANT VARCHAR2(2) := '02';  -- 設置用物件コード必須入力チェック
+  cv_input_chk_kbn_03  CONSTANT VARCHAR2(2) := '03';  -- 設置用物件コード入力チェック
+  cv_input_chk_kbn_04  CONSTANT VARCHAR2(2) := '04';  -- 引揚用物件コード入力チェック
+  cv_input_chk_kbn_05  CONSTANT VARCHAR2(2) := '05';  -- 引揚用物件コード必須入力チェック
+  cv_input_chk_kbn_06  CONSTANT VARCHAR2(2) := '06';  -- 設置先_顧客コード必須入力チェック
+  cv_input_chk_kbn_07  CONSTANT VARCHAR2(2) := '07';  -- 作業関連情報入力チェック
+  cv_input_chk_kbn_08  CONSTANT VARCHAR2(2) := '08';  -- 引揚関連情報入力チェック
+  cv_input_chk_kbn_09  CONSTANT VARCHAR2(2) := '09';  -- 廃棄_物件コード必須入力チェック
   --
   -- リース物件ステータスチェック処理内のチェック区分番号
   cv_obj_sts_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- チェック対象：設置用物件
@@ -233,13 +238,15 @@ AS
   cv_jotai_kbn1_hold        CONSTANT VARCHAR2(1) := '2';  -- 機器状態１（稼動状態）「滞留」
   cv_jotai_kbn3_non_schdl   CONSTANT VARCHAR2(1) := '0';  -- 機器状態３（廃棄情報）「予定無」
   cv_jotai_kbn3_ablsh_appl  CONSTANT VARCHAR2(1) := '2';  -- 機器状態３（廃棄情報）「廃棄申請中」
-  --
 /*20090403_yabuki_ST297 START*/
   -- 固定の数値
   cn_zero    CONSTANT NUMBER := 0;
   cn_one     CONSTANT NUMBER := 1;
 /*20090403_yabuki_ST297 END*/
-    --
+/*20090406_yabuki_ST101 START*/
+  cv_interface_flg_off      CONSTANT VARCHAR2(1) := 'N';  -- 連携済フラグ「ＯＦＦ」
+/*20090406_yabuki_ST101 END*/
+  --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -939,6 +946,7 @@ AS
         END IF;
         --
       END IF;
+      --
       -- 設置場所区分が「屋内」の場合
       IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_interior ) THEN
         -- 設置場所階数が未入力の場合
@@ -3100,10 +3108,120 @@ AS
   END update_abo_aprv_ib_info;
   --
   --
+/*20090406_yabuki_ST101 START*/
+  /**********************************************************************************
+   * Procedure Name   : chk_wk_req_proc
+   * Description      : 作業依頼／発注情報連携対象テーブル存在チェック処理(A-18)
+   ***********************************************************************************/
+  PROCEDURE chk_wk_req_proc(
+      i_requisition_rec  IN         g_requisition_rtype  -- 発注依頼情報
+    , on_rec_count       OUT        NUMBER               -- レコード件数（作業依頼／発注情報連携対象テーブル）
+    , ov_errbuf          OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
+    , ov_retcode         OUT NOCOPY VARCHAR2             -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'chk_wk_req_proc';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- トークン用定数
+    cv_tkn_val_select_proc    CONSTANT VARCHAR2(100) := '抽出';
+    --
+    -- *** ローカルデータ型 ***
+    --
+    -- *** ローカル変数 ***
+    ln_rec_count    NUMBER;    -- レコード件数
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- ========================================
+    -- 作業依頼／発注情報連携対象テーブル抽出
+    -- ========================================
+    BEGIN
+      SELECT COUNT(1)  cnt
+      INTO   ln_rec_count
+      FROM   xxcso_wk_requisition_proc  xwrp
+      WHERE  xwrp.requisition_line_id = i_requisition_rec.requisition_line_id
+      ;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- その他の例外の場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name                   -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_45                           -- メッセージコード
+                       , iv_token_name1  => cv_tkn_process                             -- トークンコード1
+                       , iv_token_value1 => cv_tkn_val_select_proc                     -- トークン値1
+                       , iv_token_name2  => cv_tkn_req_num                             -- トークンコード2
+                       , iv_token_value2 => i_requisition_rec.requisition_number       -- トークン値2
+                       , iv_token_name3  => cv_tkn_req_line_num                        -- トークンコード3
+                       , iv_token_value3 => i_requisition_rec.requisition_line_number  -- トークン値3
+                       , iv_token_name4  => cv_tkn_err_msg                             -- トークンコード4
+                       , iv_token_value4 => SQLERRM                                    -- トークン値4
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+    -- レコード件数をOUTパラメータへ設定
+    on_rec_count := ln_rec_count;
+    --
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQLデータ抽出例外＆チェックエラーハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END chk_wk_req_proc;
+  --
+  --
   /**********************************************************************************
    * Procedure Name   : insert_wk_req_proc
-   * Description      : 作業依頼／発注情報連携対象テーブル登録処理(A-18)
+   * Description      : 作業依頼／発注情報連携対象テーブル登録処理(A-19)
    ***********************************************************************************/
+--  /**********************************************************************************
+--   * Procedure Name   : insert_wk_req_proc
+--   * Description      : 作業依頼／発注情報連携対象テーブル登録処理(A-18)
+--   ***********************************************************************************/
+/*20090406_yabuki_ST101 END*/
   PROCEDURE insert_wk_req_proc(
       i_requisition_rec  IN         g_requisition_rtype  -- 発注依頼情報
     , ov_errbuf          OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
@@ -3126,7 +3244,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_interface_flg_off    CONSTANT VARCHAR2(1) := 'N';  -- 連携済フラグ「ＯＦＦ」
+/*20090406_yabuki_ST101 START*/
+--    cv_interface_flg_off    CONSTANT VARCHAR2(1) := 'N';  -- 連携済フラグ「ＯＦＦ」
+    -- トークン用定数
+    cv_tkn_val_insert_proc    CONSTANT VARCHAR2(100) := '登録';
+/*20090406_yabuki_ST101 END*/
     --
     -- *** ローカルデータ型 ***
     --
@@ -3180,16 +3302,30 @@ AS
       );
     EXCEPTION
       WHEN OTHERS THEN
+/*20090406_yabuki_ST101 START*/
         lv_errbuf := xxccp_common_pkg.get_msg(
                          iv_application  => cv_sales_appl_short_name                   -- アプリケーション短縮名
                        , iv_name         => cv_tkn_number_45                           -- メッセージコード
-                       , iv_token_name1  => cv_tkn_req_num                             -- トークンコード1
-                       , iv_token_value1 => i_requisition_rec.requisition_number       -- トークン値1
-                       , iv_token_name2  => cv_tkn_req_line_num                        -- トークンコード2
-                       , iv_token_value2 => i_requisition_rec.requisition_line_number  -- トークン値2
-                       , iv_token_name3  => cv_tkn_err_msg                             -- トークンコード3
-                       , iv_token_value3 => SQLERRM                                    -- トークン値3
+                       , iv_token_name1  => cv_tkn_process                             -- トークンコード1
+                       , iv_token_value1 => cv_tkn_val_insert_proc                     -- トークン値1
+                       , iv_token_name2  => cv_tkn_req_num                             -- トークンコード2
+                       , iv_token_value2 => i_requisition_rec.requisition_number       -- トークン値2
+                       , iv_token_name3  => cv_tkn_req_line_num                        -- トークンコード3
+                       , iv_token_value3 => i_requisition_rec.requisition_line_number  -- トークン値3
+                       , iv_token_name4  => cv_tkn_err_msg                             -- トークンコード4
+                       , iv_token_value4 => SQLERRM                                    -- トークン値4
                      );
+--        lv_errbuf := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_sales_appl_short_name                   -- アプリケーション短縮名
+--                       , iv_name         => cv_tkn_number_45                           -- メッセージコード
+--                       , iv_token_name1  => cv_tkn_req_num                             -- トークンコード1
+--                       , iv_token_value1 => i_requisition_rec.requisition_number       -- トークン値1
+--                       , iv_token_name2  => cv_tkn_req_line_num                        -- トークンコード2
+--                       , iv_token_value2 => i_requisition_rec.requisition_line_number  -- トークン値2
+--                       , iv_token_name3  => cv_tkn_err_msg                             -- トークンコード3
+--                       , iv_token_value3 => SQLERRM                                    -- トークン値3
+--                     );
+/*20090406_yabuki_ST101 END*/
         --
         RAISE sql_expt;
         --
@@ -3218,6 +3354,114 @@ AS
     --#####################################  固定部 END   ##########################################
     --
   END insert_wk_req_proc;
+  --
+  --
+/*20090406_yabuki_ST101 START*/
+  /**********************************************************************************
+   * Procedure Name   : update_wk_req_proc
+   * Description      : 作業依頼／発注情報連携対象テーブル更新処理(A-20)
+   ***********************************************************************************/
+  PROCEDURE update_wk_req_proc(
+      i_requisition_rec  IN         g_requisition_rtype  -- 発注依頼情報
+    , ov_errbuf          OUT NOCOPY VARCHAR2             -- エラー・メッセージ --# 固定 #
+    , ov_retcode         OUT NOCOPY VARCHAR2             -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'update_wk_req_proc';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- トークン用定数
+    cv_tkn_val_update_proc    CONSTANT VARCHAR2(100) := '更新';
+    --
+    -- *** ローカルデータ型 ***
+    --
+    -- *** ローカル変数 ***
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    --------------------------------------------------
+    -- 作業依頼／発注情報連携対象テーブル更新
+    --------------------------------------------------
+    BEGIN
+      UPDATE xxcso_wk_requisition_proc
+      SET line_num               = i_requisition_rec.requisition_line_number  -- 発注依頼明細番号
+        , interface_flag         = cv_interface_flg_off                       -- 連携済フラグ
+        , interface_date         = NULL                                       -- 連携日
+        , last_updated_by        = fnd_global.user_id                         -- 最終更新者
+        , last_update_date       = SYSDATE                                    -- 最終更新日
+        , last_update_login      = fnd_global.login_id                        -- 最終更新ログイン
+        , request_id             = fnd_global.conc_request_id                 -- 要求ID
+        , program_application_id = fnd_global.prog_appl_id                    -- コンカレント・プログラム・アプリケーションID
+        , program_id             = fnd_global.conc_program_id                 -- コンカレント・プログラムID
+        , program_update_date    = SYSDATE                                    -- プログラム更新日
+      WHERE
+          requisition_line_id = i_requisition_rec.requisition_line_id    -- 発注依頼明細ID
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name                   -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_45                           -- メッセージコード
+                       , iv_token_name1  => cv_tkn_process                             -- トークンコード1
+                       , iv_token_value1 => cv_tkn_val_update_proc                     -- トークン値1
+                       , iv_token_name2  => cv_tkn_req_num                             -- トークンコード2
+                       , iv_token_value2 => i_requisition_rec.requisition_number       -- トークン値2
+                       , iv_token_name3  => cv_tkn_req_line_num                        -- トークンコード3
+                       , iv_token_value3 => i_requisition_rec.requisition_line_number  -- トークン値3
+                       , iv_token_name4  => cv_tkn_err_msg                             -- トークンコード4
+                       , iv_token_value4 => SQLERRM                                    -- トークン値4
+                     );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQL例外ハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END update_wk_req_proc;
+/*20090406_yabuki_ST101 END*/
   --
   --
   /**********************************************************************************
@@ -4809,11 +5053,13 @@ AS
         --
       END IF;
       --
+/*20090406_yabuki_ST101 START*/
       -- ========================================
-      -- A-18. 作業依頼／発注情報連携対象テーブル登録処理
+      -- A-18. 作業依頼／発注情報連携対象テーブル存在チェック処理
       -- ========================================
-      insert_wk_req_proc(
+      chk_wk_req_proc(
           i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+        , on_rec_count      => ln_rec_count       -- レコード件数（作業依頼／発注情報連携対象テーブル）
         , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
         , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
       );
@@ -4822,6 +5068,46 @@ AS
         RAISE reg_upd_process_expt;
         --
       END IF;
+      --
+      -- 作業依頼／発注情報連携対象テーブルに該当するレコードが存在しない場合
+      IF ( ln_rec_count = cn_zero ) THEN
+        -- ========================================
+        -- A-19. 作業依頼／発注情報連携対象テーブル登録処理
+        -- ========================================
+--        -- ========================================
+--        -- A-18. 作業依頼／発注情報連携対象テーブル登録処理
+--        -- ========================================
+/*20090406_yabuki_ST101 END*/
+        insert_wk_req_proc(
+            i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+          , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+          , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+/*20090406_yabuki_ST101 START*/
+      ELSE
+        -- ========================================
+        -- A-20. 作業依頼／発注情報連携対象テーブル更新処理
+        -- ========================================
+        update_wk_req_proc(
+            i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+          , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+          , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      END IF;
+      --
+/*20090406_yabuki_ST101 END*/
       --
     END IF;
     --
