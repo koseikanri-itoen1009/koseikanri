@@ -1,0 +1,1 @@
+CREATE INDEX gmi.gmi_ixm_n01 ON gmi.ic_xfer_mst( attribute1 ) TABLESPACE apps_ts_tx_idx;
