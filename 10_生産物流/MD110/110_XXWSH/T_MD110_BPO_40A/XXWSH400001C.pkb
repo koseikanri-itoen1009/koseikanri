@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -27,7 +27,7 @@ AS
  *  pro_load_eff_chk           P 積載効率チェック                   (A-10)
  *  pro_headers_create         P 受注ヘッダアドオンレコード生成     (A-11)
  *  pro_ship_order             P 出荷依頼登録処理                   (A-12)
- *  pro_no_item_category_chk   P 品目カテゴリ設定チェック           (A-13)
+ *  pro_no_item_category_chk   P 品目カテゴリ設定チェック           (A-15)
  *  submain                    P メイン処理プロシージャ
  *  main                       P コンカレント実行ファイル登録プロシージャ
  *
@@ -63,6 +63,7 @@ AS
  *  2009/07/08    1.21  SCS    伊藤ひとみ  本番障害#1525対応
  *  2009/07/13    1.22  SCS    伊藤ひとみ  本番障害#1525対応
  *  2009/12/09    1.23  SCS    宮川真理子  本番障害#267対応
+ *  2010/01/21    1.24  SCS    宮川真理子  本番障害#601対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3909,7 +3910,7 @@ AS
 -- 2009/07/08 H.Itou Add Start 本番障害#1525
   /**********************************************************************************
    * Procedure Name   : pro_no_item_category_chk
-   * Description      : 品目カテゴリ設定チェック (A-13)
+   * Description      : 品目カテゴリ設定チェック (A-15)
    ***********************************************************************************/
   PROCEDURE pro_no_item_category_chk
     (
@@ -3978,7 +3979,71 @@ AS
       FROM   mrp_forecast_designators   mfds                     -- フォーキャスト名
             ,mrp_forecast_dates         mfd                      -- フォーキャスト日付
             ,xxcmn_item_mst_v           ximv                     -- OPM品目情報VIEW
-            ,xxcmn_item_categories5_v   xicv                     -- OPM品目カテゴリ割当情報VIEW
+-- 2010/01/21 M.Miyagawa DEL Start 本番障害#601対応
+--            ,xxcmn_item_categories5_v   xicv                     -- OPM品目カテゴリ割当情報VIEW
+-- 2010/01/21 M.Miyagawa DEL End
+-- 2010/01/21 M.Miyagawa ADD Start 本番障害#601対応
+           --品目区分
+           ,(SELECT  mct_h.description        AS item_class_name         --品目区分名
+                    ,mcb_h.segment1           AS item_class_code         --品目区分
+                    ,gic_h.item_id            AS item_id
+             FROM    gmi_item_categories    gic_h
+                    ,mtl_categories_b       mcb_h
+                    ,mtl_categories_tl      mct_h
+                    ,mtl_category_sets_b    mcsb_h
+                    ,mtl_category_sets_tl   mcst_h
+             WHERE   mct_h.source_lang         = ''JA''
+                AND  mct_h.language            = ''JA''
+                AND  mcb_h.category_id         = mct_h.category_id
+                AND  mcsb_h.structure_id       = mcb_h.structure_id
+                AND  gic_h.category_id         = mcb_h.category_id
+                AND  mcst_h.source_lang        = ''JA''
+                AND  mcst_h.language           = ''JA''
+                AND  mcst_h.category_set_name  = ''品目区分''
+                AND  mcsb_h.category_set_id    = mcst_h.category_set_id
+                AND  gic_h.category_set_id     = mcsb_h.category_set_id
+            ) hk
+           --商品区分
+           ,(SELECT  mct_s.description        AS prod_class_name         --商品区分名
+                    ,mcb_s.segment1           AS prod_class_code         --商品区分
+                    ,gic_s.item_id            AS item_id
+             FROM    gmi_item_categories    gic_s
+                    ,mtl_categories_b       mcb_s
+                    ,mtl_categories_tl      mct_s
+                    ,mtl_category_sets_b    mcsb_s
+                    ,mtl_category_sets_tl   mcst_s
+             WHERE   mct_s.source_lang         = ''JA''
+                AND  mct_s.language            = ''JA''
+                AND  mcb_s.category_id         = mct_s.category_id
+                AND  mcsb_s.structure_id       = mcb_s.structure_id
+                AND  gic_s.category_id         = mcb_s.category_id
+                AND  mcst_s.source_lang        = ''JA''
+                AND  mcst_s.language           = ''JA''
+                AND  mcst_s.category_set_name  = ''商品区分''
+                AND  mcsb_s.category_set_id    = mcst_s.category_set_id
+                AND  gic_s.category_set_id     = mcsb_s.category_set_id
+            ) sk
+           -- 本社商品区分
+           ,(SELECT  mct_hs.description prod_class_h_name                -- 本社商品区分名
+                    ,mcb_hs.segment1    prod_class_h_code                -- 本社商品区分
+                    ,gic_hs.item_id     item_id
+             FROM    gmi_item_categories    gic_hs
+                    ,mtl_categories_b       mcb_hs
+                    ,mtl_categories_tl      mct_hs
+                    ,mtl_category_sets_b    mcsb_hs
+                    ,mtl_category_sets_tl   mcst_hs
+             WHERE   mct_hs.source_lang        = ''JA''
+                AND  mct_hs.language           = ''JA''
+                AND  mcb_hs.category_id        = mct_hs.category_id
+                AND  mcsb_hs.structure_id      = mcb_hs.structure_id
+                AND  gic_hs.category_id        = mcb_hs.category_id
+                AND  mcst_hs.source_lang       = ''JA''
+                AND  mcst_hs.language          = ''JA''
+                AND  mcst_hs.category_set_name = ''本社商品区分''
+                AND  mcsb_hs.category_set_id   = mcst_hs.category_set_id
+                AND  gic_hs.category_set_id    = mcsb_hs.category_set_id
+            ) hs          
+-- 2010/01/21 M.Miyagawa ADD End
       ';
 -- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
     -- 入力Ｐ[管轄拠点]に入力なしの場合、顧客情報を結合し、絞込みをする。
@@ -3994,7 +4059,14 @@ AS
       WHERE  mfds.forecast_designator = mfd.forecast_designator  -- フォーキャスト名
       AND    mfds.organization_id     = mfd.organization_id      -- 組織ID
       AND    mfd.inventory_item_id    = ximv.inventory_item_id   -- 品目
-      AND    ximv.item_id             = xicv.item_id(+)          -- 品目
+-- 2010/01/21 M.Miyagawa DEL Start 本番障害#601対応
+--      AND    ximv.item_id             = xicv.item_id(+)          -- 品目
+-- 2010/01/21 M.Miyagawa DEL End
+-- 2010/01/21 M.Miyagawa ADD Start 本番障害#601対応
+      AND    ximv.item_id             = hs.item_id
+      AND    ximv.item_id             = sk.item_id(+)
+      AND    ximv.item_id             = hk.item_id(+)
+-- 2010/01/21 M.Miyagawa ADD End
       ';
 -- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
     -- 入力Ｐ[管轄拠点]に入力なしの場合、顧客情報を結合条件を追加
@@ -4013,11 +4085,22 @@ AS
       AND    mfd.forecast_date  BETWEEN  TO_DATE(:yyyymm,''YYYYMM'')           -- 入力Ｐ[対象年月]
                                 AND      LAST_DAY(TO_DATE(:yyyymm,''YYYYMM'')) -- 入力Ｐ[対象年月]
 -- 2009/07/13 H.Itou Mod End
--- 2009/07/13 H.Itou Add Start 本番障害#1525 PT対応
-      AND  ((xicv.item_class_code    IS NULL)                    -- 商品区分か品目区分に値のないもの
-        OR  (xicv.prod_class_code    IS NULL))
--- 2009/07/13 H.Itou Add End
-      ';
+-- 2010/01/21 M.Miyagawa ADD Start 本番障害#601対応
+   -- 本社商品区分が1で、商品区分もしくは品目区分に値のないとき
+   -- OR  商品区分が1で、品目区分に値がないとき
+      AND  (
+            (
+               ((sk.prod_class_code    IS NULL) 
+             OR (hk.item_class_code    IS NULL))
+             AND hs.prod_class_h_code   = ''' || gv_1 || '''
+            )
+      OR    (
+                 hk.item_class_code    IS NULL 
+             AND sk.prod_class_code     = ''' || gv_1 || '''
+            )
+           )
+-- 2010/01/21 M.Miyagawa ADD End
+   ';
 --
     IF (gr_param.base IS NOT NULL) THEN -- 入力Ｐ[管轄拠点]に入力ありの場合、条件に追加
       lv_sql := lv_sql || '
@@ -4043,7 +4126,7 @@ AS
 -- 2009/07/13 H.Itou Del End
      ';
 --
-    FND_FILE.PUT_LINE(FND_FILE.LOG, '*** (A-13) SQL ***');
+    FND_FILE.PUT_LINE(FND_FILE.LOG, '*** (A-15) SQL ***');
     FND_FILE.PUT_LINE(FND_FILE.LOG, lv_sql);
     -- ======================================
     -- カーソルOPEN
@@ -4181,7 +4264,7 @@ AS
 --
 -- 2009/07/08 H.Itou Add Start 本番障害#1525
     -- =====================================================
-    --  品目カテゴリ設定チェック (A-13)
+    --  品目カテゴリ設定チェック (A-15)
     -- =====================================================
     pro_no_item_category_chk
       (
