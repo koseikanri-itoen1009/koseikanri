@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/06/19    1.9   新藤  義勝       内部変更要求#143対応
  *  2008/06/24    1.10  石渡  賢和       ST不具合#247、#284対応
  *  2008/06/27    1.11  石渡  賢和       ST不具合#318対応
+ *  2008/07/01    1.12  椎名  昭圭       ST不具合#247④対応
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
       err_msg     VARCHAR2(10000)
     );
   TYPE tab_data_err_msg IS TABLE OF rec_err_msg INDEX BY BINARY_INTEGER;
+--
+  -- IFテーブル削除用
+  TYPE tab_data_del_if IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
 --
 --#######################  固定グローバル変数宣言部 START   #######################
 --
@@ -256,6 +260,7 @@ AS
   gv_err_flg         VARCHAR2(1);       -- エラー確認用フラグ
   gv_err_sts         VARCHAR2(1);       -- 共通エラーメッセージ 終了ST確認用F
   gv_name_m_org      VARCHAR2(20);      -- マスタ組織
+  gv_del_if_flg      VARCHAR2(1);       -- IFテーブル削除対象フラグ
 --
   -- WHOカラム取得用
   gn_created_by      NUMBER;            -- 作成者
@@ -375,6 +380,7 @@ AS
   gr_param         rec_param_data;                        -- 入力パラメータ
   gt_head_line     tab_data_head_line;                    -- 出荷依頼インターフェース情報取得データ
   gt_err_msg       tab_data_err_msg;                      -- エラーメッセージ出力用
+  gt_del_if        tab_data_del_if;                       -- IFテーブル削除用
 --
 --#####################  固定共通例外宣言部 START   ####################
 --
@@ -2964,7 +2970,6 @@ AS
                              ,ln_result                      -- 処理結果
                             );
 --
---
       -- 引取計画チェック 異常終了の場合、エラー
       IF (lv_retcode = gv_1) THEN
         pro_err_list_make
@@ -3951,6 +3956,9 @@ AS
         -- 共通エラーメッセージ 終了ST エラー登録
         gv_err_sts := gv_status_error;
 --
+        -- IFテーブル削除対象
+        gv_del_if_flg := gv_yes;
+--
         RAISE err_header_expt;
       END IF;
 --
@@ -4314,6 +4322,9 @@ AS
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
+    ln_j       NUMBER;          -- カウンタ変数(明細)
+    ln_k       NUMBER;          -- カウンタ変数(ヘッダ)
+--
 --###########################  固定部 END   ####################################
 --
   BEGIN
@@ -4571,6 +4582,14 @@ AS
       gr_h_id    := gt_head_line(gn_i).h_id;
       gr_o_r_ref := gt_head_line(gn_i).o_r_ref;
 --
+      -- 取得したデータのステータスが拠点確定以上の場合、ヘッダIDを保持する。
+      IF (gv_del_if_flg = gv_yes) THEN
+        gt_del_if(gn_i) := gt_head_line(gn_i).h_id;
+      END IF;
+--
+      -- IFテーブル削除対象フラグを初期化
+      gv_del_if_flg := NULL;
+--
     END LOOP headers_data_loop;
 --
     -- ステータスを挿入
@@ -4596,6 +4615,20 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
       END IF;
+    END IF;
+--
+    -- 取得したデータのステータスが拠点確定以上のレコードをIFから消去する。
+    IF (gt_del_if.COUNT > 0) THEN
+      FORALL ln_j IN 1 .. gt_del_if.COUNT
+        DELETE xxwsh_shipping_lines_if    xsli -- 出荷依頼インタフェース明細（アドオン）
+        WHERE  xsli.header_id = gt_del_if(ln_j);
+--
+      FORALL ln_k IN 1 .. gt_del_if.COUNT
+        DELETE xxwsh_shipping_headers_if  xshi -- 出荷依頼インタフェースヘッダ（アドオン）
+        WHERE  xshi.header_id = gt_del_if(ln_k);
+--
+      COMMIT;
+--
     END IF;
 --
   EXCEPTION
