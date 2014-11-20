@@ -41,6 +41,7 @@ CREATE TABLE xxwip.xxwip_deliverys
   transfer_location           VARCHAR2(4),
   outside_up_count            NUMBER(2),
   description                 VARCHAR2(40),
+  dispatch_type               VARCHAR2(1),
   created_by                  NUMBER(15)  NOT NULL,
   creation_date               DATE        NOT NULL,
   last_updated_by             NUMBER(15)  NOT NULL,
@@ -95,6 +96,7 @@ COMMENT ON COLUMN xxwip.xxwip_deliverys.form_update_flag          IS '画面更新有
 COMMENT ON COLUMN xxwip.xxwip_deliverys.transfer_location         IS '振替先';
 COMMENT ON COLUMN xxwip.xxwip_deliverys.outside_up_count          IS '外部業者変更回数';
 COMMENT ON COLUMN xxwip.xxwip_deliverys.description               IS '運賃摘要';
+COMMENT ON COLUMN xxwip.xxwip_deliverys.dispatch_type             IS '配車タイプ';
 COMMENT ON COLUMN xxwip.xxwip_deliverys.created_by                IS '作成者';
 COMMENT ON COLUMN xxwip.xxwip_deliverys.creation_date             IS '作成日';
 COMMENT ON COLUMN xxwip.xxwip_deliverys.last_updated_by           IS '最終更新者';
