@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,9 @@ AS
  *                                                       考慮するように変更
  *                                                       AP_IFヘッダに登録している請求書番号を問屋支払テーブルへ更新
  *  2009/12/09    1.6   K.Yamaguchi      [E_本稼動_00388]連携ステータス更新条件漏れ対応
+ *  2010/09/21    1.7   M.Watanabe       [E_本稼動_02046]
+ *                                       ・マイナス支払金額時のAPOIF請求書タイプの設定値変更
+ *                                       ・補助科目名称取得時の条件追加
  *
  *****************************************************************************************/
   -- ===============================================
@@ -139,6 +142,10 @@ AS
   cn_number_1                CONSTANT NUMBER        := 1;                          -- メッセージ出力後空白行1行追加
   -- AP請求書OIF登録用
   cv_invoice_type_standard   CONSTANT VARCHAR(30)   := 'STANDARD';          -- 取引タイプ：標準
+-- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
+  cv_invoice_type_credit     CONSTANT VARCHAR(30)   := 'CREDIT';            -- 取引タイプ：クレジット・メモ
+-- ************ 2010/09/21 1.7 M.Watanabe ADD END   ************ --
+--
 -- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama DEL START
 --  cn_slip_input_user         CONSTANT NUMBER        := fnd_global.user_id;  -- ログイン情報：ユーザID
 -- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama DEL END
@@ -375,6 +382,9 @@ AS
       AND    xwp.cust_code            = hca_cust.account_number
       AND    xwp.sales_outlets_code   = hca_sale.account_number(+)
       AND    xwp.acct_code            = xav.flex_value(+)
+-- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
+      AND    xwp.acct_code            = xsav.parent_flex_value_low(+)
+-- ************ 2010/09/21 1.7 M.Watanabe ADD END   ************ --
       AND    xwp.sub_acct_code        = xsav.flex_value(+)
       GROUP BY
              xwp.expect_payment_date                             -- 支払予定日
@@ -1282,6 +1292,9 @@ AS
     lb_retcode                   BOOLEAN        DEFAULT NULL;             -- メッセージ出力時リターンコード
     lv_invoice_num               VARCHAR2(50)   DEFAULT NULL;             -- 請求書番号格納
     ld_selling_month_first_date  DATE           DEFAULT NULL;             -- 売上対象年月の初日
+-- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
+    lt_invoice_type              ap_invoices_interface.invoice_type_lookup_code%TYPE; -- 請求書タイプ
+-- ************ 2010/09/21 1.7 M.Watanabe ADD END   ************ --
     -- ===============================================
     -- ローカルテーブル型変数
     -- ===============================================
@@ -1323,6 +1336,18 @@ AS
                                      ir_sell_head_data_rec.selling_month
                                    , 'YYYYMM'
                                    );
+--
+-- ************ 2010/09/21 1.7 M.Watanabe ADD START ************ --
+    -- 請求金額をもとに請求書タイプの値を設定する。
+    -- 請求金額がゼロ以上の場合、標準            「STANDARD」
+    -- 請求金額がマイナスの場合、クレジット・メモ「CREDIT」
+    IF ( gn_header_amt >= 0 ) THEN
+      lt_invoice_type := cv_invoice_type_standard;
+    ELSE
+      lt_invoice_type := cv_invoice_type_credit;
+    END IF;
+-- ************ 2010/09/21 1.7 M.Watanabe ADD END   ************ --
+--
     -- AP請求書OIFヘッダー登録
     BEGIN
       INSERT INTO ap_invoices_interface (
@@ -1353,7 +1378,10 @@ AS
       VALUES (
         ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
       , lv_invoice_num                          -- 請求書番号(直前で取得)
-      , cv_invoice_type_standard                -- 取引タイプ：標準(固定)
+-- ************ 2010/09/21 1.7 M.Watanabe MOD START ************ --
+--      , cv_invoice_type_standard                -- 取引タイプ：標準(固定)
+      , lt_invoice_type                         -- 請求書タイプ
+-- ************ 2010/09/21 1.7 M.Watanabe MOD END   ************ --
       , gd_prof_process_date                    -- 業務処理日付(initで取得)
       , ir_sell_head_data_rec.supplier_code     -- 仕入先コード()
       , ir_sell_head_data_rec.vendor_site_code  -- 仕入先サイトコード
