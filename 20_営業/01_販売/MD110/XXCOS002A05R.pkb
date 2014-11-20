@@ -1,0 +1,2103 @@
+CREATE OR REPLACE PACKAGE BODY XXCOS002A05R
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name     : XXCOS002A05R (body)
+ * Description      : 納品書チェックリスト
+ * MD.050           : 納品書チェックリスト MD050_COS_002_A05
+ * Version          : 1.5
+ *
+ * Program List
+ * ---------------------- ----------------------------------------------------------
+ *  Name                   Description
+ * ---------------------- ----------------------------------------------------------
+ *  init                   初期処理(A-0)
+ *  sales_per_data_entry   販売実績データ抽出(A-3)、納品データ登録（販売実績）(A-4)
+ *  money_data_entry       入金データ抽出(A-5)、納品データ登録（入金データ）(A-6)
+ *  execute_svf            SVF起動(A-7)
+ *  delete_rpt_wrk_data    帳票ワークテーブルデータ削除(A-8)
+ *  submain                メイン処理プロシージャ
+ *  main                   コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2009/01/05    1.0   S.Miyakoshi      新規作成
+ *  2009/02/17    1.1   S.Miyakoshi      get_msgのパッケージ名修正
+ *  2009/02/26    1.2   S.Miyakoshi      従業員の履歴管理対応(xxcos_rs_info_v)
+ *  2009/02/26    1.3   S.Miyakoshi      帳票コンカレント起動後のワークテーブル削除処理のコメント化を解除
+ *  2009/02/27    1.4   S.Miyakoshi      [COS_150]販売実績データ抽出条件修正
+ *  2009/03/04    1.5   N.Maeda          帳票出力時の納品日マッピング項目の変更
+ *                                       ・修正前
+ *                                          ⇒販売実績.納品日を使用
+ *                                       ・修正後
+ *                                          ⇒販売実績.検収日を使用
+ *                                       卸単価、売価のマッピング項目の変更
+ *                                       ・修正前
+ *                                          ⇒卸単価:定価単価
+ *                                          ⇒売価:納品単価×数量
+ *                                       ・修正後
+ *                                          ⇒卸単価:納品単価（売上単)
+ *                                          ⇒売価:定価単価
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル定数宣言部 START   #######################
+--
+  --ステータス・コード
+  cv_status_normal          CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal; --正常:0
+  cv_status_warn            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --警告:1
+  cv_status_error           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --異常:2
+  --WHOカラム
+  cn_created_by             CONSTANT NUMBER      := fnd_global.user_id;         --CREATED_BY
+  cd_creation_date          CONSTANT DATE        := SYSDATE;                    --CREATION_DATE
+  cn_last_updated_by        CONSTANT NUMBER      := fnd_global.user_id;         --LAST_UPDATED_BY
+  cd_last_update_date       CONSTANT DATE        := SYSDATE;                    --LAST_UPDATE_DATE
+  cn_last_update_login      CONSTANT NUMBER      := fnd_global.login_id;        --LAST_UPDATE_LOGIN
+  cn_request_id             CONSTANT NUMBER      := fnd_global.conc_request_id; --REQUEST_ID
+  cn_program_application_id CONSTANT NUMBER      := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
+  cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
+  cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
+--
+  cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
+  cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+--
+--################################  固定部 END   ##################################
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  gv_out_msg       VARCHAR2(2000);
+  gv_sep_msg       VARCHAR2(2000);
+  gv_exec_user     VARCHAR2(100);
+  gv_conc_name     VARCHAR2(30);
+  gv_conc_status   VARCHAR2(30);
+  gn_target_cnt    NUMBER;                    -- 対象件数
+  gn_normal_cnt    NUMBER;                    -- 正常件数
+  gn_error_cnt     NUMBER;                    -- エラー件数
+  gn_warn_cnt      NUMBER;                    -- スキップ件数
+--
+--################################  固定部 END   ##################################
+--
+--##########################  固定共通例外宣言部 START  ###########################
+--
+  --*** 処理部共通例外 ***
+  global_process_expt       EXCEPTION;
+  --*** 共通関数例外 ***
+  global_api_expt           EXCEPTION;
+  --*** 共通関数OTHERS例外 ***
+  global_api_others_expt    EXCEPTION;
+--
+  PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+--
+--################################  固定部 END   ##################################
+--
+  -- ===============================
+  -- ユーザー定義例外
+  -- ===============================
+  -- ロックエラー
+  lock_expt EXCEPTION;
+  PRAGMA EXCEPTION_INIT( lock_expt, -54 );
+--
+  -- ===============================
+  -- ユーザー定義グローバル定数
+  -- ===============================
+  cv_pkg_name                   CONSTANT VARCHAR2(100) := 'XXCOS002A05R';       -- パッケージ名
+--
+  -- 帳票関連
+  cv_conc_name                  CONSTANT VARCHAR2(100) := 'XXCOS002A05R';       -- コンカレント名
+  cv_file_id                    CONSTANT VARCHAR2(100) := 'XXCOS002A05R';       -- 帳票ＩＤ
+  cv_extension_pdf              CONSTANT VARCHAR2(100) := '.pdf';               -- 拡張子（ＰＤＦ）
+  cv_frm_file                   CONSTANT VARCHAR2(100) := 'XXCOS002A05S.xml';   -- フォーム様式ファイル名
+  cv_vrq_file                   CONSTANT VARCHAR2(100) := 'XXCOS002A05S.vrq';   -- クエリー様式ファイル名
+  cv_output_mode_pdf            CONSTANT VARCHAR2(1)   := '1';                  -- 出力区分（ＰＤＦ）
+--
+  -- アプリケーション短縮名
+  cv_application                CONSTANT VARCHAR2(5)   := 'XXCOS';
+--
+  -- メッセージ
+  cv_msg_lock_err               CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00001';   -- ロックエラー
+  cv_msg_get_profile_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00004';   -- プロファイル取得エラー
+  cv_msg_in_param_err           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00006';   -- 必須入力パラメータ未設定エラー
+  cv_msg_insert_data_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00010';   -- データ登録エラーメッセージ
+  cv_msg_delete_data_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00012';   -- データ削除エラーメッセージ
+  cv_msg_get_err                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00013';   -- データ抽出エラーメッセージ
+  cv_msg_call_api_err           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00017';   -- API呼出エラーメッセージ
+  cv_msg_nodata_err             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00018';   -- 明細0件用メッセージ
+  cv_msg_svf_api                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00041';   -- SVF起動API
+  cv_msg_mst_qck                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00066';   -- クイックコードマスタ
+  cv_msg_request_id             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00088';   -- 要求ID
+  cv_msg_form_error             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10601';   -- 納品日の型違いメッセージ
+  cv_msg_in_parameter           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10602';   -- 入力パラメータ
+  cv_msg_check_list_work_table  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10603';   -- 納品書チェックリスト帳票テーブル
+  cv_msg_dlv_date               CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10604';   -- 納品日
+  cv_msg_base                   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10605';   -- 拠点
+  cv_msg_type                   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10606';   -- タイプ
+  cv_msg_check_mark             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10607';   -- チェックマーク
+  cv_msg_dlv_by_code            CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10608';   -- 営業員
+  cv_msg_hht_invoice_no         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10609';   -- HHT伝票No
+  cv_msg_sale_header_table      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10610';   -- 販売実績ヘッダテーブル
+--
+  -- トークン
+  cv_tkn_in_param               CONSTANT VARCHAR2(100) := 'IN_PARAM';           -- 入力パラメータ
+  cv_tkn_table                  CONSTANT VARCHAR2(100) := 'TABLE_NAME';         -- テーブル名
+  cv_tkn_key_data               CONSTANT VARCHAR2(100) := 'KEY_DATA';           -- キー情報
+  cv_tkn_profile                CONSTANT VARCHAR2(100) := 'PROFILE';            -- プロファイル名
+  cv_tkn_api_name               CONSTANT VARCHAR2(100) := 'API_NAME';           -- API名称
+  cv_tkn_para_delivery_date     CONSTANT VARCHAR2(100) := 'PARAM1';             -- 納品日
+  cv_tkn_para_delivery_base     CONSTANT VARCHAR2(100) := 'PARAM2';             -- 拠点
+  cv_tkn_para_dlv_by_code       CONSTANT VARCHAR2(100) := 'PARAM3';             -- 営業員
+  cv_tkn_para_hht_invoice       CONSTANT VARCHAR2(100) := 'PARAM4';             -- HHT伝票No
+--
+  -- クイックコード（作成元区分）
+  ct_qck_org_cls_type           CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_MK_ORG_CLS_MST_002_A05';
+--
+  -- クイックコード（値引品目）
+  ct_qck_discount_item_type     CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_DISCOUNT_ITEM_CODE';
+--
+  -- クイックコード（入力区分）
+  ct_qck_input_class            CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_INPUT_CLASS';
+--
+  -- クイックコード（カード売区分）
+  ct_qck_card_sale_class        CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_CARD_SALE_CLASS';
+--
+  -- クイックコード（売上区分）
+  ct_qck_sale_class             CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_SALE_CLASS';
+--
+  -- クイックコード（HHT消費税区分）
+  ct_qck_tax_class              CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_CONSUMPTION_TAX_CLASS';
+--
+  -- クイックコード（入金区分）
+  ct_qck_money_class            CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_RECEIPT_MONEY_CLASS';
+--
+  -- クイックコード（H/C区分）
+  ct_qck_hc_class               CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_HC_CLASS';
+--
+  -- クイックコード（業態小分類特定マスタ）
+  ct_qck_gyotai_sho_mst         CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_GYOTAI_SHO_MST_002_A03';
+--
+  -- Yes/No
+  cv_yes                        CONSTANT VARCHAR2(1)   := 'Y';
+  cv_no                         CONSTANT VARCHAR2(1)   := 'N';
+--
+  -- NULL回避定数
+  cv_x                          CONSTANT VARCHAR2(1)   := 'X';
+--
+  -- デフォルト値
+  cn_zero                       CONSTANT NUMBER        := 0;
+  cn_one                        CONSTANT NUMBER        := 1;
+--
+  -- カード売り区分
+  ct_cash                       CONSTANT xxcos_sales_exp_headers.card_sale_class%TYPE := '0';   -- 現金
+  ct_card                       CONSTANT xxcos_sales_exp_headers.card_sale_class%TYPE := '1';   -- カード
+--
+  -- パラメータ日付指定書式
+  cv_fmt_date_default           CONSTANT VARCHAR2(21)  := 'YYYY/MM/DD HH24:MI:SS';
+  cv_fmt_date                   CONSTANT VARCHAR2(8)   := 'YYYYMMDD';
+--
+  -- 顧客区分
+  ct_cust_class_base            CONSTANT hz_cust_accounts.customer_class_code%TYPE    := '1';   -- 拠点
+  ct_cust_class_customer        CONSTANT hz_cust_accounts.customer_class_code%TYPE    := '10';  -- 顧客
+--
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+  -- 販売実績データ登録
+  TYPE g_dlv_chk_list_tab       IS TABLE OF xxcos_rep_dlv_chk_list%ROWTYPE
+    INDEX BY PLS_INTEGER;
+--
+  -- ===============================
+  -- ユーザー定義グローバル変数
+  -- ===============================
+  -- 販売実績データ登録
+  gt_dlv_chk_list               g_dlv_chk_list_tab;             -- 販売実績データ登録
+--
+  gv_tkn1                       VARCHAR2(5000);                 -- エラーメッセージ用トークン１
+  gv_tkn2                       VARCHAR2(5000);                 -- エラーメッセージ用トークン２
+  gv_tkn3                       VARCHAR2(5000);                 -- エラーメッセージ用トークン３
+  gv_tkn4                       VARCHAR2(5000);                 -- エラーメッセージ用トークン４
+  gv_key_info                   VARCHAR2(5000);                 -- キー情報
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : init
+   * Description      : 初期処理(A-0)
+   ***********************************************************************************/
+  PROCEDURE init(
+    iv_delivery_date      IN      VARCHAR2,         -- 納品日
+    iv_delivery_base_code IN      VARCHAR2,         -- 拠点
+    iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
+    iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+    ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ                  --# 固定 #
+    ov_retcode            OUT     VARCHAR2,         -- リターン・コード                    --# 固定 #
+    ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'init'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    -- キー情報
+    lv_key_info                 VARCHAR2(5000);
+    --パラメータ出力用
+    lv_para_msg                 VARCHAR2(5000);
+--
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --  パラメータ出力
+    lv_para_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_application,
+                     iv_name         => cv_msg_in_parameter,
+                     iv_token_name1  => cv_tkn_para_delivery_date,
+                     iv_token_value1 => iv_delivery_date,
+                     iv_token_name2  => cv_tkn_para_delivery_base,
+                     iv_token_value2 => iv_delivery_base_code,
+                     iv_token_name3  => cv_tkn_para_dlv_by_code,
+                     iv_token_value3 => iv_dlv_by_code,
+                     iv_token_name4  => cv_tkn_para_hht_invoice,
+                     iv_token_value4 => iv_hht_invoice_no
+                     );
+--
+    FND_FILE.PUT_LINE(
+       which => FND_FILE.LOG
+      ,buff  => lv_para_msg
+    );
+--
+    --  1行空白
+    FND_FILE.PUT_LINE(
+       which => FND_FILE.LOG
+      ,buff  => NULL
+    );
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END init;
+--
+  /**********************************************************************************
+   * Procedure Name   : sales_per_data_entry
+   * Description      : 販売実績データ抽出(A-3)、納品データ登録（販売実績）(A-4)
+   ***********************************************************************************/
+  PROCEDURE sales_per_data_entry(
+    iv_delivery_date      IN      VARCHAR2,         -- 納品日
+    iv_delivery_base_code IN      VARCHAR2,         -- 拠点
+    iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
+    iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+    ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'sales_per_data_entry'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ld_delivery_date       DATE;                                            -- パラメータ変換後の納品日
+    lv_check_mark          VARCHAR2(2);                                     -- チェックマーク
+    ln_target_cnt          NUMBER;                                          -- 対象件数
+    lt_enabled_flag        fnd_lookup_values.enabled_flag%TYPE;             -- 業態小分類使用可
+    lt_standard_unit_price xxcos_sales_exp_lines.standard_unit_price%TYPE;  -- 基準単価
+    lt_business_cost       xxcos_sales_exp_lines.business_cost%TYPE;        -- 営業原価
+    lt_st_date             ic_item_mst_b.attribute6%TYPE;                   -- 定価適用開始
+    lt_plice_new           ic_item_mst_b.attribute5%TYPE;                   -- 定価(新)
+    lt_plice_old           ic_item_mst_b.attribute4%TYPE;                   -- 旧定価
+    lt_confirmation        xxcos_rep_dlv_chk_list.confirmation%TYPE;        -- 確認
+    lt_set_plice           xxcos_rep_dlv_chk_list.ploce%TYPE;               -- 売値
+--
+    -- *** ローカル・カーソル ***
+    -- 販売実績データ抽出
+    CURSOR get_sale_data_cur(
+                               icp_delivery_date       DATE       -- 納品日
+                              ,icp_delivery_base_code  VARCHAR2   -- 拠点
+                              ,icp_dlv_by_code         VARCHAR2   -- 営業員
+                              ,icp_hht_invoice_no      VARCHAR2   -- HHT伝票No
+                            )
+    IS
+      SELECT
+         infh.delivery_date                     AS target_date                     -- 対象日付
+        ,infh.sales_base_code                   AS base_code                       -- 拠点コード
+        ,MIN( SUBSTRB( parb.party_name, 1, 40 ) )
+                                                AS base_name                       -- 拠点名称
+        ,riv.employee_number                    AS employee_num                    -- 納品者コード
+        ,MIN( riv.employee_name )               AS employee_name                   -- 営業員氏名
+        ,MIN( riv.group_code )                  AS group_code                      -- グループ番号
+        ,MIN( riv.group_in_sequence )           AS group_in_sequence               -- グループ内順序
+        ,infh.dlv_invoice_number                AS invoice_no                      -- 伝票番号
+        ,infh.inspect_date                      AS dlv_date                        -- 納品日
+        ,infh.ship_to_customer_code             AS party_num                       -- 顧客コード
+        ,MIN( SUBSTRB( parc.party_name, 1, 40 ) )
+                                                AS customer_name                   -- 顧客名
+        ,incl.meaning                           AS input_class                     -- 入力区分
+        ,infh.results_employee_code             AS performance_by_code             -- 成績計上者コード
+        ,MIN( ppf.per_information18 || ' ' || ppf.per_information19 )
+                                                AS performance_by_name             -- 成績者名
+        ,MIN( cscl.meaning )                    AS card_sale_class                 -- カード売り区分
+        ,MIN( infh.sale_amount_sum )            AS sudstance_total_amount          -- 売上額
+        ,MIN( disc.sale_discount_amount )       AS sale_discount_amount            -- 売上値引額
+        ,MIN( infh.tax_amount_sum )             AS consumption_tax_total_amount    -- 消費税金額合計
+        ,MIN( tacl.meaning )                    AS consumption_tax_class_mst       -- 消費税区分（マスタ）
+        ,infh.invoice_classification_code       AS invoice_classification_code     -- 伝票分類コード
+        ,infh.invoice_class                     AS invoice_class                   -- 伝票区分
+        ,MIN( sacl.meaning )                    AS sale_class                      -- 売上区分
+        ,sel.item_code                          AS item_code                       -- 品目コード
+        ,MIN( ximb.item_short_name )            AS item_name                       -- 商品名
+        ,SUM( sel.standard_qty )                AS quantity                        -- 数量
+        ,sel.standard_unit_price                AS wholesale_unit_ploce            -- 卸単価
+        ,MIN( gysm.enabled_flag )               AS enabled_flag                    -- 業態小分類使用可
+        ,MIN( sel.standard_unit_price )         AS standard_unit_price             -- 基準単価
+        ,MIN( sel.business_cost )               AS business_cost                   -- 営業原価
+        ,MIN( iimb.attribute6 )                 AS st_date                         -- 定価適用開始
+        ,MIN( iimb.attribute5 )                 AS plice_new                       -- 定価(新)
+        ,MIN( iimb.attribute4 )                 AS plice_old                       -- 旧定価
+        ,htcl.meaning                           AS consum_tax_calss_entered        -- 消費税区分（入力）
+        ,CASE infh.card_sale_class
+           WHEN  ct_cash  THEN MIN( sel.cash_and_card )
+           WHEN  ct_card  THEN MIN( sel.sale_amount )
+           ELSE  cn_zero
+         END                                    AS card_amount                     -- カード金額
+        ,sel.column_no                          AS column_no                       -- コラム
+        ,hccl.meaning                           AS h_and_c                         -- H/C
+        ,pacl.meaning                           AS payment_class                   -- 入金区分
+        ,pay.payment_amount                     AS payment_amount                  -- 入金額
+      FROM
+         xxcos_sales_exp_lines    sel           -- 販売実績明細テーブル
+        ,hz_cust_accounts         base          -- 顧客マスタ_拠点
+        ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
+        ,xxcmm_cust_accounts      cuac          -- 顧客追加情報
+        ,hz_parties               parb          -- パーティ_拠点
+        ,hz_parties               parc          -- パーティ_顧客
+        ,xxcos_payment            pay           -- 入金テーブル
+        ,ic_item_mst_b            iimb          -- OPM品目
+        ,xxcmn_item_mst_b         ximb          -- OPM品目アドオン
+        ,per_people_f             ppf           -- 従業員マスタ_納品
+        ,xxcos_rs_info_v          riv           -- 営業員情報view
+        ,(
+           SELECT
+              seh.delivery_date               AS delivery_date                -- 対象日付
+             ,seh.sales_base_code             AS sales_base_code              -- 拠点コード
+             ,seh.dlv_by_code                 AS dlv_by_code                  -- 納品者コード
+             ,seh.dlv_invoice_number          AS dlv_invoice_number           -- 伝票番号
+             ,seh.delivery_date               AS dlv_date                     -- 納品日
+             ,seh.ship_to_customer_code       AS ship_to_customer_code        -- 顧客コード
+             ,seh.input_class                 AS input_class                  -- 入力区分
+             ,seh.results_employee_code       AS results_employee_code        -- 成績計上者コード
+             ,seh.card_sale_class             AS card_sale_class              -- カード売り区分
+             ,seh.consumption_tax_class       AS consumption_tax_class        -- 消費税区分
+             ,seh.invoice_classification_code AS invoice_classification_code  -- 伝票分類コード
+             ,seh.invoice_class               AS invoice_class                -- 伝票区分
+             ,SUM(
+               CASE sel.item_code
+                 WHEN diit.lookup_code THEN sel.sale_amount
+                 ELSE cn_zero
+               END
+              )                               AS sale_discount_amount         -- 売上値引額
+           FROM
+              xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
+             ,xxcos_sales_exp_lines     sel           -- 販売実績明細テーブル
+             ,(
+                SELECT  look_val.lookup_code        lookup_code
+                       ,look_val.meaning            meaning
+                FROM    fnd_lookup_values     look_val
+                       ,fnd_lookup_types_tl   types_tl
+                       ,fnd_lookup_types      types
+                       ,fnd_application_tl    appl
+                       ,fnd_application       app
+                WHERE   app.application_short_name = cv_application             -- XXCOS
+                AND     look_val.lookup_type       = ct_qck_discount_item_type  -- XXCOS1_DISCOUNT_ITEM_CODE
+                AND     look_val.enabled_flag      = cv_yes                     -- Y
+                AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+                AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+                AND     types_tl.language          = USERENV( 'LANG' )
+                AND     look_val.language          = USERENV( 'LANG' )
+                AND     appl.language              = USERENV( 'LANG' )
+                AND     appl.application_id        = types.application_id
+                AND     app.application_id         = appl.application_id
+                AND     types_tl.lookup_type       = look_val.lookup_type
+                AND     types.lookup_type          = types_tl.lookup_type
+                AND     types.security_group_id    = types_tl.security_group_id
+                AND     types.view_application_id  = types_tl.view_application_id
+              ) diit    -- 値引品目
+           WHERE
+             seh.delivery_date           = icp_delivery_date                        -- パラメータの納品日
+           AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
+           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
+           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )
+                                                                                  -- パラメータの伝票番号
+           AND seh.sales_exp_header_id   = sel.sales_exp_header_id
+           AND sel.item_code             = diit.lookup_code(+)
+           GROUP BY
+              seh.delivery_date                      -- 納品日
+             ,seh.sales_base_code                    -- 拠点コード
+             ,seh.dlv_by_code                        -- 納品者コード
+             ,seh.dlv_invoice_number                 -- 伝票番号
+             ,seh.ship_to_customer_code              -- 顧客コード
+             ,seh.input_class                        -- 入力区分
+             ,seh.results_employee_code              -- 成績計上者コード
+             ,seh.card_sale_class                    -- カード売り区分
+             ,seh.consumption_tax_class              -- 消費税区分
+             ,seh.invoice_classification_code        -- 伝票分類コード
+             ,seh.invoice_class                      -- 伝票区分
+         ) disc         -- 売上値引額
+        ,(
+           SELECT
+              MIN( seh.sales_exp_header_id )         AS sales_exp_header_id             -- 販売実績ヘッダID
+             ,seh.delivery_date                      AS delivery_date                   -- 対象日付
+             ,seh.sales_base_code                    AS sales_base_code                 -- 拠点コード
+             ,seh.dlv_by_code                        AS dlv_by_code                     -- 納品者コード
+             ,seh.dlv_invoice_number                 AS dlv_invoice_number              -- 伝票番号
+             ,seh.delivery_date                      AS dlv_date                        -- 納品日
+             ,seh.inspect_date                       AS inspect_date                    -- 検収日
+             ,seh.ship_to_customer_code              AS ship_to_customer_code           -- 顧客コード
+             ,seh.input_class                        AS input_class                     -- 入力区分
+             ,MIN( seh.cust_gyotai_sho )             AS cust_gyotai_sho                 -- 業態小分類
+             ,seh.results_employee_code              AS results_employee_code           -- 成績計上者コード
+             ,seh.card_sale_class                    AS card_sale_class                 -- カード売り区分
+             ,SUM( seh.sale_amount_sum )             AS sale_amount_sum                 -- 売上額
+             ,SUM( seh.tax_amount_sum  )             AS tax_amount_sum                  -- 消費税金額合計
+             ,seh.consumption_tax_class              AS consumption_tax_class           -- 消費税区分
+             ,seh.invoice_classification_code        AS invoice_classification_code     -- 伝票分類コード
+             ,seh.invoice_class                      AS invoice_class                   -- 伝票区分
+             ,MIN( seh.create_class )                AS create_class                    -- 作成元区分
+           FROM
+             xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
+           WHERE
+             seh.delivery_date           = icp_delivery_date                        -- パラメータの納品日
+           AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
+           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
+           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )
+                                                                                  -- パラメータの伝票番号
+           GROUP BY
+              seh.delivery_date                      -- 納品日
+             ,seh.sales_base_code                    -- 拠点コード
+             ,seh.dlv_by_code                        -- 納品者コード
+             ,seh.inspect_date                       -- 検収日
+             ,seh.dlv_invoice_number                 -- 伝票番号
+             ,seh.ship_to_customer_code              -- 顧客コード
+             ,seh.input_class                        -- 入力区分
+             ,seh.results_employee_code              -- 成績計上者コード
+             ,seh.card_sale_class                    -- カード売り区分
+             ,seh.consumption_tax_class              -- 消費税区分
+             ,seh.invoice_classification_code        -- 伝票分類コード
+             ,seh.invoice_class                      -- 伝票区分
+         ) infh         -- ヘッダ情報
+        ,(
+            SELECT  look_val.meaning      meaning 
+            FROM    fnd_lookup_values     look_val
+                   ,fnd_lookup_types_tl   types_tl
+                   ,fnd_lookup_types      types
+                   ,fnd_application_tl    appl
+                   ,fnd_application       app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_org_cls_type     -- XXCOS1_MK_ORG_CLS_MST_002_A05
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  orct    -- 作成元区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_input_class      -- XXCOS1_INPUT_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  incl    -- 入力区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_card_sale_class  -- XXCOS1_CARD_SALE_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  cscl    -- カード売区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_sale_class       -- XXCOS1_SALE_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  sacl    -- 売上区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+                   ,look_val.attribute3         attribute3
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_tax_class        -- XXCOS1_CONSUMPTION_TAX_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  htcl    -- HHT消費税区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  pacl    -- 入金区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_hc_class         -- XXCOS1_HC_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  hccl    -- H/C区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+                   ,look_val.attribute3         attribute3
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_tax_class        -- XXCOS1_CONSUMPTION_TAX_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  tacl    -- 消費税区分
+        ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+                   ,look_val.enabled_flag       enabled_flag
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_gyotai_sho_mst   -- XXCOS1_GYOTAI_SHO_MST_002_A03
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+         )  gysm    -- 業態小分類特定マスタ
+      WHERE
+        infh.delivery_date           = icp_delivery_date               -- パラメータの納品日
+      AND infh.sales_base_code       = icp_delivery_base_code          -- パラメータの拠点
+      AND infh.sales_exp_header_id   = sel.sales_exp_header_id          -- 販売実績ヘッダ＆明細.販売実績ヘッダID
+      AND base.customer_class_code   = ct_cust_class_base              -- 顧客区分＝拠点
+      AND infh.sales_base_code       = base.account_number             -- 販売実績ヘッダ＝顧客マスタ_拠点
+      AND base.party_id              = parb.party_id                   -- 顧客マスタ_拠点＝パーティ_拠点
+      AND cust.customer_class_code   = ct_cust_class_customer          -- 顧客区分＝顧客
+      AND infh.ship_to_customer_code = cust.account_number             -- 販売実績ヘッダ＝顧客マスタ_顧客
+      AND cust.cust_account_id       = cuac.customer_id                -- 顧客マスタ_顧客＝顧客追加情報
+      AND cust.party_id              = parc.party_id                   -- 顧客マスタ_顧客＝パーティ_顧客
+      AND infh.create_class IN ( orct.meaning )                        -- 作成元区分＝クイックコード
+      AND infh.results_employee_code = ppf.employee_number(+)
+      AND sel.item_code              = iimb.item_no
+      AND iimb.item_id               = ximb.item_id
+      AND infh.sales_base_code       = riv.base_code
+      AND riv.employee_number        = NVL( icp_dlv_by_code, riv.employee_number )
+      AND infh.delivery_date        >= NVL( riv.effective_start_date, infh.delivery_date )
+      AND infh.delivery_date        <= NVL( riv.effective_end_date, infh.delivery_date )
+      AND infh.delivery_date        >= riv.per_effective_start_date
+      AND infh.delivery_date        <= riv.per_effective_end_date
+      AND infh.delivery_date        >= riv.paa_effective_start_date
+      AND infh.delivery_date        <= riv.paa_effective_end_date
+      AND infh.dlv_invoice_number    = NVL( icp_hht_invoice_no, infh.dlv_invoice_number )
+      AND infh.dlv_invoice_number    = pay.hht_invoice_no(+)
+      AND incl.lookup_code           = infh.input_class
+      AND cscl.lookup_code           = NVL( infh.card_sale_class, cv_x )
+      AND sacl.lookup_code           = sel.sales_class
+      AND htcl.attribute3            = infh.consumption_tax_class
+      AND pacl.lookup_code(+)        = pay.payment_class
+      AND hccl.lookup_code(+)        = NVL( sel.hot_cold_class, cv_x )
+      AND tacl.attribute3            = cuac.tax_div
+      AND gysm.meaning(+)            = infh.cust_gyotai_sho
+      AND infh.delivery_date         = disc.delivery_date                -- ヘッダ情報、売上値引額.納品日
+      AND infh.sales_base_code       = disc.sales_base_code              -- ヘッダ情報、売上値引額.拠点コード
+      AND riv.employee_number        = infh.dlv_by_code                  -- 営業員情報、ヘッダ情報.納品者コード
+      AND infh.dlv_invoice_number    = disc.dlv_invoice_number           -- ヘッダ情報、売上値引額.伝票番号
+      AND infh.dlv_date              = disc.dlv_date                     -- ヘッダ情報、売上値引額.納品日
+      AND infh.ship_to_customer_code = disc.ship_to_customer_code        -- ヘッダ情報、売上値引額.顧客コード
+      AND infh.results_employee_code = disc.results_employee_code        -- ヘッダ情報、売上値引額.成績計上者コード
+      AND NVL( infh.invoice_classification_code, cv_x )
+            = NVL( disc.invoice_classification_code, cv_x )              -- ヘッダ情報、売上値引額.伝票分類コード
+      AND NVL( infh.invoice_class, cv_x )
+                                     = NVL( disc.invoice_class, cv_x )   -- ヘッダ情報、売上値引額.伝票区分
+      AND NVL( infh.card_sale_class, cv_x )
+                                     = NVL( disc.card_sale_class, cv_x ) -- ヘッダ情報、売上値引額.カード売り区分
+      GROUP BY
+         infh.delivery_date                      -- 対象日付
+        ,infh.sales_base_code                    -- 拠点コード
+        ,riv.employee_number                     -- 納品者コード
+        ,infh.dlv_invoice_number                 -- 伝票番号
+        ,infh.dlv_date                           -- 納品日
+        ,infh.inspect_date                       -- 検収日(納品日)
+        ,infh.ship_to_customer_code              -- 顧客コード
+        ,incl.meaning                            -- 入力区分
+        ,infh.results_employee_code              -- 成績計上者コード
+        ,infh.card_sale_class                    -- カード売り区分
+        ,htcl.meaning                            -- 消費税区分
+        ,infh.invoice_classification_code        -- 伝票分類コード
+        ,infh.invoice_class                      -- 伝票区分
+        ,sel.item_code                           -- 品目コード
+        ,sel.standard_unit_price                 -- 卸単価
+        ,sel.column_no                           -- コラム
+        ,hccl.meaning                            -- H/C
+        ,pacl.meaning                            -- 入金区分
+        ,pay.payment_amount                      -- 入金額
+      HAVING
+        ( SUM( sel.sale_amount )  != 0           -- 売上金額
+          OR
+          SUM( sel.standard_qty ) != 0 )         -- 納品数量
+      ;
+--
+--
+    -- *** ローカル・レコード ***
+    -- 販売実績データ抽出 テーブル型
+    TYPE l_get_sale_data_tab      IS TABLE OF get_sale_data_cur%ROWTYPE
+      INDEX BY PLS_INTEGER;
+    -- 伝票番号格納用 テーブル型
+    TYPE l_invoice_num_tab        IS TABLE OF NUMBER
+      INDEX BY xxcos_sales_exp_headers.dlv_invoice_number%TYPE;
+--
+    -- 販売実績データ抽出
+    lt_get_sale_data              l_get_sale_data_tab;            -- 販売実績データ抽出
+    -- 伝票番号格納用
+    lt_invoice_num                l_invoice_num_tab;              -- 伝票番号格納用
+    -- 配列番号
+    ln_num                        NUMBER DEFAULT 0;               -- 伝票番号格納用
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==========================================================
+    --販売実績データ抽出(A-3)
+    --==========================================================
+    BEGIN
+      ld_delivery_date  :=  TO_DATE(iv_delivery_date, cv_fmt_date_default);
+--
+      -- チェックマーク取得
+      lv_check_mark := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_mark );
+--
+      -- カーソルOPEN
+      OPEN  get_sale_data_cur(
+                                ld_delivery_date        -- 納品日
+                               ,iv_delivery_base_code   -- 拠点
+                               ,iv_dlv_by_code          -- 営業員
+                               ,iv_hht_invoice_no       -- HHT伝票No
+                             );
+      -- バルクフェッチ
+      FETCH get_sale_data_cur BULK COLLECT INTO lt_get_sale_data;
+      -- 対象件数取得
+      ln_target_cnt := get_sale_data_cur%ROWCOUNT;
+      -- カーソルCLOSE
+      CLOSE get_sale_data_cur;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- カーソルCLOSE
+        IF ( get_sale_data_cur%ISOPEN ) THEN
+          CLOSE get_sale_data_cur;
+        END IF;
+--
+        -- キー情報編集
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_date );
+        gv_tkn2   := xxccp_common_pkg.get_msg( cv_application, cv_msg_base );
+        gv_tkn3   := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_by_code );
+        gv_tkn4   := xxccp_common_pkg.get_msg( cv_application, cv_msg_hht_invoice_no );
+        xxcos_common_pkg.makeup_key_info(
+                                         ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+                                        ,ov_retcode     => lv_retcode          -- リターン・コード
+                                        ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+                                        ,ov_key_info    => gv_key_info         -- キー情報
+                                        ,iv_item_name1  => gv_tkn1             -- 納品日
+                                        ,iv_data_value1 => iv_delivery_date
+                                        ,iv_item_name2  => gv_tkn2             -- 拠点
+                                        ,iv_data_value2 => iv_delivery_base_code
+                                        ,iv_item_name3  => gv_tkn3             -- 営業員
+                                        ,iv_data_value3 => iv_dlv_by_code
+                                        ,iv_item_name4  => gv_tkn4             -- HHT伝票No
+                                        ,iv_data_value4 => iv_hht_invoice_no
+                                        );
+--
+        -- データ抽出エラーメッセージ
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_sale_header_table );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                               cv_application
+                                              ,cv_msg_get_err
+                                              ,cv_tkn_table
+                                              ,gv_tkn1
+                                              ,cv_tkn_key_data
+                                              ,NULL
+                                             );
+        lv_errbuf  := lv_errmsg;
+--
+        RAISE global_api_expt;
+    END;
+--
+    -- 対象件数セット
+    gn_target_cnt := ln_target_cnt;
+--
+    --==========================================================
+    --納品データ登録（販売実績）(A-4)
+    --==========================================================
+    --  対象件数が0件の場合登録処理をスキップ
+    IF ( ln_target_cnt != 0 ) THEN
+--
+      FOR in_no IN 1..ln_target_cnt LOOP
+--
+        -- 配列番号取得
+        ln_num := ln_num + 1;
+--
+        --  レコードID取得
+        SELECT
+          xxcos_rep_dlv_chk_list_s01.nextval
+        INTO
+          gt_dlv_chk_list(ln_num).record_id
+        FROM
+          DUAL;
+--
+        --== ベンダー以外の時の処理 ==--
+        -- データ取得
+        lt_enabled_flag        := lt_get_sale_data(in_no).enabled_flag;          -- 業態小分類使用可
+        lt_standard_unit_price := lt_get_sale_data(in_no).standard_unit_price;   -- 基準単価--卸単価
+        lt_business_cost       := lt_get_sale_data(in_no).business_cost;         -- 営業原価
+        lt_st_date             := lt_get_sale_data(in_no).st_date;               -- 定価適用開始
+        lt_plice_new           := lt_get_sale_data(in_no).plice_new;             -- 定価(新)
+        lt_plice_old           := lt_get_sale_data(in_no).plice_old;             -- 旧定価
+--
+        -- 判定
+        IF ( lt_enabled_flag = cv_yes ) THEN
+          lt_confirmation := NULL;
+--
+        ELSE
+          IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
+            lt_confirmation := lv_check_mark;
+--
+          ELSIF ( lt_st_date >= iv_delivery_date ) THEN            -- 定価適用開始 >= 納品日
+            IF ( lt_plice_new > lt_standard_unit_price ) THEN      -- 定価(新) > 基準単価
+              lt_confirmation := lv_check_mark;
+            ELSE
+              lt_confirmation := NULL;
+            END IF;
+--
+          ELSIF ( lt_st_date < iv_delivery_date ) THEN             -- 定価適用開始 < 納品日
+            IF ( lt_plice_old > lt_standard_unit_price ) THEN      -- 旧定価 > 基準単価
+              lt_confirmation := lv_check_mark;
+            ELSE
+              lt_confirmation := NULL;
+            END IF;
+--
+          ELSE
+            lt_confirmation := NULL;
+          END IF;
+--
+        END IF;
+--
+        -- 売値判定
+        IF ( lt_st_date <= iv_delivery_date ) THEN
+          lt_set_plice := lt_plice_new;
+        ELSE
+          lt_set_plice := lt_plice_old;
+        END IF;
+--
+        -- 対象日付
+        gt_dlv_chk_list(ln_num).target_date                  := lt_get_sale_data(in_no).target_date;
+        -- 拠点コード
+        gt_dlv_chk_list(ln_num).base_code                    := lt_get_sale_data(in_no).base_code;
+        -- 拠点名称
+        gt_dlv_chk_list(ln_num).base_name                    := lt_get_sale_data(in_no).base_name;
+        -- 営業員コード
+        gt_dlv_chk_list(ln_num).employee_num                 := lt_get_sale_data(in_no).employee_num;
+        -- 営業員氏名
+        gt_dlv_chk_list(ln_num).employee_name                := lt_get_sale_data(in_no).employee_name;
+        -- グループ番号
+        gt_dlv_chk_list(ln_num).group_code                   := lt_get_sale_data(in_no).group_code;
+        -- グループ内順序
+        gt_dlv_chk_list(ln_num).group_in_sequence            := lt_get_sale_data(in_no).group_in_sequence;
+        -- 伝票番号
+        gt_dlv_chk_list(ln_num).entry_number                 := lt_get_sale_data(in_no).invoice_no;
+        -- 納品日
+        gt_dlv_chk_list(ln_num).dlv_date                     := lt_get_sale_data(in_no).dlv_date;
+        -- 顧客コード
+        gt_dlv_chk_list(ln_num).party_num                    := lt_get_sale_data(in_no).party_num;
+        -- 顧客名
+        gt_dlv_chk_list(ln_num).customer_name                := lt_get_sale_data(in_no).customer_name;
+        -- 入力区分
+        gt_dlv_chk_list(ln_num).input_class                  := lt_get_sale_data(in_no).input_class;
+        -- 成績者コード
+        gt_dlv_chk_list(ln_num).performance_by_code          := lt_get_sale_data(in_no).performance_by_code;
+        -- 成績者名
+        gt_dlv_chk_list(ln_num).performance_by_name          := lt_get_sale_data(in_no).performance_by_name;
+        -- カード売り区分
+        gt_dlv_chk_list(ln_num).card_sale_class              := lt_get_sale_data(in_no).card_sale_class;
+        -- 売上額
+        gt_dlv_chk_list(ln_num).sudstance_total_amount       := lt_get_sale_data(in_no).sudstance_total_amount;
+        -- 売上値引額
+        gt_dlv_chk_list(ln_num).sale_discount_amount         := lt_get_sale_data(in_no).sale_discount_amount;
+        -- 消費税金額合計
+        gt_dlv_chk_list(ln_num).consumption_tax_total_amount := lt_get_sale_data(in_no).consumption_tax_total_amount;
+        -- 消費税区分（マスタ)
+        gt_dlv_chk_list(ln_num).consumption_tax_class_mst    := lt_get_sale_data(in_no).consumption_tax_class_mst;
+        -- 伝票分類コード
+        gt_dlv_chk_list(ln_num).invoice_classification_code  := lt_get_sale_data(in_no).invoice_classification_code;
+        -- 伝票区分
+        gt_dlv_chk_list(ln_num).invoice_class                := lt_get_sale_data(in_no).invoice_class;
+        -- 売上区分
+        gt_dlv_chk_list(ln_num).sale_class                   := lt_get_sale_data(in_no).sale_class;
+        -- 品目コード
+        gt_dlv_chk_list(ln_num).item_code                    := lt_get_sale_data(in_no).item_code;
+        -- 商品名
+        gt_dlv_chk_list(ln_num).item_name                    := lt_get_sale_data(in_no).item_name;
+        -- 数量
+        gt_dlv_chk_list(ln_num).quantity                     := lt_get_sale_data(in_no).quantity;
+        -- 卸単価
+        gt_dlv_chk_list(ln_num).wholesale_unit_ploce         := lt_get_sale_data(in_no).wholesale_unit_ploce;
+        -- 確認
+        gt_dlv_chk_list(ln_num).confirmation                 := lt_confirmation;
+        -- 消費税区分（入力)
+        gt_dlv_chk_list(ln_num).consum_tax_calss_entered     := lt_get_sale_data(in_no).consum_tax_calss_entered;
+        -- 売価
+        gt_dlv_chk_list(ln_num).ploce                        := lt_set_plice;
+--        gt_dlv_chk_list(ln_num).ploce                        := lt_get_sale_data(in_no).ploce;
+        -- カード金額
+        gt_dlv_chk_list(ln_num).card_amount                  := lt_get_sale_data(in_no).card_amount;
+        -- コラム
+        gt_dlv_chk_list(ln_num).column_no                    := lt_get_sale_data(in_no).column_no;
+        -- HC
+        gt_dlv_chk_list(ln_num).h_and_c                      := lt_get_sale_data(in_no).h_and_c;
+        -- 入金区分
+        gt_dlv_chk_list(ln_num).payment_class                := NULL;
+        -- 入金額
+        gt_dlv_chk_list(ln_num).payment_amount               := NULL;
+        -- 作成者
+        gt_dlv_chk_list(ln_num).created_by                   := cn_created_by;
+        -- 作成日
+        gt_dlv_chk_list(ln_num).creation_date                := cd_creation_date;
+        -- 最終更新者
+        gt_dlv_chk_list(ln_num).last_updated_by              := cn_last_updated_by;
+        -- 最終更新日
+        gt_dlv_chk_list(ln_num).last_update_date             := cd_last_update_date;
+        -- 最終更新ログイン
+        gt_dlv_chk_list(ln_num).last_update_login            := cn_last_update_login;
+        -- 要求ＩＤ
+        gt_dlv_chk_list(ln_num).request_id                   := cn_request_id;
+        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        gt_dlv_chk_list(ln_num).program_application_id       := cn_program_application_id;
+        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        gt_dlv_chk_list(ln_num).program_id                   := cn_program_id;
+        -- ﾌﾟﾛｸﾞﾗﾑ更新日
+        gt_dlv_chk_list(ln_num).program_update_date          := cd_program_update_date;
+--
+        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
+          AND
+             lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
+--
+          -- 配列番号取得
+          ln_num := ln_num + 1;
+--
+          --  レコードID取得
+          SELECT
+            xxcos_rep_dlv_chk_list_s01.nextval
+          INTO
+            gt_dlv_chk_list(ln_num).record_id
+          FROM
+            DUAL;
+--
+          -- 対象日付
+          gt_dlv_chk_list(ln_num).target_date                  := lt_get_sale_data(in_no).target_date;
+          -- 拠点コード
+          gt_dlv_chk_list(ln_num).base_code                    := lt_get_sale_data(in_no).base_code;
+          -- 拠点名称
+          gt_dlv_chk_list(ln_num).base_name                    := lt_get_sale_data(in_no).base_name;
+          -- 営業員コード
+          gt_dlv_chk_list(ln_num).employee_num                 := lt_get_sale_data(in_no).employee_num;
+          -- 営業員氏名
+          gt_dlv_chk_list(ln_num).employee_name                := lt_get_sale_data(in_no).employee_name;
+          -- グループ番号
+          gt_dlv_chk_list(ln_num).group_code                   := lt_get_sale_data(in_no).group_code;
+          -- グループ内順序
+          gt_dlv_chk_list(ln_num).group_in_sequence            := lt_get_sale_data(in_no).group_in_sequence;
+          -- 伝票番号
+          gt_dlv_chk_list(ln_num).entry_number                 := lt_get_sale_data(in_no).invoice_no;
+          -- 納品日
+          gt_dlv_chk_list(ln_num).dlv_date                     := lt_get_sale_data(in_no).dlv_date;
+          -- 顧客コード
+          gt_dlv_chk_list(ln_num).party_num                    := lt_get_sale_data(in_no).party_num;
+          -- 顧客名
+          gt_dlv_chk_list(ln_num).customer_name                := lt_get_sale_data(in_no).customer_name;
+          -- 入力区分
+          gt_dlv_chk_list(ln_num).input_class                  := lt_get_sale_data(in_no).input_class;
+          -- 成績者コード
+          gt_dlv_chk_list(ln_num).performance_by_code          := lt_get_sale_data(in_no).performance_by_code;
+          -- 成績者名
+          gt_dlv_chk_list(ln_num).performance_by_name          := lt_get_sale_data(in_no).performance_by_name;
+          -- カード売り区分
+          gt_dlv_chk_list(ln_num).card_sale_class              := lt_get_sale_data(in_no).card_sale_class;
+          -- 売上額
+          gt_dlv_chk_list(ln_num).sudstance_total_amount       := lt_get_sale_data(in_no).sudstance_total_amount;
+          -- 売上値引額
+          gt_dlv_chk_list(ln_num).sale_discount_amount         := lt_get_sale_data(in_no).sale_discount_amount;
+          -- 消費税金額合計
+          gt_dlv_chk_list(ln_num).consumption_tax_total_amount := lt_get_sale_data(in_no).consumption_tax_total_amount;
+          -- 消費税区分（マスタ)
+          gt_dlv_chk_list(ln_num).consumption_tax_class_mst    := lt_get_sale_data(in_no).consumption_tax_class_mst;
+          -- 伝票分類コード
+          gt_dlv_chk_list(ln_num).invoice_classification_code  := lt_get_sale_data(in_no).invoice_classification_code;
+          -- 伝票区分
+          gt_dlv_chk_list(ln_num).invoice_class                := lt_get_sale_data(in_no).invoice_class;
+          -- 売上区分
+          gt_dlv_chk_list(ln_num).sale_class                   := NULL;
+          -- 品目コード
+          gt_dlv_chk_list(ln_num).item_code                    := NULL;
+          -- 商品名
+          gt_dlv_chk_list(ln_num).item_name                    := NULL;
+          -- 数量
+          gt_dlv_chk_list(ln_num).quantity                     := 0;
+          -- 卸単価
+          gt_dlv_chk_list(ln_num).wholesale_unit_ploce         := 0;
+          -- 確認
+          gt_dlv_chk_list(ln_num).confirmation                 := NULL;
+          -- 消費税区分（入力)
+          gt_dlv_chk_list(ln_num).consum_tax_calss_entered     := lt_get_sale_data(in_no).consum_tax_calss_entered;
+          -- 売価
+          gt_dlv_chk_list(ln_num).ploce                        := 0;
+          -- カード金額
+          gt_dlv_chk_list(ln_num).card_amount                  := 0;
+          -- コラム
+          gt_dlv_chk_list(ln_num).column_no                    := NULL;
+          -- HC
+          gt_dlv_chk_list(ln_num).h_and_c                      := NULL;
+          -- 入金区分
+          gt_dlv_chk_list(ln_num).payment_class                := lt_get_sale_data(in_no).payment_class;
+          -- 入金額
+          gt_dlv_chk_list(ln_num).payment_amount               := lt_get_sale_data(in_no).payment_amount;
+          -- 作成者
+          gt_dlv_chk_list(ln_num).created_by                   := cn_created_by;
+          -- 作成日
+          gt_dlv_chk_list(ln_num).creation_date                := cd_creation_date;
+          -- 最終更新者
+          gt_dlv_chk_list(ln_num).last_updated_by              := cn_last_updated_by;
+          -- 最終更新日
+          gt_dlv_chk_list(ln_num).last_update_date             := cd_last_update_date;
+          -- 最終更新ログイン
+          gt_dlv_chk_list(ln_num).last_update_login            := cn_last_update_login;
+          -- 要求ＩＤ
+          gt_dlv_chk_list(ln_num).request_id                   := cn_request_id;
+          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          gt_dlv_chk_list(ln_num).program_application_id       := cn_program_application_id;
+          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+          gt_dlv_chk_list(ln_num).program_id                   := cn_program_id;
+          -- ﾌﾟﾛｸﾞﾗﾑ更新日
+          gt_dlv_chk_list(ln_num).program_update_date          := cd_program_update_date;
+--
+          -- 伝票番号格納
+          lt_invoice_num( lt_get_sale_data(in_no).invoice_no ) := in_no;
+--
+        END IF;
+--
+      END LOOP;
+--
+      -- 対象件数セット
+      gn_target_cnt := ln_target_cnt + lt_invoice_num.COUNT;
+--
+      -- 納品書チェックリストワークテーブルへ登録
+      BEGIN
+        FORALL into_no IN INDICES OF gt_dlv_chk_list SAVE EXCEPTIONS
+          INSERT INTO
+            xxcos_rep_dlv_chk_list
+          VALUES
+            gt_dlv_chk_list(into_no);
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+          gv_tkn2   := NULL;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                                                 cv_application
+                                                ,cv_msg_insert_data_err
+                                                ,cv_tkn_table
+                                                ,gv_tkn1
+                                                ,cv_tkn_key_data
+                                                ,gv_tkn2
+                                               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+--
+      END;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END sales_per_data_entry;
+--
+  /**********************************************************************************
+   * Procedure Name   : money_data_entry
+   * Description      : 入金データ抽出(A-5)、納品データ登録（入金データ）(A-6)
+   ***********************************************************************************/
+  PROCEDURE money_data_entry(
+    iv_delivery_date      IN      VARCHAR2,         -- 納品日
+    iv_delivery_base_code IN      VARCHAR2,         -- 拠点
+    iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
+    iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+    ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'money_data_entry'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ld_delivery_date  DATE;       -- パラメータ変換後の納品日
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --========================================================
+    --入金データ抽出(A-5)、納品データ登録（入金データ）(A-6)
+    --========================================================
+    ld_delivery_date  :=  TO_DATE(iv_delivery_date, cv_fmt_date_default);
+--
+    BEGIN
+      INSERT INTO
+        xxcos_rep_dlv_chk_list
+          (
+              record_id                           -- レコードID
+             ,target_date                         -- 対象日付
+             ,base_code                           -- 拠点コード
+             ,base_name                           -- 拠点名称
+             ,employee_num                        -- 営業員コード
+             ,employee_name                       -- 営業員氏名
+             ,group_code                          -- グループ番号
+             ,group_in_sequence                   -- グループ内順序
+             ,entry_number                        -- 伝票番号
+             ,dlv_date                            -- 納品日
+             ,party_num                           -- 顧客コード
+             ,customer_name                       -- 顧客名
+             ,input_class                         -- 入力区分
+             ,performance_by_code                 -- 成績者コード
+             ,performance_by_name                 -- 成績者名
+             ,card_sale_class                     -- カード売り区分
+             ,sudstance_total_amount              -- 売上額
+             ,sale_discount_amount                -- 売上値引額
+             ,consumption_tax_total_amount        -- 消費税金額合計
+             ,consumption_tax_class_mst           -- 消費税区分（マスタ）
+             ,invoice_classification_code         -- 伝票分類コード
+             ,invoice_class                       -- 伝票区分
+             ,sale_class                          -- 売上区分
+             ,item_code                           -- 品目コード
+             ,item_name                           -- 商品名
+             ,quantity                            -- 数量
+             ,wholesale_unit_ploce                -- 卸単価
+             ,confirmation                        -- 確認
+             ,consum_tax_calss_entered            -- 消費税区分（入力）
+             ,ploce                               -- 売価
+             ,card_amount                         -- カード金額
+             ,column_no                           -- コラム
+             ,h_and_c                             -- H/C
+             ,payment_class                       -- 入金区分
+             ,payment_amount                      -- 入金額
+             ,created_by                          -- 作成者
+             ,creation_date                       -- 作成日
+             ,last_updated_by                     -- 最終更新者
+             ,last_update_date                    -- 最終更新日
+             ,last_update_login                   -- 最終更新ログイン
+             ,request_id                          -- 要求ＩＤ
+             ,program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+             ,program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+             ,program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+          )
+        SELECT
+           xxcos_rep_dlv_chk_list_s01.nextval   -- レコードID
+          ,pay.payment_date                       -- 対象日付
+          ,pay.base_code                          -- 拠点コード
+          ,SUBSTRB( parb.party_name, 1, 40 )      -- 拠点名称
+          ,riv.employee_number                    -- 営業員コード
+          ,riv.employee_name                      -- 営業員氏名
+          ,riv.group_code                         -- グループ番号
+          ,riv.group_in_sequence                  -- グループ内順序
+          ,pay.hht_invoice_no                     -- 伝票番号
+          ,pay.payment_date                       -- 納品日
+          ,pay.customer_number                    -- 顧客コード
+          ,SUBSTRB( parc.party_name, 1, 40 )      -- 顧客名
+          ,NULL                                   -- 入力区分
+          ,NULL                                   -- 成績者コード
+          ,NULL                                   -- 成績者名
+          ,NULL                                   -- カード売り区分
+          ,0                                      -- 売上額
+          ,0                                      -- 売上値引額
+          ,0                                      -- 消費税金額合計
+          ,NULL                                   -- 消費税区分（マスタ）
+          ,NULL                                   -- 伝票分類コード
+          ,NULL                                   -- 伝票区分
+          ,NULL                                   -- 売上区分
+          ,NULL                                   -- 品目コード
+          ,NULL                                   -- 商品名
+          ,0                                      -- 数量
+          ,0                                      -- 卸単価
+          ,NULL                                   -- 確認
+          ,NULL                                   -- 消費税区分（入力）
+          ,0                                      -- 売価
+          ,0                                      -- カード金額
+          ,NULL                                   -- コラム
+          ,NULL                                   -- H/C
+          ,pacl.meaning                           -- 入金区分
+          ,pay.payment_amount                     -- 入金額
+          ,cn_created_by                          -- 作成者
+          ,cd_creation_date                       -- 作成日
+          ,cn_last_updated_by                     -- 最終更新者
+          ,cd_last_update_date                    -- 最終更新日
+          ,cn_last_update_login                   -- 最終更新ログイン
+          ,cn_request_id                          -- 要求ＩＤ
+          ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+          ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+        FROM
+           xxcos_payment            pay           -- 入金テーブル
+          ,hz_cust_accounts         base          -- 顧客マスタ_拠点
+          ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
+          ,hz_parties               parb          -- パーティ_拠点
+          ,hz_parties               parc          -- パーティ_顧客
+          ,xxcos_rs_info_v          riv           -- 営業員情報view
+          ,xxcos_salesreps_v        salv          -- 担当営業員view
+          ,(
+            SELECT  look_val.lookup_code        lookup_code
+                   ,look_val.meaning            meaning
+            FROM    fnd_lookup_values           look_val
+                   ,fnd_lookup_types_tl         types_tl
+                   ,fnd_lookup_types            types
+                   ,fnd_application_tl          appl
+                   ,fnd_application             app
+            WHERE   app.application_short_name = cv_application          -- XXCOS
+            AND     look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
+            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            AND     ld_delivery_date          >= NVL( look_val.start_date_active, ld_delivery_date )
+            AND     ld_delivery_date          <= NVL( look_val.end_date_active, ld_delivery_date )
+            AND     types_tl.language          = USERENV( 'LANG' )
+            AND     look_val.language          = USERENV( 'LANG' )
+            AND     appl.language              = USERENV( 'LANG' )
+            AND     appl.application_id        = types.application_id
+            AND     app.application_id         = appl.application_id
+            AND     types_tl.lookup_type       = look_val.lookup_type
+            AND     types.lookup_type          = types_tl.lookup_type
+            AND     types.security_group_id    = types_tl.security_group_id
+            AND     types.view_application_id  = types_tl.view_application_id
+           )  pacl   -- 入金区分
+        WHERE
+          pay.payment_date       = ld_delivery_date
+        AND pay.base_code        = iv_delivery_base_code
+        AND salv.account_number  = pay.customer_number
+        AND pay.payment_date    >= NVL( salv.effective_start_date, pay.payment_date )
+        AND pay.payment_date    <= NVL( salv.effective_end_date, pay.payment_date )
+        AND riv.base_code        = pay.base_code
+        AND riv.employee_number  = NVL( iv_dlv_by_code, salv.employee_number )
+        AND pay.payment_date    >= NVL( riv.effective_start_date, pay.payment_date )
+        AND pay.payment_date    <= NVL( riv.effective_end_date, pay.payment_date )
+        AND pay.payment_date    >= riv.per_effective_start_date
+        AND pay.payment_date    <= riv.per_effective_end_date
+        AND pay.payment_date    >= riv.paa_effective_start_date
+        AND pay.payment_date    <= riv.paa_effective_end_date
+        AND pay.hht_invoice_no   = NVL( iv_hht_invoice_no, pay.hht_invoice_no )
+        AND pay.payment_class    = pacl.lookup_code
+        AND NOT EXISTS
+          (
+            SELECT
+              ROWID
+            FROM
+              xxcos_sales_exp_headers  sale       -- 販売実績ヘッダテーブル
+            WHERE
+              sale.dlv_invoice_number      = pay.hht_invoice_no
+            AND sale.delivery_date         = pay.payment_date
+            AND sale.ship_to_customer_code = pay.customer_number
+            AND sale.sales_base_code       = pay.base_code
+            AND ROWNUM = 1
+          )
+        AND pay.base_code            = base.account_number
+        AND base.customer_class_code = ct_cust_class_base
+        AND base.party_id            = parb.party_id
+        AND pay.customer_number      = cust.account_number
+        AND cust.customer_class_code = ct_cust_class_customer
+        AND cust.party_id            = parc.party_id
+        ;
+--
+      -- 対象件数取得
+      gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+        gv_tkn2   := NULL;
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                                cv_application
+                                               ,cv_msg_insert_data_err
+                                               ,cv_tkn_table
+                                               ,gv_tkn1
+                                               ,cv_tkn_key_data
+                                               ,gv_tkn2
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END money_data_entry;
+--
+  /**********************************************************************************
+   * Procedure Name   : execute_svf
+   * Description      : SVF起動(A-7)
+   ***********************************************************************************/
+  PROCEDURE execute_svf(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'execute_svf'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_nodata_msg    VARCHAR2(5000);
+    lv_file_name     VARCHAR2(5000);
+    lv_api_name      VARCHAR2(5000);
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==================================
+    -- 1.明細0件用メッセージ取得
+    --==================================
+    lv_nodata_msg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
+--
+    --出力ファイル編集
+    lv_file_name  := cv_file_id || TO_CHAR( SYSDATE, cv_fmt_date )
+                                || TO_CHAR( cn_request_id )
+                                || cv_extension_pdf
+                                ;
+    --==================================
+    -- 2.SVF起動
+    --==================================
+    xxccp_svfcommon_pkg.submit_svf_request(
+                                          ov_retcode      => lv_retcode,
+                                          ov_errbuf       => lv_errbuf,
+                                          ov_errmsg       => lv_errmsg,
+                                          iv_conc_name    => cv_conc_name,
+                                          iv_file_name    => lv_file_name,
+                                          iv_file_id      => cv_file_id,
+                                          iv_output_mode  => cv_output_mode_pdf,
+                                          iv_frm_file     => cv_frm_file,
+                                          iv_vrq_file     => cv_vrq_file,
+                                          iv_org_id       => NULL,
+                                          iv_user_name    => NULL,
+                                          iv_resp_name    => NULL,
+                                          iv_doc_name     => NULL,
+                                          iv_printer_name => NULL,
+                                          iv_request_id   => TO_CHAR( cn_request_id ),
+                                          iv_nodata_msg   => lv_nodata_msg,
+                                          iv_svf_param1   => NULL,
+                                          iv_svf_param2   => NULL,
+                                          iv_svf_param3   => NULL,
+                                          iv_svf_param4   => NULL,
+                                          iv_svf_param5   => NULL,
+                                          iv_svf_param6   => NULL,
+                                          iv_svf_param7   => NULL,
+                                          iv_svf_param8   => NULL,
+                                          iv_svf_param9   => NULL,
+                                          iv_svf_param10  => NULL,
+                                          iv_svf_param11  => NULL,
+                                          iv_svf_param12  => NULL,
+                                          iv_svf_param13  => NULL,
+                                          iv_svf_param14  => NULL,
+                                          iv_svf_param15  => NULL
+                                          );
+--
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      --  管理者用メッセージ退避
+      lv_errbuf := SUBSTRB( lv_errmsg || lv_errbuf, 5000 );
+--
+      --  ユーザー用メッセージ取得
+      lv_api_name := xxccp_common_pkg.get_msg(
+                                             iv_application  => cv_application,
+                                             iv_name         => cv_msg_svf_api
+                                             );
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                                             iv_application  => cv_application,
+                                             iv_name         => cv_msg_call_api_err,
+                                             iv_token_name1  => cv_tkn_api_name,
+                                             iv_token_value1 => lv_api_name
+                                             );
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END execute_svf;
+--
+  /**********************************************************************************
+   * Procedure Name   : delete_rpt_wrk_data
+   * Description      : 帳票ワークテーブルデータ削除(A-8)
+   ***********************************************************************************/
+  PROCEDURE delete_rpt_wrk_data(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'delete_rpt_wrk_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    --  ロック取得用
+    CURSOR  lock_cur
+    IS
+      SELECT  rdcl.ROWID
+      FROM    xxcos_rep_dlv_chk_list   rdcl
+      WHERE   rdcl.request_id = cn_request_id
+      FOR UPDATE NOWAIT;
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --== 帳票ワークテーブルデータロック ==--
+    --  ロック用カーソルオープン
+    OPEN  lock_cur;
+    --  ロック用カーソルクローズ
+    CLOSE lock_cur;
+--
+    --== 帳票ワークテーブルデータ削除 ==--
+    BEGIN
+--
+      DELETE FROM
+        xxcos_rep_dlv_chk_list  dcl         -- 納品書チェックリスト帳票ワークテーブル
+      WHERE
+        dcl.request_id = cn_request_id;     -- 要求ID
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- データ削除エラーメッセージ
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_request_id );
+        xxcos_common_pkg.makeup_key_info(
+                                         ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+                                        ,ov_retcode     => lv_retcode          -- リターン・コード
+                                        ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+                                        ,ov_key_info    => gv_key_info         -- キー情報
+                                        ,iv_item_name1  => gv_tkn1             -- 要求ID
+                                        ,iv_data_value1 => cn_request_id
+                                        );
+--
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                               cv_application
+                                              ,cv_msg_delete_data_err
+                                              ,cv_tkn_table
+                                              ,gv_tkn1
+                                              ,cv_tkn_key_data
+                                              ,gv_key_info
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+--
+    END;
+--
+  EXCEPTION
+--
+    -- ロックエラー
+    WHEN lock_expt THEN
+      gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock_err, cv_tkn_table, gv_tkn1 );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END delete_rpt_wrk_data;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : submain
+   * Description      : メイン処理プロシージャ
+   **********************************************************************************/
+  PROCEDURE submain(
+    iv_delivery_date      IN      VARCHAR2,         -- 納品日
+    iv_delivery_base_code IN      VARCHAR2,         -- 拠点
+    iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
+    iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+    ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+--
+--#####################  固定ローカル定数変数宣言部 START   ####################
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+--
+    -- グローバル変数の初期化
+    gn_target_cnt := 0;
+    gn_normal_cnt := 0;
+    gn_error_cnt  := 0;
+    gn_warn_cnt   := 0;
+--
+    --*********************************************
+    --***      MD.050のフロー図を表す           ***
+    --***      分岐と処理部の呼び出しを行う     ***
+    --*********************************************
+--
+    --  ===============================
+    --  初期処理(A-0)
+    --  ===============================
+    init(
+       iv_delivery_date        -- 納品日
+      ,iv_delivery_base_code   -- 拠点
+      ,iv_dlv_by_code          -- 営業員
+      ,iv_hht_invoice_no       -- HHT伝票No
+      ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode              -- リターン・コード             --# 固定 #
+      ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    -- エラー処理
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+--
+    --  ===============================
+    --  販売実績データ抽出(A-3)、納品データ登録（販売実績）(A-4)
+    --  ===============================
+    sales_per_data_entry(
+       iv_delivery_date        -- 納品日
+      ,iv_delivery_base_code   -- 拠点
+      ,iv_dlv_by_code          -- 営業員
+      ,iv_hht_invoice_no       -- HHT伝票No
+      ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode              -- リターン・コード             --# 固定 #
+      ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    -- エラー処理
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    --  ===============================
+    --  入金データ抽出(A-5)、納品データ登録（入金データ）(A-6)
+    --  ===============================
+    money_data_entry(
+       iv_delivery_date        -- 納品日
+      ,iv_delivery_base_code   -- 拠点
+      ,iv_dlv_by_code          -- 営業員
+      ,iv_hht_invoice_no       -- HHT伝票No
+      ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode              -- リターン・コード             --# 固定 #
+      ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    -- エラー処理
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 対象件数が0件であった場合、「明細0件用メッセージ」を出力します。
+    IF ( gn_target_cnt = 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
+      FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+      ov_retcode := cv_status_warn;
+    END IF;
+--
+    --  コミット発行
+    COMMIT;
+--
+    --  ===============================
+    --  SVF起動(A-7)
+    --  ===============================
+    execute_svf(
+       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode  -- リターン・コード             --# 固定 #
+      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    -- エラー処理
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    --  ===============================
+    --  帳票ワークテーブルデータ削除(A-8)
+    --  ===============================
+    delete_rpt_wrk_data(
+       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode  -- リターン・コード             --# 固定 #
+      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    -- エラー処理
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 帳票は対象件数＝正常件数とする
+    gn_normal_cnt := gn_target_cnt;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ###################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--####################################  固定部 END   ##########################################
+--
+  END submain;
+--
+  /**********************************************************************************
+   * Procedure Name   : main
+   * Description      : コンカレント実行ファイル登録プロシージャ
+   **********************************************************************************/
+--
+  PROCEDURE main(
+    errbuf                OUT VARCHAR2,         --  エラー・メッセージ  --# 固定 #
+    retcode               OUT VARCHAR2,         --  リターン・コード    --# 固定 #
+    iv_delivery_date      IN  VARCHAR2,         --  納品日
+    iv_delivery_base_code IN  VARCHAR2,         --  拠点
+    iv_dlv_by_code        IN  VARCHAR2,         --  営業員
+    iv_hht_invoice_no     IN  VARCHAR2          --  HHT伝票No
+  )
+--
+--
+--###########################  固定部 START   ###########################
+--
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name        CONSTANT VARCHAR2(100) := 'main';             -- プログラム名
+--
+    cv_appl_short_name CONSTANT VARCHAR2(10)  := 'XXCCP';            -- アドオン：共通・IF領域
+    cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000'; -- 対象件数メッセージ
+    cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- 成功件数メッセージ
+    cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- エラー件数メッセージ
+    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+    cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
+    cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
+    cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
+    cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+    cv_log_header_out  CONSTANT VARCHAR2(6)   := 'OUTPUT';           -- コンカレントヘッダメッセージ出力先：出力
+    cv_log_header_log  CONSTANT VARCHAR2(6)   := 'LOG';              -- コンカレントヘッダメッセージ出力先：ログ(帳票)
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf          VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode         VARCHAR2(1);     -- リターン・コード
+    lv_errmsg          VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    lv_message_code    VARCHAR2(100);   -- 終了メッセージコード
+    --
+  BEGIN
+--
+--###########################  固定部 START   #####################################################
+--
+    -- 固定出力
+    -- コンカレントヘッダメッセージ出力関数の呼び出し
+    xxccp_common_pkg.put_log_header(
+       iv_which   => cv_log_header_log
+      ,ov_retcode => lv_retcode
+      ,ov_errbuf  => lv_errbuf
+      ,ov_errmsg  => lv_errmsg
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_others_expt;
+    END IF;
+    --
+--###########################  固定部 END   #############################
+--
+    -- ===============================================
+    -- submainの呼び出し（実際の処理はsubmainで行う）
+    -- ===============================================
+    submain(
+       iv_delivery_date        -- 納品日
+      ,iv_delivery_base_code   -- 拠点
+      ,iv_dlv_by_code          -- 営業員
+      ,iv_hht_invoice_no       -- HHT伝票No
+      ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode              -- リターン・コード             --# 固定 #
+      ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    --*** エラー出力は要件によって使い分けてください ***--
+    --エラー出力
+    IF (lv_retcode = cv_status_error) THEN
+--      FND_FILE.PUT_LINE(
+--         which  => FND_FILE.OUTPUT
+--        ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+--      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errbuf --エラーメッセージ
+      );
+    END IF;
+    --
+    --空行挿入
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+    --
+    --対象件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_target_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --成功件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_success_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_error_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --空行挿入
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+    --
+    --終了メッセージ
+    IF (lv_retcode = cv_status_normal) THEN
+      lv_message_code := cv_normal_msg;
+    ELSIF(lv_retcode = cv_status_warn) THEN
+      lv_message_code := cv_warn_msg;
+    ELSIF(lv_retcode = cv_status_error) THEN
+      lv_message_code := cv_error_msg;
+    END IF;
+    --
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => lv_message_code
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --ステータスセット
+    retcode := lv_retcode;
+    --終了ステータスがエラーの場合はROLLBACKする
+    IF (retcode = cv_status_error) THEN
+      ROLLBACK;
+    END IF;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      retcode := cv_status_error;
+      ROLLBACK;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      retcode := cv_status_error;
+      ROLLBACK;
+  END main;
+--
+--###########################  固定部 END   #######################################################
+--
+END XXCOS002A05R;
+/
