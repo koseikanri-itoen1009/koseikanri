@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,7 +42,9 @@ AS
  *  2008/07/04    1.7   M.Nomura         システムテスト 不具合対応#193 2回目
  *  2008/07/17    1.8   Oracle 山根 一浩 I_S_001,I_S_192,T_S_443,指摘240対応
  *  2008/07/22    1.9   N.Fukuda         I_S_001対応(予備1を小口/引取区分で使用する)
- *
+ *  2008/08/08    1.10  Oracle 山根 一浩 TE080_400指摘#83,課題#32
+ *  2008/08/11    1.10  N.Fukuda         指示部署の抽出条件SQLの不具合対応
+ *  2008/08/12    1.10  N.Fukuda         課題#48(変更要求#164)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -131,11 +133,16 @@ AS
   -- 小口区分
   gc_small_method_y     CONSTANT VARCHAR2(1) := '1' ;   -- 小口
   gc_small_method_n     CONSTANT VARCHAR2(1) := '0' ;   -- 小口以外
+/* 2008/08/08 Mod ↓
   -- 2008/07/22 Start
   -- 小口/引取区分（予備１）
   gc_small_class        CONSTANT VARCHAR2(1) := '1' ;   -- 小口
   gc_takeback_class     CONSTANT VARCHAR2(1) := '2' ;   -- 引取
   -- 2008/07/22 End
+2008/08/08 Mod ↑ */
+  -- 小口/引取区分（予備１）
+  gc_small_class        CONSTANT VARCHAR2(1) := '0' ;   -- 小口
+  gc_takeback_class     CONSTANT VARCHAR2(1) := '1' ;   -- 引取
   -- Ｙ／Ｎフラグ
   gc_yes_no_y           CONSTANT VARCHAR2(1) := 'Y' ;   -- Ｙ
   gc_yes_no_n           CONSTANT VARCHAR2(1) := 'N' ;   -- Ｎ
@@ -940,7 +947,8 @@ AS
               ,xlv.lookup_code                    AS shipping_method_code
               ,CASE
                  WHEN xoha.weight_capacity_class  = gc_wc_class_j
-                 AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight
+                 --AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight      -- 2008/08/12 Del
+                 AND  xlv.attribute6              = gc_small_method_y THEN NVL(xoha.sum_weight,0) -- 2008/08/12 Add
                  WHEN xoha.weight_capacity_class  = gc_wc_class_j
 -- M.Hokkanji Ver1.2 START
                  AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN NVL(xoha.sum_weight,0)
@@ -948,7 +956,9 @@ AS
 --                 AND  xlv.attribute6             <> gc_small_method_y THEN xoha.sum_weight
 --                                                                         + xoha.sum_pallet_weight
 -- M.Hokkanji Ver1.2 END
-                 WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity
+
+                 --WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity      -- 2008/08/12 Del
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN NVL(xoha.sum_capacity,0) -- 2008/08/12 Add
                END                                AS weight
               ,xoha.mixed_no                      AS mixed_no
               ,xoha.collected_pallet_qty          AS collected_pallet_qty
@@ -1089,16 +1099,28 @@ AS
         AND   xoha.notif_date           BETWEEN gd_date_from AND gd_date_to
         AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
         AND   xoha.prod_class           = gc_prod_class_r         -- リーフ
-        AND   ((xoha.instruction_dept   = gr_param.dept_code_01)  -- 指示部署
-         OR   ((gr_param.dept_code_02 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_02))
-         OR   ((gr_param.dept_code_03 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_03))
-         OR   ((gr_param.dept_code_04 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_04))
-         OR   ((gr_param.dept_code_05 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_05))
-         OR   ((gr_param.dept_code_06 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_06))
-         OR   ((gr_param.dept_code_07 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_07))
-         OR   ((gr_param.dept_code_08 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_08))
-         OR   ((gr_param.dept_code_09 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_09))
-         OR   ((gr_param.dept_code_10 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_10)))
+        -- 2008/08/11 Start 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
+        --AND   ((xoha.instruction_dept   = gr_param.dept_code_01)  -- 指示部署
+        -- OR   ((gr_param.dept_code_02 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_02))
+        -- OR   ((gr_param.dept_code_03 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_03))
+        -- OR   ((gr_param.dept_code_04 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_04))
+        -- OR   ((gr_param.dept_code_05 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_05))
+        -- OR   ((gr_param.dept_code_06 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_06))
+        -- OR   ((gr_param.dept_code_07 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_07))
+        -- OR   ((gr_param.dept_code_08 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_08))
+        -- OR   ((gr_param.dept_code_09 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_09))
+        -- OR   ((gr_param.dept_code_10 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_10)))
+        AND xoha.instruction_dept IN (gr_param.dept_code_01,   -- 01は必須入力
+                                      gr_param.dept_code_02,   -- 02～10は任意入力
+                                      gr_param.dept_code_03,
+                                      gr_param.dept_code_04,
+                                      gr_param.dept_code_05,
+                                      gr_param.dept_code_06,
+                                      gr_param.dept_code_07,
+                                      gr_param.dept_code_08,
+                                      gr_param.dept_code_09,
+                                      gr_param.dept_code_10)
+        -- 2008/08/11 End 指示部署の抽出条件SQLの不具合対応 -----------------------------------------------
         AND   xola.order_line_id        = imld.mov_line_id (+)    -- ロット詳細ID
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
         AND   gc_doc_type_ship          = imld.document_type_code (+)   -- 文書タイプ
@@ -1134,12 +1156,14 @@ AS
 --                 AND  xlv.attribute6              <> gc_wc_class_j THEN xmrih.sum_weight
 --                                                                      + xmrih.sum_pallet_weight
                  WHEN xmrih.weight_capacity_class  = gc_wc_class_j
-                 AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight
+                 --AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight      --2008/08/12 Del
+                 AND  xlv.attribute6               = gc_small_method_y THEN NVL(xmrih.sum_weight,0) --2008/08/12 Add
                  WHEN xmrih.weight_capacity_class  = gc_wc_class_j
                  AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN NVL(xmrih.sum_weight,0)
                                                                       + NVL(xmrih.sum_pallet_weight,0)
 -- M.Hokkanji Ver1.2 END
-                 WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity
+                 --WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity       --2008/08/12 Del
+                 WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN NVL(xmrih.sum_capacity,0)  --2008/08/12 Add
                END                                AS weight
               ,NULL                               AS mixed_no
               ,xmrih.collected_pallet_qty         AS collected_pallet_qty
@@ -1270,25 +1294,37 @@ AS
 --        AND   xmrih.product_flg           = gc_yes_no_y             -- 製品識別
         AND   xmrih.product_flg           = gc_product_flg_1        -- 製品識別(製品)
 -- M.Hokkanji Ver1.2 END
-        AND   ((xmrih.instruction_post_code = gr_param.dept_code_01) -- 指示部署
-         OR   ((gr_param.dept_code_02 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_02))
-         OR   ((gr_param.dept_code_03 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_03))
-         OR   ((gr_param.dept_code_04 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_04))
-         OR   ((gr_param.dept_code_05 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_05))
-         OR   ((gr_param.dept_code_06 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_06))
-         OR   ((gr_param.dept_code_07 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_07))
-         OR   ((gr_param.dept_code_08 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_08))
-         OR   ((gr_param.dept_code_09 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_09))
-         OR   ((gr_param.dept_code_10 IS NULL)
-         OR    (xmrih.instruction_post_code = gr_param.dept_code_10)))
+        -- 2008/08/11 Start 指示部署の抽出条件SQLの不具合対応 -------------------------------------
+        --AND   ((xmrih.instruction_post_code = gr_param.dept_code_01) -- 指示部署
+        -- OR   ((gr_param.dept_code_02 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_02))
+        -- OR   ((gr_param.dept_code_03 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_03))
+        -- OR   ((gr_param.dept_code_04 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_04))
+        -- OR   ((gr_param.dept_code_05 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_05))
+        -- OR   ((gr_param.dept_code_06 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_06))
+        -- OR   ((gr_param.dept_code_07 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_07))
+        -- OR   ((gr_param.dept_code_08 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_08))
+        -- OR   ((gr_param.dept_code_09 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_09))
+        -- OR   ((gr_param.dept_code_10 IS NULL)
+        -- OR    (xmrih.instruction_post_code = gr_param.dept_code_10)))
+        AND xmrih.instruction_post_code IN (gr_param.dept_code_01,  -- 01は必須入力
+                                            gr_param.dept_code_02,  -- 02～10は任意入力
+                                            gr_param.dept_code_03,
+                                            gr_param.dept_code_04,
+                                            gr_param.dept_code_05,
+                                            gr_param.dept_code_06,
+                                            gr_param.dept_code_07,
+                                            gr_param.dept_code_08,
+                                            gr_param.dept_code_09,
+                                            gr_param.dept_code_10)
+        -- 2008/08/11 End 指示部署の抽出条件SQLの不具合対応 -------------------------------------
         AND   xmril.mov_line_id           = imld.mov_line_id (+)    -- ロット詳細ID
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
         AND   gc_doc_type_move            = imld.document_type_code (+) -- 文書タイプ
@@ -1633,7 +1669,9 @@ AS
           -- ロット数量 ÷ ケース入り数
           gt_lot_quantity(gn_cre_idx) := gt_lot_quantity(gn_cre_idx)
                                            / ir_main_data.num_of_cases ;
-          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+--2008/08/08 Mod ↓
+--          gt_lot_quantity(gn_cre_idx) := TRUNC( gt_lot_quantity(gn_cre_idx), 3 ) ;
+--2008/08/08 Mod ↑
         END IF ;
     END IF ;
 -- ##### 20080627 Ver.1.6 ロット数量換算対応 END   #####
@@ -1747,7 +1785,9 @@ AS
       ELSE
         lv_item_quantity := gt_main_data(in_idx).item_quantity
                           / gt_main_data(in_idx).num_of_cases ;
-        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+--2008/08/08 Mod ↓
+--        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+--2008/08/08 Mod ↑
       END IF ;
 --
       -------------------------------------------------------
@@ -2451,7 +2491,10 @@ AS
                   || TO_CHAR( re_out_data.schedule_ship_date   , 'YYYY/MM/DD' ) || ','  -- 発日
                   || TO_CHAR( re_out_data.schedule_arrival_date, 'YYYY/MM/DD' ) || ','  -- 着日
                   || re_out_data.shipping_method_code     || ','  -- 配送区分
-                  || re_out_data.weight                   || ','  -- 重量/容積
+                  -- 2008/08/12 Start ----------------------------------------------
+                  --|| re_out_data.weight                   || ','  -- 重量/容積
+                  || CEIL(TRUNC(re_out_data.weight,3))    || ','  -- 重量/容積
+                  -- 2008/08/12 End ----------------------------------------------
                   || re_out_data.mixed_no                 || ','  -- 混載元依頼№
                   || re_out_data.collected_pallet_qty     || ','  -- パレット回収枚数
                   || re_out_data.arrival_time_from        || ','  -- 着荷時間指定(FROM)
@@ -2469,7 +2512,10 @@ AS
                   || re_out_data.item_code                || ','  -- 品目コード
                   || REPLACE(re_out_data.item_name,',')                || ','  -- 品目名
                   || re_out_data.item_uom_code            || ','  -- 品目単位
-                  || re_out_data.item_quantity            || ','  -- 品目数量
+--2008/08/08 Mod ↓
+--                  || re_out_data.item_quantity            || ','  -- 品目数量
+                  || CEIL(TRUNC(re_out_data.item_quantity,3))            || ','  -- 品目数量
+--2008/08/08 Mod ↑
                   || re_out_data.lot_no                   || ','                -- ロット番号
 -- M.Hokkanji Ver1.4 START
                   || TO_CHAR( re_out_data.lot_date     , 'YYYY/MM/DD' ) || ','  -- 製造日
@@ -2478,7 +2524,10 @@ AS
 --                  || TO_CHAR( re_out_data.lot_date     , 'YYYY/MM/DD' ) || ','  -- 製造日
 --                  || re_out_data.lot_sign                 || ','                -- 固有記号
 --                  || TO_CHAR( re_out_data.best_bfr_date, 'YYYY/MM/DD' ) || ','  -- 賞味期限
-                  || re_out_data.lot_quantity             || ','                -- ロット数量
+--2008/08/08 Mod ↓
+--                  || re_out_data.lot_quantity             || ','                -- ロット数量
+                  || CEIL(TRUNC(re_out_data.lot_quantity,3)) || ','                -- ロット数量
+--2008/08/08 Mod ↑
 -- M.Hokkanji Ver1.4 END
 -- M.Hokkanji Ver1.2 START
 --                  || re_out_data.new_modify_del_class     || ','  -- データ区分
