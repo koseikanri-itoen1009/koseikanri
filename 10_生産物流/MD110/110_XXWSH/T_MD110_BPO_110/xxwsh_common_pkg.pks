@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.24
+ * Version                : 1.25
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -21,6 +21,7 @@ AS
  *  update_line_items       F   NUM   重量容積小口個数更新関数
  *  cancel_reserve          F   NUM   引当解除関数
  *  cancel_careers_schedule F   NUM   配車解除関数
+ *  update_mixed_no         F   VAR   混載元No更新関数(出荷依頼画面専用)
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -73,6 +74,8 @@ AS
  *  2008/09/02   1.22  Oracle 北寒寺正夫[配車解除関数] 統合テスト環境不具合対応
  *  2008/09/03   1.23  Oracle 河野優子  [引当解除関数] 統合テスト不具合対応 移動：複数明細・複数ロット解除対応
  *  2008/09/03   1.24  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#59対応
+ *  2008/09/17   1.25  Oracle 北寒寺正夫[混載元No更新関数] T_TE080_BPO_400指摘77により出荷依頼画面で使用するため新規追加
+ *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
  *****************************************************************************************/
 --
   -- ===============================
@@ -192,6 +195,13 @@ AS
     iv_request_no           IN         VARCHAR2,                              -- 2.依頼No/移動番号
     ov_errmsg               OUT NOCOPY VARCHAR2)                              -- 3.エラーメッセージ
     RETURN VARCHAR2;
+-- Ver1.25 M.Hokkanji Start
+  -- 混載元No更新関数
+  FUNCTION update_mixed_no(
+    iv_mixed_no             IN         VARCHAR2,
+    ov_errmsg               OUT NOCOPY VARCHAR2)
+    RETURN VARCHAR2;
+-- Ver1.25 M.Hokkanji End
 --
 END xxwsh_common_pkg;
 /

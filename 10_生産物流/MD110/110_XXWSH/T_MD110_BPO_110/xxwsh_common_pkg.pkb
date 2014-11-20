@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.24
+ * Version                : 1.25
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -21,6 +21,7 @@ AS
  *  update_line_items       F   NUM   重量容積小口個数更新関数
  *  cancel_reserve          F   NUM   引当解除関数
  *  cancel_careers_schedule F   NUM   配車解除関数
+ *  update_mixed_no         F   VAR   混載元No更新関数(出荷依頼画面専用)
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -73,6 +74,8 @@ AS
  *  2008/09/02   1.22  Oracle 北寒寺正夫[配車解除関数] 統合テスト環境不具合対応
  *  2008/09/03   1.23  Oracle 河野優子  [引当解除関数] 統合テスト不具合対応 移動：複数明細・複数ロット解除対応
  *  2008/09/03   1.24  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#59対応
+ *  2008/09/17   1.25  Oracle 北寒寺正夫[混載元No更新関数] T_TE080_BPO_400指摘77により出荷依頼画面で使用するため新規追加
+ *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -306,12 +309,20 @@ AS
   -- 明細更新項目のテーブル型
   TYPE get_update_tbl IS
     TABLE OF update_rec INDEX BY PLS_INTEGER;
+-- Ver1.25 M.Hokkanji Start
+  -- 受注明細アドオンID
+  TYPE order_header_id_tbl IS
+    TABLE OF xxwsh_order_headers_all.order_header_id%TYPE INDEX BY PLS_INTEGER;
+-- Ver1.25 M.Hokkanji End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   gt_mov_req_instr_tbl            mov_req_instr_tbl;         -- 移動依頼/指示の結合配列
   gt_order_line_id_tbl            order_line_id_tbl;         -- 受注明細アドオンID
+-- Ver1.25 M.Hokkanji Start
+  gt_order_header_id_tbl          order_header_id_tbl;       -- 受注ヘッダID
+-- Ver1.25 M.Hokkanji End
 --2008/09/03 Y.Kawano DEL Start
 --  gt_mov_line_id_tbl              mov_line_id_tbl;           -- 移動明細ID
 --  gt_ship_to_locat_id_tbl         ship_to_locat_id_tbl;      -- 入庫先ID
@@ -6774,6 +6785,138 @@ AS
 --###################################  固定部 END   #########################################
 --
   END cancel_careers_schedule;
+-- Ver1.25 M.Hokkanji Start
+  /**********************************************************************************
+   * Function Name    : update_mixed_no
+   * Description      : 混載元No更新関数
+   ***********************************************************************************/
+  FUNCTION update_mixed_no(
+    iv_mixed_no             IN         VARCHAR2,
+    ov_errmsg               OUT NOCOPY VARCHAR2)
+    RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name            CONSTANT VARCHAR2(100) := 'update_mixed_no';  -- プログラム名
+    cv_null_mixed_no_err   CONSTANT VARCHAR2(2)   := '-1';                    -- 混載元NoNULL更新失敗
+    cv_compl               CONSTANT VARCHAR2(1)   := '0';                     -- 成功
+    cv_no_data_err         CONSTANT VARCHAR2(1)   := '1';                     -- 対象データ無し
+    cv_app_name_xxcmn      CONSTANT VARCHAR2(5)   := 'XXCMN';           -- アプリケーション短縮名
+    cv_app_name_xxwsh      CONSTANT VARCHAR2(5)   := 'XXWSH';           -- アプリケーション短縮名
+    cv_msg_lock_err        CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10006'; -- ロック処理エラー
+    cv_msg_get_err         CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10023'; -- 出荷依頼取得エラー
+    cv_msg_upd_err         CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10024'; -- 混載元No更新エラー
+    cv_msg_tkn_mixed_no    CONSTANT VARCHAR2(15)  := 'MIXED_NO';        -- メッセージトークン「混載元No」
+    cv_flag_yes            CONSTANT VARCHAR2(1)   := 'Y';               -- YES
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    ln_user_id                    NUMBER;           -- ログインしているユーザーのID取得
+    ln_login_id                   NUMBER;           -- 最終更新ログイン
+    ln_conc_request_id            NUMBER;           -- 要求ID
+    ln_prog_appl_id               NUMBER;           -- プログラム・アプリケーションID
+    ln_conc_program_id            NUMBER;           -- プログラムID
+    ld_sysdate                    DATE;             -- システム現在日付
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+    lock_expt                  EXCEPTION;  -- ロック取得例外
+--
+    PRAGMA EXCEPTION_INIT(lock_expt, -54); -- ロック取得例外
+--
+  BEGIN
+--
+    -- ***********************************************
+    -- ***      共通関数処理ロジックの記述         ***
+    -- ***********************************************
+    -- WHOカラム情報取得
+    ln_user_id           := FND_GLOBAL.USER_ID;           -- ログインしているユーザーのID取得
+    ln_login_id          := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
+    ln_conc_request_id   := FND_GLOBAL.CONC_REQUEST_ID;   -- 要求ID
+    ln_prog_appl_id      := FND_GLOBAL.PROG_APPL_ID;      -- プログラム・アプリケーションID
+    ln_conc_program_id   := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
+    ld_sysdate           := SYSDATE;                      -- システム現在日付
+--
+    -- セーブポイントを取得します
+    SAVEPOINT advance_sp;
+    -- 検索処理を行います
+    SELECT xoha.order_header_id                -- 受注ヘッダアドオンID
+    BULK COLLECT INTO
+           gt_order_header_id_tbl
+    FROM   xxwsh_order_headers_all xoha        -- 受注ヘッダアドオン
+    WHERE  xoha.mixed_no             = iv_mixed_no
+    AND    xoha.latest_external_flag =  cv_flag_yes
+    FOR UPDATE OF xoha.order_header_id NOWAIT;
+--
+    -- 取得できない場合はエラー
+    IF (gt_order_header_id_tbl.COUNT = 0) THEN
+      -- 対象データ無し
+      ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                            cv_msg_get_err,
+                                            cv_msg_tkn_mixed_no,
+                                            iv_mixed_no);
+      RETURN cv_no_data_err;                    -- 引当解除データ無し
+    END IF;
+--
+    <<gt_order_header_id_tbl_loop>>
+    FOR i IN gt_order_header_id_tbl.FIRST .. gt_order_header_id_tbl.LAST LOOP
+--
+      BEGIN
+        -- 更新処理を行います
+        UPDATE xxwsh_order_headers_all              xoha      -- 受注ヘッダアドオン
+        SET    xoha.mixed_no                      =  NULL,
+               xoha.last_updated_by               =  ln_user_id,
+               xoha.last_update_date              =  ld_sysdate,
+               xoha.last_update_login             =  ln_login_id,
+               xoha.request_id                    =  ln_conc_request_id,
+               xoha.program_application_id        =  ln_prog_appl_id,
+               xoha.program_id                    =  ln_conc_program_id,
+               xoha.program_update_date           =  ld_sysdate
+        WHERE  xoha.order_header_id               =  gt_order_header_id_tbl(i);
+--
+      EXCEPTION
+        -- エラーの場合はセーブポイントにロールバック
+        WHEN OTHERS THEN
+          -- 混載元No更新失敗
+          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh,
+                                                cv_msg_upd_err,
+                                                cv_msg_tkn_mixed_no,
+                                                iv_mixed_no
+                                                );
+          ROLLBACK TO advance_sp;
+          RETURN cv_null_mixed_no_err;                             -- 混載元NoNULL更新失敗
+--
+      END;
+--
+    END LOOP gt_order_header_id_tbl_loop;
+--
+    -- 正常終了の場合
+    RETURN cv_compl;
+  EXCEPTION
+    WHEN lock_expt THEN
+      -- ロック処理エラー
+      ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_lock_err);
+      ROLLBACK TO advance_sp;
+      RETURN cv_null_mixed_no_err;                             -- 混載元NoNULL更新失敗
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END update_mixed_no;
+-- Ver1.25 M.Hokkanji End
 --
 END xxwsh_common_pkg;
 /
