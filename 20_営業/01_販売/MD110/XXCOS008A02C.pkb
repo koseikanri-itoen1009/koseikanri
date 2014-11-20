@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2010/05/26    1.25  M.Sano           [E_本稼動_02518] 検収日違い対応
  *  2010/08/23    1.26  H.Sasaki         [E_本稼動_01763][E_本稼動_02635]INV連携日中化対応
  *  2010/10/12    1.27  K.Kiriu          [E_本稼動_01763]INV連携日中化再対応
+ *  2010/11/22    1.28  H.Sasaki         [E_本稼動_05719]随時実行のPT対応
  *
  *****************************************************************************************/
 --
@@ -1892,16 +1893,28 @@ AS
     ELSE
       --  随時実行時（日中起動）=パラメータ.定期随時区分：0
       SELECT
+-- == 2010/11/22 V1.28 Modified START ===============================================================
+--      /*+
+--          LEADING(ilv1)
+--          INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+--          INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+--          INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+--          INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
+--          USE_NL(ilv1 ooha oola xoha xola xca otttl ottth ottal msi)
+--          USE_NL(ooha xchv)
+--          USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+--      */
       /*+
           LEADING(ilv1)
           INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
           INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
           INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
           INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
-          USE_NL(ilv1 ooha oola xoha xola xca otttl ottth ottal msi)
+          USE_NL(ilv1 ooha oola xoha xola otttl ottth ottal msi)
           USE_NL(ooha xchv)
           USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
       */
+-- == 2010/11/22 V1.28 Modified END   ===============================================================
         ooha.header_id                        AS header_id                  -- 受注ヘッダID
       , oola.line_id                          AS line_id                    -- 受注明細ID
       , ottth.name                            AS order_type                 -- 受注タイプ
@@ -1916,7 +1929,10 @@ AS
       , NULL                                  AS dlv_invoice_class          -- 納品伝票区分
       , NULL                                  AS cancel_correct_class       -- 取消・訂正区分
       , NULL                                  AS input_class                -- 入力区分
-      , xca.business_low_type                 AS cust_gyotai_sho            -- 業態（小分類）
+-- == 2010/11/22 V1.28 Modified START ===============================================================
+--      , xca.business_low_type                 AS cust_gyotai_sho            -- 業態（小分類）
+      , ilv1.cust_gyotai_sho                  AS cust_gyotai_sho            -- 業態（小分類）
+-- == 2010/11/22 V1.28 Modified END   ===============================================================
       , NULL                                  AS dlv_date                   -- 納品日
       , TRUNC(oola.request_date)              AS org_dlv_date               -- オリジナル納品日
       , NULL                                  AS inspect_date               -- 検収日
@@ -1924,14 +1940,22 @@ AS
           WHEN oola.attribute4 IS NULL THEN TRUNC(oola.request_date)
           ELSE TRUNC(TO_DATE( oola.attribute4, cv_fmt_date_default ))
         END                                   AS orig_inspect_date          -- オリジナル検収日
-      , xca.customer_code                     AS ship_to_customer_code      -- 顧客納品先
+-- == 2010/11/22 V1.28 Modified START ===============================================================
+--      , xca.customer_code                     AS ship_to_customer_code      -- 顧客納品先
+      , ilv1.ship_to_customer_code            AS ship_to_customer_code      -- 顧客納品先
+-- == 2010/11/22 V1.28 Modified END   ===============================================================
       , xchv.bill_tax_div                     AS consumption_tax_class      -- 消費税区分
       , NULL                                  AS tax_code                   -- 税金コード
       , NULL                                  AS tax_rate                   -- 消費税率
       , NULL                                  AS results_employee_code      -- 成績計上者コード
-      , xca.sale_base_code                    AS sale_base_code             -- 売上拠点コード
-      , xca.past_sale_base_code               AS last_month_sale_base_code  -- 前月売上拠点コード
-      , xca.rsv_sale_base_act_date            AS rsv_sale_base_act_date     -- 予約売上拠点有効開始日
+-- == 2010/11/22 V1.28 Modified START ===============================================================
+--      , xca.sale_base_code                    AS sale_base_code             -- 売上拠点コード
+--      , xca.past_sale_base_code               AS last_month_sale_base_code  -- 前月売上拠点コード
+--      , xca.rsv_sale_base_act_date            AS rsv_sale_base_act_date     -- 予約売上拠点有効開始日
+      , ilv1.sale_base_code                   AS sale_base_code             -- 売上拠点コード
+      , ilv1.last_month_sale_base_code        AS last_month_sale_base_code  -- 前月売上拠点コード
+      , ilv1.rsv_sale_base_act_date           AS rsv_sale_base_act_date     -- 予約売上拠点有効開始日
+-- == 2010/11/22 V1.28 Modified END   ===============================================================
       , xchv.cash_receiv_base_code            AS receiv_base_code           -- 入金拠点コード
       , ooha.order_source_id                  AS order_source_id            -- 受注ソースID
       , ooha.orig_sys_document_ref            AS order_connection_number    -- 外部システム受注番号
@@ -1969,7 +1993,10 @@ AS
       , 0                                     AS tax_amount                 -- 消費税金額
       , NULL                                  AS cash_and_card              -- 現金・カード併用額
       , oola.subinventory                     AS ship_from_subinventory_code-- 出荷元保管場所
-      , xca.delivery_base_code                AS delivery_base_code         -- 納品拠点コード
+-- == 2010/11/22 V1.28 Modified START ===============================================================
+--      , xca.delivery_base_code                AS delivery_base_code         -- 納品拠点コード
+      , ilv1.delivery_base_code               AS delivery_base_code         -- 納品拠点コード
+-- == 2010/11/22 V1.28 Modified END   ===============================================================
       , NULL                                  AS hot_cold_class             -- Ｈ＆Ｃ
       , NULL                                  AS column_no                  -- コラムNo
       , NULL                                  AS sold_out_class             -- 売切区分
@@ -1993,21 +2020,44 @@ AS
       , oe_order_lines_all  oola                          -- 受注明細
       , xxwsh_order_headers_all   xoha
       , xxwsh_order_lines_all     xola
-      , ( SELECT /*+
+-- == 2010/11/22 V1.28 Modified START ===============================================================
+--      , ( SELECT /*+
+--                     USE_NL(ooha)
+--                     USE_NL(oola)
+--                     USE_NL(xoha)
+--                     INDEX(ooha xxcos_oe_order_headers_all_n11)
+--                     INDEX(oola xxcos_oe_order_lines_all_n21)
+--                  */
+      , ( SELECT
+                  /*
+                     LEADING(ooha xca)
                      USE_NL(ooha)
+                     USE_NL(xca)
                      USE_NL(oola)
                      USE_NL(xoha)
                      INDEX(ooha xxcos_oe_order_headers_all_n11)
-                     INDEX(oola xxcos_oe_order_lines_all_n21)
+                     INDEX(oola xxcos_oe_order_lines_all_n23)
                   */
+-- == 2010/11/22 V1.28 Modified END   ===============================================================
                  ooha.header_id           header_id         -- 受注ヘッダID
                , oola.line_id             line_id           -- 受注明細ID
                , oola.attribute6          attribute6        -- 子品目コード
                , oola.ordered_item        ordered_item      -- 受注品目
                , xoha.order_header_id     order_header_id   -- 受注ヘッダアドオンID 
+-- == 2010/11/22 V1.28 Added START ===============================================================
+               , xca.business_low_type        cust_gyotai_sho            -- 業態（小分類）
+               , xca.customer_code            ship_to_customer_code      -- 顧客納品先
+               , xca.sale_base_code           sale_base_code             -- 売上拠点コード
+               , xca.past_sale_base_code      last_month_sale_base_code  -- 前月売上拠点コード
+               , xca.rsv_sale_base_act_date   rsv_sale_base_act_date     -- 予約売上拠点有効開始日
+               , xca.delivery_base_code       delivery_base_code         -- 納品拠点コード
+-- == 2010/11/22 V1.28 Added END   ===============================================================
           FROM   oe_order_headers_all     ooha
                , oe_order_lines_all       oola
                , xxwsh_order_headers_all  xoha
+-- == 2010/11/22 V1.28 Added START ===============================================================
+               , xxcmm_cust_accounts      xca
+-- == 2010/11/22 V1.28 Added END   ===============================================================
           WHERE
           -- 受注ヘッダ抽出条件
               ooha.flow_status_code = ct_hdr_status_booked            -- ステータス＝記帳済(BOOKED)
@@ -2028,12 +2078,24 @@ AS
           AND oola.request_date         <   gd_prm_dlv_to_date + 1                  --  納品日指定(TO)
           AND oola.created_by           =   NVL(gt_prm_creator_id, oola.created_by) --  作成者
           AND xoha.request_no           =   NVL(gt_prm_reqno, xoha.request_no)      --  出荷依頼No指定
+-- == 2010/11/22 V1.28 Added START ===============================================================
+          AND ooha.sold_to_org_id       =   xca.customer_id
+          AND xca.delivery_base_code    =   gt_prm_dlv_base_code
+          AND xca.customer_code         =   NVL(gt_prm_cust_code, xca.customer_code)
+          AND (
+                ( gt_prm_edi_chain_code IS NULL )
+                OR
+                ( xca.chain_store_code = gt_prm_edi_chain_code )
+              )
+-- == 2010/11/22 V1.28 Added END   ===============================================================
         )                         ilv1    -- インラインビュー(受注明細アドオン紐付けビュー)
       , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
       , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
       , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
       , mtl_secondary_inventories msi     -- 保管場所マスタ
-      , xxcmm_cust_accounts       xca     -- アカウントアドオンマスタ
+-- == 2010/11/22 V1.28 deleted START ===============================================================
+--      , xxcmm_cust_accounts       xca     -- アカウントアドオンマスタ
+-- == 2010/11/22 V1.28 deleted END   ===============================================================
       , xxcos_cust_hierarchy_v    xchv    -- 顧客階層VIEW
       WHERE
       -- 受注ヘッダ抽出条件
@@ -2057,7 +2119,9 @@ AS
       -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
       AND oola.flow_status_code NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
       AND TRUNC( oola.request_date ) <= TRUNC( gd_process_date )      -- 受注明細.要求日≦業務日付
-      AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
+-- == 2010/11/22 V1.28 deleted START ===============================================================
+--      AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
+-- == 2010/11/22 V1.28 deleted END   ===============================================================
       AND ooha.sold_to_org_id = xchv.ship_account_id                  -- 受注ヘッダ.顧客ID = 顧客階層VIEW.出荷先顧客ID
       AND NOT EXISTS (                                  -- 受注明細.受注品目≠非在庫品目
                                     SELECT
@@ -2093,16 +2157,18 @@ AS
           )
       AND oola.global_attribute5 IS NULL
       --  パラメータ条件（納品拠点、チェーン店コード、顧客）
-      AND xca.delivery_base_code                =   gt_prm_dlv_base_code
--- == 2010/10/12 V1.27 Modified START  ===========================================================
---      AND xca.chain_store_code                  =   NVL(gt_prm_edi_chain_code, xca.chain_store_code)
-      AND (
-            ( gt_prm_edi_chain_code IS NULL )
-            OR
-            ( xca.chain_store_code = gt_prm_edi_chain_code )
-          )
--- == 2010/10/12 V1.27 Modified END    ===========================================================
-      AND xca.customer_code                     =   NVL(gt_prm_cust_code, xca.customer_code)
+-- == 2010/11/22 V1.28 deleted START ===============================================================
+--      AND xca.delivery_base_code                =   gt_prm_dlv_base_code
+---- == 2010/10/12 V1.27 Modified START  ===========================================================
+----      AND xca.chain_store_code                  =   NVL(gt_prm_edi_chain_code, xca.chain_store_code)
+--      AND (
+--            ( gt_prm_edi_chain_code IS NULL )
+--            OR
+--            ( xca.chain_store_code = gt_prm_edi_chain_code )
+--          )
+---- == 2010/10/12 V1.27 Modified END    ===========================================================
+--      AND xca.customer_code                     =   NVL(gt_prm_cust_code, xca.customer_code)
+-- == 2010/11/22 V1.28 deleted END   ===============================================================
       ORDER BY
         oola.request_date                           -- 受注明細.要求日
       , NVL( oola.attribute4, oola.request_date )   -- 受注明細.検収日(NULL時は、受注明細.要求日)
