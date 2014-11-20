@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.53
+ * Version          : 1.54
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -155,6 +155,8 @@ AS
  *  2009/04/27    1.51 SCS    伊藤ひとみ 本番障害対応#1435 指示と報告比較チェックで、運賃区分OFFの場合は、運送業者の比較は行わない
  *  2009/05/26    1.52 SCS    伊藤ひとみ 本番障害対応#1495 在庫クローズチェックを在庫クローズ年月の月末で行うよう修正
  *  2009/05/28    1.53 SCS    伊藤ひとみ 本番障害対応#1398 配送先名取得条件にステータスを追加
+ *  2009/06/04    1.54 SCS    伊藤ひとみ 本番障害対応#1520 運賃区分に関係なく品目重複チェックを行うよう修正
+ *                                                         配送NoがNULLの場合、配送No単位エラーは依頼Noごとのエラーとなるよう修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1351,7 +1353,10 @@ AS
     <<deliveryno_unit_errflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
 --
-      IF ((NVL(iv_delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,gv_delivery_no_null)) AND
+-- 2009/06/04 H.Itou Mod Start 配送NoがNULLの場合、配送No単位エラーは依頼Noごとのエラーとする。
+--      IF ((NVL(iv_delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,gv_delivery_no_null)) AND
+      IF ((NVL(iv_delivery_no, gv_abend_order_source_ref) = NVL(gr_interface_info_rec(j).delivery_no, gr_interface_info_rec(j).order_source_ref)) AND
+-- 2009/06/04 H.Itou Mod End
           (iv_eos_data_type = gr_interface_info_rec(j).eos_data_type))
       THEN
 --
@@ -6852,12 +6857,17 @@ AS
 --
         ln_err_flg := 0;
 --
-        --チェック有無をIF_H.運賃区分で判定
-        IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del Start 本番障害#1520 運賃区分に関係なくチェックを行う。
+--        --チェック有無をIF_H.運賃区分で判定
+--        IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del End
 --
           IF (i >= 2) THEN
 --
-            IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
+-- 2009/06/04 H.Itou Mod Start 本番障害#1520 配送Noは品目重複チェックに関係ないので、条件から削除
+--            IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
+            IF (
+-- 2009/06/04 H.Itou Mod End
                 (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND -- IF_H.受注ソース参照
                 (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type))       -- IF_H.EOSデータ種別
             THEN
@@ -6901,7 +6911,9 @@ AS
 --
           END IF;
 --
-        END IF;
+-- 2009/06/04 H.Itou Del Start 本番障害#1520
+--        END IF;
+-- 2009/06/04 H.Itou Del End
 --
       END IF;
 --
@@ -6909,12 +6921,17 @@ AS
       -- 容積が混在していればエラーとします。
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
-        --チェック有無をIF_H.運賃区分で判定
-        IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del Start 本番障害#1520 運賃区分に関係なくチェックを行う。
+--        --チェック有無をIF_H.運賃区分で判定
+--        IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del End
 --
           IF (i >= 2) THEN
 --
-            IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
+-- 2009/06/04 H.Itou Mod Start 本番障害#1520 配送Noは重量容積区分混在チェックに関係ないので、条件から削除
+--            IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
+            IF (
+-- 2009/06/04 H.Itou Mod End
                 (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND -- IF_H.受注ソース参照
                 (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type))       -- IF_H.EOSデータ種別
             THEN
@@ -6956,7 +6973,9 @@ AS
 --
           END IF;
 --
-        END IF;
+-- 2009/06/04 H.Itou Del Start 本番障害#1520
+--        END IF;
+-- 2009/06/04 H.Itou Del End
 --
       END IF;
 --
@@ -6971,12 +6990,17 @@ AS
         lt_orderd_item_code     := gr_interface_info_rec(i).orderd_item_code; -- IF_L.受注品目
         lt_prod_kbn_cd          := gr_interface_info_rec(i).prod_kbn_cd;      -- 商品区分
 --
-        --チェック有無をIF_H.運賃区分で判定
-        IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del Start 本番障害#1520 運賃区分に関係なくチェックを行う。
+--        --チェック有無をIF_H.運賃区分で判定
+--        IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del End
 --
           IF (i >= 2) THEN
 --
-            IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND -- IF_H.配送No
+-- 2009/06/04 H.Itou Mod Start 本番障害#1520 配送Noは商品区分混在チェックに関係ないので、条件から削除
+--            IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
+            IF (
+-- 2009/06/04 H.Itou Mod End
                 (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND -- IF_H.受注ソース参照
                 (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type)) -- IF_H.EOSデータ種別
 --
@@ -7019,7 +7043,9 @@ AS
 --
           END IF;
 --
-        END IF;
+-- 2009/06/04 H.Itou Del Start 本番障害#1520
+--        END IF;
+-- 2009/06/04 H.Itou Del End
 --
       END IF;
 --
@@ -7040,12 +7066,17 @@ AS
           lt_prod_kbn_cd        := gr_interface_info_rec(i).prod_kbn_cd;      --商品区分
           lt_item_kbn_cd        := gr_interface_info_rec(i).item_kbn_cd;      --品目区分
 --
-          --チェック有無をIF_H.運賃区分で判定
-          IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del Start 本番障害#1520 運賃区分に関係なくチェックを行う。
+--          --チェック有無をIF_H.運賃区分で判定
+--          IF (lt_freight_charge_class = gv_include_exclude_1) THEN
+-- 2009/06/04 H.Itou Del End
 --
             IF (i >= 2) THEN
 --
-              IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND    --IF_H.配送No
+-- 2009/06/04 H.Itou Mod Start 本番障害#1520 配送Noは品目区分混在チェックに関係ないので、条件から削除
+--              IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND    --IF_H.配送No
+              IF (
+-- 2009/06/04 H.Itou Mod End
                   (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND --IF_H.受注ソース参照
                   (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type)) --IF_H.EOSデータ種別
               THEN
@@ -7091,7 +7122,9 @@ AS
 --
             END IF;
 --
-          END IF;
+-- 2009/06/04 H.Itou Del Start 本番障害#1520
+--          END IF;
+-- 2009/06/04 H.Itou Del End
 --
         END IF;
 --
@@ -19915,6 +19948,9 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
     -- 処理件数の初期化
     gn_target_cnt             := 0;              -- 入力件数
 --
+-- 2009/06/04 H.Itou Add Start 本番障害#1520
+    gv_abend_order_source_ref := NULL;
+-- 2009/06/04 H.Itou Add End
 --********** 2008/07/07 ********** ADD    START ***
     -- 新規用のカウント
     gn_ord_new_shikyu_cnt     := 0;              -- 新規受注（支給）作成件数
