@@ -3579,10 +3579,10 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN770008C"
     
     BEGIN DFF_SEGMENT "iv_product_class" "ATTRIBUTE2"
       OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/05/19 16:39:38"
+      LAST_UPDATE_DATE = "2008/06/11 16:14:30"
       COLUMN_SEQ_NUM = "20"
       ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
+      DISPLAY_FLAG = "N"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
       FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
@@ -3598,10 +3598,10 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN770008C"
     
     BEGIN DFF_SEGMENT "iv_art_division" "ATTRIBUTE3"
       OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/05/19 16:39:38"
+      LAST_UPDATE_DATE = "2008/06/11 16:14:30"
       COLUMN_SEQ_NUM = "30"
       ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
+      DISPLAY_FLAG = "N"
       REQUIRED_FLAG = "Y"
       SECURITY_ENABLED_FLAG = "N"
       FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV_NO_PROD"
@@ -3616,8 +3616,8 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN770008C"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_rcv_pay_div" "ATTRIBUTE4"
-      OWNER = "SCS_IKEDA"
-      LAST_UPDATE_DATE = "2008/05/22 13:38:36"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/06/11 16:23:44"
       COLUMN_SEQ_NUM = "40"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
@@ -3627,6 +3627,8 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN770008C"
       DISPLAY_SIZE = "6"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "314"
       FORM_LEFT_PROMPT = "受払区分"
       FORM_ABOVE_PROMPT = "受払区分"
       DESCRIPTION = "受払区分"
@@ -3664,9 +3666,9 @@ BEGIN PROGRAM "XXCMN770008C" "XXCMN"
   * @param iv_proc_date 処理年月\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_product_class 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed N} {@rep:required}\n\
   * @param iv_art_division 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV_NO_PROD} {@rep:displayed Y} {@rep:required}\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV_NO_PROD} {@rep:displayed N} {@rep:required}\n\
   * @param iv_rcv_pay_div 受払区分\n\
   * @rep:paraminfo {@rep:type XXCMN_NEW_ACCOUNT_DIV_H} {@rep:displayed Y}\n\
   */"
@@ -7779,319 +7781,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820021C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:59:43"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:59:43"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:59:43"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:18"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:04:42"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:05:38"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:05:38"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:10:04"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:10:04"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:10:04"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:10:04"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:10:04"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820021C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/10"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：部署別品目別明細"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -8102,7 +7798,7 @@ BEGIN PROGRAM "XXCMN820021C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820021T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -8112,44 +7808,7 @@ BEGIN PROGRAM "XXCMN820021C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820021C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -8180,319 +7839,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820022C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:59:17"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:59:17"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:59:17"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:12:59"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820022C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/10"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：部署別品目別合計"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -8503,7 +7856,7 @@ BEGIN PROGRAM "XXCMN820022C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820022T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -8513,44 +7866,7 @@ BEGIN PROGRAM "XXCMN820022C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820022C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -8581,319 +7897,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820023C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:57:42"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:57:42"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:57:42"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:13:50"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820023C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/09"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：品目別明細"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -8904,7 +7914,7 @@ BEGIN PROGRAM "XXCMN820023C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820023T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -8914,44 +7924,7 @@ BEGIN PROGRAM "XXCMN820023C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820023C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -8982,319 +7955,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820024C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:57:07"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:57:07"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:57:07"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:14:26"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820024C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/09"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：品目別合計"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -9305,7 +7972,7 @@ BEGIN PROGRAM "XXCMN820024C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820024T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -9315,44 +7982,7 @@ BEGIN PROGRAM "XXCMN820024C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820024C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed N}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -9383,319 +8013,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820025C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:15:53"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:15:53"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:15:53"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:15:53"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:15:53"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:58:40"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:58:40"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:58:40"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:11:00"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820025C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/10"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：部署別取引先別明細"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -9706,7 +8030,7 @@ BEGIN PROGRAM "XXCMN820025C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820025T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -9716,44 +8040,7 @@ BEGIN PROGRAM "XXCMN820025C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820025C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -9784,319 +8071,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820026C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:29"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:29"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:29"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:29"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:29"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:58:13"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:58:13"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:58:13"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:09:55"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820026C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/10"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：部署別取引先別合計"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -10107,7 +8088,7 @@ BEGIN PROGRAM "XXCMN820026C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820026T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -10117,44 +8098,7 @@ BEGIN PROGRAM "XXCMN820026C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820026C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -10185,319 +8129,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820027C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:59"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:59"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:59"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:59"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:16:59"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:56:41"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:56:41"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:56:41"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:08:56"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820027C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/09"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：取引先別明細"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -10508,7 +8146,7 @@ BEGIN PROGRAM "XXCMN820027C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820027T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -10518,44 +8156,7 @@ BEGIN PROGRAM "XXCMN820027C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820027C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -10586,319 +8187,13 @@ BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN820028C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_output_type" "ATTRIBUTE1"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:17:26"
-      COLUMN_SEQ_NUM = "10"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_OUTPUT_TYPE_REP_01"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "出力形式"
-      FORM_ABOVE_PROMPT = "出力形式"
-      DESCRIPTION = "出力形式"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_fiscal_ym" "ATTRIBUTE2"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:17:26"
-      COLUMN_SEQ_NUM = "20"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_YYYYMM"
-      DISPLAY_SIZE = "6"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "対象年月"
-      FORM_ABOVE_PROMPT = "対象年月"
-      DESCRIPTION = "対象年月"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_prod_div" "ATTRIBUTE3"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:17:26"
-      COLUMN_SEQ_NUM = "30"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "商品区分"
-      FORM_ABOVE_PROMPT = "商品区分"
-      DESCRIPTION = "商品区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_div" "ATTRIBUTE4"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:17:26"
-      COLUMN_SEQ_NUM = "40"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "Y"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
-      DISPLAY_SIZE = "1"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目区分"
-      FORM_ABOVE_PROMPT = "品目区分"
-      DESCRIPTION = "品目区分"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE5"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 20:17:26"
-      COLUMN_SEQ_NUM = "50"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_POST_CODE_02"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "所属部署"
-      FORM_ABOVE_PROMPT = "所属部署"
-      DESCRIPTION = "所属部署"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_01" "ATTRIBUTE6"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:55:44"
-      COLUMN_SEQ_NUM = "60"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード１"
-      FORM_ABOVE_PROMPT = "群コード１"
-      DESCRIPTION = "群コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_02" "ATTRIBUTE7"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:55:44"
-      COLUMN_SEQ_NUM = "70"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード２"
-      FORM_ABOVE_PROMPT = "群コード２"
-      DESCRIPTION = "群コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_crowd_code_03" "ATTRIBUTE8"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/10 16:56:06"
-      COLUMN_SEQ_NUM = "80"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_S_BAND_CODE"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "群コード３"
-      FORM_ABOVE_PROMPT = "群コード３"
-      DESCRIPTION = "群コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_01" "ATTRIBUTE9"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "90"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_02" "ATTRIBUTE10"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "100"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード１"
-      FORM_ABOVE_PROMPT = "品目コード１"
-      DESCRIPTION = "品目コード２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_03" "ATTRIBUTE11"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "110"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード３"
-      FORM_ABOVE_PROMPT = "品目コード３"
-      DESCRIPTION = "品目コード３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_04" "ATTRIBUTE12"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "120"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード４"
-      FORM_ABOVE_PROMPT = "品目コード４"
-      DESCRIPTION = "品目コード４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_item_code_05" "ATTRIBUTE13"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "130"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "N"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_CODE"
-      DISPLAY_SIZE = "7"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "品目コード５"
-      FORM_ABOVE_PROMPT = "品目コード５"
-      DESCRIPTION = "品目コード５"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_01" "ATTRIBUTE14"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "140"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ１"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ１"
-      DESCRIPTION = "取引先ＩＤ１"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_02" "ATTRIBUTE15"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "150"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ２"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ２"
-      DESCRIPTION = "取引先ＩＤ２"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_03" "ATTRIBUTE16"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "160"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ３"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ３"
-      DESCRIPTION = "取引先ＩＤ３"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_04" "ATTRIBUTE17"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "170"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ４"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ４"
-      DESCRIPTION = "取引先ＩＤ４"
-    END DFF_SEGMENT
-    
-    BEGIN DFF_SEGMENT "iv_vendor_id_05" "ATTRIBUTE18"
-      OWNER = "SCS_HMARUSHITA"
-      LAST_UPDATE_DATE = "2008/04/09 21:07:55"
-      COLUMN_SEQ_NUM = "180"
-      ENABLED_FLAG = "Y"
-      DISPLAY_FLAG = "Y"
-      REQUIRED_FLAG = "N"
-      SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXCMN_VENDOR_CODE_01"
-      DISPLAY_SIZE = "4"
-      MAXIMUM_DESCRIPTION_LEN = "50"
-      CONCATENATION_DESCRIPTION_LEN = "25"
-      FORM_LEFT_PROMPT = "取引先ＩＤ５"
-      FORM_ABOVE_PROMPT = "取引先ＩＤ５"
-      DESCRIPTION = "取引先ＩＤ５"
-    END DFF_SEGMENT
-    
   END DFF_CONTEXT
   
 END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN820028C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/09"
+  LAST_UPDATE_DATE = "2008/06/24"
   USER_CONCURRENT_PROGRAM_NAME = "原価差異表：取引先別合計"
   EXEC = "XXCMN820021C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
@@ -10909,7 +8204,7 @@ BEGIN PROGRAM "XXCMN820028C" "XXCMN"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
   RUN_ALONE_FLAG = "N"
-  SRS_FLAG = "Y"
+  SRS_FLAG = "N"
   DESCRIPTION = "Sub Concurrent：XXCMN820028T"
   SAVE_OUTPUT_FLAG = "Y"
   REQUIRED_STYLE = "N"
@@ -10919,44 +8214,7 @@ BEGIN PROGRAM "XXCMN820028C" "XXCMN"
   MLS_EXEC = "" ""
   ENABLE_TIME_STATISTICS = "N"
   SRS_FLEX = "XXCMN" "$SRS$.XXCMN820028C"
-  AUTO_ANNOTATION =
- "/**\n\
-  * @param iv_output_type 出力形式\n\
-  * @rep:paraminfo {@rep:type XXCMN_OUTPUT_TYPE_REP_01} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_fiscal_ym 対象年月\n\
-  * @rep:paraminfo {@rep:type XXCMN_YYYYMM} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_prod_div 商品区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_item_div 品目区分\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
-  * @param iv_dept_code 所属部署\n\
-  * @rep:paraminfo {@rep:type XXCMN_POST_CODE_02} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_01 群コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_02 群コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_crowd_code_03 群コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_S_BAND_CODE} {@rep:displayed Y}\n\
-  * @param iv_item_code_01 品目コード１\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_02 品目コード２\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_03 品目コード３\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_04 品目コード４\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_item_code_05 品目コード５\n\
-  * @rep:paraminfo {@rep:type XXCMN_ITEM_CODE} {@rep:displayed N}\n\
-  * @param iv_vendor_id_01 取引先ＩＤ１\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_02 取引先ＩＤ２\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_03 取引先ＩＤ３\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_04 取引先ＩＤ４\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
-  * @param iv_vendor_id_05 取引先ＩＤ５\n\
-  * @rep:paraminfo {@rep:type XXCMN_VENDOR_CODE_01} {@rep:displayed Y}\n\
+  AUTO_ANNOTATION = "/**\n\
   */"
 
 
@@ -11344,7 +8602,7 @@ END EXECUTABLE
 
 BEGIN DESC_FLEX "XXCMN" "$SRS$.XXCMN810002C"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/07 22:14:12"
+  LAST_UPDATE_DATE = "2008/06/18 19:38:33"
   TABLE_APPLICATION_SHORT_NAME = "FND"
   APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
   CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
@@ -11392,13 +8650,13 @@ END DESC_FLEX
 
 BEGIN PROGRAM "XXCMN810002C" "XXCMN"
   OWNER = "SCS_HMARUSHITA"
-  LAST_UPDATE_DATE = "2008/04/07"
+  LAST_UPDATE_DATE = "2008/06/18"
   USER_CONCURRENT_PROGRAM_NAME = "品目マスタ更新（日次）"
   EXEC = "XXCMN810002C" "XXCMN"
   EXECUTION_METHOD_CODE = "I"
   ARGUMENT_METHOD_CODE = "4"
   QUEUE_CONTROL_FLAG = "N"
-  QUEUE_METHOD_CODE = "I"
+  QUEUE_METHOD_CODE = "B"
   REQUEST_SET_FLAG = "N"
   ENABLED_FLAG = "Y"
   PRINT_FLAG = "Y"
@@ -11419,6 +8677,14 @@ BEGIN PROGRAM "XXCMN810002C" "XXCMN"
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   */"
 
+  BEGIN INCOMPATABILITY "XXCMN810002C" "XXCMN"
+    OWNER = "SCS_HMARUSHITA"
+    LAST_UPDATE_DATE = "2008/06/18"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
 
 END PROGRAM
 
