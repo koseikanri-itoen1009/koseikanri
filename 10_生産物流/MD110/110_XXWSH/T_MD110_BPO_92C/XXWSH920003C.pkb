@@ -7,7 +7,7 @@ AS
  * Description      : 移動指示発注依頼自動作成
  * MD.050           : 生産物流共通（出荷・移動仮引当） T_MD050_BPO921
  * MD.070           : 移動指示発注依頼自動作成 T_MD070_BPO92C
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *                                      内部課題#66/内部変更#173、内部変更#183
  *                                      内部変更#233
  *  2008/10/20   1.5   Oracle 福田      統合テスト指摘#240
+ *  2008/12/15   1.6   Oracle 福田      本番障害#631
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2480,6 +2481,7 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND ximv.start_date_active     <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
         AND (ximv.end_date_active IS NULL
              OR ximv.end_date_active   >= TO_DATE(iv_arrival_date,'YYYY/MM/DD'))
+        AND xola.quantity > 0   -- 2008/12/15 本番障害#631 Add
       ORDER BY
         xola.shipping_item_code,
         xoha.deliver_from
@@ -2552,6 +2554,7 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND ximv.start_date_active     <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
         AND (ximv.end_date_active IS NULL
              OR ximv.end_date_active   >= TO_DATE(iv_arrival_date,'YYYY/MM/DD'))
+        AND xola.quantity > 0   -- 2008/12/15 本番障害#631 Add
       ORDER BY
         xola.shipping_item_code,
         xoha.deliver_from
@@ -2613,6 +2616,7 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND ximv.start_date_active     <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
         AND (ximv.end_date_active IS NULL
              OR ximv.end_date_active   >= TO_DATE(iv_arrival_date,'YYYY/MM/DD'))
+        AND xmril.instruct_qty > 0   -- 2008/12/15 本番障害#631 Add
       ORDER BY
         xmril.item_code,
         xmrih.shipped_locat_code
@@ -2676,6 +2680,7 @@ debug_log(FND_FILE.LOG,'(C-3)' || cv_prg_name || ' End･････');
         AND ximv.start_date_active   <= TO_DATE(iv_arrival_date,'YYYY/MM/DD')
         AND (ximv.end_date_active     IS NULL
              OR ximv.end_date_active >= TO_DATE(iv_arrival_date,'YYYY/MM/DD'))
+        AND xmril.instruct_qty > 0   -- 2008/12/15 本番障害#631 Add
       ORDER BY
         xmril.item_code,
         xmrih.shipped_locat_code
@@ -5520,13 +5525,12 @@ debug_log(FND_FILE.LOG,'    明細数量合計(加算経過) = ' || TO_CHAR(gn_sum_req_lin
 --
     ELSE
 --
-debug_log(FND_FILE.LOG,'  発注依頼明細作成不要..................');
-debug_log(FND_FILE.LOG,'    明細数量合計(加算経過) = ' || TO_CHAR(gn_sum_req_line_quantity));
+  debug_log(FND_FILE.LOG,'  発注依頼明細作成不要..................');
+  debug_log(FND_FILE.LOG,'    明細数量合計(加算経過) = ' || TO_CHAR(gn_sum_req_line_quantity));
       -- 依頼数量
       gr_requisition_lines_tbl(gn_ins_data_cnt_pl).requested_quantity := gn_sum_req_line_quantity;
 --
     END IF;   -- 明細データ作成終了
---
 --
 debug_log(FND_FILE.LOG,'(C-11)' || cv_prg_name || ' End･････');
 --
