@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_ol_n03 ON xxwsh.xxwsh_order_lines_all (line_id) TABLESPACE xxidx ;
