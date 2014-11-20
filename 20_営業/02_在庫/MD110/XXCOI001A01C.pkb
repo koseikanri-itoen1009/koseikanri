@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/07/13    1.7   H.Sasaki         [0000495]入庫情報サマリ抽出カーソルのPT対応
  *  2009/09/08    1.8   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2009/10/26    1.9   H.Sasaki         [E_T4_00076]倉庫コードの設定方法を修正
+ *  2009/11/06    1.10  H.Sasaki         [E_T4_00143]PT対応
  *
  *****************************************************************************************/
 --
@@ -1171,154 +1172,334 @@ AS
 --              , xola.order_line_id
 --      ;
 --
-      SELECT  xoha.req_status                  AS req_status          -- 出荷依頼ステータス
-            , CASE WHEN xoha.req_status = gt_ship_status_result THEN
-                xoha.result_deliver_to ELSE xoha.deliver_to END
-                                               AS result_deliver_to   -- 出荷先_実績
-            , CASE WHEN xoha.req_status = gt_ship_status_result THEN
-                xoha.arrival_date ELSE xoha.schedule_arrival_date END
-                                               AS arrive_date         -- 伝票日付
-            , xoha.request_no                  AS req_move_no         -- 依頼No
-            , xoha.deliver_from                AS deliver_from        -- 出荷元保管場所
-            , xola.request_item_code           AS item_no             -- 子品目コード
-            , imbp.item_no                     AS parent_item_no      -- 親品目コード
-            , hca.account_number               AS base_code           -- 拠点コード
-            , xola.delete_flag                 AS delete_flag         -- 削除フラグ
-            , xca.dept_hht_div                 AS dept_hht_div        -- 百貨店用HHT区分
-            , hl.province                      AS deliverly_code
-            , imbc.attribute11                 AS case_in_qty         -- ケース入数
-            , ilm.attribute3                   AS taste_term          -- 賞味期限
-            , ilm.attribute2                   AS difference_summary_code
-                                                                      -- 固有記号
-            , xola.order_header_id             AS order_header_id     -- 受注ヘッダID
-            , xola.order_line_id               AS order_line_id       -- 受注明細ID
-            , CASE WHEN otta.order_category_code = cv_order_type THEN
-                SUM( ROUND( xmld.actual_quantity, 2 ) )
-                   WHEN otta.order_category_code = cv_return_type THEN
-                SUM( ROUND( xmld.actual_quantity, 2 ) * -1 )
-              END                              AS shipped_quantity    -- 出荷実績数量
-      FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
-            , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
-            , ic_item_mst_b                    imbc                   -- OPM品目マスタ（子）
-            , ic_item_mst_b                    imbp                   -- OPM品目マスタ（親）
-            , xxcmn_item_mst_b                 ximb                   -- OPM品目アドオンマスタ
-            , mtl_system_items_b               msib                   -- Disc品目マスタ
-            , hz_party_sites                   hps                    -- パーティサイトマスタ
-            , hz_cust_accounts                 hca                    -- 顧客マスタ
-            , xxcmm_cust_accounts              xca                    -- 顧客追加情報
-            , xxinv_mov_lot_details            xmld                   -- 移動ロット詳細(アドオン)
-            , ic_lots_mst                      ilm                    -- OPMロットマスタ
-            , oe_transaction_types_all         otta                   -- 受注タイプマスタ
-            , oe_transaction_types_tl          ottt
-            , hz_locations                     hl                     -- 事業所マスタ
-      WHERE   xoha.order_header_id  =   xola.order_header_id
-      AND     xola.request_item_id  =   msib.inventory_item_id
-      AND     imbc.item_no          =   msib.segment1
-      AND     imbc.item_id          =   ximb.item_id
-      AND     imbp.item_id          =   ximb.parent_item_id
--- == 2009/09/08 V1.8 Added START ===============================================================
-      AND    ((xoha.req_status = gt_ship_status_result
-               AND
-               xoha.arrival_date BETWEEN ximb.start_date_active
-                                 AND     NVL(ximb.end_date_active, xoha.arrival_date)
-              )
-              OR
-              (xoha.req_status <> gt_ship_status_result
-               AND
-               xoha.schedule_arrival_date BETWEEN ximb.start_date_active
-                                          AND     NVL(ximb.end_date_active, xoha.schedule_arrival_date)
-              )
-             )
--- == 2009/09/08 V1.8 Added END   ===============================================================
-      AND     msib.organization_id  =   gt_org_id
-      AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
-              xoha.req_status                          = gt_ship_status_close
-              AND xoha.notif_status                    = gt_notice_status
-              AND NVL(xola.delete_flag,cv_n_flag)      = cv_n_flag
-              AND xola.shipping_request_if_flg         = cv_n_flag
-              AND xola.shipping_result_if_flg          = cv_n_flag
-              AND xoha.deliver_to_id                   = hps.party_site_id
-            )
-         OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
-              (xoha.actual_confirm_class               = cv_y_flag
-              AND xoha.result_deliver_to_id            = hps.party_site_id)
-              AND(( xoha.req_status                    = gt_ship_status_result
-                   AND NVL(xola.delete_flag,cv_n_flag) = cv_n_flag
-                   AND xola.shipping_result_if_flg     = cv_n_flag
-                  )
-              OR ( xoha.req_status                     = gt_ship_status_result
-                   AND xola.delete_flag                = cv_y_flag
-                   AND xola.shipping_request_if_flg    = cv_y_flag
-                   AND xola.shipping_result_if_flg     = cv_n_flag
-                 ))
-            )
-         OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
-              xoha.req_status                                       = gt_ship_status_cancel
-              AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
-              AND xola.shipping_request_if_flg                      = cv_y_flag
-              AND xola.shipping_result_if_flg                       = cv_n_flag
-              AND xola.delete_flag                                  = cv_y_flag
-            )
-          )
-      AND     otta.attribute1             = cv_1
-      AND     NVL ( otta.attribute4 , cv_1 ) <> cv_2
-      AND     otta.org_id                 = gt_itou_ou_id
-      AND     otta.transaction_type_id    = ottt.transaction_type_id
-      AND     ottt.language               = USERENV('LANG')
-      AND     xoha.order_type_id          = ottt.transaction_type_id
-      AND     hps.party_id                = hca.party_id
-      AND     hca.cust_account_id         = xca.customer_id
-      AND     hca.customer_class_code     = cv_class_code
-      AND     hca.status                  = cv_status_flag
-      AND     hps.location_id             = hl.location_id
-      AND     SUBSTRB(hl.province, 1, 1)  = cv_0
-      AND     xola.order_line_id          = xmld.mov_line_id(+)
-      AND     xmld.lot_id                 = ilm.lot_id(+)
-      AND     xmld.item_id                = ilm.item_id(+)
-      AND     xoha.req_status             = g_summary_tab ( in_slip_cnt ) .req_status
-      AND     xoha.request_no             = g_summary_tab ( in_slip_cnt ) .req_move_no
-      AND     xoha.deliver_from           = g_summary_tab ( in_slip_cnt ) .deliver_from
-      AND     xola.request_item_code      = g_summary_tab ( in_slip_cnt ) .item_no
-      AND ( (
-              xoha.req_status                IN ( gt_ship_status_close , gt_ship_status_cancel )
-              AND (   (xmld.record_type_code  = gt_lot_status_request)
-                   OR (xmld.record_type_code  IS NULL)
-                  )
-              AND xoha.deliver_to            = g_summary_tab ( in_slip_cnt ) .result_deliver_to
-              AND xoha.schedule_arrival_date = g_summary_tab ( in_slip_cnt ) .slip_date
-            )
-         OR (
-              xoha.req_status            = gt_ship_status_result
-              AND (   (xmld.record_type_code  = gt_lot_status_results)
-                   OR (xmld.record_type_code  IS NULL)
-                  )
-              AND xoha.result_deliver_to = g_summary_tab ( in_slip_cnt ) .result_deliver_to
-              AND xoha.arrival_date      = g_summary_tab ( in_slip_cnt ) .slip_date
-            )
-          )
-      AND     xoha.latest_external_flag   = cv_y_flag
-      GROUP BY  xoha.req_status
-              , xoha.request_no
+-- == 2009/11/06 V1.10 Modified START ===============================================================
+--      SELECT  xoha.req_status                  AS req_status          -- 出荷依頼ステータス
+--            , CASE WHEN xoha.req_status = gt_ship_status_result THEN
+--                xoha.result_deliver_to ELSE xoha.deliver_to END
+--                                               AS result_deliver_to   -- 出荷先_実績
+--            , CASE WHEN xoha.req_status = gt_ship_status_result THEN
+--                xoha.arrival_date ELSE xoha.schedule_arrival_date END
+--                                               AS arrive_date         -- 伝票日付
+--            , xoha.request_no                  AS req_move_no         -- 依頼No
+--            , xoha.deliver_from                AS deliver_from        -- 出荷元保管場所
+--            , xola.request_item_code           AS item_no             -- 子品目コード
+--            , imbp.item_no                     AS parent_item_no      -- 親品目コード
+--            , hca.account_number               AS base_code           -- 拠点コード
+--            , xola.delete_flag                 AS delete_flag         -- 削除フラグ
+--            , xca.dept_hht_div                 AS dept_hht_div        -- 百貨店用HHT区分
+--            , hl.province                      AS deliverly_code
+--            , imbc.attribute11                 AS case_in_qty         -- ケース入数
+--            , ilm.attribute3                   AS taste_term          -- 賞味期限
+--            , ilm.attribute2                   AS difference_summary_code
+--                                                                      -- 固有記号
+--            , xola.order_header_id             AS order_header_id     -- 受注ヘッダID
+--            , xola.order_line_id               AS order_line_id       -- 受注明細ID
+--            , CASE WHEN otta.order_category_code = cv_order_type THEN
+--                SUM( ROUND( xmld.actual_quantity, 2 ) )
+--                   WHEN otta.order_category_code = cv_return_type THEN
+--                SUM( ROUND( xmld.actual_quantity, 2 ) * -1 )
+--              END                              AS shipped_quantity    -- 出荷実績数量
+--      FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
+--            , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
+--            , ic_item_mst_b                    imbc                   -- OPM品目マスタ（子）
+--            , ic_item_mst_b                    imbp                   -- OPM品目マスタ（親）
+--            , xxcmn_item_mst_b                 ximb                   -- OPM品目アドオンマスタ
+--            , mtl_system_items_b               msib                   -- Disc品目マスタ
+--            , hz_party_sites                   hps                    -- パーティサイトマスタ
+--            , hz_cust_accounts                 hca                    -- 顧客マスタ
+--            , xxcmm_cust_accounts              xca                    -- 顧客追加情報
+--            , xxinv_mov_lot_details            xmld                   -- 移動ロット詳細(アドオン)
+--            , ic_lots_mst                      ilm                    -- OPMロットマスタ
+--            , oe_transaction_types_all         otta                   -- 受注タイプマスタ
+--            , oe_transaction_types_tl          ottt
+--            , hz_locations                     hl                     -- 事業所マスタ
+--      WHERE   xoha.order_header_id  =   xola.order_header_id
+--      AND     xola.request_item_id  =   msib.inventory_item_id
+--      AND     imbc.item_no          =   msib.segment1
+--      AND     imbc.item_id          =   ximb.item_id
+--      AND     imbp.item_id          =   ximb.parent_item_id
+---- == 2009/09/08 V1.8 Added START ===============================================================
+--      AND    ((xoha.req_status = gt_ship_status_result
+--               AND
+--               xoha.arrival_date BETWEEN ximb.start_date_active
+--                                 AND     NVL(ximb.end_date_active, xoha.arrival_date)
+--              )
+--              OR
+--              (xoha.req_status <> gt_ship_status_result
+--               AND
+--               xoha.schedule_arrival_date BETWEEN ximb.start_date_active
+--                                          AND     NVL(ximb.end_date_active, xoha.schedule_arrival_date)
+--              )
+--             )
+---- == 2009/09/08 V1.8 Added END   ===============================================================
+--      AND     msib.organization_id  =   gt_org_id
+--      AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
+--              xoha.req_status                          = gt_ship_status_close
+--              AND xoha.notif_status                    = gt_notice_status
+--              AND NVL(xola.delete_flag,cv_n_flag)      = cv_n_flag
+--              AND xola.shipping_request_if_flg         = cv_n_flag
+--              AND xola.shipping_result_if_flg          = cv_n_flag
+--              AND xoha.deliver_to_id                   = hps.party_site_id
+--            )
+--         OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
+--              (xoha.actual_confirm_class               = cv_y_flag
+--              AND xoha.result_deliver_to_id            = hps.party_site_id)
+--              AND(( xoha.req_status                    = gt_ship_status_result
+--                   AND NVL(xola.delete_flag,cv_n_flag) = cv_n_flag
+--                   AND xola.shipping_result_if_flg     = cv_n_flag
+--                  )
+--              OR ( xoha.req_status                     = gt_ship_status_result
+--                   AND xola.delete_flag                = cv_y_flag
+--                   AND xola.shipping_request_if_flg    = cv_y_flag
+--                   AND xola.shipping_result_if_flg     = cv_n_flag
+--                 ))
+--            )
+--         OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
+--              xoha.req_status                                       = gt_ship_status_cancel
+--              AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
+--              AND xola.shipping_request_if_flg                      = cv_y_flag
+--              AND xola.shipping_result_if_flg                       = cv_n_flag
+--              AND xola.delete_flag                                  = cv_y_flag
+--            )
+--          )
+--      AND     otta.attribute1             = cv_1
+--      AND     NVL ( otta.attribute4 , cv_1 ) <> cv_2
+--      AND     otta.org_id                 = gt_itou_ou_id
+--      AND     otta.transaction_type_id    = ottt.transaction_type_id
+--      AND     ottt.language               = USERENV('LANG')
+--      AND     xoha.order_type_id          = ottt.transaction_type_id
+--      AND     hps.party_id                = hca.party_id
+--      AND     hca.cust_account_id         = xca.customer_id
+--      AND     hca.customer_class_code     = cv_class_code
+--      AND     hca.status                  = cv_status_flag
+--      AND     hps.location_id             = hl.location_id
+--      AND     SUBSTRB(hl.province, 1, 1)  = cv_0
+--      AND     xola.order_line_id          = xmld.mov_line_id(+)
+--      AND     xmld.lot_id                 = ilm.lot_id(+)
+--      AND     xmld.item_id                = ilm.item_id(+)
+--      AND     xoha.req_status             = g_summary_tab ( in_slip_cnt ) .req_status
+--      AND     xoha.request_no             = g_summary_tab ( in_slip_cnt ) .req_move_no
+--      AND     xoha.deliver_from           = g_summary_tab ( in_slip_cnt ) .deliver_from
+--      AND     xola.request_item_code      = g_summary_tab ( in_slip_cnt ) .item_no
+--      AND ( (
+--              xoha.req_status                IN ( gt_ship_status_close , gt_ship_status_cancel )
+--              AND (   (xmld.record_type_code  = gt_lot_status_request)
+--                   OR (xmld.record_type_code  IS NULL)
+--                  )
+--              AND xoha.deliver_to            = g_summary_tab ( in_slip_cnt ) .result_deliver_to
+--              AND xoha.schedule_arrival_date = g_summary_tab ( in_slip_cnt ) .slip_date
+--            )
+--         OR (
+--              xoha.req_status            = gt_ship_status_result
+--              AND (   (xmld.record_type_code  = gt_lot_status_results)
+--                   OR (xmld.record_type_code  IS NULL)
+--                  )
+--              AND xoha.result_deliver_to = g_summary_tab ( in_slip_cnt ) .result_deliver_to
+--              AND xoha.arrival_date      = g_summary_tab ( in_slip_cnt ) .slip_date
+--            )
+--          )
+--      AND     xoha.latest_external_flag   = cv_y_flag
+--      GROUP BY  xoha.req_status
+--              , xoha.request_no
+--              , hca.account_number
+--              , CASE WHEN xoha.req_status = gt_ship_status_result THEN
+--                     xoha.result_deliver_to ELSE xoha.deliver_to END
+--              , CASE WHEN xoha.req_status = gt_ship_status_result THEN
+--                   xoha.arrival_date ELSE xoha.schedule_arrival_date END
+--              , xoha.deliver_from
+--              , xola.request_item_code
+--              , imbp.item_no
+--              , xola.delete_flag
+--              , xca.dept_hht_div
+--              , hl.province
+--              , imbc.attribute11
+--              , otta.order_category_code
+--              , xmld.lot_no
+--              , ilm.attribute3
+--              , ilm.attribute2
+--              , xola.order_header_id
+--              , xola.order_line_id
+--      ;
+-- == 2009/06/03 V1.6 Modified END   ===============================================================
+      SELECT
+                    oiv.req_status                    AS  req_status                        -- 出荷依頼ステータス
+                  , oiv.result_deliver_to             AS  result_deliver_to                 -- 出荷先_実績
+                  , oiv.arrive_date                   AS  arrive_date                       -- 伝票日付
+                  , oiv.req_move_no                   AS  req_move_no                       -- 依頼No
+                  , oiv.deliver_from                  AS  deliver_from                      -- 出荷元保管場所
+                  , oiv.item_no                       AS  item_no                           -- 子品目コード
+                  , imbp.item_no                      AS  parent_item_no                    -- 親品目コード
+                  , hca.account_number                AS  base_code                         -- 拠点コード
+                  , oiv.delete_flag                   AS  delete_flag                       -- 削除フラグ
+                  , xca.dept_hht_div                  AS  dept_hht_div                      -- 百貨店用HHT区分
+                  , hl.province                       AS  deliverly_code                    -- 配送先コード
+                  , imbc.attribute11                  AS  case_in_qty                       -- ケース入数
+                  , oiv.taste_term                    AS  taste_term                        -- 賞味期限
+                  , oiv.difference_summary_code       AS  difference_summary_code           -- 固有記号
+                  , oiv.order_header_id               AS  order_header_id                   -- 受注ヘッダID
+                  , oiv.order_line_id                 AS  order_line_id                     -- 受注明細ID
+                  , CASE  WHEN oiv.order_category_code = cv_order_type
+                            THEN  SUM(oiv.actual_quantity)
+                          WHEN oiv.order_category_code = cv_return_type
+                            THEN  SUM(oiv.actual_quantity * -1)
+                    END                               AS  shipped_quantity                  -- 出荷実績数量
+      FROM
+                    ic_item_mst_b               imbc                  -- OPM品目マスタ（子）
+                  , ic_item_mst_b               imbp                  -- OPM品目マスタ（親）
+                  , xxcmn_item_mst_b            ximb                  -- OPM品目アドオンマスタ
+                  , mtl_system_items_b          msib                  -- Disc品目マスタ
+                  , hz_party_sites              hps                   -- パーティサイトマスタ
+                  , hz_cust_accounts            hca                   -- 顧客マスタ
+                  , xxcmm_cust_accounts         xca                   -- 顧客追加情報
+                  , hz_locations                hl                    -- 事業所マスタ
+                  , (
+                      SELECT        xoha.req_status                     AS  req_status                  -- 出荷依頼ステータス
+                                  , CASE  WHEN xoha.req_status = gt_ship_status_result
+                                            THEN  xoha.result_deliver_to
+                                            ELSE  xoha.deliver_to
+                                    END                                 AS  result_deliver_to           -- 出荷先_実績
+                                  , CASE  WHEN xoha.req_status = gt_ship_status_result
+                                            THEN  xoha.arrival_date
+                                            ELSE  xoha.schedule_arrival_date
+                                    END                                 AS  arrive_date                 -- 伝票日付
+                                  , xoha.request_no                     AS  req_move_no                 -- 依頼No
+                                  , xoha.deliver_from                   AS  deliver_from                -- 出荷元保管場所
+                                  , xola.request_item_code              AS  item_no                     -- 子品目コード
+                                  , xola.delete_flag                    AS  delete_flag                 -- 削除フラグ
+                                  , ilm.attribute3                      AS  taste_term                  -- 賞味期限
+                                  , ilm.attribute2                      AS  difference_summary_code     -- 固有記号
+                                  , xola.order_header_id                AS  order_header_id             -- 受注ヘッダID
+                                  , xola.order_line_id                  AS  order_line_id               -- 受注明細ID
+                                  , otta.order_category_code            AS  order_category_code         -- 受注カテゴリ
+                                  , ROUND( xmld.actual_quantity, 2 )    AS  actual_quantity             -- 出荷実績数量
+                                  , xmld.lot_no                         AS  lot_no                      -- ロット番号
+                                  , xola.request_item_id                AS  request_item_id             -- 品目ID
+                                  , CASE  WHEN      xoha.req_status                   = gt_ship_status_close
+                                                AND xoha.notif_status                 = gt_notice_status
+                                                AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
+                                                AND xola.shipping_request_if_flg      = cv_n_flag
+                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                          THEN  xoha.deliver_to_id
+                                          WHEN      xoha.actual_confirm_class         = cv_y_flag
+                                                AND xoha.req_status                   = gt_ship_status_result
+                                                AND NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
+                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                          THEN  xoha.result_deliver_to_id
+                                          WHEN      xoha.actual_confirm_class         = cv_y_flag
+                                                AND xoha.req_status                   = gt_ship_status_result
+                                                AND xola.delete_flag                  = cv_y_flag
+                                                AND xola.shipping_request_if_flg      = cv_y_flag
+                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                          THEN  xoha.result_deliver_to_id
+                                          WHEN      xoha.req_status                   = gt_ship_status_cancel
+                                                AND xola.shipping_request_if_flg      = cv_y_flag
+                                                AND xola.shipping_result_if_flg       = cv_n_flag
+                                                AND xola.delete_flag                  = cv_y_flag
+                                          THEN NVL(xoha.deliver_to_id, xoha.result_deliver_to_id)
+                                    END                                 AS  party_site_id               -- パーティサイト結合ID
+                      FROM
+                                  xxwsh_order_headers_all           xoha                                -- 受注ヘッダアドオン
+                                , xxwsh_order_lines_all             xola                                -- 受注明細アドオン
+                                , xxinv_mov_lot_details             xmld                                -- 移動ロット詳細(アドオン)
+                                , ic_lots_mst                       ilm                                 -- OPMロットマスタ
+                                , oe_transaction_types_all          otta                                -- 受注タイプマスタ
+                      WHERE       xoha.order_header_id              =   xola.order_header_id
+                      AND         xoha.order_type_id                =   otta.transaction_type_id
+                      AND         otta.attribute1                   =   cv_1
+                      AND         NVL ( otta.attribute4 , cv_1 )    <>  cv_2
+                      AND         otta.org_id                       =   gt_itou_ou_id
+                      AND         otta.transaction_type_code        =   cv_order_type
+                      AND         xola.order_line_id                =   xmld.mov_line_id(+)
+                      AND         xmld.lot_id                       =   ilm.lot_id(+)
+                      AND         xmld.item_id                      =   ilm.item_id(+)
+                      AND         xoha.req_status                   =   g_summary_tab ( in_slip_cnt ) .req_status
+                      AND         xoha.request_no                   =   g_summary_tab ( in_slip_cnt ) .req_move_no
+                      AND         xoha.deliver_from                 =   g_summary_tab ( in_slip_cnt ) .deliver_from
+                      AND         xola.request_item_code            =   g_summary_tab ( in_slip_cnt ) .item_no
+                      AND         xoha.latest_external_flag         =   cv_y_flag
+                      AND(        ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
+                                        xoha.req_status                         = gt_ship_status_close
+                                    AND xoha.notif_status                       = gt_notice_status
+                                    AND NVL(xola.delete_flag,cv_n_flag)         = cv_n_flag
+                                    AND xola.shipping_request_if_flg            = cv_n_flag
+                                    AND xola.shipping_result_if_flg             = cv_n_flag
+                                  )
+                                  OR
+                                  ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
+                                        xoha.actual_confirm_class               = cv_y_flag
+                                    AND xoha.req_status                         = gt_ship_status_result
+                                    AND(
+                                        (     NVL(xola.delete_flag,cv_n_flag)   = cv_n_flag
+                                          AND xola.shipping_result_if_flg       = cv_n_flag
+                                        )
+                                        OR
+                                        (     xola.delete_flag                  = cv_y_flag
+                                          AND xola.shipping_request_if_flg      = cv_y_flag
+                                          AND xola.shipping_result_if_flg       = cv_n_flag
+                                        )
+                                    )
+                                  )
+                                  OR
+                                  ( -- 出荷依頼連携済に対して取消を行ったものは対象
+                                        xoha.req_status                         = gt_ship_status_cancel
+                                    AND xola.shipping_request_if_flg            = cv_y_flag
+                                    AND xola.shipping_result_if_flg             = cv_n_flag
+                                    AND xola.delete_flag                        = cv_y_flag
+                                  )
+                      )
+                      AND(        (
+                                        xoha.req_status               IN (gt_ship_status_close, gt_ship_status_cancel)
+                                    AND xoha.deliver_to               = g_summary_tab ( in_slip_cnt ) .result_deliver_to
+                                    AND xoha.schedule_arrival_date    = g_summary_tab ( in_slip_cnt ) .slip_date
+                                    AND (     (xmld.record_type_code  = gt_lot_status_request)
+                                          OR  (xmld.record_type_code  IS NULL)
+                                    )
+                                  )
+                                  OR
+                                  (
+                                        xoha.req_status               = gt_ship_status_result
+                                    AND xoha.result_deliver_to        = g_summary_tab ( in_slip_cnt ) .result_deliver_to
+                                    AND xoha.arrival_date             = g_summary_tab ( in_slip_cnt ) .slip_date
+                                    AND (     (xmld.record_type_code  = gt_lot_status_results)
+                                          OR  (xmld.record_type_code  IS NULL)
+                                    )
+                                  )
+                      )
+                    )                           oiv                   -- 受注情報View
+      WHERE     msib.inventory_item_id      =   oiv.request_item_id
+      AND       msib.organization_id        =   gt_org_id
+      AND       msib.segment1               =   imbc.item_no
+      AND       imbc.item_id                =   ximb.item_id
+      AND       imbp.item_id                =   ximb.parent_item_id
+      AND       hps.party_id                =   hca.party_id
+      AND       hca.customer_class_code     =   cv_class_code
+      AND       hca.status                  =   cv_status_flag
+      AND       hca.cust_account_id         =   xca.customer_id
+      AND       hps.location_id             =   hl.location_id
+      AND       SUBSTRB(hl.province, 1, 1)  =   cv_0
+      AND       oiv.arrive_date   BETWEEN   ximb.start_date_active
+                                  AND       NVL(ximb.end_date_active, oiv.arrive_date)
+      AND       oiv.party_site_id           =   hps.party_site_id
+      GROUP BY
+                oiv.req_status
+              , oiv.req_move_no
               , hca.account_number
-              , CASE WHEN xoha.req_status = gt_ship_status_result THEN
-                     xoha.result_deliver_to ELSE xoha.deliver_to END
-              , CASE WHEN xoha.req_status = gt_ship_status_result THEN
-                   xoha.arrival_date ELSE xoha.schedule_arrival_date END
-              , xoha.deliver_from
-              , xola.request_item_code
+              , oiv.result_deliver_to
+              , oiv.arrive_date
+              , oiv.deliver_from
+              , oiv.item_no
               , imbp.item_no
-              , xola.delete_flag
+              , oiv.delete_flag
               , xca.dept_hht_div
               , hl.province
               , imbc.attribute11
-              , otta.order_category_code
-              , xmld.lot_no
-              , ilm.attribute3
-              , ilm.attribute2
-              , xola.order_header_id
-              , xola.order_line_id
-      ;
--- == 2009/06/03 V1.6 Modified END   ===============================================================
+              , oiv.order_category_code
+              , oiv.lot_no
+              , oiv.taste_term
+              , oiv.difference_summary_code
+              , oiv.order_header_id
+              , oiv.order_line_id;
+-- == 2009/11/06 V1.10 Modified END   ===============================================================
 --
     -- *** ローカル・レコード ***
 --
