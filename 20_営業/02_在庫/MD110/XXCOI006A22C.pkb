@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A22C(body)
  * Description      : 資材取引を元に、VD受払情報を作成します。
  * MD.050           : VD受払データ作成<MD050_COI_006_A22>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/07/31    1.1   N.Abe            [0000638]単位の取得項目修正
  *  2009/11/11    1.2   N.Abe            [E_最終移行リハ_00539]前月VD受払抽出SQLの修正
  *  2009/11/14    1.3   H.Sasaki         [E_最終移行リハ_00539]前月VD受払抽出SQLの修正
+ *  2011/05/30    1.4   H.Sasaki         [E_本稼動_07579]実行計画固定
  *
  *****************************************************************************************/
 --
@@ -1058,7 +1059,11 @@ AS
              ,xvri.base_code                xvri_base_code          -- VD拠点コード
       FROM    mtl_transaction_types         mtt                     -- 取引タイプマスタ
              ,xxcoi_vd_reception_info       xvri                    -- VD受払情報テーブル
-             ,(SELECT   smsi.attribute7               base_code
+-- == 2011/05/30 V1.4 Modified START ===============================================================
+--             ,(SELECT   smsi.attribute7               base_code
+             ,(SELECT   /*+ INDEX(smmt XXCOI_MMT_N02) */
+                        smsi.attribute7               base_code
+-- == 2011/05/30 V1.4 Modified END   ===============================================================
                        ,smsi.attribute13              subinventory_class
                        ,smmt.inventory_item_id        inventory_item_id
                        ,smmt.transaction_date         transaction_date
