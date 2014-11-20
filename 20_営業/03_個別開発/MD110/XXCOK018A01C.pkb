@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -30,6 +30,9 @@ AS
  *  2009/1/7      1.0   K.Suenaga        新規作成
  *  2009/3/17     1.1   M.Hiruta         [障害T1_0073]請求取引OIFへ登録する顧客IDを修正、顧客サイトIDを追加
  *  2009/3/24     1.2   T.Taniguchi      [障害T1_0118]請求取引OIFへ登録する金額を修正、外税・内税を考慮
+ *  2009/4/14     1.3   M.Hiruta         [障害T1_0396]請求取引OIFへ登録する仕訳計上日を締め日に変更
+ *                                                    AR会計期間有効チェックの処理日を締め日に変更
+ *                                       [障害T1_0503]請求取引OIFへ登録する請求先IDと出荷先IDを正確な値に変更
  *
  *****************************************************************************************/
 --
@@ -186,7 +189,9 @@ AS
            , SUM(xcbs.csh_rcpt_discount_amt)     AS sum_csh_rcpt_discount_amt     -- 入金値引額
            , SUM(xcbs.csh_rcpt_discount_amt_tax) AS sum_csh_rcpt_discount_amt_tax -- 入金値引消費税額
            , xcbs.closing_date                   AS closing_date                  -- 締め日
-           , xcbs.expect_payment_date            AS expect_payment_date           -- 支払予定日
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--           , xcbs.expect_payment_date            AS expect_payment_date           -- 支払予定日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
            , xcbs.tax_code                       AS tax_code                      -- 税金コード
            , xcbs.term_code                      AS term_code                     -- 支払条件
     FROM     xxcok_cond_bm_support               xcbs                             -- 条件別販手販協テーブル
@@ -199,7 +204,9 @@ AS
            , xcbs.demand_to_cust_code                                             -- 請求顧客コード
            , xcbs.emp_code                                                        -- 成績計上担当者コード
            , xcbs.closing_date                                                    -- 締め日
-           , xcbs.expect_payment_date                                             -- 支払予定日
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--           , xcbs.expect_payment_date                                             -- 支払予定日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
            , xcbs.tax_code                                                        -- 税金コード
            , xcbs.term_code;                                                      -- 支払条件
   -- ===============================
@@ -441,8 +448,10 @@ AS
   , it_link_to_line_context    IN  ra_interface_lines_all.link_to_line_context%TYPE      -- リンク明細コンテキスト
   , it_link_to_line_attribute1 IN  ra_interface_lines_all.link_to_line_attribute1%TYPE   -- リンク伝票番号
   , it_link_to_line_attribute2 IN  ra_interface_lines_all.link_to_line_attribute2%TYPE   -- リンク明細行番号
-  , it_trx_date                IN  ra_interface_lines_all.trx_date%TYPE                  -- 請求書日付
-  , it_gl_date                 IN  ra_interface_lines_all.gl_date%TYPE                   -- 仕訳計上日
+  , it_trx_date                IN  ra_interface_lines_all.trx_date%TYPE                  -- 請求書日付（締め日）
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--  , it_gl_date                 IN  ra_interface_lines_all.gl_date%TYPE                   -- 仕訳計上日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
   , it_quantity                IN  ra_interface_lines_all.quantity%TYPE                  -- 数量
   , it_unit_selling_price      IN  ra_interface_lines_all.unit_selling_price%TYPE        -- 単価
   , it_tax_code                IN  ra_interface_lines_all.tax_code%TYPE                  -- 税コード
@@ -521,17 +530,26 @@ AS
       , it_amont                     -- 明細金額              :収益行:入金値引額/電気料 税金行:消費税額/消費税額
       , it_cust_trx_type_id          -- 取引タイプID          :初期処理にて取得した勘定科目に対応する取引タイプID
       , gn_term_id                   -- 支払条件ID            :付加情報取得にて取得した支払条件ID
-      , gn_ship_account_id           -- 請求先顧客ID          :顧客情報２.請求先顧客ID
-      , gn_ship_address_id           -- 請求先顧客サイトID    :顧客情報２.請求先顧客IDに紐づいた顧客サイトID
-      , gn_bill_account_id           -- 出荷先顧客ID          :顧客情報１.出荷先顧客ID
-      , gn_bill_address_id           -- 出荷先顧客サイトID    :顧客情報１.出荷先顧客IDに紐づいた顧客サイトID
+-- Start 2009/04/14 Ver_1.3 T1_0503 M.Hiruta
+--      , gn_ship_account_id           -- 請求先顧客ID          :顧客情報２.請求先顧客ID
+--      , gn_ship_address_id           -- 請求先顧客サイトID    :顧客情報２.請求先顧客IDに紐づいた顧客サイトID
+--      , gn_bill_account_id           -- 出荷先顧客ID          :顧客情報１.出荷先顧客ID
+--      , gn_bill_address_id           -- 出荷先顧客サイトID    :顧客情報１.出荷先顧客IDに紐づいた顧客サイトID
+      , gn_bill_account_id           -- 請求先顧客ID          :顧客情報２.請求先顧客ID
+      , gn_bill_address_id           -- 請求先顧客サイトID    :顧客情報２.請求先顧客IDに紐づいた顧客サイトID
+      , gn_ship_account_id           -- 出荷先顧客ID          :顧客情報１.出荷先顧客ID
+      , gn_ship_address_id           -- 出荷先顧客サイトID    :顧客情報１.出荷先顧客IDに紐づいた顧客サイトID
+-- End   2009/04/14 Ver_1.3 T1_0503 M.Hiruta
       , it_link_to_line_context      -- リンク明細コンテキスト:税金行:収益行にて指定した明細コンテキスト値
       , it_link_to_line_attribute1   -- リンク伝票番号        :税金行:収益行にて指定した伝票番号値
       , it_link_to_line_attribute2   -- リンク明細行番号      :税金行:収益行にて指定した明細行伝票番号値
       , cv_user_type                 -- 通貨換算タイプ        :'User'
       , cv_rate                      -- 換算レート            :'1'
       , it_trx_date                  -- 請求書日付            :締め日
-      , it_gl_date                   -- 仕訳計上日            :支払予定日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--      , it_gl_date                   -- 仕訳計上日            :支払予定日
+      , it_trx_date                  -- 仕訳計上日            :締め日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
       , gv_slip_number               -- 伝票番号              :付加情報取得にて取得した伝票番号
       , it_quantity                  -- 数量                  :収益行：'1' 税金行：NULL
       , it_unit_selling_price        -- 単価                  :明細金額と同じ値
@@ -702,7 +720,9 @@ AS
         , it_link_to_line_attribute1 => lt_link_to_line_attribute1              -- リンク伝票番号
         , it_link_to_line_attribute2 => lt_link_to_line_attribute2              -- リンク明細行番号
         , it_trx_date                => i_discnt_amount_rec.closing_date        -- 請求書日付
-        , it_gl_date                 => i_discnt_amount_rec.expect_payment_date -- 仕訳計上日
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--        , it_gl_date                 => i_discnt_amount_rec.expect_payment_date -- 仕訳計上日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
         , it_quantity                => lt_quantity                             -- 数量
         , it_unit_selling_price      => lt_unit_selling_price                   -- 単価
         , it_tax_code                => i_discnt_amount_rec.tax_code            -- 税コード
@@ -745,7 +765,9 @@ AS
         , it_link_to_line_attribute1 => lt_link_to_line_attribute1              -- リンク伝票番号
         , it_link_to_line_attribute2 => lt_link_to_line_attribute2              -- リンク明細行番号
         , it_trx_date                => i_discnt_amount_rec.closing_date        -- 請求書日付
-        , it_gl_date                 => i_discnt_amount_rec.expect_payment_date -- 仕訳計上日
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--        , it_gl_date                 => i_discnt_amount_rec.expect_payment_date -- 仕訳計上日
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
         , it_quantity                => lt_quantity                             -- 数量
         , it_unit_selling_price      => lt_unit_selling_price                   -- 単価
         , it_tax_code                => i_discnt_amount_rec.tax_code            -- 税コード
@@ -1183,7 +1205,10 @@ AS
     --==============================================================
     lb_set_of_bks := xxcok_common_pkg.check_acctg_period_f(
                        gn_set_of_bks_id                        -- 会計帳簿ID
-                     , i_discnt_amount_rec.expect_payment_date -- 処理日(支払予定日)
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--                     , i_discnt_amount_rec.expect_payment_date -- 処理日(支払予定日)
+                     , i_discnt_amount_rec.closing_date        -- 処理日(締め日)
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
                      , cv_appli_ar_name                        -- アプリケーション短縮名
                      );
     IF( lb_set_of_bks = FALSE ) THEN
@@ -1197,7 +1222,10 @@ AS
                       cv_appli_xxcok_name
                     , cv_00042_err_msg
                     , cv_proc_date_token
-                    , TO_CHAR( i_discnt_amount_rec.expect_payment_date, 'YYYY/MM/DD' )
+-- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
+--                    , TO_CHAR( i_discnt_amount_rec.expect_payment_date, 'YYYY/MM/DD' )
+                    , TO_CHAR( i_discnt_amount_rec.closing_date, 'YYYY/MM/DD' )
+-- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
                     );
       lb_retcode := xxcok_common_pkg.put_message_f( 
                       FND_FILE.OUTPUT    -- 出力区分
