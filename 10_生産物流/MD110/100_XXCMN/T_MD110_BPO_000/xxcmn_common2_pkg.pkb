@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.8
+ * Version                : 1.12
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -19,6 +19,8 @@ AS
  *  get_inv_lot_out_out_rpt_qty   p   なし  ロット    I4  実績未取在庫数  移動出庫（出庫報告有）
  *  get_inv_lot_ship_qty          p   なし  ロット    I5  実績未取在庫数  出荷
  *  get_inv_lot_provide_qty       p   なし  ロット    I6  実績未取在庫数  支給
+ *  get_inv_lot_in_inout_cor_qty  P   なし  ロット    I7  実績未取在庫数  移動入庫訂正（入出庫報告有）
+ *  get_inv_lot_out_inout_cor_qty P   なし  ロット    I8  実績未取在庫数  移動出庫訂正（入出庫報告有）
  *  get_sup_lot_inv_in_qty        p   なし  ロット    S1  供給数  移動入庫予定
  *  get_sup_lot_order_qty         p   なし  ロット    S2  供給数  発注受入予定
  *  get_sup_lot_produce_qty       p   なし  ロット    S3  供給数  生産入庫予定
@@ -38,6 +40,8 @@ AS
  *  get_inv_out_out_rpt_qty       p   なし  非ロット  I4  実績未取在庫数  移動出庫（出庫報告有）
  *  get_inv_ship_qty              p   なし  非ロット  I5  実績未取在庫数  出荷
  *  get_inv_provide_qty           p   なし  非ロット  I6  実績未取在庫数  支給
+ *  get_inv_in_inout_cor_qty      P   なし  非ロット  I7  実績未取在庫数  移動入庫訂正（入出庫報告有）
+ *  get_inv_out_inout_cor_qty     P   なし  非ロット  I8  実績未取在庫数  移動出庫訂正（入出庫報告有）
  *  get_sup_inv_in_qty            p   なし  非ロット  S1  供給数  移動入庫予定
  *  get_sup_order_qty             p   なし  非ロット  S2  供給数  発注受入予定
  *  get_sup_inv_out_qty           p   なし  非ロット  S4  供給数  実績計上済の移動出庫実績
@@ -67,6 +71,10 @@ AS
  *  2008/07/25   1.6   oracle 北寒寺   結合テスト不具合対応
  *  2008/09/09   1.7   oracle 椎名     PT 6-1_28 指摘44 対応
  *  2008/09/09   1.8   oracle 椎名     PT 6-1_28 指摘44 修正
+ *  2008/09/11   1.9   oracle 椎名     PT 6-1_28 指摘73 対応
+ *  2008/07/18   1.10  oracle 北寒寺   TE080_BPO540指摘5対応
+ *  2008/09/16   1.11  oracle 椎名     TE080_BPO540指摘5修正
+ *  2008/09/17   1.12  oracle 椎名     PT 6-1_28 指摘73 追加修正
  *
  *****************************************************************************************/
 --
@@ -288,7 +296,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+              NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -385,7 +397,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -477,7 +493,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -570,7 +590,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -668,7 +692,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(CASE
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(CASE
+    SELECT  /*+ leading(oha otta ola mld) */
+            NVL(SUM(CASE
+-- 2008/09/17 v1.12 UPDATE End 
                       WHEN (otta.order_category_code = cv_cate_order) THEN
                         mld.actual_quantity
                       WHEN (otta.order_category_code = cv_cate_return) THEN
@@ -773,7 +801,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(CASE
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(CASE
+    SELECT  /*+ leading(oha otta ola mld) */
+            NVL(SUM(CASE
+-- 2008/09/17 v1.12 UPDATE End 
                       WHEN (otta.order_category_code = cv_cate_order) THEN
                         mld.actual_quantity
                       WHEN (otta.order_category_code = cv_cate_return) THEN
@@ -826,6 +858,220 @@ AS
 --
   END get_inv_lot_provide_qty;
 --
+-- Ver1.10 M.Hokkanji Start
+  /**********************************************************************************
+   * Procedure Name   : get_inv_lot_in_inout_cor_qty
+   * Description      : ロット I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+   ***********************************************************************************/
+  PROCEDURE get_inv_lot_in_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    in_lot_id      IN NUMBER,               -- ロットID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_inv_lot_in_inout_cor_qty'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_doc_type    CONSTANT VARCHAR2(2) := '20';  -- 移動
+    cv_rec_type    CONSTANT VARCHAR2(2) := '30';  -- 入庫実績
+    cv_flag_off    CONSTANT VARCHAR2(1) := 'N';   -- OFF
+    cv_flag_on     CONSTANT VARCHAR2(1) := 'Y';   -- ON
+    cv_move_status CONSTANT VARCHAR2(2) := '06';  -- 入出庫報告有
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.before_actual_quantity),0),
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.before_actual_quantity),0),
+-- 2008/09/17 v1.12 UPDATE End 
+-- 2008/09/16 v1.11 UPDATE START
+--            NVL(SUM(mril.ship_to_quantity),0)
+            NVL(SUM(mld.actual_quantity),0)
+-- 2008/09/16 v1.11 UPDATE END
+    INTO    on_before_qty,
+            on_qty
+    FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
+            xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
+            xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+    WHERE   mrih.ship_to_locat_id   = in_whse_id
+    AND     mrih.comp_actual_flg    = cv_flag_on
+    AND     mrih.correct_actual_flg = cv_flag_on
+    AND     mrih.status             = cv_move_status
+    AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+    AND     mril.mov_line_id        = mld.mov_line_id
+    AND     mril.delete_flg         = cv_flag_off
+    AND     mld.item_id             = in_item_id
+    AND     mld.lot_id              = in_lot_id
+    AND     mld.document_type_code  = cv_doc_type
+    AND     mld.record_type_code    = cv_rec_type
+    ;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_inv_lot_in_inout_cor_qty;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_inv_lot_out_inout_cor_qty
+   * Description      : ロット I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
+   ***********************************************************************************/
+  PROCEDURE get_inv_lot_out_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    in_lot_id      IN NUMBER,               -- ロットID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_inv_lot_out_inout_cor_qty'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_doc_type    CONSTANT VARCHAR2(2) := '20';  -- 移動
+    cv_rec_type    CONSTANT VARCHAR2(2) := '20';  -- 出庫実績
+    cv_flag_off    CONSTANT VARCHAR2(1) := 'N';   -- OFF
+    cv_flag_on     CONSTANT VARCHAR2(1) := 'Y';   -- ON
+    cv_move_status CONSTANT VARCHAR2(2) := '06';  -- 入出庫報告有
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.before_actual_quantity),0),
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.before_actual_quantity),0),
+-- 2008/09/17 v1.12 UPDATE End 
+-- 2008/09/16 v1.11 UPDATE START
+--            NVL(SUM(mril.ship_to_quantity),0)
+            NVL(SUM(mld.actual_quantity),0)
+-- 2008/09/16 v1.11 UPDATE END
+    INTO    on_before_qty,
+            on_qty
+    FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
+            xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
+            xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+    WHERE   mrih.shipped_locat_id   = in_whse_id
+    AND     mrih.comp_actual_flg    = cv_flag_on
+    and     mrih.correct_actual_flg = cv_flag_on
+    AND     mrih.status             = cv_move_status
+    AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+    AND     mril.mov_line_id        = mld.mov_line_id
+    AND     mril.delete_flg         = cv_flag_off
+    AND     mld.item_id             = in_item_id
+    AND     mld.lot_id              = in_lot_id
+    AND     mld.document_type_code  = cv_doc_type
+    AND     mld.record_type_code    = cv_rec_type
+    ;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_inv_lot_out_inout_cor_qty;
+-- Ver1.10 M.Hokkanji End
+--
   /**********************************************************************************
    * Procedure Name   : get_sup_lot_inv_in_qty
    * Description      : ロット S1)供給数  移動入庫予定
@@ -877,7 +1123,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -1167,7 +1417,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -1271,7 +1525,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(oha otta ola mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
             xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
@@ -1380,7 +1638,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/11 v1.9 UPDATE START
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(oha otta ola mld) */ 
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/11 v1.9 UPDATE END
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
             xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
@@ -1489,7 +1751,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(oha otta ola mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
             xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
@@ -1598,7 +1864,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/11 v1.9 UPDATE START
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(oha otta ola mld) */ 
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/11 v1.9 UPDATE END
     INTO    on_qty
     FROM    xxwsh_order_headers_all    oha,  -- 受注ヘッダ（アドオン）
             xxwsh_order_lines_all      ola,  -- 受注明細（アドオン）
@@ -1696,7 +1966,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -1789,7 +2063,11 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-    SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.actual_quantity), 0)
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.actual_quantity), 0)
+-- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
     FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
             xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
@@ -2660,6 +2938,213 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_inv_provide_qty;
+-- Ver1.10 M.Hokkanji Start
+--
+  /**********************************************************************************
+   * Procedure Name   : get_inv_in_inout_cor_qty
+   * Description      : 非ロット  I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+   ***********************************************************************************/
+  PROCEDURE get_inv_in_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_inv_in_inout_cor_qty'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_on     CONSTANT VARCHAR2(1) := 'Y';   -- ON
+    cv_flag_off    CONSTANT VARCHAR2(1) := 'N';   -- OFF
+    cv_move_status CONSTANT VARCHAR2(2) := '06';  -- 入出庫報告有
+    cv_doc_type    CONSTANT VARCHAR2(2) := '20';  -- 移動
+    cv_rec_type    CONSTANT VARCHAR2(2) := '30';  -- 入庫実績
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.before_actual_quantity),0),
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.before_actual_quantity),0),
+-- 2008/09/17 v1.12 UPDATE End 
+-- 2008/09/16 v1.11 UPDATE START
+--            NVL(SUM(mril.ship_to_quantity),0)
+            NVL(SUM(mld.actual_quantity),0)
+-- 2008/09/16 v1.11 UPDATE END
+    INTO    on_before_qty,
+            on_qty
+    FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
+            xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
+            xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+    WHERE   mrih.ship_to_locat_id   = in_whse_id
+    AND     mrih.comp_actual_flg    = cv_flag_on
+    AND     mrih.correct_actual_flg = cv_flag_on
+    AND     mrih.status             = cv_move_status
+    AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+    AND     mril.delete_flg         = cv_flag_off
+    AND     mril.item_id            = in_item_id
+    AND     mld.mov_line_id         = mril.mov_line_id
+    AND     mld.item_id             = mril.item_id
+    AND     mld.document_type_code  = cv_doc_type
+    AND     mld.record_type_code    = cv_rec_type
+    ;
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_inv_in_inout_cor_qty;
+  
+   /**********************************************************************************
+   * Procedure Name   : get_inv_out_inout_cor_qty
+   * Description      : 非ロット  I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
+   ***********************************************************************************/
+  PROCEDURE get_inv_out_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_inv_out_inout_cor_qty'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_off    CONSTANT VARCHAR2(1) := 'N';   -- OFF
+    cv_flag_on     CONSTANT VARCHAR2(1) := 'Y';   -- ON
+    cv_move_status CONSTANT VARCHAR2(2) := '06';  -- 入出庫報告有
+    cv_doc_type    CONSTANT VARCHAR2(2) := '20';  -- 移動
+    cv_rec_type    CONSTANT VARCHAR2(2) := '20';  -- 出庫実績
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+-- 2008/09/17 v1.12 UPDATE Start 
+--    SELECT  NVL(SUM(mld.before_actual_quantity),0),
+    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+            NVL(SUM(mld.before_actual_quantity),0),
+-- 2008/09/17 v1.12 UPDATE End 
+-- 2008/09/16 v1.11 UPDATE START
+--            NVL(SUM(mril.ship_to_quantity),0)
+            NVL(SUM(mld.actual_quantity),0)
+-- 2008/09/16 v1.11 UPDATE END
+    INTO    on_before_qty,
+            on_qty
+    FROM    xxinv_mov_req_instr_headers mrih,   -- 移動依頼/指示ヘッダ（アドオン）
+            xxinv_mov_req_instr_lines   mril,   -- 移動依頼/指示明細（アドオン）
+            xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
+-- 2008/09/16 v1.11 UPDATE START
+--    WHERE   mrih.ship_to_locat_id   = in_whse_id
+    WHERE   mrih.shipped_locat_id   = in_whse_id
+-- 2008/09/16 v1.11 UPDATE END
+    AND     mrih.comp_actual_flg    = cv_flag_on
+    AND     mrih.correct_actual_flg = cv_flag_on
+    AND     mrih.status             = cv_move_status
+    AND     mrih.mov_hdr_id         = mril.mov_hdr_id
+    AND     mril.delete_flg         = cv_flag_off
+    AND     mril.item_id            = in_item_id
+    AND     mld.mov_line_id         = mril.mov_line_id
+    AND     mld.item_id             = mril.item_id
+    AND     mld.document_type_code  = cv_doc_type
+    AND     mld.record_type_code    = cv_rec_type
+    ;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_inv_out_inout_cor_qty;
+-- Ver1.10 M.Hokkanji End
 --
   /**********************************************************************************
    * Procedure Name   : get_sup_inv_in_qty
@@ -3459,6 +3944,12 @@ AS
     ln_inv_lot_out_out_rpt_qty    NUMBER; -- ロット I4)結果数量
     ln_inv_lot_ship_qty           NUMBER; -- ロット I5)結果数量
     ln_inv_lot_provide_qty        NUMBER; -- ロット I6)結果数量
+-- Ver1.10 M.Hokkanji Start
+    ln_inv_lot_in_inout_bef_qty   NUMBER; -- ロット I7)結果数量(訂正前)
+    ln_inv_lot_in_inout_cor_qty   NUMBER; -- ロット I7)結果数量(訂正後)
+    ln_inv_lot_out_inout_bef_qty  NUMBER; -- ロット I8)結果数量(訂正前)
+    ln_inv_lot_out_inout_cor_qty  NUMBER; -- ロット I8)結果数量(訂正後)
+-- Ver1.10 M.Hokkanji End
     ln_inv_onhand                 NUMBER; -- 非ロット I0)結果数量
     ln_inv_in_inout_rpt_qty       NUMBER; -- 非ロット I1)結果数量
     ln_inv_in_in_rpt_qty          NUMBER; -- 非ロット I2)結果数量
@@ -3466,6 +3957,12 @@ AS
     ln_inv_out_out_rpt_qty        NUMBER; -- 非ロット I4)結果数量
     ln_inv_ship_qty               NUMBER; -- 非ロット I5)結果数量
     ln_inv_provide_qty            NUMBER; -- 非ロット I6)結果数量
+-- Ver1.10 M.Hokkanji Start
+    ln_inv_in_inout_bef_qty       NUMBER; -- 非ロット I7)結果数量(訂正前)
+    ln_inv_in_inout_cor_qty       NUMBER; -- 非ロット I7)結果数量(訂正後)
+    ln_inv_out_inout_bef_qty      NUMBER; -- 非ロット I8)結果数量(訂正前)
+    ln_inv_out_inout_cor_qty      NUMBER; -- 非ロット I8)結果数量(訂正後)
+-- Ver1.10 M.Hokkanji End
     ln_sup_lot_inv_in_qty         NUMBER; -- ロット S1)結果数量
     ln_sup_lot_order_qty          NUMBER; -- ロット S2)結果数量
     ln_sup_lot_produce_qty        NUMBER; -- ロット S3)結果数量
@@ -3637,6 +4134,42 @@ AS
         -- エラーメッセージは設定済み
         RAISE process_exp;
       END IF;
+-- Ver1.10 M.Hokkanji Start
+--
+      -- ロット I7 実績未取在庫数  移動入庫訂正（入出庫報告有）
+      get_inv_lot_in_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_lot_id,
+        ln_inv_lot_in_inout_bef_qty,
+        ln_inv_lot_in_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+      -- ロット I8 実績未取在庫数  移動出庫訂正（入出庫報告有）
+      get_inv_lot_out_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_lot_id,
+        ln_inv_lot_out_inout_bef_qty,
+        ln_inv_lot_out_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+-- Ver1.10 M.Hokkanji End
 --
       -- ロット S1)供給数  移動入庫予定
      get_sup_lot_inv_in_qty(
@@ -3817,7 +4350,13 @@ AS
                     - ln_inv_lot_out_inout_rpt_qty
                     - ln_inv_lot_out_out_rpt_qty
                     - ln_inv_lot_ship_qty
-                    - ln_inv_lot_provide_qty;
+                    - ln_inv_lot_provide_qty
+-- Ver1.10 M.Hokkanji Start
+                    - ln_inv_lot_in_inout_bef_qty
+                    + ln_inv_lot_in_inout_cor_qty
+                    + ln_inv_lot_out_inout_bef_qty
+                    - ln_inv_lot_out_inout_cor_qty;
+-- Ver1.10 M.Hokkanji End
 --
       -- ロット管理品供給数
       ln_supply_qty := ln_sup_lot_inv_in_qty
@@ -3950,6 +4489,40 @@ AS
         RAISE process_exp;
       END IF;
 --
+-- Ver1.10 M.Hokkanji Start
+      -- 非ロット  I7  実績未取在庫数  移動入庫訂正（入出庫報告有）
+      get_inv_in_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_inv_in_inout_bef_qty,
+        ln_inv_in_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+      -- 非ロット  I8  実績未取在庫数  移動出庫訂正（入出庫報告有）
+      get_inv_out_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_inv_out_inout_bef_qty,
+        ln_inv_out_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+-- Ver1.10 M.Hokkanji End
       -- 非ロット  S1)供給数  移動入庫予定
       get_sup_inv_in_qty(
         ln_whse_id,
@@ -4077,7 +4650,13 @@ AS
                     - ln_inv_out_inout_rpt_qty
                     - ln_inv_out_out_rpt_qty
                     - ln_inv_ship_qty
-                    - ln_inv_provide_qty;
+                    - ln_inv_provide_qty
+-- Ver1.10 M.Hokkanji Start
+                    - ln_inv_in_inout_bef_qty
+                    + ln_inv_in_inout_cor_qty
+                    + ln_inv_out_inout_bef_qty
+                    - ln_inv_out_inout_cor_qty;
+-- Ver1.10 M.Hokkanji End
 --
       -- 非ロット管理品供給数
       ln_supply_qty := ln_sup_inv_in_qty
@@ -4148,6 +4727,12 @@ AS
     ln_inv_lot_out_out_rpt_qty    NUMBER; -- ロット I4)結果数量
     ln_inv_lot_ship_qty           NUMBER; -- ロット I5)結果数量
     ln_inv_lot_provide_qty        NUMBER; -- ロット I6)結果数量
+-- Ver1.10 M.Hokkanji Start
+    ln_inv_lot_in_inout_bef_qty   NUMBER; -- ロット I7)結果数量(訂正前)
+    ln_inv_lot_in_inout_cor_qty   NUMBER; -- ロット I7)結果数量(訂正後)
+    ln_inv_lot_out_inout_bef_qty  NUMBER; -- ロット I8)結果数量(訂正前)
+    ln_inv_lot_out_inout_cor_qty  NUMBER; -- ロット I8)結果数量(訂正後)
+-- Ver1.10 M.Hokkanji End
     ln_inv_onhand                 NUMBER; -- 非ロット I0)結果数量
     ln_inv_in_inout_rpt_qty       NUMBER; -- 非ロット I1)結果数量
     ln_inv_in_in_rpt_qty          NUMBER; -- 非ロット I2)結果数量
@@ -4155,6 +4740,12 @@ AS
     ln_inv_out_out_rpt_qty        NUMBER; -- 非ロット I4)結果数量
     ln_inv_ship_qty               NUMBER; -- 非ロット I5)結果数量
     ln_inv_provide_qty            NUMBER; -- 非ロット I6)結果数量
+-- Ver1.10 M.Hokkanji Start
+    ln_inv_in_inout_bef_qty       NUMBER; -- 非ロット I7)結果数量(訂正前)
+    ln_inv_in_inout_cor_qty       NUMBER; -- 非ロット I7)結果数量(訂正後)
+    ln_inv_out_inout_bef_qty      NUMBER; -- 非ロット I8)結果数量(訂正前)
+    ln_inv_out_inout_cor_qty      NUMBER; -- 非ロット I8)結果数量(訂正後)
+-- Ver1.10 M.Hokkanji End
 --
     ln_stock_qty NUMBER;
     -- ===============================
@@ -4288,6 +4879,42 @@ AS
         -- エラーメッセージは設定済み
         RAISE process_exp;
       END IF;
+-- Ver1.10 M.Hokkanji Start
+--
+      -- ロット I7 実績未取在庫数  移動入庫訂正（入出庫報告有）
+      get_inv_lot_in_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_lot_id,
+        ln_inv_lot_in_inout_bef_qty,
+        ln_inv_lot_in_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+      -- ロット I8 実績未取在庫数  移動出庫訂正（入出庫報告有）
+      get_inv_lot_out_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_lot_id,
+        ln_inv_lot_out_inout_bef_qty,
+        ln_inv_lot_out_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+-- Ver1.10 M.Hokkanji End
 --
       ln_stock_qty := ln_inv_lot_onhand 
                     + ln_inv_lot_in_inout_rpt_qty
@@ -4295,7 +4922,13 @@ AS
                     - ln_inv_lot_out_inout_rpt_qty
                     - ln_inv_lot_out_out_rpt_qty
                     - ln_inv_lot_ship_qty
-                    - ln_inv_lot_provide_qty;
+                    - ln_inv_lot_provide_qty
+-- Ver1.10 M.Hokkanji Start
+                    - ln_inv_lot_in_inout_bef_qty
+                    + ln_inv_lot_in_inout_cor_qty
+                    + ln_inv_lot_out_inout_bef_qty
+                    - ln_inv_lot_out_inout_cor_qty;
+-- Ver1.10 M.Hokkanji End
 --
     ELSE
       --非ロット  I0  EBS手持在庫
@@ -4408,13 +5041,53 @@ AS
         RAISE process_exp;
       END IF;
 --
+-- Ver1.10 M.Hokkanji Start
+      -- 非ロット  I7  実績未取在庫数  移動入庫訂正（入出庫報告有）
+      get_inv_in_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_inv_in_inout_bef_qty,
+        ln_inv_in_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+      -- 非ロット  I8  実績未取在庫数  移動出庫訂正（入出庫報告有）
+      get_inv_out_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_inv_out_inout_bef_qty,
+        ln_inv_out_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+-- Ver1.10 M.Hokkanji End
       ln_stock_qty := ln_inv_onhand
                     + ln_inv_in_inout_rpt_qty
                     + ln_inv_in_in_rpt_qty
                     - ln_inv_out_inout_rpt_qty
                     - ln_inv_out_out_rpt_qty
                     - ln_inv_ship_qty
-                    - ln_inv_provide_qty;
+                    - ln_inv_provide_qty
+-- Ver1.10 M.Hokkanji Start
+                    - ln_inv_in_inout_bef_qty
+                    + ln_inv_in_inout_cor_qty
+                    + ln_inv_out_inout_bef_qty
+                    - ln_inv_out_inout_cor_qty;
+-- Ver1.10 M.Hokkanji End
 --
     END IF;
 --

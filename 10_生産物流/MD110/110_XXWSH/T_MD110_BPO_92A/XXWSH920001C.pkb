@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.11
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,9 @@ AS
  *  2008/07/25   1.9   Oracle 北寒寺 正夫 結合テスト不具合修正
  *  2008/09/08   1.10  Oracle 椎名 昭圭   PT 6-1_28 指摘44 対応
  *  2008/09/10   1.11  Oracle 椎名 昭圭   PT 6-1_28 指摘44 修正
+ *  2008/09/17   1.12  Oracle 椎名 昭圭   TE080_BPO540指摘5対応
+ *  2008/09/18   1.13  Oracle 椎名 昭圭   TE080_BPO920指摘5対応
+ *  2008/09/19   1.14  Oracle 椎名 昭圭   TE080_BPO920指摘4対応
  *
  *****************************************************************************************/
 --
@@ -110,7 +113,10 @@ AS
   gv_msg_92a_003       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12857';    -- パラメータ書式
   gv_msg_92a_004       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12953';    -- FromTo逆転
   gv_msg_92a_005       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-13306';    -- ロックビジー
-  gv_msg_92a_006       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11120';    -- 共通関数エラー
+-- 2008/09/19 v1.14 UPDATE START
+--  gv_msg_92a_006       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11120';    -- 共通関数エラー
+  gv_msg_92a_006       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12858';    -- 共通関数エラー
+-- 2008/09/19 v1.14 UPDATE END
   gv_msg_92a_007       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12854';    -- ロット逆転エラー
   gv_msg_92a_008       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12855';    -- 鮮度不備エラー
   gv_msg_92a_009       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11222';    -- パラメータ書式
@@ -163,6 +169,12 @@ AS
   gv_tkn_ship_type     CONSTANT VARCHAR2(15)  := 'SHIP_TYPE';          -- 配送先
   gv_tkn_item          CONSTANT VARCHAR2(15)  := 'ITEM';               -- 品目
   gv_tkn_lot           CONSTANT VARCHAR2(15)  := 'LOT';                -- ロットNo
+-- 2008/09/19 v1.14 ADD START
+  gv_tkn_request_type  CONSTANT VARCHAR2(15)  := 'REQUEST_TYPE';       -- 依頼No/移動番号_区分
+  gv_tkn_p_date        CONSTANT VARCHAR2(15)  := 'P_DATE';             -- 製造日
+  gv_tkn_use_by_date   CONSTANT VARCHAR2(15)  := 'USE_BY_DATE';        -- 賞味期限
+  gv_tkn_fix_no        CONSTANT VARCHAR2(15)  := 'FIX_NO';             -- 固有記号
+-- 2008/09/19 v1.14 ADD END
 -- Ver1.9 M.Hokkanji Start
   gv_tkn_request_no    CONSTANT VARCHAR2(15)  := 'REQUEST_NO';         -- 依頼No
   gv_tkn_item_no       CONSTANT VARCHAR2(15)  := 'ITEM_NO';            -- 品目コード
@@ -171,6 +183,10 @@ AS
   gv_tkn_arrival_date  CONSTANT VARCHAR2(15)  := 'ARRIVAL_DATE';       -- 着荷日付
   gv_tkn_ship_to       CONSTANT VARCHAR2(15)  := 'SHIP_TO';            -- 配送先
   gv_tkn_standard_date CONSTANT VARCHAR2(15)  := 'STANDARD_DATE';      -- 基準日付
+-- 2008/09/19 v1.14 ADD START
+  gv_request_name_ship CONSTANT VARCHAR2(15)  := '依頼No';             -- 依頼No
+  gv_request_name_move CONSTANT VARCHAR2(15)  := '移動番号';           -- 移動番号
+-- 2008/09/19 v1.14 ADD END
 -- 2008/06/02 START
   gv_ship_name_ship    CONSTANT VARCHAR2(15)  := '配送先';             -- 配送先
   gv_ship_name_move    CONSTANT VARCHAR2(15)  := '入庫先';             -- 入庫先
@@ -218,6 +234,10 @@ AS
   gn_odr_cnt           NUMBER := 0;           -- 受注明細アドオン変数カウンタ(gr_order_tbl)
   gn_mov_cnt           NUMBER := 0;           -- 受注明細アドオン変数カウンタ(gr_req_tbl)
 --
+-- 2008/09/19 v1.14 ADD START
+  gv_request_type VARCHAR2(20); -- 依頼No/移動番号_区分
+--
+-- 2008/09/19 v1.14 ADD END
   -- 需要情報の依頼No,移動番号を格納する(処理件数算出のため)
   TYPE number_rec IS RECORD(
     request_no                 xxwsh_order_headers_all.request_no%TYPE
@@ -343,6 +363,9 @@ AS
     lot_status  ic_lots_mst.attribute23%TYPE,                            -- ロットステータス
     p_date      ic_lots_mst.attribute1%TYPE,                             -- 製造年月日
     fix_no      ic_lots_mst.attribute2%TYPE,                             -- 固有番号
+-- 2008/09/19 v1.14 ADD START
+    use_by_date ic_lots_mst.attribute3%TYPE,                             -- 賞味期限
+-- 2008/09/19 v1.14 ADD END
     r_quantity  xxwsh_order_lines_all.reserved_quantity%TYPE             -- 引当可能数
   );
   TYPE supply_tbl IS TABLE OF supply_rec INDEX BY PLS_INTEGER;
@@ -352,7 +375,13 @@ AS
   TYPE check_rec IS RECORD(
     warnning_class VARCHAR2(2),             -- 警告区分
     warnning_date  DATE,                    -- 警告日付
-    lot_no         ic_lots_mst.lot_no%TYPE  -- ロットNo
+-- 2008/09/19 v1.14 UPDATE START
+--    lot_no         ic_lots_mst.lot_no%TYPE  -- ロットNo
+    lot_no         ic_lots_mst.lot_no%TYPE,     -- ロットNo
+    p_date         ic_lots_mst.attribute1%TYPE, -- 製造年月日
+    fix_no         ic_lots_mst.attribute2%TYPE, -- 固有番号
+    use_by_date    ic_lots_mst.attribute3%TYPE  -- 賞味期限
+-- 2008/09/19 v1.14 UPDATE END
   );
   TYPE check_tbl IS TABLE OF check_rec INDEX BY PLS_INTEGER;
   gr_check_tbl  check_tbl;
@@ -747,6 +776,12 @@ AS
     ln_inv_lot_out_out_rpt_qty    NUMBER; -- ロット I4)結果数量
     ln_inv_lot_ship_qty           NUMBER; -- ロット I5)結果数量
     ln_inv_lot_provide_qty        NUMBER; -- ロット I6)結果数量
+-- 2008/09/17 v1.12 ADD START
+    ln_inv_lot_in_inout_bef_qty   NUMBER; -- ロット I7)結果数量(訂正前)
+    ln_inv_lot_in_inout_cor_qty   NUMBER; -- ロット I7)結果数量(訂正後)
+    ln_inv_lot_out_inout_bef_qty  NUMBER; -- ロット I8)結果数量(訂正前)
+    ln_inv_lot_out_inout_cor_qty  NUMBER; -- ロット I8)結果数量(訂正後)
+-- 2008/09/17 v1.12 ADD END
     ln_sup_lot_inv_in_qty         NUMBER; -- ロット S1)結果数量
     ln_sup_lot_inv_out_qty        NUMBER; -- ロット S4)結果数量
     ln_dem_lot_ship_qty           NUMBER; -- ロット D1)結果数量
@@ -907,6 +942,42 @@ AS
         RAISE process_exp;
       END IF;
 --
+-- 2008/09/17 v1.12 ADD START
+      -- ロット I7 実績未取在庫数  移動入庫訂正（入出庫報告有）
+      xxcmn_common2_pkg.get_inv_lot_in_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_lot_id,
+        ln_inv_lot_in_inout_bef_qty,
+        ln_inv_lot_in_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+      -- ロット I8 実績未取在庫数  移動出庫訂正（入出庫報告有）
+      xxcmn_common2_pkg.get_inv_lot_out_inout_cor_qty(
+        ln_whse_id,
+        ln_item_id,
+        ln_lot_id,
+        ln_inv_lot_out_inout_bef_qty,
+        ln_inv_lot_out_inout_cor_qty,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg
+      );
+--
+      IF (lv_retcode = gv_status_error) THEN
+        -- エラーメッセージは設定済み
+        RAISE process_exp;
+      END IF;
+--
+-- 2008/09/17 v1.12 ADD END
       -- ロット S1)供給数  移動入庫予定
      xxcmn_common2_pkg.get_sup_lot_inv_in_qty(
         ln_whse_id,
@@ -1054,7 +1125,14 @@ AS
                     - ln_inv_lot_out_inout_rpt_qty
                     - ln_inv_lot_out_out_rpt_qty
                     - ln_inv_lot_ship_qty
-                    - ln_inv_lot_provide_qty;
+-- 2008/09/17 v1.12 UPDATE START
+--                    - ln_inv_lot_provide_qty;
+                    - ln_inv_lot_provide_qty
+                    - ln_inv_lot_in_inout_bef_qty
+                    + ln_inv_lot_in_inout_cor_qty
+                    + ln_inv_lot_out_inout_bef_qty
+                    - ln_inv_lot_out_inout_cor_qty;
+-- 2008/09/17 v1.12 UPDATE END
 --
       -- ロット管理品供給数
       ln_supply_qty := ln_sup_lot_inv_in_qty
@@ -2488,6 +2566,9 @@ AS
              lm.attribute23,       -- ロットステータス
              lm.attribute1,        -- 製造年月日
              lm.attribute2,        -- 固有記号
+-- 2008/09/19 v1.14 ADD START
+             lm.attribute3,        -- 賞味期限
+-- 2008/09/19 v1.14 ADD END
              NULL                  -- 引当可能数(後でセットする)
       FROM   ic_lots_mst         lm, -- ロットマスタ
              xxcmn_lot_status_v  ls  -- ロットステータスView
@@ -3095,13 +3176,25 @@ AS
         -- 文書タイプが「出荷依頼」だった場合
         IF (gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_deliv) THEN
           lv_ship_type := gv_ship_name_ship;
+-- 2008/09/19 ADD START
+          gv_request_type := gv_request_name_ship;
+-- 2008/09/19 ADD END
         ELSE
           lv_ship_type := gv_ship_name_move;
+-- 2008/09/19 ADD START
+          gv_request_type := gv_request_name_move;
+-- 2008/09/19 ADD END
         END IF;
 -- 2008/06/02 END
         -- 「ロット逆転」エラーメッセージ表示
         lv_msgbuf := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                      ,gv_msg_92a_007     -- ロット逆転エラー
+-- 2008/09/19 v1.14 ADD START
+                                                     ,gv_tkn_request_type -- トークン'REQUEST_TYPE'
+                                                     ,gv_request_type
+                                                     ,gv_tkn_request_no   -- トークン'REQUEST_NO'
+                                                     ,gr_demand_tbl(in_d_cnt).request_no
+-- 2008/09/19 v1.14 ADD END
                                                      ,gv_tkn_ship_type   -- トークン'SHIP_TYPE'
 -- 2008/06/02 START
                                                      ,lv_ship_type
@@ -3114,6 +3207,14 @@ AS
                                                      ,gr_demand_tbl(in_d_cnt).shipping_item_code
                                                      ,gv_tkn_lot         -- トークン'LOT'
                                                      ,gr_check_tbl(1).lot_no
+-- 2008/09/19 v1.14 ADD START
+                                                     ,gv_tkn_p_date      -- トークン'P_DATE'
+                                                     ,gr_check_tbl(1).p_date
+                                                     ,gv_tkn_use_by_date -- トークン'USE_BY_DATE'
+                                                     ,gr_check_tbl(1).use_by_date
+                                                     ,gv_tkn_fix_no      -- トークン'FIX_NO'
+                                                     ,gr_check_tbl(1).fix_no
+-- 2008/09/19 v1.14 ADD END
                                                      ,gv_tkn_reverse_date-- トークン'REVDATE'
 -- 2008/05/31 START
 --                                                     ,gr_check_tbl(1).warnning_date)
@@ -3127,12 +3228,27 @@ AS
         -- 「鮮度不備」エラーメッセージ表示
         lv_msgbuf := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh  -- 'XXWSH'
                                                      ,gv_msg_92a_008     -- 鮮度不備エラー
+-- 2008/09/19 v1.14 ADD START
+                                                     ,gv_tkn_request_no   -- トークン'REQUEST_NO'
+                                                     ,gr_demand_tbl(in_d_cnt).request_no
+-- 2008/09/19 v1.14 ADD END
                                                      ,gv_tkn_ship_to     -- トークン'SHIP_TO'
                                                      ,gr_demand_tbl(in_d_cnt).deliver_to
                                                      ,gv_tkn_lot         -- トークン'LOT'
                                                      ,gr_check_tbl(1).lot_no
+-- 2008/09/19 v1.14 ADD START
+                                                     ,gv_tkn_p_date      -- トークン'P_DATE'
+                                                     ,gr_check_tbl(1).p_date
+                                                     ,gv_tkn_use_by_date -- トークン'USE_BY_DATE'
+                                                     ,gr_check_tbl(1).use_by_date
+                                                     ,gv_tkn_fix_no      -- トークン'FIX_NO'
+                                                     ,gr_check_tbl(1).fix_no
+-- 2008/09/19 v1.14 ADD END
                                                      ,gv_tkn_arrival_date-- トークン'ARRIVAL_DATE'
-                                                     ,gr_demand_tbl(in_d_cnt).schedule_arrival_date
+-- 2008/09/18 v1.14 ADD START
+--                                                    ,gr_demand_tbl(in_d_cnt).schedule_arrival_date
+                               ,TO_CHAR(gr_demand_tbl(in_d_cnt).schedule_arrival_date, 'YYYY/MM/DD')
+-- 2008/09/18 v1.14 ADD END
                                                      ,gv_tkn_standard_date--トークン'STANDARD_DATE'
 -- 2008/05/31 START
 --                                                     ,gr_check_tbl(1).warnning_date)
@@ -3819,9 +3935,15 @@ AS
             -- 需要の文書タイプが「出荷依頼」
             IF (gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_deliv) THEN
               lv_lot_biz_class := gv_cons_t_deliv;
+-- 2008/09/19 v1.14 ADD START
+              gv_request_type  := gv_request_name_ship;
+-- 2008/09/19 v1.14 ADD END
             -- それ以外は「移動指示」
             ELSE
               lv_lot_biz_class := gv_cons_t_move;
+-- 2008/09/19 ADD START
+              gv_request_type := gv_request_name_move;
+-- 2008/09/19 ADD END
             END IF;
             -- =========================================
             -- A-7  ロット逆転防止チェック 共通関数
@@ -3846,6 +3968,18 @@ AS
               -- メッセージのセット
               lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh   -- 'XXWSH'
                                                      ,gv_msg_92a_006    -- 共通関数エラー
+-- 2008/09/19 v1.14 ADD START
+                                                     ,gv_tkn_request_type -- トークン'REQUEST_TYPE'
+                                                     ,gv_request_type
+                                                     ,gv_tkn_request_no   -- トークン'REQUEST_NO'
+                                                     ,gr_demand_tbl(ln_d_cnt).request_no
+                                                     ,gv_tkn_p_date       -- トークン'P_DATE'
+                                                     ,gr_supply_tbl(ln_s_cnt).p_date
+                                                     ,gv_tkn_use_by_date  -- トークン'USE_BY_DATE'
+                                                     ,gr_supply_tbl(ln_s_cnt).use_by_date
+                                                     ,gv_tkn_fix_no       -- トークン'FIX_NO'
+                                                     ,gr_supply_tbl(ln_s_cnt).fix_no
+-- 2008/09/19 v1.14 ADD END
                                                      ,gv_tkn_err_code   -- トークン'ERR_CODE'
 -- 2008/05/30 START
 --                                                     ,lv_retcode        -- リターン・コード
@@ -3865,12 +3999,20 @@ AS
             IF (ln_result = 1) THEN
               -- チェック処理結果を格納する
               IF ( (gr_check_tbl(1).warnning_date IS NULL)
-                OR (gr_check_tbl(1).warnning_date < ld_reversal_date ))
+-- 2008/09/18 v1.13 UPDATE START
+--                OR (gr_check_tbl(1).warnning_date < ld_reversal_date ))
+                OR (gr_check_tbl(1).warnning_date <= ld_reversal_date ))
+-- 2008/09/18 v1.13 UPDATE END
               THEN
                 ln_k_cnt := ln_k_cnt + 1;
                 gr_check_tbl(1).warnning_class := gv_cons_wrn_reversal;           -- 警告区分
                 gr_check_tbl(1).warnning_date  := ld_reversal_date;               -- 警告日付
                 gr_check_tbl(1).lot_no         := gr_supply_tbl(ln_s_cnt).lot_no; -- ロットNo
+-- 2008/09/19 v1.14 ADD START
+                gr_check_tbl(1).p_date         := gr_supply_tbl(ln_s_cnt).p_date;      -- 製造年月日
+                gr_check_tbl(1).fix_no         := gr_supply_tbl(ln_s_cnt).fix_no;      -- 固有番号
+                gr_check_tbl(1).use_by_date    := gr_supply_tbl(ln_s_cnt).use_by_date; -- 賞味期限
+-- 2008/09/19 v1.14 ADD END
               END IF;
 --
               -- 後続の他のチェックをパスするためにフラグON
@@ -3882,9 +4024,12 @@ AS
           END IF;
 --
           -- 処理対象の需要が「出荷」の場合
-          IF ((gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_deliv)
-            AND
-              (lv_no_check_flg = gv_cons_flg_no))
+-- 2008/09/19 v1.14 UPDATE START
+--          IF ((gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_deliv)
+--            AND
+--              (lv_no_check_flg = gv_cons_flg_no))
+          IF (gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_deliv)
+-- 2008/09/19 v1.14 UPDATE END
           THEN
             -- =======================================
             -- A-8  鮮度条件チェック 共通関数
@@ -3907,6 +4052,18 @@ AS
               -- メッセージのセット
               lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh   -- 'XXWSH'
                                                      ,gv_msg_92a_006    -- 共通関数エラー
+-- 2008/09/19 v1.14 ADD START
+                                                     ,gv_tkn_request_type -- トークン'REQUEST_TYPE'
+                                                     ,gv_request_name_ship
+                                                     ,gv_tkn_request_no   -- トークン'REQUEST_NO'
+                                                     ,gr_demand_tbl(ln_d_cnt).request_no
+                                                     ,gv_tkn_p_date       -- トークン'P_DATE'
+                                                     ,gr_supply_tbl(ln_s_cnt).p_date
+                                                     ,gv_tkn_use_by_date  -- トークン'USE_BY_DATE'
+                                                     ,gr_supply_tbl(ln_s_cnt).use_by_date
+                                                     ,gv_tkn_fix_no       -- トークン'FIX_NO'
+                                                     ,gr_supply_tbl(ln_s_cnt).fix_no
+-- 2008/09/19 v1.14 ADD END
                                                      ,gv_tkn_err_code   -- トークン'ERR_CODE'
 -- 2008/05/30 START
 --                                                     ,lv_retcode        -- リターン・コード
@@ -3926,11 +4083,19 @@ AS
             IF (ln_result = 1) THEN
               -- チェック処理結果を格納する
               IF ( (gr_check_tbl(1).warnning_date IS NULL)
-                OR (gr_check_tbl(1).warnning_date < ld_standard_date ))
+-- 2008/09/18 v1.13 UPDATE START
+--                OR (gr_check_tbl(1).warnning_date < ld_standard_date ))
+                OR (gr_check_tbl(1).warnning_date <= ld_standard_date ))
+-- 2008/09/18 v1.13 UPDATE END
               THEN
                 gr_check_tbl(1).warnning_class := gv_cons_wrn_fresh;              -- 警告区分
                 gr_check_tbl(1).warnning_date  := ld_standard_date;               -- 警告日付
                 gr_check_tbl(1).lot_no         := gr_supply_tbl(ln_s_cnt).lot_no; -- ロットNo
+-- 2008/09/19 v1.14 ADD START
+                gr_check_tbl(1).p_date         := gr_supply_tbl(ln_s_cnt).p_date;      -- 製造年月日
+                gr_check_tbl(1).fix_no         := gr_supply_tbl(ln_s_cnt).fix_no;      -- 固有番号
+                gr_check_tbl(1).use_by_date    := gr_supply_tbl(ln_s_cnt).use_by_date; -- 賞味期限
+-- 2008/09/19 v1.14 ADD END
               END IF;
 --
               -- 後続の他のチェックをパスするためにフラグON

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(SPEC)
  * Description            : 共通関数2(SPEC)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.8
+ * Version                : 1.12
  *
  * Program List
  *  --------------------------- ---- ----- --------------------------------------------------
@@ -19,6 +19,8 @@ AS
  *  get_inv_lot_out_out_rpt_qty   P   なし  ロット    I4  実績未取在庫数  移動出庫（出庫報告有）
  *  get_inv_lot_ship_qty          P   なし  ロット    I5  実績未取在庫数  出荷
  *  get_inv_lot_provide_qty       P   なし  ロット    I6  実績未取在庫数  支給
+ *  get_inv_lot_in_inout_cor_qty  P   なし  ロット    I7  実績未取在庫数  移動入庫訂正（入出庫報告有）
+ *  get_inv_lot_out_inout_cor_qty P   なし  ロット    I8  実績未取在庫数  移動出庫訂正（入出庫報告有）
  *  get_sup_lot_inv_in_qty        P   なし  ロット    S1  供給数  移動入庫予定
  *  get_sup_lot_order_qty         P   なし  ロット    S2  供給数  発注受入予定
  *  get_sup_lot_produce_qty       P   なし  ロット    S3  供給数  生産入庫予定
@@ -38,6 +40,8 @@ AS
  *  get_inv_out_out_rpt_qty       P   なし  非ロット  I4  実績未取在庫数  移動出庫（出庫報告有）
  *  get_inv_ship_qty              P   なし  非ロット  I5  実績未取在庫数  出荷
  *  get_inv_provide_qty           P   なし  非ロット  I6  実績未取在庫数  支給
+ *  get_inv_in_inout_cor_qty      P   なし  非ロット  I7  実績未取在庫数  移動入庫訂正（入出庫報告有）
+ *  get_inv_out_inout_cor_qty     P   なし  非ロット  I8  実績未取在庫数  移動出庫訂正（入出庫報告有）
  *  get_sup_inv_in_qty            P   なし  非ロット  S1  供給数  移動入庫予定
  *  get_sup_order_qty             P   なし  非ロット  S2  供給数  発注受入予定
  *  get_sup_inv_out_qty           P   なし  非ロット  S4  供給数  実績計上済の移動出庫実績
@@ -67,6 +71,10 @@ AS
  * 2008/07/25   1.6   oracle 北寒寺     結合テスト不具合対応
  * 2008/09/09   1.7   oracle 椎名       PT 6-1_28 指摘44 対応
  * 2008/09/09   1.8   oracle 椎名       PT 6-1_28 指摘44 修正
+ * 2008/09/11   1.9   oracle 椎名       PT 6-1_28 指摘73 対応
+ * 2008/07/18   1.10  oracle 北寒寺     TE080_BPO540指摘5対応
+ * 2008/09/16   1.11  oracle 椎名       TE080_BPO540指摘5修正
+ * 2008/09/17   1.12  oracle 椎名       PT 6-1_28 指摘73 追加修正
  *
  *****************************************************************************************/
 --
@@ -142,6 +150,28 @@ AS
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
     in_item_id     IN NUMBER,               -- 品目ID
     in_lot_id      IN NUMBER,               -- ロットID
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
+--
+  -- ロット I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+  PROCEDURE get_inv_lot_in_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    in_lot_id      IN NUMBER,               -- ロットID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
+--
+  -- ロット I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
+  PROCEDURE get_inv_lot_out_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    in_lot_id      IN NUMBER,               -- ロットID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
     on_qty         OUT NOCOPY NUMBER,       -- 数量
     ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
@@ -362,6 +392,26 @@ AS
   PROCEDURE get_inv_provide_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
     iv_item_code   IN VARCHAR2,             -- 品目コード
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
+--
+  -- 非ロット  I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
+  PROCEDURE get_inv_in_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
+    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2);    -- ユーザー・エラー・メッセージ --# 固定 #
+--
+  -- 非ロット  I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
+  PROCEDURE get_inv_out_inout_cor_qty(
+    in_whse_id     IN NUMBER,               -- 保管倉庫ID
+    in_item_id     IN NUMBER,               -- 品目ID
+    on_before_qty  OUT NOCOPY NUMBER,       -- 訂正前数量
     on_qty         OUT NOCOPY NUMBER,       -- 数量
     ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #

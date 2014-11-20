@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/08/28    1.15  Oracle 山根 一浩   PT 2_1_12 #33,T_S_503対応
  *  2008/09/05    1.16  Yasuhisa Yamamoto  PT 2_1_12 再改修
  *  2008/09/17    1.17  Yasuhisa Yamamoto  PT 2_1_12 #63
+ *  2008/09/19    1.18  Yasuhisa Yamamoto  T_TE080_BPO_550 #32#33,T_S_466,変更#171
  *
  *****************************************************************************************/
 --
@@ -78,6 +79,9 @@ AS
      ,iv_lot_no2            IN     VARCHAR2         -- 21 : ロットNo2
      ,iv_lot_no3            IN     VARCHAR2         -- 22 : ロットNo3
      ,iv_output_ctl         IN     VARCHAR2         -- 23 : 差異データ区分
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+     ,iv_inv_ctrl           IN     VARCHAR2         -- 24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
     ) ;
 END xxinv550001c;
 /

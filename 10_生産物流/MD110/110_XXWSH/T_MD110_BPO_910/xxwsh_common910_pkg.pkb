@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.17
+ * Version                : 1.19
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -51,6 +51,8 @@ AS
  *  2008/08/22   1.15  ORACLE伊藤ひとみ [出荷可否チェック] PT 2-2_15 指摘20
  *  2008/09/05   1.16  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] PT 6-2_34 指摘#34対応
  *  2008/09/08   1.17  ORACLE椎名昭圭   [ロット逆転防止チェック] PT 6-1_28 指摘#44対応
+ *  2008/09/11   1.18  ORACLE椎名昭圭   [ロット逆転防止チェック] PT 6-1_28 指摘#73対応
+ *  2008/09/17   1.19  ORACLE椎名昭圭   [ロット逆転防止チェック] PT 6-1_28 指摘#73追加修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1866,6 +1868,8 @@ AS
       --
       -- 2-1. 入力パラメータに合致する最大の着荷日を取得
       BEGIN
+-- 2008/09/11 v1.18 UPDATE START
+/*
         SELECT  MAX( xoha.arrival_date )                                    -- 最大着荷日
         INTO    ld_max_ship_arrival_date
         FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
@@ -1886,6 +1890,50 @@ AS
           AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                      -- 削除フラグ'Y'以外
           AND   xola.shipped_quantity            >  0                           -- 出荷実績数量0以上
           ;
+*/
+        SELECT  MAX( arrival_date )                                    -- 最大着荷日
+        INTO    ld_max_ship_arrival_date
+        FROM
+          (SELECT /*+ leading(xoha) index(xoha xxwsh_oh_n27) */
+                  xoha.arrival_date
+          FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
+                  xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
+                  xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
+          WHERE   xoha.result_deliver_to_id        =  iv_move_to_id           -- 出荷先ID(実績)
+            AND   NVL(xoha.latest_external_flag, cv_no)
+                                                   =  cv_yes                      -- 最新フラグ=Y
+            AND   xoha.req_status                  =  cv_request_status_04        -- 出荷実績計上済
+            AND   xottv.transaction_type_id        =  xoha.order_type_id          -- 受注タイプID
+            AND   xottv.shipping_shikyu_class      =  cv_shipping_shikyu_class_01 -- 出荷支給区分
+            AND   xottv.start_date_active         <=  TRUNC( id_standard_date )
+            AND   (( xottv.end_date_active        >=  TRUNC( id_standard_date ))
+                  OR(xottv.end_date_active        IS  NULL ))
+            AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
+            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
+            AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
+            AND   xola.shipped_quantity            >  0                         -- 出荷実績数量0以上
+          UNION ALL
+          SELECT  /*+ leading(xoha) index(xoha xxwsh_oh_n13) */
+                  xoha.arrival_date
+          FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
+                  xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
+                  xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
+          WHERE   xoha.result_deliver_to_id       IS NULL
+            AND   xoha.deliver_to_id               =  iv_move_to_id           -- 出荷先ID(実績)
+            AND   NVL(xoha.latest_external_flag, cv_no)
+                                                   =  cv_yes                      -- 最新フラグ=Y
+            AND   xoha.req_status                  =  cv_request_status_04        -- 出荷実績計上済
+            AND   xottv.transaction_type_id        =  xoha.order_type_id          -- 受注タイプID
+            AND   xottv.shipping_shikyu_class      =  cv_shipping_shikyu_class_01 -- 出荷支給区分
+            AND   xottv.start_date_active         <=  TRUNC( id_standard_date )
+            AND   (( xottv.end_date_active        >=  TRUNC( id_standard_date ))
+                  OR(xottv.end_date_active        IS  NULL ))
+            AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
+            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
+            AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
+            AND   xola.shipped_quantity            >  0)                        -- 出荷実績数量0以上
+            ;
+-- 2008/09/11 v1.18 UPDATE END
         EXCEPTION
           --
           WHEN OTHERS THEN
@@ -1896,6 +1944,8 @@ AS
       -- 2-2. 上記で取得した最大着荷日に紐づくのロットの最大製造日を取得
       IF ( ld_max_ship_arrival_date IS NOT NULL ) THEN
         BEGIN
+-- 2008/09/17 v1.19 UPDATE START
+/*
           SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
           INTO    ld_max_rship_manufact_date
           FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
@@ -1928,6 +1978,64 @@ AS
             AND   ilm.lot_id                       =  xmld.lot_id                 -- OPMロットID
             AND   ilm.item_id                      =  xmld.item_id                -- OPM品目ID
             ;
+*/
+          SELECT  MAX( fnd_date.string_to_date( attribute1, gv_yyyymmdd ) )
+          INTO    ld_max_rship_manufact_date
+          FROM
+            (SELECT /*+ leading(xoha xola) index(xoha xxwsh_oh_n27) */
+                    ilm.attribute1
+            FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
+                    xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
+                    xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
+                    xxwsh_oe_transaction_types2_v  xottv,                     -- 受注タイプ
+                    ic_lots_mst                    ilm                        -- OPMロットマスタ
+            WHERE   xoha.result_deliver_to_id      =  iv_move_to_id           -- 出荷先ID(実績)
+              AND   xoha.schedule_arrival_date    >= TRUNC( ld_max_ship_arrival_date ) -- 最大着荷日
+              AND   xoha.schedule_arrival_date   < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+              AND   NVL(xoha.latest_external_flag, cv_no) =  cv_yes           -- 最新フラグ=Y
+              AND   xoha.req_status                =  cv_request_status_04    -- 出荷実績計上済
+              AND   xottv.transaction_type_id      =  xoha.order_type_id      -- 受注タイプID
+              AND   xottv.shipping_shikyu_class    =  cv_shipping_shikyu_class_01 -- 出荷依頼
+              AND   xottv.start_date_active       <=  TRUNC( id_standard_date )
+              AND   (( xottv.end_date_active      >=  TRUNC( id_standard_date ))
+                    OR(xottv.end_date_active      IS  NULL ))
+              AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
+              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
+              AND   NVL( xola.delete_flag, cv_no ) <> cv_yes                  -- 削除フラグ'Y'以外
+              AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
+              AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
+              AND   xmld.record_type_code          =  cv_record_type_02       -- レコードタイプ
+              AND   ilm.lot_id                     =  xmld.lot_id             -- OPMロットID
+              AND   ilm.item_id                    =  xmld.item_id            -- OPM品目ID
+            UNION ALL
+            SELECT  /*+ leading(xoha xola) index(xoha xxwsh_oh_n13) */
+                    ilm.attribute1
+            FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
+                    xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
+                    xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
+                    xxwsh_oe_transaction_types2_v  xottv,                     -- 受注タイプ
+                    ic_lots_mst                    ilm                        -- OPMロットマスタ
+            WHERE   xoha.result_deliver_to_id     IS NULL
+              AND   xoha.deliver_to_id             =  iv_move_to_id               -- 出荷先ID(実績)
+              AND   xoha.schedule_arrival_date    >= TRUNC( ld_max_ship_arrival_date ) -- 最大着荷日
+              AND   xoha.schedule_arrival_date   < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+              AND   NVL(xoha.latest_external_flag, cv_no) =  cv_yes           -- 最新フラグ=Y
+              AND   xoha.req_status                =  cv_request_status_04    -- 出荷実績計上済
+              AND   xottv.transaction_type_id      =  xoha.order_type_id      -- 受注タイプID
+              AND   xottv.shipping_shikyu_class    =  cv_shipping_shikyu_class_01 -- 出荷依頼
+              AND   xottv.start_date_active       <=  trunc( id_standard_date )
+              AND   (( xottv.end_date_active      >=  trunc( id_standard_date ))
+                    OR(xottv.end_date_active      IS  NULL ))
+              AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
+              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
+              AND   NVL( xola.delete_flag, cv_no ) <>  cv_yes                 -- 削除フラグ'Y'以外
+              AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
+              AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
+              AND   xmld.record_type_code          =  cv_record_type_02       -- レコードタイプ
+              AND   ilm.lot_id                     =  xmld.lot_id             -- OPMロットID
+              AND   ilm.item_id                    =  xmld.item_id)           -- OPM品目ID
+              ;
+-- 2008/09/17 v1.19 UPDATE END
           EXCEPTION
             WHEN OTHERS THEN
               RAISE global_api_others_expt;

@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/08/28    1.15  Oracle 山根 一浩   PT 2_1_12 #33,T_S_503対応
  *  2008/09/05    1.16  Yasuhisa Yamamoto  PT 2_1_12 再改修
  *  2008/09/17    1.17  Yasuhisa Yamamoto  PT 2_1_12 #63
+ *  2008/09/19    1.18  Yasuhisa Yamamoto  T_TE080_BPO_550 #32#33,T_S_466,変更#171
  *
  *****************************************************************************************/
 --
@@ -175,6 +176,9 @@ AS
      ,iv_lot_no2               ic_lots_mst.lot_no%TYPE                            -- 21 : ロットNo2
      ,iv_lot_no3               ic_lots_mst.lot_no%TYPE                            -- 22 : ロットNo3
      ,iv_output_ctl            fnd_lookup_values.lookup_code%TYPE                 -- 23 : 差異データ区分
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+     ,iv_inv_ctrl              fnd_lookup_values.lookup_code%TYPE                 -- 24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
     ) ;
 --
   -- 受払残高リストデータ格納用レコード変数
@@ -922,6 +926,9 @@ AS
           ,in_lot_no1      ic_lots_mst.lot_no%TYPE              -- 20 : ロットNo1
           ,in_lot_no2      ic_lots_mst.lot_no%TYPE              -- 21 : ロットNo2
           ,in_lot_no3      ic_lots_mst.lot_no%TYPE              -- 22 : ロットNo3
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+          ,in_inv_ctrl     fnd_lookup_values.lookup_code%TYPE   -- 24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
       )
     IS
     SELECT xilv.whse_code                                       -- 倉庫コード
@@ -1487,6 +1494,10 @@ AS
     AND    xicv.item_class_code         = in_item_div
     AND    gd_date_ym_first       BETWEEN xilv.date_from
                                       AND NVL( xilv.date_to, gd_max_date )
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+    AND  ((in_inv_ctrl IS NULL)
+       OR (xilv.customer_stock_whse = in_inv_ctrl))
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
     -- ここから在庫トランとの結合
     AND    xrpm.whse_code               = xilv.whse_code
     AND  ( xrpm.location                = xilv.segment1
@@ -1647,6 +1658,9 @@ AS
           ,in_lot_no1      ic_lots_mst.lot_no%TYPE             -- 20 : ロットNo1
           ,in_lot_no2      ic_lots_mst.lot_no%TYPE             -- 21 : ロットNo2
           ,in_lot_no3      ic_lots_mst.lot_no%TYPE             -- 22 : ロットNo3
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+          ,in_inv_ctrl     fnd_lookup_values.lookup_code%TYPE  -- 24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
       )
     IS
     SELECT xilv.whse_code                                       -- 倉庫コード
@@ -2212,6 +2226,10 @@ AS
     AND    xicv.item_class_code         = in_item_div
     AND    gd_date_ym_first       BETWEEN xilv.date_from
                                       AND NVL( xilv.date_to, gd_max_date )
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+    AND  ((in_inv_ctrl IS NULL)
+       OR (xilv.customer_stock_whse = in_inv_ctrl))
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
     -- ここから在庫トランとの結合
     AND    xrpm.whse_code               = xilv.whse_code
     AND  ( xrpm.location                = xilv.segment1
@@ -2344,7 +2362,10 @@ AS
 -- 08/05/21 v1.7 end
     ORDER BY xilv.whse_code                                                  -- 倉庫コード
              ,ximv.item_no                                                   -- 品目コード
-             ,ilm.lot_no                                                     -- ロットNo
+-- 08/09/18 Y.Yamamoto Update v1.18 Start
+--             ,ilm.lot_no                                                     -- ロットNo
+             ,TO_NUMBER( DECODE( ilm.lot_id, 0 , '0', ilm.lot_no) )                                          -- ロットNo
+-- 08/09/18 Y.Yamamoto Update v1.18 End
     ;
 --
   BEGIN
@@ -2384,6 +2405,9 @@ AS
          ,ir_param.iv_lot_no1             -- ロットNo1
          ,ir_param.iv_lot_no2             -- ロットNo2
          ,ir_param.iv_lot_no3             -- ロットNo3
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+         ,ir_param.iv_inv_ctrl            -- 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
         ) ;
       -- バルクフェッチ
       FETCH cur_main_data_seihin BULK COLLECT INTO ot_data_rec ;
@@ -2415,6 +2439,9 @@ AS
          ,ir_param.iv_lot_no1             -- ロットNo1
          ,ir_param.iv_lot_no2             -- ロットNo2
          ,ir_param.iv_lot_no3             -- ロットNo3
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+         ,ir_param.iv_inv_ctrl            -- 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
         ) ;
       -- バルクフェッチ
       FETCH cur_main_data_etc BULK COLLECT INTO ot_data_rec ;
@@ -3355,6 +3382,9 @@ AS
      ,iv_lot_no2            IN     VARCHAR2         --   21 : ロットNo2
      ,iv_lot_no3            IN     VARCHAR2         --   22 : ロットNo3
      ,iv_output_ctl         IN     VARCHAR2         --   23 : 差異データ区分
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+     ,iv_inv_ctrl           IN     VARCHAR2         --   24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
      ,ov_errbuf            OUT     VARCHAR2         -- エラー・メッセージ           --# 固定 #
      ,ov_retcode           OUT     VARCHAR2         -- リターン・コード             --# 固定 #
      ,ov_errmsg            OUT     VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3433,6 +3463,9 @@ AS
     lr_param_rec.iv_lot_no2      := iv_lot_no2 ;            -- ロットNo2
     lr_param_rec.iv_lot_no3      := iv_lot_no3 ;            -- ロットNo3
     lr_param_rec.iv_output_ctl   := iv_output_ctl ;         -- 差異データ区分
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+    lr_param_rec.iv_inv_ctrl     := iv_inv_ctrl ;           -- 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
     -- 最大日付設定
     gd_max_date                  := FND_DATE.STRING_TO_DATE( gc_max_date_d, gc_char_d_format );
 --
@@ -3607,6 +3640,9 @@ AS
      ,iv_lot_no2            IN     VARCHAR2         -- 21 : ロットNo2
      ,iv_lot_no3            IN     VARCHAR2         -- 22 : ロットNo3
      ,iv_output_ctl         IN     VARCHAR2         -- 23 : 差異データ区分
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+     ,iv_inv_ctrl           IN     VARCHAR2         -- 24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
     )
 --
 --###########################  固定部 START   ###########################
@@ -3656,6 +3692,9 @@ AS
        ,iv_lot_no2         => iv_lot_no2          -- 21 : ロットNo2
        ,iv_lot_no3         => iv_lot_no3          -- 22 : ロットNo3
        ,iv_output_ctl      => iv_output_ctl       -- 23 : 差異データ区分
+-- 08/09/19 Y.Yamamoto ADD v1.18 Start
+       ,iv_inv_ctrl        => iv_inv_ctrl         -- 24 : 名義
+-- 08/09/19 Y.Yamamoto ADD v1.18 End
        ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ           --# 固定 #
        ,ov_retcode         => lv_retcode          -- リターン・コード             --# 固定 #
        ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
