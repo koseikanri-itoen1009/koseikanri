@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2008/05/27    1.1  Oracle 野村       結合障害 混載処理
  *  2008/06/25    1.2  Oracle 野村       TE080指摘事項 反映
  *  2008/07/15    1.3  Oracle 野村       ST障害#452対応（切上対応含む）
+ *  2008/07/16    1.4  Oracle 野村       ST障害#455対応
  *
  *****************************************************************************************/
 --
@@ -3777,7 +3778,10 @@ AS
               FROM   xxwip_delivery_lines    xdl        -- 運賃明細アドオン
               WHERE  xdl.delivery_no  = gt_delivno_deliv_line_tab(ln_index).delivery_no -- 配送No
               AND    xdl.distance     = gt_delivno_deliv_line_tab(ln_index).distance    -- 最長距離
-              ORDER BY xdl.delivery_no                   -- 配送No（順序）
+-- ##### 20080715 Ver.1.4 ST障害#455対応 START #####
+--              ORDER BY xdl.delivery_no                    -- 配送No（順序）
+              ORDER BY xdl.request_no                       -- 依頼No（順序）
+-- ##### 20080715 Ver.1.4 ST障害#455対応 END   #####
             ) max_deliv_line
         WHERE ROWNUM = 1;
       EXCEPTION
@@ -5843,11 +5847,26 @@ AS
       -- * 運賃明細アドオン 抽出
       -- **************************************************
       BEGIN
-        SELECT  xdl.actual_distance     -- 実際距離
+-- ##### 20080715 Ver.1.4 ST障害#455対応 START #####
+--        SELECT  xdl.actual_distance     -- 実際距離
+--        INTO    gt_exch_delivno_line_tab(ln_index).actual_distance
+--        FROM    xxwip_delivery_lines    xdl        -- 運賃明細アドオン
+--        WHERE   xdl.delivery_no = gt_exch_delivno_line_tab(ln_index).delivery_no  -- 配送No
+--        AND     xdl.distance    = gt_exch_delivno_line_tab(ln_index).distance;    -- 距離
+--      -- 最長距離と等しい運賃明細アドオンの実際距離取得
+        -- 同一レコードが存在する場合は
+        SELECT  max_deliv_line.actual_distance                      -- 実際距離
         INTO    gt_exch_delivno_line_tab(ln_index).actual_distance
-        FROM    xxwip_delivery_lines    xdl        -- 運賃明細アドオン
-        WHERE   xdl.delivery_no = gt_exch_delivno_line_tab(ln_index).delivery_no  -- 配送No
-        AND     xdl.distance    = gt_exch_delivno_line_tab(ln_index).distance;    -- 距離
+        FROM
+          (
+            SELECT  xdl.actual_distance                                               -- 実際距離
+            FROM    xxwip_delivery_lines    xdl                                       -- 運賃明細アドオン
+            WHERE   xdl.delivery_no = gt_exch_delivno_line_tab(ln_index).delivery_no  -- 配送No
+            AND     xdl.distance    = gt_exch_delivno_line_tab(ln_index).distance     -- 距離
+            ORDER BY xdl.request_no                                                   -- 依頼No（順序）
+          ) max_deliv_line
+        WHERE ROWNUM = 1;
+-- ##### 20080715 Ver.1.4 ST障害#455対応 END   #####
       EXCEPTION
         WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,

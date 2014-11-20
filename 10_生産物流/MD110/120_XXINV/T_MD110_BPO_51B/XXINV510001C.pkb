@@ -8,7 +8,7 @@ AS
  * Description      : 移動伝票
  * MD.050/070       : 移動実績 T_MD050_BPO_510
  *                  : 移動伝票 T_MD070_BPO_51A
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *  2008/05/26    1.1   Kazuo Kumamoto     結合テスト障害対応
  *  2008/05/28    1.2   Yuko Kawano        結合テスト障害対応
  *  2008/05/29    1.3   Yuko Kawano        結合テスト障害対応
+ *  2008/06/24    1.4   Yasuhisa Yamamoto  変更要求対応#92
+ *  2008/07/18    1.5   Yasuhisa Yamamoto  内部変更要求対応
  *
  *****************************************************************************************/
 --
@@ -103,6 +105,10 @@ AS
      ,trader_code    xxinv_mov_req_instr_headers.freight_carrier_code%TYPE -- 11.運送業者(コード)
      ,trader_name    xxcmn_carriers2_v.party_name%TYPE                     -- 12.運送業者
      ,summary_value  xxinv_mov_req_instr_headers.description%TYPE          -- 13.摘要
+-- 2008/06/24 Y.Yamamoto v1.4 ADD Start
+     ,freight_charge_code    xxinv_mov_req_instr_headers.freight_charge_class%TYPE -- 30:運賃区分
+     ,complusion_output_code xxcmn_carriers2_v.complusion_output_code%TYPE         -- 31:強制出力区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD End
     ) ;
 --
   -- ===============================
@@ -422,6 +428,10 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
     gt_xml_data_table(gl_xml_idx).tag_value := gr_head_data.arr_code ;
 --
+-- 2008/06/24 Y.Yamamoto v1.4 Update Start
+   -- 運賃区分もしくは、強制出力区分が「対象」のときに、運送会社情報を出力する。
+   IF  (gr_head_data.freight_charge_code    = '1')
+    OR (gr_head_data.complusion_output_code = '1') THEN
     -- データセット   <trader_code>
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'trader_code' ;
@@ -433,6 +443,8 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'trader_name' ;
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
     gt_xml_data_table(gl_xml_idx).tag_value := gr_head_data.trader_name ;
+   END IF;
+-- 2008/06/24 Y.Yamamoto v1.4 Update End
 --
     -- データセット   <summary_value>
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -879,6 +891,10 @@ AS
           ,xmrih.batch_no                     AS batch_no                     -- 27:手配No
           ,xmrih.sum_pallet_weight            AS sum_pallet_weight            -- 28:合計パレット重量
           ,xlv2v1.attribute6                  AS koguchi                      -- 29:小口区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD Start
+          ,xmrih.freight_charge_class         AS freight_charge_code          -- 30:運賃区分
+          ,xc2v.complusion_output_code        AS complusion_output_code       -- 31:強制出力区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD End
     FROM   xxinv_mov_req_instr_headers xmrih     -- 移動依頼/指示ヘッダ(アドオン)
           ,xxinv_mov_req_instr_lines   xmril     -- 移動依頼/指示明細(アドオン)
           ,xxinv_mov_lot_details       xmld      -- 移動ロット詳細(アドオン)
@@ -1059,6 +1075,10 @@ AS
           ,xmrih.batch_no                     AS  batch_no              -- 27:手配No
           ,xmrih.sum_pallet_weight            AS  sum_pallet_weight     -- 28:合計パレット重量
           ,xlv2v1.attribute6                  AS  koguchi               -- 29:小口区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD Start
+          ,xmrih.freight_charge_class         AS freight_charge_code    -- 30:運賃区分
+          ,xc2v.complusion_output_code        AS complusion_output_code -- 31:強制出力区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD End
     FROM   xxinv_mov_req_instr_headers xmrih     -- 移動依頼/指示ヘッダ(アドオン)
           ,xxinv_mov_req_instr_lines   xmril     -- 移動依頼/指示明細(アドオン)
           ,xxinv_mov_lot_details       xmld      -- 移動ロット詳細(アドオン)
@@ -1295,6 +1315,10 @@ AS
                                                                                  -- 運送業者(コード)
         gr_head_data.trader_name   := rec_get_actual_cur.party_name ;                  -- 運送業者
         gr_head_data.summary_value := rec_get_actual_cur.description3 ;                -- 摘要
+-- 2008/06/24 Y.Yamamoto v1.4 ADD Start
+        gr_head_data.freight_charge_code    := rec_get_actual_cur.freight_charge_code ;     -- 運賃区分
+        gr_head_data.complusion_output_code := rec_get_actual_cur.complusion_output_code ;  -- 強制出力区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD End
 --
         -- ===================================================
         -- XMLデータ作成（合計部）
@@ -1400,7 +1424,10 @@ AS
         -- ===================================================
 --2008.05.29 modify start
 --        ln_volume_sum := NVL( rec_get_actual_cur.sum_capacity, 0 ) + NVL( ln_volume_sum, 0 ) ;
-        ln_volume_sum := NVL( ln_volume_sum, 0 ) ;
+--2008.07.18 modify start v1.5
+--        ln_volume_sum := NVL( ln_volume_sum, 0 ) ;
+        ln_volume_sum := NVL( rec_get_actual_cur.sum_capacity, 0 ) ;
+--2008.07.18 modify end v1.5
 --2008.05.29 modify end
 --
         -- データ件数カウント
@@ -1457,6 +1484,10 @@ AS
                                                                                  -- 運送業者(コード)
         gr_head_data.trader_name        := rec_get_indicate.party_name ;            -- 運送業者
         gr_head_data.summary_value      := rec_get_indicate.description3 ;          -- 摘要
+-- 2008/06/24 Y.Yamamoto v1.4 ADD Start
+        gr_head_data.freight_charge_code    := rec_get_indicate.freight_charge_code ;     -- 運賃区分
+        gr_head_data.complusion_output_code := rec_get_indicate.complusion_output_code ;  -- 強制出力区分
+-- 2008/06/24 Y.Yamamoto v1.4 ADD End
 --
         -- ===================================================
         -- XMLデータ作成（合計部）
@@ -1559,7 +1590,10 @@ AS
         -- ===================================================
 --2008.05.29 modify start
 --        ln_volume_sum := NVL( rec_get_indicate.sum_capacity, 0 ) + NVL( ln_volume_sum, 0 ) ;
-        ln_volume_sum := NVL( ln_volume_sum, 0 ) ;
+--2008.07.18 modify start v1.5
+--        ln_volume_sum := NVL( ln_volume_sum, 0 ) ;
+        ln_volume_sum := NVL( rec_get_indicate.sum_capacity, 0 ) ;
+--2008.07.18 modify end v1.5
 --2008.05.29 modify end
         -- データ件数カウント
         xml_data_count := xml_data_count + 1;
