@@ -2,6 +2,7 @@
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
 <page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <content>
+      <!--*[Enter Javadoc like developer documentation, delete this line once you fill the included template.] [Put a one line description of the region here.] [Put a brief description of the usage of the region here.] @param [Parameter_name] [Put parameter use here.] @param [Parameter_name] [Put parameter use here.] @see [Put any additional links apart from controller class and BC4J objects directly referenced by this region]-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo320001j.server.XxpoSupplierResultsAM" windowTitle="(仕入先出荷実績)仕入先出荷実績入力" title="仕入先出荷実績入力" controllerClass="itoen.oracle.apps.xxpo.xxpo320001j.webui.XxpoSupplierResultsMakeCO">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -16,7 +17,7 @@
                            <ui:contents>
                               <oa:column id="column1" rendered="true" columnDataFormat="textFormat">
                                  <ui:columnHeader>
-                                    <oa:sortableHeader id="DetailNumHdr" prompt="No." rendered="true"/>
+                                    <oa:sortableHeader id="DetailNumHdr" prompt="No" rendered="true"/>
                                  </ui:columnHeader>
                                  <ui:contents>
                                     <oa:tableLayout id="DetailNumTab" width="100%">
@@ -71,7 +72,7 @@
                               </oa:column>
                               <oa:column id="column3">
                                  <ui:columnHeader>
-                                    <oa:sortableHeader id="ItemLotOrderHdr" prompt="品目/ロット/発注数"/>
+                                    <oa:sortableHeader id="ItemLotOrderHdr" prompt="品名/ロット/発注数"/>
                                  </ui:columnHeader>
                                  <ui:contents>
                                     <oa:tableLayout id="ItemLotOrderTab" width="100%">
@@ -89,7 +90,7 @@
                                              <ui:contents>
                                                 <oa:cellFormat id="ItemLotOrderCell200">
                                                    <ui:contents>
-                                                      <oa:messageStyledText id="LotNo" comment="ロットNo." viewAttr="LotNo" styleClass="LegendText"/>
+                                                      <oa:messageStyledText id="LotNo" comment="ロットNo" viewAttr="LotNo" styleClass="LegendText"/>
                                                    </ui:contents>
                                                 </oa:cellFormat>
                                              </ui:contents>

@@ -20,22 +20,22 @@
                                  <ui:contents>
                                     <oa:cellFormat id="SearchCell100" hAlign="right" height="1">
                                        <ui:contents>
-                                          <oa:messageStyledText id="TxtHeaderNumberPrompt" prompt="発注No."/>
+                                          <oa:messageStyledText id="TxtHeaderNumberPrompt" prompt="発注No"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell101" height="1" columnSpan="3">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtHeaderNumber" maximumLength="12" shortDesc="発注No." styleClass="LegendText" columns="15"/>
+                                          <oa:messageTextInput id="TxtHeaderNumber" maximumLength="12" shortDesc="発注No" styleClass="LegendText" columns="15"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell102" hAlign="right" height="1">
                                        <ui:contents>
-                                          <oa:messageStyledText id="TxtRequestNumberPrompt" prompt="支給No."/>
+                                          <oa:messageStyledText id="TxtRequestNumberPrompt" prompt="支給No"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="SearchCell103" height="1" columnSpan="2">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtRequestNumber" maximumLength="12" shortDesc="支給No." styleClass="LegendText" columns="15"/>
+                                          <oa:messageTextInput id="TxtRequestNumber" maximumLength="12" shortDesc="支給No" styleClass="LegendText" columns="15"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                  </ui:contents>
@@ -258,7 +258,7 @@
                               </oa:column>
                               <oa:column id="column2">
                                  <ui:columnHeader>
-                                    <oa:sortableHeader id="HeaderNumberHdr" prompt="発注No."/>
+                                    <oa:sortableHeader id="HeaderNumberHdr" prompt="発注No"/>
                                  </ui:columnHeader>
                                  <ui:contents>
                                     <oa:messageStyledText id="HeaderNumber" viewAttr="HeaderNumber">
@@ -274,7 +274,7 @@
                               </oa:column>
                               <oa:column id="column3">
                                  <ui:columnHeader>
-                                    <oa:sortableHeader id="RequestNumberHdr" prompt="支給No."/>
+                                    <oa:sortableHeader id="RequestNumberHdr" prompt="支給No"/>
                                  </ui:columnHeader>
                                  <ui:contents>
                                     <oa:messageStyledText id="RequestNumber" viewAttr="RequestNumber" styleClass="LegendText"/>

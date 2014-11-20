@@ -8,22 +8,22 @@
                <ui:contents>
                   <oa:cellFormat id="HeaderCell100" hAlign="right" height="1" width="10%">
                      <ui:contents>
-                        <oa:messageStyledText id="TxtHeaderNumberPrompt" prompt="発注No."/>
+                        <oa:messageStyledText id="TxtHeaderNumberPrompt" prompt="発注No"/>
                      </ui:contents>
                   </oa:cellFormat>
                   <oa:cellFormat id="HeaderCell101" height="1" columnSpan="2" width="40%">
                      <ui:contents>
-                        <oa:messageStyledText id="TxtHeaderNumber" shortDesc="発注No." styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="HeaderNumber"/>
+                        <oa:messageStyledText id="TxtHeaderNumber" shortDesc="発注No" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="HeaderNumber"/>
                      </ui:contents>
                   </oa:cellFormat>
                   <oa:cellFormat id="HeaderCell102" hAlign="right" height="1" width="10%">
                      <ui:contents>
-                        <oa:messageStyledText id="TxtRequestNumberPrompt" prompt="支給No."/>
+                        <oa:messageStyledText id="TxtRequestNumberPrompt" prompt="支給No"/>
                      </ui:contents>
                   </oa:cellFormat>
                   <oa:cellFormat id="HeaderCell103" height="1" columnSpan="2" width="40%">
                      <ui:contents>
-                        <oa:messageStyledText id="TxtRequestNumber" shortDesc="支給No." styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="RequestNumber"/>
+                        <oa:messageStyledText id="TxtRequestNumber" shortDesc="支給No" styleClass="LegendText" viewName="XxpoSupplierResultsMakeHdrVO1" viewAttr="RequestNumber"/>
                      </ui:contents>
                   </oa:cellFormat>
                </ui:contents>

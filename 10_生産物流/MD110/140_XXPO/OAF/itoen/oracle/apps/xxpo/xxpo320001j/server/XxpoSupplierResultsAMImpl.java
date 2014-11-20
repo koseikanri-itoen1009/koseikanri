@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-02-06 1.0  吉元強樹     新規作成
 * 2008-05-02 1.0  吉元強樹     変更要求対応(#12,36,90)、内部変更要求対応(#28,41)
 * 2008-05-21 1.0  吉元強樹     不具合ログ#320_3
+* 2008-06-26 1.1  北寒寺正夫   ST不具合#17/結合指摘No3
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -43,7 +44,7 @@ import itoen.oracle.apps.xxpo.util.XxpoUtility;
 /***************************************************************************
  * 仕入先出荷実績入力:検索アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -824,7 +825,10 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
         }
         resultsMakeDetailsVO.next();
         
-      }      
+      }
+// 20080626 Add Start
+      resultsMakeDetailsVO.first();
+// 20080626 Add End
     }
 
   }
