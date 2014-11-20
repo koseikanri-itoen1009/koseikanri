@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.60
+ * Version          : 1.62
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -163,6 +163,7 @@ AS
  *  2009/11/26    1.58 SCS    宮川真理子 本番障害対応#1497 パージ処理の削除条件の保留ステータス条件を削除
  *  2009/12/28    1.59 SCS    伊藤ひとみ 本稼動障害  #695  57A入出庫実績登録処理move_results_regist_processを行わないようにする
  *  2010/02/02    1.60 SCS    宮川真理子 本稼動障害  #1322 運送業者マスタチェック条件に、運賃区分がONの場合およびOFFでも運送業者入力済の場合を追加
+ *  2010/03/11    1.62 SCS    北寒寺正夫 本稼働障害  #1871 依頼No/移動番号重複チェックを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -340,6 +341,10 @@ AS
   gv_msg_93a_103                 CONSTANT VARCHAR2(15) := 'APP-XXCMN-10136';
   -- ケース入数エラー
   gv_msg_93a_604                 CONSTANT VARCHAR2(15) := 'APP-XXCMN-10604';
+-- 2010/03/11 M.Hokkanji Start
+  -- 重複エラー
+  gv_msg_93a_616                 CONSTANT VARCHAR2(15) := 'APP-XXCMN-10616';
+-- 2010/03/11 M.Hokkanji End
 --
   -- トークン
   gv_tkn_cnt                     CONSTANT VARCHAR2(3)  := 'CNT';         -- カウントトークン
@@ -377,6 +382,15 @@ AS
   gv_date_para_2                 CONSTANT VARCHAR2(6)  := '着荷日';
   gv_request_no_token            CONSTANT VARCHAR2(10) := 'REQUEST_NO';
   gv_item_no_token               CONSTANT VARCHAR2(7)  := 'ITEM_NO';
+-- 2010/03/11 M.Hokkanji Start
+  gv_param1_token11_nm           CONSTANT VARCHAR2(20) := '移動番号';   -- 参照値トークン
+  gv_param1_token12_nm           CONSTANT VARCHAR2(20) := '依頼No';     -- 参照値トークン
+  gv_xxcmn                       CONSTANT VARCHAR2(5)  := 'XXCMN';      -- XXCMN
+  gv_param3_token1_nm            CONSTANT VARCHAR2(20) := '出荷';       -- 参照値トークン
+  gv_param3_token2_nm            CONSTANT VARCHAR2(20) := '支給';       -- 参照値トークン
+  gv_param3_token3_nm            CONSTANT VARCHAR2(20) := '倉替返品';   -- 参照値トークン
+  gv_param3_token4_nm            CONSTANT VARCHAR2(20) := '移動';       -- 参照値トークン
+-- 2010/03/11 M.Hokkanji End
 --
   -- メッセージPARAM1：処理件数名
   gv_c_file_id_name             CONSTANT VARCHAR2(50)   := '受注ヘッダ更新作成件数(実績計上)';
@@ -650,6 +664,11 @@ AS
 -- Ver1.39 M.Hokkanji Start
   gn_zero                        CONSTANT NUMBER := 0;          -- 数量が入力されていない場合の0セット用
 -- Ver1.39 M.Hokkanji End
+-- 2010/03/11 M.Hokkanji Start
+  gv_shipping_shikyu_class_1     CONSTANT VARCHAR2(1) := '1';    -- 出荷
+  gv_shipping_shikyu_class_2     CONSTANT VARCHAR2(1) := '2';    -- 支給
+  gv_shipping_shikyu_class_3     CONSTANT VARCHAR2(1) := '3';    -- 倉替返品
+-- 2010/03/11 M.Hokkanji End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -4809,7 +4828,7 @@ AS
     IF (lv_parge_period IS NULL) THEN
 --
       lv_errmsg := xxcmn_common_pkg.get_msg(
-	                 gv_msg_kbn,               -- 'XXWSH'
+                   gv_msg_kbn,               -- 'XXWSH'
                      gv_msg_93a_002,           -- プロファイル取得エラーメッセージ
                      gv_prof_token,            -- トークン'PROF_NAME'
                      gv_parge_period_jp);      -- パージ処理期間(入出庫実績インタフェース)
@@ -4843,7 +4862,7 @@ AS
     IF (gv_master_org_id IS NULL) THEN
 --
       lv_errmsg := xxcmn_common_pkg.get_msg(
-	                 gv_msg_kbn,               -- 'XXWSH'
+                   gv_msg_kbn,               -- 'XXWSH'
                      gv_msg_93a_002,           -- プロファイル取得エラーメッセージ
                      gv_prof_token,            -- トークン'PROF_NAME'
                      gv_master_org_id_jp);     -- XXCMN:マスタ組織
@@ -5793,6 +5812,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2010/03/11 M.Hokkanji Start
+   cv_tkn                   CONSTANT VARCHAR2(10) := '、'; --トークン
+-- 2010/03/11 M.Hokkanji End
 --
     -- *** ローカル変数 ***
     lt_delivery_no          xxwsh_shipping_headers_if.delivery_no%TYPE;          --IF_H.配送No
@@ -5822,6 +5844,11 @@ AS
     lv_search_product_date  ic_lots_mst.attribute1%TYPE;          --IF_L.製造年月日
     ln_warehouse_count      NUMBER;
     ln_data_count           NUMBER;
+-- 2010/03/11 M.Hokkanji Start
+    ln_chk_count            NUMBER;                               --依頼No重複用件数
+    lv_ship_shikyu_class    VARCHAR2(1);                          --出荷支給区分
+    lv_token_name           VARCHAR2(50);                         --トークン名称
+-- 2010/03/11 M.Hokkanji End
 --
     -- *** ローカル・カーソル ***
 --
@@ -6724,6 +6751,148 @@ AS
         END IF;
 --
       END IF;
+-- 2010/03/11 M.Hokkanji Start
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+        -- 依頼No重複チェックで使用する変数を初期化
+        ln_chk_count := 0;
+        lv_ship_shikyu_class := NULL;
+--
+        IF ((gr_interface_info_rec(i).eos_data_type =  gv_eos_data_cd_200) OR       -- 有償出荷報告
+            (gr_interface_info_rec(i).eos_data_type =  gv_eos_data_cd_210) OR       -- 拠点出荷確定報告
+            (gr_interface_info_rec(i).eos_data_type =  gv_eos_data_cd_215) ) THEN   -- 庭先出荷確定報告
+--
+          IF (gr_interface_info_rec(i).eos_data_type =  gv_eos_data_cd_200) THEN
+            -- 有償出荷報告の場合出荷支給区分に出荷をセット
+            lv_ship_shikyu_class := gv_shipping_shikyu_class_1;
+            lv_token_name := gv_param3_token1_nm || cv_tkn || gv_param3_token3_nm;
+          ELSE
+            -- 有償出荷報告以外の場合出荷支給区分に支給をセット
+            lv_ship_shikyu_class := gv_shipping_shikyu_class_2;
+            lv_token_name := gv_param3_token2_nm || cv_tkn || gv_param3_token3_nm;
+          END IF;
+          -- 受注ヘッダアドオンに対象のデータと出荷支給区分が異なるデータが存在するかを確認
+          SELECT COUNT(*)
+            INTO ln_chk_count
+            FROM xxwsh_order_headers_all xoha
+                ,oe_transaction_types_all otta
+           WHERE xoha.request_no = gr_interface_info_rec(i).order_source_ref
+             AND xoha.req_status <> gv_req_status_99
+             AND otta.transaction_type_id = xoha.order_type_id
+             AND otta.attribute1 IN (lv_ship_shikyu_class,gv_shipping_shikyu_class_3)
+             AND ROWNUM = 1;
+          -- 依頼Noが重複している場合
+          IF (ln_chk_count > 0) THEN
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_xxcmn         -- 'XXCMN'
+                          ,gv_msg_93a_616     -- 重複エラーメッセージ
+                          ,gv_param1_token
+                          ,gv_param1_token12_nm
+                          ,gv_param2_token
+                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                          ,gv_param3_token
+                          ,lv_token_name
+                          )
+                          ,1
+                          ,5000);
+            --配送NO-EOSデータ種別単位にエラーflagセット
+            set_deliveryno_unit_errflg(
+              lt_delivery_no,         -- 配送No
+              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+          END IF;
+          ln_chk_count := 0;
+          IF(ln_err_flg = 0) THEN
+            -- 移動依頼/指示ヘッダアドオンに対象データが存在することを確認
+            SELECT COUNT(*)
+              INTO ln_chk_count
+              FROM xxinv_mov_req_instr_headers xmrih
+             WHERE xmrih.mov_num = gr_interface_info_rec(i).order_source_ref
+               AND xmrih.status <> gv_mov_status_99
+               AND ROWNUM = 1;
+            -- 移動Noと重複している場合
+            IF (ln_chk_count > 0) THEN
+              lv_token_name := gv_param3_token4_nm;
+              --配送NO-EOSデータ種別単位にエラーflagセット
+              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_xxcmn         -- 'XXCMN'
+                            ,gv_msg_93a_616     -- 重複エラーメッセージ
+                            ,gv_param1_token
+                            ,gv_param1_token12_nm
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                            ,gv_param3_token
+                            ,lv_token_name
+                            )
+                            ,1
+                            ,5000);
+              set_deliveryno_unit_errflg(
+                lt_delivery_no,         -- 配送No
+                gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+                gv_err_class,           -- エラー種別：エラー
+                lv_msg_buff,            -- エラー・メッセージ(出力用)
+                lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+                lv_retcode,             -- リターン・コード             --# 固定 #
+                lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+              -- エラーフラグ
+              ln_err_flg := 1;
+              -- 処理ステータス：警告
+              ov_retcode := gv_status_warn;
+            END IF;
+          END IF;
+        END IF;
+        ln_chk_count := 0;
+        IF ((gr_interface_info_rec(i).eos_data_type =  gv_eos_data_cd_220) OR       -- 移動出庫報告
+            (gr_interface_info_rec(i).eos_data_type =  gv_eos_data_cd_230) ) THEN   -- 移動入庫報告
+          lv_token_name := gv_param3_token1_nm || cv_tkn || gv_param3_token2_nm || cv_tkn || gv_param3_token3_nm;
+          -- 受注ヘッダアドオンに対象のデータと出荷支給区分が異なるデータが存在するかを確認
+          SELECT COUNT(*)
+            INTO ln_chk_count
+            FROM xxwsh_order_headers_all xoha
+           WHERE xoha.request_no = gr_interface_info_rec(i).order_source_ref
+             AND xoha.req_status <> gv_req_status_99
+             AND ROWNUM = 1;
+          -- 依頼Noが重複している場合
+          IF (ln_chk_count > 0) THEN
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_xxcmn         -- 'XXCMN'
+                          ,gv_msg_93a_616     -- 重複エラーメッセージ
+                          ,gv_param1_token
+                          ,gv_param1_token11_nm
+                          ,gv_param2_token
+                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                          ,gv_param3_token
+                          ,lv_token_name
+                          )
+                          ,1
+                          ,5000);
+            --配送NO-EOSデータ種別単位にエラーflagセット
+            set_deliveryno_unit_errflg(
+              lt_delivery_no,         -- 配送No
+              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+          END IF;
+        END IF;
+      END IF;
+-- 2010/03/11 M.Hokkanji End
 --
     END LOOP deliveryno_many_move_id;
 --
