@@ -9,6 +9,7 @@
 * 2008-12-27 1.0  SCS¬ì_     V‹Kì¬
 * 2009-03-23 1.1  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
 * 2009-05-19 1.2  SCS–ö•½’¼l   [STáŠQT1_1058]reflectAllŒ_–ñæ”½‰fˆ—’Ç‰Á
+* 2009-05-28 1.3  SCS–ö•½’¼l   [STáŠQT1_1216]İ’uæ”½‰fˆ—•s‹ï‡‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -877,6 +878,9 @@ public class XxcsoSpDecisionReflectUtils
     /////////////////////////////////////
     // ’l‚Ìİ’èFŒ_–ñæ
     /////////////////////////////////////
+// 2009-05-26 [STáŠQT1_1216] Add Start
+    String applicationType = headerRow.getApplicationType();
+// 2009-05-26 [STáŠQT1_1216] Add End
 // 2009-05-19 [STáŠQT1_1058] Add Start
     String sameInstAcctFlag = cntrctRow.getSameInstallAccountFlag();
     if ( "Y".equals(sameInstAcctFlag) )
@@ -889,18 +893,32 @@ public class XxcsoSpDecisionReflectUtils
       {
         cntrctRow.setContractNumber(null);
       }
-      if ( isDiffer(cntrctRow.getPartyName(), installRow.getPartyName()) )
+// 2009-05-26 [STáŠQT1_1216] Add Start
+      if ( XxcsoSpDecisionConstants.APP_TYPE_NEW.equals( applicationType ) )
       {
-        cntrctRow.setPartyName(
-          installRow.getPartyName()
-        );
+// 2009-05-26 [STáŠQT1_1216] Add End
+        if ( isDiffer(cntrctRow.getPartyName(), installRow.getPartyName()) )
+        {
+          cntrctRow.setPartyName(
+            installRow.getPartyName()
+          );
+        }
+// 2009-05-26 [STáŠQT1_1216] Add Start
       }
-      if ( isDiffer(cntrctRow.getPartyNameAlt(), installRow.getPartyNameAlt()) )
+// 2009-05-26 [STáŠQT1_1216] Add End
+// 2009-05-26 [STáŠQT1_1216] Add Start
+      if ( XxcsoSpDecisionConstants.APP_TYPE_NEW.equals( applicationType ) )
       {
-        cntrctRow.setPartyNameAlt(
-          installRow.getPartyNameAlt()
-        );
+// 2009-05-26 [STáŠQT1_1216] Add End
+        if ( isDiffer(cntrctRow.getPartyNameAlt(), installRow.getPartyNameAlt()) )
+        {
+          cntrctRow.setPartyNameAlt(
+            installRow.getPartyNameAlt()
+          );
+        }
+// 2009-05-26 [STáŠQT1_1216] Add Start
       }
+// 2009-05-26 [STáŠQT1_1216] Add End
       if ( isDiffer(
              cntrctRow.getPostalCodeFirst()
             ,installRow.getPostalCodeFirst()

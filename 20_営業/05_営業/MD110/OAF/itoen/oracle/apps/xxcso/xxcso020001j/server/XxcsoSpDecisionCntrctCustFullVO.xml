@@ -120,16 +120,10 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
        XxcsoSpDecisionCustsVEO.EXTERNAL_REFERENCE_OPCL_TYPE, 
        XxcsoSpDecisionCustsVEO.EMPLOYEE_NUMBER, 
        XxcsoSpDecisionCustsVEO.PUBLISH_BASE_CODE, 
-       xxcso_020001j_pkg.get_cntr_info_parameter(
-         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
-        ,XxcsoSpDecisionCustsVEO.SAME_INSTALL_ACCOUNT_FLAG
-        ,inst.customer_id
-        ,xcasv.customer_status
-        ,XxcsoSpDecisionCustsVEO.REPRESENTATIVE_NAME
-        ,xcc.delegate_name
-        ,inst.representative_name
-        ,xcasv.party_representative_name
-       ) representative_name, 
+       DECODE(XxcsoSpDecisionCustsVEO.CUSTOMER_ID 
+         ,NULL ,XxcsoSpDecisionCustsVEO.REPRESENTATIVE_NAME
+               ,xcc.delegate_name
+       ) representative_name,
        XxcsoSpDecisionCustsVEO.TRANSFER_COMMISSION_TYPE, 
        XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE, 
        XxcsoSpDecisionCustsVEO.INQUIRY_BASE_CODE, 
