@@ -36,6 +36,7 @@ AS
  *  2009-09-14    1.4   Mio.Maruyama     0001355‘Î‰
  *  2009-10-15    1.5   Daisuke.Abe      0001536,0001537‘Î‰
  *  2009-11-12    1.6   Kazuo.Satomura   I_E_658‘Î‰
+ *  2009-11-30    1.7   T.Maruyama       E_–{‰Ò“®_00193‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -393,6 +394,11 @@ AS
     lb_bm1_bm_rate           BOOLEAN;           -- ‚a‚l‚P‚a‚l—¦‚É‚æ‚é’è—¦”»’fƒtƒ‰ƒO
     lb_bm1_bm_amount         BOOLEAN;           -- ‚a‚l‚P‚a‚l‹àŠz‚É‚æ‚é’è—¦”»’fƒtƒ‰ƒO
     lb_bm1_bm                BOOLEAN;           -- ”Ì”„è”—¿—L–³ƒtƒ‰ƒO(TRUE:—L,FALSE:–³)
+    /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 START */
+    ln_work_cnt              NUMBER;            -- ’èŠz”»’fŒ”ƒJƒEƒ“ƒg—p
+    ln_work_cnt_ritu         NUMBER;            -- —¦”»’fŒ”ƒJƒEƒ“ƒg—p
+    ln_work_cnt_gaku         NUMBER;            -- Šz”»’fŒ”ƒJƒEƒ“ƒg—p
+    /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 END */
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ *** 
     CURSOR l_sales_charge_cur
@@ -900,17 +906,19 @@ AS
             o_rep_cont_data_rec.exchange_condition := cv_youki_rate;
           END IF;
 --
-          -- ‚a‚l‚P‚a‚l—¦A‹àŠz
-          IF (l_sales_charge_rec.bm1_bm_rate IS NULL) THEN
-            lb_bm1_bm_rate := FALSE;
-          ELSE
-            ln_bm1_bm_rate := l_sales_charge_rec.bm1_bm_rate;
-          END IF;
-          IF (l_sales_charge_rec.bm1_bm_amount IS NULL) THEN
-            lb_bm1_bm_amount := FALSE;
-          ELSE
-            ln_bm1_bm_amount := l_sales_charge_rec.bm1_bm_amount;
-          END IF;
+          /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 START */
+          ---- ‚a‚l‚P‚a‚l—¦A‹àŠz
+          --IF (l_sales_charge_rec.bm1_bm_rate IS NULL) THEN
+          --  lb_bm1_bm_rate := FALSE;
+          --ELSE
+          --  ln_bm1_bm_rate := l_sales_charge_rec.bm1_bm_rate;
+          --END IF;
+          --IF (l_sales_charge_rec.bm1_bm_amount IS NULL) THEN
+          --  lb_bm1_bm_amount := FALSE;
+          --ELSE
+          --  ln_bm1_bm_amount := l_sales_charge_rec.bm1_bm_amount;
+          --END IF;
+          /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 END */
 --
           -- ’÷‚ß“ú
           o_rep_cont_data_rec.close_day_code := l_sales_charge_rec.close_day_code;
@@ -919,23 +927,27 @@ AS
           -- •¥‚¢“ú
           o_rep_cont_data_rec.transfer_day_code := l_sales_charge_rec.transfer_day_code;
         ELSE
-          -- ‚a‚l‚P‚a‚l—¦
-          IF (lb_bm1_bm_rate = TRUE) THEN
-            IF (l_sales_charge_rec.bm1_bm_rate IS NULL) THEN
-              lb_bm1_bm_rate := FALSE;
-            ELSIF (ln_bm1_bm_rate <> l_sales_charge_rec.bm1_bm_rate) THEN
-              lb_bm1_bm_rate := FALSE;
-            END IF;
-          END IF;
-          -- ‚a‚l‚P‚a‚l‹àŠz
-          IF (lb_bm1_bm_amount = TRUE) THEN
-            IF (l_sales_charge_rec.bm1_bm_amount IS NULL) THEN
-              lb_bm1_bm_amount := FALSE;
-            ELSIF (ln_bm1_bm_amount <> l_sales_charge_rec.bm1_bm_amount) THEN
-              lb_bm1_bm_amount := FALSE;
-            END IF;
-          END IF;
+          /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 START */
+          NULL;
+          ---- ‚a‚l‚P‚a‚l—¦
+          --IF (lb_bm1_bm_rate = TRUE) THEN
+          --  IF (l_sales_charge_rec.bm1_bm_rate IS NULL) THEN
+          --    lb_bm1_bm_rate := FALSE;
+          --  ELSIF (ln_bm1_bm_rate <> l_sales_charge_rec.bm1_bm_rate) THEN
+          ----    lb_bm1_bm_rate := FALSE;
+          --  END IF;
+          --END IF;
+          ---- ‚a‚l‚P‚a‚l‹àŠz
+          --IF (lb_bm1_bm_amount = TRUE) THEN
+          --  IF (l_sales_charge_rec.bm1_bm_amount IS NULL) THEN
+          --    lb_bm1_bm_amount := FALSE;
+          --  ELSIF (ln_bm1_bm_amount <> l_sales_charge_rec.bm1_bm_amount) THEN
+          --    lb_bm1_bm_amount := FALSE;
+          --  END IF;
+          --END IF;
+          /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 END */
         END IF;
+         
         
         -- ”Ì”„è”—¿—L–³ƒ`ƒFƒbƒN
         IF ((l_sales_charge_rec.bm1_bm_rate IS NOT NULL AND
@@ -992,6 +1004,103 @@ AS
 --
       -- –¾×Œ”‚ª1Œ‚ğ’´‚¦‚éê‡
       IF (ln_lines_cnt > 1) THEN
+--
+        /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 START */
+        -- ‚a‚l‚P‚a‚l—¦ ’è—¦”»’f
+        -- ZERO‚¨‚æ‚ÑNULL‚Å‚È‚¢’l‚Ìí—Ş”
+        -- 0Œ¥¥¥ŠY“––³‚µ‚Ì‚½‚ß’èŠz‚Å‚È‚¢
+        -- 1Œ¥¥¥’èŠz
+        -- 2ŒˆÈã¥¥¥•¡”ğŒ‚Ì‚½‚ß’èŠz‚Å‚È‚¢
+        ln_work_cnt := 0;
+        ln_work_cnt_ritu := 0;
+        SELECT count(*)
+        INTO   ln_work_cnt
+        FROM   (
+                 SELECT distinct xsdl.bm1_bm_rate
+                 FROM   xxcso_contract_managements xcm      -- Œ_–ñŠÇ—ƒe[ƒuƒ‹
+                       ,xxcso_sp_decision_headers  xsdh     -- ‚r‚oêŒˆƒwƒbƒ_ƒe[ƒuƒ‹
+                       ,xxcso_sp_decision_lines    xsdl     -- ‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹
+                 WHERE  xcm.contract_management_id = gt_con_mng_id
+                 AND    xcm.sp_decision_header_id  = xsdh.sp_decision_header_id
+                 AND    xsdh.sp_decision_header_id = xsdl.sp_decision_header_id
+                 AND    xsdh.condition_business_type  IN 
+                        (cv_cond_b_type_1, cv_cond_b_type_2, cv_cond_b_type_3, cv_cond_b_type_4)
+                 AND    (    (xsdl.bm1_bm_rate IS NOT NULL) 
+                         AND (xsdl.bm1_bm_rate <> 0) )
+        );
+--
+        ln_work_cnt_ritu := ln_work_cnt;
+--
+        IF ln_work_cnt = 1 THEN
+          lb_bm1_bm_rate := TRUE;
+          --—¦‚Ì’l‚ğæ“¾
+          SELECT distinct xsdl.bm1_bm_rate
+          INTO   ln_bm1_bm_rate
+          FROM   xxcso_contract_managements xcm      -- Œ_–ñŠÇ—ƒe[ƒuƒ‹
+                ,xxcso_sp_decision_headers  xsdh     -- ‚r‚oêŒˆƒwƒbƒ_ƒe[ƒuƒ‹
+                ,xxcso_sp_decision_lines    xsdl     -- ‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹
+          WHERE  xcm.contract_management_id = gt_con_mng_id
+          AND    xcm.sp_decision_header_id  = xsdh.sp_decision_header_id
+          AND    xsdh.sp_decision_header_id = xsdl.sp_decision_header_id
+          AND    xsdh.condition_business_type  IN 
+                 (cv_cond_b_type_1, cv_cond_b_type_2, cv_cond_b_type_3, cv_cond_b_type_4)
+          AND    (    (xsdl.bm1_bm_rate IS NOT NULL) 
+                  AND (xsdl.bm1_bm_rate <> 0) );
+        ELSE
+          lb_bm1_bm_rate := FALSE;
+        END IF;
+--
+        -- ‚a‚l‚P‚a‚l‹àŠz ’è—¦”»’f
+        ln_work_cnt := 0;
+        ln_work_cnt_gaku := 0;
+        SELECT count(*)
+        INTO   ln_work_cnt
+        FROM   (
+                 SELECT distinct xsdl.bm1_bm_amount
+                 FROM   xxcso_contract_managements xcm      -- Œ_–ñŠÇ—ƒe[ƒuƒ‹
+                       ,xxcso_sp_decision_headers  xsdh     -- ‚r‚oêŒˆƒwƒbƒ_ƒe[ƒuƒ‹
+                       ,xxcso_sp_decision_lines    xsdl     -- ‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹
+                 WHERE  xcm.contract_management_id = gt_con_mng_id
+                 AND    xcm.sp_decision_header_id  = xsdh.sp_decision_header_id
+                 AND    xsdh.sp_decision_header_id = xsdl.sp_decision_header_id
+                 AND    xsdh.condition_business_type  IN 
+                        (cv_cond_b_type_1, cv_cond_b_type_2, cv_cond_b_type_3, cv_cond_b_type_4)
+                 AND    (    (xsdl.bm1_bm_amount IS NOT NULL) 
+                         AND (xsdl.bm1_bm_amount <> 0) )
+        );
+--
+        ln_work_cnt_gaku := ln_work_cnt;
+--
+        IF ln_work_cnt = 1 THEN
+          lb_bm1_bm_amount := TRUE;
+          --‹àŠz‚Ì’l‚ğæ“¾
+          SELECT distinct xsdl.bm1_bm_amount
+          INTO   ln_bm1_bm_amount
+          FROM   xxcso_contract_managements xcm      -- Œ_–ñŠÇ—ƒe[ƒuƒ‹
+                ,xxcso_sp_decision_headers  xsdh     -- ‚r‚oêŒˆƒwƒbƒ_ƒe[ƒuƒ‹
+                ,xxcso_sp_decision_lines    xsdl     -- ‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹
+          WHERE  xcm.contract_management_id = gt_con_mng_id
+          AND    xcm.sp_decision_header_id  = xsdh.sp_decision_header_id
+          AND    xsdh.sp_decision_header_id = xsdl.sp_decision_header_id
+          AND    xsdh.condition_business_type  IN 
+                 (cv_cond_b_type_1, cv_cond_b_type_2, cv_cond_b_type_3, cv_cond_b_type_4)
+          AND    (    (xsdl.bm1_bm_amount IS NOT NULL) 
+                  AND (xsdl.bm1_bm_amount <> 0) );
+        ELSE
+          lb_bm1_bm_amount := FALSE;
+        END IF;
+        
+        --—¦‚à‚µ‚­‚ÍŠz‚Ì‚Ç‚¿‚ç‚©‚¾‚¯‚ª‚Pí—Ş‚Ìê‡‚¾‚¯’è—¦‚Æ‚·‚é
+        IF ((ln_work_cnt_ritu = 1) AND (ln_work_cnt_gaku = 0))
+        OR ((ln_work_cnt_ritu = 0) AND (ln_work_cnt_gaku = 1)) THEN
+          NULL;
+        ELSE
+          lb_bm1_bm_rate := FALSE;
+          lb_bm1_bm_amount := FALSE;
+        END IF;
+        /* 2009.11.30 T.Maruyama E_–{‰Ò“®_00193 END */
+        
+        
         -- —eŠí•ÊA’è—¦‚Ìê‡
         IF ((lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
                AND (lb_bm1_bm_rate OR lb_bm1_bm_amount)) THEN
