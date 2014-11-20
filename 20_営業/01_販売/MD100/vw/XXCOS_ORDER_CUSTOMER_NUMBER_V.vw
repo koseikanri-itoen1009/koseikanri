@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_customer_number_v
  * Description     : 顧客コードのセキュリティ（クイック受注用）
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,8 @@
  *  2009/07/06    1.2   K.Kakishita      [T3_0317]パフォーマンス対応
  *                                       ・ヒント句追加、IN句からEXISTSへの変更
  *                                       ・拠点コード、顧客ステータス項目の削除
+ *  2009/07/10    1.3   K.Kakishita      [T3_0317]パフォーマンス対応
+ *                                       ・ヒント句追加、EXISTSからINへの変更
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_customer_number_v (
@@ -29,7 +31,9 @@ CREATE OR REPLACE VIEW xxcos_order_customer_number_v (
 AS
   SELECT
     /*+
-      INDEX ( xca xxcmm_cust_accounts_pk )
+      INDEX ( acct HZ_CUST_ACCOUNTS_N06 )
+      INDEX ( party HZ_PARTIES_U1 )
+      INDEX ( xca XXCMM_CUST_ACCOUNTS_PK )
     */
     acct.account_number                   account_number,
     acct.account_name                     account_description,
@@ -42,21 +46,22 @@ AS
   FROM
     hz_parties                            party,
     hz_cust_accounts                      acct,
-    xxcmm_cust_accounts                   xca
+    xxcmm_cust_accounts                   xca,
+    xxcos_login_base_info_v               xlbiv
   WHERE
     acct.party_id                       = party.party_id
   AND acct.status                       = 'A'
   AND acct.cust_account_id              = xca.customer_id
+  AND xlbiv.base_code IN ( xca.sale_base_code, xca.past_sale_base_code, xca.delivery_base_code )
   AND EXISTS(
         SELECT 'Y' exeist_flag
-        FROM xxcos_order_lookup_values_v xolvv
-        WHERE xolvv.lookup_type = 'XXCOS1_CUS_CLASS_MST_005_A01'
-        AND xolvv.meaning = acct.customer_class_code
-      )
-  AND EXISTS(
-        SELECT 'Y' exists_flag
-        FROM xxcos_login_base_info_v xlbiv
-        WHERE xlbiv.base_code IN ( xca.sale_base_code, xca.past_sale_base_code, xca.delivery_base_code )
+        FROM fnd_lookup_values flv
+        WHERE flv.lookup_type = 'XXCOS1_CUS_CLASS_MST_005_A01'
+        AND flv.meaning = acct.customer_class_code
+        AND flv.enabled_flag = 'Y'
+        AND flv.language = userenv('LANG')
+        AND xxccp_common_pkg2.get_process_date >= flv.start_date_active
+        AND xxccp_common_pkg2.get_process_date <= NVL(flv.end_date_active, xxccp_common_pkg2.get_process_date )
       )
 ;
 COMMENT ON  COLUMN  xxcos_order_customer_number_v.account_number       IS  '顧客コード';
