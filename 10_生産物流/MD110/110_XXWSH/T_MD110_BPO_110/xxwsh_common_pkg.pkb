@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.45
+ * Version                : 1.46
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -100,6 +100,7 @@ AS
  *                                      [配車解除関数]本番#1210対応
  *  2009/02/27   1.44  SCS    伊藤ひとみ[配車解除関数]本番#863対応(再対応)
  *  2009/03/04   1.45  SCS    北寒寺正夫[配車解除関数]本番#1268対応
+ *  2009/03/05   1.46  SCS    北寒寺正夫[重量容積小口個数更新関数]本番#1068対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2510,6 +2511,10 @@ AS
     cv_get_carry_err        CONSTANT VARCHAR2(100) := 'APP-XXWSH-10016';     -- 取得エラー(配車)
     cv_api_carry_err        CONSTANT VARCHAR2(100) := 'APP-XXWSH-10017';     -- API実行エラー(配車)
     cv_update_carry_err     CONSTANT VARCHAR2(100) := 'APP-XXWSH-10018';     -- 更新エラー(配車)
+-- Ver1.46 M.Hokkanji Start
+    cv_spot_sale_err        CONSTANT VARCHAR2(100) := 'APP-XXWSH-10025';     -- データ取得エラー
+    cv_token_data           CONSTANT VARCHAR2(4)   := 'DATA';                -- メッセージトークン(DATA)
+-- Ver1.46 M.Hokkanji End
     cv_api_xoha             CONSTANT VARCHAR2(100) := '受注ヘッダアドオンから項目を取得';
     cv_api_xola             CONSTANT VARCHAR2(100) := '受注明細アドオンから項目を取得';
     cv_api_mrih             CONSTANT VARCHAR2(100) := '移動依頼/指示ヘッダ(アドオン)から項目を取得';
@@ -2528,12 +2533,19 @@ AS
     cv_api_capacity         CONSTANT VARCHAR2(100) := '容積積載効率算出';
     cv_api_lock             CONSTANT VARCHAR2(100) := 'ロック処理';
     cv_api_update_line_item CONSTANT VARCHAR2(100) := '重量容積小口個数更新関数';
+-- Ver1.46 M.Hokkanji Start
+    cv_spot_sale_ship_name  CONSTANT VARCHAR2(8)   := '庭先出荷';
+-- Ver1.46 M.Hokkanji End
 --
     -- *** ローカル変数 ***
     ln_pallet_waight                NUMBER;                     -- パレット重量
     lv_small_sum_class              VARCHAR2(1);                -- 小口区分
     ld_date                         DATE;                       -- 基準日
     lv_syohin_class                 VARCHAR2(2);                -- 商品区分
+-- Ver1.46 M.Hokkanji Start
+    ln_transaction_id_spot_sale     NUMBER;                     -- 出庫形態ID(庭先出庫)
+    lv_weight_check_flag            VARCHAR2(1);                -- 積載率チェックフラグ
+-- Ver1.46 M.Hokkanji End
 -- 2008/12/15 H.Itou Mod Start
 --    lv_except_msg                   VARCHAR2(200);              -- エラーメッセージ
     lv_except_msg                   VARCHAR2(32767);            -- エラーメッセージ
@@ -2555,6 +2567,9 @@ AS
 --add start 1.14
     lv_freight_charge_class         xxwsh_order_headers_all.freight_charge_class%TYPE; --運賃区分
 --add end 1.14
+-- Ver1.46 M.Hokkanji Start
+    ln_order_type_id                NUMBER;                     -- 受注タイプID
+-- Ver1.46 M.Hokkanji End
     -- 受注明細アドオン
     ln_shipped_quantity             NUMBER;                     -- 出荷実績数量
     lv_shipping_item_code           VARCHAR2(7);                -- 出荷品目
@@ -2702,6 +2717,22 @@ AS
       lv_tkn_request_no := cv_move_no;
     END IF;
 --
+-- Ver1.46 M.Hokkanji Start
+    BEGIN
+      SELECT xottv.transaction_type_id
+        INTO ln_transaction_id_spot_sale
+        FROM xxwsh_oe_transaction_types_v xottv
+       WHERE xottv.transaction_type_name = cv_spot_sale_ship_name;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_spot_sale_err
+                                                 ,cv_token_data, cv_spot_sale_ship_name);
+        FND_LOG.STRING(cv_log_level, gv_pkg_name
+                      || cv_colon
+                      || cv_prg_name, lv_except_msg);
+        RETURN gn_status_error;
+    END;
+-- Ver1.46 M.Hokkanji End
     -- WHOカラム情報取得
     ln_user_id           := FND_GLOBAL.USER_ID;           -- ログインしているユーザーのID取得
     ln_login_id          := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
@@ -2742,6 +2773,9 @@ AS
 --add start 1.14
                  ,freight_charge_class                  -- 運賃区分
 --add end 1.14
+-- Ver1.46 M.Hokkanji Start
+                 ,order_type_id
+-- Ver1.46 M.Hokkanji End
           INTO    lv_req_status,
                   lv_result_shipping_method_code,
                   lv_result_deliver_to,
@@ -2754,6 +2788,9 @@ AS
 --add start 1.14
                  ,lv_freight_charge_class
 --add end 1.14
+-- Ver1.46 M.Hokkanji Start
+                 ,ln_order_type_id
+-- Ver1.46 M.Hokkanji End
           FROM    xxwsh_order_headers_all       xoha,       -- 受注ヘッダアドオン
                   xxwsh_oe_transaction_types2_v ott2        -- 受注タイプ情報VIEW
           WHERE   xoha.request_no                             =  iv_request_no
@@ -2994,6 +3031,10 @@ AS
         lv_retcode      :=NULL;   -- リターンコード
         lv_errmsg_code  :=NULL;   -- エラーメッセージコード
         lv_errmsg       :=NULL;   -- エラーメッセージ
+-- Ver1.46 M.Hokkanji Start
+        ln_update_load_effi_capacity := NULL;
+        ln_update_load_effi_weight   := NULL;
+-- Ver1.46 M.Hokkanji End
 --
 -- 2008/08/07 H.Itou Mod Start 変更要求#173 積載効率算出条件は、配送Noではなく、運賃区分で判定
         -- (5)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
@@ -3001,8 +3042,14 @@ AS
 ----        IF (lv_update_delivery_no IS NOT NULL) THEN
 --        IF (lv_update_delivery_no IS NOT NULL 
 --        AND lv_freight_charge_class = gv_freight_charge_yes) THEN
+-- Ver1.46 M.Hokkanji Start
         -- 運賃区分「1」の場合
-        IF (lv_freight_charge_class = gv_freight_charge_yes) THEN
+--        IF (lv_freight_charge_class = gv_freight_charge_yes) THEN
+        -- 運賃区分「1」の場合
+        -- 受注タイプが庭先出庫の場合
+        IF  (lv_freight_charge_class = gv_freight_charge_yes) AND
+            (ln_order_type_id <> ln_transaction_id_spot_sale) THEN
+-- Ver1.46 M.Hokkanji End
 --mod end 1.14
 -- 2008/08/07 H.Itou Mod End
 -- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
@@ -4313,6 +4360,12 @@ AS
     ln_sum_weight                       := NULL;   -- 合計重量
     ln_sum_capacity                     := NULL;   -- 合計容積
     ln_sum_pallet_weight                := NULL;   -- 合計パレット重量
+-- Ver1.46 M.Hokkanji Start
+    ln_order_type_id                    := NULL;   -- 受注タイプID
+    lv_weight_check_flag                := '0';    -- 積載率チェックフラグ
+    ln_update_load_effi_capacity        := NULL;   -- 積載率(容積)
+    ln_update_load_effi_weight          := NULL;   -- 積載率(重量)
+-- Ver1.46 M.Hokkanji End
 --
     -- 上記1.～3.の処理で配車配送計画更新項目.配送Noが設定されている場合
     IF (lv_update_delivery_no IS NOT NULL) THEN
@@ -4373,12 +4426,18 @@ AS
                   NVL(xoha.shipped_date,
                       xoha.schedule_ship_date),           -- 出荷日、NULLのときは、出荷予定日を取得
                   xoha.prod_class                         -- 商品区分
+-- Ver1.46 M.Hokkanji Start
+                 ,xoha.order_type_id                      -- 受注タイプID
+-- Ver1.46 M.Hokkanji End
           INTO    lv_vendor_site_code,
                   lv_deliver_from,
                   lv_result_deliver_to,
                   lv_attribute1,
                   ld_date,
                   lv_syohin_class
+-- Ver1.46 M.Hokkanji Start
+                 ,ln_order_type_id
+-- Ver1.46 M.Hokkanji End
           FROM    xxwsh_order_headers_all       xoha,       -- 受注ヘッダアドオン
                   xxwsh_oe_transaction_types_v  xott        -- 受注タイプ情報VIEW
           WHERE   xoha.request_no                             =  lv_default_line_number
@@ -4574,14 +4633,26 @@ AS
         -- 積載容積合計
         ln_update_capacity := ln_sum_capacity;
 --
+-- Ver1.46 M.Hokkanji Start
+        -- 基準明細が庭先出庫の場合は積載率算出を行わない
+        IF (ln_order_type_id = ln_transaction_id_spot_sale) THEN
+          lv_weight_check_flag := '1';
+        END IF;
+-- Ver1.46 M.Hokkanji End
+--
         -- 変数初期化
         lv_retcode      :=NULL;   -- リターンコード
         lv_errmsg_code  :=NULL;   -- エラーメッセージコード
         lv_errmsg       :=NULL;   -- エラーメッセージ
 --
+-- Ver1.46 M.Hokkanji Start
         -- (6)共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
         -- 合計重量が設定されている場合
-        IF (ln_sum_weight IS NOT NULL) THEN
+        -- 基準明細の出庫形態が庭先出庫以外の場合
+--        IF (ln_sum_weight IS NOT NULL) THEN
+        IF (ln_sum_weight IS NOT NULL) AND
+           (lv_weight_check_flag = '0') THEN
+-- Ver1.46 M.Hokkanji End
           -- ①重量積載効率算出
           xxwsh_common910_pkg.calc_load_efficiency(
             ln_sum_weight,                         -- 1.合計重量
@@ -4651,8 +4722,13 @@ AS
 --
         END IF;
 --
+-- Ver1.46 M.Hokkanji Start
         -- 合計容積が設定されている場合
-        IF (ln_sum_capacity > 0) THEN
+        -- 基準明細の出庫形態が庭先出庫以外の場合
+--        IF (ln_sum_capacity > 0) THEN
+        IF (ln_sum_capacity IS NOT NULL) AND
+           (lv_weight_check_flag = '0') THEN
+-- Ver1.46 M.Hokkanji End
           -- ②容積積載効率算出
           xxwsh_common910_pkg.calc_load_efficiency(
             NULL,                                     -- 1.合計重量
