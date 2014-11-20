@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *                                        パラメータ：担当部署の際の出力内容を変更
  *  2008/06/13    1.8   Y.Ishikawa        ロットコピーにより作成した発注の仕入帳票を出力すると
  *                                       、１つの明細の情報が２件以上されないよう修正。
+ *  2008/06/16    1.9   I.Higa           TEMP領域エラー回避のため、xxpo_categories_vを２つ以上使用
+ *                                       しないようにする
  *
  *****************************************************************************************/
 --
@@ -71,6 +73,8 @@ AS
   gv_print_name      CONSTANT VARCHAR2(20) := '仕入明細表' ;    -- 帳票名
   gv_dept_cd_all     CONSTANT VARCHAR2(5)  := 'ZZZZ';           -- 担当部署(ALL)
   gn_one             CONSTANT NUMBER  DEFAULT 1;
+  gv_language        CONSTANT VARCHAR2(3)  := 'JA';             -- 言語
+  gv_lot_n_div       CONSTANT VARCHAR2(1) := '0';               -- ロット管理なし
 --
   ------------------------------
   -- クイックコード関連
@@ -556,8 +560,8 @@ AS
     -- < 品目カテゴリ(群) > --
     -- ===========================================================================================
     lv_comm_where := lv_comm_where
-             || ' AND xicv.crowd_code         =   xcv3.category_code '
-             || ' AND xcv3.category_set_name  = ''' || cv_crowd_cd     || '''';
+             || ' AND xicv.crowd_code         =   xcv3.category_code ';
+--             || ' AND xcv3.category_set_name  = ''' || cv_crowd_cd     || '''';
     -- 入力状態
     -- すべて入力済み
     IF (( ir_param.crowd1 IS NOT NULL ) AND ( ir_param.crowd2 IS NOT NULL)
@@ -658,7 +662,8 @@ AS
               || ' ximv.item_short_name       AS  item_sht_nm, '     -- 品目(品目名)
               || ' pla.attribute3             AS  po_attr3, '        -- 付帯
               || ' rcrt.txns_date             AS  txns_date, '       -- 納入日
-              || ' ilm.lot_no                 AS  lot_no, '          -- ロットNO
+              || ' DECODE(ximv.lot_ctl,'      || gv_lot_n_div
+              || '  ,NULL,ilm.lot_no)        AS lot_no, '            -- ロットNO
               || ' ilm.attribute1             AS  ic_attr1, '        -- 製造日
               || ' ilm.attribute2             AS  ic_attr2, '        -- 固有記号
               || ' ilm.attribute3             AS  ic_attr3, '        -- 賞味期限
@@ -725,7 +730,14 @@ AS
             || ' xxcmn_item_categories4_v  xicv,'    -- OPM品目カテゴリ割当情報VIEW4
             || ' xxpo_categories_v         xcv, '    -- XXPO品目情報VIEW(商品区分)
             || ' xxpo_categories_v         xcv2, '   -- XXPO品目情報VIEW(品目区分)
-            || ' xxpo_categories_v         xcv3 ';   -- XXPO品目情報VIEW(群)
+            || ' (SELECT mcb.segment1  AS category_code '
+            || '  FROM   mtl_category_sets_tl  mcst, '
+            || ' mtl_category_sets_b   mcsb, '
+            || ' mtl_categories_b      mcb '
+            || ' WHERE  mcsb.category_set_id  = mcst.category_set_id '
+            || ' AND    mcst.language         = ''' || gv_language || ''''
+            || ' AND    mcsb.structure_id     = mcb.structure_id '
+            || ' AND    mcst.category_set_name = ''' || cv_crowd_cd || '''' || ') xcv3 ';
 --
     -- ===========================================================
     -- WHERE句生成
@@ -859,7 +871,8 @@ AS
                 || ' ximv.item_short_name       AS  item_sht_nm,'
                 || ' NULL                       AS  po_attr3,'
                 || ' rcrt.txns_date             AS  txns_date,'
-                || ' ilm.lot_no                 AS  lot_no,'
+                || ' DECODE(ximv.lot_ctl,'      || gv_lot_n_div
+                || '  ,NULL,ilm.lot_no)        AS lot_no, '
                 || ' ilm.attribute1             AS  ic_attr1,'
                 || ' ilm.attribute2             AS  ic_attr2,'
                 || ' ilm.attribute3             AS  ic_attr3,'
@@ -899,7 +912,14 @@ AS
               || ' xxcmn_item_categories4_v  xicv,'
               || ' xxpo_categories_v         xcv,'
               || ' xxpo_categories_v         xcv2,'
-              || ' xxpo_categories_v         xcv3';
+              || ' (SELECT mcb.segment1  AS category_code '
+              || '  FROM   mtl_category_sets_tl  mcst, '
+              || ' mtl_category_sets_b   mcsb, '
+              || ' mtl_categories_b      mcb '
+              || ' WHERE  mcsb.category_set_id  = mcst.category_set_id '
+              || ' AND    mcst.language         = ''' || gv_language || ''''
+              || ' AND    mcsb.structure_id     = mcb.structure_id '
+              || ' AND    mcst.category_set_name = ''' || cv_crowd_cd || '''' || ') xcv3 ';
 --
     -- ===========================================================
     -- WHERE句生成
