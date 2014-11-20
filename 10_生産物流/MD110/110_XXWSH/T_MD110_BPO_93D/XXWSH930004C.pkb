@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/10/31    1.10  Oracle福田直樹   統合指摘#462対応
  *  2008/11/17    1.11  Oracle福田直樹   統合指摘#651対応(課題T_S_486再対応)
  *  2008/12/17    1.12  Oracle福田直樹   本番障害#764対応
+ *  2008/12/25    1.13  Oracle福田直樹   本番障害#831対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1392,14 +1393,16 @@ AS
               --***************************************************************************
               --*  指示ロット（依頼数）
               --***************************************************************************
-              ,SUM( CASE
+              --,SUM( CASE               -- 2008/12/25 本番障害#831 Del
+              ,MAX( CASE                 -- 2008/12/25 本番障害#831 Add (SUMを消したいがGroupByと他のSUMのしがらみからMAXを使用。MAXそのもには意味無し)
                       --WHEN (xmld.record_type_code = gc_rec_type_inst) THEN  -- 指示の場合  2008/11/17 統合指摘#651 Del
                       -- 2008/11/17 統合指摘#651 Add Start ------------------------------
                      --********************************
-                     --*  指示なし実績
+                     --*  指示なし実績     ※明細の依頼数を使用
                      --********************************
-                      WHEN (xmld.record_type_code = gc_rec_type_inst)
-                        AND (ir_get_data.no_instr_actual = gc_yn_div_y) THEN
+                      --WHEN (xmld.record_type_code = gc_rec_type_inst)          -- 2008/12/25 本番障害#831 Del  指示なしなのに指示ロットはないから消しました
+                      --  AND (ir_get_data.no_instr_actual = gc_yn_div_y) THEN   -- 2008/12/25 本番障害#831 Del
+                      WHEN (ir_get_data.no_instr_actual = gc_yn_div_y) THEN      -- 2008/12/25 本番障害#831 Add
                       -- 2008/11/17 統合指摘#651 Add End --------------------------------
                         CASE 
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
@@ -1409,15 +1412,10 @@ AS
 --                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
 --                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
 ---- mod end ver1.3
-                         -- 品目区分が製品、かつ
-                         -- 入出庫換算単位がNULLでない、かつ
-                         -- 商品区分がドリンク、かつ
-                         -- ケース入数が1以上の場合
-                         WHEN ((xicv.item_class_code = '5')
-                          AND (ir_get_data.conv_unit IS NOT NULL)
-                          AND (ir_get_data.prod_class_code = '2')
-                          AND (ir_get_data.num_of_cases > 0))THEN
-                              -- 換算する
+                         WHEN ((xicv.item_class_code = '5')               -- 品目区分が製品、かつ
+                          AND (ir_get_data.conv_unit IS NOT NULL)         -- 入出庫換算単位がNULLでない、かつ
+                          AND (ir_get_data.prod_class_code = '2')         -- 商品区分がドリンク、かつ
+                          AND (ir_get_data.num_of_cases > 0))THEN         -- ケース入数が1以上の場合
 ---- mod start ver1.2
 ----                              (xmld.actual_quantity/ir_get_data.num_of_cases)
 --                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
@@ -1427,69 +1425,54 @@ AS
                            --        /ir_get_data.num_of_cases),3)
                            -- 2008/10/20 課題T_S_486 Del End -----------------------------
                            -- 2008/10/20 課題T_S_486 Add Start ---------------------------
-                           ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)
+                           ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)       -- 換算する
                            -- 2008/10/20 課題T_S_486 Add End -----------------------------
 --
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod end ver1.2
                         ELSE
-                              -- 換算しない
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --                              (xmld.actual_quantity/1)
 --
                            --NVL(xmld.actual_quantity, ir_get_data.quant_r)  -- 2008/10/20 課題T_S_486 Del
-                           ir_get_data.quant_r                               -- 2008/10/20 課題T_S_486 Add
+                           ir_get_data.quant_r    -- 換算しない              -- 2008/10/20 課題T_S_486 Add
 --
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
                         END
--- 2008/11/17 統合指摘#651 Add Start -----------------------------------------------------------------------------------
+                     -- 2008/11/17 統合指摘#651 Add Start -----------------------------------------------------------------
                      --****************************************
-                     --*  指示あり実績の場合(指示ロットあり)
+                     --*  指示あり実績の場合(指示ロットあり)       ※指示ロットの指示数量を使用
                      --****************************************
                      WHEN (xmld.record_type_code = gc_rec_type_inst)
                        AND (ir_get_data.no_instr_actual = gc_yn_div_n)
                      THEN
-                        CASE 
-                         -- 品目区分が製品、かつ
-                         -- 入出庫換算単位がNULLでない、かつ
-                         -- 商品区分がドリンク、かつ
-                         -- ケース入数が1以上の場合
-                         WHEN ((xicv.item_class_code = '5')
-                          AND (ir_get_data.conv_unit IS NOT NULL)
-                          AND (ir_get_data.prod_class_code = '2')
-                          AND (ir_get_data.num_of_cases > 0))THEN
-                              -- 換算する
-                           ROUND(xmld.actual_quantity / ir_get_data.num_of_cases, 3)
---
-                        ELSE
-                              -- 換算しない
-                           xmld.actual_quantity
-                        END
+                       CASE
+                         WHEN ((xicv.item_class_code = '5')            -- 品目区分が製品、かつ
+                          AND (ir_get_data.conv_unit IS NOT NULL)      -- 入出庫換算単位がNULLでない、かつ
+                          AND (ir_get_data.prod_class_code = '2')      -- 商品区分がドリンク、かつ
+                          AND (ir_get_data.num_of_cases > 0))THEN      -- ケース入数が1以上の場合
+                           ROUND(xmld.actual_quantity / ir_get_data.num_of_cases, 3)   -- 換算する
+                         ELSE
+                           xmld.actual_quantity   -- 換算しない
+                         END
 --
                      --****************************************
-                     --*  指示あり実績の場合(指示ロットなし)
+                     --*  指示あり実績の場合(指示ロットなし)       ※明細の依頼数を使用
                      --****************************************
                      WHEN (ir_get_data.no_instr_actual = gc_yn_div_n)   -- 指示あり実績
                        AND (ir_get_data.lot_inst_cnt = 0)               -- 指示ロットが０件
                        AND (ir_get_data.row_num = 1)                    -- ロット割れの場合は最初のロットにのみ出力する
                      THEN
                         CASE
-                         -- 品目区分が製品、かつ
-                         -- 入出庫換算単位がNULLでない、かつ
-                         -- 商品区分がドリンク、かつ
-                         -- ケース入数が1以上の場合
-                         WHEN ((xicv.item_class_code = '5')
-                          AND (ir_get_data.conv_unit IS NOT NULL)
-                          AND (ir_get_data.prod_class_code = '2')
-                          AND (ir_get_data.num_of_cases > 0))THEN
-                              -- 換算する
-                           ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)
---
-                        ELSE
-                              -- 換算しない
-                           ir_get_data.quant_r
-                        END
--- 2008/11/17 統合指摘#651 Add End --------------------------------------------------------------------------------------
+                          WHEN ((xicv.item_class_code = '5')              -- 品目区分が製品、かつ
+                           AND (ir_get_data.conv_unit IS NOT NULL)        -- 入出庫換算単位がNULLでない、かつ
+                           AND (ir_get_data.prod_class_code = '2')        -- 商品区分がドリンク、かつ
+                           AND (ir_get_data.num_of_cases > 0))THEN        -- ケース入数が1以上の場合
+                            ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)  -- 換算する
+                          ELSE
+                            ir_get_data.quant_r  -- 換算しない
+                          END
+                      -- 2008/11/17 統合指摘#651 Add End ------------------------------------------------------------------
 --
                       ELSE 0
                     END )
@@ -1507,23 +1490,17 @@ AS
 --                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
 --                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
 ---- mod end ver1.3
-                         -- 品目区分が製品、かつ
-                         -- 入出庫換算単位がNULLでない、かつ
-                         -- 商品区分がドリンク、かつ
-                         -- ケース入数が1以上の場合
-                         WHEN ((xicv.item_class_code = '5')
-                          AND (ir_get_data.conv_unit IS NOT NULL)
-                          AND (ir_get_data.prod_class_code = '2')
-                          AND (ir_get_data.num_of_cases > 0)) THEN
+                         WHEN ((xicv.item_class_code = '5')             -- 品目区分が製品、かつ
+                          AND (ir_get_data.conv_unit IS NOT NULL)       -- 入出庫換算単位がNULLでない、かつ
+                          AND (ir_get_data.prod_class_code = '2')       -- 商品区分がドリンク、かつ
+                          AND (ir_get_data.num_of_cases > 0)) THEN      -- ケース入数が1以上の場合
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
-                              -- 換算する
 -- mod start ver1.2
 --                              (xmld.actual_quantity/ir_get_data.num_of_cases)
-                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)    -- 換算する
 -- mod end ver1.2
                         ELSE
-                              -- 換算しない
-                              (xmld.actual_quantity/1)
+                              (xmld.actual_quantity/1)  -- 換算しない
                         END
                       ELSE 0
                     END )
@@ -1540,24 +1517,18 @@ AS
 ----                           AND ir_get_data.conv_unit IS NOT NULL THEN -- 入出庫換算単位がNULLでない
 --                           AND ir_get_data.conv_unit IS NOT NULL      -- 入出庫換算単位がNULLでない
 --                           AND ir_get_data.prod_class_code = '2' THEN -- 商品区分がドリンク
-                         -- 品目区分が製品、かつ
-                         -- 入出庫換算単位がNULLでない、かつ
-                         -- 商品区分がドリンク、かつ
-                         -- ケース入数が1以上の場合
-                         WHEN ((xicv.item_class_code = '5')
-                          AND (ir_get_data.conv_unit IS NOT NULL)
-                          AND (ir_get_data.prod_class_code = '2')
-                          AND (ir_get_data.num_of_cases > 0)) THEN
+                         WHEN ((xicv.item_class_code = '5')             -- 品目区分が製品、かつ
+                          AND (ir_get_data.conv_unit IS NOT NULL)       -- 入出庫換算単位がNULLでない、かつ
+                          AND (ir_get_data.prod_class_code = '2')       -- 商品区分がドリンク、かつ
+                          AND (ir_get_data.num_of_cases > 0)) THEN      -- ケース入数が1以上の場合
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod end ver1.3
-                              -- 換算する
 -- mod start ver1.2
 --                              (xmld.actual_quantity/ir_get_data.num_of_cases)
-                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
+                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)  -- 換算する
 -- mod end ver1.2
                         ELSE
-                              -- 換算しない
-                              (xmld.actual_quantity/1)
+                              (xmld.actual_quantity/1)  -- 換算しない
                         END
                       ELSE 0
                     END )
