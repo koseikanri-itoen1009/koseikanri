@@ -138,10 +138,7 @@ COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.ar_interface_flag             I
 COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.gl_interface_flag             IS 'GLインタフェース済フラグ';
 COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.dwh_interface_flag            IS '情報システムインタフェース済フラグ';
 COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.edi_interface_flag            IS 'EDI送信済みフラグ';
--- 2009/02/07 UPDATE SCS SAKAWA 障害001対応 START
---COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v_vedi_send_date                IS 'EDI送信日時';
-COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.vedi_send_date                IS 'EDI送信日時';
--- 2009/02/07 UPDATE SCS SAKAWA 障害001対応 END
+COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.edi_send_date                 IS 'EDI送信日時';
 COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.hht_dlv_input_date            IS 'HHT納品入力日時';
 COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.dlv_by_code                   IS '納品者コード';
 COMMENT ON COLUMN apps.xxcsm_sales_exp_headers_v.create_class                  IS '作成元区分';
