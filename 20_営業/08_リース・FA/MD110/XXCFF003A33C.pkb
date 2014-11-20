@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF003A33C(body)
  * Description      : リース物件コード訂正
  * MD.050           : MD050_CFF_003_A33_リース物件コード訂正
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009-02-09    1.1   SCS 増子 秀幸    [障害CFF_006] ログ出力先不具合対応
  *  2009-02-17    1.2   SCS 増子 秀幸    [障害CFF_034] 履歴設定値不具合対応
  *  2009-02-25    1.3   SCS 増子 秀幸    [障害CFF_055] WHOカラム未設定不具合対応
+ *  2013-07-17    1.4   SCSK 中野 徹也   [E_本稼動_10871] 消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -1025,6 +1026,9 @@ AS
           info_sys_if_date,                          -- リース管理情報連携日
           first_installation_address,                -- 初回設置場所
           first_installation_place,                  -- 初回設置先
+-- 2013/07/17 Ver.1.4 T.Nakano ADD Start
+          tax_code,                                  -- 税金コード
+-- 2013/07/17 Ver.1.4 T.Nakano ADD END
           accounting_date,                           -- 計上日
           accounting_if_flag,                        -- 会計ＩＦフラグ
           description,                               -- 摘要
@@ -1074,6 +1078,9 @@ AS
                xcl.info_sys_if_date,                 -- リース管理情報連携日
                xcl.first_installation_address,       -- 初回設置場所
                xcl.first_installation_place,         -- 初回設置先
+-- 2013/07/17 Ver.1.4 T.Nakano ADD Start
+               xcl.tax_code,                         -- 税金コード
+-- 2013/07/17 Ver.1.4 T.Nakano ADD END
                gr_init_rec.process_date,             -- 計上日(業務日付)
                cv_if_flag_one,                       -- 会計IFフラグ('1'(未送信))
                NULL,                                 -- 摘要(NULL)
