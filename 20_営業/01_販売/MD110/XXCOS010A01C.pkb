@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,11 @@ AS
  *                                       [T1_0243]品目取得時、子品目対象外条件追加
  *  2009/06/29    1.6   M.Sano           [T1_0022],[T1_0023],[T1_0024],[T1_0042],[T1_0201]
  *                                       情報区分による必須チェックの実行制御、ブレイクキー変更対応
+ *  2009/07/16    1.7   M.Sano           [0000345]店舗納品日出力不正対応
+ *  2009/07/22    1.8   M.Sano           [0000644]端数処理対応
+ *                                       [0000436]PT対応
+ *  2009/07/24    1.8   N.Maeda          [0000644](伝票計)原価金額積上処理追加
+ *  2009/08/06    1.8   M.Sano           [0000644]レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -523,8 +528,12 @@ AS
             edi.order_unit_price             order_unit_price,                  -- 原単価（発注）
             edi.shipping_unit_price          shipping_unit_price,               -- 原単価（出荷）
             edi.order_cost_amt               order_cost_amt,                    -- 原価金額（発注）
-            edi.shipping_cost_amt            shipping_cost_amt,                 -- 原価金額（出荷）
-            edi.stockout_cost_amt            stockout_cost_amt,                 -- 原価金額（欠品）
+-- 2009/07/22 Ver.1.8 M.Sano Mod Start
+--            edi.shipping_cost_amt            shipping_cost_amt,                 -- 原価金額（出荷）
+--            edi.stockout_cost_amt            stockout_cost_amt,                 -- 原価金額（欠品）
+            TRUNC(edi.shipping_cost_amt)     shipping_cost_amt,                 -- 原価金額（出荷）
+            TRUNC(edi.stockout_cost_amt)     stockout_cost_amt,                 -- 原価金額（欠品）
+-- 2009/07/22 Ver.1.8 M.Sano Mod End
             edi.selling_price                selling_price,                     -- 売単価
             edi.order_price_amt              order_price_amt,                   -- 売価金額（発注）
             edi.shipping_price_amt           shipping_price_amt,                -- 売価金額（出荷）
@@ -621,7 +630,11 @@ AS
       case_order_qty                         NUMBER,                            -- 発注数量（ケース）
       ball_order_qty                         NUMBER,                            -- 発注数量（ボール）
       sum_order_qty                          NUMBER,                            -- 発注数量（合計、バラ）
-      order_cost_amt                         NUMBER                             -- 原価金額(発注)
+      order_cost_amt                         NUMBER,                            -- 原価金額(発注)
+-- *************************** 2009/07/24 1.8 N.Maeda ADD START ********************************** --
+      shipping_cost_amt                      NUMBER,                            -- 原価金額（出荷）
+      stockout_cost_amt                      NUMBER                             -- 原価金額（欠品）
+-- *************************** 2009/07/24 1.8 N.Maeda ADD  END  ********************************** --
     );
 --
   -- EDI受注情報ワークテーブル レコードタイプ定義
@@ -2743,7 +2756,10 @@ AS
     gt_edi_errors(ln_idx).edi_err_id                   := ln_seq;                                        -- EDIエラーID
     gt_edi_errors(ln_idx).edi_create_class             := gv_creation_class;                             -- EDI作成元区分：受注
     gt_edi_errors(ln_idx).chain_code                   := it_edi_work.edi_chain_code;                    -- EDIチェーン店コード
-    gt_edi_errors(ln_idx).dlv_date                     := it_edi_work.center_delivery_date;              -- 店舗納品日
+-- 2009/07/16 Ver.1.7 M.Sano Mod Start
+--    gt_edi_errors(ln_idx).dlv_date                     := it_edi_work.center_delivery_date;              -- 店舗納品日
+    gt_edi_errors(ln_idx).dlv_date                     := it_edi_work.shop_delivery_date;                -- 店舗納品日
+-- 2009/07/16 Ver.1.7 M.Sano Mod End
     gt_edi_errors(ln_idx).invoice_number               := it_edi_work.invoice_number;                    -- 伝票番号
     gt_edi_errors(ln_idx).shop_code                    := it_edi_work.shop_code;                         -- 店舗コード
     gt_edi_errors(ln_idx).line_no                      := it_edi_work.line_no;                           -- 行番号
@@ -3793,8 +3809,14 @@ AS
       END IF;
 --
       -- 原価金額(発注)を再計算【発注数量(合計、バラ)×原単価(発注)】
-      gt_edi_work(ln_idx).order_cost_amt := NVL( gt_edi_work(ln_idx).sum_order_qty, 0 )
-                                          * NVL( gt_edi_work(ln_idx).order_unit_price, 0 );
+-- 2009/08/06 Ver.1.8 M.Sano Mod Start
+--      gt_edi_work(ln_idx).order_cost_amt := NVL( gt_edi_work(ln_idx).sum_order_qty, 0 )
+--                                          * NVL( gt_edi_work(ln_idx).order_unit_price, 0 );
+      IF ( NVL(gt_edi_work(ln_idx).order_cost_amt, 0) = 0 ) THEN
+        gt_edi_work(ln_idx).order_cost_amt := TRUNC(NVL( gt_edi_work(ln_idx).sum_order_qty, 0 )
+                                                    * NVL( gt_edi_work(ln_idx).order_unit_price, 0 ));
+      END IF;
+-- 2009/08/06 Ver.1.8 M.Sano Mod End
 --
       -- 伝票エラーフラグがエラーになっている場合
       IF ( gn_invoice_err_flag = 1 ) THEN
@@ -5644,6 +5666,11 @@ AS
     gt_inv_total.ball_order_qty := gt_inv_total.ball_order_qty + NVL( it_edi_work.ball_order_qty, 0 );   -- 発注数量（ボール）
     gt_inv_total.sum_order_qty  := gt_inv_total.sum_order_qty  + NVL( it_edi_work.sum_order_qty, 0 );    -- 発注数量（合計、バラ）
     gt_inv_total.order_cost_amt := gt_inv_total.order_cost_amt + NVL( it_edi_work.order_cost_amt, 0 );   -- 原価金額（発注）
+-- *************************** 2009/07/24 1.8 N.Maeda ADD START ********************************** --
+    gt_inv_total.shipping_cost_amt := gt_inv_total.shipping_cost_amt + NVL( it_edi_work.shipping_cost_amt , 0 ); -- 原価金額（出荷）
+    gt_inv_total.stockout_cost_amt := gt_inv_total.stockout_cost_amt + NVL( it_edi_work.stockout_cost_amt , 0 ); -- 原価金額（欠品）
+-- *************************** 2009/07/24 1.8 N.Maeda ADD  END  ********************************** --
+    
 --
   EXCEPTION
 --
@@ -5723,6 +5750,10 @@ AS
       gt_edi_headers(ln_idx).invoice_ball_order_qty    := gt_inv_total.ball_order_qty;         -- 発注数量（ボール）
       gt_edi_headers(ln_idx).invoice_sum_order_qty     := gt_inv_total.sum_order_qty;          -- 発注数量（合計、バラ）
       gt_edi_headers(ln_idx).invoice_order_cost_amt    := gt_inv_total.order_cost_amt;         -- 原価金額（発注）
+-- *************************** 2009/07/24 1.8 N.Maeda ADD START ********************************** --
+      gt_edi_headers(ln_idx).invoice_shipping_cost_amt := gt_inv_total.shipping_cost_amt;      -- 原価金額（出荷）
+      gt_edi_headers(ln_idx).invoice_stockout_cost_amt := gt_inv_total.stockout_cost_amt;      -- 原価金額（欠品）
+-- *************************** 2009/07/24 1.8 N.Maeda ADD  END  ********************************** --
     END IF;
 --
   EXCEPTION
@@ -7077,6 +7108,10 @@ AS
           gt_inv_total.ball_order_qty := 0;
           gt_inv_total.sum_order_qty  := 0;
           gt_inv_total.order_cost_amt := 0;
+-- *************************** 2009/07/24 1.8 N.Maeda ADD START ********************************** --
+          gt_inv_total.shipping_cost_amt := 0;
+          gt_inv_total.stockout_cost_amt := 0;
+-- *************************** 2009/07/24 1.8 N.Maeda ADD  END  ********************************** --
 --
           <<loop_set_edi_lines>>
           FOR ln_Idx IN 1..gt_edi_work.COUNT LOOP
