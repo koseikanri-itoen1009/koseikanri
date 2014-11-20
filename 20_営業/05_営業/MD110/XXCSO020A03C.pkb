@@ -9,7 +9,7 @@ AS
  *                    画面にて変更された既存顧客情報を顧客マスタに反映します。
  * MD.050           : MD050_CSO_020_A03_各種マスタ反映処理機能
  *
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-05-08    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0913)
  *  2009-05-21    1.3   Kazuo.Satomura   システムテスト障害対応(T1_1092)
+ *  2009-06-30    1.4   Kazuo.Satomura   統合テスト障害対応(0000209)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -2868,12 +2869,16 @@ AS
       -- *** 共通関数OTHERS例外ハンドラ ***
       errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
       retcode := cv_status_error;
-      ROLLBACK;
+      /* 2009.06.30 K.Satomura 統合テスト障害対応(0000209) START */
+      --ROLLBACK;
+      /* 2009.06.30 K.Satomura 統合テスト障害対応(0000209) END */
     WHEN OTHERS THEN
       -- *** OTHERS例外ハンドラ ***
       errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       retcode := cv_status_error;
-      ROLLBACK;
+      /* 2009.06.30 K.Satomura 統合テスト障害対応(0000209) START */
+      --ROLLBACK;
+      /* 2009.06.30 K.Satomura 統合テスト障害対応(0000209) END */
   END main;
 --
 --###########################  固定部 END   #######################################################
