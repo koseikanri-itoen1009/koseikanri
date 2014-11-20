@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.24
+ * Version                : 1.25
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -53,7 +53,7 @@ AS
  *  2008/12/07    1.22  M.Hokkanji       本番障害514対応
  *  2008/12/13    1.23  M.Hokkanji       本番障害554対応
  *  2008/12/24    1.24  M.Hokkanji       本番障害839対応
- *
+ *  2009/01/09    1.25  H.Itou           本番障害894対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -487,62 +487,82 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 1.物流構成アドオンマスタのチェック
-    SELECT COUNT(1)
-    INTO   ln_cnt
-    FROM   xxcmn_sourcing_rules2_v                            -- 物流構成情報VIEW2
-    WHERE  item_code            =  iv_shipping_item_code      -- 品目コード
-    AND    ship_to_code         =  iv_deliver_to              -- 配送先コード
-    AND    delivery_whse_code   =  iv_deliver_from            -- 出荷元保管場所コード
-    AND    start_date_active    <= id_schedule_ship_date      -- 出庫日
-    AND    end_date_active      >= id_schedule_ship_date;     -- 出庫日
+-- 2009/01/09 H.Itou Mod Start 本番障害#894
+--    -- 1.物流構成アドオンマスタのチェック
+--    SELECT COUNT(1)
+--    INTO   ln_cnt
+--    FROM   xxcmn_sourcing_rules2_v                            -- 物流構成情報VIEW2
+--    WHERE  item_code            =  iv_shipping_item_code      -- 品目コード
+--    AND    ship_to_code         =  iv_deliver_to              -- 配送先コード
+--    AND    delivery_whse_code   =  iv_deliver_from            -- 出荷元保管場所コード
+--    AND    start_date_active    <= id_schedule_ship_date      -- 出庫日
+--    AND    end_date_active      >= id_schedule_ship_date;     -- 出庫日
+----
+--    IF (ln_cnt = 0) THEN
+--      -- 2.物流構成アドオンマスタのチェック(1で該当なしの場合)
+--      SELECT COUNT(1)
+--      INTO   ln_cnt2
+--      FROM   xxcmn_sourcing_rules2_v                            -- 物流構成情報VIEW2
+--      WHERE  item_code            =  iv_shipping_item_code      -- 品目コード
+--      AND    base_code            =  iv_head_sales_branch       -- 拠点コード
+--      AND    delivery_whse_code   =  iv_deliver_from            -- 出荷元保管場所コード
+--      AND    start_date_active    <= id_schedule_ship_date      -- 出庫日
+--      AND    end_date_active      >= id_schedule_ship_date;     -- 出庫日
+----
+--      IF (ln_cnt2 = 0) THEN
+--        -- 3.物流構成アドオンマスタのチェック(2で該当なしの場合)
+--        SELECT COUNT(1)
+--        INTO   ln_cnt3
+--        FROM   xxcmn_sourcing_rules2_v                           -- 物流構成情報VIEW2
+--        WHERE  item_code            =  cv_ZZZZZZZ
+--        AND    ship_to_code         =  iv_deliver_to             -- 配送先コード
+--        AND    delivery_whse_code   =  iv_deliver_from           -- 出荷元保管場所コード
+--        AND    start_date_active    <= id_schedule_ship_date     -- 出庫日
+--        AND    end_date_active      >= id_schedule_ship_date;    -- 出庫日
+----
+--        IF (ln_cnt3 = 0) THEN
+--          -- 4.物流構成アドオンマスタのチェック(3で該当なしの場合)
+--          SELECT COUNT(1)
+--          INTO   ln_cnt4
+--          FROM   xxcmn_sourcing_rules2_v                            -- 物流構成情報VIEW2
+--          WHERE  item_code            =  cv_ZZZZZZZ
+--          AND    base_code            =  iv_head_sales_branch       -- 拠点コード
+--          AND    delivery_whse_code   =  iv_deliver_from            -- 出荷元保管場所コード
+--          AND    start_date_active    <= id_schedule_ship_date      -- 出庫日
+--          AND    end_date_active      >= id_schedule_ship_date;     -- 出庫日
+----
+--          IF (ln_cnt4 = 0) THEN
+--            -- 5.存在しない場合、エラー
+--            RETURN gn_status_error;
+--          END IF;
+----
+--        END IF;
+----
+--      END IF;
+----
+--    END IF;
 --
-    IF (ln_cnt = 0) THEN
-      -- 2.物流構成アドオンマスタのチェック(1で該当なしの場合)
-      SELECT COUNT(1)
-      INTO   ln_cnt2
-      FROM   xxcmn_sourcing_rules2_v                            -- 物流構成情報VIEW2
-      WHERE  item_code            =  iv_shipping_item_code      -- 品目コード
-      AND    base_code            =  iv_head_sales_branch       -- 拠点コード
-      AND    delivery_whse_code   =  iv_deliver_from            -- 出荷元保管場所コード
-      AND    start_date_active    <= id_schedule_ship_date      -- 出庫日
-      AND    end_date_active      >= id_schedule_ship_date;     -- 出庫日
+--    -- 存在する
+--    RETURN gn_status_normal;
+----
+    -- 物流構成存在チェック関数
+    lv_retcode := xxwsh_common_pkg.chk_sourcing_rules(
+                    it_item_code          => iv_shipping_item_code    -- 1.品目コード
+                   ,it_base_code          => iv_head_sales_branch     -- 2.管轄拠点
+                   ,it_ship_to_code       => iv_deliver_to            -- 3.配送先
+                   ,it_delivery_whse_code => iv_deliver_from          -- 4.出庫倉庫
+                   ,id_standard_date      => id_schedule_ship_date    -- 5.基準日(適用日基準日)
+                  );
 --
-      IF (ln_cnt2 = 0) THEN
-        -- 3.物流構成アドオンマスタのチェック(2で該当なしの場合)
-        SELECT COUNT(1)
-        INTO   ln_cnt3
-        FROM   xxcmn_sourcing_rules2_v                           -- 物流構成情報VIEW2
-        WHERE  item_code            =  cv_ZZZZZZZ
-        AND    ship_to_code         =  iv_deliver_to             -- 配送先コード
-        AND    delivery_whse_code   =  iv_deliver_from           -- 出荷元保管場所コード
-        AND    start_date_active    <= id_schedule_ship_date     -- 出庫日
-        AND    end_date_active      >= id_schedule_ship_date;    -- 出庫日
+    -- 戻り値が正常でない場合、エラー
+    IF (lv_retcode <> gv_status_normal) THEN
+      RETURN gn_status_error;
 --
-        IF (ln_cnt3 = 0) THEN
-          -- 4.物流構成アドオンマスタのチェック(3で該当なしの場合)
-          SELECT COUNT(1)
-          INTO   ln_cnt4
-          FROM   xxcmn_sourcing_rules2_v                            -- 物流構成情報VIEW2
-          WHERE  item_code            =  cv_ZZZZZZZ
-          AND    base_code            =  iv_head_sales_branch       -- 拠点コード
-          AND    delivery_whse_code   =  iv_deliver_from            -- 出荷元保管場所コード
-          AND    start_date_active    <= id_schedule_ship_date      -- 出庫日
-          AND    end_date_active      >= id_schedule_ship_date;     -- 出庫日
---
-          IF (ln_cnt4 = 0) THEN
-            -- 5.存在しない場合、エラー
-            RETURN gn_status_error;
-          END IF;
---
-        END IF;
---
-      END IF;
---
+     -- 戻り値が正常の場合、正常
+    ELSE
+      RETURN gn_status_normal;
     END IF;
---
-    -- 存在する
-    RETURN gn_status_normal;
+-- 2009/01/09 H.Itou Mod End
 --
 --
   EXCEPTION
