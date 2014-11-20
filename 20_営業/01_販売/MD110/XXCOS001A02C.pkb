@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/07/28    1.8   T.Tominaga       [0000881]拠点名称・顧客名の桁数編集
  *  2009/10/02    1.9   N.Maeda          [0001378]エラーリスト出力桁数編集
  *  2010/02/01    1.10  N.Maeda          [E_本稼動_01353] 入金日-AR会計期間妥当性チェック、出力内容修正
+ *  2011/02/23    1.11  Y.Nishino        [E_本稼動_02246] 入金データ登録情報に納品先拠点コードを追加する
  *
  *****************************************************************************************/
 --
@@ -203,6 +204,10 @@ AS
     INDEX BY PLS_INTEGER;   -- 入金区分
   TYPE g_tab_pay_hht_invoice_no      IS TABLE OF xxcos_payment.hht_invoice_no%TYPE
     INDEX BY PLS_INTEGER;   -- HHT伝票No
+-- ************ 2011/02/23 1.11 Y.Nishino ADD START ************ --
+  TYPE g_tab_pay_delivery_base_code  IS TABLE OF xxcos_payment.delivery_to_base_code%TYPE
+    INDEX BY PLS_INTEGER;   -- 納品先拠点コード
+-- ************ 2011/02/23 1.11 Y.Nishino ADD END   ************ --
 --
   -- エラーデータ格納用変数
   TYPE g_tab_err_base_code           IS TABLE OF xxcos_rep_hht_err_list.base_code%TYPE
@@ -255,6 +260,9 @@ AS
   gt_pay_payment_date     g_tab_pay_payment_date;        -- 入金日
   gt_pay_payment_class    g_tab_pay_payment_class;       -- 入金区分
   gt_pay_hht_invoice_no   g_tab_pay_hht_invoice_no;      -- HHT伝票No
+-- ************ 2011/02/23 1.11 Y.Nishino ADD START ************ --
+  gt_pay_delivery_to_base_code  g_tab_pay_delivery_base_code;  -- 納品先拠点コード
+-- ************ 2011/02/23 1.11 Y.Nishino ADD END   ************ --
   -- HHTエラーリスト帳票ワークテーブル登録データ
   gt_err_base_code        g_tab_err_base_code;           -- 拠点コード
   gt_err_base_name        g_tab_err_base_name;           -- 拠点名称
@@ -1395,6 +1403,9 @@ AS
         gt_party_id(ln_ok_no)             :=  lt_party_id;           -- パーティID
         gt_party_name(ln_ok_no)           :=  lt_customer_name;      -- 顧客名称
         gt_cus_status(ln_ok_no)           :=  lt_cus_status;         -- 顧客ステータス
+-- ************ 2011/02/23 1.11 Y.Nishino ADD START ************ --
+        gt_pay_delivery_to_base_code(ln_ok_no)  :=  lt_base_code;    -- 納品先拠点コード
+-- ************ 2011/02/23 1.11 Y.Nishino ADD END   ************ --
         ln_ok_no := ln_ok_no + 1;
       END IF;
 --
@@ -1683,6 +1694,9 @@ AS
             program_application_id,
             program_id,
             program_update_date
+-- ************ 2011/02/23 1.11 Y.Nishino ADD START ************ --
+           ,delivery_to_base_code  --納品先拠点コード
+-- ************ 2011/02/23 1.11 Y.Nishino ADD END   ************ --
           )
         VALUES
           (
@@ -1703,6 +1717,9 @@ AS
             cn_program_application_id,                   -- コンカレント・プログラム・アプリケーションID
             cn_program_id,                               -- コンカレント・プログラムID
             cd_program_update_date                       -- プログラム更新日
+-- ************ 2011/02/23 1.11 Y.Nishino ADD START ************ --
+           ,gt_pay_delivery_to_base_code(i)              -- 納品先拠点コード
+-- ************ 2011/02/23 1.11 Y.Nishino ADD END   ************ --
           );
 --
       -- 入金データ作成件数セット

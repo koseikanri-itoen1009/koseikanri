@@ -10,6 +10,8 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS S.Miyakoshi  新規作成
+ *  2011/02/22    1.1   SCS Y.Nishino    [E_本稼動_02246]
+ *                                       納品先拠点コード(DELIVERY_TO_BASE_CODE)を追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_PAYMENT
@@ -31,6 +33,9 @@ CREATE TABLE XXCOS.XXCOS_PAYMENT
   PROGRAM_APPLICATION_ID       NUMBER(15),                         --コンカレント・プログラム・アプリケーションID
   PROGRAM_ID                   NUMBER(15),                         --コンカレント・プログラムID
   PROGRAM_UPDATE_DATE          DATE,                               --プログラム更新日
+-- ************ 2011/02/22 1.1 Y.Nishino ADD START ************ --
+  DELIVERY_TO_BASE_CODE        VARCHAR2(4),                        --納品先顧客コード
+-- ************ 2011/02/22 1.1 Y.Nishino ADD END   ************ --
   CONSTRAINT XXCOS_PAYMENT_PK PRIMARY KEY ( LINE_ID )
   USING INDEX TABLESPACE xxidx2
   ) ;
@@ -52,5 +57,8 @@ COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT.REQUEST_ID                   IS '要求ID';
 COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT.PROGRAM_APPLICATION_ID       IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT.PROGRAM_ID                   IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT.PROGRAM_UPDATE_DATE          IS 'プログラム更新日';
+-- ************ 2011/02/22 1.1 Y.Nishino ADD START ************ --
+COMMENT ON COLUMN XXCOS.XXCOS_PAYMENT.DELIVERY_TO_BASE_CODE        IS '納品先顧客コード';
+-- ************ 2011/02/22 1.1 Y.Nishino ADD END   ************ --
 --
 COMMENT ON TABLE  XXCOS.XXCOS_PAYMENT                              IS '入金テーブル';
