@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A16R(body)
  * Description      : 受払残高表（拠点別・合計）
  * MD.050           : 受払残高表（拠点別・合計） <MD050_XXCOI_006_A16>
- * Version          : V1.5
+ * Version          : V1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/07/13    1.3   N.Abe            [0000282]百貨店計、専門店計の名称出力を修正
  *  2009/07/14    1.4   N.Abe            [0000462]群コード取得方法修正
  *  2009/07/21    1.5   H.Sasaki         [0000642]払出合計の金額算出方法を変更
+ *  2009/09/11    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
  *
  *****************************************************************************************/
 --
@@ -273,6 +274,10 @@ AS
     AND     xirm.organization_id    =   msib.organization_id
     AND     msib.segment1           =   iimb.item_no
     AND     iimb.item_id            =   xsib.item_id
+-- == 2009/09/11 V1.6 Added START ===============================================================
+    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
+                                  AND     TRUNC(xsib.end_date_active)
+-- == 2009/09/11 V1.6 Added END   ===============================================================
     AND     xirm.inventory_item_id  =   mic.inventory_item_id
     AND     xirm.organization_id    =   mic.organization_id
     AND     mic.category_id         =   mcb.category_id
@@ -349,6 +354,10 @@ AS
     AND     xirm.organization_id    =   msib.organization_id
     AND     msib.segment1           =   iimb.item_no
     AND     iimb.item_id            =   xsib.item_id
+-- == 2009/09/11 V1.6 Added START ===============================================================
+    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
+                                  AND     TRUNC(xsib.end_date_active)
+-- == 2009/09/11 V1.6 Added END   ===============================================================
     AND     xirm.inventory_item_id  =   mic.inventory_item_id
     AND     xirm.organization_id    =   mic.organization_id
     AND     mic.category_id         =   mcb.category_id
@@ -443,6 +452,10 @@ AS
     AND     xirm.organization_id      =   msib.organization_id
     AND     msib.segment1             =   iimb.item_no
     AND     iimb.item_id              =   xsib.item_id
+-- == 2009/09/11 V1.6 Added START ===============================================================
+    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
+                                  AND     TRUNC(xsib.end_date_active)
+-- == 2009/09/11 V1.6 Added END   ===============================================================
     AND     xirm.inventory_item_id    =   mic.inventory_item_id
     AND     xirm.organization_id      =   mic.organization_id
     AND     mic.category_id           =   mcb.category_id
@@ -520,6 +533,10 @@ AS
     AND     xirm.organization_id    =   msib.organization_id
     AND     msib.segment1           =   iimb.item_no
     AND     iimb.item_id            =   xsib.item_id
+-- == 2009/09/11 V1.6 Added START ===============================================================
+    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
+                                  AND     TRUNC(xsib.end_date_active)
+-- == 2009/09/11 V1.6 Added END   ===============================================================
     AND     xirm.inventory_item_id  =   mic.inventory_item_id
     AND     xirm.organization_id    =   mic.organization_id
     AND     mic.category_id         =   mcb.category_id

@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2009/08/06    1.5   H.Sasaki         [0000893]PT対応
  *  2009/08/10    1.6   N.Abe            [0000809]消化VD保管場所の出力対応
  *  2009/08/19    1.7   N.Abe            [0001090]出力桁数の修正
+ *  2009/09/11    1.8   N.Abe            [0001293]管轄拠点からの取得方法修正
+ *                                       [0001266]OPM品目アドオンの取得方法修正
  *
  *****************************************************************************************/
 --
@@ -461,6 +463,10 @@ AS
     AND       ird.organization_id           =   sib.organization_id
     AND       sib.segment1                  =   iib.item_no                                   -- OPM品目コード
     AND       iib.item_id                   =   imb.item_id
+-- == 2009/09/11 V1.8 Added START ===============================================================
+    AND       TRUNC(gd_target_date) BETWEEN TRUNC(imb.start_date_active)
+                                    AND     TRUNC(imb.end_date_active)
+-- == 2009/09/11 V1.8 Added END   ===============================================================
     AND       (
                (iv_warehouse IS NULL)
                OR
@@ -1143,11 +1149,17 @@ AS
     --パラメータ.拠点が設定されている場合
     lv_sql_str  :=    lv_sql_str
 --                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
-                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
+-- == 2009/09/05 V1.8 Modified START ===============================================================
+--                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
+                ||  '  WHERE   xca.customer_code  ='   || '''' || iv_base_code || ''' ';
+-- == 2009/09/05 V1.8 Modified END   ===============================================================
   ELSE
     --パラメータ.拠点が設定されていない場合
     lv_sql_str  :=    lv_sql_str
-                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
+-- == 2009/09/05 V1.8 Modified START ===============================================================
+--                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
+                ||  '  WHERE   xca.customer_code  ='   || '''' || gv_user_base || ''' ';
+-- == 2009/09/05 V1.8 Modified END   ===============================================================
   END IF;
   lv_sql_str  :=    lv_sql_str
 -- == 2009/08/10 V1.6 Modified END   ===============================================================
@@ -1185,6 +1197,11 @@ AS
                 ||  'AND sib.organization_id = irm.organization_id '
                 ||  'AND sib.segment1 = iib.item_no '
                 ||  'AND iib.item_id = imb.item_id '
+-- == 2009/09/11 V1.8 Added START ===============================================================
+                ||  'AND TRUNC(TO_DATE(' 
+                ||  '''' || TO_CHAR(gd_target_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ')) '
+                ||  'BETWEEN TRUNC(imb.start_date_active) AND TRUNC(imb.end_date_active) '
+-- == 2009/09/11 V1.8 Added END   ===============================================================
                 ||  'AND msi.attribute4 = hca.account_number(+) '
                 ||  'AND msi.attribute7 = irm.base_code ';
   --
