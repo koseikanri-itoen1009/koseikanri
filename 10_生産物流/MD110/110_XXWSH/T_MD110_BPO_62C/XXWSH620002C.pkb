@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                       T_S_501T_S_601T_S_607、T_TE110_BPO_230-001 指摘440
  *                                       課題#32 単位/入数換算の処理ロジック
  *  2008/11/07    1.14  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
+ *  2008/11/13    1.15  Y.Yamamoto       統合指摘#595対応、内部変更#168
  *
  *****************************************************************************************/
 --
@@ -181,6 +182,9 @@ AS
   gc_freight_charge_code_1    CONSTANT  VARCHAR2(1)   := '1' ;              -- 1:対象
   gc_output_code_1            CONSTANT  VARCHAR2(1)   := '1' ;              -- 1:対象
 -- 2008/07/09 add S.Takemoto end
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+  gc_no_instr_actual_class_y  CONSTANT  VARCHAR2(1)   := 'Y' ;              -- 指示なし実績区分
+-- 2008/11/13 Y.Yamamoto v1.15 add end
   ------------------------------
   -- プロファイル関連
   ------------------------------
@@ -971,6 +975,9 @@ AS
     lv_sql_shu_where1 :=  lv_sql_shu_where1 
     || ' xoha.req_status >= '''|| gc_ship_status_close ||'''' 
     || ' AND xoha.req_status <> '''|| gc_ship_status_delete ||'''' 
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+    || ' AND xoha.schedule_ship_date IS NOT NULL' 
+-- 2008/11/13 Y.Yamamoto v1.15 add end
     || ' AND xoha.schedule_ship_date >= '''|| TRUNC(gt_param.iv_ship_from) ||'''' 
     || ' AND xoha.schedule_ship_date <= '''|| TRUNC(gt_param.iv_ship_to) ||'''' ;
     IF ( gt_param.iv_freight_carrier_code IS NOT NULL ) THEN
@@ -1207,6 +1214,10 @@ AS
     ------------------------------------------------
     || ' AND fu.user_id = '''|| FND_GLOBAL.USER_ID ||'''' 
     || ' AND fu.employee_id = papf.person_id ' 
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+    || ' AND xoha.schedule_ship_date   BETWEEN papf.effective_start_date' 
+    || ' AND NVL(papf.effective_end_date, xoha.schedule_ship_date)' 
+-- 2008/11/13 Y.Yamamoto v1.15 add end
     || ' AND (' 
     || ' NVL(papf.attribute3, '''|| gc_user_kbn_inside ||''') = '
     || gc_user_kbn_inside ||' ' 
@@ -1603,6 +1614,10 @@ AS
     ------------------------------------------------
     || ' AND fu.user_id = '''|| FND_GLOBAL.USER_ID ||'''' 
     || ' AND fu.employee_id = papf.person_id' 
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+    || ' AND xoha.schedule_ship_date   BETWEEN papf.effective_start_date' 
+    || ' AND NVL(papf.effective_end_date, xoha.schedule_ship_date)' 
+-- 2008/11/13 Y.Yamamoto v1.15 add end
     || ' AND (' 
     || ' NVL(papf.attribute3, '''|| gc_user_kbn_inside ||''') = '''|| gc_user_kbn_inside ||'''' 
     || ' OR' 
@@ -1885,6 +1900,10 @@ AS
     || ' xmrih.notif_status = '''|| gc_fixa_notif_end ||'''' 
     || ' )' 
     || ' )' 
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+    || ' AND ((xmrih.no_instr_actual_class IS NULL)' 
+    || ' OR (xmrih.no_instr_actual_class <> ''' || gc_no_instr_actual_class_y ||'''))' 
+-- 2008/11/13 Y.Yamamoto v1.15 add end
     -------------------------------------------------------------------------------
     -- 配車配送計画(アドオン)
     -------------------------------------------------------------------------------
@@ -2017,6 +2036,10 @@ AS
     -------------------------------------------------------------------------------
     || ' AND fu.user_id = '''|| FND_GLOBAL.USER_ID ||'''' 
     || ' AND fu.employee_id = papf.person_id '
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+    || ' AND xmrih.schedule_ship_date   BETWEEN papf.effective_start_date' 
+    || ' AND NVL(papf.effective_end_date, xmrih.schedule_ship_date)' 
+-- 2008/11/13 Y.Yamamoto v1.15 add end
     || ' AND (' 
     || ' NVL(papf.attribute3, '''|| gc_user_kbn_inside ||''') = '''|| gc_user_kbn_inside ||''''
     || ' OR' 
@@ -2293,6 +2316,10 @@ AS
     ------------------------------------------------
     || ' AND fu.user_id = '''|| FND_GLOBAL.USER_ID ||'''' 
     || ' AND fu.employee_id = papf.person_id' 
+-- 2008/11/13 Y.Yamamoto v1.15 add start
+    || ' AND xcs.schedule_ship_date   BETWEEN papf.effective_start_date' 
+    || ' AND NVL(papf.effective_end_date, xcs.schedule_ship_date)' 
+-- 2008/11/13 Y.Yamamoto v1.15 add end
     || ' AND (' 
     || ' NVL(papf.attribute3, '''|| gc_user_kbn_inside ||''') = '''|| gc_user_kbn_inside ||'''' 
     || ' OR' 
