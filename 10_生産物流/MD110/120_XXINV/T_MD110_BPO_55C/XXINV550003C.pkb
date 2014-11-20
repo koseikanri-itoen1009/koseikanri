@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.8
+ * Version          : 1.9
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -39,6 +39,7 @@ AS
  *  2008/09/26    1.6  Akiyosi Shiina   T_S_528対応
  *  2008/10/16    1.7  Takao Ohashi     T_S_492,T_S_557,T_S_494対応
  *  2008/11/11    1.8  Takao Ohashi     指摘549対応
+ *  2008/11/20    1.9  Takao Ohashi     指摘691対応
  *
  *****************************************************************************************/
 --
@@ -1133,6 +1134,9 @@ AS
     lv_sql_body := lv_sql_body || ' AND itp.item_id                = iimb.item_id' ;
 -- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
+-- add start ver1.9
+    lv_sql_body := lv_sql_body || ' AND ximb.item_id                = iimb.item_id' ;
+-- add end ver1.9
 /*
     lv_sql_body := lv_sql_body || ' AND ' || gv_sql_date_from || ' BETWEEN ximv.start_date_active' ;
     lv_sql_body := lv_sql_body || '                                    AND NVL(ximv.end_date_active,' || gv_sql_date_from || ')' ;
