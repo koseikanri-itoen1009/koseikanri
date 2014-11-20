@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/02/25    1.1   SCS Uda          結合テスト仕様変更（結合障害No.014）
  *  2009/04/07    1.2   SCS Uda          システムテスト障害対応（T1_0277、T1_0278、T1_0280、T1_0281、T1_0368）
  *  2009/04/14    1.3   SCS Uda          システムテスト障害対応（T1_0542）
+ *  2009/04/21    1.4   SCS Uda          システムテスト障害対応（T1_0722）
  *
  *****************************************************************************************/
 --
@@ -230,8 +231,12 @@ AS
   cv_source_rule            CONSTANT NUMBER        := 1;                        -- ソースルール
   cv_mrp_sourcing_rule      CONSTANT NUMBER        := 2;                        -- 物流構成表
   --翌週取得用コンスタント
-  cv_sunday                 CONSTANT VARCHAR2(100)        := '日';              -- 翌週開始日取得用
-  cv_saturday               CONSTANT VARCHAR2(100)        := '土';              -- 翌週終了日取得用
+--20090421_Ver1.4_T1_0722_SCS.Uda_ADD_START
+--  cv_sunday                 CONSTANT VARCHAR2(100)        := '日';              -- 翌週開始日取得用
+--  cv_saturday               CONSTANT VARCHAR2(100)        := '土';              -- 翌週終了日取得用
+  cn_sunday                 CONSTANT NUMBER        := 1;              -- 翌週開始日取得用
+  cn_saturday               CONSTANT NUMBER        := 7;              -- 翌週終了日取得用
+--20090421_Ver1.4_T1_0722_SCS.Uda_ADD_END
   --プロファイル取得
   cv_master_org_id          CONSTANT VARCHAR2(20)  := 'XXCMN_MASTER_ORG_ID';           -- プロファイル取得用 マスタ組織
   cv_profile_name_mo_id     CONSTANT VARCHAR2(20)  := 'マスタ組織';                    -- プロファイル名 マスタ組織
@@ -3771,16 +3776,25 @@ AS
        msdate.organization_id        plant_org_id             --工場倉庫
       ,msdate.inventory_item_id      inventory_item_id        --在庫品目ID
       ,msdate.schedule_date          product_schedule_date    --計画日付
+--20090421_Ver1.4_T1_0722_SCS_Uda_ADD_START
+      ,mp.organization_code          plant_org_code           --工場倉庫コード
+--20090421_Ver1.4_T1_0722_SCS_Uda_ADD_END
       ,SUM(msdate.schedule_quantity)      product_schedule_qty     --計画数量
     FROM
        mrp_schedule_designators  msdesi        --基準計画名テーブル
       ,mrp_schedule_dates        msdate        --基準計画日付テーブル
+--20090421_Ver1.4_T1_0722_SCS_Uda_ADD_START
+      ,mtl_parameters            mp            --組織パラメータ
+--20090421_Ver1.4_T1_0722_SCS_Uda_ADD_END
     WHERE  msdate.schedule_designator =  msdesi.schedule_designator
       AND  msdate.organization_id     =  msdesi.organization_id
-      AND  msdate.schedule_date      >=  NEXT_DAY(cd_sys_date,cv_sunday)
-      AND  msdate.schedule_date      <   NEXT_DAY(NEXT_DAY(cd_sys_date,cv_sunday),cv_saturday)
+      AND  msdate.schedule_date      >=  NEXT_DAY(cd_sys_date,cn_sunday)
+      AND  msdate.schedule_date      <   NEXT_DAY(NEXT_DAY(cd_sys_date,cn_sunday),cn_saturday)
       AND  msdesi.attribute1          =  cv_buy_type       --基準計画分類「3：購入計画」
       AND  msdate.schedule_level      =  cn_schedule_level --レベル２
+--20090421_Ver1.4_T1_0722_SCS_Uda_ADD_START
+      AND  msdate.organization_id     =  mp.organization_id
+--20090421_Ver1.4_T1_0722_SCS_Uda_ADD_END
     GROUP BY
 --20090407_Ver1.2_T1_0280_SCS_Uda_DEL_START
 --       msdate.schedule_designator
@@ -3788,7 +3802,11 @@ AS
        msdate.organization_id
       ,msdate.inventory_item_id
       ,msdate.schedule_date
-    ORDER BY msdate.schedule_date,msdate.inventory_item_id , msdate.organization_id
+--20090421_Ver1.4_T1_0722_SCS_Uda_MOD_START
+      ,mp.organization_code
+--    ORDER BY msdate.schedule_date,msdate.inventory_item_id , msdate.organization_id
+    ORDER BY msdate.schedule_date,msdate.inventory_item_id , mp.organization_code
+--20090421_Ver1.4_T1_0722_SCS_Uda_MOD_END
     ;
     -- *** ローカル・レコード ***
     lr_xwsp_rec     xxcop_wk_ship_planning%ROWTYPE := NULL;
