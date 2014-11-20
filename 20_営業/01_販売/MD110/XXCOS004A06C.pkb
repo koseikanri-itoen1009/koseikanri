@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/08/04    1.10  N.Maeda          [0000922]PTの考慮
  *  2009/08/05    1.10  N.Maeda          [0000922]レビュー指摘対応
  *  2009/08/06    1.10  N.Maeda          [0000922]再レビュー指摘対応
+ *  2010/01/19    1.11  K.Atsushiba      [E_本稼動_00622]消化計算締年月日導出処理修正
  *
  *****************************************************************************************/
 --
@@ -2422,6 +2423,10 @@ AS
     --
     ln_idx                        NUMBER;
     ln_sales_oprtn_day            NUMBER;
+/* 2010/01/19 Ver1.11 Add Start */
+    ln_process_oprtn_flag         NUMBER;    -- 稼動日フラグ(業務日付)
+    ld_process_date_work           DATE;     -- 作業用業務日付
+/* 2010/01/19 Ver1.11 Add End */
 --
     -- *** ローカル・カーソル ***
 --
@@ -2438,6 +2443,45 @@ AS
     --初期化
     ln_idx                              := g_diges_due_dt_tab.COUNT;
     gd_calc_digestion_due_date          := gd_temp_digestion_due_date;
+/* 2010/01/19 Ver1.11 Add Start */
+    -- 業務日付の稼動日チェック
+    ln_process_oprtn_flag               := xxcos_common_pkg.check_sales_oprtn_day(
+                                              id_check_target_date     => gd_process_date,
+                                              iv_calendar_code         => gt_calendar_code
+                                            );
+    --
+    -- 業務日付の稼動日判定
+    IF ( ln_process_oprtn_flag = cn_sales_oprtn_day_non ) THEN
+      -- 非稼動日の場合、直近過去日付の業務日付を取得
+      ld_process_date_work   := gd_process_date;
+      <<oprtn_process_day_loop>>
+      WHILE ( ln_process_oprtn_flag = cn_sales_oprtn_day_non ) LOOP
+        ld_process_date_work := ld_process_date_work - 1;
+        -- 稼動日チェック
+        ln_process_oprtn_flag               := xxcos_common_pkg.check_sales_oprtn_day(
+                                                  id_check_target_date     => ld_process_date_work,
+                                                  iv_calendar_code         => gt_calendar_code
+                                                );
+        IF ( ( ln_process_oprtn_flag != cn_sales_oprtn_day_normal )
+             AND ( ln_process_oprtn_flag != cn_sales_oprtn_day_non)
+           )
+        THEN
+          -- エラーの場合
+          RAISE global_call_api_expt;
+        END IF;
+      END LOOP oprtn_process_day_loop;
+      --
+      -- 消化計算締年月日を再設定
+      gd_calc_digestion_due_date := ld_process_date_work - gn_diges_calc_delay_day;
+    ELSIF ( ln_process_oprtn_flag = cn_sales_oprtn_day_normal ) THEN
+      --稼働日の場合
+      ld_process_date_work   := gd_process_date;
+    ELSE
+      --エラーの場合
+      RAISE global_call_api_expt;
+    END IF;
+    --
+/* 2010/01/19 Ver1.11 Add End */
     --稼働日チェック
     ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
                                              id_check_target_date     => gd_calc_digestion_due_date,
@@ -2448,43 +2492,75 @@ AS
       --稼働日の場合
       ln_idx                            := ln_idx + 1;
       g_diges_due_dt_tab(ln_idx)        := gd_calc_digestion_due_date;
-      --==========================================
-      --非稼働日分内部テーブルにセットする。
-      --==========================================
-      --初期化
-      ln_sales_oprtn_day := cn_sales_oprtn_day_non;
-      --
-      <<oprtn_day_loop>>
-      WHILE ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) LOOP
-         --前日を求める。
-        gd_calc_digestion_due_date      := gd_calc_digestion_due_date - 1;
-         --稼働日チェック
-        ln_sales_oprtn_day              := xxcos_common_pkg.check_sales_oprtn_day(
-                                             id_check_target_date     => gd_calc_digestion_due_date,
-                                             iv_calendar_code         => gt_calendar_code
-                                           );
-        --稼働日判定
-        IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
-          --稼働日の場合
-          NULL;
-        ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
-          --非稼働日の場合
-          ln_idx                        := ln_idx + 1;
-          g_diges_due_dt_tab(ln_idx)    := gd_calc_digestion_due_date;
-        ELSE
-          --エラーの場合
-          RAISE global_call_api_expt;
-        END IF;
-      --
-      END LOOP oprtn_day_loop;
+/* 2010/01/19 Ver1.11 Del Start */
+--      --==========================================
+--      --非稼働日分内部テーブルにセットする。
+--      --==========================================
+--      --初期化
+--      ln_sales_oprtn_day := cn_sales_oprtn_day_non;
+--      --
+--      <<oprtn_day_loop>>
+--      WHILE ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) LOOP
+--         --前日を求める。
+--        gd_calc_digestion_due_date      := gd_calc_digestion_due_date - 1;
+--         --稼働日チェック
+--        ln_sales_oprtn_day              := xxcos_common_pkg.check_sales_oprtn_day(
+--                                             id_check_target_date     => gd_calc_digestion_due_date,
+--                                             iv_calendar_code         => gt_calendar_code
+--                                           );
+--        --稼働日判定
+--        IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
+--          --稼働日の場合
+--          NULL;
+--        ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
+--          --非稼働日の場合
+--          ln_idx                        := ln_idx + 1;
+--          g_diges_due_dt_tab(ln_idx)    := gd_calc_digestion_due_date;
+--        ELSE
+--          --エラーの場合
+--          RAISE global_call_api_expt;
+--        END IF;
+--      --
+--      END LOOP oprtn_day_loop;
+/* 2010/01/19 Ver1.11 Del End */
       --
     ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
       --非稼働日の場合
-      NULL;
+/* 2010/01/19 Ver1.11 Mod Start */
+      --============================================================
+      --非稼働日を含め直近過去稼動日までを内部テーブルにセットする。
+      --============================================================
+      ln_idx                            := ln_idx + 1;
+      g_diges_due_dt_tab(ln_idx)        := gd_calc_digestion_due_date;
+      --
+      <<oprtn_day_loop>>
+      WHILE ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) LOOP
+        -- 前日を求める
+        gd_calc_digestion_due_date        := gd_calc_digestion_due_date - 1;
+        ln_idx                            := ln_idx + 1;
+        g_diges_due_dt_tab(ln_idx)        := gd_calc_digestion_due_date;
+        --
+        -- 稼動日チェック
+        ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
+                                                 id_check_target_date     => gd_calc_digestion_due_date,
+                                                 iv_calendar_code         => gt_calendar_code
+                                               );
+        IF ( ( ln_sales_oprtn_day != cn_sales_oprtn_day_normal )
+             AND ( ln_sales_oprtn_day != cn_sales_oprtn_day_non)
+           )
+        THEN
+          -- エラーの場合
+          RAISE global_call_api_expt;
+        END IF;
+      END LOOP oprtn_day_loop;
+      --
+--      NULL;
+/* 2010/01/19 Ver1.11 Mod Start */
     ELSE
       --エラーの場合
       RAISE global_call_api_expt;
     END IF;
+/* 2010/01/19 Ver1.11 Mod End */
 --
   EXCEPTION
     -- *** 共通関数エラー例外ハンドラ ***
@@ -2524,136 +2600,138 @@ AS
 --
   END get_operation_day;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_non_operation_day
-   * Description      : 非稼働日情報取得処理 (A-14)
-   ***********************************************************************************/
-  PROCEDURE get_non_operation_day(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_non_operation_day'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    lv_str_api_name               VARCHAR2(5000);
-    --
-    ln_idx                        NUMBER;
-    ln_sales_oprtn_day            NUMBER;
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    --初期化
-    ln_idx                              := g_diges_due_dt_tab.COUNT;
-    --稼働日チェック
-    ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
-                                             id_check_target_date     => gd_calc_digestion_due_date,
-                                             iv_calendar_code         => gt_calendar_code
-                                           );
-    --稼働日判定
-    IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
-      --稼働日の場合
-      NULL;
-    ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
-      --非稼働日の場合
-      --==========================================
-      --非稼働日を読み飛ばす。
-      --==========================================
-      --初期化
-      ln_sales_oprtn_day := cn_sales_oprtn_day_non;
-      --
-      <<non_oprtn_day_loop>>
-      WHILE ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) LOOP
-         --前日を求める。
-        gd_calc_digestion_due_date      := gd_calc_digestion_due_date - 1;
-         --稼働日チェック
-        ln_sales_oprtn_day              := xxcos_common_pkg.check_sales_oprtn_day(
-                                             id_check_target_date     => gd_calc_digestion_due_date,
-                                             iv_calendar_code         => gt_calendar_code
-                                           );
-        --稼働日判定
-        IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
-          --稼働日の場合
-          ln_idx                        := ln_idx + 1;
-          g_diges_due_dt_tab(ln_idx)    := gd_calc_digestion_due_date;
-        ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
-          --非稼働日の場合
-          NULL;
-        ELSE
-          --エラーの場合
-          RAISE global_call_api_expt;
-        END IF;
-      --
-      END LOOP non_oprtn_day_loop;
-      --
-    ELSE
-      --エラーの場合
-      RAISE global_call_api_expt;
-    END IF;
---
-  EXCEPTION
-    -- *** 共通関数エラー例外ハンドラ ***
-    WHEN global_call_api_expt THEN
-      --販売用稼働日チェック共通関数文字列取得
-      lv_str_api_name         := xxccp_common_pkg.get_msg(
-                                   iv_application           => ct_xxcos_appl_short_name,
-                                   iv_name                  => ct_msg_operation_day
-                                 );
-      --
-      ov_errmsg               := xxccp_common_pkg.get_msg(
-                                   iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => ct_msg_call_api_err,
-                                   iv_token_name1        => cv_tkn_api_name,
-                                   iv_token_value1       => lv_str_api_name
-                                 );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_non_operation_day;
+/* 2010/01/19 Ver1.11 Del Start */
+--  /**********************************************************************************
+--   * Procedure Name   : get_non_operation_day
+--   * Description      : 非稼働日情報取得処理 (A-14)
+--   ***********************************************************************************/
+--  PROCEDURE get_non_operation_day(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_non_operation_day'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+--    lv_str_api_name               VARCHAR2(5000);
+--    --
+--    ln_idx                        NUMBER;
+--    ln_sales_oprtn_day            NUMBER;
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    --初期化
+--    ln_idx                              := g_diges_due_dt_tab.COUNT;
+--    --稼働日チェック
+--    ln_sales_oprtn_day                  := xxcos_common_pkg.check_sales_oprtn_day(
+--                                             id_check_target_date     => gd_calc_digestion_due_date,
+--                                             iv_calendar_code         => gt_calendar_code
+--                                           );
+--    --稼働日判定
+--    IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
+--      --稼働日の場合
+--      NULL;
+--    ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
+--      --非稼働日の場合
+--      --==========================================
+--      --非稼働日を読み飛ばす。
+--      --==========================================
+--      --初期化
+--      ln_sales_oprtn_day := cn_sales_oprtn_day_non;
+--      --
+--      <<non_oprtn_day_loop>>
+--      WHILE ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) LOOP
+--         --前日を求める。
+--        gd_calc_digestion_due_date      := gd_calc_digestion_due_date - 1;
+--         --稼働日チェック
+--        ln_sales_oprtn_day              := xxcos_common_pkg.check_sales_oprtn_day(
+--                                             id_check_target_date     => gd_calc_digestion_due_date,
+--                                             iv_calendar_code         => gt_calendar_code
+--                                           );
+--        --稼働日判定
+--        IF ( ln_sales_oprtn_day = cn_sales_oprtn_day_normal ) THEN
+--          --稼働日の場合
+--          ln_idx                        := ln_idx + 1;
+--          g_diges_due_dt_tab(ln_idx)    := gd_calc_digestion_due_date;
+--        ELSIF ( ln_sales_oprtn_day = cn_sales_oprtn_day_non ) THEN
+--          --非稼働日の場合
+--          NULL;
+--        ELSE
+--          --エラーの場合
+--          RAISE global_call_api_expt;
+--        END IF;
+--      --
+--      END LOOP non_oprtn_day_loop;
+--      --
+--    ELSE
+--      --エラーの場合
+--      RAISE global_call_api_expt;
+--    END IF;
+----
+--  EXCEPTION
+--    -- *** 共通関数エラー例外ハンドラ ***
+--    WHEN global_call_api_expt THEN
+--      --販売用稼働日チェック共通関数文字列取得
+--      lv_str_api_name         := xxccp_common_pkg.get_msg(
+--                                   iv_application           => ct_xxcos_appl_short_name,
+--                                   iv_name                  => ct_msg_operation_day
+--                                 );
+--      --
+--      ov_errmsg               := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => ct_msg_call_api_err,
+--                                   iv_token_name1        => cv_tkn_api_name,
+--                                   iv_token_value1       => lv_str_api_name
+--                                 );
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END get_non_operation_day;
+/* 2010/01/19 Ver1.11 Del End */
 --
   /**********************************************************************************
    * Procedure Name   : del_blt_vd_digestion
@@ -4138,18 +4216,20 @@ AS
         RAISE global_process_expt;
       END IF;
       --
-      -- ===================================================
-      -- A-14 非稼働日情報取得処理
-      -- ===================================================
-      get_non_operation_day(
-        ov_errbuf                       => lv_errbuf,                 -- エラー・メッセージ
-        ov_retcode                      => lv_retcode,                -- リターン・コード
-        ov_errmsg                       => lv_errmsg                  -- ユーザー・エラー・メッセージ
-      );
-      --
-      IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE global_process_expt;
-      END IF;
+/* 2010/01/19 Ver1.11 Del Start */
+--      -- ===================================================
+--      -- A-14 非稼働日情報取得処理
+--      -- ===================================================
+--      get_non_operation_day(
+--        ov_errbuf                       => lv_errbuf,                 -- エラー・メッセージ
+--        ov_retcode                      => lv_retcode,                -- リターン・コード
+--        ov_errmsg                       => lv_errmsg                  -- ユーザー・エラー・メッセージ
+--      );
+--      --
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+/* 2010/01/19 Ver1.11 Del End */
       --
       IF ( g_diges_due_dt_tab.COUNT > 0 ) THEN
         -- ===================================================
