@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/12/17    1.12  Oracle福田直樹   本番障害#764対応
  *  2008/12/25    1.13  Oracle福田直樹   本番障害#831対応
  *  2009/01/06    1.14  Oracle吉田夏樹   本番障害#929対応
+ *  2009/01/20    1.15  Oracle山本恭久   本番障害#806,#814,#975対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -726,6 +727,26 @@ AS
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
           gt_xml_data_table(gl_xml_idx).tag_value := re_data.arvl_name ;
 --
+-- 2009/01/20 Y.Yamamoto #806 add start
+          -- ----------------------------------------------------
+          -- パラメータタグ出力
+          -- ----------------------------------------------------
+          -- 出庫日FROM
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'date_from' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(gr_param.date_from, 'YYYY/MM/DD') ;
+          -- 出庫日TO
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'date_to' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(gr_param.date_to,   'YYYY/MM/DD') ;
+          -- 出力区分
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'output_type' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lv_param_reason ;
+-- 2009/01/20 Y.Yamamoto #806 add end
           -- ----------------------------------------------------
           -- リストグループ開始タグ（出荷）
           -- ----------------------------------------------------
@@ -1817,7 +1838,12 @@ AS
             or_temp_tab.reason := gc_reason_nstc ;  -- 入庫未
 --
           -- 入出庫報告有の場合
-          ELSIF ( ir_get_data.status = gc_mov_status_dsr ) THEN
+-- 2009/01/20 Y.Yamamoto #814 update start
+--          ELSIF ( ir_get_data.status = gc_mov_status_dsr ) THEN
+          -- 指示あり実績の場合、依頼差を表示する
+          ELSIF ( ( ir_get_data.status = gc_mov_status_dsr )
+              AND ( ir_get_data.no_instr_actual = gc_yn_div_n ) ) THEN
+-- 2009/01/20 Y.Yamamoto #814 update end
             --or_temp_tab.reason := gc_reason_iodf ;  -- 出入差     2008/12/17 本番障害#764 Del
             or_temp_tab.reason := gc_reason_diff ;    -- 依頼差     2008/12/17 本番障害#764 Add
 --
@@ -1879,8 +1905,14 @@ AS
               -- 依頼数と入庫数が異なる or
               -- 依頼数と出庫数が異なる場合
               ------------------------------
-              IF (  ( or_temp_tab.quant_r <> or_temp_tab.quant_i )
-                 OR ( or_temp_tab.quant_r <> or_temp_tab.quant_o ) ) THEN
+-- 2009/01/20 Y.Yamamoto #814 update start
+--              IF (  ( or_temp_tab.quant_r <> or_temp_tab.quant_i )
+--                 OR ( or_temp_tab.quant_r <> or_temp_tab.quant_o ) ) THEN
+              -- 指示あり実績の場合、依頼差を表示する
+              IF ( ( ( or_temp_tab.quant_r <> or_temp_tab.quant_i )
+                  OR ( or_temp_tab.quant_r <> or_temp_tab.quant_o ) )
+               AND ( ir_get_data.no_instr_actual = gc_yn_div_n ) ) THEN
+-- 2009/01/20 Y.Yamamoto #814 update end
                 or_temp_tab.reason := gc_reason_diff ;  -- 依頼差
 --
               ------------------------------
@@ -1962,8 +1994,14 @@ AS
 -- mod end ver1.1
             ,xmrih.schedule_ship_date     AS ship_date            -- 出庫日
             ,xmrih.schedule_arrival_date  AS arvl_date            -- 入庫日
-            ,xmrih.career_id              AS career_id            -- 検索条件：運送業者
-            ,xmrih.shipping_method_code   AS ship_method_code     -- 検索条件：配送区分
+-- 2009/01/20 Y.Yamamoto #975 update start
+--            ,xmrih.career_id              AS career_id            -- 検索条件：運送業者
+--            ,xmrih.shipping_method_code   AS ship_method_code     -- 検索条件：配送区分
+            ,NVL( xmrih.career_id
+                 ,xmrih.actual_career_id )             AS career_id            -- 検索条件：運送業者
+            ,NVL( xmrih.shipping_method_code
+                 ,xmrih.actual_shipping_method_code )  AS ship_method_code     -- 検索条件：配送区分
+-- 2009/01/20 Y.Yamamoto #975 update start
             ,xmrih.delivery_no            AS delivery_no          -- 配送Ｎｏ
             ,xmrih.mov_num                AS request_no           -- 移動Ｎｏ
             ,xmril.mov_line_id            AS order_line_id        -- 検索条件：明細ＩＤ
