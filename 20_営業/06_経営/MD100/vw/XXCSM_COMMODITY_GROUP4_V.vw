@@ -20,45 +20,7 @@ AS
         ,xicv4.description                                           group4_nm                      --政策群名称(4桁)
         ,SUBSTRB(xig1v.item_group_cd,1,1)                            group1_cd                      --政策群コード(1桁)
         ,xig1v.item_group_nm                                         group1_nm                      --政策群名称(1桁)
-        ,NVL(iv_cmpcst.cmpnt_cost,0)                                 now_cmpnt_cost                 --標準原価(現時点)
-        ,NVL(iimb.attribute8,0)                                      now_business_cost              --営業原価(現時点)
-        ,NVL(iimb.attribute5,0)                                      now_unit_price                 --定価(現時点)
-        ,iimb.item_um                                                unit_of_issue                  --単位
-  FROM   ic_item_mst_b             iimb                                                             --OPM品目
-        ,gmi_item_categories       gic                                                              --OPM品目カテゴリ
-        ,xxcsm_item_category_v     xicv4                                                            --商品群一覧ビュー(ALL)
-        ,xxcmm_system_items_b      xsib                                                             --アドオンDisc品目
-        ,xxcsm_item_group_1_nm_v   xig1v                                                            --商品群1桁名称
-        ,(SELECT ccmd.item_id          item_id
-                ,SUM(ccmd.cmpnt_cost)  cmpnt_cost
-          FROM   cm_cmpt_dtl     ccmd
-                ,cm_cldr_dtl     ccld
-                ,xxcsm_process_date_v   xpcdv
-          WHERE  ccmd.calendar_code = ccld.calendar_code
-          AND    ccmd.whse_code = '000'                                                             --原価倉庫
-          AND    ccmd.period_code = ccld.period_code
-          AND    ccld.start_date <= xpcdv.process_date
-          AND    ccld.end_date >= xpcdv.process_date
-          GROUP BY ccmd.item_id)   iv_cmpcst                                                        --品目原価ビュー
-        ,(SELECT  DISTINCT ATTRIBUTE3
-          FROM    xxcsm_item_category_v
-          WHERE   attribute3 IS NOT NULL) new_cd                                                    --新商品ビュー
-  WHERE  iimb.item_id = gic.item_id
-  AND    gic.category_id = xicv4.category_id
-  AND    gic.category_set_id = xicv4.category_set_id
-  AND    xicv4.segment1 LIKE REPLACE(xig1v.item_group_cd(+),'*','_')
-  AND    iimb.item_id = iv_cmpcst.item_id(+)
-  AND    iimb.item_no = xsib.item_code(+)
-  AND    iimb.item_no = new_cd.ATTRIBUTE3
-UNION
-  SELECT iimb.item_id                                                opm_item_id                    --OPM品目ID
-        ,iimb.item_no                                                item_cd                        --品目コード
-        ,iimb.item_desc1                                             item_nm                        --品目名称
-        ,xicv4.segment1                                              group4_cd                      --政策群コード(4桁)
-        ,xicv4.description                                           group4_nm                      --政策群名称(4桁)
-        ,SUBSTRB(xig1v.item_group_cd,1,1)                            group1_cd                      --政策群コード(1桁)
-        ,xig1v.item_group_nm                                         group1_nm                      --政策群名称(1桁)
-        ,NVL(iv_cmpcst.cmpnt_cost,0)                                 now_cmpnt_cost                 --標準原価(現時点)
+        ,NVL(iv_cmpcst.cmpnt_cost,NVL(iimb.attribute8,0))            now_cmpnt_cost                 --標準原価(現時点)
         ,NVL(iimb.attribute8,0)                                      now_business_cost              --営業原価(現時点)
         ,NVL(iimb.attribute5,0)                                      now_unit_price                 --定価(現時点)
         ,iimb.item_um                                                unit_of_issue                  --単位
