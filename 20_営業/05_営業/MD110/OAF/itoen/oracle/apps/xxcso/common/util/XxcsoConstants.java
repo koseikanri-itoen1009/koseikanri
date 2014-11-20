@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2010-03-01 1.11 SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2010-03-01 1.11 SCS阿部大輔  [E_本稼動_01868]物件対応
 * 2010-03-23 1.12 SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
+* 2011-01-06 1.13 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -209,6 +210,11 @@ public class XxcsoConstants
 // 2010-03-23 [E_本稼動_01942] Add Start
   public static final String APP_XXCSO1_00603    = "APP-XXCSO1-00603";
 // 2010-03-23 [E_本稼動_01942] Add End
+// 2011-01-06 Ver1.13 [E_本稼動_02498] Add Start
+  public static final String APP_XXCSO1_00607    = "APP-XXCSO1-00607";
+  public static final String APP_XXCSO1_00608    = "APP-XXCSO1-00608";
+// 2011-01-06 Ver1.13 [E_本稼動_02498] Add End
+
   /*****************************************************************************
    * トークン名
    *****************************************************************************
@@ -253,6 +259,10 @@ public class XxcsoConstants
   public static final String TOKEN_EMSIZE        = "EMSIZE";
   public static final String TOKEN_ONEBYTE       = "ONEBYTE";
   public static final String TOKEN_ACCOUNTS      = "ACCOUNTS";
+// 2011-01-06 Ver1.13 [E_本稼動_02498] Add Start
+  public static final String TOKEN_BANK_NUM      = "BANK_NUM";
+  public static final String TOKEN_BRANCH_NUM    = "BRANCH_NUM";
+// 2011-01-06 Ver1.13 [E_本稼動_02498] Add End
 
   /*****************************************************************************
    * トークン値

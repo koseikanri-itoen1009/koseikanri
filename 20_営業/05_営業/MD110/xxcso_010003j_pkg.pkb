@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  chk_validate_db           P    -      ＤＢ更新判定チェック
  *  chk_cash_payment          F    V      現金支払チェック
  *  chk_install_code          F    V      物件コードチェック
+ *  chk_bank_branch           F    V      銀行支店マスタチェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -49,6 +50,7 @@ AS
  *  2010/02/10    1.7   D.Abe            E_本稼動_01538対応
  *  2010/03/01    1.8   D.Abe            E_本稼動_01678,E_本稼動_01868対応
  *  2010/11/17    1.9   S.Arizumi        E_本稼動_01954対応
+ *  2011/01/06    1.10  K.Kiriu          E_本稼動_02498対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1573,7 +1575,62 @@ AS
   END chk_install_code;
 --
 /* 2010.03.01 D.Abe E_本稼動_01868対応 END */
-
+/* 2011/01/07 Ver1.10 K.Kiriu E_本稼動_02498対応 START */
+  /**********************************************************************************
+   * Function Name    : chk_bank_branch
+   * Description      : 銀行支店マスタチェック
+   ***********************************************************************************/
+  FUNCTION chk_bank_branch(
+    iv_bank_number  IN  VARCHAR2                       --銀行番号
+   ,iv_bank_num     IN  VARCHAR2                       --支店番号
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_bank_branch';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    ln_count                     NUMBER;
+--
+  BEGIN
+--
+    ln_count        := 0;
+    lv_return_value := 0;
+--
+    --銀行支店マスタの取得
+    SELECT COUNT('x')
+    INTO   ln_count
+    FROM   ap_bank_branches abb
+    WHERE  abb.bank_number = iv_bank_number
+    AND    abb.bank_num    = iv_bank_num;
+--
+    --データ無し
+    IF (ln_count = 0) THEN
+      lv_return_value := '1';
+    --データ重複
+    ELSIF (ln_count > 1) THEN
+      lv_return_value := '2';
+    --正常
+    ELSE
+      lv_return_value := '0';
+    END IF;
+--
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_bank_branch;
+/* 2011/01/07 Ver1.10 K.Kiriu E_本稼動_02498対応 END */
 --
 END xxcso_010003j_pkg;
 /

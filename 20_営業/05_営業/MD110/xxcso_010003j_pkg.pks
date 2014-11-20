@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  chk_validate_db           P    -      ＤＢ更新判定チェック
  *  chk_cash_payment          F    V      現金支払チェック
  *  chk_install_code          F    V      物件コードチェック
+ *  chk_bank_branch           F    V      銀行支店マスタチェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -46,6 +47,7 @@ AS
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
  *  2010/02/10    1.5   D.Abe            E_本稼動_01538対応
  *  2010/03/01    1.6   D.Abe            E_本稼動_01678,E_本稼動_01868対応
+ *  2011/01/06    1.7   K.Kiriu          E_本稼動_02498対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -188,7 +190,13 @@ AS
   ) RETURN VARCHAR2;
 --
 /* 2010.03.01 D.Abe E_本稼動_01868対応 END */
-
+/* 2011/01/06 Ver1.7 K.kiriu E_本稼動_02498対応 START */
+  -- 銀行支店マスタチェック
+  FUNCTION chk_bank_branch(
+    iv_bank_number  IN  VARCHAR2                       -- 銀行番号
+   ,iv_bank_num     IN  VARCHAR2                       -- 支店番号
+  ) RETURN VARCHAR2;
+/* 2011/01/06 Ver1.7 K.kiriu E_本稼動_02498対応 END */
 --
 END xxcso_010003j_pkg;
 /

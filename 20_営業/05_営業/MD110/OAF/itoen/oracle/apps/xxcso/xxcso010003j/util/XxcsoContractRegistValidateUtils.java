@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2010-02-09 1.9  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01868]物件コード対応
+* 2011-01-06 1.11 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -1003,6 +1004,42 @@ public class XxcsoContractRegistValidateUtils
              ,token1
              ,0
             );
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add Start
+        // 銀行支店マスタチェック
+        String retCode  = chkBankBranch(
+                                   txn
+                                  ,bm1BankAccVoRow.getBankNumber()
+                                  ,bm1BankAccVoRow.getBranchNumber()
+                                 );
+        if ( "1".equals(retCode) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00607
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+               ,XxcsoConstants.TOKEN_BANK_NUM
+               ,bm1BankAccVoRow.getBankNumber()
+               ,XxcsoConstants.TOKEN_BRANCH_NUM
+               ,bm1BankAccVoRow.getBranchNumber()
+              );
+          errorList.add(error);
+        }
+        else if ( "2".equals(retCode) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00608
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+               ,XxcsoConstants.TOKEN_BANK_NUM
+               ,bm1BankAccVoRow.getBankNumber()
+               ,XxcsoConstants.TOKEN_BRANCH_NUM
+               ,bm1BankAccVoRow.getBranchNumber()
+              );
+          errorList.add(error);
+        }
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add End
       }
 
       // ///////////////////////////////////
@@ -1614,6 +1651,42 @@ public class XxcsoContractRegistValidateUtils
              ,token1
              ,0
             );
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add Start
+        // 銀行支店マスタチェック
+        String retCode  = chkBankBranch(
+                                   txn
+                                  ,bm2BankAccVoRow.getBankNumber()
+                                  ,bm2BankAccVoRow.getBranchNumber()
+                                 );
+        if ( "1".equals(retCode) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00607
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+               ,XxcsoConstants.TOKEN_BANK_NUM
+               ,bm2BankAccVoRow.getBankNumber()
+               ,XxcsoConstants.TOKEN_BRANCH_NUM
+               ,bm2BankAccVoRow.getBranchNumber()
+              );
+          errorList.add(error);
+        }
+        else if ( "2".equals(retCode) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00608
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+               ,XxcsoConstants.TOKEN_BANK_NUM
+               ,bm2BankAccVoRow.getBankNumber()
+               ,XxcsoConstants.TOKEN_BRANCH_NUM
+               ,bm2BankAccVoRow.getBranchNumber()
+              );
+          errorList.add(error);
+        }
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add End
       }
 
       // ///////////////////////////////////
@@ -2225,6 +2298,42 @@ public class XxcsoContractRegistValidateUtils
              ,token1
              ,0
             );
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add Start
+        // 銀行支店マスタチェック
+        String retCode  = chkBankBranch(
+                                   txn
+                                  ,bm3BankAccVoRow.getBankNumber()
+                                  ,bm3BankAccVoRow.getBranchNumber()
+                                 );
+        if ( "1".equals(retCode) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00607
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+               ,XxcsoConstants.TOKEN_BANK_NUM
+               ,bm3BankAccVoRow.getBankNumber()
+               ,XxcsoConstants.TOKEN_BRANCH_NUM
+               ,bm3BankAccVoRow.getBranchNumber()
+              );
+          errorList.add(error);
+        }
+        else if ( "2".equals(retCode) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00608
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+               ,XxcsoConstants.TOKEN_BANK_NUM
+               ,bm3BankAccVoRow.getBankNumber()
+               ,XxcsoConstants.TOKEN_BRANCH_NUM
+               ,bm3BankAccVoRow.getBranchNumber()
+              );
+          errorList.add(error);
+        }
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add End
       }
 
       // ///////////////////////////////////
@@ -4420,5 +4529,75 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
  }
 // 2010-03-01 [E_本稼動_01868] Add End
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add Start
+  /*****************************************************************************
+   * 銀行支店マスタチェック
+   * @param  txn                 OADBTransactionインスタンス
+   * @param  BankNumber          銀行番号
+   * @param  BankNum             支店番号
+   * @return String              検証結果
+   *****************************************************************************
+   */
+  private static String chkBankBranch(
+    OADBTransaction   txn
+   ,String            BankNumber
+   ,String            BankNum
+  )
+  {
+    OracleCallableStatement stmt = null;
+    String returnValue = null;
+
+    if ( BankNumber == null || "".equals(BankNumber.trim()) )
+    {
+      // null空文字時はチェック不要
+      return returnValue;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_bank_branch(:2, :3);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, BankNumber);
+      stmt.setString(3, BankNum);
+
+      stmt.execute();
+
+      returnValue = stmt.getString(1);
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_BRANCH_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2011-01-06 Ver1.11 [E_本稼動_02498] Add End
 
 }
