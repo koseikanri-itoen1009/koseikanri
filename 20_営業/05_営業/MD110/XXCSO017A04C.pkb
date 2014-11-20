@@ -7,7 +7,7 @@ AS
  * Description      : 帳合問屋用見積入力画面から、見積番号、版毎に見積書を	
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A04_見積書（帳合問屋用）PDF出力
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009-05-07    1.4   Kazuo.Satomura   ＳＴ障害対応(T1_0889)
  *  2009-05-13    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0972,T1_0974)
  *  2009-05-20    1.6   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
+ *  2009-06-17    1.7   Daisuke.Abe      ＳＴ障害対応(T1_1257)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -105,6 +106,12 @@ AS
   cv_tkn_number_05       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00278';  -- ロックエラーメッセージ
   cv_tkn_number_06       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00417';  -- APIエラーメッセージ
   cv_tkn_number_07       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00503';  -- 明細0件メッセージ
+/* 2009.06.17 D.Abe T1_1257対応 START */
+  cv_tkn_number_08       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00575';  -- 入数エラー
+  cv_unit_type_hs          CONSTANT VARCHAR2(1)  := '1';                  -- 単価区分:1(本数)
+  cv_unit_type_cs          CONSTANT VARCHAR2(1)  := '2';                  -- 単価区分:2(C/S)
+  cv_unit_type_bl          CONSTANT VARCHAR2(1)  := '3';                  -- 単価区分:3:ボール
+/* 2009.06.17 D.Abe T1_1257対応 END */
   -- トークンコード
   cv_tkn_param_nm        CONSTANT VARCHAR2(20) := 'PARAM_NAME';
   cv_tkn_val             CONSTANT VARCHAR2(20) := 'VALUE';
@@ -338,9 +345,11 @@ AS
     cv_fmt                   CONSTANT VARCHAR2(9)  := 'FM9,990.0';            -- 規格編集用フォーマット
     /* 2009.05.13 K.Satomura T1_0974対応 END */
     /* 2009.05.07 K.Satomura T1_0889対応 END */
-    cv_unit_type_hs          CONSTANT VARCHAR2(1)  := '1';                  -- 単価区分:1(本数)
-    cv_unit_type_cs          CONSTANT VARCHAR2(1)  := '2';                  -- 単価区分:2(C/S)
-    cv_unit_type_bl          CONSTANT VARCHAR2(1)  := '3';                  -- 単価区分:3:ボール
+/* 2009.06.17 D.Abe T1_1257対応 START */
+    --cv_unit_type_hs          CONSTANT VARCHAR2(1)  := '1';                  -- 単価区分:1(本数)
+    --cv_unit_type_cs          CONSTANT VARCHAR2(1)  := '2';                  -- 単価区分:2(C/S)
+    --cv_unit_type_bl          CONSTANT VARCHAR2(1)  := '3';                  -- 単価区分:3:ボール
+/* 2009.06.17 D.Abe T1_1257対応 END */
     -- メッセージ出力用トークン
     cv_tkn_party_name        CONSTANT VARCHAR2(100) := '顧客名';
     cv_tkn_sales_name        CONSTANT VARCHAR2(100) := '顧客販売先名';
@@ -662,6 +671,7 @@ AS
         );
         ov_retcode := cv_status_warn;
     END;
+
     -- ====================================
     -- 取得値をOUTパラメータに設定
     -- ====================================
@@ -703,6 +713,37 @@ AS
         ,buff   => ''
       );
     END IF;
+
+    /* 2009.06.17 D.Abe T1_1257対応 START */
+    -- ====================================
+    -- 入数チェック
+    -- ====================================
+    -- ケースの場合
+    IF ((io_rp_qte_lst_dt_rec.unit_type = cv_unit_type_cs) AND
+        (lt_case_inc_num IS NULL OR lt_case_inc_num = 0 )) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name             --アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_08        --メッセージコード
+                 ,iv_token_name1  => cv_tkn_val              --トークンコード1
+                 ,iv_token_value1 => io_rp_qte_lst_dt_rec.item_name  --トークン値1
+                );
+      ov_errmsg  := lv_msg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_msg,1,5000);
+        ov_retcode := cv_status_error;
+    -- ボールの場合
+    ELSIF ((io_rp_qte_lst_dt_rec.unit_type = cv_unit_type_bl) AND
+           (lt_bowl_inc_num IS NULL OR  lt_bowl_inc_num = 0)) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name             --アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_08        --メッセージコード
+                 ,iv_token_name1  => cv_tkn_val              --トークンコード1
+                 ,iv_token_value1 => io_rp_qte_lst_dt_rec.item_name  --トークン値1
+                );
+      ov_errmsg  := lv_msg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_msg,1,5000);
+        ov_retcode := cv_status_error;
+    END IF;                                                                                  -- 入数
+    /* 2009.06.17 D.Abe T1_1257対応 END */
 --
   EXCEPTION
 --
@@ -1459,21 +1500,23 @@ AS
       l_rp_qte_lst_data_rec.this_time_deliv_price    := l_get_quote_dt_rec.this_time_deliv_price;     -- 今回店納価格
       l_rp_qte_lst_data_rec.usuall_net_price         := l_get_quote_dt_rec.usuall_net_price;          -- 通常ＮＥＴ価格
       l_rp_qte_lst_data_rec.this_time_net_price      := l_get_quote_dt_rec.this_time_net_price;       -- 今回ＮＥＴ価格
+/* 2009.06.17 D.Abe T1_1257対応 START */
       -- 今回ＮＥＴ価格が0より大きい場合
-      IF (l_get_quote_dt_rec.this_time_net_price > 0) THEN
-        l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
-                                                            - l_get_quote_dt_rec.this_time_net_price;
-      -- 今回ＮＥＴ価格が0以下の場合
-      ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
-        -- 通常ＮＥＴ価格が0より大きい場合
-        IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
-          l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
-                                                              - l_get_quote_dt_rec.usuall_net_price;
-        -- 通常ＮＥＴ価格が0以下の場合
-        ELSIF (l_get_quote_dt_rec.usuall_net_price <= 0) THEN
-          l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price - 0;
-        END IF;
-      END IF; -- 明細支払条件
+      --IF (l_get_quote_dt_rec.this_time_net_price > 0) THEN
+      --  l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+      --                                                      - l_get_quote_dt_rec.this_time_net_price;
+      ---- 今回ＮＥＴ価格が0以下の場合
+      --ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+      --  -- 通常ＮＥＴ価格が0より大きい場合
+      --  IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
+      --    l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+      --                                                        - l_get_quote_dt_rec.usuall_net_price;
+      --  -- 通常ＮＥＴ価格が0以下の場合
+      --  ELSIF (l_get_quote_dt_rec.usuall_net_price <= 0) THEN
+      --    l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price - 0;
+      --  END IF;
+      --END IF; -- 明細支払条件
+/* 2009.06.17 D.Abe T1_1257対応 END */
       --
       l_rp_qte_lst_data_rec.amount_of_margin         := NVL(l_get_quote_dt_rec.amount_of_margin, 0);  -- マージン額
       l_rp_qte_lst_data_rec.margin_rate              := NVL(TO_CHAR(l_get_quote_dt_rec.margin_rate), cv_zero)
@@ -1512,7 +1555,47 @@ AS
         ov_retcode := cv_status_warn;
       ELSIF (lv_retcode = cv_status_error) THEN
         RAISE global_process_expt;
+/* 2009.06.17 D.Abe T1_1257対応 START */
+      ELSE
+        -- 支払条件の修正
+        IF (l_get_quote_dt_rec.unit_type = cv_unit_type_hs) THEN
+          -- 今回ＮＥＴ価格が0より大きい場合
+          IF (l_get_quote_dt_rec.this_time_net_price > 0) THEN
+            l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+                                                                - l_get_quote_dt_rec.this_time_net_price;
+          -- 今回ＮＥＴ価格が0以下の場合
+          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+            -- 通常ＮＥＴ価格が0より大きい場合
+            IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
+              l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+                                                                  - l_get_quote_dt_rec.usuall_net_price;
+            -- 通常ＮＥＴ価格が0以下の場合
+            ELSIF (l_get_quote_dt_rec.usuall_net_price <= 0) THEN
+              l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price - 0;
+            END IF;
+          END IF; -- 明細支払条件
+        ELSE
+          -- 今回ＮＥＴ価格が0より大きい場合
+          IF (l_get_quote_dt_rec.this_time_net_price > 0) THEN
+            l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+                                                                - (l_get_quote_dt_rec.this_time_net_price / 
+                                                                  l_rp_qte_lst_data_rec.inc_num);
+          -- 今回ＮＥＴ価格が0以下の場合
+          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
+            -- 通常ＮＥＴ価格が0より大きい場合
+            IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
+              l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+                                                                  - (l_get_quote_dt_rec.usuall_net_price / 
+                                                                  l_rp_qte_lst_data_rec.inc_num);
+            -- 通常ＮＥＴ価格が0以下の場合
+            ELSIF (l_get_quote_dt_rec.usuall_net_price <= 0) THEN
+              l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price - 0;
+            END IF;
+          END IF; -- 明細支払条件
+        END IF;
       END IF;
+/* 2009.06.17 D.Abe T1_1257対応 END */
+
       -- ========================================
       -- A-4.ワークテーブル出力
       -- ========================================
