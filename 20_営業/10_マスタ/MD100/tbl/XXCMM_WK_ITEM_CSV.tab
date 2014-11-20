@@ -1,3 +1,18 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : XXCMM_WK_ITEM_CSV
+ * Description     : 品目一覧作成ワーク（現在設定値）
+ * MD.070          : 品目一覧作成
+ * Version         : 
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/01/30    1.0  マスタTM      初回作成
+ *  2009/04/10    1.1  H.Yoshikawa   内容量、内訳入数のサイズ変更
+ *  2009/07/13    1.2  H.Yoshikawa   【0000366】コンポーネント原価追加
+ ************************************************************************/
 CREATE TABLE XXCMM.XXCMM_WK_ITEM_CSV
 (
     ITEM_ID                        NUMBER NOT NULL,
@@ -62,6 +77,15 @@ CREATE TABLE XXCMM.XXCMM_WK_ITEM_CSV
     OPT_COST_NEW                   NUMBER,
     OPT_COST_APPLY_DATE            DATE,
     CMPNT_COST                     NUMBER,
+-- Ver1.2  2009/07/13  Add 0000366対応
+    CMPNT_01GEN                    NUMBER,
+    CMPNT_02SAI                    NUMBER,
+    CMPNT_03SZI                    NUMBER,
+    CMPNT_04HOU                    NUMBER,
+    CMPNT_05GAI                    NUMBER,
+    CMPNT_06HKN                    NUMBER,
+    CMPNT_07KEI                    NUMBER,
+-- End1.2
     CMP_COST_APPLY_DATE            DATE,
     RENEWAL_ITEM_CODE              VARCHAR2(40),
     SP_SUPPLIER_CODE               VARCHAR2(9),
@@ -191,6 +215,22 @@ COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.OPT_COST_APPLY_DATE IS '営業原価適用開
 /
 COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_COST IS '標準原価計'
 /
+-- Ver1.2  2009/07/13  Add 0000366対応
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_01GEN IS '標準原価（原料）'
+/
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_02SAI IS '標準原価（再製費）'
+/
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_03SZI IS '標準原価（資材費）'
+/
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_04HOU IS '標準原価（包装費）'
+/
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_05GAI IS '標準原価（外注加工費）'
+/
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_06HKN IS '標準原価（保管費）'
+/
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMPNT_07KEI IS '標準原価（その他経費）'
+/
+-- End1.2
 COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CMP_COST_APPLY_DATE IS '標準原価適用開始日'
 /
 COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.RENEWAL_ITEM_CODE IS 'リニューアル商品元コード'

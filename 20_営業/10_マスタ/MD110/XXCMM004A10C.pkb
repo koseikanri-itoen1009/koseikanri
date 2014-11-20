@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A10C(body)
  * Description      : 品目一覧作成
  * MD.050           : 品目一覧作成 MD050_CMM_004_A10
- * Version          : Draft2C
+ * Version          : Issue3.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                        1.本社商品区分と商品製品区分の入れ替え
  *  2009/04/14    1.6   H.Yoshikawa      障害T1_0214対応  Disc品目アドオン「内容量」「内訳入数」桁数変更
  *  2009/05/26    1.7   H.Yoshikawa      障害T1_0317対応  品目コードの不要な範囲設定を削除
+ *  2009/07/13    1.8   H.Yoshikawa      障害0000366対応  コンポーネント原価(01:01GEN～07:07KEI)を追加
  *
  *****************************************************************************************/
 --
@@ -166,6 +167,17 @@ AS
   cv_output_log           CONSTANT VARCHAR2(3)   := 'LOG';
   cv_date_fmt_std         CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_date_fmt_std;
                                                                   -- 日付書式
+-- Ver1.8  2009/07/13  Add  0000364対応
+  cv_cost_cmpnt_01gen     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_01gen;   -- 原料
+  cv_cost_cmpnt_02sai     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_02sai;   -- 再製費
+  cv_cost_cmpnt_03szi     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_03szi;   -- 資材費
+  cv_cost_cmpnt_04hou     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_04hou;   -- 包装費
+  cv_cost_cmpnt_05gai     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_05gai;   -- 外注加工費
+  cv_cost_cmpnt_06hkn     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_06hkn;   -- 保管費
+  cv_cost_cmpnt_07kei     CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_cost_cmpnt_07kei;   -- その他経費
+  --
+  cv_yes                  CONSTANT VARCHAR2(1)   := 'Y';          -- 'Y'
+-- End1.8
   cv_no                   CONSTANT VARCHAR2(1)   := 'N';          -- 'N'
 -- Ver1.6 2009/04/14  障害：T1_0214 内容量、内訳入数 桁数変更に伴う修正
 ---- Ver1.4 2009/02/13  7.Disc品目アドオンの数値項目「内容量」桁数変更に伴う修正
@@ -196,6 +208,22 @@ AS
   gd_date_to         DATE;          -- 対象期間終了
   gv_item_code_from  ic_item_mst_b.item_no%TYPE;  -- 品名コード開始
   gv_item_code_to    ic_item_mst_b.item_no%TYPE;  -- 品名コード終了
+--
+-- Ver1.8  2009/07/13  Add  0000364対応
+  -- 標準原価取得用レコード型変数
+  TYPE g_opmcost_rtype IS RECORD(
+    cmpnt_cost1           NUMBER        -- 原料
+   ,cmpnt_cost2           NUMBER        -- 再製費
+   ,cmpnt_cost3           NUMBER        -- 資材費
+   ,cmpnt_cost4           NUMBER        -- 包装費
+   ,cmpnt_cost5           NUMBER        -- 外注加工費
+   ,cmpnt_cost6           NUMBER        -- 保管費
+   ,cmpnt_cost7           NUMBER        -- その他経費
+   ,cmpnt_cost            NUMBER        -- 標準原価計
+   ,start_date            DATE          -- 適用開始日
+  );
+-- End1.8
+  --
 --
   /**********************************************************************************
    * Procedure Name   : proc_init
@@ -462,12 +490,15 @@ AS
    * Description      : 標準原価取得(A-2.3, A-3.2)
    ***********************************************************************************/
   PROCEDURE get_cmp_cost(
-    in_item_id     IN  NUMBER,       -- 品目ID
-    on_cmp_cost    OUT NUMBER,       -- 標準原価計
-    od_apply_date  OUT DATE,         -- 標準原価適用開始日
-    ov_errbuf      OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
-    ov_retcode     OUT VARCHAR2,     -- リターン・コード             --# 固定 #
-    ov_errmsg      OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+    in_item_id     IN  NUMBER,           -- 品目ID
+-- Ver1.8  2009/07/13  Mod  0000364対応
+--    on_cmp_cost    OUT NUMBER,           -- 標準原価計
+--    od_apply_date  OUT DATE,             -- 標準原価適用開始日
+    o_opmcost_rec  OUT g_opmcost_rtype,  -- 標準原価レコード
+-- End1.8
+    ov_errbuf      OUT VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
   IS
 --
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -475,9 +506,8 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_cmp_cost'; -- プログラム名
+    cv_prg_name                CONSTANT VARCHAR2(100) := 'get_cmp_cost'; -- プログラム名
 -- Ver1.4 2009/02/12  標準原価計の取得を修正
-    cv_yes                     CONSTANT VARCHAR2(1)   := 'Y';                  -- Y
     -- 標準原価
     cv_whse_code               CONSTANT VARCHAR2(3)   := xxcmm_004common_pkg.cv_whse_code;
                                                                                -- 倉庫
@@ -493,6 +523,10 @@ AS
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
+-- Ver1.8  2009/07/13  Add  0000364対応
+    l_opmcost_rec     g_opmcost_rtype;  -- 標準原価レコード
+-- End1.8
+--
 --###########################  固定部 END   ####################################
 --
     -- ===============================
@@ -501,34 +535,81 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_step           VARCHAR2(100);   -- ステップ
-    lv_msg_token      VARCHAR2(100);   -- デバッグ用トークン
+    lv_step           VARCHAR2(100);    -- ステップ
+    lv_msg_token      VARCHAR2(100);    -- デバッグ用トークン
 --
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
--- Ver1.4 2009/02/12  標準原価計の取得を修正
---  対象期間(開始)指定時は、対象期間(開始)が期間に含まれるカレンダ、期間の標準原価を取得
---  対象期間(開始)未指定時は、業務日付が期間に含まれるカレンダ、期間の標準原価を取得
---    -- 標準原価と適用開始日を取得する
+-- Ver1.8 2009/07/13  Mod  0000366対応
+---- Ver1.4 2009/02/12  標準原価計の取得を修正
+----  対象期間(開始)指定時は、対象期間(開始)が期間に含まれるカレンダ、期間の標準原価を取得
+----  対象期間(開始)未指定時は、業務日付が期間に含まれるカレンダ、期間の標準原価を取得
+----    -- 標準原価と適用開始日を取得する
+----    CURSOR      cnp_cost_cur
+----    IS
+----      SELECT    ccmd.cmpnt_cost,
+----                ccld.start_date
+----      FROM      cm_cmpt_dtl          ccmd,
+----                cm_cldr_dtl          ccld,
+----                cm_cmpt_mst_vl       ccmv,
+----                fnd_lookup_values_vl flv
+----      WHERE     ccmd.calendar_code       = ccld.calendar_code
+----      AND       ccmd.cost_cmpntcls_id    = ccmv.cost_cmpntcls_id
+----      AND       ccmv.cost_cmpntcls_code  = flv.meaning
+----      AND       ccmd.item_id             = in_item_id
+----      AND       flv.lookup_type          = cv_lookup_cost_cmpt
+----      ORDER BY  ccmv.cost_cmpntcls_code;
+----  指定日がカレンダ期間に含まれる原価合計、開始日を取得
 --    CURSOR      cnp_cost_cur
 --    IS
---      SELECT    ccmd.cmpnt_cost,
---                ccld.start_date
---      FROM      cm_cmpt_dtl          ccmd,
---                cm_cldr_dtl          ccld,
---                cm_cmpt_mst_vl       ccmv,
---                fnd_lookup_values_vl flv
---      WHERE     ccmd.calendar_code       = ccld.calendar_code
---      AND       ccmd.cost_cmpntcls_id    = ccmv.cost_cmpntcls_id
---      AND       ccmv.cost_cmpntcls_code  = flv.meaning
---      AND       ccmd.item_id             = in_item_id
---      AND       flv.lookup_type          = cv_lookup_cost_cmpt
---      ORDER BY  ccmv.cost_cmpntcls_code;
---  指定日がカレンダ期間に含まれる原価合計、開始日を取得
+--      SELECT    SUM( NVL( ccmd.cmpnt_cost, 0 ) )    -- 標準原価
+--               ,cclr.start_date
+--      FROM      cm_cmpt_dtl          ccmd           -- OPM標準原価
+--               ,cm_cldr_dtl          cclr           -- OPM原価カレンダ
+--               ,cm_cmpt_mst_vl       ccmv           -- 原価コンポーネント
+--               ,fnd_lookup_values_vl flv            -- 参照コード値
+--      WHERE     ccmd.item_id             = in_item_id                 -- 品目ID
+--      AND       cclr.start_date         <= NVL( gd_date_from, gd_process_date )
+--                                                                      -- 開始日
+--      AND       cclr.end_date           >= NVL( gd_date_from, gd_process_date )
+--                                                                      -- 終了日
+--      AND       flv.lookup_type          = cv_lookup_cost_cmpt        -- 参照タイプ
+--      AND       flv.enabled_flag         = cv_yes                     -- 使用可能
+--      AND       ccmv.cost_cmpntcls_code  = flv.meaning                -- 原価コンポーネントコード
+--      AND       ccmd.cost_cmpntcls_id    = ccmv.cost_cmpntcls_id      -- 原価コンポーネントID
+--      AND       ccmd.calendar_code       = cclr.calendar_code         -- カレンダコード
+--      AND       ccmd.period_code         = cclr.period_code           -- 期間コード
+--      AND       ccmd.whse_code           = cv_whse_code               -- 倉庫
+--      AND       ccmd.cost_mthd_code      = cv_cost_mthd_code          -- 原価方法
+--      AND       ccmd.cost_analysis_code  = cv_cost_analysis_code      -- 分析コード
+--      GROUP BY  cclr.start_date;
+---- End
+    --
     CURSOR      cnp_cost_cur
     IS
-      SELECT    SUM( NVL( ccmd.cmpnt_cost, 0 ) )    -- 標準原価
+      SELECT    DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_01gen, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_01gen, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                     cmpnt_cost1      -- 01GEN:原料
+               ,DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_02sai, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_02sai, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                     cmpnt_cost2      -- 02SAI:再製費
+               ,DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_03szi, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_03szi, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                      cmpnt_cost3     -- 03SZI:資材費
+               ,DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_04hou, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_04hou, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                      cmpnt_cost4     -- 04HOU:包装費
+               ,DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_05gai, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_05gai, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                      cmpnt_cost5     -- 05GAI:外注加工費
+               ,DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_06hkn, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_06hkn, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                      cmpnt_cost6     -- 06HKN:保管費
+               ,DECODE( MAX( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_07kei, cv_yes, cv_no ))
+                       ,cv_yes, SUM( DECODE( ccmv.cost_cmpntcls_code, cv_cost_cmpnt_07kei, ccmd.cmpnt_cost, 0 ))
+                       ,cv_no,  NULL )                                      cmpnt_cost7     -- 07KEI:その他経費
+               ,SUM( ccmd.cmpnt_cost )                                      opm_cost_total  -- 標準原価計
                ,cclr.start_date
       FROM      cm_cmpt_dtl          ccmd           -- OPM標準原価
                ,cm_cldr_dtl          cclr           -- OPM原価カレンダ
@@ -549,7 +630,7 @@ AS
       AND       ccmd.cost_mthd_code      = cv_cost_mthd_code          -- 原価方法
       AND       ccmd.cost_analysis_code  = cv_cost_analysis_code      -- 分析コード
       GROUP BY  cclr.start_date;
--- End
+-- End1.8
 --
   BEGIN
 --
@@ -574,9 +655,16 @@ AS
 --    END LOOP cnp_cost_loop;
     --
     OPEN  cnp_cost_cur;
-    FETCH cnp_cost_cur INTO on_cmp_cost, od_apply_date;
+-- Ver1.8 2009/07/13  Mod  0000366対応
+--    FETCH cnp_cost_cur INTO on_cmp_cost, od_apply_date;
+    FETCH cnp_cost_cur INTO l_opmcost_rec;
+-- End1.8
     CLOSE cnp_cost_cur;
--- End
+-- End1.4
+--
+-- Ver1.8 2009/07/13  Add  0000366対応
+    o_opmcost_rec := l_opmcost_rec;
+-- End1.8
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -944,6 +1032,10 @@ AS
 -- End
       --BETWEENをやめる 2009/01/20
 --
+-- Ver1.8  2009/07/13  Add  0000364対応
+    l_opmcost_rec    g_opmcost_rtype;  -- 標準原価レコード
+-- End1.8
+    --
     -- ===============================
     -- ユーザー定義例外
     -- ===============================
@@ -974,8 +1066,11 @@ AS
         lv_msg_token := '標準原価取得';
         get_cmp_cost(
           in_item_id     => lt_item01_rec.item_id,    -- IN  品目ID
-          on_cmp_cost    => ln_cmp_cost,              -- OUT 標準原価計
-          od_apply_date  => ld_apply_date,            -- OUT 標準原価適用開始日
+-- Ver1.8  2009/07/13  Mod  0000364対応
+--          on_cmp_cost    => ln_cmp_cost,              -- OUT 標準原価計
+--          od_apply_date  => ld_apply_date,            -- OUT 標準原価適用開始日
+          o_opmcost_rec  => l_opmcost_rec,            -- OUT 標準原価レコード
+-- End1.8
           ov_errbuf      => lv_errbuf,                -- OUT エラー・メッセージ           --# 固定 #
           ov_retcode     => lv_retcode,               -- OUT リターン・コード             --# 固定 #
           ov_errmsg      => lv_errmsg                 -- OUT ユーザー・エラー・メッセージ --# 固定 #
@@ -1052,6 +1147,15 @@ AS
           opt_cost_new,                 -- 営業原価(新)
           opt_cost_apply_date,          -- 営業原価適用開始日
           cmpnt_cost,                   -- 標準原価計
+-- Ver1.8  2009/07/13  Add  0000366対応
+          cmpnt_01gen,                  -- 標準原価（原料）
+          cmpnt_02sai,                  -- 標準原価（再製費）
+          cmpnt_03szi,                  -- 標準原価（資材費）
+          cmpnt_04hou,                  -- 標準原価（包装費）
+          cmpnt_05gai,                  -- 標準原価（外注加工費）
+          cmpnt_06hkn,                  -- 標準原価（保管費）
+          cmpnt_07kei,                  -- 標準原価（その他経費）
+-- End1.8
           cmp_cost_apply_date,          -- 標準原価適用開始日
           renewal_item_code,            -- リニューアル商品元コード
           sp_supplier_code,             -- 専門店仕入先コード
@@ -1121,8 +1225,19 @@ AS
           lt_item01_rec.opt_cost_old,             -- 営業原価(旧)
           lt_item01_rec.opt_cost_new,             -- 営業原価(新)
           lt_item01_rec.opt_cost_apply_date,      -- 営業原価適用開始日
-          ln_cmp_cost,                            -- 標準原価計
-          ld_apply_date,                          -- 標準原価適用開始日
+-- Ver1.8  2009/07/13  Mod  0000364対応
+--          ln_cmp_cost,                            -- 標準原価計
+--          ld_apply_date,                          -- 標準原価適用開始日
+          l_opmcost_rec.cmpnt_cost,               -- 標準原価計
+          l_opmcost_rec.cmpnt_cost1,              -- 原料
+          l_opmcost_rec.cmpnt_cost2,              -- 再製費
+          l_opmcost_rec.cmpnt_cost3,              -- 資材費
+          l_opmcost_rec.cmpnt_cost4,              -- 包装費
+          l_opmcost_rec.cmpnt_cost5,              -- 外注加工費
+          l_opmcost_rec.cmpnt_cost6,              -- 保管費
+          l_opmcost_rec.cmpnt_cost7,              -- その他経費
+          l_opmcost_rec.start_date,               -- 標準原価適用開始日
+-- End1.8
           lt_item01_rec.renewal_item_code,        -- リニューアル商品元コード
           lt_item01_rec.sp_supplier_code,         -- 専門店仕入先コード
           lt_item01_rec.ss_code_name,             -- 専門店仕入先
@@ -1153,8 +1268,11 @@ AS
         lv_msg_token := '標準原価取得';
         get_cmp_cost(
           in_item_id     => lt_item01_rec.item_id,    -- IN  品目ID
-          on_cmp_cost    => ln_cmp_cost,              -- OUT 標準原価計
-          od_apply_date  => ld_apply_date,            -- OUT 標準原価適用開始日
+-- Ver1.8  2009/07/13  Mod  0000364対応
+--          on_cmp_cost    => ln_cmp_cost,              -- OUT 標準原価計
+--          od_apply_date  => ld_apply_date,            -- OUT 標準原価適用開始日
+          o_opmcost_rec  => l_opmcost_rec,            -- OUT 標準原価レコード
+-- End1.8
           ov_errbuf      => lv_errbuf,                -- OUT エラー・メッセージ           --# 固定 #
           ov_retcode     => lv_retcode,               -- OUT リターン・コード             --# 固定 #
           ov_errmsg      => lv_errmsg                 -- OUT ユーザー・エラー・メッセージ --# 固定 #
@@ -1183,6 +1301,15 @@ AS
           item_status_name,        -- 品目ステータス名
           fixed_price,             -- 定価
           cmpnt_cost,              -- 標準原価計
+-- Ver1.8  2009/07/13  Add  0000366対応
+          cmpnt_01gen,             -- 標準原価（原料）
+          cmpnt_02sai,             -- 標準原価（再製費）
+          cmpnt_03szi,             -- 標準原価（資材費）
+          cmpnt_04hou,             -- 標準原価（包装費）
+          cmpnt_05gai,             -- 標準原価（外注加工費）
+          cmpnt_06hkn,             -- 標準原価（保管費）
+          cmpnt_07kei,             -- 標準原価（その他経費）
+-- End1.8
           cmp_cost_apply_date,     -- 標準原価適用開始日
           discrete_cost,           -- 営業原価
           policy_group,            -- 政策群
@@ -1204,8 +1331,19 @@ AS
           lt_item01_rec.item_status,       -- 品目ステータス
           lt_item01_rec.item_status_name,  -- 品目ステータス名
           lt_item01_rec.fixed_price,       -- 定価
-          ln_cmp_cost,                     -- 標準原価計
-          ld_apply_date,                   -- 標準原価適用開始日
+-- Ver1.8  2009/07/13  Mod  0000364対応
+--          ln_cmp_cost,                     -- 標準原価計
+--          ld_apply_date,                   -- 標準原価適用開始日
+          l_opmcost_rec.cmpnt_cost,        -- 標準原価計
+          l_opmcost_rec.cmpnt_cost1,       -- 原料
+          l_opmcost_rec.cmpnt_cost2,       -- 再製費
+          l_opmcost_rec.cmpnt_cost3,       -- 資材費
+          l_opmcost_rec.cmpnt_cost4,       -- 包装費
+          l_opmcost_rec.cmpnt_cost5,       -- 外注加工費
+          l_opmcost_rec.cmpnt_cost6,       -- 保管費
+          l_opmcost_rec.cmpnt_cost7,       -- その他経費
+          l_opmcost_rec.start_date,        -- 標準原価適用開始日
+-- End1.8
           lt_item01_rec.discrete_cost,     -- 営業原価
           lt_item01_rec.policy_group,      -- 政策群
           lt_item01_rec.policy_grp_name,   -- 政策群名
@@ -1544,6 +1682,22 @@ AS
                 TO_CHAR( xicw.cmpnt_cost )     AS cmpnt_cost,
                                                -- 標準原価計
 -- End
+-- Ver1.8  2009/07/13  Add  0000366対応
+                TO_CHAR( xicw.cmpnt_01gen )    AS cmpnt_01gen,
+                                               -- 標準原価（原料）
+                TO_CHAR( xicw.cmpnt_02sai )    AS cmpnt_02sai,
+                                               -- 標準原価（再製費）
+                TO_CHAR( xicw.cmpnt_03szi )    AS cmpnt_03szi,
+                                               -- 標準原価（資材費）
+                TO_CHAR( xicw.cmpnt_04hou )    AS cmpnt_04hou,
+                                               -- 標準原価（包装費）
+                TO_CHAR( xicw.cmpnt_05gai )    AS cmpnt_05gai,
+                                               -- 標準原価（外注加工費）
+                TO_CHAR( xicw.cmpnt_06hkn )    AS cmpnt_06hkn,
+                                               -- 標準原価（保管費）
+                TO_CHAR( xicw.cmpnt_07kei )    AS cmpnt_07kei,
+                                               -- 標準原価（その他経費）
+-- End1.8
                 xicw.cmp_cost_apply_date,      -- 標準原価適用開始日
                 xicw.seisakugun,               -- 政策群
                 xicw.seisakugun_name           -- 政策群名
@@ -1572,6 +1726,22 @@ AS
                 TO_CHAR( xicw.cmpnt_cost )     AS cmpnt_cost,
                                                -- 標準原価計
 -- End
+-- Ver1.8  2009/07/13  Add  0000366対応
+                TO_CHAR( xicw.cmpnt_01gen )    AS cmpnt_01gen,
+                                               -- 標準原価（原料）
+                TO_CHAR( xicw.cmpnt_02sai )    AS cmpnt_02sai,
+                                               -- 標準原価（再製費）
+                TO_CHAR( xicw.cmpnt_03szi )    AS cmpnt_03szi,
+                                               -- 標準原価（資材費）
+                TO_CHAR( xicw.cmpnt_04hou )    AS cmpnt_04hou,
+                                               -- 標準原価（包装費）
+                TO_CHAR( xicw.cmpnt_05gai )    AS cmpnt_05gai,
+                                               -- 標準原価（外注加工費）
+                TO_CHAR( xicw.cmpnt_06hkn )    AS cmpnt_06hkn,
+                                               -- 標準原価（保管費）
+                TO_CHAR( xicw.cmpnt_07kei )    AS cmpnt_07kei,
+                                               -- 標準原価（その他経費）
+-- End1.8
                 xicw.cmp_cost_apply_date,      -- 標準原価適用開始日
 -- Ver1.4 2009/02/12  暗黙型変換が実施されないよう修正
                 TO_CHAR( xicw.discrete_cost )  AS discrete_cost,
@@ -1581,8 +1751,12 @@ AS
                 xicw.policy_grp_name           -- 政策群名
       FROM      xxcmm_wk_itemrsv_csv xicw
       WHERE     xicw.request_id = cn_request_id
-      ORDER BY  xicw.policy_group,
-                xicw.item_code;
+-- Ver1.8  209/07/13  Mod  品目コード、適用日順に変更
+--      ORDER BY  xicw.policy_group,
+--                xicw.item_code;
+      ORDER BY  xicw.item_code,
+                xicw.apply_date;
+-- End1.8
 --
     -- ===============================
     -- ユーザー定義例外
@@ -1778,6 +1952,22 @@ AS
           || cv_sep_com    -- 定価適用開始日
           || lt_item01_rec.cmpnt_cost
           || cv_sep_com    -- 標準原価計
+-- Ver1.8  2009/07/13  Add  0000366対応
+          || lt_item01_rec.cmpnt_01gen
+          || cv_sep_com    -- 標準原価（原料）
+          || lt_item01_rec.cmpnt_02sai
+          || cv_sep_com    -- 標準原価（再製費）
+          || lt_item01_rec.cmpnt_03szi
+          || cv_sep_com    -- 標準原価（資材費）
+          || lt_item01_rec.cmpnt_04hou
+          || cv_sep_com    -- 標準原価（包装費）
+          || lt_item01_rec.cmpnt_05gai
+          || cv_sep_com    -- 標準原価（外注加工費）
+          || lt_item01_rec.cmpnt_06hkn
+          || cv_sep_com    -- 標準原価（保管費）
+          || lt_item01_rec.cmpnt_07kei
+          || cv_sep_com    -- 標準原価（その他経費）
+-- End1.8
           || TO_CHAR( lt_item01_rec.cmp_cost_apply_date, cv_date_fmt_std )
           || cv_sep_com    -- 標準原価適用開始日
           || lt_item01_rec.opt_cost_old
@@ -1827,6 +2017,22 @@ AS
           || cv_sep_com    -- 定価
           || lt_item01_rec.cmpnt_cost
           || cv_sep_com    -- 標準原価計
+-- Ver1.8  2009/07/13  Add  0000366対応
+          || lt_item01_rec.cmpnt_01gen
+          || cv_sep_com    -- 標準原価（原料）
+          || lt_item01_rec.cmpnt_02sai
+          || cv_sep_com    -- 標準原価（再製費）
+          || lt_item01_rec.cmpnt_03szi
+          || cv_sep_com    -- 標準原価（資材費）
+          || lt_item01_rec.cmpnt_04hou
+          || cv_sep_com    -- 標準原価（包装費）
+          || lt_item01_rec.cmpnt_05gai
+          || cv_sep_com    -- 標準原価（外注加工費）
+          || lt_item01_rec.cmpnt_06hkn
+          || cv_sep_com    -- 標準原価（保管費）
+          || lt_item01_rec.cmpnt_07kei
+          || cv_sep_com    -- 標準原価（その他経費）
+-- End1.8
           || TO_CHAR( lt_item01_rec.cmp_cost_apply_date, cv_date_fmt_std )
           || cv_sep_com    -- 標準原価適用開始日
           || lt_item01_rec.discrete_cost
