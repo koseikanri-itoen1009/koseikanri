@@ -10,6 +10,7 @@
 * 2008-05-02 1.0  吉元強樹     変更要求対応(#12,36,90)、内部変更要求対応(#28,41)
 * 2008-05-21 1.0  吉元強樹     不具合ログ#320_3
 * 2008-06-26 1.1  北寒寺正夫   ST不具合#17/結合指摘No3
+* 2008-07-11 1.2  伊藤ひとみ   内部変更#153 納入日の未来日チェック追加
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -429,6 +430,38 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // エラーあり
       return true;
     }
+// 2008-07-11 H.Itou Add START 納入日が未来日の場合、エラー
+    // *************************************************** //
+    // * 処理4-1:納入日未来日チェック                    * //
+    // *************************************************** //
+    // 直送区分が3：支給かつ、支給Noに入力ありの場合、納入日
+    String dShipCode     = (String)row.getAttribute("DropshipCode"); // 直送区分コード
+    String requestNumber = (String)row.getAttribute("RequestNumber");// 支給No
+
+    if (XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+      && !XxcmnUtility.isBlankOrNull(requestNumber))
+    {
+      // 納入日＞システム日付はエラー
+      if (XxcmnUtility.chkCompareDate(1, deliveryDate, XxpoUtility.getSysdate(getOADBTransaction())))
+      {
+        // ************************ //
+        // * エラーメッセージ出力 * //
+        // ************************ //
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              vo.getName(),
+                              row.getKey(),
+                              "DeliveryDate",
+                              deliveryDate,
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10253,
+                              null));
+                            
+        // エラーあり
+        return true;
+      }
+    }
+// 2008-07-11 H.Itou Add END
 
     // *************************************************** //
     // * 処理5:発注ステータスチェック                  * //
@@ -504,7 +537,8 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
    
     // エラー無し
     return false;
-  } // chkBatchDelivery
+  } // 
+  
 
   /***************************************************************************
    * (検索画面)発注明細UPDATE処理を行うメソッドです。
@@ -1202,6 +1236,36 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
                             XxpoConstants.XXPO10140));
 
     }
+
+// 2008-07-11 H.Itou Add START 納入日が未来日の場合、エラー
+    // *************************************************** //
+    // * 処理4-1:納入日未来日チェック                    * //
+    // *************************************************** //
+    // 直送区分が3：支給かつ、支給Noに入力ありの場合、納入日
+      String dShipCode     = (String)supplierResultsMakeHdrVORow.getAttribute("DropshipCode"); // 直送区分コード
+      String requestNumber = (String)supplierResultsMakeHdrVORow.getAttribute("RequestNumber");// 支給No
+
+      if (XxpoConstants.DSHIP_PROVISION.equals(dShipCode) 
+        && !XxcmnUtility.isBlankOrNull(requestNumber))
+      {
+        // 納入日＞システム日付はエラー
+        if (XxcmnUtility.chkCompareDate(1, deliveryDate, XxpoUtility.getSysdate(getOADBTransaction())))
+        {
+          // ************************ //
+          // * エラーメッセージ出力 * //
+          // ************************ //
+          exceptions.add( new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,
+                                supplierResultsMakeHdrVo.getName(),
+                                supplierResultsMakeHdrVORow.getKey(),
+                                "DeliveryDate",
+                                deliveryDate,
+                                XxcmnConstants.APPL_XXPO,
+                                XxpoConstants.XXPO10254,
+                                null));
+        }
+      }
+// 2008-07-11 H.Itou Add END
 
     // ************************************* //
     // *   金額確定済みフラグチェック      * //

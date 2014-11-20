@@ -9,6 +9,9 @@
 * 2008-01-10 1.0  伊藤ひとみ     新規作成
 * 2008-06-09 1.1  二瓶大輔　     変更要求#42対応
 * 2008-06-30 1.2  二瓶大輔　     内部変更要求#146,147対応
+* 2008-07-11 1.3  伊藤ひとみ     内部変更要求#153対応(メッセージ追加)
+* 2008-07-11 1.3  二瓶大輔　     ST#421対応(メッセージ追加)
+
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -208,6 +211,16 @@ public class XxpoConstants
   public static final String XXPO40035   = "APP-XXPO-40035";
   /** メッセージ：APP-XXPO-40036 発注承諾確認 */
   public static final String XXPO40036   = "APP-XXPO-40036";
+// 2008-07-11 H.Itou Add START
+  /** メッセージ：APP-XXPO-10254 納入日未来日エラー1 */
+  public static final String XXPO10253   = "APP-XXPO-10253";
+  /** メッセージ：APP-XXPO-10254 納入日未来日エラー2 */
+  public static final String XXPO10254   = "APP-XXPO-10254";
+// 2008-07-11 H.Itou Add END
+// 2008-07-11 D.Nihei Add START
+  /** メッセージ：APP-XXPO-10227 数値0以下エラー */
+  public static final String XXPO10227   = "APP-XXPO-10227";
+// 2008-07-11 D.Nihei Add END
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
