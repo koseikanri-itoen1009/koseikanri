@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上実績振替情報の作成（振替割合） 販売物流 MD050_COK_008_A06
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2009/07/03    1.5   M.Hiruta         [障害0000422]振戻データ作成処理で作成される業務登録日付を、
  *                                                    業務処理日付へ変更
  *  2009/07/13    1.6   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
+ *  2009/08/24    1.7   M.Hiruta         [障害0001152]顧客名を格納する変数の宣言をTYPE型へ変更
  *
  *****************************************************************************************/
   -- ===============================
@@ -1045,7 +1046,10 @@ AS
     ln_dlv_unit_price  NUMBER         DEFAULT 0;    -- 納品単価
     lv_to_staff_code   VARCHAR2(10)   DEFAULT NULL; -- 担当営業コード
     lv_to_cust_code    VARCHAR2(10)   DEFAULT NULL; -- A-7用売上振替先顧客コード
-    lv_to_cust_name    VARCHAR2(30)   DEFAULT NULL; -- A-7用売上振替先顧客名称
+-- Start 2009/08/24 Ver.1.7 0001152 M.Hiruta REPAIR
+--    lv_to_cust_name    VARCHAR2(30)   DEFAULT NULL; -- A-7用売上振替先顧客名称
+    lv_to_cust_name    hz_parties.party_name%TYPE   DEFAULT NULL; -- A-7用売上振替先顧客名称
+-- End   2009/08/24 Ver.1.7 0001152 M.Hiruta REPAIR
 -- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
     ln_converted_qty   NUMBER         DEFAULT NULL; -- 基準数量取得成否チェック用
 -- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
@@ -1344,7 +1348,10 @@ AS
     ln_counter         NUMBER         DEFAULT 0;    -- 成功件数、警告件数用カウンター
     lv_to_staff_code   VARCHAR2(10)   DEFAULT NULL; -- 担当営業コード
     lv_to_cust_code    VARCHAR2(10)   DEFAULT NULL; -- A-7用売上振替先顧客コード
-    lv_to_cust_name    VARCHAR2(30)   DEFAULT NULL; -- A-7用売上振替先顧客名称
+-- Start 2009/08/24 Ver.1.7 0001152 M.Hiruta REPAIR
+--    lv_to_cust_name    VARCHAR2(30)   DEFAULT NULL; -- A-7用売上振替先顧客名称
+    lv_to_cust_name    hz_parties.party_name%TYPE   DEFAULT NULL; -- A-7用売上振替先顧客名称
+-- End   2009/08/24 Ver.1.7 0001152 M.Hiruta REPAIR
     lb_proc_start_flg  BOOLEAN        DEFAULT TRUE; -- A-8用処理実行判定フラグ(Y：実行要 N：実行不要)
     lb_data_adj_flg    BOOLEAN        DEFAULT TRUE; -- A-8用調整フラグ(Y：調整要 N：調整不要)
     ln_dlv_qty         NUMBER         DEFAULT 0;    -- A-9_調整後数量
