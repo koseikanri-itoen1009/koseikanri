@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -27,7 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/21    1.0   Masayuki Ikeda   新規作成
  *  2008/05/23    1.1   Masayuki Ikeda   結合テスト障害対応
- *  2008/07/02    1.2   Satoshi Yunba    禁則文字対応
+ *  2008/07/02    1.2   Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
+ *  2008/07/15    1.3   Masayuki Nomura  ST障害対応#444
  *
  *****************************************************************************************/
 --
@@ -1559,15 +1560,24 @@ AS
     -- ローカル定数
     -- ======================================================
     lc_carrier_code_min   CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
-    lc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT '9999' ;
+-- ##### 20080715 1.3 ST障害対応#444 START #####
+--    lc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT '9999' ;
+    lc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
+-- ##### 20080715 1.3 ST障害対応#444 END   #####
     lc_whs_code_min       CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
-    lc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT '9999' ;
+-- ##### 20080715 1.3 ST障害対応#444 START #####
+--    lc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT '9999' ;
+    lc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
+-- ##### 20080715 1.3 ST障害対応#444 END   #####
     lc_delivery_no_min    CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
     lc_delivery_no_max    CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
     lc_request_no_min     CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
     lc_request_no_max     CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
     lc_invoice_no_min     CONSTANT VARCHAR2(20) DEFAULT '00000000000000000000' ;
-    lc_invoice_no_max     CONSTANT VARCHAR2(20) DEFAULT '99999999999999999999' ;
+-- ##### 20080715 1.3 ST障害対応#444 START #####
+--    lc_invoice_no_max     CONSTANT VARCHAR2(20) DEFAULT '99999999999999999999' ;
+    lc_invoice_no_max     CONSTANT VARCHAR2(20) DEFAULT 'ZZZZZZZZZZZZZZZZZZZZ' ;
+-- ##### 20080715 1.3 ST障害対応#444 END   #####
 --
     -- ======================================================
     -- ローカル変数
