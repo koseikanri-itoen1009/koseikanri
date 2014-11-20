@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_MST_BM_CONTRACT
  * Description : 販手条件マスタ
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/23    1.1   K.Iwabuchi       BM率、BM金額の桁数変更
+ *  2009/07/09    1.2   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_MST_BM_CONTRACT
@@ -41,6 +42,9 @@ CREATE TABLE XXCOK.XXCOK_MST_BM_CONTRACT
    CONSTRAINT XXCOK_MST_BM_CONTRACT_PK PRIMARY KEY(BM_CONTRACT_ID)
    USING INDEX TABLESPACE XXIDX2
 )
+-- 2009/07/09 Ver.1.2 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 40 INITRANS 32 STORAGE ( INITIAL 65M )
+-- 2009/07/09 Ver.1.2 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE  XXCOK.XXCOK_MST_BM_CONTRACT                         IS '販手条件マスタ'
 /

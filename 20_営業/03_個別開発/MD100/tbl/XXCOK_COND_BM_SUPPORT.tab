@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_COND_BM_SUPPORT
  * Description : 条件別販手販協テーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/23    1.1   K.Iwabuchi       割戻率、割戻額桁数変更
  *  2009/06/11    1.2   K.Yamaguchi      [障害T1_1422]項目追加
+ *  2009/07/09    1.3   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_COND_BM_SUPPORT
@@ -71,6 +72,9 @@ CREATE TABLE XXCOK.XXCOK_COND_BM_SUPPORT
    CONSTRAINT XXCOK_COND_BM_SUPPORT_PK PRIMARY KEY(COND_BM_SUPPORT_ID)
    USING INDEX TABLESPACE XXIDX2
 )
+-- 2009/07/09 Ver.1.3 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 65M )
+-- 2009/07/09 Ver.1.3 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE  XXCOK.XXCOK_COND_BM_SUPPORT                           IS '条件別販手販協テーブル'
 /

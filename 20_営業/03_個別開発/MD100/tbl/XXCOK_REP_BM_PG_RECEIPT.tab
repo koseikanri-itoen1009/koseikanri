@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_PG_RECEIPT
  * Description : 支払案内書領収書付き版帳票ワークテーブル
- * Version     : 1.1
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/22    1.1   K.Yamaguchi      項目追加・データ型変更
  *  2009/01/23    1.2   T.Abe            データ型変更
+ *  2009/07/09    1.3   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_PG_RECEIPT
@@ -47,6 +48,9 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_PG_RECEIPT
    PROGRAM_ID                NUMBER  (15,0),
    PROGRAM_UPDATE_DATE       DATE
 )
+-- 2009/07/09 Ver.1.3 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M )
+-- 2009/07/09 Ver.1.3 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE  XXCOK.XXCOK_REP_BM_PG_RECEIPT                           IS '支払案内書領収書付き版帳票ワークテーブル'
 /

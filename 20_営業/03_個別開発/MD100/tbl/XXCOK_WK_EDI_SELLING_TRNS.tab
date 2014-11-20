@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_WK_EDI_SELLING_TRNS
  * Description : EDI売上実績振替情報ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/02/04    1.1   T.Osada          [障害COK_007]BR040最新化対応
  *  2009/02/26    1.2   S.Sasaki         [障害COK_058]
+ *  2009/07/09    1.3   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_WK_EDI_SELLING_TRNS
@@ -377,6 +378,9 @@ CREATE TABLE XXCOK.XXCOK_WK_EDI_SELLING_TRNS
    PROGRAM_ID                      NUMBER(15,0),
    PROGRAM_UPDATE_DATE             DATE
 )
+-- 2009/07/09 Ver.1.3 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 60 INITRANS 32 STORAGE ( INITIAL 2M )
+-- 2009/07/09 Ver.1.3 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE  XXCOK.XXCOK_WK_EDI_SELLING_TRNS                         IS 'EDI売上実績振替情報ワークテーブル'
 /

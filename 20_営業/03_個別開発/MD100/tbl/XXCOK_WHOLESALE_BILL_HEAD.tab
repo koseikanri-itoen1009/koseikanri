@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOK_WHOLESALE_BILL_HEAD
  * Description : 問屋請求書ヘッダーテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
+ *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_HEAD
@@ -30,7 +31,10 @@ CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_HEAD
    PROGRAM_UPDATE_DATE      DATE,
    CONSTRAINT XXCOK_WHOLESALE_BILL_HEAD_PK PRIMARY KEY(WHOLESALE_BILL_HEADER_ID)
    USING INDEX TABLESPACE XXIDX2 
-);
+)
+-- 2009/07/09 Ver.1.1 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 40 INITRANS 32 STORAGE ( INITIAL 2M )
+-- 2009/07/09 Ver.1.1 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE  XXCOK.XXCOK_WHOLESALE_BILL_HEAD                          IS '問屋請求書ヘッダーテーブル'
 /

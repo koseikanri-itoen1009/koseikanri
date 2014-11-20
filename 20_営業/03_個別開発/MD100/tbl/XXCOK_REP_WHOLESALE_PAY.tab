@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_WHOLESALE_PAY
  * Description : 問屋販売条件支払チェック帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/23    1.1   K.Iwabuchi       その他科目桁数変更
+ *  2009/07/09    1.2   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
@@ -70,6 +71,9 @@ CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
    PROGRAM_ID                      NUMBER(15,0),           -- コンカレント・プログラムID
    PROGRAM_UPDATE_DATE             DATE                    -- プログラム更新日
 )
+-- 2009/07/09 Ver.1.2 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M )
+-- 2009/07/09 Ver.1.2 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE  XXCOK.XXCOK_REP_WHOLESALE_PAY IS '問屋販売条件支払チェック帳票ワークテーブル'
 /

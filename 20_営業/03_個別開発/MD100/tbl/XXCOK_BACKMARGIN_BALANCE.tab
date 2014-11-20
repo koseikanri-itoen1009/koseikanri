@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOK_BACKMARGIN_BALANCE
  * Description : 販手残高テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
+ *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE
@@ -51,6 +52,9 @@ CREATE TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE
    CONSTRAINT XXCOK_BACKMARGIN_BALANCE_PK PRIMARY KEY (BM_BALANCE_ID)
    USING INDEX TABLESPACE XXIDX2
 )
+-- 2009/07/09 Ver.1.1 [障害0000515] SCS K.Yamaguchi ADD START
+PCTFREE 10 PCTUSED 60 INITRANS 32 STORAGE ( INITIAL 65M )
+-- 2009/07/09 Ver.1.1 [障害0000515] SCS K.Yamaguchi ADD END
 /
 COMMENT ON TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE                         IS '販手残高テーブル'
 /
