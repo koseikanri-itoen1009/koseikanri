@@ -5,13 +5,14 @@ CREATE OR REPLACE FORCE VIEW XXCFR_RECEIPT_CUST_ACCOUNTS_V (
  * Description     : 入金先顧客ビュー（支払通知データダウンロード用）
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2008/11/27    1.0  SCS 中村 博   初回作成
+ *  2010/01/29    1.1  SCS 安川 智博 障害「E__本稼動_01503」対応
  ************************************************************************/
   type,                                   -- タイプ
   account_number,                         -- 顧客コード
@@ -50,6 +51,9 @@ SELECT
       AND hcasa.org_id            = fnd_profile.value('ORG_ID') --請求先顧客所在地.組織ID = 
       AND hcasa.cust_acct_site_id = hcsua.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
       AND hcsua.site_use_code     = 'BILL_TO'                   --請求先顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010/01/29 Yasukawa Start
+      AND hcsua.status            = 'A'                         --請求先顧客使用目的.ステータス = 'A'
+-- Add 2010/01/29 Yasukawa End
       AND hca.cust_account_id     = hcp.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客プロファイル.顧客ID
       AND hcp.site_use_id         IS NULL                       --請求先顧客プロファイル.使用目的 IS NULL
     UNION ALL
@@ -76,6 +80,9 @@ SELECT
       AND hcasa.org_id            = fnd_profile.value('ORG_ID') --請求先顧客所在地.組織ID = 
       AND hcasa.cust_acct_site_id = hcsua.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
       AND hcsua.site_use_code     = 'BILL_TO'                   --請求先顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010/01/29 Yasukawa Start
+      AND hcsua.status            = 'A'                         --請求先顧客使用目的.ステータス = 'A'
+-- Add 2010/01/29 Yasukawa End
       AND hca.cust_account_id     = hcp.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客プロファイル.顧客ID
       AND hcp.site_use_id         IS NULL                       --請求先顧客プロファイル.使用目的 IS NULL
   )  xxcfr_receipt_cust_account

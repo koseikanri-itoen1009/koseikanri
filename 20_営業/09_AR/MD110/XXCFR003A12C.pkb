@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
  * Description     : 汎用商品（店単価毎集計）請求データ作成
  * MD.050          : MD050_CFR_003_A12_汎用商品（店単価毎集計）請求データ作成
  * MD.070          : MD050_CFR_003_A12_汎用商品（店単価毎集計）請求データ作成
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -34,6 +34,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
  *  2009-02-20    1.2   SCS 大川 恵   [障害CFR_014] VD顧客区分によるBM金額出力制御対応
  *  2009-04-13    1.3   SCS 萱原 伸哉 T1_0129 BM金額取得、BM単価/率/額取得対応
  *  2009-10-13    1.4   SCS 白砂 幸世 IE535 顧客区分追加対応
+ *  2010-01-29    1.5   SCS 安川 智博 障害「E_本稼動_01503」対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -111,6 +112,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
   cv_bill_to           CONSTANT VARCHAR2(10) := 'BILL_TO'; -- 顧客使用目的：請求
   cv_rlt_class_bill    CONSTANT VARCHAR2(1)  := '1';       -- 顧客関連分類：請求
   cv_rlt_stat_act      CONSTANT VARCHAR2(1)  := 'A';       -- 関連ステータス：有効
+-- Add 2010/01/29 Ver1.5 Start
+  cv_site_use_stat_act CONSTANT VARCHAR2(1)  := 'A';       -- 使用目的ステータス：有効
+-- Add 2010/01/29 Ver1.5 End
   --
   -- 顧客区分
   cv_cust_class_base   CONSTANT VARCHAR2(2)  := '1';  -- 拠点
@@ -415,11 +419,17 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
               ,(SELECT temp.attribute5
                 FROM   hz_cust_site_uses temp
                 WHERE  temp.cust_acct_site_id = hcsu_ship.cust_acct_site_id
+-- Add 2010/01/29 Ver1.5 Start
+                AND    temp.status            = cv_site_use_stat_act
+-- Add 2010/01/29 Ver1.5 End
                 AND    temp.site_use_code     = cv_bill_to
                )                                                credit_receiv_code2       -- 売掛コード２（事業所）
               ,(SELECT temp.attribute6
                 FROM   hz_cust_site_uses temp
                 WHERE  temp.cust_acct_site_id = hcsu_ship.cust_acct_site_id
+-- Add 2010/01/29 Ver1.5 Start
+                AND    temp.status            = cv_site_use_stat_act
+-- Add 2010/01/29 Ver1.5 End
                 AND    temp.site_use_code     = cv_bill_to
                )                                                credit_receiv_code3       -- 売掛コード３（その他）
         FROM   hz_cust_accounts      hca_ship  -- 顧客マスタ(出荷先)
@@ -449,8 +459,14 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
         AND    hca_ar.cust_account_id          = hcas_ar.cust_account_id
         AND    hcas_ar.cust_acct_site_id       = hcsu_ar.cust_acct_site_id
         AND    hcsu_ar.site_use_code           = cv_bill_to
+-- Add 2010/01/29 Ver1.5 Start
+        AND    hcsu_ar.status                  = cv_site_use_stat_act
+-- Add 2010/01/29 Ver1.5 End
         AND    hcsu_ar.attribute7              = cv_inv_prt_type
         AND    hcsu_ship.bill_to_site_use_id   = hcsu_ar.site_use_id
+-- Add 2010/01/29 Ver1.5 Start
+        AND    hcsu_ship.status                = cv_site_use_stat_act
+-- Add 2010/01/29 Ver1.5 End
         AND    hca_ar.cust_account_id          = hcp_ar.cust_account_id
         AND    hcsu_ar.site_use_id             = hcp_ar.site_use_id
         AND    hcp_ar.cons_inv_flag            = cv_cons_inv_flag
@@ -508,7 +524,13 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A12C AS
         AND    hcas_ship.cust_acct_site_id     = hcsu_ar.cust_acct_site_id
         AND    hcsu_ar.attribute7              = cv_inv_prt_type
         AND    hcsu_ar.site_use_code           = cv_bill_to
+-- Add 2010/01/29 Ver1.5 Start
+        AND    hcsu_ar.status                  = cv_site_use_stat_act
+-- Add 2010/01/29 Ver1.5 End
         AND    hcsu_ship.bill_to_site_use_id   = hcsu_ar.site_use_id
+-- Add 2010/01/29 Ver1.5 Start
+        AND    hcsu_ship.status                = cv_site_use_stat_act
+-- Add 2010/01/29 Ver1.5 End
         AND    hca_ship.cust_account_id        = hcp_ship.cust_account_id
         AND    hcsu_ar.site_use_id             = hcp_ship.site_use_id
         AND    hcp_ship.cons_inv_flag          = cv_cons_inv_flag

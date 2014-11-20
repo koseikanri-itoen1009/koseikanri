@@ -149,8 +149,14 @@
     AND    bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
     AND    bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
     AND    bill_hsua_1.site_use_code = 'BILL_TO'                             --請求先顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.01.29 Yasukawa Start
+    AND    bill_hsua_1.status = 'A'                                          --請求先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    ship_hzca_1.cust_account_id = ship_hasa_1.cust_account_id         --出荷先顧客マスタ.顧客ID = 出荷先顧客所在地.顧客ID
     AND    ship_hasa_1.cust_acct_site_id = ship_hsua_1.cust_acct_site_id     --出荷先顧客所在地.顧客所在地ID = 出荷先顧客使用目的.顧客所在地ID
+-- Add 2010.01.29 Yasukawa Start
+    AND    ship_hsua_1.status = 'A'                                          --出荷先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    ship_hsua_1.bill_to_site_use_id = bill_hsua_1.site_use_id         --出荷先顧客使用目的.請求先事業所ID = 請求先顧客使用目的.使用目的ID
     AND    ship_hzca_1.cust_account_id = ship_hzad_1.customer_id             --出荷先顧客マスタ.顧客ID = 出荷先顧客追加情報.顧客ID
     AND    bill_hasa_1.party_site_id = bill_hzps_1.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID  
@@ -255,10 +261,16 @@
     AND    bill_hzca_2.cust_account_id = bill_hasa_2.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
     AND    bill_hasa_2.cust_acct_site_id = bill_hsua_2.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
     AND    bill_hsua_2.site_use_code = 'BILL_TO'                             --請求先顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.01.29 Yasukawa Start
+    AND    bill_hsua_2.status = 'A'                                          --請求先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    cash_hzca_2.cust_account_id = cash_hasa_2.cust_account_id         --入金先顧客マスタ.顧客ID = 入金先顧客所在地.顧客ID
     AND    ship_hzca_2.cust_account_id = ship_hzad_2.customer_id             --出荷先顧客マスタ.顧客ID = 出荷先顧客追加情報.顧客ID
     AND    ship_hzca_2.cust_account_id = ship_hasa_2.cust_account_id         --出荷先顧客マスタ.顧客ID = 出荷先顧客所在地.顧客ID
     AND    ship_hasa_2.cust_acct_site_id = ship_hsua_2.cust_acct_site_id     --出荷先顧客所在地.顧客所在地ID = 出荷先顧客使用目的.顧客所在地ID
+-- Add 2010.01.29 Yasukawa Start
+    AND    ship_hsua_2.status = 'A'                                          --出荷先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    ship_hsua_2.bill_to_site_use_id = bill_hsua_2.site_use_id         --出荷先顧客使用目的.請求先事業所ID = 請求先顧客使用目的.使用目的ID
     AND    bill_hasa_2.party_site_id = bill_hzps_2.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID  
     AND    bill_hzps_2.location_id = bill_hzlo_2.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID                  
@@ -348,6 +360,12 @@
     AND    bill_hasa_3.cust_acct_site_id = bill_hsua_3.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
     AND    bill_hasa_3.cust_acct_site_id = ship_hsua_3.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 出荷先顧客使用目的.顧客所在地ID
     AND    bill_hsua_3.site_use_code = 'BILL_TO'                             --請求先顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.01.29 Yasukawa Start
+    AND    bill_hsua_3.status = 'A'                                          --請求先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
+-- Add 2010.01.29 Yasukawa Start
+    AND    ship_hsua_3.status = 'A'                                          --出荷先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    ship_hsua_3.bill_to_site_use_id = bill_hsua_3.site_use_id         --出荷先顧客使用目的.請求先事業所ID = 請求先顧客使用目的.使用目的ID
     AND    cash_hzca_3.cust_account_id = cash_hasa_3.cust_account_id         --入金先顧客マスタ.顧客ID = 入金先顧客所在地.顧客ID
     AND    bill_hasa_3.party_site_id = bill_hzps_3.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID  
@@ -425,7 +443,13 @@
     AND    bill_hasa_4.cust_acct_site_id = bill_hsua_4.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
     AND    bill_hasa_4.cust_acct_site_id = ship_hsua_4.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 出荷先顧客使用目的.顧客所在地ID
     AND    bill_hsua_4.site_use_code = 'BILL_TO'                             --請求先顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.01.29 Yasukawa Start
+    AND    bill_hsua_4.status = 'A'                                          --請求先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    ship_hsua_4.bill_to_site_use_id = bill_hsua_4.site_use_id         --出荷先顧客使用目的.請求先事業所ID = 請求先顧客使用目的.使用目的ID
+-- Add 2010.01.29 Yasukawa Start
+    AND    ship_hsua_4.status = 'A'                                          --出荷先顧客使用目的.ステータス = 'A'
+-- Add 2010.01.29 Yasukawa End
     AND    bill_hasa_4.party_site_id = bill_hzps_4.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID  
     AND    bill_hzps_4.location_id = bill_hzlo_4.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID                  
     AND    bill_hsua_4.site_use_id = bill_hzcp_4.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID

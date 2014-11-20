@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/09/25    1.3  SCS 廣瀬 真佐人  [共通課題:IE535] 標準請求書の出力概念変更
  *  2009/11/20    1.4  SCS 廣瀬 真佐人  [共通課題:IE691] 単独店の請求先名取得元変更
  *  2009/12/11    1.5  SCS 廣瀬 真佐人  [E_本稼動_00423] 単独店時の出力形式不具合
+ *  2010/02/02    1.6  SCS 安川 智博    [E_本稼動_01503] 同一顧客-複数使用目的対応
  *
  *****************************************************************************************/
 --
@@ -204,6 +205,9 @@ AS
   -- 使用目的
   cv_site_use_code_bill_to CONSTANT VARCHAR(10) := 'BILL_TO';  -- 使用目的：「請求先」
   cv_site_use_code_ship_to CONSTANT VARCHAR(10) := 'SHIP_TO';  -- 使用目的：「出荷先」
+-- Add 2010.02.02 Ver1.6 Start
+  cv_site_use_stat_act     CONSTANT VARCHAR2(1) := 'A';        -- 使用目的ステータス：有効
+-- Add 2010.02.02 Ver1.6 End
 --
   -- 顧客関連処理対象ステータス
   cv_acct_relate_status    CONSTANT VARCHAR2(1) := 'A';
@@ -799,8 +803,14 @@ AS
     'AND   hzca14.cust_account_id = hasa14.cust_account_id '||
     'AND   hasa14.cust_acct_site_id = hsua14.cust_acct_site_id '||
     'AND   hsua14.site_use_code = '''||cv_site_use_code_bill_to||''' '||
+-- Add 2010.02.02 Ver1.6 Start
+    'AND   hsua14.status = '''||cv_site_use_stat_act||''' '||
+-- Add 2010.02.02 Ver1.6 End
     'AND   hzca10.cust_account_id = hasa10.cust_account_id '||
     'AND   hasa10.cust_acct_site_id = hsua10.cust_acct_site_id '||
+-- Add 2010.02.02 Ver1.6 Start
+    'AND   hsua10.status = '''||cv_site_use_stat_act||''' '||
+-- Add 2010.02.02 Ver1.6 End
     'AND   hsua10.bill_to_site_use_id = hsua14.site_use_id ';
 --
     -- 顧客10取得カーソル文字列(請求書用顧客指定時)
@@ -868,6 +878,9 @@ AS
      AND   bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id         --顧客10顧客マスタ.顧客ID = 顧客10顧客所在地.顧客ID
      AND   bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id     --顧客10顧客所在地.顧客所在地ID = 顧客10顧客使用目的.顧客所在地ID
      AND   bill_hsua_1.site_use_code = cv_site_use_code_bill_to              --顧客10顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.02.02 Ver1.6 Start
+     AND   bill_hsua_1.status = cv_site_use_stat_act                         --顧客10顧客使用目的.ステータス = 'A'
+-- Add 2010.02.02 Ver1.6 End
      AND   bill_hasa_1.party_site_id = bill_hzps_1.party_site_id             --顧客10顧客所在地.パーティサイトID = 顧客14パーティサイト.パーティサイトID  
      AND   bill_hzps_1.location_id = bill_hzlo_1.location_id                 --顧客10パーティサイト.事業所ID = 顧客10顧客事業所.事業所ID                  
      AND   bill_hzca_1.party_id = bill_hzpa_1.party_id                       --顧客10顧客マスタ.パーティID = 顧客10.パーティID
@@ -915,9 +928,15 @@ AS
      AND   bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id         --顧客14顧客マスタ.顧客ID = 顧客14顧客所在地.顧客ID
      AND   bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id     --顧客14顧客所在地.顧客所在地ID = 顧客14顧客使用目的.顧客所在地ID
      AND   bill_hsua_1.site_use_code = cv_site_use_code_bill_to              --顧客14顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.02.02 Ver1.6 Start
+     AND   bill_hsua_1.status = cv_site_use_stat_act                         --顧客14顧客使用目的.ステータス = 'A'
+-- Add 2010.02.02 Ver1.6 End
      AND   ship_hzca_1.cust_account_id = ship_hasa_1.cust_account_id         --顧客10顧客マスタ.顧客ID = 顧客10顧客所在地.顧客ID
      AND   ship_hasa_1.cust_acct_site_id = ship_hsua_1.cust_acct_site_id     --顧客10顧客所在地.顧客所在地ID = 顧客10顧客使用目的.顧客所在地ID
      AND   ship_hsua_1.bill_to_site_use_id = bill_hsua_1.site_use_id         --顧客10顧客使用目的.請求先事業所ID = 顧客14顧客使用目的.使用目的ID
+-- Add 2010.02.02 Ver1.6 Start
+     AND   ship_hsua_1.status = cv_site_use_stat_act                         --顧客10顧客使用目的.ステータス = 'A'
+-- Add 2010.02.02 Ver1.6 End
      AND   bill_hasa_1.party_site_id = bill_hzps_1.party_site_id             --顧客14顧客所在地.パーティサイトID = 顧客14パーティサイト.パーティサイトID  
      AND   bill_hzps_1.location_id = bill_hzlo_1.location_id                 --顧客14パーティサイト.事業所ID = 顧客14顧客事業所.事業所ID                  
      AND   bill_hzca_1.party_id = bill_hzpa_1.party_id                       --顧客14顧客マスタ.パーティID = 顧客14.パーティID
@@ -985,6 +1004,9 @@ AS
      AND   bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id         --顧客10顧客マスタ.顧客ID = 顧客10顧客所在地.顧客ID
      AND   bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id     --顧客10顧客所在地.顧客所在地ID = 顧客10顧客使用目的.顧客所在地ID
      AND   bill_hsua_1.site_use_code = cv_site_use_code_bill_to              --顧客10顧客使用目的.使用目的 = 'BILL_TO'(請求先)
+-- Add 2010.02.02 Ver1.6 Start
+     AND   bill_hsua_1.status = cv_site_use_stat_act                         --顧客10顧客使用目的.ステータス = 'A'
+-- Add 2010.02.02 Ver1.6 End
      AND   bill_hasa_1.party_site_id = bill_hzps_1.party_site_id             --顧客10顧客所在地.パーティサイトID = 顧客14パーティサイト.パーティサイトID  
      AND   bill_hzps_1.location_id = bill_hzlo_1.location_id                 --顧客10パーティサイト.事業所ID = 顧客10顧客事業所.事業所ID                  
      AND   bill_hzca_1.party_id = bill_hzpa_1.party_id;                      --顧客10顧客マスタ.パーティID = 顧客10.パーティID

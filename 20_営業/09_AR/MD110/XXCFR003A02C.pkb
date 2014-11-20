@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.08
+ * Version          : 1.09
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/09/29    1.06 SCS 廣瀬 真佐人  共通課題IE535対応 請求書問題
  *  2009/12/11    1.07 SCS 安川 智博    障害「E_本稼動_00424」暫定対応
  *  2009/12/28    1.08 SCS 安川 智博    障害「E_本稼動_00606」対応
+ *  2010/01/29    1.09 SCS 安川 智博    障害「E_本稼動_01503」対応」
  *
  *****************************************************************************************/
 --
@@ -913,6 +914,9 @@ AS
             OR     hzsu.attribute2 = TO_CHAR(lt_get1_term_term_id_tab(ln_loop_cnt))
             OR     hzsu.attribute3 = TO_CHAR(lt_get1_term_term_id_tab(ln_loop_cnt)) )  --支払条件
             AND    hzsu.site_use_code = 'BILL_TO'                     -- 使用目的コード(請求先)
+-- Add 2010.01.29 Ver1.09 Start
+            AND    hzsu.status = 'A'                                  -- 使用目的ステータス = 'A'
+-- Add 2010.01.29 Ver1.09 End
             AND    hzcp.cons_inv_flag = 'Y'                           -- 一括請求書式使用可能FLAG('Y')
             AND    hzsa.org_id = gn_org_id                            -- 組織ID
             AND    hzsu.org_id = gn_org_id                            -- 組織ID
@@ -1031,6 +1035,9 @@ AS
             OR     hzsu.attribute2      = TO_CHAR(lt_get2_term_term_id_tab(ln_loop_cnt))
             OR     hzsu.attribute3      = TO_CHAR(lt_get2_term_term_id_tab(ln_loop_cnt)) )--支払条件
             AND    hzsu.site_use_code = 'BILL_TO'                    -- 使用目的コード(請求先)
+-- Add 2010.01.29 Ver1.09 Start
+            AND    hzsu.status = 'A'                                 -- 使用目的ステータス = 'A'
+-- Add 2010.01.29 Ver1.09 End
             AND    hzcp.cons_inv_flag = 'Y'                          -- 一括請求書式使用可能FLAG('Y')
             AND    hzsa.org_id = gn_org_id                           -- 組織ID
             AND    hzsu.org_id = gn_org_id                           -- 組織ID
@@ -1249,6 +1256,9 @@ AS
             OR     hzsu.attribute2      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt))
             OR     hzsu.attribute3      = TO_CHAR(lt_get_term_term_id_tab(ln_loop_cnt)) )--支払条件
             AND    hzsu.site_use_code = 'BILL_TO'                    -- 使用目的コード(請求先)
+-- Add 2010.01.29 Ver1.09 Start
+            AND    hzsu.status = 'A'                                 -- 使用目的ステータス = 'A'
+-- Add 2010.01.29 Ver1.09 End
             AND    hzcp.cons_inv_flag = 'Y'                          -- 一括請求書式使用可能FLAG('Y')
             AND    hzsa.org_id = gn_org_id                           -- 組織ID
             AND    hzsu.org_id = gn_org_id                           -- 組織ID
@@ -2138,6 +2148,9 @@ AS
         AND   hasa_bill.cust_account_id = hzca_bill.cust_account_id
         AND   hsua_bill.cust_acct_site_id = hasa_bill.cust_acct_site_id
         AND   hsua_bill.site_use_code = 'BILL_TO'
+-- Add 2010.01.29 Ver1.09 Start
+        AND   hsua_bill.status = 'A'
+-- Add 2010.01.29 Ver1.09 End
         AND   hsua_bill.attribute4 = fnlv.lookup_code(+)     -- 売掛コード１
         AND   fnlv.lookup_type(+)  = cv_look_type_ar_cd
         AND   fnlv.language(+)     = USERENV( 'LANG' )
