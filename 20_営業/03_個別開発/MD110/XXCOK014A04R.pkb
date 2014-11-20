@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/12/15    1.10  SCS K.Nakamura   [障害E_本稼動_00461] ソート順対応によるBM支払区分(コード値)の追加
  *                                                            1顧客に前月・当月の2レコード存在する場合、締め・支払日共に最新の日付を設定
  *  2010/01/27    1.11  SCS K.Kiriu      [障害E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
+ *  2011/01/24    1.12  SCS S.Niki       [障害E_本稼動_06199] パフォーマンス改善対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -277,6 +278,23 @@ AS
    ,CLOSING_DATE                 DATE          -- 締め日
    ,SELLING_BASE_SECTION_CODE    VARCHAR2(5)   -- 地区コード（売上計上拠点）
   );
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki ADD START
+  TYPE g_target_rtype IS RECORD(
+    bm_balance_id                xxcok_backmargin_balance.bm_balance_id%TYPE           -- 内部ID
+   ,base_code                    xxcok_backmargin_balance.base_code%TYPE               -- 拠点コード
+   ,supplier_code                xxcok_backmargin_balance.supplier_code%TYPE           -- 仕入先コード
+   ,supplier_site_code           xxcok_backmargin_balance.supplier_site_code%TYPE      -- 仕入先サイトコード
+   ,cust_code                    xxcok_backmargin_balance.cust_code%TYPE               -- 顧客コード
+   ,closing_date                 xxcok_backmargin_balance.closing_date%TYPE            -- 締め日
+   ,backmargin                   xxcok_backmargin_balance.backmargin%TYPE              -- 販売手数料
+   ,backmargin_tax               xxcok_backmargin_balance.backmargin_tax%TYPE          -- 販売手数料（消費税額）
+   ,electric_amt                 xxcok_backmargin_balance.electric_amt%TYPE            -- 電気料
+   ,electric_amt_tax             xxcok_backmargin_balance.electric_amt_tax%TYPE        -- 電気料（消費税額）
+   ,expect_payment_date          xxcok_backmargin_balance.expect_payment_date%TYPE     -- 支払予定日
+   ,expect_payment_amt_tax       xxcok_backmargin_balance.expect_payment_amt_tax%TYPE  -- 支払予定額（税込）
+   ,resv_flag                    xxcok_backmargin_balance.resv_flag%TYPE               -- 保留フラグ
+  );
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki ADD END
   -- ===============================
   -- テーブルタイプの宣言部
   -- ===============================
@@ -285,11 +303,102 @@ AS
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
-  CURSOR g_target_cur(
-    iv_target_disp_flg          IN VARCHAR2  -- 表示フラグ
-  )
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD START
+--  CURSOR g_target_cur(
+--    iv_target_disp_flg          IN VARCHAR2  -- 表示フラグ
+--  )
+--  IS
+--    SELECT bm_balance_id          -- 内部ID
+--          ,base_code              -- 拠点コード
+--          ,supplier_code          -- 仕入先コード
+--          ,supplier_site_code     -- 仕入先サイトコード
+--          ,cust_code              -- 顧客コード
+--          ,closing_date           -- 締め日
+--          ,backmargin             -- 販売手数料
+--          ,backmargin_tax         -- 販売手数料（消費税額
+--          ,electric_amt           -- 電気料
+--          ,electric_amt_tax       -- 電気料（消費税額）
+--          ,expect_payment_date    -- 支払予定日
+--          ,expect_payment_amt_tax -- 支払予定額（税込）
+--          ,resv_flag              -- 保留フラグ
+--    FROM (SELECT  xbb.bm_balance_id                    AS  bm_balance_id         -- 内部ID
+--                 ,xbb.base_code                        AS base_code              -- 拠点コード
+--                 ,xbb.supplier_code                    AS supplier_code          -- 仕入先コード
+--                 ,xbb.supplier_site_code               AS supplier_site_code     -- 仕入先サイトコード
+--                 ,xbb.cust_code                        AS cust_code              -- 顧客コード
+--                 ,xbb.closing_date                     AS closing_date           -- 締め日
+--                 ,NVL( xbb.backmargin ,0 )             AS backmargin             -- 販売手数料
+--                 ,NVL( xbb.backmargin_tax ,0 )         AS backmargin_tax         -- 販売手数料（消費税額）
+--                 ,NVL( xbb.electric_amt ,0)            AS electric_amt           -- 電気料
+--                 ,NVL( xbb.electric_amt_tax ,0 )       AS electric_amt_tax       -- 電気料（消費税額）
+--                 ,xbb.expect_payment_date              AS expect_payment_date    -- 支払予定日
+--                 ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
+--                 ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
+--          FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
+--                ,po_vendors                pv     -- 仕入先マスタ
+--                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+--          WHERE  xbb.base_code                                 = NVL( gv_selling_base_code ,xbb.base_code)
+--          AND    TRUNC( xbb.expect_payment_date )             <= gd_payment_date
+--          AND    pv.vendor_id                                  = pvsa.vendor_id
+--          AND    pv.segment1                                   = xbb.supplier_code
+--          AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
+--          AND    cv_target_disp1                               = iv_target_disp_flg
+--          AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
+--          AND    pvsa.org_id                                   = gn_org_id
+--          UNION
+--          SELECT  xbb.bm_balance_id                    AS bm_balance_id          -- 内部ID
+--                 ,xbb.base_code                        AS base_code              -- 拠点コード
+--                 ,xbb.supplier_code                    AS supplier_code          -- 仕入先コード
+--                 ,xbb.supplier_site_code               AS supplier_site_code     -- 仕入先サイトコード
+--                 ,xbb.cust_code                        AS cust_code              -- 顧客コード
+--                 ,xbb.closing_date                     AS closing_date           -- 締め日
+--                 ,NVL( xbb.backmargin ,0 )             AS backmargin             -- 販売手数料
+--                 ,NVL( xbb.backmargin_tax ,0 )         AS backmargin_tax         -- 販売手数料（消費税額）
+--                 ,NVL( xbb.electric_amt ,0 )           AS electric_amt           -- 電気料
+--                 ,NVL( xbb.electric_amt_tax ,0 )       AS electric_amt_tax       -- 電気料（消費税額）
+--                 ,xbb.expect_payment_date              AS expect_payment_date    -- 支払予定日
+--                 ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
+--                 ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
+--          FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
+--                ,po_vendors                pv     -- 仕入先マスタ
+--                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+--          WHERE  xbb.supplier_code IN (SELECT supplier_code                 -- 仕入先コード
+--                                       FROM   xxcok_backmargin_balance      -- 販手残高テーブル
+--                                       WHERE  TRUNC( expect_payment_date ) <= gd_payment_date
+--                                       AND    base_code = NVL( gv_selling_base_code ,base_code )
+--                                  )
+--          AND    TRUNC( xbb.expect_payment_date )             <= gd_payment_date
+--          AND    pv.vendor_id                                  = pvsa.vendor_id
+--          AND    pv.segment1                                   = xbb.supplier_code
+--          AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
+--          AND    cv_target_disp2                               = iv_target_disp_flg
+--          AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
+--          AND    pvsa.org_id                                   = gn_org_id
+--          )
+--    ORDER BY  supplier_code       -- 仕入先コード
+--             ,base_code           -- 拠点コード
+--             ,cust_code           -- 顧客コード
+---- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
+--             ,expect_payment_date -- 支払予定日
+---- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
+---- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+--             ,closing_date        -- 締め日
+---- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
+--    ;
+----
+--  g_target_rec g_target_cur%ROWTYPE;
+  --
+  -- 入力パラメータの表示対象が「1:自拠点のみ」またはNULLの場合
+  CURSOR g_target_cur1
   IS
-    SELECT bm_balance_id          -- 内部ID
+    SELECT /*+
+             leading(xbb2 xbb pv pvsa)
+             use_nl (xbb2 xbb pv pvsa)
+             index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+             index  (pv   PO_VENDORS_U3)
+             index  (pvsa PO_VENDOR_SITES_U2)
+           */
+           bm_balance_id          -- 内部ID
           ,base_code              -- 拠点コード
           ,supplier_code          -- 仕入先コード
           ,supplier_site_code     -- 仕入先サイトコード
@@ -302,7 +411,14 @@ AS
           ,expect_payment_date    -- 支払予定日
           ,expect_payment_amt_tax -- 支払予定額（税込）
           ,resv_flag              -- 保留フラグ
-    FROM (SELECT  xbb.bm_balance_id                    AS  bm_balance_id         -- 内部ID
+    FROM (SELECT /*+
+                   leading(xbb2 xbb pv pvsa)
+                   use_nl (xbb2 xbb pv pvsa)
+                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+                   index  (pv   PO_VENDORS_U3)
+                   index  (pvsa PO_VENDOR_SITES_U2)
+                 */
+                  xbb.bm_balance_id                    AS  bm_balance_id         -- 内部ID
                  ,xbb.base_code                        AS base_code              -- 拠点コード
                  ,xbb.supplier_code                    AS supplier_code          -- 仕入先コード
                  ,xbb.supplier_site_code               AS supplier_site_code     -- 仕入先サイトコード
@@ -319,15 +435,51 @@ AS
                 ,po_vendors                pv     -- 仕入先マスタ
                 ,po_vendor_sites_all       pvsa   -- 仕入先サイト
           WHERE  xbb.base_code                                 = NVL( gv_selling_base_code ,xbb.base_code)
-          AND    TRUNC( xbb.expect_payment_date )             <= gd_payment_date
+          AND    xbb.expect_payment_date                      <= gd_payment_date
+          AND    xbb.supplier_code                             = pv.segment1
           AND    pv.vendor_id                                  = pvsa.vendor_id
-          AND    pv.segment1                                   = xbb.supplier_code
           AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
-          AND    cv_target_disp1                               = iv_target_disp_flg
           AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
           AND    pvsa.org_id                                   = gn_org_id
-          UNION
-          SELECT  xbb.bm_balance_id                    AS bm_balance_id          -- 内部ID
+          )
+    ORDER BY  supplier_code       -- 仕入先コード
+             ,base_code           -- 拠点コード
+             ,cust_code           -- 顧客コード
+             ,expect_payment_date -- 支払予定日
+             ,closing_date        -- 締め日
+    ;
+  --
+  -- 入力パラメータの表示対象が「2:他拠点を含む」の場合
+  CURSOR g_target_cur2
+  IS
+    SELECT /*+
+             leading(xbb2 xbb pv pvsa)
+             use_nl (xbb2 xbb pv pvsa)
+             index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+             index  (pv   PO_VENDORS_U3)
+             index  (pvsa PO_VENDOR_SITES_U2)
+           */
+           bm_balance_id          -- 内部ID
+          ,base_code              -- 拠点コード
+          ,supplier_code          -- 仕入先コード
+          ,supplier_site_code     -- 仕入先サイトコード
+          ,cust_code              -- 顧客コード
+          ,closing_date           -- 締め日
+          ,backmargin             -- 販売手数料
+          ,backmargin_tax         -- 販売手数料（消費税額
+          ,electric_amt           -- 電気料
+          ,electric_amt_tax       -- 電気料（消費税額）
+          ,expect_payment_date    -- 支払予定日
+          ,expect_payment_amt_tax -- 支払予定額（税込）
+          ,resv_flag              -- 保留フラグ
+    FROM (SELECT /*+
+                   leading(xbb2 xbb pv pvsa)
+                   use_nl (xbb2 xbb pv pvsa)
+                   index  (xbb  XXCOK_BACKMARGIN_BALANCE_N09)
+                   index  (pv   PO_VENDORS_U3)
+                   index  (pvsa PO_VENDOR_SITES_U2)
+                 */
+                  xbb.bm_balance_id                    AS bm_balance_id          -- 内部ID
                  ,xbb.base_code                        AS base_code              -- 拠点コード
                  ,xbb.supplier_code                    AS supplier_code          -- 仕入先コード
                  ,xbb.supplier_site_code               AS supplier_site_code     -- 仕入先サイトコード
@@ -343,31 +495,31 @@ AS
           FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
                 ,po_vendors                pv     -- 仕入先マスタ
                 ,po_vendor_sites_all       pvsa   -- 仕入先サイト
-          WHERE  xbb.supplier_code IN (SELECT supplier_code                 -- 仕入先コード
-                                       FROM   xxcok_backmargin_balance      -- 販手残高テーブル
-                                       WHERE  TRUNC( expect_payment_date ) <= gd_payment_date
-                                       AND    base_code = NVL( gv_selling_base_code ,base_code )
+          WHERE  xbb.supplier_code IN (SELECT /*+
+                                                index(xbb2 XXCOK_BACKMARGIN_BALANCE_N08)
+                                              */
+                                              xbb2.supplier_code            -- 仕入先コード
+                                       FROM   xxcok_backmargin_balance xbb2 -- 販手残高テーブル
+                                       WHERE  xbb2.expect_payment_date <= gd_payment_date
+                                       AND    xbb2.base_code = NVL( gv_selling_base_code ,xbb2.base_code )
                                   )
-          AND    TRUNC( xbb.expect_payment_date )             <= gd_payment_date
+          AND    xbb.expect_payment_date                      <= gd_payment_date
+          AND    xbb.supplier_code                             = pv.segment1
           AND    pv.vendor_id                                  = pvsa.vendor_id
-          AND    pv.segment1                                   = xbb.supplier_code
           AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
-          AND    cv_target_disp2                               = iv_target_disp_flg
           AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
           AND    pvsa.org_id                                   = gn_org_id
           )
     ORDER BY  supplier_code       -- 仕入先コード
              ,base_code           -- 拠点コード
              ,cust_code           -- 顧客コード
--- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
              ,expect_payment_date -- 支払予定日
--- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
--- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
              ,closing_date        -- 締め日
--- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
     ;
---
-  g_target_rec g_target_cur%ROWTYPE;
+  --
+  g_target_rec g_target_rtype;
+  --
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD END
   -- ===============================================
   -- 共通例外
   -- ===============================================
@@ -715,7 +867,10 @@ AS
   , ov_retcode                 OUT VARCHAR2             -- リターン・コード
   , ov_errmsg                  OUT VARCHAR2             -- ユーザー・エラー・メッセージ
   , iv_last_record_flg         IN  VARCHAR2                                          DEFAULT NULL -- 最終レコードフラグ
-  , i_target_rec               IN  g_target_cur%ROWTYPE                              DEFAULT NULL -- カーソルレコード
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD START
+--  , i_target_rec               IN  g_target_cur%ROWTYPE                              DEFAULT NULL -- カーソルレコード
+  , i_target_rec               IN  g_target_rtype                                    DEFAULT NULL -- カーソルレコード
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD END
   , it_bank_charge_bearer      IN  po_vendors.bank_charge_bearer%TYPE                DEFAULT NULL -- 銀行手数料負担者
   , it_hold_all_payments_flag  IN  po_vendors.hold_all_payments_flag%TYPE            DEFAULT NULL -- 全支払の保留フラグ
   , it_vendor_name             IN  po_vendors.vendor_name%TYPE                       DEFAULT NULL -- 仕入先名
@@ -964,7 +1119,6 @@ AS
     gt_payment_date_bk              := i_target_rec.expect_payment_date; -- 支払日
     gt_closing_date_bk              := i_target_rec.closing_date;        -- 締め日
     gt_section_code_bk              := it_address3;                      -- 地区コード（売上計上拠点）
-
 --
   EXCEPTION
     -- *** 共通関数OTHERS例外 ***
@@ -1464,7 +1618,9 @@ AS
     lv_errmsg   VARCHAR2(5000)  DEFAULT NULL;              -- ユーザー・エラー・メッセージ
     lv_outmsg   VARCHAR2(5000)  DEFAULT NULL;              -- 出力用メッセージ
     lb_retcode  BOOLEAN         DEFAULT TRUE;              -- メッセージ出力関数戻り値
-    lv_target_disp_flg          VARCHAR2(1)                                       DEFAULT NULL; -- 表示対象フラグ
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki DEL START
+--    lv_target_disp_flg          VARCHAR2(1)                                       DEFAULT NULL; -- 表示対象フラグ
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki DEL END
     lt_selling_base_code        hz_cust_accounts.account_number%TYPE              DEFAULT NULL; -- 売上計上拠点コード
     lt_selling_base_name        hz_cust_accounts.account_name%TYPE                DEFAULT NULL; -- 売上計上拠点名
     lt_address3                 hz_locations.address3%TYPE                        DEFAULT NULL; -- 地区コード
@@ -1508,150 +1664,431 @@ AS
     -- 入力パラメータの表示対象が「自拠点のみ」またはNULLの場合
     IF ( gv_target_disp = cv_target_disp1_nm )
       OR ( gv_target_disp IS NULL ) THEN
-      lv_target_disp_flg := cv_target_disp1;
-    -- 入力パラメータの表示対象が「自拠点を含む」場合
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD START
+--      lv_target_disp_flg := cv_target_disp1;
+      -- 販手残高情報取得カーソル
+      <<main_loop>>
+      FOR g_target_rec IN g_target_cur1 LOOP
+        --
+        ln_loop_cnt := ln_loop_cnt + 1;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.base_code <> gt_selling_base_code_bk ) THEN
+          -- ===============================================
+          -- 売上拠点情報抽出処理(A-3)
+          -- ===============================================
+          get_cust_data(
+            ov_errbuf             => lv_errbuf               -- エラー・メッセージ
+           ,ov_retcode            => lv_retcode              -- リターン・コード
+           ,ov_errmsg             => lv_errmsg               -- ユーザー・エラー・メッセージ
+           ,iv_process_flg        => cv_process_flg1         -- 処理フラグ(1：売上拠点情報)
+           ,iv_selling_base_code  => g_target_rec.base_code  -- 売上拠点
+           ,iv_cust_code          => g_target_rec.cust_code  -- 顧客コード
+           ,ov_selling_base_code  => lt_selling_base_code    -- 売上計上拠点コード
+           ,ov_account_name       => lt_selling_base_name    -- 売上計上拠点名
+           ,ov_address3           => lt_address3             -- 地区コード
+           ,ov_account_number     => lt_account_number_dummy -- 顧客コード
+           ,ov_party_name         => lt_party_name_dummy     -- 顧客名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+          -- ===============================================
+          -- 顧客情報抽出処理(A-3)
+          -- ===============================================
+          get_cust_data(
+            ov_errbuf             => lv_errbuf                  -- エラー・メッセージ
+           ,ov_retcode            => lv_retcode                 -- リターン・コード
+           ,ov_errmsg             => lv_errmsg                  -- ユーザー・エラー・メッセージ
+           ,iv_process_flg        => cv_process_flg2            -- 処理フラグ(2：顧客情報)
+           ,iv_selling_base_code  => g_target_rec.base_code     -- 売上拠点
+           ,iv_cust_code          => g_target_rec.cust_code     -- 顧客コード
+           ,ov_selling_base_code  => lt_selling_base_code_dummy -- 売上計上拠点コード
+           ,ov_account_name       => lt_selling_base_name_dummy -- 売上計上拠点名
+           ,ov_address3           => lt_address3_dummy          -- 地区コード
+           ,ov_account_number     => lt_account_number          -- 顧客コード
+           ,ov_party_name         => lt_party_name              -- 顧客名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.supplier_code <> gt_payment_code_bk ) THEN
+          -- ===============================================
+          -- 仕入先・銀行情報抽出処理(A-4)
+          -- ===============================================
+          get_vendor_data(
+              ov_errbuf                  => lv_errbuf                       -- エラー・メッセージ
+            , ov_retcode                 => lv_retcode                      -- リターン・コード
+            , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
+            , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+            , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
+            , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
+            , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
+            , ov_ref_base_code           => lv_ref_base_code                -- DFF5(問合せ担当拠点コード)
+            , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
+            , ov_bank_number             => lt_bank_number                  -- 銀行番号
+            , ov_bank_name               => lt_bank_name                    -- 銀行口座名
+            , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+            , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
+            , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
+            , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
+            , ov_bank_branch_name        => lt_bank_branch_name             -- 銀行支店名
+            , ov_account_name            => lt_ref_base_name                -- 問合せ担当拠点名
+            , ov_bm_kbn                  => lv_bm_kbn                       -- BM支払区分
+            , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
+            , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
+            , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 )
+          OR ( g_target_rec.base_code <> gt_selling_base_code_bk )
+          OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+          -- ===============================================
+          -- 販手エラー情報抽出処理(A-5)
+          -- ===============================================
+          get_bm_contract_err(
+              ov_errbuf            => lv_errbuf                       -- エラー・メッセージ
+            , ov_retcode           => lv_retcode                      -- リターン・コード
+            , ov_errmsg            => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            , iv_selling_base_code => g_target_rec.base_code          -- 売上計上拠点コード
+            , iv_cust_code         => g_target_rec.cust_code          -- 顧客コード
+            , on_error_count       => ln_error_count                  -- エラーカウント
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        -- ===============================================
+        -- ブレイク判定処理(A-6)
+        -- ===============================================
+        break_judge(
+            ov_errbuf                  => lv_errbuf                  -- エラー・メッセージ
+          , ov_retcode                 => lv_retcode                 -- リターン・コード
+          , ov_errmsg                  => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          , i_target_rec               => g_target_rec               -- カーソルレコード
+          , it_bank_charge_bearer      => lt_bank_charge_bearer      -- 銀行手数料負担者
+          , it_hold_all_payments_flag  => lt_hold_all_payments_flag  -- 全支払の保留フラグ
+          , it_vendor_name             => lt_vendor_name             -- 仕入先名
+          , it_bank_number             => lt_bank_number             -- 銀行番号
+          , it_bank_name               => lt_bank_name               -- 銀行口座名
+          , it_bank_num                => lt_bank_num                -- 銀行支店番号
+          , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
+          , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+          , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
+          , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
+          , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
+          , iv_ref_base_code           => lv_ref_base_code           -- DFF5(問合せ担当拠点コード)
+          , it_selling_base_name       => lt_selling_base_name       -- 売上計上拠点名
+          , iv_bm_kbn                  => lv_bm_kbn                  -- BM支払区分
+          , iv_bm_kbn_nm               => lv_bm_kbn_nm               -- BM支払区分名
+          , it_selling_base_code       => lt_selling_base_code       -- 売上計上拠点コード
+          , it_ref_base_name           => lt_ref_base_name           -- 問合せ担当s拠点名
+          , it_account_number          => lt_account_number          -- 顧客コード
+          , it_party_name              => lt_party_name              -- 顧客名
+          , it_address3                => lt_address3                -- 地区コード
+          , in_error_count             => ln_error_count             -- 販手エラー件数
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END LOOP main_loop;
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD END
+    -- 入力パラメータの表示対象が「他拠点を含む」場合
     ELSE
-      lv_target_disp_flg := cv_target_disp2;
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD START
+--      lv_target_disp_flg := cv_target_disp2;
+      -- 販手残高情報取得カーソル
+      <<main_loop>>
+      FOR g_target_rec IN g_target_cur2 LOOP
+        --
+        ln_loop_cnt := ln_loop_cnt + 1;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.base_code <> gt_selling_base_code_bk ) THEN
+          -- ===============================================
+          -- 売上拠点情報抽出処理(A-3)
+          -- ===============================================
+          get_cust_data(
+            ov_errbuf             => lv_errbuf               -- エラー・メッセージ
+           ,ov_retcode            => lv_retcode              -- リターン・コード
+           ,ov_errmsg             => lv_errmsg               -- ユーザー・エラー・メッセージ
+           ,iv_process_flg        => cv_process_flg1         -- 処理フラグ(1：売上拠点情報)
+           ,iv_selling_base_code  => g_target_rec.base_code  -- 売上拠点
+           ,iv_cust_code          => g_target_rec.cust_code  -- 顧客コード
+           ,ov_selling_base_code  => lt_selling_base_code    -- 売上計上拠点コード
+           ,ov_account_name       => lt_selling_base_name    -- 売上計上拠点名
+           ,ov_address3           => lt_address3             -- 地区コード
+           ,ov_account_number     => lt_account_number_dummy -- 顧客コード
+           ,ov_party_name         => lt_party_name_dummy     -- 顧客名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+          -- ===============================================
+          -- 顧客情報抽出処理(A-3)
+          -- ===============================================
+          get_cust_data(
+            ov_errbuf             => lv_errbuf                  -- エラー・メッセージ
+           ,ov_retcode            => lv_retcode                 -- リターン・コード
+           ,ov_errmsg             => lv_errmsg                  -- ユーザー・エラー・メッセージ
+           ,iv_process_flg        => cv_process_flg2            -- 処理フラグ(2：顧客情報)
+           ,iv_selling_base_code  => g_target_rec.base_code     -- 売上拠点
+           ,iv_cust_code          => g_target_rec.cust_code     -- 顧客コード
+           ,ov_selling_base_code  => lt_selling_base_code_dummy -- 売上計上拠点コード
+           ,ov_account_name       => lt_selling_base_name_dummy -- 売上計上拠点名
+           ,ov_address3           => lt_address3_dummy          -- 地区コード
+           ,ov_account_number     => lt_account_number          -- 顧客コード
+           ,ov_party_name         => lt_party_name              -- 顧客名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.supplier_code <> gt_payment_code_bk ) THEN
+          -- ===============================================
+          -- 仕入先・銀行情報抽出処理(A-4)
+          -- ===============================================
+          get_vendor_data(
+              ov_errbuf                  => lv_errbuf                       -- エラー・メッセージ
+            , ov_retcode                 => lv_retcode                      -- リターン・コード
+            , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
+            , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+            , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
+            , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
+            , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
+            , ov_ref_base_code           => lv_ref_base_code                -- DFF5(問合せ担当拠点コード)
+            , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
+            , ov_bank_number             => lt_bank_number                  -- 銀行番号
+            , ov_bank_name               => lt_bank_name                    -- 銀行口座名
+            , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+            , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
+            , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
+            , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
+            , ov_bank_branch_name        => lt_bank_branch_name             -- 銀行支店名
+            , ov_account_name            => lt_ref_base_name                -- 問合せ担当拠点名
+            , ov_bm_kbn                  => lv_bm_kbn                       -- BM支払区分
+            , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
+            , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
+            , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        IF ( ln_loop_cnt = 1 )
+          OR ( g_target_rec.base_code <> gt_selling_base_code_bk )
+          OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+          -- ===============================================
+          -- 販手エラー情報抽出処理(A-5)
+          -- ===============================================
+          get_bm_contract_err(
+              ov_errbuf            => lv_errbuf                       -- エラー・メッセージ
+            , ov_retcode           => lv_retcode                      -- リターン・コード
+            , ov_errmsg            => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            , iv_selling_base_code => g_target_rec.base_code          -- 売上計上拠点コード
+            , iv_cust_code         => g_target_rec.cust_code          -- 顧客コード
+            , on_error_count       => ln_error_count                  -- エラーカウント
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+        --
+        -- ===============================================
+        -- ブレイク判定処理(A-6)
+        -- ===============================================
+        break_judge(
+            ov_errbuf                  => lv_errbuf                  -- エラー・メッセージ
+          , ov_retcode                 => lv_retcode                 -- リターン・コード
+          , ov_errmsg                  => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          , i_target_rec               => g_target_rec               -- カーソルレコード
+          , it_bank_charge_bearer      => lt_bank_charge_bearer      -- 銀行手数料負担者
+          , it_hold_all_payments_flag  => lt_hold_all_payments_flag  -- 全支払の保留フラグ
+          , it_vendor_name             => lt_vendor_name             -- 仕入先名
+          , it_bank_number             => lt_bank_number             -- 銀行番号
+          , it_bank_name               => lt_bank_name               -- 銀行口座名
+          , it_bank_num                => lt_bank_num                -- 銀行支店番号
+          , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
+          , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+          , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
+          , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
+          , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
+          , iv_ref_base_code           => lv_ref_base_code           -- DFF5(問合せ担当拠点コード)
+          , it_selling_base_name       => lt_selling_base_name       -- 売上計上拠点名
+          , iv_bm_kbn                  => lv_bm_kbn                  -- BM支払区分
+          , iv_bm_kbn_nm               => lv_bm_kbn_nm               -- BM支払区分名
+          , it_selling_base_code       => lt_selling_base_code       -- 売上計上拠点コード
+          , it_ref_base_name           => lt_ref_base_name           -- 問合せ担当拠点名
+          , it_account_number          => lt_account_number          -- 顧客コード
+          , it_party_name              => lt_party_name              -- 顧客名
+          , it_address3                => lt_address3                -- 地区コード
+          , in_error_count             => ln_error_count             -- 販手エラー件数
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END LOOP main_loop;
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki UPD END
     END IF;
 --
-    -- 販手残高情報取得カーソル
-    <<main_loop>>
-    FOR g_target_rec IN g_target_cur( lv_target_disp_flg ) LOOP
---
-      ln_loop_cnt := ln_loop_cnt + 1;
---
-      IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.base_code <> gt_selling_base_code_bk ) THEN
-        -- ===============================================
-        -- 売上拠点情報抽出処理(A-3)
-        -- ===============================================
-        get_cust_data(
-          ov_errbuf             => lv_errbuf               -- エラー・メッセージ
-         ,ov_retcode            => lv_retcode              -- リターン・コード
-         ,ov_errmsg             => lv_errmsg               -- ユーザー・エラー・メッセージ
-         ,iv_process_flg        => cv_process_flg1         -- 処理フラグ(1：売上拠点情報)
-         ,iv_selling_base_code  => g_target_rec.base_code  -- 売上拠点
-         ,iv_cust_code          => g_target_rec.cust_code  -- 顧客コード
-         ,ov_selling_base_code  => lt_selling_base_code    -- 売上計上拠点コード
-         ,ov_account_name       => lt_selling_base_name    -- 売上計上拠点名
-         ,ov_address3           => lt_address3             -- 地区コード
-         ,ov_account_number     => lt_account_number_dummy -- 顧客コード
-         ,ov_party_name         => lt_party_name_dummy     -- 顧客名
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-      END IF;
---
-      IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
-        -- ===============================================
-        -- 顧客情報抽出処理(A-3)
-        -- ===============================================
-        get_cust_data(
-          ov_errbuf             => lv_errbuf                  -- エラー・メッセージ
-         ,ov_retcode            => lv_retcode                 -- リターン・コード
-         ,ov_errmsg             => lv_errmsg                  -- ユーザー・エラー・メッセージ
-         ,iv_process_flg        => cv_process_flg2            -- 処理フラグ(2：顧客情報)
-         ,iv_selling_base_code  => g_target_rec.base_code     -- 売上拠点
-         ,iv_cust_code          => g_target_rec.cust_code     -- 顧客コード
-         ,ov_selling_base_code  => lt_selling_base_code_dummy -- 売上計上拠点コード
-         ,ov_account_name       => lt_selling_base_name_dummy -- 売上計上拠点名
-         ,ov_address3           => lt_address3_dummy          -- 地区コード
-         ,ov_account_number     => lt_account_number          -- 顧客コード
-         ,ov_party_name         => lt_party_name              -- 顧客名
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-      END IF;
---
-      IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.supplier_code <> gt_payment_code_bk ) THEN
-        -- ===============================================
-        -- 仕入先・銀行情報抽出処理(A-4)
-        -- ===============================================
-        get_vendor_data(
-            ov_errbuf                  => lv_errbuf                       -- エラー・メッセージ
-          , ov_retcode                 => lv_retcode                      -- リターン・コード
-          , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
-          , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
-          , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
-          , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
-          , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
-          , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
-          , ov_ref_base_code           => lv_ref_base_code                -- DFF5(問合せ担当拠点コード)
-          , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
-          , ov_bank_number             => lt_bank_number                  -- 銀行番号
-          , ov_bank_name               => lt_bank_name                    -- 銀行口座名
-          , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
-          , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
-          , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
-          , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
-          , ov_bank_branch_name        => lt_bank_branch_name             -- 銀行支店名
-          , ov_account_name            => lt_ref_base_name                -- 問合せ担当拠点名
-          , ov_bm_kbn                  => lv_bm_kbn                       -- BM支払区分
-          , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
-          , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
-          , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-      END IF;
---
-      IF ( ln_loop_cnt = 1 )
-        OR ( g_target_rec.base_code <> gt_selling_base_code_bk )
-        OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
-        -- ===============================================
-        -- 販手エラー情報抽出処理(A-5)
-        -- ===============================================
-        get_bm_contract_err(
-            ov_errbuf            => lv_errbuf                       -- エラー・メッセージ
-          , ov_retcode           => lv_retcode                      -- リターン・コード
-          , ov_errmsg            => lv_errmsg                       -- ユーザー・エラー・メッセージ
-          , iv_selling_base_code => g_target_rec.base_code          -- 売上計上拠点コード
-          , iv_cust_code         => g_target_rec.cust_code          -- 顧客コード
-          , on_error_count       => ln_error_count                  -- エラーカウント
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-      END IF;
---
-      -- ===============================================
-      -- ブレイク判定処理(A-6)
-      -- ===============================================
-      break_judge(
-          ov_errbuf                  => lv_errbuf                  -- エラー・メッセージ
-        , ov_retcode                 => lv_retcode                 -- リターン・コード
-        , ov_errmsg                  => lv_errmsg                  -- ユーザー・エラー・メッセージ
-        , i_target_rec               => g_target_rec               -- カーソルレコード
-        , it_bank_charge_bearer      => lt_bank_charge_bearer      -- 銀行手数料負担者
-        , it_hold_all_payments_flag  => lt_hold_all_payments_flag  -- 全支払の保留フラグ
-        , it_vendor_name             => lt_vendor_name             -- 仕入先名
-        , it_bank_number             => lt_bank_number             -- 銀行番号
-        , it_bank_name               => lt_bank_name               -- 銀行口座名
-        , it_bank_num                => lt_bank_num                -- 銀行支店番号
-        , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
-        , it_bank_account_type       => lt_bank_account_type       -- 口座種別
-        , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
-        , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
-        , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
-        , iv_ref_base_code           => lv_ref_base_code           -- DFF5(問合せ担当拠点コード)
-        , it_selling_base_name       => lt_selling_base_name       -- 売上計上拠点名
-        , iv_bm_kbn                  => lv_bm_kbn                  -- BM支払区分
-        , iv_bm_kbn_nm               => lv_bm_kbn_nm               -- BM支払区分名
-        , it_selling_base_code       => lt_selling_base_code       -- 売上計上拠点コード
-        , it_ref_base_name           => lt_ref_base_name           -- 問合せ担当拠点名
-        , it_account_number          => lt_account_number          -- 顧客コード
-        , it_party_name              => lt_party_name              -- 顧客名
-        , it_address3                => lt_address3                -- 地区コード
-        , in_error_count             => ln_error_count             -- 販手エラー件数
-      );
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
---
-    END LOOP main_loop;
---
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki DEL START
+--    -- 販手残高情報取得カーソル
+--    <<main_loop>>
+--    FOR g_target_rec IN g_target_cur( lv_target_disp_flg ) LOOP
+----
+--      ln_loop_cnt := ln_loop_cnt + 1;
+----
+--      IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.base_code <> gt_selling_base_code_bk ) THEN
+--        -- ===============================================
+--        -- 売上拠点情報抽出処理(A-3)
+--        -- ===============================================
+--        get_cust_data(
+--          ov_errbuf             => lv_errbuf               -- エラー・メッセージ
+--         ,ov_retcode            => lv_retcode              -- リターン・コード
+--         ,ov_errmsg             => lv_errmsg               -- ユーザー・エラー・メッセージ
+--         ,iv_process_flg        => cv_process_flg1         -- 処理フラグ(1：売上拠点情報)
+--         ,iv_selling_base_code  => g_target_rec.base_code  -- 売上拠点
+--         ,iv_cust_code          => g_target_rec.cust_code  -- 顧客コード
+--         ,ov_selling_base_code  => lt_selling_base_code    -- 売上計上拠点コード
+--         ,ov_account_name       => lt_selling_base_name    -- 売上計上拠点名
+--         ,ov_address3           => lt_address3             -- 地区コード
+--         ,ov_account_number     => lt_account_number_dummy -- 顧客コード
+--         ,ov_party_name         => lt_party_name_dummy     -- 顧客名
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--      END IF;
+----
+--      IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+--        -- ===============================================
+--        -- 顧客情報抽出処理(A-3)
+--        -- ===============================================
+--        get_cust_data(
+--          ov_errbuf             => lv_errbuf                  -- エラー・メッセージ
+--         ,ov_retcode            => lv_retcode                 -- リターン・コード
+--         ,ov_errmsg             => lv_errmsg                  -- ユーザー・エラー・メッセージ
+--         ,iv_process_flg        => cv_process_flg2            -- 処理フラグ(2：顧客情報)
+--         ,iv_selling_base_code  => g_target_rec.base_code     -- 売上拠点
+--         ,iv_cust_code          => g_target_rec.cust_code     -- 顧客コード
+--         ,ov_selling_base_code  => lt_selling_base_code_dummy -- 売上計上拠点コード
+--         ,ov_account_name       => lt_selling_base_name_dummy -- 売上計上拠点名
+--         ,ov_address3           => lt_address3_dummy          -- 地区コード
+--         ,ov_account_number     => lt_account_number          -- 顧客コード
+--         ,ov_party_name         => lt_party_name              -- 顧客名
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--      END IF;
+----
+--      IF ( ln_loop_cnt = 1 ) OR ( g_target_rec.supplier_code <> gt_payment_code_bk ) THEN
+--        -- ===============================================
+--        -- 仕入先・銀行情報抽出処理(A-4)
+--        -- ===============================================
+--        get_vendor_data(
+--            ov_errbuf                  => lv_errbuf                       -- エラー・メッセージ
+--          , ov_retcode                 => lv_retcode                      -- リターン・コード
+--          , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
+--          , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
+--          , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+--          , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
+--          , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
+--          , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
+--          , ov_ref_base_code           => lv_ref_base_code                -- DFF5(問合せ担当拠点コード)
+--          , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
+--          , ov_bank_number             => lt_bank_number                  -- 銀行番号
+--          , ov_bank_name               => lt_bank_name                    -- 銀行口座名
+--          , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+--          , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
+--          , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
+--          , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
+--          , ov_bank_branch_name        => lt_bank_branch_name             -- 銀行支店名
+--          , ov_account_name            => lt_ref_base_name                -- 問合せ担当拠点名
+--          , ov_bm_kbn                  => lv_bm_kbn                       -- BM支払区分
+--          , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
+--          , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
+--          , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--      END IF;
+----
+--      IF ( ln_loop_cnt = 1 )
+--        OR ( g_target_rec.base_code <> gt_selling_base_code_bk )
+--        OR ( g_target_rec.cust_code <> gt_cust_code_bk ) THEN
+--        -- ===============================================
+--        -- 販手エラー情報抽出処理(A-5)
+--        -- ===============================================
+--        get_bm_contract_err(
+--            ov_errbuf            => lv_errbuf                       -- エラー・メッセージ
+--          , ov_retcode           => lv_retcode                      -- リターン・コード
+--          , ov_errmsg            => lv_errmsg                       -- ユーザー・エラー・メッセージ
+--          , iv_selling_base_code => g_target_rec.base_code          -- 売上計上拠点コード
+--          , iv_cust_code         => g_target_rec.cust_code          -- 顧客コード
+--          , on_error_count       => ln_error_count                  -- エラーカウント
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        END IF;
+--      END IF;
+----
+--      -- ===============================================
+--      -- ブレイク判定処理(A-6)
+--      -- ===============================================
+--      break_judge(
+--          ov_errbuf                  => lv_errbuf                  -- エラー・メッセージ
+--        , ov_retcode                 => lv_retcode                 -- リターン・コード
+--        , ov_errmsg                  => lv_errmsg                  -- ユーザー・エラー・メッセージ
+--        , i_target_rec               => g_target_rec               -- カーソルレコード
+--        , it_bank_charge_bearer      => lt_bank_charge_bearer      -- 銀行手数料負担者
+--        , it_hold_all_payments_flag  => lt_hold_all_payments_flag  -- 全支払の保留フラグ
+--        , it_vendor_name             => lt_vendor_name             -- 仕入先名
+--        , it_bank_number             => lt_bank_number             -- 銀行番号
+--        , it_bank_name               => lt_bank_name               -- 銀行口座名
+--        , it_bank_num                => lt_bank_num                -- 銀行支店番号
+--        , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
+--        , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+--        , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
+--        , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
+--        , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
+--        , iv_ref_base_code           => lv_ref_base_code           -- DFF5(問合せ担当拠点コード)
+--        , it_selling_base_name       => lt_selling_base_name       -- 売上計上拠点名
+--        , iv_bm_kbn                  => lv_bm_kbn                  -- BM支払区分
+--        , iv_bm_kbn_nm               => lv_bm_kbn_nm               -- BM支払区分名
+--        , it_selling_base_code       => lt_selling_base_code       -- 売上計上拠点コード
+--        , it_ref_base_name           => lt_ref_base_name           -- 問合せ担当拠点名
+--        , it_account_number          => lt_account_number          -- 顧客コード
+--        , it_party_name              => lt_party_name              -- 顧客名
+--        , it_address3                => lt_address3                -- 地区コード
+--        , in_error_count             => ln_error_count             -- 販手エラー件数
+--      );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      -- 
+----
+--    END LOOP main_loop;
+----
+-- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki DEL END
     -- ===============================================
     -- ブレイク判定処理 最終行(A-6)
     -- ===============================================
