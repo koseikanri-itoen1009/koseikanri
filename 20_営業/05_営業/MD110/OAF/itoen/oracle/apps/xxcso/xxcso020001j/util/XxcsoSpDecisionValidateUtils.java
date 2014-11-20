@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2009-06-08 1.6  SCS柳平直人  [ST障害T1_1307]半角カナチェックメッセージ修正
 * 2009-08-06 1.7  SCS小川浩    [SCS障害0000887]回送先チェック対応
 * 2009-10-14 1.8  SCS阿部大輔  [共通課題IE554,IE573]住所対応
+* 2009-11-29 1.9  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -69,6 +70,9 @@ public class XxcsoSpDecisionValidateUtils
    * @param txn         OADBTransactionインスタンス
    * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
    * @param installVo   設置先登録／更新用ビューインスタンス
+// 2009-11-29 [E_本稼動_00106] Add Start
+   * @param OperationMode  操作モード
+// 2009-11-29 [E_本稼動_00106] Add End
    * @param submitFlag  提出用フラグ
    * @return List       エラーリスト
    *****************************************************************************
@@ -77,6 +81,9 @@ public class XxcsoSpDecisionValidateUtils
     OADBTransaction                     txn
    ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
    ,XxcsoSpDecisionInstCustFullVOImpl   installVo
+// 2009-11-29 [E_本稼動_00106] Add Start
+   ,String                              OperationMode
+// 2009-11-29 [E_本稼動_00106] Add End
    ,boolean                             submitFlag
   )
   {
@@ -97,6 +104,32 @@ public class XxcsoSpDecisionValidateUtils
 
     String applicationType = headerRow.getApplicationType();
     
+// 2009-11-29 [E_本稼動_00106] Add Start
+    /////////////////////////////////////
+    // 設置先：顧客コード
+    /////////////////////////////////////
+    if (
+OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
+OperationMode==XxcsoSpDecisionConstants.OPERATION_CONFIRM ||
+OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
+    )
+    {
+      String AccountNumber;
+      AccountNumber = validateAccount(txn,installRow.getInstallAccountNumber());
+      if (!(AccountNumber == null || "".equals(AccountNumber)))
+      {
+        token1 =AccountNumber;
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00586
+             ,XxcsoConstants.TOKEN_REGION
+             ,AccountNumber
+            );
+        errorList.add(error);
+      }
+    }
+// 2009-11-29 [E_本稼動_00106] Add End
+
     /////////////////////////////////////
     // 設置先：顧客名
     /////////////////////////////////////
@@ -425,6 +458,21 @@ public class XxcsoSpDecisionValidateUtils
     /////////////////////////////////////
     // 設置先：電話番号
     /////////////////////////////////////
+// 2009-11-29 [E_本稼動_00106] Add Start
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS_LINIE;
+    if ( submitFlag )
+    {
+      errorList
+        = utils.requiredCheck(
+            errorList
+           ,installRow.getAddressLinesPhonetic()
+           ,token1
+           ,0
+          );
+    }
+// 2009-11-29 [E_本稼動_00106] Add End
     if ( ! utils.isTelNumber(installRow.getAddressLinesPhonetic()) )
     {
       OAException error
@@ -5518,5 +5566,91 @@ public class XxcsoSpDecisionValidateUtils
     return returnValue;
  }
 // 2009-04-27 [ST障害T1_0708] Add End
+// 2009-11-29 [E_本稼動_00106] Add Start
+  /*****************************************************************************
+   * アカウント複数検証
+   * @param txn                 OADBTransactionインスタンス
+   * @param value               チェック対象の値
+   * @return String             エラーメッセージ
+   *****************************************************************************
+   */
+  private static String validateAccount(
+     OADBTransaction   txn
+    ,String            Account_Code
+  )
+  {
+    OracleCallableStatement stmt = null;
+    String returnValue = "";
 
+    if ( Account_Code == null || "".equals(Account_Code) )
+    {
+      return "";
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+ 
+      sql.append("BEGIN");
+      sql.append("  xxcso_020001j_pkg.chk_account_many(");
+      sql.append("    iv_account_number      => :1");
+      sql.append("   ,ov_errbuf              => :2");
+      sql.append("   ,ov_retcode             => :3");
+      sql.append("   ,ov_errmsg              => :4");
+      sql.append("  );");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setString(1, Account_Code);
+      stmt.registerOutParameter(2, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+
+      stmt.execute();
+
+      String errBuf  = stmt.getString(2);
+      String retCode = stmt.getString(3);
+      String errMsg  = stmt.getString(4);
+      
+      XxcsoUtils.debug(txn, "errBuf  = " + errBuf);
+      XxcsoUtils.debug(txn, "retCode = " + retCode);
+      XxcsoUtils.debug(txn, "errMsg  = " + errMsg);
+
+      if ( ! "0".equals(retCode) )
+      {
+        returnValue = errMsg;
+      }
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_ACCOUNT_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2009-11-29 [E_本稼動_00106] Add End
 }

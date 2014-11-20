@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
  *  chk_double_byte           F    V      全角文字チェック（共通関数ラッピング）
  *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
+ *  chk_account_many          F    V     アカウント複数判定
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -45,6 +46,7 @@ AS
  *                                                    chk_double_byte
  *                                                    chk_single_byte_kana
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009/11/29    1.3   D.Abe            [E_本稼動_00106]アカウント複数判定
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -307,5 +309,15 @@ AS
   ) RETURN VARCHAR2;
 -- 20090427_N.Yanagitaira T1_0708 Add END
 --
+-- 20091129_D.Abe E_本稼動_00106 Mod START
+  -- アカウント複数判定
+  PROCEDURE chk_account_many(
+    iv_account_number           IN  VARCHAR2
+   ,ov_errbuf                   OUT VARCHAR2
+   ,ov_retcode                  OUT VARCHAR2
+   ,ov_errmsg                   OUT VARCHAR2
+  );
+--
+-- 20091129_D.Abe E_本稼動_00106 Mod END
 END xxcso_020001j_pkg;
 /

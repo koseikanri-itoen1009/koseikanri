@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
  *  chk_double_byte           F    V     全角文字チェック（共通関数ラッピング）
  *  chk_single_byte_kana      F    V     半角カナチェック（共通関数ラッピング）
+ *  chk_account_many          F    V     アカウント複数判定
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -51,6 +52,7 @@ AS
  *  2009/06/05    1.8   N.Yanagitaira    [障害T1_1307]chk_single_byte_kana修正
  *  2009/07/16    1.9   D.Abe            [SCS障害0000385]SP専決書否認時のフロー変更
  *  2009/10/26    1.10  K.Satomura       [E_T4_00075]損益分岐点の計算方法修正
+ *  2009/11/29    1.11  D.Abe            [E_本稼動_00106]アカウント複数判定
 *****************************************************************************************/
 --
   -- ===============================
@@ -2499,5 +2501,93 @@ AS
 --
 -- 20090427_N.Yanagitaira T1_0708 Add END
 --
+-- 20091129_D.Abe E_本稼動_00106 Mod START
+--
+  /**********************************************************************************
+   * Function Name    : chk_account_many
+   * Description      : アカウント複数判定
+   ***********************************************************************************/
+  PROCEDURE chk_account_many(
+    iv_account_number           IN  VARCHAR2
+   ,ov_errbuf                   OUT VARCHAR2
+   ,ov_retcode                  OUT VARCHAR2
+   ,ov_errmsg                   OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_account_many';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    lb_return_value              BOOLEAN;
+    ln_party_id                  NUMBER;
+    ln_count                     NUMBER;
+    lv_errmsg                    VARCHAR2(2000);
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    CURSOR l_account_cur
+    IS
+      SELECT account_number
+      FROM   xxcso_cust_accounts_v xcav1,
+             (SELECT party_id
+              FROM   xxcso_cust_accounts_v  xtsdr
+              WHERE  account_number = iv_account_number
+             )xcav2
+      WHERE xcav1.party_id = xcav2.party_id 
+      ORDER BY account_number
+    ;
+    -- *** ローカル・レコード *** 
+    l_account_cur_rec  l_account_cur%ROWTYPE;
+--
+  BEGIN
+--
+    -- 初期化
+    ov_retcode := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+--
+    ln_count := 0;
+    lv_errmsg:=NULL;
+    -- カーソルオープン
+    OPEN l_account_cur;
+--
+    <<account_loop>>
+    LOOP
+      FETCH l_account_cur INTO l_account_cur_rec;
+--
+      EXIT WHEN l_account_cur%NOTFOUND
+        OR l_account_cur%ROWCOUNT = 0;
+      IF (ln_count = 0 ) THEN
+        lv_errmsg :=  l_account_cur_rec.account_number;
+      ELSE
+        lv_errmsg := lv_errmsg || ',' || l_account_cur_rec.account_number;
+      END IF;
+      ln_count := ln_count + 1;
+--
+    END LOOP account_loop;
+--
+    -- カーソル・クローズ
+    CLOSE l_account_cur;
+
+    IF (ln_count > 1) THEN
+      ov_errmsg := lv_errmsg;
+      ov_retcode := xxcso_common_pkg.gv_status_warn;
+    END IF;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_account_many;
+--
+-- 20091129_D.Abe E_本稼動_00106 Mod END
 END xxcso_020001j_pkg;
 /
