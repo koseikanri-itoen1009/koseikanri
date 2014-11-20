@@ -1,0 +1,76 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOI_REP_HAIKYAKU_SHIP
+ * Description : 製品廃却伝票帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/09/07    1.0  SCSK.Furuyama     新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcoi.xxcoi_rep_haikyaku_ship (
+     target_term                    VARCHAR2(8)   NOT NULL
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(20)
+    ,transaction_date               VARCHAR2(8)
+    ,item_code                      VARCHAR2(7)
+    ,item_name                      VARCHAR2(20)
+    ,slip_no                        VARCHAR2(12)
+    ,transaction_qty                NUMBER
+    ,trading_cost                   NUMBER
+    ,nodata_msg                     VARCHAR2(50)
+    ,created_by                     NUMBER
+    ,creation_date                  DATE
+    ,last_updated_by                NUMBER
+    ,last_update_date               DATE
+    ,last_update_login              NUMBER
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE)
+ STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_rep_haikyaku_ship IS '製品廃却伝票帳票ワークテーブル'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.target_term                            IS '対象期間'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.base_code                              IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.base_name                              IS '拠点名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.transaction_date                       IS '取引日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.item_code                              IS '商品コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.item_name                              IS '商品名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.slip_no                                IS '伝票No'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.transaction_qty                        IS '取引数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.trading_cost                           IS '営業原価額'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.nodata_msg                             IS 'ゼロ件メッセージ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.last_update_login                      IS '最終更新ユーザ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.request_id                             IS '要求ID	'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.program_application_id                 IS 'プログラムアプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.program_id                             IS 'プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.program_update_date                    IS 'プログラム更新日'
+/
