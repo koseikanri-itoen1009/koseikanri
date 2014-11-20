@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2009-12-09    1.14  T.Maruyama       E_本稼動_00117対応
  *  2010-02-26    1.15  K.Hosoi          E_本稼動_01568対応
  *  2010-03-17    1.16  K.Hosoi          E_本稼動_01881対応
+ *  2010-04-21    1.17  T.Maruyama       E_本稼動_02391対応 INSTANCE_NUMBERはEBSで7桁以上となるため固定値をセット
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1797,6 +1798,10 @@ AS
     cv_prg_name             CONSTANT VARCHAR2(100)  := 'create_csv_rec';       -- プログラム名
     cv_sep_com              CONSTANT VARCHAR2(3)    := ',';
     cv_sep_wquot            CONSTANT VARCHAR2(3)    := '"';
+    /* 2010.04.21 T.Maruyama E_本稼動_02391対応 start*/
+    cv_dummy_instance_num   CONSTANT VARCHAR2(6)    := '000000';
+    /* 2010.04.21 T.Maruyama E_本稼動_02391対応 end*/
+    
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -1835,7 +1840,10 @@ AS
         || cv_sep_com || NVL(l_get_rec.instance_type_code,0)                                  -- インスタンスタイプ
         || cv_sep_com || l_get_rec.lookup_code                                                -- ステータス
         || cv_sep_com || TO_CHAR(l_get_rec.install_date,'YYYYMMDD')                           -- 導入日
-        || cv_sep_com || l_get_rec.instance_number                                            -- インスタンス番号
+        /* 2010.04.21 T.Maruyama E_本稼動_02391対応 start*/
+        --|| cv_sep_com || l_get_rec.instance_number                                            -- インスタンス番号
+        || cv_sep_com || cv_dummy_instance_num                                                -- インスタンス番号
+        /* 2010.04.21 T.Maruyama E_本稼動_02391対応 start*/
         || cv_sep_com || TO_CHAR(l_get_rec.quantity)                                          -- 数量
         || cv_sep_com || cv_sep_wquot || l_get_rec.accounting_class_code || cv_sep_wquot      -- 会計分類
         || cv_sep_com || TO_CHAR(l_get_rec.active_start_date,'YYYYMMDD')                      -- 開始日
