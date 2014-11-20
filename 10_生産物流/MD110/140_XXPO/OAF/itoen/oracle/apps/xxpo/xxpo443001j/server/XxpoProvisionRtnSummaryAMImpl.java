@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryAMImpl
 * 概要説明   : 支給返品要約:検索アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-17 1.0  熊本 和郎    新規作成
 * 2008-06-06 1.0  二瓶 大輔    内部変更要求#137対応
+* 2008-07-01 1.1  二瓶 大輔    内部変更要求#146対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -40,7 +41,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給返品要約:検索画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -708,6 +709,8 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       XxpoUtility.commit(getOADBTransaction());
     } else 
     {
+      // ロールバック処理
+      XxpoUtility.rollBack(getOADBTransaction());
       tokenName = null;
     }
 
@@ -1466,7 +1469,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     }
 
     // 出庫日必須チェック
-    Object shippedDate = row.getAttribute("ShippedDate");
+    Date shippedDate = (Date)row.getAttribute("ShippedDate");
+    // システム日付を取得
+    Date currentDate = getOADBTransaction().getCurrentDBDate();
     if (XxcmnUtility.isBlankOrNull(shippedDate)) 
     {
       exceptions.add( new OAAttrValException(
@@ -1477,6 +1482,17 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
                   shippedDate,
                   XxcmnConstants.APPL_XXPO, 
                   XxpoConstants.XXPO10002));
+    // 出庫日が未来日の場合
+    } else if (!XxcmnUtility.chkCompareDate(2, currentDate, shippedDate)) 
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vo.getName(),
+                            row.getKey(),
+                            "ShippedDate",
+                            shippedDate,
+                            XxcmnConstants.APPL_XXPO,         
+                            XxpoConstants.XXPO10244));
     }
   } // chkNext
 
@@ -1511,7 +1527,7 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     }
 
     // 支給返品要約検索VO
-    OAViewObject svo = getXxpoProvSearchVO1();
+    XxpoProvSearchVOImpl svo = getXxpoProvSearchVO1();
     OARow srow = (OARow)svo.first();
     String listIdRepresent = (String)srow.getAttribute("RepPriceListId");  // 代表価格表ID
     String listIdVendor = (String)hdrRow.getAttribute("PriceList");          // 取引先価格表ID    

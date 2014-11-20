@@ -12,7 +12,7 @@
             <oa:formValue id="ReqNo" viewName="XxpoShipToHeaderVO1" viewAttr="RequestNo"/>
             <oa:pageButtonBar id="PageButtonBarRN">
                <ui:contents>
-                  <oa:submitButton id="Apply" text="適用" prompt="適用" rendered="${oa.XxpoShipToLinePVO1.ApplyBtnReject}"/>
+                  <oa:submitButton id="Apply" text="適用" prompt="適用" disabled="${oa.XxpoShipToLinePVO1.ApplyBtnReject}"/>
                   <oa:submitButton id="Cancel" text="取消" prompt="取消" unvalidated="true" serverUnvalidated="true"/>
                   <oa:submitButton id="Back" text="戻る" prompt="戻る" unvalidated="true" serverUnvalidated="true"/>
                </ui:contents>

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -37,6 +37,17 @@
    </ViewAttribute>
    <ViewAttribute
       Name="ShippingInstructionsReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvClassReadOnly"
       IsQueriable="false"
       IsPersistent="false"
       DefaultValue="False"

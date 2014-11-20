@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoShippedMakeLineCO
-* 概要説明   : 支給指示作成明細コントローラ
-* バージョン : 1.0
+* 概要説明   : 出庫実績入力明細コントローラ
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-31 1.0  山本恭久     新規作成
+* 2008-07-01 1.1  二瓶大輔     不具合対応(retainAM)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo441001j.webui;
@@ -30,7 +31,7 @@ import oracle.apps.fnd.common.MessageToken;
 /***************************************************************************
  * 出庫実績入力明細画面のコントローラクラスです。
  * @author  ORACLE 山本 恭久
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
@@ -61,7 +62,7 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
       // 依頼No取得
       String reqNo = pageContext.getParameter(XxpoConstants.URL_PARAM_REQ_NO);
       // 適用ボタン・削除時は処理を行わない。
-      if (pageContext.getParameter("Apply")        == null) 
+      if (pageContext.getParameter("Apply") == null) 
       {
         // 起動区分取得
         String exeKbn  = pageContext.getParameter(XxwshConstants.URL_PARAM_EXE_KBN);
@@ -160,7 +161,7 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
                                     OAWebBeanConstants.KEEP_MENU_CONTEXT,
                                     null,
                                     pageParams,
-                                    false, // Retain AM
+                                    true, // Retain AM
                                     OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
                                     OAWebBeanConstants.IGNORE_MESSAGES);    
         }
@@ -250,14 +251,6 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO441001J);
           
-        // 新規フラグ取得
-        String newFlag = pageContext.getParameter("NewFlag");
-        // 新規フラグが「Y」の場合、retainAMをfalseで遷移
-        boolean isRetainAM = true;
-        if (XxcmnConstants.STRING_Y.equals(newFlag)) 
-        {
-          isRetainAM = false;
-        }
         //パラメータ用HashMap生成
         HashMap pageParams = new HashMap();
         pageParams.put(XxpoConstants.URL_PARAM_EXE_TYPE, exeType);
@@ -267,7 +260,7 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
                                   OAWebBeanConstants.KEEP_MENU_CONTEXT,
                                   null,
                                   pageParams,
-                                  isRetainAM, // Retain AM
+                                  true, // Retain AM
                                   OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
                                   OAWebBeanConstants.IGNORE_MESSAGES);    
       }
@@ -276,5 +269,4 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
       super.initializeMessages(pageContext, oae);
     }
   }
-
 }

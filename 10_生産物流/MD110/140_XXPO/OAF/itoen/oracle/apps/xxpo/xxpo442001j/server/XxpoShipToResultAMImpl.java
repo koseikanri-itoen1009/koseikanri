@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoShipToResultAMImpl
 * 概要説明   : 入庫実績要約アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-11 1.0  新藤義勝     新規作成
+* 2008-07-01 1.1  二瓶大輔     内部変更要求対応#147,#149,ST不具合#248対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo442001j.server;
@@ -39,7 +40,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 入庫実績要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 新藤 義勝
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -62,7 +63,7 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     )
   {
     // 支給依頼要約検索VO
-    OAViewObject vo = getXxpoProvSearchVO1();
+    XxpoProvSearchVOImpl vo = getXxpoProvSearchVO1();
     // 1行もない場合、空行作成
     if (vo.getFetchedRowCount() == 0)
     {
@@ -142,7 +143,6 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public void chkBeforeDecision() throws OAException
   {
-    ArrayList exceptions = new ArrayList(100); // エラーメッセージ格納用List
     // 入庫実績結果VO取得
     OAViewObject vo = getXxpoShipToResultVO1();
     
@@ -228,11 +228,9 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
           throw new OAException(XxcmnConstants.APPL_XXCMN, 
                                  XxcmnConstants.XXCMN05002, 
                                  tokens);
-          }
+        }
       }
-         
     }    
-      
     // 実行された場合
     if (exeFlag) 
     {
@@ -244,7 +242,6 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
       XxcmnUtility.putSuccessMessage(XxpoConstants.TOKEN_NAME_ALL_SHIP_TO);
 
     } 
-    
   } // doDecisionList
 
   /***************************************************************************
@@ -380,8 +377,6 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
                             XxcmnConstants.APPL_XXPO, 
                             XxpoConstants.XXPO10210));
     }
- 
-    
   } // chkInputAll
 
  
@@ -446,6 +441,8 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
       OARow row = (OARow)vo.first();
       // 更新時項目制御
       handleEventUpdHdr(exeType, prow, row);
+      // 明細行の検索
+      doSearchLine();
 
   } // initializeHdr  
 
@@ -521,52 +518,24 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     } else
     {
       prow = (OARow)pvo.first();
-      // 適用ボタン項目制御
-      prow.setAttribute("ApplyBtnReject" , Boolean.TRUE);  
 
     }
 
     // 支給指示作成ヘッダVO取得
     OAViewObject vo = getXxpoShipToHeaderVO1();
     OARow hdrRow = (OARow)vo.first();
-    
-    // 更新時項目制御
-    handleEventUpdLine(prow, hdrRow);
-  
-    // 検索実行
-    doSearchLine();
-
+    String fixClass = (String)hdrRow.getAttribute("FixClass");    // 金額確定済区分
+    // 金額確定区分が「金額確定済」の場合
+    if (XxpoConstants.FIX_CLASS_ON.equals(fixClass)) 
+    {
+      // 押下可
+      prow.setAttribute("ApplyBtnReject", Boolean.TRUE);
+    } else
+    {
+      // 押下不可
+      prow.setAttribute("ApplyBtnReject", Boolean.FALSE);
+    }
   } // initializeLine
-
-  /***************************************************************************
-   * 入庫実績明細画面の適用ボタンの項目制御処理を行うメソッドです。
-   * @param prow    - PVO行クラス
-   * @param hdrRow     - VO行クラス
-   * @throws OAException - OA例外
-   ***************************************************************************
-   */ 
-  public void handleEventUpdLine(
-     OARow prow,
-     OARow hdrRow
-   ) throws OAException
-  {
-   
-      // ステータスを取得
-      String transStatus = (String)hdrRow.getAttribute("TransStatus");
-      // ステータスが「出荷実績計上済」の場合 
-      if  (XxpoConstants.PROV_STATUS_SJK.equals(transStatus))
-      {
-        String fixClass = (String)hdrRow.getAttribute("FixClass");
-        // 金額確定フラグが「確定」の場合
-         if (XxpoConstants.FIX_CLASS_ON.equals(fixClass)) 
-         {      
-          // 項目制御
-          prow.setAttribute("ApplyBtnReject", Boolean.FALSE);   // 適用ボタンOFF
-         }      
-      } 
-    
-   
-  } // handleEventUpdLine  
 
   /***************************************************************************
    * 入庫実績入力明細画面の検索処理を行うメソッドです。
@@ -610,6 +579,10 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
   {
     // 入庫日
     Date arrivalDate = (Date)row.getAttribute("ArrivalDate");
+    // 出庫日
+    Date shippedDate = (Date)row.getAttribute("ShippedDate");
+    // システム日付を取得
+    Date currentDate = getOADBTransaction().getCurrentDBDate();
     // 必須チェック
     if (XxcmnUtility.isBlankOrNull(arrivalDate)) 
     {
@@ -621,6 +594,29 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
                             arrivalDate,
                             XxcmnConstants.APPL_XXPO, 
                             XxpoConstants.XXPO10002));  
+    // 入庫日が未来日の場合
+    } else if (!XxcmnUtility.chkCompareDate(2, currentDate, arrivalDate)) 
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vo.getName(),
+                            row.getKey(),
+                            "ArrivalDate",
+                            arrivalDate,
+                            XxcmnConstants.APPL_XXPO,         
+                            XxpoConstants.XXPO10244));
+    // 出庫日＞入庫日の場合
+    } else if (XxcmnUtility.chkCompareDate(1, shippedDate, arrivalDate)) 
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vo.getName(),
+                            row.getKey(),
+                            "ArrivalDate",
+                            arrivalDate,
+                            XxcmnConstants.APPL_XXPO, 
+                            XxpoConstants.XXPO10249));
+
     } 
     // エラーがあった場合エラーをスローします。
     if (exceptions.size() > 0)
@@ -666,23 +662,36 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row
     )
   {
-    // 通知ステータスを取得
-    String notifStatus = (String)row.getAttribute("NotifStatus");
-    // 通知ステータスが「確定通知済み」の場合
-    if (XxpoConstants.NOTIF_STATUS_KTZ.equals(notifStatus))
+    // 各種情報取得
+    String notifStatus = (String)row.getAttribute("NotifStatus"); // 通知ステータス
+    String transStatus = (String)row.getAttribute("TransStatus"); // ステータス
+    String fixClass    = (String)row.getAttribute("FixClass");    // 金額確定済区分
+
+    if (XxpoConstants.FIX_CLASS_ON.equals(fixClass)) 
     {
-      // ステータスを取得
-      String transStatus = (String)row.getAttribute("TransStatus");
-      // ステータスが「受領済」または「出荷実績計上済」の場合 
-      if (XxpoConstants.PROV_STATUS_ZRZ.equals(transStatus) 
-          || XxpoConstants.PROV_STATUS_SJK.equals(transStatus))
+      // 参照のみ
+      handleEventAllOffHdr(prow);
+    } else 
+    {
+      // 通知ステータスが「確定通知済」の場合
+      if ((XxpoConstants.NOTIF_STATUS_KTZ.equals(notifStatus))
+       && (   XxpoConstants.PROV_STATUS_ZRZ.equals(transStatus) 
+           || XxpoConstants.PROV_STATUS_SJK.equals(transStatus)))
       {
-        // 項目制御
-        prow.setAttribute("ArrivalDateReadOnly",          Boolean.FALSE); // 入庫日
-        prow.setAttribute("ShippingInstructionsReadOnly", Boolean.FALSE); // 摘要     
-      } 
-     }
-    
+        // 入力可
+        handleEventAllOnHdr(prow);
+        String freightClass = (String)row.getAttribute("FreightChargeClass"); // 運賃区分
+        // 運賃区分が「ON」の場合は入庫日制御不可
+        if (XxcmnConstants.STRING_ONE.equals(freightClass)) 
+        {
+          prow.setAttribute("ArrivalDateReadOnly", Boolean.TRUE);  
+        }
+      } else
+      {
+        // 参照のみ
+        handleEventAllOffHdr(prow);
+      }
+    }
   } //  handleEventUpdHdr
 
   /***************************************************************************
@@ -696,8 +705,6 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     String exeType
     ) throws OAException
   {
-    boolean exeFlag = false; // 実行フラグ
-
     // チェック処理
     chkOrderLine(exeType);
 
@@ -722,8 +729,16 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
       // コミット処理
       XxpoUtility.commit(getOADBTransaction());
 
+      if (XxpoConstants.TOKEN_NAME_UPD.equals(tokenName)) 
+      {
+        // 初期化
+        initializeHdr(exeType, reqNo);
+        initializeLine(exeType, reqNo);
+      }
     } else
     {
+      // ロールバック処理
+      XxpoUtility.rollBack(getOADBTransaction());
       tokenName = null;
 
     }
@@ -733,7 +748,6 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     retParams.put("reqNo", reqNo);
 
     return retParams; 
-    
     
   } // doApply
 
@@ -833,7 +847,6 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     {
       OAException.raiseBundledOAException(exceptions);
     } 
-    
   } //chkOrderLine   
 
   /***************************************************************************
@@ -923,12 +936,12 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     StringBuffer sb = new StringBuffer(1000);
     sb.append("BEGIN ");
     sb.append("  UPDATE xxwsh_order_lines_all xola ");
-    sb.append("  SET    xola.unit_price                 = :1 " ); // 単価
-    sb.append("        ,xola.line_description           = :2 " ); // 備考
-    sb.append("        ,xola.last_updated_by            = FND_GLOBAL.USER_ID "  ); // 最終更新者
-    sb.append("        ,xola.last_update_date           = SYSDATE "             ); // 最終更新日
-    sb.append("        ,xola.last_update_login          = FND_GLOBAL.LOGIN_ID " ); // 最終更新ログイン
-    sb.append("  WHERE  xola.order_line_id = :3 ;"              ); // 受注明細アドオンID
+    sb.append("  SET    xola.unit_price        = :1 " ); // 単価
+    sb.append("        ,xola.line_description  = :2 " ); // 備考
+    sb.append("        ,xola.last_updated_by   = FND_GLOBAL.USER_ID "); // 最終更新者
+    sb.append("        ,xola.last_update_date  = SYSDATE "             ); // 最終更新日
+    sb.append("        ,xola.last_update_login = FND_GLOBAL.LOGIN_ID " ); // 最終更新ログイン
+    sb.append("  WHERE  xola.order_line_id = :3 ; "); // 受注明細アドオンID
     sb.append("END; ");
 
     //PL/SQLの設定を行います
@@ -1079,8 +1092,8 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("                              FROM   xxwsh_order_lines_all xola "); // 受注明細アドオン
     sb.append("                              WHERE  xola.order_header_id = :2 ");  // 受注ヘッダアドオンID
     sb.append("                            )  ");
-    sb.append("  AND   xmld.record_type_code   = '30'                  "); // レコードタイプ：入庫
-    sb.append("  AND   xmld.document_type_code = '30' ;                "); // 文書タイプ：支給指示
+    sb.append("  AND   xmld.record_type_code   = '30'    "); // レコードタイプ：入庫
+    sb.append("  AND   xmld.document_type_code = '30' ;  "); // 文書タイプ：支給指示
     sb.append("END; ");
 
     //PL/SQLの設定を行います
@@ -1267,6 +1280,4 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (XxpoShipToLinePVOImpl)findViewObject("XxpoShipToLinePVO1");
   }
-
- 
 }

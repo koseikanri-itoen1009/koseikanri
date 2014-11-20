@@ -317,7 +317,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell1204" columnSpan="3">
                            <ui:contents>
-                              <oa:messageStyledText id="FreightChargeClass" shortDesc="運賃区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="FreightCarrierName"/>
+                              <oa:messageStyledText id="FreightChargeClass" shortDesc="運賃区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="FreightChargeClassName"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell1205" hAlign="right">
@@ -390,7 +390,7 @@
                         <oa:cellFormat id="Cell1501" hAlign="right"/>
                         <oa:cellFormat id="Cell1502" hAlign="right">
                            <ui:contents>
-                              <oa:messageCheckBox id="RcvClass" viewName="XxpoShippedMakeHeaderVO1" viewAttr="RcvClass" checkedValue="1" unCheckedValue="2" shortDesc="指示受領" readOnly="false"/>
+                              <oa:messageCheckBox id="RcvClass" viewName="XxpoShippedMakeHeaderVO1" viewAttr="RcvClass" checkedValue="1" unCheckedValue="2" shortDesc="指示受領" readOnly="${oa.XxpoShippedMakeHeaderPVO1.RcvClassReadOnly}"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell1503" hAlign="left" columnSpan="2">

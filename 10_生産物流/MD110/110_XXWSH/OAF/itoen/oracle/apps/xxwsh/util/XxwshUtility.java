@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-27 1.0  伊藤ひとみ   新規作成
 * 2008-06-27 1.1  伊藤ひとみ   結合不具合TE080_400#157
+* 2008-07-02 1.2  二瓶大輔     内部変更要求対応#152
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -29,7 +30,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -1162,7 +1163,10 @@ public class XxwshUtility
     sb.append("  INTO   :2  "                                                                          );
     sb.append("  FROM   xxwsh_order_lines_all xola "                                                   );
     sb.append("  WHERE  xola.order_header_id = :1 "                                                    );
-    sb.append("  AND   NVL(xola.delete_flag,'N') = 'N' ;"                                              ); // 削除フラグ
+// 2008-07-02 D.Nihei UPD Start
+//    sb.append("  AND   NVL(xola.delete_flag,'N') = 'N' ;"                                              ); // 削除フラグ
+    sb.append("  ;");
+// 2008-07-02 D.Nihei UPD Start
     sb.append("EXCEPTION "                                                                             );
     sb.append("  WHEN lock_expt THEN "                                                                 );
     sb.append("    :3 := '1'; "                                                                        );
@@ -1868,7 +1872,10 @@ public class XxwshUtility
     sb.append("  INTO   :1  "                                                                          );
     sb.append("  FROM   xxwsh_order_lines_all xola "                                                   ); // 受注明細アドオン
     sb.append("  WHERE  xola.order_header_id = :2 "                                                    ); // 2.受注ヘッダアドオンID
-    sb.append("  AND   NVL(xola.delete_flag,'N') = 'N' ;"                                              ); // 削除フラグ
+// 2008-07-02 D.Nihei UPD Start
+//    sb.append("  AND   NVL(xola.delete_flag,'N') = 'N' ;"                                              ); // 削除フラグ
+    sb.append("  ;");
+// 2008-07-02 D.Nihei UPD Start
     sb.append("END; "                                                            );
   
     //PL/SQLの設定を行います
