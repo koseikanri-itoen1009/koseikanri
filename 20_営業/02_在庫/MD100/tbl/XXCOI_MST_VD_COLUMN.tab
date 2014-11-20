@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOI_MST_VD_COLUMN
  * Description : VDコラムマスタ
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/04/30    1.1   T.Nakamura       [T1_0877]バックスラッシュを追加
  *  2009/05/25    1.2   T.Nakamura       [T1_0267]インデックスを表領域xxidx2に割当
  *  2009/07/09    1.3   S.Moriyama       [0000496]Storage句を追加
+ *  2011/02/10    1.4   H.Sasaki         [E_本稼動_05846]基準在庫数、前月末基準在庫数を必須に変更
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_MST_VD_COLUMN
@@ -22,11 +23,17 @@ CREATE TABLE XXCOI.XXCOI_MST_VD_COLUMN
  ,COLUMN_NO                         NUMBER(2)   NOT NULL                  -- 3.コラムNO.
  ,ITEM_ID                           NUMBER                                -- 4.品目ID
  ,ORGANIZATION_ID                   NUMBER                                -- 5.在庫組織ID
- ,INVENTORY_QUANTITY                NUMBER(3)                             -- 6.基準在庫数
+-- == 2010/02/10 V1.4 Modified START ===============================================================
+-- ,INVENTORY_QUANTITY                NUMBER(3)                             -- 6.基準在庫数
+ ,INVENTORY_QUANTITY                NUMBER(3)   NOT NULL                  -- 6.基準在庫数
+-- == 2010/02/10 V1.4 Modified END   ===============================================================
  ,PRICE                             NUMBER(4)                             -- 7.単価
  ,HOT_COLD                          VARCHAR2(1)                           -- 8.H/C
  ,LAST_MONTH_ITEM_ID                NUMBER                                -- 9.前月末品目ID
- ,LAST_MONTH_INVENTORY_QUANTITY     NUMBER(3)                             -- 10.前月末基準在庫数
+-- == 2010/02/10 V1.4 Modified START ===============================================================
+-- ,LAST_MONTH_INVENTORY_QUANTITY     NUMBER(3)                             -- 10.前月末基準在庫数
+ ,LAST_MONTH_INVENTORY_QUANTITY     NUMBER(3)   NOT NULL                  -- 10.前月末基準在庫数
+-- == 2010/02/10 V1.4 Modified END   ===============================================================
  ,LAST_MONTH_PRICE                  NUMBER(4)                             -- 11.前月末単価
  ,LAST_MONTH_HOT_COLD               VARCHAR2(1)                           -- 12.前月末H/C
  ,RACK_QUANTITY                     NUMBER                                -- 13.ラック数
