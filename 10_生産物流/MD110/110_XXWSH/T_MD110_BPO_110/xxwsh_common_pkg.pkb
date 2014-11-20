@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.20
+ * Version                : 1.21
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -64,11 +64,12 @@ AS
  *                                                     運賃区分「1」でない時･･･重量積載効率/容積積載効率/基本重量/基本容積/配送区分 NULLに更新
  *                                                     常に更新･･･積載重量合計/積載容積合計/パレット合計枚数/小口個数
  *  2008/08/11   1.19  Oracle 伊藤ひとみ[同一依頼No検索関数]変更要求#174 実績計上済区分Yのデータが1件もない場合は、エラーを返す。
- *  2008/08/20   1.20  Oracle 北寒寺正夫[配車解除関数】T_3_569対応   運賃区分設定時に各ヘッダに最大配送区分、基本重量、基本容積を設定するように変更
+ *  2008/08/20   1.20  Oracle 北寒寺正夫[配車解除関数] T_3_569対応   運賃区分設定時に各ヘッダに最大配送区分、基本重量、基本容積を設定するように変更
  *                                                     TE_080_400指摘No77対応 受注ヘッダの混載元Noをクリアしないように変更
  *                                                     開発気づき対応 拠点配車が正しく解除されない問題を修正
  *                                                                    領域またいで混載した場合に正しく解除されない問題を修正
  *                                                                    配車解除時のエラーメッセージが正しく出力されない問題を修正
+ *  2008/08/28   1.21  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#32対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5100,7 +5101,6 @@ AS
                                || gt_chk_ship_tbl(i).request_no;
 -- Ver1.20 M.Hokkanji END
           END IF;
-
 --
         -- ステータスが｢出荷実績計上済｣｢取消｣のデータは配車解除不可
         ELSIF (gt_chk_ship_tbl(i).req_status > cv_tightening) THEN
@@ -5289,8 +5289,12 @@ AS
            mrih.mov_num,
            mrih.notif_status,
            mrih.prev_notif_status,
-           mril.shipped_quantity,                         -- 出庫実績数量
-           mril.ship_to_quantity,                         -- 入庫実績数量
+-- 2008/08/28 H.Itou Mod Start PT 1-2_8 指摘#32
+--           mril.shipped_quantity,                         -- 出庫実績数量
+           mrih.shipped_quantity,                         -- 出庫実績数量
+--           mril.ship_to_quantity                          -- 入庫実績数量
+           mrih.ship_to_quantity,                         -- 入庫実績数量
+-- 2008/08/28 H.Itou Mod End
 -- Ver1.20 M.Hokkanji START
            mrih.shipping_method_code,                     -- 配送区分
            mrih.item_class,                               -- 商品区分
@@ -5309,14 +5313,75 @@ AS
 -- Ver1.20 M.Hokkanji END
     BULK COLLECT INTO
            gt_chk_move_tbl
-    FROM   xxinv_mov_req_instr_headers        mrih,       -- 移動依頼/指示ヘッダ(アドオン)
-           xxinv_mov_req_instr_lines          mril        -- 移動依頼/指示明細(アドオン)
-    WHERE  (((iv_biz_type = cv_move) AND (lv_delivery_no IS NULL) AND
-             (mrih.mov_num = iv_request_no))
-    OR     (((iv_biz_type <> cv_move) OR
-           ((iv_biz_type = cv_move) AND (lv_delivery_no IS NOT NULL))) AND
-             (mrih.delivery_no = lv_delivery_no)))
-    AND    mrih.mov_hdr_id                    =  mril.mov_hdr_id
+-- 2008/08/28 H.Itou Mod Start PT 1-2_8 指摘#32 OR句があるとINDEXが使われないため、UNION ALLする。
+--    FROM   xxinv_mov_req_instr_headers        mrih,       -- 移動依頼/指示ヘッダ(アドオン)
+--           xxinv_mov_req_instr_lines          mril        -- 移動依頼/指示明細(アドオン)
+--    WHERE  (((iv_biz_type = cv_move) AND (lv_delivery_no IS NULL) AND
+--             (mrih.mov_num = iv_request_no))
+--    OR     (((iv_biz_type <> cv_move) OR
+--           ((iv_biz_type = cv_move) AND (lv_delivery_no IS NOT NULL))) AND
+--             (mrih.delivery_no = lv_delivery_no)))
+--    AND    mrih.mov_hdr_id                    =  mril.mov_hdr_id
+    FROM  (SELECT mrih1.mov_hdr_id                   mov_hdr_id                   -- 移動ヘッダID
+                 ,mrih1.status                       status                       -- ステータス
+                 ,mrih1.mov_num                      mov_num                      -- 移動番号
+                 ,mrih1.notif_status                 notif_status                 -- 通知ステータス
+                 ,mrih1.prev_notif_status            prev_notif_status            -- 前回通知ステータス
+                 ,mril.shipped_quantity              shipped_quantity             -- 出庫実績数量
+                 ,mril.ship_to_quantity              ship_to_quantity             -- 入庫実績数量
+                 ,mrih1.shipping_method_code         shipping_method_code         -- 配送区分
+                 ,mrih1.item_class                   item_class                   -- 商品区分
+                 ,mrih1.based_weight                 based_weight                 -- 基本重量
+                 ,mrih1.based_capacity               based_capacity               -- 基本容積
+                 ,mrih1.weight_capacity_class        weight_capacity_class        -- 重量容積区分
+                 ,mrih1.shipped_locat_code           shipped_locat_code           -- 出庫元
+                 ,mrih1.ship_to_locat_code           ship_to_locat_code           -- 入庫先
+                 ,mrih1.schedule_ship_date           schedule_ship_date           -- 出庫予定日
+                 ,mrih1.sum_weight                   sum_weight                   -- 積載重量合計
+                 ,mrih1.sum_capacity                 sum_capacity                 -- 積載容積合計
+                 ,mrih1.sum_pallet_weight            sum_pallet_weight            -- 合計パレット重量
+                 ,mrih1.freight_charge_class         freight_charge_class         -- 運賃区分
+                 ,mrih1.loading_efficiency_weight    loading_efficiency_weight    -- 積載率(重量)
+                 ,mrih1.loading_efficiency_capacity  loading_efficiency_capacity  -- 積載率(容積)
+           FROM   xxinv_mov_req_instr_headers        mrih1                        -- 移動依頼/指示ヘッダ(アドオン)
+                 ,xxinv_mov_req_instr_lines          mril                         -- 移動依頼/指示明細(アドオン)
+           WHERE  iv_biz_type      = cv_move
+           AND    lv_delivery_no  IS NULL
+           AND    mrih1.mov_num    = iv_request_no
+           AND    mrih1.mov_hdr_id = mril.mov_hdr_id
+           ----------------------
+           UNION ALL
+           ----------------------
+           SELECT mrih1.mov_hdr_id                   mov_hdr_id                   -- 移動ヘッダID
+                 ,mrih1.status                       status                       -- ステータス
+                 ,mrih1.mov_num                      mov_num                      -- 移動番号
+                 ,mrih1.notif_status                 notif_status                 -- 通知ステータス
+                 ,mrih1.prev_notif_status            prev_notif_status            -- 前回通知ステータス
+                 ,mril.shipped_quantity              shipped_quantity             -- 出庫実績数量
+                 ,mril.ship_to_quantity              ship_to_quantity             -- 入庫実績数量
+                 ,mrih1.shipping_method_code         shipping_method_code         -- 配送区分
+                 ,mrih1.item_class                   item_class                   -- 商品区分
+                 ,mrih1.based_weight                 based_weight                 -- 基本重量
+                 ,mrih1.based_capacity               based_capacity               -- 基本容積
+                 ,mrih1.weight_capacity_class        weight_capacity_class        -- 重量容積区分
+                 ,mrih1.shipped_locat_code           shipped_locat_code           -- 出庫元
+                 ,mrih1.ship_to_locat_code           ship_to_locat_code           -- 入庫先
+                 ,mrih1.schedule_ship_date           schedule_ship_date           -- 出庫予定日
+                 ,mrih1.sum_weight                   sum_weight                   -- 積載重量合計
+                 ,mrih1.sum_capacity                 sum_capacity                 -- 積載容積合計
+                 ,mrih1.sum_pallet_weight            sum_pallet_weight            -- 合計パレット重量
+                 ,mrih1.freight_charge_class         freight_charge_class         -- 運賃区分
+                 ,mrih1.loading_efficiency_weight    loading_efficiency_weight    -- 積載率(重量)
+                 ,mrih1.loading_efficiency_capacity  loading_efficiency_capacity  -- 積載率(容積)
+           FROM   xxinv_mov_req_instr_headers        mrih1                        -- 移動依頼/指示ヘッダ(アドオン)
+                 ,xxinv_mov_req_instr_lines          mril                         -- 移動依頼/指示明細(アドオン)
+           WHERE ((iv_biz_type         <> cv_move)
+             OR   ((iv_biz_type         = cv_move)
+               AND (lv_delivery_no IS NOT NULL)))
+           AND    mrih1.delivery_no     = lv_delivery_no
+           AND    mrih1.mov_hdr_id      = mril.mov_hdr_id
+           ) mrih
+-- 2008/08/28 H.Itou Mod End
     ORDER BY mrih.mov_hdr_id;
 --
     IF (gt_chk_move_tbl.COUNT > 0) THEN
