@@ -18,7 +18,8 @@ CREATE TABLE xxcmn.xxcmn_sr_lines_if
  request_id                 NUMBER(15,0),
  program_application_id     NUMBER(15,0),
  program_id                 NUMBER(15,0),
- program_update_date        DATE
+ program_update_date        DATE,
+ sourcing_rules_id          NUMBER
 );
 --
 COMMENT ON COLUMN xxcmn.xxcmn_sr_lines_if.item_code            IS '品目コード';
@@ -41,5 +42,6 @@ COMMENT ON COLUMN xxcmn.xxcmn_sr_lines_if.request_id                IS '要求ID';
 COMMENT ON COLUMN xxcmn.xxcmn_sr_lines_if.program_application_id    IS 'コンカレント・プログラムのアプリケーションID';
 COMMENT ON COLUMN xxcmn.xxcmn_sr_lines_if.program_id                IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcmn.xxcmn_sr_lines_if.program_update_date       IS 'プログラムによる更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_sr_lines_if.sourcing_rules_id         IS '物流構成アドオンID';
 --
 COMMENT ON TABLE  xxcmn.xxcmn_sr_lines_if IS '物流構成アドオンインタフェース';

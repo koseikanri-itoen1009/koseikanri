@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/10/29    1.4   ORACLE 吉元強樹   統合指摘#251対応
  *  2008/11/11    1.5   ORACLE 伊藤ひとみ 仕入先サイト参照先不正対応
  *  2008/11/17    1.6   ORACLE 伊藤ひとみ 統合テスト指摘491対応
+ *  2009/06/10    1.7   SCS 丸下          本番障害1204、1439対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -175,6 +176,9 @@ AS
   -- ダミーコード
   gv_no_ship_to_code   CONSTANT VARCHAR2(10) := '000000000'; -- 配送先コード（指定なし）
 -- 2008/11/17 H.Itou Add End
+-- 2009/06/10 ADD START
+  gv_xxcmn_sourcing_rules CONSTANT VARCHAR2(100) := '物流構成アドオンマスタ';
+-- 2009/06/10 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -194,6 +198,9 @@ AS
     vendor_site_code1    xxcmn_sourcing_rules.vendor_site_code1%TYPE,    -- 仕入先サイトコード1
     vendor_site_code2    xxcmn_sourcing_rules.vendor_site_code2%TYPE,    -- 仕入先サイトコード2
     plan_item_flag       xxcmn_sourcing_rules.plan_item_flag%TYPE,       -- 計画商品フラグ
+-- 2009/06/10 ADD START
+    delete_key           xxcmn_sourcing_rules.sourcing_rules_id%TYPE,    -- 削除キー
+-- 2009/06/10 ADD END
 --
     row_level_status     NUMBER,                                         -- 0.正常,1.失敗,2.警告
     message              VARCHAR2(1000)                                  -- 表示用メッセージ
@@ -305,7 +312,11 @@ AS
                     ||lr_report_rec.move_from_whse_code2||gv_msg_pnt
                     ||lr_report_rec.vendor_site_code1||gv_msg_pnt
                     ||lr_report_rec.vendor_site_code2||gv_msg_pnt
-                    ||TO_CHAR(lr_report_rec.plan_item_flag);
+-- 2009/06/10 MOD START
+--                    ||TO_CHAR(lr_report_rec.plan_item_flag);
+                    ||TO_CHAR(lr_report_rec.plan_item_flag)||gv_msg_pnt
+                    ||TO_CHAR(lr_report_rec.delete_key);
+-- 2009/06/10 MOD END
 --
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf);
         -- 正常以外
@@ -1906,6 +1917,9 @@ AS
           ,xsli.vendor_site_code2    vendor_site_code2         -- 仕入先サイトコード2
           ,xsli.plan_item_flag       plan_item_flag            -- 計画商品フラグ
           ,xsr.sourcing_rules_id     sourcing_rules_id         -- 物流構成アドオンID(洗い替え対象ID)
+-- 2009/06/10 ADD START
+          ,xsli.sourcing_rules_id    delete_key                -- 削除キー
+-- 2009/06/10 ADD END
     FROM   xxcmn_sr_lines_if         xsli                      -- 物流構成アドオンインタフェーステーブル
           ,xxcmn_sourcing_rules      xsr                       -- 物流構成アドオンマスタ
     WHERE  xsli.item_code          = xsr.item_code(+)          -- 品目コード    (キー項目)
@@ -1931,6 +1945,9 @@ AS
           ,xsli.vendor_site_code2    vendor_site_code2         -- 仕入先サイトコード2
           ,xsli.plan_item_flag       plan_item_flag            -- 計画商品フラグ
           ,xsr.sourcing_rules_id     sourcing_rules_id         -- 物流構成アドオンID(洗い替え対象ID)
+-- 2009/06/10 ADD START
+          ,xsli.sourcing_rules_id    delete_key                -- 削除キー
+-- 2009/06/10 ADD END
     FROM   xxcmn_sr_lines_if         xsli                      -- 物流構成アドオンインタフェーステーブル
           ,xxcmn_sourcing_rules      xsr                       -- 物流構成アドオンマスタ
     WHERE  xsli.item_code          = xsr.item_code(+)          -- 品目コード    (キー項目)
@@ -2045,6 +2062,24 @@ AS
 --
       -- セーブポイントを取得
       SAVEPOINT spoint;
+-- 2009/06/10 ADD START
+      -- 削除キーが設定されているIFデータに一致する物流構成マスタを一括削除する。
+      -- 処理結果ログは後続の処理で出力する。
+      BEGIN
+        DELETE
+        FROM   xxcmn_sourcing_rules xsr                -- 物流構成アドオンマスタ
+        WHERE  EXISTS(
+          SELECT 'X'
+          FROM   xxcmn_sr_lines_if         xsli
+          WHERE  xsli.sourcing_rules_id =  xsr.sourcing_rules_id
+          );
+      EXCEPTION
+        WHEN others THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10022','TABLE',gv_xxcmn_sourcing_rules);
+          lv_errbuf := lv_errmsg || ' ' || SQLERRM;
+          RAISE check_sub_main_expt;
+      END;
+-- 2009/06/10 ADD END
 --
       <<get_srl_loop>>
       FOR get_srl_data IN get_sr_line_cur
@@ -2063,125 +2098,133 @@ AS
         lr_sr_line_rec.vendor_site_code1 := get_srl_data.vendor_site_code1;
         lr_sr_line_rec.vendor_site_code2 := get_srl_data.vendor_site_code2;
         lr_sr_line_rec.plan_item_flag := get_srl_data.plan_item_flag;
+-- 2009/06/10 ADD START
+        lr_sr_line_rec.delete_key       := get_srl_data.delete_key; --削除キー格納
+        lr_sr_line_rec.row_level_status := gn_data_status_normal;   --ステータス初期化
+-- 2009/06/10 ADD END
         -- 削除用物流構成アドオンID格納
         ln_sourcing_rule_id := get_srl_data.sourcing_rules_id;
 --
-        -- ===============================
-        --  項目チェック(B-2)(B-3)(B-4)
-        -- ===============================    
-        check_data(
-          lr_sr_line_rec, -- 1.レコード
-          lv_errbuf,      --   エラー・メッセージ           --# 固定 #
-          lv_retcode,     --   リターン・コード             --# 固定 #
-          lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
---
-          -- 例外処理
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE check_sub_main_expt;
-        END IF;
---
-        -- ===============================
-        --  登録対象レコード編集(B-5)
-        -- ===============================    
-        IF (gn_data_status = gn_data_status_normal) THEN
-          set_table_data(
-            lr_sr_line_rec,                -- 1.レコード
-            lv_errbuf,                     --   エラー・メッセージ           --# 固定 #
-            lv_retcode,                    --   リターン・コード             --# 固定 #
-            lv_errmsg);                    --   ユーザー・エラー・メッセージ --# 固定 #
-        END IF;
---
-          -- 例外処理
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE check_sub_main_expt;
-        END IF;
---
-        IF (gn_data_status = gn_data_status_normal)
-          AND (gn_target_cnt > 0)  THEN
+        -- 削除キーが設定されないデータは登録、更新処理を行う
+        IF(lr_sr_line_rec.delete_key IS NULL) THEN
           -- ===============================
-          --  物流構成アドオンマスタ削除(B-6)
+          --  項目チェック(B-2)(B-3)(B-4)
           -- ===============================    
-          IF (ln_sourcing_rule_id IS NOT NULL) THEN
-            delete_sourcing_rules(
-              ln_sourcing_rule_id,            -- 物流構成アドオンID
-              lv_errbuf,                      -- エラー・メッセージ           --# 固定 #
-              lv_retcode,                     -- リターン・コード             --# 固定 #
-              lv_errmsg);                     -- ユーザー・エラー・メッセージ --# 固定 #
---
+          check_data(
+            lr_sr_line_rec, -- 1.レコード
+            lv_errbuf,      --   エラー・メッセージ           --# 固定 #
+            lv_retcode,     --   リターン・コード             --# 固定 #
+            lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
+  --
+            -- 例外処理
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+  --
+          -- ===============================
+          --  登録対象レコード編集(B-5)
+          -- ===============================    
+          IF (gn_data_status = gn_data_status_normal) THEN
+            set_table_data(
+              lr_sr_line_rec,                -- 1.レコード
+              lv_errbuf,                     --   エラー・メッセージ           --# 固定 #
+              lv_retcode,                    --   リターン・コード             --# 固定 #
+              lv_errmsg);                    --   ユーザー・エラー・メッセージ --# 固定 #
+          END IF;
+  --
+            -- 例外処理
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+  --
+          IF (gn_data_status = gn_data_status_normal)
+            AND (gn_target_cnt > 0)  THEN
+            -- ===============================
+            --  物流構成アドオンマスタ削除(B-6)
+            -- ===============================    
+            IF (ln_sourcing_rule_id IS NOT NULL) THEN
+              delete_sourcing_rules(
+                ln_sourcing_rule_id,            -- 物流構成アドオンID
+                lv_errbuf,                      -- エラー・メッセージ           --# 固定 #
+                lv_retcode,                     -- リターン・コード             --# 固定 #
+                lv_errmsg);                     -- ユーザー・エラー・メッセージ --# 固定 #
+  --
+              -- 例外処理
+              IF (lv_retcode = gv_status_error) THEN
+                RAISE check_sub_main_expt;
+              END IF;
+            END IF;
+  --
+            -- ===============================
+            --  適用終了日編集(B-7)
+            -- ===============================    
+            lr_sr_line_rec.end_date_active  := modify_end_date(
+              lr_sr_line_rec,         -- 1.レコード
+              ln_insert_user_id,      -- 2.ユーザーID  
+              ld_insert_date,         -- 3.更新日
+              ln_insert_login_id,     -- 4.ログインID
+              ln_insert_request_id,   -- 5.要求ID
+              ln_insert_prog_appl_id, -- 6.コンカレント・プログラムのアプリケーションID
+              ln_insert_program_id);   -- 7.コンカレント・プログラムID
+  --
+            -- 例外処理
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE check_sub_main_expt;
+            END IF;
+  --
+            -- ===============================
+            --  倉庫重複チェック(B-8)
+            -- ===============================    
+            check_whse_data(
+              lr_sr_line_rec, -- 1.レコード
+              lv_errbuf,      --   エラー・メッセージ           --# 固定 #
+              lv_retcode,     --   リターン・コード             --# 固定 #
+              lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
+    --
+              -- 例外処理
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE check_sub_main_expt;
+            END IF;
+  --
+  -- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+            -- ===============================
+            --  倉庫重複チェック2(B-11)
+            -- ===============================    
+            check_whse_data2(
+              lr_sr_line_rec, -- 1.レコード
+              lv_errbuf,      --   エラー・メッセージ           --# 固定 #
+              lv_retcode,     --   リターン・コード             --# 固定 #
+              lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
+    --
+              -- 例外処理
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE check_sub_main_expt;
+            END IF;
+  -- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
+  --
+            -- ===============================
+            --  物流構成アドオンマスタ挿入(B-9)
+            -- ===============================    
+            -- 登録処理
+            insert_sr_rules(
+              lr_sr_line_rec,         -- 1.レコード
+              ln_insert_user_id,      -- 2.ユーザーID  
+              ld_insert_date,         -- 3.更新日
+              ln_insert_login_id,     -- 4.ログインID
+              ln_insert_request_id,   -- 5.要求ID
+              ln_insert_prog_appl_id, -- 6.コンカレント・プログラムのアプリケーションID
+              ln_insert_program_id,   -- 7.コンカレント・プログラムID
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
+  --
             -- 例外処理
             IF (lv_retcode = gv_status_error) THEN
               RAISE check_sub_main_expt;
             END IF;
           END IF;
---
-          -- ===============================
-          --  適用終了日編集(B-7)
-          -- ===============================    
-          lr_sr_line_rec.end_date_active  := modify_end_date(
-            lr_sr_line_rec,         -- 1.レコード
-            ln_insert_user_id,      -- 2.ユーザーID  
-            ld_insert_date,         -- 3.更新日
-            ln_insert_login_id,     -- 4.ログインID
-            ln_insert_request_id,   -- 5.要求ID
-            ln_insert_prog_appl_id, -- 6.コンカレント・プログラムのアプリケーションID
-            ln_insert_program_id);   -- 7.コンカレント・プログラムID
---
-          -- 例外処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE check_sub_main_expt;
-          END IF;
---
-          -- ===============================
-          --  倉庫重複チェック(B-8)
-          -- ===============================    
-          check_whse_data(
-            lr_sr_line_rec, -- 1.レコード
-            lv_errbuf,      --   エラー・メッセージ           --# 固定 #
-            lv_retcode,     --   リターン・コード             --# 固定 #
-            lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
-  --
-            -- 例外処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE check_sub_main_expt;
-          END IF;
---
--- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
-          -- ===============================
-          --  倉庫重複チェック2(B-11)
-          -- ===============================    
-          check_whse_data2(
-            lr_sr_line_rec, -- 1.レコード
-            lv_errbuf,      --   エラー・メッセージ           --# 固定 #
-            lv_retcode,     --   リターン・コード             --# 固定 #
-            lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
-  --
-            -- 例外処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE check_sub_main_expt;
-          END IF;
--- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
---
-          -- ===============================
-          --  物流構成アドオンマスタ挿入(B-9)
-          -- ===============================    
-          -- 登録処理
-          insert_sr_rules(
-            lr_sr_line_rec,         -- 1.レコード
-            ln_insert_user_id,      -- 2.ユーザーID  
-            ld_insert_date,         -- 3.更新日
-            ln_insert_login_id,     -- 4.ログインID
-            ln_insert_request_id,   -- 5.要求ID
-            ln_insert_prog_appl_id, -- 6.コンカレント・プログラムのアプリケーションID
-            ln_insert_program_id,   -- 7.コンカレント・プログラムID
-            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-            lv_retcode,             -- リターン・コード             --# 固定 #
-            lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
---
-          -- 例外処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE check_sub_main_expt;
-          END IF;
         END IF;
+-- 2009/06/10 ADD END
 --
         gt_sr_line_tbl(gn_target_cnt) := lr_sr_line_rec;
 --

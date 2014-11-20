@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンのアップロード
  * MD.050           : ファイルアップロード T_MD050_BPO_990
  * MD.070           : 物流構成アドオンのアップロード T_MD070_BPO_99G
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ----------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/02/06    1.0   ORACLE 青木祐介   main 新規作成
  *  2008/04/18    1.1   Oracle 山根 一浩  変更要求No63対応
  *  2008/07/08    1.2   Oracle 山根 一浩  I_S_192対応
+ *  2009/06/10    1.3   SCS 丸下          本番障害1204、1439対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -123,6 +124,10 @@ AS
   gv_vender_site1_n         CONSTANT VARCHAR2(24)   := '仕入先サイトコード1';
   gv_vender_site2_n         CONSTANT VARCHAR2(24)   := '仕入先サイトコード2';
   gv_plan_item_flag_n       CONSTANT VARCHAR2(24)   := '計画商品フラグ';
+-- 2009/06/10 ADD START
+  gv_sourcing_rules_id_n    CONSTANT VARCHAR2(24)   := '削除キー';
+  gv_sourcing_rules         CONSTANT VARCHAR2(24)   := '物流構成アドオンマスタ';
+-- 2009/06/10 ADD END
   -- *** 物流構成アドオンインタフェース桁数 ***
   gn_item_code_l            CONSTANT NUMBER         := 7; -- 品目コード
   gn_base_code_l            CONSTANT NUMBER         := 4; -- 拠点コード
@@ -154,6 +159,9 @@ AS
     vendor_site_code1       VARCHAR2(32767), -- 仕入先サイトコード1
     vendor_site_code2       VARCHAR2(32767), -- 仕入先サイトコード2
     plan_item_flag          VARCHAR2(32767), -- 計画商品フラグ
+-- 2009/06/10 ADD START
+    sourcing_rules_id       VARCHAR2(32767), -- 削除キー
+-- 2009/06/10 ADD END
     line                    VARCHAR2(32767), -- 行内容全て（内部制御用）
     err_message             VARCHAR2(32767)  -- エラーメッセージ（内部制御用）
   );
@@ -184,6 +192,10 @@ AS
     xxcmn_sr_lines_if.vendor_site_code2%TYPE    INDEX BY BINARY_INTEGER;  -- 仕入先サイトコード2
   TYPE plan_item_flag_type       IS TABLE OF
     xxcmn_sr_lines_if.plan_item_flag%TYPE       INDEX BY BINARY_INTEGER;  -- 計画商品フラグ
+-- 2009/06/10 ADD START
+  TYPE sourcing_rules_id_type       IS TABLE OF
+    xxcmn_sr_lines_if.sourcing_rules_id%TYPE    INDEX BY BINARY_INTEGER;  -- 削除キー
+-- 2009/06/10 ADD END
 --
   gt_item_code_tab            item_code_type;             -- 品目コード
   gt_base_code_tab            base_code_type;             -- 拠点コード
@@ -196,6 +208,9 @@ AS
   gt_vendor_site_code1_tab    vendor_site_code1_type;     -- 仕入先サイトコード1
   gt_vendor_site_code2_tab    vendor_site_code2_type;     -- 仕入先サイトコード2
   gt_plan_item_flag_tab       plan_item_flag_type;        -- 計画商品フラグ
+-- 2009/06/10 ADD START
+  gt_sourcing_rules_id_tab    sourcing_rules_id_type;     -- 削除キー
+-- 2009/06/10 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -277,6 +292,9 @@ AS
       , vendor_site_code1                       -- 仕入先サイトコード1
       , vendor_site_code2                       -- 仕入先サイトコード2
       , plan_item_flag                          -- 計画商品フラグ
+-- 2009/06/10 ADD START
+      , sourcing_rules_id                       -- 削除キー
+-- 2009/06/10 ADD END
       , created_by                              -- 作成者
       , creation_date                           -- 作成日
       , last_updated_by                         -- 最終更新者
@@ -298,6 +316,9 @@ AS
         , gt_vendor_site_code1_tab(item_cnt)    -- 仕入先サイトコード1
         , gt_vendor_site_code2_tab(item_cnt)    -- 仕入先サイトコード2
         , gt_plan_item_flag_tab(item_cnt)       -- 計画商品フラグ
+-- 2009/06/10 ADD START
+        , gt_sourcing_rules_id_tab(item_cnt)    -- 削除キー
+-- 2009/06/10 ADD END
         , gn_user_id                            -- 作成者
         , gd_sysdate                            -- 作成日
         , gn_user_id                            -- 最終更新者
@@ -411,6 +432,10 @@ AS
         := fdata_tbl(ln_index).vendor_site_code2;                        -- 仕入先サイトコード2
       gt_plan_item_flag_tab(ln_index)
         := TO_NUMBER(fdata_tbl(ln_index).plan_item_flag);                -- 計画商品フラグ
+-- 2009/06/10 ADD START
+      gt_sourcing_rules_id_tab(ln_index)
+        := fdata_tbl(ln_index).sourcing_rules_id;                        -- 削除キー
+-- 2009/06/10 ADD END
 --
     END LOOP fdata_loop;
 --
@@ -470,10 +495,16 @@ AS
     lv_line_feed    VARCHAR2(1); -- 改行コード
 --
     -- 総項目数
-    cn_col          CONSTANT NUMBER := 11;
+-- 2009/06/10 MOD START
+--    cn_col          CONSTANT NUMBER := 11;
+    cn_col          CONSTANT NUMBER := 12;
+-- 2009/06/10 MOD END
 --
     -- *** ローカル変数 ***
     lv_log_data     VARCHAR2(32767);  -- LOGデータ部退避用
+-- 2009/06/10 ADD START
+    ln_xsr_cnt      NUMBER;  -- 物流構成存在チェック用
+-- 2009/06/10 ADD END
 --
   BEGIN
 --
@@ -765,6 +796,61 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
         END IF;
+-- 2009/06/10 ADD START
+        -- ==============================
+        --  削除キー
+        -- ==============================
+        xxcmn_common3_pkg.upload_item_check(gv_sourcing_rules_id_n,
+                                            fdata_tbl(ln_index).sourcing_rules_id,
+                                            NULL,
+                                            NULL,
+                                            xxcmn_common3_pkg.gv_null_ok,
+                                            xxcmn_common3_pkg.gv_attr_num,
+                                            lv_errbuf,
+                                            lv_retcode,
+                                            lv_errmsg);
+        -- 項目チェックエラー
+        IF (lv_retcode = gv_status_warn) THEN
+          fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
+                                              || lv_errmsg
+                                              || lv_line_feed;
+        -- プロシージャー異常終了
+        ELSIF (lv_retcode = gv_status_error) THEN
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+--
+        --物流構成マスタ存在チェック
+        IF (lv_retcode = gv_status_normal AND 
+            fdata_tbl(ln_index).sourcing_rules_id IS NOT NULL) THEN
+          BEGIN
+            SELECT COUNT(1)
+            INTO   ln_xsr_cnt
+            FROM   xxcmn_sourcing_rules xsr
+            WHERE  xsr.sourcing_rules_id = fdata_tbl(ln_index).sourcing_rules_id;
+          END;
+--
+          -- 該当データなしは項目チェックエラー
+          IF (ln_xsr_cnt = 0 ) THEN
+            lv_retcode := gv_status_warn;
+            lv_errmsg  := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10001',
+              'TABLE',gv_sourcing_rules,
+              'KEY'  ,fdata_tbl(ln_index).sourcing_rules_id);
+          END IF;
+--
+          -- 項目チェックエラー
+          IF (lv_retcode = gv_status_warn) THEN
+            fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
+                                                || gv_err_msg_space
+                                                || lv_errmsg
+                                                || lv_line_feed;
+          -- プロシージャー異常終了
+          ELSIF (lv_retcode = gv_status_error) THEN
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+        END IF;
+-- 2009/06/10 ADD END
 --
       END IF;
 --
@@ -987,6 +1073,10 @@ AS
           fdata_tbl(gn_target_cnt).vendor_site_code2    := SUBSTR(lv_line, 1, ln_length);
         ELSIF  (ln_col = 11) THEN
           fdata_tbl(gn_target_cnt).plan_item_flag       := SUBSTR(lv_line, 1, ln_length);
+-- 2009/06/10 ADD START
+        ELSIF  (ln_col = 12) THEN
+          fdata_tbl(gn_target_cnt).sourcing_rules_id    := SUBSTR(lv_line, 1, ln_length);
+-- 2009/06/10 ADD END
         END IF;
 --
         -- strは今回取得した行を除く（カンマはのぞくため、ln_length + 2）

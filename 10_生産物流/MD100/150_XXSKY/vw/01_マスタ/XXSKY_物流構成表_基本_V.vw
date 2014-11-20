@@ -31,6 +31,7 @@ CREATE OR REPLACE VIEW APPS.XXSKY_•¨—¬\¬•\_Šî–{_V
 ,ÅIXVŽÒ
 ,ÅIXV“ú
 ,ÅIXVƒƒOƒCƒ“
+,íœƒL[
 )
 AS
 SELECT  
@@ -68,6 +69,7 @@ SELECT
        ,TO_CHAR( XSR.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                        --ÅIXV“ú
        ,FU_LL.user_name                --ÅIXVƒƒOƒCƒ“
+       ,XSR.SOURCING_RULES_ID          --íœƒL[
   FROM  xxcmn_sourcing_rules    XSR    --•¨—¬\¬ƒAƒhƒIƒ“ƒ}ƒXƒ^
        ,xxsky_item_mst_v        XIMV   --OPM•i–Úî•ñVIEW
        ,xxsky_prod_class_v      XPCV   --SKYLINK—p OPM•i–Ú‹æ•ªVIEW(¤•i‹æ•ª)
@@ -163,4 +165,6 @@ COMMENT ON COLUMN APPS.XXSKY_•¨—¬\¬•\_Šî–{_V.ÅIXVŽÒ              IS 'ÅI
 COMMENT ON COLUMN APPS.XXSKY_•¨—¬\¬•\_Šî–{_V.ÅIXV“ú              IS 'ÅIXV“ú'
 /
 COMMENT ON COLUMN APPS.XXSKY_•¨—¬\¬•\_Šî–{_V.ÅIXVƒƒOƒCƒ“        IS 'ÅIXVƒƒOƒCƒ“'
+/
+COMMENT ON COLUMN APPS.XXSKY_•¨—¬\¬•\_Šî–{_V.íœƒL[                IS 'íœƒL['
 /
