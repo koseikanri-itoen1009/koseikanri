@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.50
+ * Version          : 1.51
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -148,6 +148,7 @@ AS
  *  2009/03/30    1.49 SCS    飯田 甫    本番障害対応#1346 顧客マスタの顧客区分対応(拠点、又は配送先のみ抽出)
  *  2009/03/31    1.50 SCS    伊藤ひとみ 本番障害対応#1105,1164 指示にあって実績にない品目は、引当なしで依頼数0の場合、削除。依頼数0でない場合は実績0データ作成
  *                                       本番障害対応#1085,1159 実績0作成時で、実績報告済み品目かチェックする時に、IF依頼No単位の品目のみでチェックするように修正
+ *  2009/04/07    1.51 SCS    伊藤ひとみ 本番障害対応#1105,1164(再対応) dummy_lot_checkでIFデータを検索する時の条件が漏れていたので修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -11249,6 +11250,9 @@ AS
    *                    実績0データを作成するためのダミーロットがあるかチェック
    ***********************************************************************************/
   PROCEDURE dummy_lot_check(
+-- 2009/04/07 ADD START 本番障害#1105,1164(再対応)
+    iv_process_object_info  IN  VARCHAR2,            -- 処理対象情報
+-- 2009/04/07 ADD END
     ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -11425,6 +11429,12 @@ AS
           WHERE  xshi.header_id           = xsli.header_id
           AND    xshi.order_source_ref    = gr_interface_info_rec(if_loop_cnt).order_source_ref
           AND    xsli.orderd_item_code    = lr_tab_data(check_loop_cnt).item_no
+-- 2009/04/07 ADD START 本番障害#1105,1164(再対応)
+          AND    xshi.data_type           = iv_process_object_info                              -- 処理対象情報
+          AND    xshi.report_post_code    = gr_interface_info_rec(if_loop_cnt).report_post_code -- 報告部署
+          AND    xshi.eos_data_type       = gr_interface_info_rec(if_loop_cnt).eos_data_type    -- EOSデータ種別
+          AND    ROWNUM                   = 1
+-- 2009/04/07 ADD END
           ;
 --
           -- IFにデータがない場合、実績0で移動ロットを作成するので、ダミーロットがあるかチェック
@@ -19965,6 +19975,9 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
     -- ダミーロットチェック プロシージャ (A-6-1)
     -- ===============================
     dummy_lot_check(
+-- 2009/04/07 ADD START 本番障害#1105,1164(再対応)
+      iv_process_object_info, -- 処理対象情報
+-- 2009/04/07 ADD END
       lv_errbuf,              -- エラー・メッセージ           --# 固定 #
       lv_retcode,             -- リターン・コード             --# 固定 #
       lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
