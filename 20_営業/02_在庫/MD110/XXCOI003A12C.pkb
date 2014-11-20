@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/04/21    1.2   H.Sasaki         [T1_0654]取込データの前後スペース削除
  *  2009/05/15    1.3   H.Sasaki         [T1_0785]データ抽出順序の変更
  *  2009/06/01    1.4   H.Sasaki         [T1_1272]入庫側コード、出庫側コード編集
+ *  2010/01/29    1.5   H.Sasaki         [E_本稼動_01372]在庫会計期間チェックのエラーハンドリング変更
  *
  *****************************************************************************************/
 --
@@ -1016,7 +1017,10 @@ AS
                      , iv_token_name1  => cv_tkn_target_date
                      , iv_token_value1 => TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date ,'yyyymmdd' )
                    );
-      RAISE global_api_expt;
+-- == 2010/01/29 V1.5 Modified START ===============================================================
+--      RAISE global_api_expt;
+      RAISE invalid_value_expt;
+-- == 2010/01/29 V1.5 Modified END   ===============================================================
     END IF;
     -- 当月在庫会計期間がクローズの場合
     IF ( NOT lb_org_acct_period_flg ) THEN
