@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2010/01/27    1.22  N.Maeda          [E_本稼動_01321] カード会社取得済配列設定
  *  2010/01/27    1.23  N.Maeda          [E_本稼動_01191] 処理起動モード3(納品ワークパージ)を追加
  *  2010/02/04    1.24  Y.Kuboshima      [E_T4_00195] 会計カレンダをAR ⇒ INVに修正
+ *  2011/02/03    1.25  Y.Kanami         [E_本稼動_02624] データ妥当性チェックの顧客情報取得時の条件追加
  *
  *****************************************************************************************/
 --
@@ -356,7 +357,10 @@ AS
       card_company    xxcmm_cust_accounts.card_company%TYPE            -- カード会社
 --****************************** 2010/01/18 1.21 M.Uehara ADD END *******************************--
     );
-  TYPE g_tab_select_cus IS TABLE OF g_rec_select_cus INDEX BY VARCHAR2(9);
+--****************************** 2011/02/03 1.25 Y.Kanami MOD START *****************************--  
+--  TYPE g_tab_select_cus IS TABLE OF g_rec_select_cus INDEX BY VARCHAR2(9);
+  TYPE g_tab_select_cus IS TABLE OF g_rec_select_cus INDEX BY VARCHAR2(15);
+--****************************** 2011/02/03 1.25 Y.Kanami MOD END *******************************--
 --
 --****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
   -- 成績者コードの妥当性チェック：抽出項目格納用変数
@@ -1979,6 +1983,9 @@ AS
     lv_tbl_key              VARCHAR2(20);                                      -- 参照テーブルのキー値
     lv_time_fmt             CONSTANT VARCHAR2(16) := 'YYYYMMDDHH24MISS';
 --****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
+--****************************** 2011/02/03 1.25 Y.Kanami ADD START *****************************-- 
+    lv_index_key            VARCHAR2(15);                                       -- 顧客情報検索時のKEY
+--****************************** 2011/02/03 1.25 Y.Kanami ADD END *******************************--
 --
     -- *** ローカル・カーソル ***
 --
@@ -2082,15 +2089,29 @@ AS
         lt_card_company    := NULL;
 --****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
 --
+--****************************** 2011/02/03 1.25 Y.Kanami ADD START *****************************-- 
+        -- 顧客マスタデータチェック用INDEX
+        lv_index_key  :=  lt_customer_number||TO_CHAR(lt_dlv_date,'YYYYMM');
+--****************************** 2011/02/03 1.25 Y.Kanami ADD END *******************************--
         --== 顧客マスタデータ抽出 ==--
         -- 既に取得済みの値であるかを確認する。
-      IF ( gt_select_cus.EXISTS(lt_customer_number) ) THEN
-        lt_customer_name  := SUBSTRB( gt_select_cus(lt_customer_number).customer_name, 1, 40 );   -- 顧客名称
-        lt_customer_id    := gt_select_cus(lt_customer_number).customer_id;     -- 顧客ID
-        lt_party_id       := gt_select_cus(lt_customer_number).party_id;        -- パーティID
-        lt_sale_base      := gt_select_cus(lt_customer_number).sale_base;       -- 売上拠点コード
-        lt_past_sale_base := gt_select_cus(lt_customer_number).past_sale_base;  -- 前月売上拠点コード
-        lt_cus_status     := gt_select_cus(lt_customer_number).cus_status;      -- 顧客ステータス
+--****************************** 2011/02/03 1.25 Y.Kanami MOD START *****************************--
+--      IF ( gt_select_cus.EXISTS(lt_customer_number) ) THEN
+--        lt_customer_name  := SUBSTRB( gt_select_cus(lt_customer_number).customer_name, 1, 40 );   -- 顧客名称
+--        lt_customer_id    := gt_select_cus(lt_customer_number).customer_id;     -- 顧客ID
+--        lt_party_id       := gt_select_cus(lt_customer_number).party_id;        -- パーティID
+--        lt_sale_base      := gt_select_cus(lt_customer_number).sale_base;       -- 売上拠点コード
+--        lt_past_sale_base := gt_select_cus(lt_customer_number).past_sale_base;  -- 前月売上拠点コード
+--        lt_cus_status     := gt_select_cus(lt_customer_number).cus_status;      -- 顧客ステータス
+      IF ( gt_select_cus.EXISTS(lv_index_key) ) THEN
+        lt_customer_name  := SUBSTRB( gt_select_cus(lv_index_key).customer_name, 1, 40 );   -- 顧客名称
+        lt_customer_id    := gt_select_cus(lv_index_key).customer_id;     -- 顧客ID
+        lt_party_id       := gt_select_cus(lv_index_key).party_id;        -- パーティID
+        lt_sale_base      := gt_select_cus(lv_index_key).sale_base;       -- 売上拠点コード
+        lt_past_sale_base := gt_select_cus(lv_index_key).past_sale_base;  -- 前月売上拠点コード
+        lt_cus_status     := gt_select_cus(lv_index_key).cus_status;      -- 顧客ステータス
+--****************************** 2011/02/03 1.25 Y.Kanami MOD END *******************************--
+
 --****************************** 2009/04/10 1.9 N.Maeda DEL START ******************************--
 --          lt_charge_person  := gt_select_cus(lt_customer_number).charge_person;   -- 担当営業員
 --****************************** 2009/04/10 1.9 N.Maeda DEL END ********************************--
@@ -2099,15 +2120,23 @@ AS
 --        lt_resource_id    := gt_select_cus(lt_customer_number).resource_id;     -- リソースID
 ----****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
 --****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
-        lt_bus_low_type   := gt_select_cus(lt_customer_number).bus_low_type;    -- 業態（小分類）
-        lt_base_name      := SUBSTRB( gt_select_cus(lt_customer_number).base_name, 1, 30 );       -- 拠点名称
-        lt_hht_class      := gt_select_cus(lt_customer_number).dept_hht_div;    -- 百貨店用HHT区分
+--****************************** 2011/02/03 1.25 Y.Kanami MOD START *****************************--
+--        lt_bus_low_type   := gt_select_cus(lt_customer_number).bus_low_type;    -- 業態（小分類）
+--        lt_base_name      := SUBSTRB( gt_select_cus(lt_customer_number).base_name, 1, 30 );       -- 拠点名称
+--        lt_hht_class      := gt_select_cus(lt_customer_number).dept_hht_div;    -- 百貨店用HHT区分
+        lt_bus_low_type   := gt_select_cus(lv_index_key).bus_low_type;                  -- 業態（小分類）
+        lt_base_name      := SUBSTRB( gt_select_cus(lv_index_key).base_name, 1, 30 );   -- 拠点名称
+        lt_hht_class      := gt_select_cus(lv_index_key).dept_hht_div;                  -- 百貨店用HHT区分
+--****************************** 2011/02/03 1.25 Y.Kanami MOD END *******************************--
 --****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
 --        lt_base_perf      := gt_select_cus(lt_customer_number).base_perf;       -- 拠点コード（成績者）
 --        lt_base_dlv       := gt_select_cus(lt_customer_number).base_dlv;        -- 拠点コード（納品者）
 --****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
 --****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
-        lt_card_company   := gt_select_cus(lt_customer_number).card_company;    -- カード会社
+--****************************** 2011/02/03 1.25 Y.Kanami MOD START *****************************--
+--        lt_card_company   := gt_select_cus(lt_customer_number).card_company;    -- カード会社
+        lt_card_company   := gt_select_cus(lv_index_key).card_company;              -- カード会社
+--****************************** 2011/02/03 1.25 Y.Kanami MOD END *******************************--
 --****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
       ELSE
 --****************************** 2009/05/15 1.14 N.Maeda MOD START ******************************--
@@ -2483,20 +2512,33 @@ AS
             lv_err_flag := cv_hit;
         END;
 --
+--****************************** 2011/02/03 1.25 Y.Kanami MOD START *****************************-- 
 --****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+--        IF ( lv_err_flag <> cv_hit ) THEN
+--          gt_select_cus(lt_customer_number).customer_name  := lt_customer_name;   -- 顧客名称
+--          gt_select_cus(lt_customer_number).customer_id    := lt_customer_id;     -- 顧客ID
+--          gt_select_cus(lt_customer_number).party_id       := lt_party_id;        -- パーティID
+--          gt_select_cus(lt_customer_number).sale_base      := lt_sale_base;       -- 売上拠点コード
+--          gt_select_cus(lt_customer_number).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
+--          gt_select_cus(lt_customer_number).cus_status     := lt_cus_status;      -- 顧客ステータス
+--          gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
+--          gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
+--          gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
+----****************************** 2010/01/27 1.22 N.Maeda ADD START *******************************--
+--          gt_select_cus(lt_customer_number).card_company   := lt_card_company;    -- カード会社
+----****************************** 2010/01/27 1.22 N.Maeda ADD START *******************************--
         IF ( lv_err_flag <> cv_hit ) THEN
-          gt_select_cus(lt_customer_number).customer_name  := lt_customer_name;   -- 顧客名称
-          gt_select_cus(lt_customer_number).customer_id    := lt_customer_id;     -- 顧客ID
-          gt_select_cus(lt_customer_number).party_id       := lt_party_id;        -- パーティID
-          gt_select_cus(lt_customer_number).sale_base      := lt_sale_base;       -- 売上拠点コード
-          gt_select_cus(lt_customer_number).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
-          gt_select_cus(lt_customer_number).cus_status     := lt_cus_status;      -- 顧客ステータス
-          gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
-          gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
-          gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
---****************************** 2010/01/27 1.22 N.Maeda ADD START *******************************--
-          gt_select_cus(lt_customer_number).card_company   := lt_card_company;    -- カード会社
---****************************** 2010/01/27 1.22 N.Maeda ADD START *******************************--
+          gt_select_cus(lv_index_key).customer_name  := lt_customer_name;   -- 顧客名称
+          gt_select_cus(lv_index_key).customer_id    := lt_customer_id;     -- 顧客ID
+          gt_select_cus(lv_index_key).party_id       := lt_party_id;        -- パーティID
+          gt_select_cus(lv_index_key).sale_base      := lt_sale_base;       -- 売上拠点コード
+          gt_select_cus(lv_index_key).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
+          gt_select_cus(lv_index_key).cus_status     := lt_cus_status;      -- 顧客ステータス
+          gt_select_cus(lv_index_key).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
+          gt_select_cus(lv_index_key).base_name      := lt_base_name;       -- 拠点名称
+          gt_select_cus(lv_index_key).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
+          gt_select_cus(lv_index_key).card_company   := lt_card_company;    -- カード会社
+--****************************** 2011/02/03 1.25 Y.Kanami MOD END *******************************--
         END IF;
 --
       END IF;
