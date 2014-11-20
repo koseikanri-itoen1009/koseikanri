@@ -9,7 +9,7 @@ AS
  *                    画面にて変更された既存顧客情報を顧客マスタに反映します。
  * MD.050           : MD050_CSO_020_A03_各種マスタ反映処理機能
  *
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009-05-08    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0913)
  *  2009-05-21    1.3   Kazuo.Satomura   システムテスト障害対応(T1_1092)
  *  2009-06-30    1.4   Kazuo.Satomura   統合テスト障害対応(0000209)
+ *  2009-07-09    1.5   Kazuo.Satomura   統合テスト障害対応(0000341)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1518,6 +1519,11 @@ AS
     /* 2009.05.21 K.Satomura T1_1092対応 END */
     cv_tkn_value_table_name   CONSTANT VARCHAR2(50) := '支払条件ビュー';
     /* 2009.05.08 K.Satomura T1_0913対応 END */
+    /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) START */
+    cv_tax_rouding_rule       CONSTANT hz_cust_site_uses_all.tax_rounding_rule%TYPE := 'DOWN';
+    --
+    /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) END */
+
     --
     -- トークン用定数
     cv_tkn_value_site_use_ship CONSTANT VARCHAR2(40) := '顧客使用目的マスタ登録（出荷先）';
@@ -1688,6 +1694,9 @@ AS
       lt_cust_site_use_rec.cust_acct_site_id := it_cust_acct_site_id; -- 顧客所在地ＩＤ
       lt_cust_site_use_rec.site_use_code     := cv_bill_to_site_code; -- 使用目的
       lt_cust_site_use_rec.created_by_module := SUBSTRB(cv_pkg_name, 1, 150);
+      /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) START */
+      lt_cust_site_use_rec.tax_rounding_rule := cv_tax_rouding_rule;
+      /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) END */
       --
       /* 2009.05.21 K.Satomura T1_1092対応 START */
       --/* 2009.05.08 K.Satomura T1_0913対応 START */
@@ -1811,6 +1820,10 @@ AS
           --
       END;
       --
+      /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) START */
+      lt_cust_site_use_rec.tax_rounding_rule := cv_tax_rouding_rule;
+      --
+      /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) END */
       hz_cust_account_site_v2pub.update_cust_site_use(
          p_init_msg_list         => fnd_api.g_true
         ,p_cust_site_use_rec     => lt_cust_site_use_rec
