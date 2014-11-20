@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -121,6 +121,7 @@ AS
  *  2009/04/30    1.24 Oracle 野村       本番#432対応
  *  2009/05/07    1.25 Oracle 野村       本番#432対応
  *  2009/05/14    1.26 Oracle 野村       本番#432対応
+ *  2009/05/29    1.27 Oracle 野村       本番#1505対応
  *
  *****************************************************************************************/
 --
@@ -5049,26 +5050,36 @@ AS
         -- 配車解除された受注実績、支給実績情報 抽出
         -- ==================================================
         -- 着日_支給依頼
-        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+        SELECT  /*+ leading(xoha otta ) use_nl(xoha otta ) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
                 gv_type_shikyu        AS results_type
               , xoha.request_no       AS request_no   -- 依頼No
         FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
-              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
-              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+--              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+              oe_transaction_types_all       otta    -- 受注タイプ情報VIEW2
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
         AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
 -- （着荷予定日もしくは着荷日が設定されていることが前提）
         AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
           OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
-        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
-        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+--        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xoha.delivery_no  IS NULL                       -- 配送No
         -- 運賃用運送業者
-        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
-        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
-        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
-        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
-        AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+--        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+--        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+--        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+--        AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
                                                  >=  gd_target_date -- 着荷日(着荷予定日)
         -- 受注タイプ情報VIEW2
@@ -5087,26 +5098,36 @@ AS
             )
         UNION ALL
         -- 着日_出荷依頼
-        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+        SELECT  /*+ leading(xoha otta ) use_nl(xoha otta ) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
                 gv_type_ship          AS results_type
               , xoha.request_no       AS request_no   -- 依頼No
         FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
-              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
-              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+--              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+              oe_transaction_types_all       otta     -- 受注タイプ情報VIEW2
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
         AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
 -- （着荷予定日もしくは着荷日が設定されていることが前提）
         AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
           OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
-        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
-        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+--        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xoha.delivery_no  IS NULL                       -- 配送No
         -- 運賃用運送業者
-        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
-        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
-        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
-        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
-        AND   xdec.payments_judgment_classe = gv_pay_judg_c                   -- 支払判断区分（着日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+--        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+--        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+--        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+--        AND   xdec.payments_judgment_classe = gv_pay_judg_c                   -- 支払判断区分（着日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
                                                  >=  gd_target_date           -- 着荷日(着荷予定日)
         -- 受注タイプ情報VIEW2
@@ -5125,26 +5146,36 @@ AS
             )
         UNION ALL
         -- 発日_支給依頼
-        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+        SELECT  /*+ leading(xoha otta ) use_nl(xoha otta ) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
                 gv_type_shikyu        AS results_type
               , xoha.request_no       AS request_no   -- 依頼No
         FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
-              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
-              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+--              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+              oe_transaction_types_all       otta     -- 受注タイプ情報VIEW2
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
         AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
 -- （着荷予定日もしくは着荷日が設定されていることが前提）
         AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
           OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
-        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
-        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+--        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xoha.delivery_no  IS NULL                       -- 配送No
         -- 運賃用運送業者
-        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
-        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
-        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
-        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
-        AND   xdec.payments_judgment_classe = gv_pay_judg_g                   -- 支払判断区分（発日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+--        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+--        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+--        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+--        AND   xdec.payments_judgment_classe = gv_pay_judg_g                   -- 支払判断区分（発日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xoha.shipped_date >=  gd_target_date                            -- 出荷日
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
@@ -5162,26 +5193,36 @@ AS
             )
         UNION ALL
         -- 発日_出荷依頼
-        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
+        SELECT  /*+ leading(xoha otta ) use_nl(xoha otta ) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
                 gv_type_ship          AS results_type
               , xoha.request_no       AS request_no   -- 依頼No
         FROM  xxwsh_order_headers_all        xoha,    -- 受注ヘッダアドオン
-              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
-              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--              oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
+--              xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+              oe_transaction_types_all       otta     -- 受注タイプ情報VIEW2
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
         AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
 -- （着荷予定日もしくは着荷日が設定されていることが前提）
         AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
           OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
-        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
-        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
+--        AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xoha.delivery_no  IS NULL                       -- 配送No
         -- 運賃用運送業者
-        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
-        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
-        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
-        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
-        AND   xdec.payments_judgment_classe = gv_pay_judg_g                   -- 支払判断区分（発日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+--        AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+--        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+--        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+--        AND   xdec.payments_judgment_classe = gv_pay_judg_g                   -- 支払判断区分（発日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xoha.shipped_date >=  gd_target_date                            -- 出荷日
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
@@ -5202,22 +5243,32 @@ AS
         -- 配車解除された移動実績情報 抽出
         -- ==================================================
         -- 着日
-        SELECT /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        SELECT /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+        SELECT /*+ leading (xmrih ) use_nl (xmrih ) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
                   gv_type_move        AS results_type   -- タイプ（移動）
                 , xmrih.mov_num       AS request_no     -- 移動番号
-        FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
-              xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
+--              xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
+        FROM  xxinv_mov_req_instr_headers    xmrih      -- 移動依頼/指示ヘッダ(アドオン)
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
         AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
           OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
-        AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
-        AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
+--        AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xmrih.delivery_no IS NULL                     -- 配送No
-        AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
-        AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
-        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
-        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
-        AND   xdec.payments_judgment_classe = gv_pay_judg_c                     -- 支払判断区分（着日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+--        AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+--        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+--        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+--        AND   xdec.payments_judgment_classe = gv_pay_judg_c                     -- 支払判断区分（着日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) 
                                                   >=  gd_target_date            -- 入庫実績日(入庫予定日)
        AND (
@@ -5232,22 +5283,32 @@ AS
             )
         UNION ALL
         -- 発日
-        SELECT  /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        SELECT  /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
+        SELECT  /*+ leading (xmrih ) use_nl (xmrih ) */
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
                   gv_type_move        AS results_type   -- タイプ（移動）
                 , xmrih.mov_num       AS request_no     -- 移動番号
-        FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
-              xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
+--              xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
+        FROM  xxinv_mov_req_instr_headers    xmrih      -- 移動依頼/指示ヘッダ(アドオン)
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
         AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
           OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
-        AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
-        AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
+--        AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xmrih.delivery_no IS NULL                     -- 配送No
-        AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
-        AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
-        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
-        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
-        AND   xdec.payments_judgment_classe = gv_pay_judg_g                     -- 支払判断区分（発日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 start *----------*
+--        AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+--        AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+--        AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+--        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+--        AND   xdec.payments_judgment_classe = gv_pay_judg_g                     -- 支払判断区分（発日）
+-- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
         AND   xmrih.actual_ship_date    >=  gd_target_date                      -- 出庫実績日
        AND (
               ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
