@@ -7,6 +7,7 @@ CREATE TABLE xxwsh.xxwsh_stock_delivery_info_tmp2
   notif_status              VARCHAR2(3),
   prev_notif_status         VARCHAR2(3),
   data_type                 VARCHAR2(1),
+  eos_shipped_to_locat      VARCHAR2(4),
   eos_shipped_locat         VARCHAR2(4),
   eos_freight_carrier       VARCHAR2(4),
   delivery_no               VARCHAR2(12),
@@ -53,6 +54,7 @@ COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.req_status               
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.notif_status               IS '通知ステータス';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.prev_notif_status          IS '前回通知ステータス';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.data_type                  IS 'データタイプ';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.eos_shipped_to_locat       IS 'EOS宛先（入庫倉庫）';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.eos_shipped_locat          IS 'EOS宛先（出庫倉庫）';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.eos_freight_carrier        IS 'EOS宛先（運送業者）';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.delivery_no                IS '配送No';
