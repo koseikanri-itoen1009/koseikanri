@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/10/27    1.13  Masayoshi Uehara 統合指摘297、T_TE080_BPO_620 指摘35指摘45指摘47
  *                                       T_S_501T_S_601T_S_607、T_TE110_BPO_230-001 指摘440
  *                                       課題#32 単位/入数換算の処理ロジック
+ *  2008/11/07    1.14  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
  *
  *****************************************************************************************/
 --
@@ -500,7 +501,13 @@ AS
     FROM fnd_user fu 
         ,per_all_people_f papf
     WHERE fu.user_id     = FND_GLOBAL.USER_ID
-      AND fu.employee_id = papf.person_id;
+-- 2008/11/07 Y.Yamamoto v1.14 update start
+--      AND fu.employee_id = papf.person_id;
+      AND fu.employee_id = papf.person_id
+      AND TRUNC( SYSDATE ) BETWEEN papf.effective_start_date 
+                               AND NVL(papf.effective_end_date,TRUNC( SYSDATE ))
+    ;
+-- 2008/11/07 Y.Yamamoto v1.14 update end
     --2008/07/04 ST不具合対応#394
 --
 -- 2008/10/27 del start1.13 統合指摘297 確定実施日は必須から任意に変更する。
@@ -1161,6 +1168,9 @@ AS
     || ' AND xoha.order_header_id = xola.order_header_id' ;
     lv_sql_shu_where2 :=  lv_sql_shu_where2
     || ' AND xola.delete_flag <> '''|| gc_delete_flg ||'''' 
+-- 2008/11/07 Y.Yamamoto v1.14 add start
+    || ' AND xola.quantity     > 0'
+-- 2008/11/07 Y.Yamamoto v1.14 add end
     ------------------------------------------------
     -- OPM品目情報VIEW2
     ------------------------------------------------
@@ -1554,6 +1564,9 @@ AS
     ------------------------------------------------
     || ' AND xoha.order_header_id = xola.order_header_id' 
     || ' AND xola.delete_flag <> '''|| gc_delete_flg ||'''' 
+-- 2008/11/07 Y.Yamamoto v1.14 add start
+    || ' AND xola.quantity     > 0'
+-- 2008/11/07 Y.Yamamoto v1.14 add end
     ------------------------------------------------
     -- OPM品目情報VIEW2
     ------------------------------------------------
@@ -1963,6 +1976,9 @@ AS
     -------------------------------------------------------------------------------
     || ' AND xmrih.mov_hdr_id = xmril.mov_hdr_id' 
     || ' AND xmril.delete_flg <> '''|| gc_delete_flg ||'''' 
+-- 2008/11/07 Y.Yamamoto v1.14 add start
+    || ' AND xmril.instruct_qty > 0'
+-- 2008/11/07 Y.Yamamoto v1.14 add end
     -------------------------------------------------------------------------------
     -- OPM品目情報VIEW2
     -------------------------------------------------------------------------------

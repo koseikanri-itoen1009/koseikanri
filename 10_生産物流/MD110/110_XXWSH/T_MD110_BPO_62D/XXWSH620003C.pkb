@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/10/06    1.8   Yuko Kawano      統合指摘#242修正(出庫日FROMを任意に変更)
  *                                       T_S_501(ソート順の変更),統合指摘#341(配送No未設定時タグ修正)
  *  2008/10/20    1.9   Yuko Kawano      課題#32,変更#168対応
+ *  2008/11/06    1.10  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
  *
  *****************************************************************************************/
 --
@@ -359,6 +360,10 @@ AS
            ,per_all_people_f      papf      -- 従業員マスタ
     WHERE   fu.user_id            =  FND_GLOBAL.USER_ID
     AND     papf.person_id        =  fu.employee_id
+-- 2008/11/06 Y.Yamamoto v1.10 add start
+    AND     TRUNC( SYSDATE ) BETWEEN papf.effective_start_date 
+                                 AND NVL(papf.effective_end_date,TRUNC( SYSDATE ))
+-- 2008/11/06 Y.Yamamoto v1.10 add end
     ;
 --
 -- 2008/07/10 A.Shiina v1.4 Add End
@@ -770,6 +775,9 @@ AS
         AND (ximv.end_date_active    >=  xmrih.schedule_ship_date
           OR ximv.end_date_active IS NULL
         )
+-- 2008/11/06 Y.Yamamoto v1.10 add start
+        AND  xmril.instruct_qty       > 0
+-- 2008/11/06 Y.Yamamoto v1.10 add end
         ----------------------------------------------------------------------------------
         -- OPM品目カテゴリ割当情報
         AND  ximv.item_id                =  xicv4.item_id
