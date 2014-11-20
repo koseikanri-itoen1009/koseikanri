@@ -109,6 +109,21 @@ SELECT
        ,fnd_lookup_values             FLV01   --名義取得用
        ,fnd_lookup_values             FLV02   --事由コード名取得用
        ,fnd_lookup_values             FLV03   --消費税率取得用
+-- 2013/06/27 D.Sugahara Mod End E_本稼動_10839
+--  発注あり返品の場合は返品元発注の納入日を消費税率適用基準日とする。
+       ,(SELECT XRRT2.rcv_rtn_number             AS rcv_rtn_number      --受入返品番号
+               ,XRRT2.rcv_rtn_line_number        AS rcv_rtn_line_number --行番号
+               ,CASE WHEN XRRT2.txns_type = '2' THEN 
+                       FND_DATE.STRING_TO_DATE(PHA2.attribute4, 'YYYY/MM/DD')  --元発注納入日
+                     ELSE
+                       TRUNC(XRRT2.txns_date)      --発注受入日、返品受入日
+                END                              AS txns_date 
+         FROM   xxpo_rcv_and_rtn_txns  XRRT2 
+               ,po_headers_all         PHA2 
+         WHERE  XRRT2.source_document_number = PHA2.segment1(+) 
+         AND    XRRT2.txns_type in ('2','3') --発注あり返品、発注無返品
+         )                       XRRT     -- 返品元発注データ情報
+-- 2013/06/27 D.Sugahara Mod End E_本稼動_10839
  WHERE
    --ロット情報取得
         XIOT.item_id = ILM.item_id(+)
@@ -130,10 +145,32 @@ SELECT
    AND  FLV02.lookup_type(+) = 'XXCMN_NEW_DIVISION'
    AND  FLV02.lookup_code(+) = XIOT.reason_code
    --【クイックコード】消費税率取得結合
-   AND  FLV03.language(+)    = 'JA'
-   AND  FLV03.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
-   AND  NVL( FLV03.start_date_active(+), TO_DATE('19000101', 'YYYYMMDD') ) <= XIOT.standard_date
-   AND  NVL( FLV03.end_date_active(+)  , TO_DATE('99991231', 'YYYYMMDD') ) >= XIOT.standard_date
+-- 2013/06/27 D.Sugahara Mod Start E_本稼動_10839
+--   AND  FLV03.language(+)    = 'JA'
+--   AND  FLV03.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
+   AND  FLV03.language       = 'JA'
+   AND  FLV03.lookup_type    = 'XXCMN_CONSUMPTION_TAX_RATE'
+-- 2013/06/27 D.Sugahara Mod End E_本稼動_10839
+-- 2013/06/27 D.Sugahara Add Start E_本稼動_10839
+-- ②仕入先返品の場合返品元の発注納入日（受入返品実績アドオンの元発注番号から取得、参照テーブルの追加）
+--   ※受入返品実績アドオン.実績区分＝3：発注なし仕入先返品の場合は返品受入の取引日基準として税率取得する
+   AND  XIOT.voucher_no      = XRRT.rcv_rtn_number(+)      --受入返品番号
+   AND  XIOT.line_no         = XRRT.rcv_rtn_line_number(+) --行番号
+-- 2013/06/27 D.Sugahara Add End E_本稼動_10839   
+--
+-- 2013/06/27 D.Sugahara Mod Start E_本稼動_10839
+--  着日を消費税率適用基準日とする。ただし、仕入先返品の場合で、実績区分が2の場合は元発注の納入日とする
+--   AND  NVL( FLV03.start_date_active(+), TO_DATE('19000101', 'YYYYMMDD') ) <= XIOT.standard_date
+--   AND  NVL( FLV03.end_date_active(+)  , TO_DATE('99991231', 'YYYYMMDD') ) >= XIOT.standard_date
+   AND  NVL( FLV03.start_date_active, TO_DATE('19000101', 'YYYYMMDD') ) <= 
+        CASE WHEN XIOT.reason_code = '202' --202:仕入先返品
+          THEN NVL(XRRT.txns_date,XIOT.arrival_date)
+        ELSE XIOT.arrival_date END
+   AND  NVL( FLV03.end_date_active  , TO_DATE('99991231', 'YYYYMMDD') ) >= 
+        CASE WHEN XIOT.reason_code = '202' --202:仕入先返品
+          THEN NVL(XRRT.txns_date,XIOT.arrival_date)
+        ELSE XIOT.arrival_date END
+-- 2013/06/27 D.Sugahara Mod End E_本稼動_10839
 /
 COMMENT ON TABLE APPS.XXSKY_入出庫情報_基本_V IS 'XXSKY_入出庫情報 (基本) VIEW'
 /
