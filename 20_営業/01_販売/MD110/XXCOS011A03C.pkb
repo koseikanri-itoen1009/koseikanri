@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,8 @@ AS
  *  2009/07/24    1.11  K.Kiriu          [T1_1359]レビュー指摘事項対応
  *  2009/08/10    1.11  K.Kiriu          [0000438]指摘事項対応
  *  2009/09/03    1.12  N.Maeda          [0001065]『XXCOS_HEAD_PROD_CLASS_V』のMainSQL取込
+ *  2009/09/25    1.13  N.Maeda          [0001306]伝票計集計単位修正
+ *                                       [0001307]出荷数量取得元テーブル修正
  *
  *****************************************************************************************/
 --
@@ -1232,6 +1234,9 @@ AS
            xeh.delivery_center_code            --1.EDIヘッダ情報.納入センターコード
           ,xeh.shop_code                       --2.EDIヘッダ情報.店コード
           ,xeh.invoice_number                  --3.EDIヘッダ情報.伝票番号
+-- ********* 2009/09/25 1.13 N.Maeda ADD START ********* --
+          ,xeh.edi_header_info_id              -- EDIヘッダ情報.EDIヘッダ情報ID
+-- ********* 2009/09/25 1.13 N.Maeda ADD  END  ********* --
           ,xel.line_no                         --4.EDI明細情報.行No
           ,xel.packing_number                  --5.EDI明細情報.梱包番号
 --****************************** 2009/06/12 1.10 T.Kitajima MOD  END  ******************************--
@@ -3413,8 +3418,12 @@ AS
           RAISE global_api_others_expt;
       END;
 --****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
-      -- 「伝票番号」がブレイクした場合
-      IF ( lt_invoice_number <> gt_edi_order_tab(ln_loop_cnt).invoice_number ) THEN
+-- ********* 2009/09/25 1.13 N.Maeda MOD START ********* --
+      -- 「EDIヘッダ情報ID」がブレイクした場合
+      IF ( lt_header_id <> gt_edi_order_tab(ln_loop_cnt).edi_header_info_id ) THEN
+--      -- 「伝票番号」がブレイクした場合
+--      IF ( lt_invoice_number <> gt_edi_order_tab(ln_loop_cnt).invoice_number ) THEN
+-- ********* 2009/09/25 1.13 N.Maeda MOD  END  ********* --
         --==============================================================
         -- データ成形(A-7)
         --==============================================================
@@ -3890,7 +3899,10 @@ AS
 --      END IF;
 --
 --      gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
-      gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).sum_shipping_qty;             -- 出荷数量(合計､ﾊﾞﾗ)
+-- ********* 2009/09/25 1.13 N.Maeda MOD START ********* --
+      gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
+--      gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).sum_shipping_qty;             -- 出荷数量(合計､ﾊﾞﾗ)
+-- ********* 2009/09/25 1.13 N.Maeda MOD  END  ********* --
 --
       xxcos_common2_pkg.convert_quantity(
 /* 2009/07/24 Ver1.11 Mod Start */
