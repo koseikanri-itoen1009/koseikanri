@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_selling_trns_info_n07
+ON xxcok.xxcok_selling_trns_info(
+     cust_code
+   , selling_date
+   , report_decision_flag
+   , correction_flag
+)
+TABLESPACE xxidx2
+/
