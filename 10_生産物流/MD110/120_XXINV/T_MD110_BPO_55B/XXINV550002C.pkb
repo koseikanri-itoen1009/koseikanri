@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.30
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,8 @@ AS
  *  2008/12/04    1.28  Hitomi Itou      本番障害#362対応
  *  2008/12/18    1.29 Yasuhisa Yamamoto 本番障害#732,#772対応
  *  2008/12/24    1.30  Natsuki Yoshida  本番障害#842対応(履歴は全て削除)
+ *  2008/12/29    1.31  Natsuki Yoshida  本番障害#809,#899対応
+ *  2008/12/30    1.32  Natsuki Yoshida  本番障害#705対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -265,6 +267,11 @@ AS
   gv_nullvalue         CONSTANT VARCHAR2(2) := CHR(09);
   --発注区分
   po_type_inv          CONSTANT VARCHAR2(1) := '3'; --相手先在庫
+-- 2008/12/29 v1.31 N.Yoshida add start
+  --相手先在庫受入フラグ
+  gv_other_rcv_flag    CONSTANT VARCHAR2(1) := 'Y'; --受入
+-- 2008/12/29 v1.31 N.Yoshida add end
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1348,16 +1355,24 @@ AS
         ------------------------------
         -- 1.発注実績情報
         ------------------------------
-        SELECT /*+ leading(pha pla rsl xrart gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl xrart gic1 mcb1 gic2 mcb2) */
+-- 2008/12/29 v1.31 N.Yoshida mod start
+--        SELECT /*+ leading(pha pla rsl xrart gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl xrart gic1 mcb1 gic2 mcb2) */
+        SELECT
+-- 2008/12/29 v1.31 N.Yoshida mod end
           DISTINCT gv_trtry_po                                territory           --領域(発注)
          ,xrart.txns_id                                       txns_id             --トランザクションID
          ,iimb.item_id                                        item_id             --品目ID
          ,NVL(xrart.lot_id,0)                                 lot_id              --ロットID
-         ,pha.attribute4                                      standard_date       --日付
+-- 2008/12/29 v1.31 N.Yoshida mod start
+--         ,pha.attribute4                                      standard_date       --日付
+         ,TO_CHAR(xrart.txns_date,gv_fmt_ymd)                 standard_date       --日付
+-- 2008/12/29 v1.31 N.Yoshida mod end
          ,xrpm.new_div_invent                                 reason_code         --新区分
          ,pha.segment1                                        slip_no             --伝票No
-         ,pha.attribute4                                      out_date            --出庫日
-         ,pha.attribute4                                      in_date             --着日
+-- 2008/12/29 v1.31 N.Yoshida mod start
+         ,TO_CHAR(xrart.txns_date,gv_fmt_ymd)                 out_date            --出庫日
+         ,TO_CHAR(xrart.txns_date,gv_fmt_ymd)                 in_date             --着日
+-- 2008/12/29 v1.31 N.Yoshida mod end
          ,''                                                  jrsd_code           --管轄拠点コード
          ,''                                                  jrsd_name           --管轄拠点名
          ,pv.segment1                                         other_code          --相手先コード
@@ -1390,7 +1405,10 @@ AS
         ----------------------------------------------------------------------------------------
         --発注ヘッダ抽出条件
         WHERE pha.attribute1 IN (gv_po_sts_rcv, gv_po_sts_qty_deci, gv_po_sts_price_deci)--ステータス
-        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
+-- 2008/12/29 v1.31 N.Yoshida mod start
+--        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
+        AND xrart.txns_date BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)      --実績日
+-- 2008/12/29 v1.31 N.Yoshida mod end
         --発注明細抽出条件
         AND pha.po_header_id = pla.po_header_id                                   --発注ヘッダID
         AND pla.attribute13 = gv_po_flg_qty                                       --数量確定フラグ
@@ -1702,13 +1720,19 @@ AS
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
                                   ,gv_recsts_shipped2,xvsa.vendor_site_name
             ) party_site_full_name
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hz_party_sites                                hps
+           ,xxcmn_party_sites                             xps
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
            ,xxinv_mov_lot_details                         xmld                --移動ロット詳細(アドオン)
@@ -1757,7 +1781,12 @@ AS
           AND xoha.arrival_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2008/12/30 v1.32 N.Yoshida mod end
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -1795,7 +1824,10 @@ AS
            ,xoha.shipped_date
            ,xoha.request_no
            ,xoha.req_status
-           ,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hps.party_site_name
+           ,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
           UNION ALL
@@ -1823,13 +1855,19 @@ AS
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
                                   ,gv_recsts_shipped2,xvsa.vendor_site_name
             ) party_site_full_name
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hz_party_sites                                hps
+           ,xxcmn_party_sites                             xps
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
              ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
@@ -1878,7 +1916,12 @@ AS
           AND xoha.arrival_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2008/12/30 v1.32 N.Yoshida mod end
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -1927,7 +1970,10 @@ AS
            ,xoha.shipped_date
            ,xoha.request_no
            ,xoha.req_status
-           ,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hps.party_site_name
+           ,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
           UNION ALL
@@ -1955,13 +2001,19 @@ AS
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
                                   ,gv_recsts_shipped2,xvsa.vendor_site_name
             ) party_site_full_name
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hz_party_sites                                hps
+           ,xxcmn_party_sites                             xps
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
              ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
@@ -2010,7 +2062,12 @@ AS
           AND xoha.arrival_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2008/12/30 v1.32 N.Yoshida mod end
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -2046,7 +2103,10 @@ AS
            ,xoha.shipped_date
            ,xoha.request_no
            ,xoha.req_status
-           ,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hps.party_site_name
+           ,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
         )                                                     sh_info             --出荷関連情報
@@ -2668,8 +2728,11 @@ AS
             ijm.journal_id                                  journal_id          --ジャーナルID
            ,xrart.rcv_rtn_number                            slip_no             --伝票No
            ,xrart.vendor_code                               other_code          --取引先コード
-           ,pv.vendor_name                                 other_name          --取引先名称
+           ,pv.vendor_name                                  other_name          --取引先名称
            ,gv_adji_xrart                                   adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
@@ -2698,6 +2761,9 @@ AS
             ,xrart.vendor_code                              other_code          --取引先コード(相手先)
             ,xv.vendor_name                                 other_name          --正式名(相手先名)
            ,gv_adji_xrart                                   adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
@@ -2730,6 +2796,9 @@ AS
            ,NULL                                            other_code          --相手先コード
            ,NULL                                            ohter_name          --相手先名
            ,gv_adji_xnpt                                    adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_namaha_prod_txns                           xnpt                --生葉実績アドオン
@@ -2749,7 +2818,9 @@ AS
             ,xvst.vendor_code                               other_code          --取引先コード(相手先)
             ,xv.vendor_name                                 other_name          --正式名(相手先名)
             ,gv_adji_xvst                                   adji_type           --在庫タイプ
-
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_vendor_supply_txns                         xvst                --外注出来高実績(アドオン)
@@ -2788,6 +2859,9 @@ AS
            ,NULL                                            other_code          --相手先コード
            ,NULL                                            other_name          --相手先名
            ,gv_adji_ijm                                     adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
@@ -2835,7 +2909,6 @@ AS
         AND xrpm.doc_type = 'ADJI'                                                --文書タイプ
         AND itc.reason_code = xrpm.reason_code                                    --事由コード
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
-
         AND xrpm.reason_code = srcb.reason_code                                   --事由コード
         AND srcb.delete_mark = 0                                                  --削除マーク(未削除)
         --クイックコード抽出条件
@@ -2846,6 +2919,15 @@ AS
           AND NVL(xlvv.end_date_active,itc.trans_date)                            --適用開始日・終了日
         AND iwm.mtl_organization_id = haou.organization_id
         AND haou.organization_id    = mil.organization_id
+-- 2008/12/29 v1.31 N.Yoshida add start
+        AND ((itc.reason_code = gv_reason_other
+          AND xrpm.rcv_pay_div = gv_rcvdiv_rcv
+          AND ad_info.attribute4 = gv_other_rcv_flag)
+          OR (itc.reason_code = gv_reason_other
+          AND xrpm.rcv_pay_div = gv_rcvdiv_pay
+          AND ad_info.attribute4 IS NULL)
+          OR itc.reason_code <> gv_reason_other)
+-- 2008/12/29 v1.31 N.Yoshida add end
 --
         --パラメータによる絞込み(商品区分)
         AND mcb1.segment1 = civ_prod_div
@@ -3057,16 +3139,24 @@ AS
         ------------------------------
         -- 1.発注実績情報
         ------------------------------
-        SELECT /*+ leading(pha pla rsl xrart gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl xrart gic1 mcb1 gic2 mcb2) */
+-- 2008/12/29 v1.31 N.Yoshida mod start
+--        SELECT /*+ leading(pha pla rsl xrart gic1 mcb1 gic2 mcb2) use_nl(pha pla rsl xrart gic1 mcb1 gic2 mcb2) */
+        SELECT
+-- 2008/12/29 v1.31 N.Yoshida mod end
           DISTINCT gv_trtry_po                                territory           --領域(発注)
          ,xrart.txns_id                                       txns_id             --トランザクションID
          ,iimb.item_id                                        item_id             --品目ID
          ,NVL(xrart.lot_id,0)                                 lot_id              --ロットID
-         ,pha.attribute4                                      standard_date       --日付
+-- 2008/12/29 v1.31 N.Yoshida mod start
+--         ,pha.attribute4                                      standard_date       --日付
+         ,TO_CHAR(xrart.txns_date,gv_fmt_ymd)                 standard_date       --日付
+-- 2008/12/29 v1.31 N.Yoshida mod end
          ,xrpm.new_div_invent                                 reason_code         --新区分
          ,pha.segment1                                        slip_no             --伝票No
-         ,pha.attribute4                                      out_date            --出庫日
-         ,pha.attribute4                                      in_date             --着日
+-- 2008/12/29 v1.31 N.Yoshida mod start
+         ,TO_CHAR(xrart.txns_date,gv_fmt_ymd)                 out_date            --出庫日
+         ,TO_CHAR(xrart.txns_date,gv_fmt_ymd)                 in_date             --着日
+-- 2008/12/29 v1.31 N.Yoshida mod end
          ,''                                                  jrsd_code           --管轄拠点コード
          ,''                                                  jrsd_name           --管轄拠点名
          ,pv.segment1                                         other_code          --相手先コード
@@ -3099,7 +3189,10 @@ AS
         ----------------------------------------------------------------------------------------
         --発注ヘッダ抽出条件
         WHERE pha.attribute1 IN (gv_po_sts_rcv, gv_po_sts_qty_deci, gv_po_sts_price_deci)--ステータス
-        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
+-- 2008/12/29 v1.31 N.Yoshida mod start
+--        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
+        AND xrart.txns_date BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)      --実績日
+-- 2008/12/29 v1.31 N.Yoshida mod end
         --発注明細抽出条件
         AND pha.po_header_id = pla.po_header_id                                   --発注ヘッダID
         AND pla.attribute13 = gv_po_flg_qty                                       --数量確定フラグ
@@ -3411,13 +3504,19 @@ AS
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
                                   ,gv_recsts_shipped2,xvsa.vendor_site_name
             ) party_site_full_name
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hz_party_sites                                hps
+           ,xxcmn_party_sites                             xps
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
            ,xxinv_mov_lot_details                         xmld                --移動ロット詳細(アドオン)
@@ -3466,7 +3565,12 @@ AS
           AND xoha.shipped_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2008/12/30 v1.32 N.Yoshida mod end
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -3504,7 +3608,10 @@ AS
            ,xoha.shipped_date
            ,xoha.request_no
            ,xoha.req_status
-           ,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hps.party_site_name
+           ,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
           UNION ALL
@@ -3532,13 +3639,19 @@ AS
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
                                   ,gv_recsts_shipped2,xvsa.vendor_site_name
             ) party_site_full_name
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hz_party_sites                                hps
+           ,xxcmn_party_sites                             xps
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
              ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
@@ -3587,7 +3700,12 @@ AS
           AND xoha.shipped_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2008/12/30 v1.32 N.Yoshida mod end
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -3636,7 +3754,10 @@ AS
            ,xoha.shipped_date
            ,xoha.request_no
            ,xoha.req_status
-           ,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hps.party_site_name
+           ,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
           UNION ALL
@@ -3664,13 +3785,19 @@ AS
            ,xoha.arrival_date                             arrival_date
            ,xoha.shipped_date                             shipped_date
            ,xoha.request_no                               request_no
-           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,DECODE(xoha.req_status,gv_recsts_shipped,hps.party_site_name
+           ,DECODE(xoha.req_status,gv_recsts_shipped,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
                                   ,gv_recsts_shipped2,xvsa.vendor_site_name
             ) party_site_full_name
            ,otta.order_category_code                      order_category_code
           FROM
            xxwsh_order_headers_all                        xoha                --受注ヘッダ(アドオン)
-           ,hz_party_sites                                hps
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hz_party_sites                                hps
+           ,xxcmn_party_sites                             xps
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xxcmn_vendor_sites_all                        xvsa
            ,xxwsh_order_lines_all                         xola                --受注明細(アドオン)
              ,xxinv_mov_lot_details                       xmld                --移動ロット詳細(アドオン)
@@ -3719,7 +3846,12 @@ AS
           AND xoha.shipped_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--          AND xoha.result_deliver_to_id = hps.party_site_id(+)
+          AND xoha.result_deliver_to_id = xps.party_site_id(+)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2008/12/30 v1.32 N.Yoshida mod end
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
           AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -3755,7 +3887,10 @@ AS
            ,xoha.shipped_date
            ,xoha.request_no
            ,xoha.req_status
-           ,hps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod start
+--           ,hps.party_site_name
+           ,xps.party_site_name
+-- 2008/12/30 v1.32 N.Yoshida mod end
            ,xvsa.vendor_site_name
            ,otta.order_category_code
         )                                                     sh_info             --出荷関連情報
@@ -4375,6 +4510,9 @@ AS
            ,xrart.vendor_code                               other_code          --取引先コード
            ,pv.vendor_name                                 other_name          --取引先名称
            ,gv_adji_xrart                                   adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
@@ -4403,6 +4541,9 @@ AS
             ,xrart.vendor_code                              other_code          --取引先コード(相手先)
             ,xv.vendor_name                                 other_name          --正式名(相手先名)
            ,gv_adji_xrart                                   adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
@@ -4435,6 +4576,9 @@ AS
            ,NULL                                            other_code          --相手先コード
            ,NULL                                            ohter_name          --相手先名
            ,gv_adji_xnpt                                    adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_namaha_prod_txns                           xnpt                --生葉実績アドオン
@@ -4454,7 +4598,9 @@ AS
             ,xvst.vendor_code                               other_code          --取引先コード(相手先)
             ,xv.vendor_name                                 other_name          --正式名(相手先名)
             ,gv_adji_xvst                                   adji_type           --在庫タイプ
-
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,xxpo_vendor_supply_txns                         xvst                --外注出来高実績(アドオン)
@@ -4493,6 +4639,9 @@ AS
            ,NULL                                            other_code          --相手先コード
            ,NULL                                            other_name          --相手先名
            ,gv_adji_ijm                                     adji_type           --在庫タイプ
+-- 2008/12/29 v1.31 N.Yoshida add start
+           ,ijm.attribute4                                  attribute4
+-- 2008/12/29 v1.31 N.Yoshida add end
           FROM
             ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
            ,ic_adjs_jnl                                     iaj                 --OPM在庫調整ジャーナル
@@ -4551,6 +4700,15 @@ AS
           AND NVL(xlvv.end_date_active,itc.trans_date)                            --適用開始日・終了日
         AND iwm.mtl_organization_id = haou.organization_id
         AND haou.organization_id    = mil.organization_id
+-- 2008/12/29 v1.31 N.Yoshida add start
+        AND ((itc.reason_code = gv_reason_other
+          AND xrpm.rcv_pay_div = gv_rcvdiv_rcv
+          AND ad_info.attribute4 = gv_other_rcv_flag)
+          OR (itc.reason_code = gv_reason_other
+          AND xrpm.rcv_pay_div = gv_rcvdiv_pay
+          AND ad_info.attribute4 IS NULL)
+          OR itc.reason_code <> gv_reason_other)
+-- 2008/12/29 v1.31 N.Yoshida add end
 --
         --パラメータによる絞込み(商品区分)
         AND mcb1.segment1 = civ_prod_div
