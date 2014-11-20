@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/10/20    1.9   Oracle福田直樹   課題T_S_486対応
  *  2008/10/20    1.9   Oracle福田直樹   統合テスト障害#394(1)対応
  *  2008/10/20    1.9   Oracle福田直樹   統合テスト障害#394(2)対応
+ *  2008/10/31    1.10  Oracle福田直樹   統合指摘#462対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -326,6 +327,9 @@ AS
   gn_request_id               NUMBER ;  -- 要求ID
   gn_program_application_id   NUMBER ;  -- コンカレント・プログラム・アプリケーションID
   gn_program_id               NUMBER ;  -- コンカレント・プログラムID
+--
+  gv_nvl_null_char        VARCHAR2(4) := 'NULL';   -- 2008/10/31 統合指摘#462 Add
+  gn_nvl_null_num         NUMBER := 0;             -- 2008/10/31 統合指摘#462 Add
 --
   -- ==============================
   -- 中間テーブル登録用
@@ -1624,7 +1628,8 @@ AS
       FROM    xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
              ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
       WHERE  xshi.header_id        = xsli.header_id
-      AND    xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
+      --AND    xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ                                    2008/10/31 統合指摘#462 Del
+      AND    NVL(xshi.delivery_no,gv_nvl_null_char) = NVL(ir_get_data.delivery_no,gv_nvl_null_char) -- 配送Ｎｏ 2008/10/31 統合指摘#462 Add
       AND    xshi.order_source_ref = ir_get_data.request_no    -- 依頼Ｎｏ
       ;
 --
@@ -1684,7 +1689,8 @@ AS
               ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
           WHERE xsli.line_id          = ir_get_data.order_line_id
           AND   xshi.header_id        = xsli.header_id
-          AND   xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
+          --AND   xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ                                    2008/10/31 統合指摘#462 Del
+          AND   NVL(xshi.delivery_no,gv_nvl_null_char) = NVL(ir_get_data.delivery_no,gv_nvl_null_char) -- 配送Ｎｏ 2008/10/31 統合指摘#462 Add
           AND   xshi.order_source_ref = ir_get_data.request_no    -- 移動Ｎｏ
           ;
         EXCEPTION
@@ -1925,7 +1931,8 @@ AS
 -- add end ver1.3
 -- 2008/07/09 A.Shiina v1.5 ADD Start
             ,xmrih.freight_charge_class   AS freight_charge_code   -- 運賃区分
-            ,xcv.complusion_output_code   AS complusion_output_kbn -- 強制出力区分
+            --,xcv.complusion_output_code   AS complusion_output_kbn -- 強制出力区分       -- 2008/10/31 統合指摘#462 Del
+            ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分  -- 2008/10/31 統合指摘#462 Add
 -- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
@@ -2032,13 +2039,23 @@ AS
       AND   xmrih.schedule_arrival_date    BETWEEN gr_param.date_from
                                         AND     NVL( gr_param.date_to, xmrih.schedule_arrival_date )
 -- mod end ver1.1
--- 2008/07/09 A.Shiina v1.5 ADD Start
-      AND   xmrih.career_id                    =   xcv.party_id
-      AND   ((xcv.start_date_active IS NULL)
-        OR    (xcv.start_date_active         <=  xmrih.schedule_ship_date))
-      AND   ((xcv.end_date_active IS NULL)
-        OR    (xcv.end_date_active           >=  xmrih.schedule_ship_date))
--- 2008/07/09 A.Shiina v1.5 ADD End
+--
+      -- 2008/10/31 統合指摘#462 Del Start -------------------------------------
+      -- 2008/07/09 A.Shiina v1.5 ADD Start -----------------------------------
+      --AND   xmrih.career_id                    =   xcv.party_id
+      --AND   ((xcv.start_date_active IS NULL)
+      --  OR    (xcv.start_date_active         <=  xmrih.schedule_ship_date))
+      --AND   ((xcv.end_date_active IS NULL)
+      --  OR    (xcv.end_date_active           >=  xmrih.schedule_ship_date))
+      -- 2008/07/09 A.Shiina v1.5 ADD End --------------------------------------
+      -- 2008/10/31 統合指摘#462 Del End ---------------------------------------
+--
+      -- 2008/10/31 統合指摘#462 Add Start -------------------------------------
+      AND   NVL(xmrih.career_id,gn_nvl_null_num)  =   xcv.party_id(+)
+      AND   xmrih.schedule_arrival_date    >=   xcv.start_date_active(+)
+      AND   xmrih.schedule_arrival_date    <=   xcv.end_date_active(+)
+      -- 2008/10/31 統合指摘#462 Add End ---------------------------------------
+--
       UNION
       SELECT xmrih.ship_to_locat_code           AS arvl_code            -- 入庫倉庫コード
             --,xil.description                    AS arvl_name            -- 入庫倉庫名称 2008/10/09 統合テスト障害#338 Del
@@ -2084,7 +2101,8 @@ AS
 -- add end ver1.3
 -- 2008/07/09 A.Shiina v1.5 ADD Start
             ,xmrih.freight_charge_class    AS freight_charge_code   -- 運賃区分
-            ,xcv.complusion_output_code    AS complusion_output_kbn -- 強制出力区分
+            --,xcv.complusion_output_code    AS complusion_output_kbn -- 強制出力区分      -- 2008/10/31 統合指摘#462 Del
+            ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分  -- 2008/10/31 統合指摘#462 Add
 -- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
@@ -2191,13 +2209,23 @@ AS
       AND   NVL( xmrih.actual_arrival_date,xmrih.schedule_arrival_date ) BETWEEN gr_param.date_from
                                         AND     NVL( gr_param.date_to, NVL( xmrih.actual_arrival_date,xmrih.schedule_arrival_date ) )
 -- mod end ver1.1
--- 2008/07/09 A.Shiina v1.5 ADD Start
-      AND   xmrih.career_id                    =   xcv.party_id
-      AND   ((xcv.start_date_active IS NULL)
-        OR    (xcv.start_date_active         <=  xmrih.schedule_ship_date))
-      AND   ((xcv.end_date_active IS NULL)
-        OR    (xcv.end_date_active           >=  xmrih.schedule_ship_date))
--- 2008/07/09 A.Shiina v1.5 ADD End
+--
+      -- 2008/10/31 統合指摘#462 Del Start -------------------------------------
+      -- 2008/07/09 A.Shiina v1.5 ADD Start ------------------------------------
+      --AND   xmrih.career_id                    =   xcv.party_id
+      --AND   ((xcv.start_date_active IS NULL)
+      --  OR    (xcv.start_date_active         <=  xmrih.schedule_ship_date))
+      --AND   ((xcv.end_date_active IS NULL)
+      --  OR    (xcv.end_date_active           >=  xmrih.schedule_ship_date))
+      -- 2008/07/09 A.Shiina v1.5 ADD End --------------------------------------
+      -- 2008/10/31 統合指摘#462 Del End ---------------------------------------
+--
+      -- 2008/10/31 統合指摘#462 Add Start -------------------------------------
+      AND   NVL(xmrih.career_id,gn_nvl_null_num) =   xcv.party_id(+)
+      AND   xmrih.schedule_arrival_date     >=   xcv.start_date_active(+)
+      AND   xmrih.schedule_arrival_date     <=   xcv.end_date_active(+)
+      -- 2008/10/31 統合指摘#462 Add End ---------------------------------------
+--
     ;
     -- 保留データ取得
     CURSOR cu_reserv
@@ -2236,7 +2264,8 @@ AS
             ,NULL                             AS status           -- ヘッダステータス
 -- 2008/07/09 A.Shiina v1.5 ADD Start
             ,xshi.filler14                    AS freight_charge_code   -- 運賃区分
-            ,xcv.complusion_output_code       AS complusion_output_kbn -- 強制出力区分
+            --,xcv.complusion_output_code       AS complusion_output_kbn -- 強制出力区分   -- 2008/10/31 統合指摘#462 Del
+            ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分  -- 2008/10/31 統合指摘#462 Add
 -- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
           ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
@@ -2325,16 +2354,34 @@ AS
       -- パラメータ条件．指示部署
       AND   xshi.report_post_code = NVL( gr_param.dept_code, xshi.report_post_code )
 -- add end ver1.1
-      -- パラメータ条件．出庫日FromTo
-      AND   xshi.shipped_date     BETWEEN gr_param.date_from
-                                  AND     NVL( gr_param.date_to, xshi.shipped_date )
--- 2008/07/09 A.Shiina v1.5 ADD Start
-      AND   xshi.freight_carrier_code         =   xcv.party_number
-      AND   ((xcv.start_date_active IS NULL)
-        OR    (xcv.start_date_active         <=  xshi.shipped_date))
-      AND   ((xcv.end_date_active IS NULL)
-        OR    (xcv.end_date_active           >=  xshi.shipped_date))
--- 2008/07/09 A.Shiina v1.5 ADD End
+
+      -- 2008/10/31 統合指摘#462 Del Start -------------------------------------
+      ---- パラメータ条件．出庫日FromTo
+      --AND   xshi.shipped_date     BETWEEN gr_param.date_from
+      --                            AND     NVL( gr_param.date_to, xshi.shipped_date )
+      -- 2008/10/31 統合指摘#462 Del End ---------------------------------------
+      -- 2008/10/31 統合指摘#462 Add Start -------------------------------------
+      -- パラメータ条件．入庫日FromTo
+      AND   xshi.arrival_date     BETWEEN gr_param.date_from
+                                  AND     NVL( gr_param.date_to, xshi.arrival_date )
+      -- 2008/10/31 統合指摘#462 Add End ---------------------------------------
+--
+      -- 2008/10/31 統合指摘#462 Del Start -------------------------------------
+      -- 2008/07/09 A.Shiina v1.5 ADD Start ------------------------------------
+      --AND   xshi.freight_carrier_code         =   xcv.party_number
+      --AND   ((xcv.start_date_active IS NULL)
+      --  OR    (xcv.start_date_active         <=  xshi.shipped_date))
+      --AND   ((xcv.end_date_active IS NULL)
+      --  OR    (xcv.end_date_active           >=  xshi.shipped_date))
+      -- 2008/07/09 A.Shiina v1.5 ADD End --------------------------------------
+      -- 2008/10/31 統合指摘#462 Del End ---------------------------------------
+--
+      -- 2008/10/31 統合指摘#462 Add Start -------------------------------------
+      AND   NVL(xshi.freight_carrier_code,gv_nvl_null_char) =   xcv.party_number(+)
+      AND   xshi.arrival_date          >=   xcv.start_date_active(+)
+      AND   xshi.arrival_date          <=   xcv.end_date_active(+)
+      -- 2008/10/31 統合指摘#462 Add End ---------------------------------------
+--
     ;
 --
 --##### 固定ローカル変数宣言部 START #################################

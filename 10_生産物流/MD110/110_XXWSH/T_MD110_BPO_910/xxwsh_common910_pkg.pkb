@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.22
+ * Version                : 1.23
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/10/06   1.20  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘240対応 積載効率チェック(合計値算出)基準日ありを追加
  *  2008/10/15   1.21  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 統合テスト指摘298対応
  *  2008/10/15   1.22  ORACLE伊藤ひとみ [鮮度条件チェック] 統合テスト指摘379対応
+ *  2008/11/04   1.23  ORACLE伊藤ひとみ [ロット逆転防止チェック] T_S_573対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2175,8 +2176,19 @@ AS
             AND   ( (xottv.end_date_active      >=  trunc( id_standard_date ))
                   OR(xottv.end_date_active      IS  NULL ))
             AND   xola.order_header_id           =  xoha.order_header_id         -- 受注ヘッダID
-            AND   xola.shipping_item_code       IN  ( iv_item_no, lv_parent_item_no )
-                                                                                 -- 品目コード
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--            AND   xola.shipping_item_code       IN  ( iv_item_no, lv_parent_item_no )
+            AND   xola.shipping_item_code       IN                               -- 品目コード
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+-- 2008/11/04 H.Itou Mod End
             AND   NVL( xola.delete_flag,  cv_no )
                                                 <>  cv_yes                       -- 削除フラグ'Y'以外
             AND   xmld.mov_line_id               =  xola.order_line_id           -- 受注明細ID
@@ -2235,7 +2247,19 @@ AS
             AND   (( xottv.end_date_active        >=  TRUNC( id_standard_date ))
                   OR(xottv.end_date_active        IS  NULL ))
             AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
-            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
+            AND   xola.shipping_item_code       IN                               -- 品目コード
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+-- 2008/11/04 H.Itou Mod End
             AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
             AND   xola.shipped_quantity            >  0                         -- 出荷実績数量0以上
           UNION ALL
@@ -2255,7 +2279,19 @@ AS
             AND   (( xottv.end_date_active        >=  TRUNC( id_standard_date ))
                   OR(xottv.end_date_active        IS  NULL ))
             AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
-            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
+            AND   xola.shipping_item_code       IN                               -- 出荷品目
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+-- 2008/11/04 H.Itou Mod End
             AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
             AND   xola.shipped_quantity            >  0)                        -- 出荷実績数量0以上
             ;
@@ -2316,8 +2352,12 @@ AS
                     xxwsh_oe_transaction_types2_v  xottv,                     -- 受注タイプ
                     ic_lots_mst                    ilm                        -- OPMロットマスタ
             WHERE   xoha.result_deliver_to_id      =  iv_move_to_id           -- 出荷先ID(実績)
-              AND   xoha.schedule_arrival_date    >= TRUNC( ld_max_ship_arrival_date ) -- 最大着荷日
-              AND   xoha.schedule_arrival_date   < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+-- 2008/11/04 H.Itou Mod Start
+--              AND   xoha.schedule_arrival_date    >= TRUNC( ld_max_ship_arrival_date ) -- 最大着荷日
+--              AND   xoha.schedule_arrival_date   < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+              AND   xoha.arrival_date    >= TRUNC( ld_max_ship_arrival_date )   -- 最大着荷日
+              AND   xoha.arrival_date     < TRUNC( ld_max_ship_arrival_date + 1)-- 最大着荷日
+-- 2008/11/04 H.Itou Mod End
               AND   NVL(xoha.latest_external_flag, cv_no) =  cv_yes           -- 最新フラグ=Y
               AND   xoha.req_status                =  cv_request_status_04    -- 出荷実績計上済
               AND   xottv.transaction_type_id      =  xoha.order_type_id      -- 受注タイプID
@@ -2326,7 +2366,19 @@ AS
               AND   (( xottv.end_date_active      >=  TRUNC( id_standard_date ))
                     OR(xottv.end_date_active      IS  NULL ))
               AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
-              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
+              AND   xola.shipping_item_code       IN                               -- 品目コード
+                    -- 親品目と親品目に紐付く子品目(2階層まで)
+                   (SELECT ximv.item_no
+                    FROM   xxcmn_item_mst2_v ximv
+                    WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                    AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    )
+-- 2008/11/04 H.Itou Mod End
               AND   NVL( xola.delete_flag, cv_no ) <> cv_yes                  -- 削除フラグ'Y'以外
               AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
               AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
@@ -2353,7 +2405,19 @@ AS
               AND   (( xottv.end_date_active      >=  trunc( id_standard_date ))
                     OR(xottv.end_date_active      IS  NULL ))
               AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
-              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
+              AND   xola.shipping_item_code       IN                               -- 品目コード
+                    -- 親品目と親品目に紐付く子品目(2階層まで)
+                   (SELECT ximv.item_no
+                    FROM   xxcmn_item_mst2_v ximv
+                    WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                    AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    )
+-- 2008/11/04 H.Itou Mod End
               AND   NVL( xola.delete_flag, cv_no ) <>  cv_yes                 -- 削除フラグ'Y'以外
               AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
               AND   xmld.document_type_code        =  cv_document_type_10     -- 文書タイプ
@@ -2392,8 +2456,20 @@ AS
             AND   xmrih.schedule_arrival_date
                                            <=  iv_arrival_date                 -- 着日
             AND   xmril.mov_hdr_id          =  xmrih.mov_hdr_id                -- 移動ヘッダID
-            AND   xmril.item_code          IN( iv_item_no,
-                                               lv_parent_item_no )             -- 品目コード
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--            AND   xmril.item_code          IN( iv_item_no,
+--                                               lv_parent_item_no )             -- 品目コード
+            AND   xmril.item_code       IN                               -- 品目コード
+                  -- 親品目と親品目に紐付く子品目(2階層まで)
+                 (SELECT ximv.item_no
+                  FROM   xxcmn_item_mst2_v ximv
+                  WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                  AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  )
+-- 2008/11/04 H.Itou Mod End
             AND   xmril.delete_flg          =  cv_no                           -- 取消フラグ
             AND   xmld.mov_line_id          =  xmril.mov_line_id               -- 移動明細ID
             AND   xmld.document_type_code   =  cv_document_type_20             -- 文書タイプ
@@ -2419,8 +2495,22 @@ AS
         FROM    ic_loct_inv              ili,                      -- OPM手持数量
                 ic_lots_mst              ilm,                      -- OPMロットマスタ
                 xxcmn_item_mst2_v        ximv,                     -- OPM品目情報VIEW2
-                xxcmn_item_locations2_v  xilv                      -- OPM保管場所情報VIEW2
-        WHERE   ximv.item_no  IN( iv_item_no, lv_parent_item_no )  -- 品目コード
+                xxcmn_item_locations_v   xilv                      -- OPM保管場所情報VIEW
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--        WHERE   ximv.item_no  IN( iv_item_no, lv_parent_item_no )  -- 品目コード
+        WHERE   ximv.item_no       IN                               -- 品目コード
+                -- 親品目と親品目に紐付く子品目(2階層まで)
+               (SELECT ximv1.item_no
+                FROM   xxcmn_item_mst2_v ximv1
+                WHERE  ximv1.start_date_active <= TRUNC(id_standard_date)
+                AND    ximv1.end_date_active   >= TRUNC(id_standard_date)
+                AND    LEVEL                   <= 2                 -- 子階層まで抽出
+                START WITH ximv1.item_no        = lv_parent_item_no -- 親品目から検索
+                CONNECT BY NOCYCLE PRIOR ximv1.item_id = ximv1.parent_item_id
+                )
+-- 2008/11/04 H.Itou Mod End
+          AND   ximv.start_date_active    <= TRUNC(id_standard_date)
+          AND   ximv.end_date_active      >= TRUNC(id_standard_date)
           AND   xilv.inventory_location_id = iv_move_to_id         -- 入庫先ID
           AND   ili.item_id                =  ximv.item_id         -- OPM品目ID
           AND   ili.location               =  xilv.segment1        -- 保管倉庫コード
@@ -2446,7 +2536,19 @@ AS
           AND   xmrih.status             IN( cv_move_status_05,
                                              cv_move_status_06 )              -- ステータス
           AND   xmril.mov_hdr_id          =  xmrih.mov_hdr_id                 -- 移動ヘッダID
-          AND   xmril.item_code          IN( iv_item_no, lv_parent_item_no )  -- 品目コード
+-- 2008/11/04 H.Itou Mod Start T_S_573
+--          AND   xmril.item_code          IN( iv_item_no, lv_parent_item_no )  -- 品目コード
+          AND   xmril.item_code       IN                               -- 品目コード
+                -- 親品目と親品目に紐付く子品目(2階層まで)
+               (SELECT ximv.item_no
+                FROM   xxcmn_item_mst2_v ximv
+                WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
+                AND    ximv.end_date_active   >= TRUNC(id_standard_date)
+                AND    LEVEL                  <= 2                 -- 子階層まで抽出
+                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                )
+-- 2008/11/04 H.Itou Mod End
           AND   xmril.delete_flg          =  cv_no                            -- 取消フラグ
           AND   xmld.mov_line_id          =  xmril.mov_line_id                -- 移動明細ID
           AND   xmld.document_type_code   =  cv_document_type_20              -- 文書タイプ
