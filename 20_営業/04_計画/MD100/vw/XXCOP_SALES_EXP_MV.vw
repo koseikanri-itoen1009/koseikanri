@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOP_SALES_EXP_MV
  * Description     : 計画_販売実績マテリアライズドビュー
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009-11-26    1.0   SCS.Kikuchi      新規作成
+ *  2010-06-17    1.1   SCS.Niki         E_本稼動_03010対応 
  *
  ************************************************************************/
 CREATE MATERIALIZED VIEW APPS.XXCOP_SALES_EXP_MV
@@ -28,7 +29,9 @@ CREATE MATERIALIZED VIEW APPS.XXCOP_SALES_EXP_MV
   ,      xxcos_sales_exp_lines   xsel                -- 販売実績明細
   WHERE  xseh.sales_exp_header_id =  xsel.sales_exp_header_id
   AND    xseh.dlv_invoice_class   IN ('1','3')       -- 納品伝票区分
-  AND    xsel.sales_class         IN ('1','5','6')   -- 売上区分
+-- 2010/06/17 Ver1.1 障害：E_本稼動_03010 Delete Start by SCS.Niki
+--  AND    xsel.sales_class         IN ('1','5','6')   -- 売上区分
+-- 2010/06/17 Ver1.1 障害：E_本稼動_03010 Delete End by SCS.Niki
   AND    xseh.delivery_date       BETWEEN TRUNC(xxccp_common_pkg2.get_process_date,'MM')
                                   AND     TRUNC(xxccp_common_pkg2.get_process_date) - (1/24/60/60)
   GROUP
