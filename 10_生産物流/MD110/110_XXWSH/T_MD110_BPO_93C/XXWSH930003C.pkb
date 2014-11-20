@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/12/03    1.13  Naoki    Fukuda  本番障害#333対応
  *  2008/12/06    1.14  Miyata           本番障害#516対応
  *  2008/12/25    1.15  Naoki    Fukuda  本番障害#831対応
+ *  2009/01/06    1.16  Natsuki  Yoshida 本番障害#929対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2938,7 +2939,9 @@ AS
               WHERE xmld2.document_type_code IN (gc_doc_type_ship
                                                 ,gc_doc_type_prov)
               AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
-              AND xmld2.lot_id = trn.lot_id
+          -- 2009/01/06 本番障害#929 del Start ------------------------------
+--              AND xmld2.lot_id = trn.lot_id
+          -- 2009/01/06 本番障害#929 del End ------------------------------
               AND xmld2.mov_line_id = trn.order_line_id
            ) AS lot_inst_cnt    -- 指示ロットの件数
           -- 2008/12/25 本番障害#831 Add End ------------------------------
@@ -3990,7 +3993,9 @@ AS
               FROM xxinv_mov_lot_details  xmld2
               WHERE xmld2.document_type_code = gc_doc_type_move
               AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
-              AND xmld2.lot_id = trn.lot_id
+          -- 2009/01/06 本番障害#929 del Start ------------------------------
+--              AND xmld2.lot_id = trn.lot_id
+          -- 2009/01/06 本番障害#929 del End ------------------------------
               AND xmld2.mov_line_id = trn.order_line_id
            ) AS lot_inst_cnt    -- 指示ロットの件数
           -- 2008/12/25 本番障害#831 Add End ------------------------------

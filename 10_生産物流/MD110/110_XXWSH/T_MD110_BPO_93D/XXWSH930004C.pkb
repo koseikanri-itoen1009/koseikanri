@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/11/17    1.11  Oracle福田直樹   統合指摘#651対応(課題T_S_486再対応)
  *  2008/12/17    1.12  Oracle福田直樹   本番障害#764対応
  *  2008/12/25    1.13  Oracle福田直樹   本番障害#831対応
+ *  2009/01/06    1.14  Oracle吉田夏樹   本番障害#929対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1999,7 +2000,9 @@ AS
                 FROM xxinv_mov_lot_details  xmld2
                 WHERE xmld2.document_type_code = gc_doc_type_move
                 AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
-                AND xmld2.lot_id = xmld.lot_id
+          -- 2009/01/06 本番障害#929 del Start ------------------------------
+--                AND xmld2.lot_id = xmld.lot_id
+          -- 2009/01/06 本番障害#929 del End ------------------------------
                 AND xmld2.mov_line_id = xmld.mov_line_id
              ) AS lot_inst_cnt    -- 指示ロットの件数
             ,ROW_NUMBER() OVER (PARTITION BY xmrih.mov_num
@@ -2184,7 +2187,9 @@ AS
                 FROM xxinv_mov_lot_details  xmld2
                 WHERE xmld2.document_type_code = gc_doc_type_move
                 AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
-                AND xmld2.lot_id = xmld.lot_id
+          -- 2009/01/06 本番障害#929 del Start ------------------------------
+--                AND xmld2.lot_id = xmld.lot_id
+          -- 2009/01/06 本番障害#929 del End ------------------------------
                 AND xmld2.mov_line_id = xmld.mov_line_id
              ) AS lot_inst_cnt    -- 指示ロットの件数
             ,ROW_NUMBER() OVER (PARTITION BY xmrih.mov_num
