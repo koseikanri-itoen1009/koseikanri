@@ -50,6 +50,7 @@ CREATE TABLE xxwsh.xxwsh_hht_stock_deliv_info_tmp
     ,update_date                      DATE
     ,line_number                      NUMBER
     ,data_type                        VARCHAR2(1)
+    ,notif_date                       DATE
   ) ;
 --
 COMMENT ON TABLE xxwsh.xxwsh_hht_stock_deliv_info_tmp IS 'HHT入出庫配車確定情報中間テーブル' ;
@@ -100,3 +101,4 @@ COMMENT ON COLUMN xxwsh.xxwsh_hht_stock_deliv_info_tmp.new_modify_del_class     
 COMMENT ON COLUMN xxwsh.xxwsh_hht_stock_deliv_info_tmp.update_date              IS '更新日時' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_stock_deliv_info_tmp.line_number              IS '明細番号' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_stock_deliv_info_tmp.data_type                IS 'データタイプ' ;
+COMMENT ON COLUMN xxwsh.xxwsh_hht_stock_deliv_info_tmp.notif_date               IS '確定通知実施日時' ;

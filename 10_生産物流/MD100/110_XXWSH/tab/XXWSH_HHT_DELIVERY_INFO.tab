@@ -51,6 +51,7 @@ CREATE TABLE xxwsh.xxwsh_hht_delivery_info
     ,update_date                  DATE
     ,line_number                  NUMBER
     ,data_type                    VARCHAR2(1)
+    ,notif_date                   DATE
     ,created_by                   NUMBER(15)  NOT NULL
     ,creation_date                DATE        NOT NULL
     ,last_updated_by              NUMBER(15)  NOT NULL
@@ -113,6 +114,7 @@ COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.new_modify_del_class    IS 'デー
 COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.update_date             IS '更新日時' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.line_number             IS '明細番号' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.data_type               IS 'データタイプ' ;
+COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.notif_date              IS '確定通知実施日時' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.created_by              IS '作成者' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.creation_date           IS '作成日' ;
 COMMENT ON COLUMN xxwsh.xxwsh_hht_delivery_info.last_updated_by         IS '最終更新者' ;

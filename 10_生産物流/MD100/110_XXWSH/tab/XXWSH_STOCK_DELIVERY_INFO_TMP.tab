@@ -52,7 +52,8 @@ CREATE TABLE xxwsh.xxwsh_stock_delivery_info_tmp
     data_type                   VARCHAR2(1),
     eos_shipped_locat           VARCHAR2(4),
     eos_freight_carrier         VARCHAR2(4),
-    eos_csv_output              VARCHAR2(4)
+    eos_csv_output              VARCHAR2(4),
+    notif_date                  DATE
   ) ;
 --
 COMMENT ON TABLE xxwsh.xxwsh_stock_delivery_info_tmp IS '入出庫配送計画情報中間テーブル' ;
@@ -106,3 +107,4 @@ COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp.data_type               IS
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp.eos_shipped_locat       IS 'EOS宛先（出庫倉庫）' ;
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp.eos_freight_carrier     IS 'EOS宛先（運送業者）' ;
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp.eos_csv_output          IS 'EOS宛先（CSV出力）' ;
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp.notif_date              IS '確定通知実施日時' ;
