@@ -48,6 +48,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/22    1.0   N.Yanagitaira    新規作成
+ *  2009/06/25    1.1   N.Yanagitaira    [障害0000142]FUNCTION型不正対応
  *
  *****************************************************************************************/
 --
@@ -60,185 +61,186 @@ AS
 --
   -- 有効最新SP専決ヘッダID取得関数
   FUNCTION get_sp_dec_header_id(
-    in_cust_account_id  IN  NUMBER
+    it_cust_account_id   IN  xxcso_cust_accounts_v.cust_account_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_sp_decision_headers.sp_decision_header_id%TYPE;
 --
   -- 拠点コード取得関数
   FUNCTION get_dept_code(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_accounts_v.sale_base_code%TYPE;
 --
   -- 機器区分取得関数
   FUNCTION get_vendor_type(
-    iv_hazard_class_id   IN  VARCHAR2
+    it_hazard_class_id   IN  po_un_numbers_vl.hazard_class_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN po_hazard_classes_vl.hazard_class%TYPE;
 --
   -- 顧客コード取得関数
   FUNCTION get_account_number(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_accounts_v.account_number%TYPE;
 --
   -- 顧客名取得関数
   FUNCTION get_party_name(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_accounts_v.party_name%TYPE;
 --
   -- リース開始年月日取得関数
   FUNCTION get_lease_start_date(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN DATE;
+  RETURN xxcff_contract_headers.lease_start_date%TYPE;
 --
   -- 初回月額リース料取得関数
   FUNCTION get_first_charge(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN NUMBER;
+  RETURN xxcff_contract_lines.first_charge%TYPE;
 --
   -- 2回目以降月額リース料取得関数
   FUNCTION get_second_charge(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN NUMBER;
+  RETURN xxcff_contract_lines.second_charge%TYPE;
 --
   -- 設置住所1取得関数
   FUNCTION get_address1(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_acct_sites_v.address1%TYPE;
 --
   -- 設置住所2取得関数
   FUNCTION get_address2(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_acct_sites_v.address2%TYPE;
 --
   -- 設置業種区分取得関数
   FUNCTION get_install_industry_type(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN fnd_lookup_values_vl.meaning%TYPE;
 --
   -- 契約書番号取得関数
   FUNCTION get_contract_number(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_contract_managements.contract_number%TYPE;
 --
   -- 担当者名取得関数
   FUNCTION get_resource_name(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_employees_v2.full_name%TYPE;
 --
   -- 地区コード取得関数
   FUNCTION get_area_code(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN NUMBER;
+-- 20090625_N.Yanagitaira 0000142 Mod START
+--  RETURN NUMBER
+  RETURN xxcso_cust_acct_sites_v.area_code%TYPE;
+-- 20090625_N.Yanagitaira 0000142 Mod END
 --
   -- 原契約番号取得関数
   FUNCTION get_orig_lease_contract_number(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcff_contract_headers.contract_number%TYPE;
 --
   -- 原契約番号-枝番取得関数
   FUNCTION get_orig_lease_branch_number(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN NUMBER;
---
+  RETURN xxcff_contract_lines.contract_line_num%TYPE;
 --
   -- 顧客名(カナ)取得関数
   FUNCTION get_party_name_phonetic(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_accounts_v.organization_name_phonetic%TYPE;
 --
-
   -- 現契約年月日取得関数
   FUNCTION get_lease_contract_date(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN DATE;
+  RETURN xxcff_contract_headers.contract_date%TYPE;
 --
   -- リース現契約番号取得関数
   FUNCTION get_lease_contract_number(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcff_contract_headers.contract_number%TYPE;
 --
   -- リース現契約番号枝番取得関数
   FUNCTION get_lease_branch_number(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN NUMBER;
+  RETURN xxcff_contract_lines.contract_line_num%TYPE;
 --
   -- リース状態(再リース)取得関数
   FUNCTION get_lease_status(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN fnd_lookup_values_vl.description%TYPE;
 --
   -- 支払回数取得関数
   FUNCTION get_payment_frequency(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN NUMBER;
+  RETURN xxcff_contract_headers.payment_frequency%TYPE;
 --
   -- リース終了年月日取得関数
   FUNCTION get_lease_end_date(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN DATE;
+  RETURN xxcff_contract_headers.lease_end_date%TYPE;
 --
   -- SP専決番号取得関数
   FUNCTION get_sp_decision_number(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN NUMBER;
+  RETURN xxcso_sp_decision_headers.sp_decision_number%TYPE;
 --
   -- VD設置場所取得関数
   FUNCTION get_install_location(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN fnd_lookup_values_vl.meaning%TYPE;
 --
   -- 業態(小分類)取得関数
   FUNCTION get_vendor_form(
-    iv_install_party_id  IN  VARCHAR2
+    it_install_party_id  IN  xxcso_install_base_v.install_party_id%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN fnd_lookup_values_vl.meaning%TYPE;
 --
   -- 顧客名(引揚前)関数
   FUNCTION get_last_party_name(
-    iv_ven_kyaku_last  IN  VARCHAR2
+    it_ven_kyaku_last    IN  xxcso_install_base_v.ven_kyaku_last%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_accounts_v.party_name%TYPE;
 --
   -- 設置先名(引揚前)関数
   FUNCTION get_last_install_place_name(
-    iv_ven_kyaku_last  IN  VARCHAR2
+    it_ven_kyaku_last    IN  xxcso_install_base_v.ven_kyaku_last%TYPE
   )
-  RETURN VARCHAR2;
+  RETURN xxcso_cust_accounts_v.established_site_name%TYPE;
 --
   -- 購入金額取得関数
   FUNCTION get_purchase_amount(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN NUMBER;
+  RETURN xxcff_contract_lines.estimated_cash_price%TYPE;
 --
   -- リース解約年月日取得関数
   FUNCTION get_cancellation_date(
-    iv_install_code  IN  VARCHAR2
+    it_install_code      IN  xxcso_install_base_v.install_code%TYPE
   )
-  RETURN DATE;
+  RETURN xxcff_contract_lines.cancellation_date%TYPE;
 --
 END xxcso_012001j_pkg;
 /
