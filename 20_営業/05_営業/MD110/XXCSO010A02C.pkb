@@ -11,7 +11,7 @@ AS
  *                    ‚Ü‚·B
  * MD.050           : MD050_CSO_010_A02_ƒ}ƒXƒ^˜AŒg‹@”\
  *
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,8 @@ AS
  *  2010-01-20    1.14  Daisuke.Abe      E_–{‰Ò“®_01176‘Î‰
  *  2010-02-05    1.15  Daisuke.Abe      E_–{‰Ò“®_01537‘Î‰
  *  2010-03-04    1.16  Kazuyo.Hosoi     E_–{‰Ò“®_01678‘Î‰
+ *  2011-12-26    1.17  T.Ishiwata       E_–{‰Ò“®_08363‘Î‰
+ *
  *****************************************************************************************/
   --
   --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -2295,6 +2297,9 @@ AS
     lv_mst_bm_flag        VARCHAR2(1);
     ln_rowid              ROWID;
     lv_no_data_found_flag VARCHAR2(1);
+    /* 2011.12.26 T.Ishiwata E_–{‰Ò“®_08363 START */
+    ln_bm_rate_amount     NUMBER;                                -- ‚a‚l—¦E‚a‚l‹àŠz‚Ì‡Œv’l
+    /* 2011.12.26 T.Ishiwata E_–{‰Ò“®_08363 END */
     --
     -- *** ƒ[ƒJƒ‹ƒJ[ƒ\ƒ‹ ***
     CURSOR sp_decision_cur
@@ -2370,6 +2375,28 @@ AS
         --
     END;
     --
+    /* 2011.12.26 T.Ishiwata E_–{‰Ò“®_08363 START */
+    BEGIN
+      SELECT SUM(( (NVL(sdl.bm1_bm_rate  ,cn_number_zero))
+                 + (NVL(sdl.bm2_bm_rate  ,cn_number_zero))
+                 + (NVL(sdl.bm3_bm_rate  ,cn_number_zero)))
+                 + ( (NVL(sdl.bm1_bm_amount,cn_number_zero))
+                 + (NVL(sdl.bm2_bm_amount,cn_number_zero))
+                 + (NVL(sdl.bm3_bm_amount,cn_number_zero)))) bm_rate_amount  -- ‚a‚l—¦E‚a‚l‹àŠz‚Ì‡Œv’l
+      INTO   ln_bm_rate_amount
+      FROM   xxcso_sp_decision_headers sdh                                   -- ‚r‚oêŒˆƒwƒbƒ_ƒe[ƒuƒ‹
+            ,xxcso_sp_decision_lines   sdl                                   -- ‚r‚oêŒˆ–¾×ƒe[ƒuƒ‹
+      WHERE  sdh.sp_decision_header_id =  sdl.sp_decision_header_id
+      AND    sdh.sp_decision_header_id =  it_sp_decision_header_id
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        --
+        RAISE global_api_others_expt;
+        --
+    END;
+    /* 2011.12.26 T.Ishiwata E_–{‰Ò“®_08363 END   */
+    --
     -- ================================
     -- ‚r‚oêŒˆî•ñæ“¾
     -- ================================
@@ -2401,14 +2428,17 @@ AS
       );
       -- *** DEBUG_LOG END ***
       --
-      IF (NVL(lt_sp_decision_rec.bm1_bm_rate, cn_number_zero) = cn_number_zero
-        AND NVL(lt_sp_decision_rec.bm1_bm_amount, cn_number_zero) = cn_number_zero
-        AND NVL(lt_sp_decision_rec.bm2_bm_rate, cn_number_zero) = cn_number_zero
-        AND NVL(lt_sp_decision_rec.bm2_bm_amount, cn_number_zero) = cn_number_zero
-        AND NVL(lt_sp_decision_rec.bm3_bm_rate, cn_number_zero) = cn_number_zero
-        AND NVL(lt_sp_decision_rec.bm3_bm_amount, cn_number_zero) = cn_number_zero)
+    /* 2011.12.26 T.Ishiwata E_–{‰Ò“®_08363 START */
+--      IF (NVL(lt_sp_decision_rec.bm1_bm_rate, cn_number_zero) = cn_number_zero
+--        AND NVL(lt_sp_decision_rec.bm1_bm_amount, cn_number_zero) = cn_number_zero
+--        AND NVL(lt_sp_decision_rec.bm2_bm_rate, cn_number_zero) = cn_number_zero
+--        AND NVL(lt_sp_decision_rec.bm2_bm_amount, cn_number_zero) = cn_number_zero
+--        AND NVL(lt_sp_decision_rec.bm3_bm_rate, cn_number_zero) = cn_number_zero
+--        AND NVL(lt_sp_decision_rec.bm3_bm_amount, cn_number_zero) = cn_number_zero)
+      IF ( ln_bm_rate_amount = cn_number_zero )
+    /* 2011.12.26 T.Ishiwata E_–{‰Ò“®_08363 END   */
       THEN
-        -- ‚a‚l‚P`‚R‚Ì’l‚ª‘S‚Ä–¢“ü—Í–”‚ÍA‚O‚Ìê‡‚Í”ÌèğŒ‚Ìˆ—‚ğs‚í‚È‚¢
+        -- ‚a‚l—¦‚P`‚R‚Æ‚a‚l‹àŠz‚P`‚R‚Ì’l‚ª‘S‚Ä–¢“ü—Í–”‚ÍA‚O‚Ìê‡‚Í”ÌèğŒ‚Ìˆ—‚ğs‚í‚È‚¢
         NULL;
         --
       ELSE
