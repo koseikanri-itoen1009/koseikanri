@@ -7,12 +7,14 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
  *  Name                                Description
  * ------------------------------------ -------------------------------------------------
+ *  mov_zero_updt                       指示にあって実績にない品目は実績0で更新する
+ *  order_zero_updt                     指示にあって実績にない品目は実績0で更新する
  *  set_deliveryno_unit_errflg          指定配送No、EOSデータ種別単位にflag=1をセットする プロシージャ
  *  set_header_unit_reserveflg          ヘッダ単位(配送No、依頼No・移動番号、EOSデータ種別)にflag=1をセットする プロシージャ
  *  set_movreqno_unit_reserveflg        指定移動/依頼No単位にflag=1をセットする プロシージャ
@@ -122,6 +124,9 @@ AS
  *  2008/12/07    1.31 Oracle 福田 直樹  本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
  *  2008/12/07    1.31 Oracle 福田 直樹  本番障害対応#470(配送Noの実績訂正を行うとヘッダに同一依頼Noのレコードが複数件作成されてしまう)
  *  2008/12/09    1.32 Oracle 福田 直樹  本番障害対応#594(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェックエラーでもLOGだけ出力し警告にしない)
+ *  2008/12/09    1.33 Oracle 福田 直樹  本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+ *  2008/12/11    1.33 Oracle 福田 直樹  本番障害対応#630,#664(mov_zero_updtで"指示にあって実績にない品目は実績0で更新する"の"指示にあって"の判断が抜けていた)
+ *  2008/12/11    1.33 Oracle 福田 直樹  本番障害対応#644(拠点実績有でなければロットステータス合格以外でも保留にせず取り込めるようにする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -725,7 +730,9 @@ AS
     -- INV倉庫品目
     whse_inventory_item_no      xxcmn_item_mst2_v.item_no%TYPE,
     -- 顧客区分(出荷先)
-    customer_class_code         hz_cust_accounts.customer_class_code%TYPE
+    customer_class_code         hz_cust_accounts.customer_class_code%TYPE,
+    -- 拠点実績有無区分                                                        -- 2008/12/11 本番障害#644 Add
+    location_rel_code           xxcmn_cust_accounts2_v.location_rel_code%TYPE  -- 2008/12/11 本番障害#644 Add
   );
 --
   -- 移動ロット詳細(アドオン)
@@ -1456,6 +1463,7 @@ AS
     lt_whse_inventory_item_id      xxcmn_item_mst2_v.inventory_item_id%TYPE;            -- INV倉庫品目ID
     lt_whse_inventory_item_no      xxcmn_item_mst2_v.item_no%TYPE;                      -- INV倉庫品目
     lt_customer_class_code         xxcmn_cust_accounts2_v.customer_class_code%TYPE;     -- 顧客区分
+    lt_location_rel_code           xxcmn_cust_accounts2_v.location_rel_code%TYPE;       -- 拠点実績有無区分    2008/12/11 本番障害#644 Add
 --
     lv_msg_buff                    VARCHAR2(5000);
     -- *** ローカル・カーソル ***
@@ -1492,9 +1500,11 @@ AS
           SELECT  xcav.party_id
                  ,xcav.party_number
                  ,xcav.customer_class_code
+                 ,xcav.location_rel_code                 -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
           INTO    lt_customer_id
                  ,lt_customer_code
                  ,lt_customer_class_code
+                 ,lt_location_rel_code                   -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
           FROM    xxcmn_cust_acct_sites2_v   xcas2v      -- 顧客サイト情報VIEW
                  ,xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
           WHERE   xcas2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
@@ -1513,6 +1523,7 @@ AS
           gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
           gr_interface_info_rec(in_idx).customer_code   := lt_customer_code;
           gr_interface_info_rec(in_idx).customer_class_code := lt_customer_class_code;
+          gr_interface_info_rec(in_idx).location_rel_code := lt_location_rel_code;     -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
 --
         EXCEPTION
 --
@@ -1520,6 +1531,7 @@ AS
           gr_interface_info_rec(in_idx).customer_id     := NULL;
           gr_interface_info_rec(in_idx).customer_code   := NULL;
           gr_interface_info_rec(in_idx).customer_class_code := NULL;
+          gr_interface_info_rec(in_idx).location_rel_code := NULL;      -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
 --
         END ;
 --
@@ -1819,9 +1831,11 @@ AS
           SELECT  xcav.party_id
                  ,xcav.party_number
                  ,xcav.customer_class_code
+                 ,xcav.location_rel_code                 -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
           INTO    lt_customer_id
                  ,lt_customer_code
                  ,lt_customer_class_code
+                 ,lt_location_rel_code                   -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
           FROM    xxcmn_cust_acct_sites2_v   xcas2v      -- 顧客サイト情報VIEW
                  ,xxcmn_cust_accounts2_v     xcav        -- 顧客情報VIEW
           WHERE   xcas2v.party_site_number     = gr_interface_info_rec(in_idx).party_site_code
@@ -1840,6 +1854,7 @@ AS
           gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
           gr_interface_info_rec(in_idx).customer_code   := lt_customer_code;
           gr_interface_info_rec(in_idx).customer_class_code := lt_customer_class_code;
+          gr_interface_info_rec(in_idx).location_rel_code := lt_location_rel_code;     -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
 --
         EXCEPTION
 --
@@ -1847,6 +1862,7 @@ AS
           gr_interface_info_rec(in_idx).customer_id     := NULL;
           gr_interface_info_rec(in_idx).customer_code   := NULL;
           gr_interface_info_rec(in_idx).customer_class_code := NULL;
+          gr_interface_info_rec(in_idx).location_rel_code := NULL;      -- 拠点実績有無区分   2008/12/11 本番障害#644 Add
 --
         END ;
 --
@@ -2943,6 +2959,8 @@ AS
       AND     xmrif.status          <> gv_mov_status_99     -- ステータス<>取消
       AND     ((xmrql.delete_flg     = gv_yesno_n)          -- 削除フラグ=未削除
        OR      (xmrql.delete_flg IS NULL))
+      AND     ((xmrif.no_instr_actual_class = gv_yesno_n)   -- 指示なし実績区分=指示あり 2008/12/11 本番障害対応#630,#664 Add
+       OR      (xmrif.no_instr_actual_class IS NULL))                                 -- 2008/12/11 本番障害対応#630,#664 Add
       ORDER BY
               xmrql.item_code
     ;
@@ -2968,7 +2986,6 @@ AS
               
         WHERE   xmrih.mov_num             = in_order_source_ref  -- 受注ソース参照
         AND     xmrih.mov_hdr_id          = xmrql.mov_hdr_id
-        
         AND     xmrih.status             <> gv_mov_status_99     -- ステータス<>取消
         AND     ((xmrql.delete_flg     = gv_yesno_n)             -- 削除フラグ=未削除
          OR      (xmrql.delete_flg IS NULL))
@@ -4191,6 +4208,7 @@ AS
       wk_sql := wk_sql || '          ,NULL                               ';  -- OPM品目情報VIEW2.INV品目ID
       wk_sql := wk_sql || '          ,NULL                               ';  -- OPM品目情報VIEW2.INV品目(倉庫品目)
       wk_sql := wk_sql || '          ,NULL                               ';  -- 顧客区分(出荷先)
+      wk_sql := wk_sql || '          ,NULL                               ';  -- 拠点実績有無区分     2008/12/11 本番障害#644 Add
       wk_sql := wk_sql || '     FROM  ';
       wk_sql := wk_sql || '           xxwsh_shipping_headers_if   xshi       ';  -- IF_H
       wk_sql := wk_sql || '           ,xxwsh_shipping_lines_if    xsli       ';  -- IF_L
@@ -8117,37 +8135,41 @@ AS
                       ln_lot_err_flg := 0;    -- 初期化
 --
                       -- ロットステータス判定
-                      -- 有償出荷報告の場合
-                      IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+                      -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
+                      IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
 --
-                        -- 保留設定
-                        IF (lt_pay_provision_rel = gv_yesno_n) THEN
-                          ln_lot_err_flg := 1;
+                        -- 有償出荷報告の場合
+                        IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                          -- 保留設定
+                          IF (lt_pay_provision_rel = gv_yesno_n) THEN
+                            ln_lot_err_flg := 1;
+                          END IF;
+--
+                        -- 拠点出荷確定報告/庭先出荷確定報告の場合
+                        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+                               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+                        THEN
+--
+                          -- 保留設定
+                          IF (lt_ship_req_rel = gv_yesno_n) THEN
+                            ln_lot_err_flg := 1;
+                          END IF;
+--
+                        -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない --------------
+                        ---- 移動出庫確定報告/移動入庫確定報告の場合
+                        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                        --THEN
+                        --
+                        --  -- 保留設定
+                        --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                        --    ln_lot_err_flg := 1;
+                        --  END IF;
+                        -- 2008/08/13 Del End ---------------------------------------------------
+--
                         END IF;
---
-                      -- 拠点出荷確定報告/庭先出荷確定報告の場合
-                      ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
-                             (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
-                      THEN
---
-                        -- 保留設定
-                        IF (lt_ship_req_rel = gv_yesno_n) THEN
-                          ln_lot_err_flg := 1;
-                        END IF;
---
-                      -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない ---------------------
-                      ---- 移動出庫確定報告/移動入庫確定報告の場合
-                      --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                      --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                      --THEN
-                      --
-                      --  -- 保留設定
-                      --  IF (lt_move_inst_rel = gv_yesno_n) THEN
-                      --    ln_lot_err_flg := 1;
-                      --  END IF;
-                      -- 2008/08/13 Del End ----------------------------------------------------------
---
-                      END IF;
+                      END IF;        -- 2008/12/11 本番障害#644 Add
 --
                       IF (ln_lot_err_flg = 1) THEN
 --
@@ -8544,37 +8566,41 @@ AS
                         ln_lot_err_flg := 0;    -- 初期化
 --
                         -- ロットステータス判定
-                        -- 有償出荷報告の場合
-                        IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+                        -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
+                        IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
 --
-                          -- 保留設定
-                          IF (lt_pay_provision_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
+                          -- 有償出荷報告の場合
+                          IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                            -- 保留設定
+                            IF (lt_pay_provision_rel = gv_yesno_n) THEN
+                              ln_lot_err_flg := 1;
+                            END IF;
+--
+                          -- 拠点出荷確定報告/庭先出荷確定報告の場合
+                          ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+                                 (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+                          THEN
+--
+                            -- 保留設定
+                            IF (lt_ship_req_rel = gv_yesno_n) THEN
+                              ln_lot_err_flg := 1;
+                            END IF;
+--
+                          -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない ---------------
+                          ---- 移動出庫確定報告/移動入庫確定報告の場合
+                          --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                          --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                          --THEN
+                          --
+                          --  -- 保留設定
+                          --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                          --    ln_lot_err_flg := 1;
+                          --  END IF;
+                          -- 2008/08/13 Del End ----------------------------------------------------
+--
                           END IF;
---
-                        -- 拠点出荷確定報告/庭先出荷確定報告の場合
-                        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
-                               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
-                        THEN
---
-                          -- 保留設定
-                          IF (lt_ship_req_rel = gv_yesno_n) THEN
-                            ln_lot_err_flg := 1;
-                          END IF;
---
-                        -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない ---------------------
-                        ---- 移動出庫確定報告/移動入庫確定報告の場合
-                        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                        --THEN
-                        --
-                        --  -- 保留設定
-                        --  IF (lt_move_inst_rel = gv_yesno_n) THEN
-                        --    ln_lot_err_flg := 1;
-                        --  END IF;
-                        -- 2008/08/13 Del End ----------------------------------------------------------
---
-                        END IF;
+                        END IF;      -- 2008/12/11 本番障害#644 Add
 --
                         IF (ln_lot_err_flg = 1) THEN
 --
@@ -8779,37 +8805,41 @@ AS
                       ln_lot_err_flg := 0;    -- 初期化
 --
                       -- ロットステータス判定
-                      -- 有償出荷報告の場合
-                      IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+                      -- 売上有拠点の場合のみチェックを行う                                -- 2008/12/11 本番障害#644 Add
+                      IF (gr_interface_info_rec(i).location_rel_code = gv_flg_on ) THEN    -- 2008/12/11 本番障害#644 Add
 --
-                        -- 保留設定
-                        IF (lt_pay_provision_rel = gv_yesno_n) THEN
-                          ln_lot_err_flg := 1;
+                        -- 有償出荷報告の場合
+                        IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                          -- 保留設定
+                          IF (lt_pay_provision_rel = gv_yesno_n) THEN
+                            ln_lot_err_flg := 1;
+                          END IF;
+--
+                        -- 拠点出荷確定報告/庭先出荷確定報告の場合
+                        ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
+                               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
+                        THEN
+--
+                          -- 保留設定
+                          IF (lt_ship_req_rel = gv_yesno_n) THEN
+                            ln_lot_err_flg := 1;
+                          END IF;
+--
+                        -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない --------------
+                        ---- 移動出庫確定報告/移動入庫確定報告の場合
+                        --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
+                        --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
+                        --THEN
+                        --
+                        --  -- 保留設定
+                        --  IF (lt_move_inst_rel = gv_yesno_n) THEN
+                        --    ln_lot_err_flg := 1;
+                        --  END IF;
+                        -- 2008/08/13 Del End ---------------------------------------------------
+--
                         END IF;
---
-                      -- 拠点出荷確定報告/庭先出荷確定報告の場合
-                      ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210)  OR
-                             (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215))
-                      THEN
---
-                        -- 保留設定
-                        IF (lt_ship_req_rel = gv_yesno_n) THEN
-                          ln_lot_err_flg := 1;
-                        END IF;
---
-                      -- 2008/08/13 Del Start 移動の場合は品質チェックを行わない ---------------------
-                      ---- 移動出庫確定報告/移動入庫確定報告の場合
-                      --ELSIF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220)  OR
-                      --       (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230))
-                      --THEN
-                      --
-                      --  -- 保留設定
-                      --  IF (lt_move_inst_rel = gv_yesno_n) THEN
-                      --    ln_lot_err_flg := 1;
-                      --  END IF;
-                      -- 2008/08/13 Del End ----------------------------------------------------------
---
-                      END IF;
+                      END IF;       -- 2008/12/11 本番障害#644 Add
 --
                       IF (ln_lot_err_flg = 1) THEN
 --
@@ -12087,12 +12117,22 @@ AS
     --gr_mov_req_instr_h_rec.schedule_arrival_date
     --                                        := gr_interface_info_rec(in_index).arrival_date;
     -- 2008/12/02 本番障害#320 Del End ----------------------------------------
-    -- 2008/12/02 本番障害#320 Add Start --------------------------------------
-    -- 出庫予定日
-    gr_mov_req_instr_h_rec.schedule_ship_date    := NULL;
-    -- 入庫予定日
-    gr_mov_req_instr_h_rec.schedule_arrival_date := NULL;
+--
+    -- 2008/12/09 Del Start 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+    ---- 2008/12/02 本番障害#320 Add Start --------------------------------------
+    ---- 出庫予定日
+    --gr_mov_req_instr_h_rec.schedule_ship_date    := NULL;
+    ---- 入庫予定日
+    --gr_mov_req_instr_h_rec.schedule_arrival_date := NULL;
     -- 2008/12/02 本番障害#320 Add End ----------------------------------------
+    -- 2008/12/09 Del End 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+--
+    -- 2008/12/09 Add Start 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+    -- 出庫予定日
+    gr_mov_req_instr_h_rec.schedule_ship_date := gr_interface_info_rec(in_index).shipped_date;
+    -- 入庫予定日
+    gr_mov_req_instr_h_rec.schedule_arrival_date := gr_interface_info_rec(in_index).arrival_date;
+    -- 2008/12/09 Add End 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
 --
     -- 運賃区分
     IF (NVL(gr_interface_info_rec(in_index).delivery_no,'0') <> '0') THEN
@@ -12619,6 +12659,16 @@ AS
     --END IF;
     -- 2008/12/02 本番障害#320 Del End ----------------------------------------
 --
+    -- 2008/12/09 Add Start 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+    IF (gr_interface_info_rec(in_index).out_warehouse_flg = gv_flg_on)
+    THEN
+      --出庫予定日
+      gr_mov_req_instr_h_rec.schedule_ship_date := gr_interface_info_rec(in_index).shipped_date;
+      --入庫予定日
+      gr_mov_req_instr_h_rec.schedule_arrival_date := gr_interface_info_rec(in_index).arrival_date;
+    END IF;
+    -- 2008/12/09 Add End 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+--
     --パレット回収枚数
     gr_mov_req_instr_h_rec.collected_pallet_qty
                                           := gr_interface_info_rec(in_index).collected_pallet_qty;
@@ -12810,6 +12860,8 @@ AS
       SET xmrih.status                      = gr_mov_req_instr_h_rec.status
          --,xmrih.schedule_ship_date          = gr_mov_req_instr_h_rec.schedule_ship_date     -- 2008/12/02 本番障害#320 Del
          --,xmrih.schedule_arrival_date       = gr_mov_req_instr_h_rec.schedule_arrival_date  -- 2008/12/02 本番障害#320 Del
+         ,xmrih.schedule_ship_date          = gr_mov_req_instr_h_rec.schedule_ship_date       -- 2008/12/09 Add 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
+         ,xmrih.schedule_arrival_date       = gr_mov_req_instr_h_rec.schedule_arrival_date    -- 2008/12/09 Add 本番障害対応(移動の指示なし実績時、出庫予定日・入庫予定日を#320でセットしないようにしたがセットするように修正)
          ,xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
          ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
          ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
