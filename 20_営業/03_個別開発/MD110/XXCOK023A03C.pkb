@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A03C(body)
  * Description      : ‰^‘—”ï—\Z‹y‚Ñ‰^‘—”ïÀÑ‚ğ‹’“_•Ê•i–Ú•Êi’P•i•ÊjŒ•Ê‚ÉCSVƒf[ƒ^Œ`®‚Å—v‹o—Í‚µ‚Ü‚·B
  * MD.050           : ‰^‘—”ï—\Zˆê——•\o—Í MD050_COK_023_A03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/11/10    1.0   SCS T.Taniguchi  V‹Kì¬
  *  2009/02/06    1.1   SCS T.Taniguchi  [áŠQCOK_017] ƒNƒCƒbƒNƒR[ƒhƒrƒ…[‚Ì—LŒø“úE–³Œø“ú‚Ì”»’è’Ç‰Á
  *  2009/03/02    1.2   SCS T.Taniguchi  [áŠQCOK_069] “ü—Íƒpƒ‰ƒ[ƒ^uEÓƒ^ƒCƒvv‚É‚æ‚èA‹’“_‚Ìæ“¾”ÍˆÍ‚ğ§Œä
+ *  2009/05/15    1.3   SCS A.Yano       [áŠQT1_1001] o—Í‚³‚ê‚é‹àŠz’PˆÊ‚ğç‰~‚ÉC³
  *
  *****************************************************************************************/
 --
@@ -1142,7 +1143,10 @@ AS
           l_budget_ttype(ln_index).budget_item_name := budget_data_rec.item_short_name;           -- —\Z_¤•i–¼(—ªÌ)
           l_budget_ttype(ln_index).budget_month     := TO_CHAR(budget_month_rec.month, 'FM00');   -- —\Z_Œ
           l_budget_qty_tyype(ln_index)              := lt_cs_qty;                                 -- —\Z_”—Ê
-          l_budget_amt_tyype(ln_index)              := lt_budget_amt;                             -- —\Z_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 STARTz------------------------------------------------------
+--          l_budget_amt_tyype(ln_index)              := lt_budget_amt;                             -- —\Z_‹àŠz
+          l_budget_amt_tyype(ln_index)              := ROUND( lt_budget_amt, -3 ) / 1000;         -- —\Z_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 END  z------------------------------------------------------
           -- ÀÑ”—ÊE‹àŠzƒfƒtƒHƒ‹ƒgİ’è
           l_result_syatate_qty_tyype(ln_index) := 0; -- ÀÑ(Ô—§)_”—Ê
           l_result_syatate_amt_tyype(ln_index) := 0; -- ÀÑ(Ô—§)_‹àŠz
@@ -1175,16 +1179,28 @@ AS
             -- ¬Œû‹æ•ª•Ê‚É”—ÊE‹àŠz‚ğİ’è
             IF ( result_info_rec.small_amt_type = cv_kbn_syatate ) THEN
               l_result_syatate_qty_tyype(ln_index) := result_info_rec.sum_cs_qty;  -- ÀÑ(Ô—§)_”—Ê
-              l_result_syatate_amt_tyype(ln_index) := result_info_rec.sum_amt;     -- ÀÑ(Ô—§)_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 STARTz------------------------------------------------------
+--              l_result_syatate_amt_tyype(ln_index) := result_info_rec.sum_amt;     -- ÀÑ(Ô—§)_‹àŠz
+              l_result_syatate_amt_tyype(ln_index) := ROUND( result_info_rec.sum_amt, -3 ) / 1000;     -- ÀÑ(Ô—§)_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 END  z------------------------------------------------------
               -- ÀÑŒv€–Ú‚ÌWŒv
               ln_sum_result_qty := ln_sum_result_qty + result_info_rec.sum_cs_qty; -- ÀÑŒv_”—Ê
-              ln_sum_result_qmt := ln_sum_result_qmt + result_info_rec.sum_amt;    -- ÀÑŒv_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 STARTz------------------------------------------------------
+--              ln_sum_result_qmt := ln_sum_result_qmt + result_info_rec.sum_amt;    -- ÀÑŒv_‹àŠz
+              ln_sum_result_qmt := ln_sum_result_qmt + ROUND( result_info_rec.sum_amt, -3 ) / 1000;    -- ÀÑŒv_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 END  z------------------------------------------------------
             ELSIF ( result_info_rec.small_amt_type = cv_kbn_koguchi ) THEN
               l_result_koguchi_qty_tyype(ln_index) := result_info_rec.sum_cs_qty;  -- ÀÑ(¬Œû)_”—Ê
-              l_result_koguchi_amt_tyype(ln_index) := result_info_rec.sum_amt;     -- ÀÑ(¬Œû)_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 STARTz------------------------------------------------------
+--              l_result_koguchi_amt_tyype(ln_index) := result_info_rec.sum_amt;     -- ÀÑ(¬Œû)_‹àŠz
+              l_result_koguchi_amt_tyype(ln_index) := ROUND( result_info_rec.sum_amt, -3 ) / 1000;     -- ÀÑ(¬Œû)_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 END  z------------------------------------------------------
               -- ÀÑŒv€–Ú‚ÌWŒv
               ln_sum_result_qty := ln_sum_result_qty + result_info_rec.sum_cs_qty; -- ÀÑŒv_”—Ê
-              ln_sum_result_qmt := ln_sum_result_qmt + result_info_rec.sum_amt;    -- ÀÑŒv_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 STARTz------------------------------------------------------
+--              ln_sum_result_qmt := ln_sum_result_qmt + result_info_rec.sum_amt;    -- ÀÑŒv_‹àŠz
+              ln_sum_result_qmt := ln_sum_result_qmt + ROUND( result_info_rec.sum_amt, -3 ) / 1000;    -- ÀÑŒv_‹àŠz
+--y2009/05/15 A.Yano Ver.1.3 END  z------------------------------------------------------
             ELSE
               -- ÀÑŒv€–Ú‚ÌWŒv
               ln_sum_result_qty := ln_sum_result_qty + 0;
