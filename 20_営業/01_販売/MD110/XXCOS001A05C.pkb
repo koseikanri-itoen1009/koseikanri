@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,11 @@ AS
  *  2009/04/14    1.11  N.Maeda          [T1_0537_0544_558]入出庫データの販売実績(基準数量)設定値に総本数を設定
  *                                                 入出庫データ登録時の納品明細番号をシーケンス取得からヘッダ毎の附番へ変更
  *                                                 百貨店HHT時の保管場所取得方法の変更
+ *  2009/04/16    1.12  N.Maeda          [T1_0350_0447_0450_0589_0712]入金拠点コード取得、販売実績入金拠点コードへの登録の追加
+ *                                                 入出庫データヘッダカウント件数出力追加
+ *                                                 納品伝票入力画面登録データ抽出条件変更
+ *                                                 トランザクション制御修正
+ *                                                 対象データ抽出条件の変更
  *
  *****************************************************************************************/
 --
@@ -161,6 +166,7 @@ AS
   cv_om_order                 CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00128';     -- OM受注情報
   cv_msg_tab_xxcos_sal_exp_head CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00086';    -- 販売実績ヘッダ
   cv_msg_tab_xxcos_sal_exp_line CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00087';    -- 販売実績明細
+  cv_msg_dlv_tab              CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00172';     -- 納品テーブル
   -- 文字列取得用コード(カラム名)
   cv_msg_cus_type             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00074';     -- 顧客区分
   cv_msg_cus_code             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00053';     -- 顧客コード
@@ -179,6 +185,7 @@ AS
   cv_msg_gl_books             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00060';     -- GL会計帳簿
   cv_order_no                 CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00129';     -- 受注番号
   cv_order_s_name             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10251';     -- EDI受注
+  
   -- 文字列取得用コード(共通API名称)
   cv_close_api                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11532';     -- 受注クローズAPI
   -- メッセージ出力
@@ -210,7 +217,7 @@ AS
   cv_input_return             CONSTANT VARCHAR2(10)  := '2';                    -- 入力区分(返品入力)
   cv_input_vd_return          CONSTANT VARCHAR2(10)  := '4';                    -- 入力区分(自販機返品)
   cv_input_fs_vd_return       CONSTANT VARCHAR2(10)  := '5';                    -- 入力区分(フルVD納品･自動吸上)
-  cv_untreated_flg            CONSTANT VARCHAR2(10)  := '0';                    -- 販売実績連携済みフラグ(未処理)
+  cv_untreated_flg            CONSTANT VARCHAR2(1)  := '0';                    -- 販売実績連携済みフラグ(未処理)
 --  cv_order_no_ebs_hht         CONSTANT VARCHAR2(10)  := '0';                    -- 受注No（EBS）(HHT伝票)
   cv_record_type_sample       CONSTANT VARCHAR2(10)  := '40';                   -- レコード種別(見本)
   cv_customer_type_c          CONSTANT VARCHAR2(10)  := '10';                   -- 顧客区分(顧客)
@@ -281,11 +288,18 @@ AS
   cv_red_black_flag_correct   CONSTANT VARCHAR(10)  := '1';                     -- 赤黒フラグ(訂正)
   cn_correct_class            CONSTANT NUMBER  := 1;                            -- 取消・訂正区分(訂正)
   cn_cancel_class             CONSTANT NUMBER  := 2;                            -- 取消・訂正区分(取消)
-  cv_black_flag               CONSTANT NUMBER  := 1;                            -- 赤・黒フラグ(黒) 
-  cv_red_flag                 CONSTANT NUMBER  := 0;                            -- 赤・黒フラグ(赤)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--  cv_black_flag               CONSTANT NUMBER  := '1';                      -- 赤・黒フラグ(黒)
+--  cv_red_flag                 CONSTANT NUMBER  := '0';                      -- 赤・黒フラグ(赤)
+  cv_black_flag               CONSTANT VARCHAR(1)  := '1';                      -- 赤・黒フラグ(黒)
+  cv_red_flag                 CONSTANT VARCHAR(1)  := '0';                      -- 赤・黒フラグ(赤)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
   cn_tkn_zero                 CONSTANT NUMBER  := 0;                            -- トークン｢0｣
-  cn_tkn_shipping_chk         CONSTANT NUMBER  := 4;                            -- 作業区分(出荷確認処理)
-  cn_disc_standard_qty        CONSTANT NUMBER  := 0;                       -- 値引基準数量
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--  cn_tkn_shipping_chk         CONSTANT NUMBER  := 4;                            -- 作業区分(出荷確認処理)
+  cv_tkn_shipping_chk         CONSTANT VARCHAR(2)  := '4';                            -- 作業区分(出荷確認処理)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
+  cn_disc_standard_qty        CONSTANT NUMBER  := 0;                            -- 値引基準数量
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -434,7 +448,43 @@ AS
      line_flow_status_code  oe_order_lines_all.flow_status_code%TYPE    -- 明細ステータス
      );
   TYPE g_tab_oe_order_data IS TABLE OF g_rec_oe_order_data INDEX BY PLS_INTEGER;
-
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+  TYPE g_rec_accumulation_data IS RECORD
+    (
+     row_id                  ROWID,
+     dlv_invoice_number      xxcos_sales_exp_lines.dlv_invoice_number%TYPE,       -- 納品伝票番号
+     dlv_invoice_line_number xxcos_sales_exp_lines.dlv_invoice_line_number%TYPE,  -- 納品明細番号
+     sales_class             xxcos_sales_exp_lines.sales_class%TYPE,              -- 売上区分
+     red_black_flag          xxcos_sales_exp_lines.red_black_flag%TYPE,           -- 赤黒フラグ
+     item_code               xxcos_sales_exp_lines.item_code%TYPE,                -- 品目コード
+     dlv_qty                 xxcos_sales_exp_lines.dlv_qty%TYPE,                  -- 納品数量
+     standard_qty            xxcos_sales_exp_lines.standard_qty%TYPE,             -- 基準数量
+     dlv_uom_code            xxcos_sales_exp_lines.dlv_uom_code%TYPE,             -- 納品単位
+     standard_uom_code       xxcos_sales_exp_lines.standard_uom_code%TYPE,        -- 基準単位(納品単位)
+     dlv_unit_price          xxcos_sales_exp_lines.dlv_unit_price%TYPE,            -- 納品単価
+     standard_unit_price     xxcos_sales_exp_lines.standard_unit_price%TYPE,      -- 基準単価(納品単価)
+     business_cost           xxcos_sales_exp_lines.business_cost%TYPE,            -- 営業原価
+     sale_amount             xxcos_sales_exp_lines.sale_amount%TYPE,              -- 売上金額
+     pure_amount             xxcos_sales_exp_lines.pure_amount%TYPE,              -- 本体金額
+     tax_amount              xxcos_sales_exp_lines.tax_amount%TYPE,               -- 消費税金額
+     cash_and_card           xxcos_sales_exp_lines.cash_and_card%TYPE,            -- 現金・カード併用額
+     ship_from_subinventory_code  xxcos_sales_exp_lines.ship_from_subinventory_code%TYPE,      -- 出荷元保管場所
+     delivery_base_code      xxcos_sales_exp_lines.delivery_base_code%TYPE,       -- 納品拠点コード
+     hot_cold_class          xxcos_sales_exp_lines.hot_cold_class%TYPE,           -- Ｈ＆Ｃ
+     column_no               xxcos_sales_exp_lines.column_no%TYPE,                -- コラムNo
+     sold_out_class          xxcos_sales_exp_lines.sold_out_class%TYPE,           -- 売切区分
+     sold_out_time           xxcos_sales_exp_lines.sold_out_time%TYPE,            -- 売切時間
+     to_calculate_fees_flag  xxcos_sales_exp_lines.to_calculate_fees_flag%TYPE,   -- 手数料計算インタフェース済フラグ
+     unit_price_mst_flag     xxcos_sales_exp_lines.unit_price_mst_flag%TYPE,      -- 単価マスタ作成済フラグ
+     inv_interface_flag      xxcos_sales_exp_lines.inv_interface_flag%TYPE,       -- INVインタフェース済フラグ
+     order_invoice_line_number     xxcos_sales_exp_lines.order_invoice_line_number%TYPE,  -- 注文明細番号(NULL設定)
+     standard_unit_price_excluded  xxcos_sales_exp_lines.standard_unit_price_excluded%TYPE, -- 税抜基準単価
+     delivery_pattern_class        xxcos_sales_exp_lines.delivery_pattern_class%TYPE   -- 納品形態区分(導出)
+     );
+  TYPE g_tab_accumulation_data IS TABLE OF g_rec_accumulation_data INDEX BY PLS_INTEGER;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -601,6 +651,10 @@ AS
   TYPE g_tab_oe_li_flow_status_code   IS TABLE OF oe_order_lines_all.flow_status_code%TYPE
   INDEX BY PLS_INTEGER;   -- 明細ステータス
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START *************************************
+  TYPE g_tab_msg_war_data     IS TABLE OF VARCHAR2(500) INDEX BY PLS_INTEGER;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
+--
   gt_dlv_hht_headers_data         g_tab_dlv_head_data;            -- 納品ヘッダ(HHT)テーブル抽出データ
   gt_dlv_hht_lines_data           g_tab_dlv_lines_data;           -- 納品明細情報(HHT)テーブル抽出データ
   gt_inp_dlv_hht_headers_data     g_tab_dlv_head_data;            -- 納品伝票入力画面登録データ(ヘッダ)テーブル抽出データ
@@ -610,6 +664,9 @@ AS
   gt_inv_trans_head               g_tab_inv_trans_head;           -- ヘッダ登録用HHT入出庫一時テーブル抽出データ
   gt_inv_transactions_data        g_tab_inv_transactions_data;    -- HHT入出庫一時テーブル抽出データ
   gt_oe_order_all                 g_tab_oe_order_data;            -- OM受注テーブル抽出データ
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START *************************************
+  gt_accumulation_data            g_tab_accumulation_data;        -- データ格納用
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
 --
   --ヘッダデータ格納変数
   gt_dlv_hht_head_row_id          g_tab_dlv_hht_head_row_id;       -- ヘッダ行ID(HHT)
@@ -696,6 +753,11 @@ AS
   gt_oe_line_id                   g_tab_oe_line_id;                  -- 受注明細ID
   gt_oe_li_flow_status_code       g_tab_oe_li_flow_status_code;      -- ステータス
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START *************************************
+  --警告メッセージ出力用
+  gt_msg_war_data                 g_tab_msg_war_data;                -- 警告情報(詳細)
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END ***************************************
+--
   gn_head_data_no                 NUMBER := 1;                       -- 実績ヘッダ登録用カウント
   gn_line_data_no                 NUMBER := 1;                       -- 実績明細登録用カウント
   gn_target_edi_cnt               NUMBER := 0;                       -- 納品ヘッダ(EDI)カウント用
@@ -708,6 +770,9 @@ AS
   gn_inp_line_cnt                 NUMBER := 0;                       -- 入力画面登録データ(明細)カウント用
   gn_consum_amount                NUMBER;                            -- 消費税額
   gn_line_ins_cnt                 NUMBER := 0;                       -- 明細登録件数
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+  gn_wae_data_num                 NUMBER := 0;                       -- 警告データ格納用
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
   gn_orga_id                      NUMBER;                            -- 在庫組織ID
   gv_orga_code                    VARCHAR2(50);                      -- 在庫組織コード
   gv_salse_unit                   VARCHAR2(50);                      -- MO:営業単位
@@ -720,7 +785,7 @@ AS
   gv_tkn2                         VARCHAR2(5000);                    -- エラーメッセージ用トークン２
   gv_tkn3                         VARCHAR2(5000);                    -- エラーメッセージ用トークン３
 --
-  /**********************************************************************************
+  /***********************************************************************************
    * Procedure Name   : proc_flg_update
    * Description      : 取得元テーブルフラグ更新(A-10)
    ***********************************************************************************/
@@ -759,32 +824,38 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 登録件数セット
-    ln_hht_count      := gt_dlv_hht_headers_data.COUNT;
-    ln_edi_count      := gt_dlv_edi_headers_data.COUNT;
-    ln_transact_count := gt_inv_transactions_data.COUNT;
-    ln_inp_transact_count := gt_inp_dlv_hht_headers_data.COUNT;
---
-    <<hht_id_loop>>
-    FOR hht_row_count IN 1..ln_hht_count LOOP
-      gt_dlv_hht_head_row_id( hht_row_count ) := gt_dlv_hht_headers_data( hht_row_count ).row_id;
-    END LOOP hht_id_loop;
---
-    <<inp_id_loop>>
-    FOR inp_row_count IN 1..ln_inp_transact_count LOOP
-      gt_inp_dlv_hht_head_row_id( inp_row_count ) := gt_inp_dlv_hht_headers_data( inp_row_count ).row_id;
-    END LOOP inp_id_loop;
---
-    <<edi_id_loop>>
-    FOR edi_row_count IN 1..ln_edi_count LOOP
-      gt_dlv_edi_head_row_id( edi_row_count ) := gt_dlv_edi_headers_data( edi_row_count ).row_id;
-    END LOOP edi_id_loop;
---
-    <<trans_id_loop>>
-    FOR trans_row_count IN 1..ln_transact_count LOOP
-      gt_dlv_tran_head_row_id( trans_row_count ) := gt_inv_transactions_data( trans_row_count ).row_id;
-    END LOOP trans_id_loop;
---
+--    -- 登録件数セット
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--    ln_hht_count      := gt_dlv_hht_headers_data.COUNT;
+--    ln_edi_count      := gt_dlv_edi_headers_data.COUNT;
+--    ln_transact_count := gt_inv_transactions_data.COUNT;
+--    ln_inp_transact_count := gt_inp_dlv_hht_headers_data.COUNT;
+    ln_hht_count      := gt_dlv_hht_head_row_id.COUNT;
+    ln_transact_count := gt_dlv_tran_head_row_id.COUNT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+----
+--    <<hht_id_loop>>
+--    FOR hht_row_count IN 1..ln_hht_count LOOP
+--      gt_dlv_hht_head_row_id( hht_row_count ) := gt_dlv_hht_headers_data( hht_row_count ).row_id;
+--    END LOOP hht_id_loop;
+----
+--    <<inp_id_loop>>
+--    FOR inp_row_count IN 1..ln_inp_transact_count LOOP
+--      gt_inp_dlv_hht_head_row_id( inp_row_count ) := gt_inp_dlv_hht_headers_data( inp_row_count ).row_id;
+--    END LOOP inp_id_loop;
+----
+--    <<edi_id_loop>>
+--    FOR edi_row_count IN 1..ln_edi_count LOOP
+--      gt_dlv_edi_head_row_id( edi_row_count ) := gt_dlv_edi_headers_data( edi_row_count ).row_id;
+--    END LOOP edi_id_loop;
+----
+--    <<trans_id_loop>>
+--    FOR trans_row_count IN 1..ln_transact_count LOOP
+--      gt_dlv_tran_head_row_id( trans_row_count ) := gt_inv_transactions_data( trans_row_count ).row_id;
+--    END LOOP trans_id_loop;
+----
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   *****************************************
     BEGIN
 --
       -- ============================
@@ -801,7 +872,7 @@ AS
                request_id = cn_request_id,                          --要求ID
                program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
                program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日                        
+               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日
         WHERE  ROWID  =  gt_dlv_hht_head_row_id( i );
     EXCEPTION
       WHEN OTHERS THEN
@@ -811,60 +882,62 @@ AS
         RAISE updata_err_expt;
     END;
 --
-    BEGIN
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--    BEGIN
 --
-      -- ============================
-      -- 納品ヘッダ（納品伝票入力画面登録データ）フラグ更新
-      -- ============================
+--      -- ============================
+--      -- 納品ヘッダ（納品伝票入力画面登録データ）フラグ更新
+--      -- ============================
 --
-      FORALL i IN 1..ln_inp_transact_count
+--      FORALL i IN 1..ln_inp_transact_count
 --
-        UPDATE xxcos_dlv_headers
-        SET    results_forward_flag = cv_forward_flag_alr,          --連携済みフラグ
-               results_forward_date = gd_process_date,              --連携日
-               last_updated_by = cn_last_updated_by,                --最終更新者
-               last_update_date = cd_last_update_date,              --最終更新日
-               last_update_login = cn_last_update_login,            --最終更新ﾛｸﾞｲﾝ
-               request_id = cn_request_id,                          --要求ID
-               program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-               program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日                        
-        WHERE  ROWID  =  gt_inp_dlv_hht_head_row_id( i );
+--        UPDATE xxcos_dlv_headers
+--        SET    results_forward_flag = cv_forward_flag_alr,          --連携済みフラグ
+--               results_forward_date = gd_process_date,              --連携日
+--               last_updated_by = cn_last_updated_by,                --最終更新者
+--               last_update_date = cd_last_update_date,              --最終更新日
+--               last_update_login = cn_last_update_login,            --最終更新ﾛｸﾞｲﾝ
+--               request_id = cn_request_id,                          --要求ID
+--               program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--               program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日
+--        WHERE  ROWID  =  gt_inp_dlv_hht_head_row_id( i );
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
+--        gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
+--                                                cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
+--        RAISE updata_err_expt;
+--    END;
 --
-    EXCEPTION
-      WHEN OTHERS THEN
-        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
-        gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
-                                                cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
-        RAISE updata_err_expt;
-    END;
+--    BEGIN
+--      -- ============================
+--      -- 納品ヘッダ（EDI）フラグ更新
+--      -- ============================
+--      FORALL i IN 1..ln_edi_count
 --
-    BEGIN
-      -- ============================
-      -- 納品ヘッダ（EDI）フラグ更新
-      -- ============================
-      FORALL i IN 1..ln_edi_count
+--        UPDATE xxcos_dlv_headers
+--        SET    results_forward_flag = cv_forward_flag_alr,          --連携済みフラグ
+--               results_forward_date = gd_process_date,              --連携日
+--               last_updated_by = cn_last_updated_by,                --最終更新者
+--               last_update_date = cd_last_update_date,              --最終更新日
+--               last_update_login = cn_last_update_login,            --最終更新ﾛｸﾞｲﾝ
+--               request_id = cn_request_id,                          --要求ID
+--               program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--               program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日                        
+--        WHERE  ROWID  =  gt_dlv_edi_head_row_id( i );
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
+--        gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
+--                                                cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
+--        RAISE updata_err_expt;
+--    END;
 --
-        UPDATE xxcos_dlv_headers
-        SET    results_forward_flag = cv_forward_flag_alr,          --連携済みフラグ
-               results_forward_date = gd_process_date,              --連携日
-               last_updated_by = cn_last_updated_by,                --最終更新者
-               last_update_date = cd_last_update_date,              --最終更新日
-               last_update_login = cn_last_update_login,            --最終更新ﾛｸﾞｲﾝ
-               request_id = cn_request_id,                          --要求ID
-               program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-               program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-               program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日                        
-        WHERE  ROWID  =  gt_dlv_edi_head_row_id( i );
---
-    EXCEPTION
-      WHEN OTHERS THEN
-        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
-        gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
-                                                cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
-        RAISE updata_err_expt;
-    END;
---
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   *****************************************
     BEGIN
       -- ============================
       -- 入出庫一時表フラグ更新
@@ -1491,12 +1564,15 @@ AS
     lt_inc_num                        xxcmm_system_items_b.inc_num%TYPE;                         -- 内訳入数
     lt_tax_odd                        xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE;           -- 税金-端数処理
     lt_sale_base_code                 xxcmm_cust_accounts.sale_base_code%TYPE;                   -- 売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+    lt_cash_receiv_base_code          xxcos_cust_hierarchy_v.cash_receiv_base_code%TYPE;         -- 入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
     lt_dlv_base_code                  xxcos_rs_info_v.base_code%TYPE;                            -- 拠点コード
     lt_ins_invoice_type               fnd_lookup_values.attribute1%TYPE;                         -- 納品伝票区分
     lt_cust_gyotai_sho                xxcos_sales_exp_headers.cust_gyotai_sho%TYPE;              -- 取消・訂正区分
     lt_red_black_flag                 xxcos_sales_exp_lines.red_black_flag%TYPE;                 -- 赤黒フラグ
     lt_sales_cost                     ic_item_mst_b.attribute7%TYPE;                             -- 営業原価
-    lt_no_tax_code                    fnd_lookup_values.meaning%TYPE;                            --消費税コード(対象外)
+    lt_no_tax_code                    fnd_lookup_values.meaning%TYPE;                            -- 消費税コード(対象外)
     lv_delivery_type                  VARCHAR2(100);                                             -- 納品形態区分
     lv_key_name1                      VARCHAR2(500);                                             -- キーデータ名称1
     lv_key_name2                      VARCHAR2(500);                                             -- キーデータ名称2
@@ -1506,6 +1582,12 @@ AS
     ln_sales_exp_line_id              NUMBER;                                                    -- 明細ID
     ln_invoice_line_num               NUMBER;                                                    -- 納品明細番号
     ln_line_no                        NUMBER :=  1;                                              -- 明細チェック済番号
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+    lt_row_id                         ROWID;                                           -- 更新用行ID
+    lv_state_flg                      VARCHAR2(1);                                     -- データ警告確認フラグ
+    ln_line_data_count                NUMBER;                                          -- 明細件数(ヘッダ単位)
+    ln_tran_rowid_num                 NUMBER := 0;                                     -- ステータス更新用
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --
   BEGIN
 --
@@ -1554,6 +1636,15 @@ AS
     END;
     <<trans_head_loop>>
     FOR trans_head_no IN 1..gn_transaction_head_cnt LOOP
+--
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_out_msg );
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      -- 明細件数カウント(初期化)
+      ln_line_data_count              := 0;
+      -- データ警告確認フラグ(初期化)
+      lv_state_flg                    := cv_status_normal;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+--
       lt_head_employee_num        := gt_inv_trans_head( trans_head_no ).employee_num;          -- 営業員コード
       lt_head_invoice_no          := gt_inv_trans_head( trans_head_no ).invoice_no;            -- 伝票No.
       lt_head_invoice_type        := gt_inv_trans_head( trans_head_no ).invoice_type;          -- 伝票区分
@@ -1563,15 +1654,18 @@ AS
       lt_head_inside_cust_code    := gt_inv_trans_head( trans_head_no ).inside_cust_code;      -- 入庫側顧客コード
       lt_head_inside_business_low_t := gt_inv_trans_head( trans_head_no ).inside_business_low_type; -- 入庫側業態区分
 --
+--
       --納品明細番号の初期化
       ln_invoice_line_num := 0;
 --
-      --================================
-      --販売実績ヘッダID(シーケンス取得)
-      --================================
-      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
-      INTO ln_actual_id
-      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--      --================================
+--      --販売実績ヘッダID(シーケンス取得)
+--      --================================
+--      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+--      INTO ln_actual_id
+--      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
       -- ===============================
       -- 顧客マスタ付帯情報の導出
@@ -1579,8 +1673,14 @@ AS
       BEGIN
         SELECT  xca.sale_base_code, --売上拠点コード
                 --hca.tax_rounding_rule --税金-端数処理
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                xch.cash_receiv_base_code,  --入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 xch.bill_tax_round_rule -- 税金-端数処理(サイト)
         INTO    lt_sale_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                lt_cash_receiv_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 lt_tax_odd
         FROM    hz_cust_accounts hca,  --顧客マスタ
                 xxcmm_cust_accounts xca, --顧客追加情報
@@ -1598,11 +1698,31 @@ AS
           -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
-          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
-          lv_key_data2 := lt_head_inside_cust_code;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
+--          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
+--          lv_key_data2 := lt_head_inside_cust_code;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code ), -- 項目名称２
+            iv_data_value1 => ( cv_customer_type_c||cv_con_char||cv_customer_type_u ),         -- データの値１
+            iv_data_value2 => lt_head_inside_cust_code,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       -- ================================
@@ -1638,16 +1758,37 @@ AS
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
           --キー編集表変数設定
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_rec_type );
-          lv_key_name2 := NULL;
-          lv_key_data1 := lt_head_record_type;
-          lv_key_data2 := NULL;
-        RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_rec_type );
+--          lv_key_name2 := NULL;
+--          lv_key_data1 := lt_head_record_type;
+--          lv_key_data2 := NULL;
+--        RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_rec_type ), -- 項目名称１
+            iv_data_value1 => lt_head_record_type,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       -- 明細データ取得
       <<trans_loop>>
       FOR line_no IN ln_line_no..gn_transaction_cnt LOOP
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+        lt_row_id                       :=  gt_inv_transactions_data( line_no ).row_id;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
         lt_transaction_id               :=  gt_inv_transactions_data( line_no ).transaction_id;    -- 入出庫一時表ID
         lt_interface_id                 :=  gt_inv_transactions_data( line_no ).interface_id;      -- IF-ID
         lt_form_header_id               :=  gt_inv_transactions_data( line_no ).form_header_id;    -- 画面入力用ヘッダID
@@ -1697,15 +1838,86 @@ AS
 --
         EXIT WHEN(lt_head_invoice_no <> lt_invoice_no);
 --
-      --納品明細番号のカウント
-      ln_invoice_line_num := ln_invoice_line_num + 1;
+        --納品明細番号のカウント
+        ln_invoice_line_num := ln_invoice_line_num + 1;
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
+--
+--
+        -- ==================
+        -- 納品形態区分の導出
+        -- ==================
+        xxcos_common_pkg.get_delivered_from( lt_outside_subinv_code,
+                                             lt_base_code, 
+                                             lt_base_code, 
+                                             gv_orga_code,
+                                             gn_orga_id, 
+                                             lv_delivery_type,
+                                             lv_errbuf, 
+                                             lv_retcode, 
+                                             lv_errmsg );
+        IF ( lv_retcode <> cv_status_normal ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          RAISE delivered_from_err_expt;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,
+                                                iv_name          => cv_msg_delivered_from_err );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+        END IF;
+--
+      -- ===================
+      -- 納品拠点の導出
+      -- ===================
+      BEGIN
+        SELECT rin_v.base_code  --拠点コード
+        INTO lt_dlv_base_code
+        FROM xxcos_rs_info_v rin_v   --従業員情報view
+        WHERE rin_v.employee_number = lt_employee_num
+/*--==============2009/2/3-START=========================--*/
+        AND   NVL( rin_v.effective_start_date, lt_head_invoice_date ) <= lt_head_invoice_date
+        AND   NVL( rin_v.effective_end_date, lt_head_invoice_date ) >= lt_head_invoice_date;
+/*--==============2009/2/3-END=========================--*/
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            -- ログ出力
+            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_emp_data_mst );
+            --キー編集用変数設定
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
+--            lv_key_name2 := NULL;
+--            lv_key_data1 := lt_employee_num;
+--            lv_key_data2 := NULL;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv ), -- 項目名称１
+            iv_data_value1 => lt_employee_num,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+      END;
 --
         -- ====================================
         -- 営業原価の導出(販売実績明細(コラム))
@@ -1736,13 +1948,33 @@ AS
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
           --キー編集処理
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
-            lv_key_data1 := lt_item_code;
-            lv_key_data2 := gn_orga_id;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
+--            lv_key_data1 := lt_item_code;
+--            lv_key_data2 := gn_orga_id;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id ), -- 項目名称２
+            iv_data_value1 => lt_item_code,         -- データの値１
+            iv_data_value2 => gn_orga_id,           -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
         END;
 --
         -- ===================================
@@ -1754,141 +1986,207 @@ AS
           lt_sales_cost := lt_new_sales_cost;
         END IF;
 --
-        -- ===================
-        -- 納品拠点の導出
-        -- ===================
-        BEGIN
-          SELECT rin_v.base_code  --拠点コード
-          INTO lt_dlv_base_code
-          FROM xxcos_rs_info_v rin_v   --従業員情報view
-          WHERE rin_v.employee_number = lt_employee_num
-/*--==============2009/2/3-START=========================--*/
-          AND   NVL( rin_v.effective_start_date, lt_head_invoice_date ) <= lt_head_invoice_date
-          AND   NVL( rin_v.effective_end_date, lt_head_invoice_date ) >= lt_head_invoice_date;
-/*--==============2009/2/3-END=========================--*/
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_emp_data_mst );
-              --キー編集用変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
-              lv_key_name2 := NULL;
-              lv_key_data1 := lt_employee_num;
-              lv_key_data2 := NULL;
-        RAISE no_data_extract;
-        END;
 --
-        -- ==================
-        -- 納品形態区分の導出
-        -- ==================
-        xxcos_common_pkg.get_delivered_from( lt_outside_subinv_code,
-                                             lt_base_code, 
-                                             lt_base_code, 
-                                             gv_orga_code,
-                                             gn_orga_id, 
-                                             lv_delivery_type,
-                                             lv_errbuf, 
-                                             lv_retcode, 
-                                             lv_errmsg );
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE delivered_from_err_expt;
-        END IF;
         --
-        -- ========================
-        -- 赤黒フラグ判定
-        -- ========================
-        IF ( lt_total_quantity < 0 ) THEN
-          lt_red_black_flag := cv_red_black_flag_correct;
-          -- 取消・訂正
-          lt_cust_gyotai_sho := cn_correct_class;
-        ELSE
-          lt_red_black_flag := cn_red_black_flag_stand;
-          -- 正常
-          lt_cust_gyotai_sho := cv_stand_class;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+          -- ========================
+          -- 赤黒フラグ判定
+          -- ========================
+          IF ( lt_total_quantity < 0 ) THEN
+            lt_red_black_flag := cv_red_black_flag_correct;
+            -- 取消・訂正
+            lt_cust_gyotai_sho := cn_correct_class;
+          ELSE
+            lt_red_black_flag := cn_red_black_flag_stand;
+            -- 正常
+            lt_cust_gyotai_sho := cv_stand_class;
+          END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        -- =============================================
+--        -- 販売実績明細（入出庫）変数へのセット
+--        -- ============================================
+--        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;    -- 販売実績明細ID
+--        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;            -- 販売実績ヘッダID
+--        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_invoice_no;           -- 納品伝票番号
+--        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_invoice_line_num;     -- 納品明細番号
+--        gt_line_sales_class( gn_line_data_no )             := cv_sales_class;          -- 売上区分
+--        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;       -- 赤黒フラグ
+--        gt_line_item_code( gn_line_data_no )               := lt_item_code;            -- 品目コード
+--        gt_line_standard_qty( gn_line_data_no )            := lt_total_quantity;       -- 基準数量
+--        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;           -- 基準単位
+--        gt_line_standard_unit_price( gn_line_data_no )     := cv_standard_unit_price;  -- 基準単価
+--        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+--        gt_line_sale_amount( gn_line_data_no )             := cv_sale_amount;          -- 売上金額
+--        gt_line_pure_amount( gn_line_data_no )             := cv_pure_amount;          -- 本体金額
+--        gt_line_tax_amount( gn_line_data_no )              := cv_tax_amount;           -- 消費税金額
+--        gt_line_cash_and_card( gn_line_data_no )           := cv_cash_and_card;        -- 現金・カード併用額
+--        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_outside_subinv_code;  -- 出荷元保管場所
+--        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;        -- 納品拠点コード
+--        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;             -- Ｈ＆Ｃ
+--        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;             -- コラムNo
+--        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;             -- 売切区分
+--        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;             -- 売切時間
+--        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                -- 手数料計算-IF済フラグ
+--        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                -- 単価マスタ作成済フラグ
+--        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                -- INVインタフェース済フラグ
+--        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;             -- 注文明細番号(NULL設定)
+--        gt_line_not_tax_amount( gn_line_data_no )          := cv_not_tax_amount;       -- 税抜基準単価
+--        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;        -- 納品形態区分
+--        gt_line_dlv_qty( gn_line_data_no )                 := lt_total_quantity;       -- 納品数量
+--        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;           -- 納品単位
+--        gt_dlv_unit_price( gn_line_data_no )               := cv_standard_unit_price;  -- 納品単価
+--        gn_line_data_no := gn_line_data_no + 1;
+          -- ===================
+          -- 一時格納用
+          -- ===================
+          gt_accumulation_data(ln_line_data_count).row_id                     := lt_row_id;               -- 行ID
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_invoice_no;           -- 納品伝票番号
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := ln_invoice_line_num;     -- 納品明細番号
+          gt_accumulation_data(ln_line_data_count).sales_class                := cv_sales_class;          -- 売上区分
+          gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;       -- 赤黒フラグ
+          gt_accumulation_data(ln_line_data_count).item_code                  := lt_item_code;            -- 品目コード
+          gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_total_quantity;       -- 納品数量
+          gt_accumulation_data(ln_line_data_count).standard_qty               := lt_total_quantity;       -- 基準数量
+          gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;           -- 納品単位
+          gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;           -- 基準単位
+          gt_accumulation_data(ln_line_data_count).dlv_unit_price             := cv_standard_unit_price;  -- 納品単価
+          gt_accumulation_data(ln_line_data_count).standard_unit_price        := cv_standard_unit_price;  -- 基準単価
+          gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+          gt_accumulation_data(ln_line_data_count).sale_amount                := cv_sale_amount;          -- 売上金額
+          gt_accumulation_data(ln_line_data_count).pure_amount                := cv_pure_amount;          -- 本体金額
+          gt_accumulation_data(ln_line_data_count).tax_amount                 := cv_tax_amount;           -- 消費税金額
+          gt_accumulation_data(ln_line_data_count).cash_and_card              := cv_cash_and_card;        -- 現金・カード併用額
+          gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_outside_subinv_code; -- 出荷元保管場所
+          gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;        -- 納品拠点コード
+          gt_accumulation_data(ln_line_data_count).hot_cold_class             := cv_tkn_null;             -- Ｈ＆Ｃ
+          gt_accumulation_data(ln_line_data_count).column_no                  := cv_tkn_null;             -- コラムNo
+          gt_accumulation_data(ln_line_data_count).sold_out_class             := cv_tkn_null;             -- 売切区分
+          gt_accumulation_data(ln_line_data_count).sold_out_time              := cv_tkn_null;             -- 売切時間
+          gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                -- 手数料計算インタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                -- 単価マスタ作成済フラグ
+          gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                -- INVインタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;             -- 注文明細番号(NULL設定)
+          gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := cv_not_tax_amount;     -- 税抜基準単価
+          gt_accumulation_data(ln_line_data_count).delivery_pattern_class     := lv_delivery_type;        -- 納品形態区分(導出)
         END IF;
-        -- =============================================
-        -- 販売実績明細（入出庫）変数へのセット
-        -- ============================================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;    -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;            -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_invoice_no;           -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_invoice_line_num;     -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := cv_sales_class;          -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;       -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := lt_item_code;            -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_total_quantity;       -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;           -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := cv_standard_unit_price;  -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := cv_sale_amount;          -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := cv_pure_amount;          -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := cv_tax_amount;           -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := cv_cash_and_card;        -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_outside_subinv_code;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;        -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;             -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;             -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;             -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;             -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                -- 手数料計算-IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                -- INVインタフェース済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;             -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := cv_not_tax_amount;       -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;        -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_total_quantity;       -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;           -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := cv_standard_unit_price;  -- 納品単価
         ln_line_no := ln_line_no + 1;
-        gn_line_data_no := gn_line_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
 --
       END LOOP trans_loop;
 --
-      -- =========================================
-      -- ヘッダ情報格納処理
-      -- =========================================
-      gt_head_id( gn_head_data_no )                      := ln_actual_id;               -- 販売実績ヘッダID
-      gt_head_order_no_ebs( gn_head_data_no )            := cv_tkn_null;                -- 受注番号
-      gt_head_hht_invoice_no( gn_head_data_no )          := lt_head_invoice_no;         -- 納品伝票番号
-      gt_head_order_no_hht( gn_head_data_no )            := cv_tkn_null;                -- 受注No(HHT)
-      gt_head_digestion_ln_number( gn_head_data_no )     := cv_tkn_null;                -- 枝番(受注No(HHT)枝番)
-      gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;        -- 納品伝票区分(導出)
-      gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cust_gyotai_sho;         -- 取消・訂正区分
-      gt_head_system_class( gn_head_data_no )            := lt_head_inside_business_low_t;  -- 業態区分(業態小分類)
-      gt_head_dlv_date( gn_head_data_no )                := lt_head_invoice_date;       -- 納品日
-      gt_head_inspect_date( gn_head_data_no )            := lt_head_invoice_date;       -- 検収日(売上計上日)
-      gt_head_customer_number( gn_head_data_no )         := lt_head_inside_cust_code;   -- 顧客【納品先】
-      gt_head_tax_include( gn_head_data_no )             := cn_tkn_zero;                -- 売上金額合計
-      gt_head_total_amount( gn_head_data_no )            := cn_tkn_zero;                -- 本体金額合計
-      gt_head_sales_consump_tax( gn_head_data_no )       := cn_tkn_zero;                -- 消費税金額合計(半導出)
-      gt_head_consump_tax_class( gn_head_data_no )       := cv_tkn_null;                -- 消費税区分(導出)
-      gt_head_tax_code( gn_head_data_no )                := lt_no_tax_code;             -- 税金コード(導出)
-      gt_head_tax_rate( gn_head_data_no )                := cn_tkn_zero;                -- 消費税率(導出)
-      gt_head_performance_by_code( gn_head_data_no )     := lt_head_employee_num;       -- 成績計上者コード
-      gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;          -- 売上拠点コード(導出)
-      gt_head_card_sale_class( gn_head_data_no )         := cv_tkn_null;                -- カード売り区分
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      IF ( lv_state_flg <> cv_status_warn ) THEN
+        --================================
+        --販売実績ヘッダID(シーケンス取得)
+        --================================
+        SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+        INTO ln_actual_id
+        FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--
+        -- =========================================
+        -- ヘッダ情報格納処理
+        -- =========================================
+        gt_head_id( gn_head_data_no )                      := ln_actual_id;               -- 販売実績ヘッダID
+        gt_head_order_no_ebs( gn_head_data_no )            := cv_tkn_null;                -- 受注番号
+        gt_head_hht_invoice_no( gn_head_data_no )          := lt_head_invoice_no;         -- 納品伝票番号
+        gt_head_order_no_hht( gn_head_data_no )            := cv_tkn_null;                -- 受注No(HHT)
+        gt_head_digestion_ln_number( gn_head_data_no )     := cv_tkn_null;                -- 枝番(受注No(HHT)枝番)
+        gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;        -- 納品伝票区分(導出)
+        gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cust_gyotai_sho;         -- 取消・訂正区分
+        gt_head_system_class( gn_head_data_no )            := lt_head_inside_business_low_t;  -- 業態区分(業態小分類)
+        gt_head_dlv_date( gn_head_data_no )                := lt_head_invoice_date;       -- 納品日
+        gt_head_inspect_date( gn_head_data_no )            := lt_head_invoice_date;       -- 検収日(売上計上日)
+        gt_head_customer_number( gn_head_data_no )         := lt_head_inside_cust_code;   -- 顧客【納品先】
+        gt_head_tax_include( gn_head_data_no )             := cn_tkn_zero;                -- 売上金額合計
+        gt_head_total_amount( gn_head_data_no )            := cn_tkn_zero;                -- 本体金額合計
+        gt_head_sales_consump_tax( gn_head_data_no )       := cn_tkn_zero;                -- 消費税金額合計(半導出)
+        gt_head_consump_tax_class( gn_head_data_no )       := cv_tkn_null;                -- 消費税区分(導出)
+        gt_head_tax_code( gn_head_data_no )                := lt_no_tax_code;             -- 税金コード(導出)
+        gt_head_tax_rate( gn_head_data_no )                := cn_tkn_zero;                -- 消費税率(導出)
+        gt_head_performance_by_code( gn_head_data_no )     := lt_head_employee_num;       -- 成績計上者コード
+        gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;          -- 売上拠点コード(導出)
+        gt_head_card_sale_class( gn_head_data_no )         := cv_tkn_null;                -- カード売り区分
 --      gt_head_sales_classification( gn_head_data_no )    := lt_head_invoice_type;       -- 伝票区分
 --      gt_head_invoice_class( gn_head_data_no )           := cv_tkn_null;                -- 伝票分類コード
-      gt_head_sales_classification( gn_head_data_no )    := cv_tkn_null;                -- 伝票区分
-      gt_head_invoice_class( gn_head_data_no )           := lt_head_invoice_type;       -- 伝票分類コード
-      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;          -- 入金拠点コード(導出)
-      gt_head_change_out_time_100( gn_head_data_no )     := cv_tkn_null;                -- つり銭切れ時間100円
-      gt_head_change_out_time_10( gn_head_data_no )      := cv_tkn_null;                -- つり銭切れ時間10円
-      gt_head_hht_dlv_input_date( gn_head_data_no )      := lt_head_invoice_date;       -- HHT納品入力日時(成型日時)
-      gt_head_dlv_by_code( gn_head_data_no )             := lt_head_employee_num;       -- 納品者コード
-      gt_head_business_date( gn_head_data_no )           := gd_process_date;            -- 登録業務日付(初期処理取得)
-      gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                -- 受注ソースID(NULL設定)
-      gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号(NULL設定)
-      gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
-      gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
-      gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- GL-IF済フラグ('N')
-      gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- 情報システム-IF済フラグ('N')
-      gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- EDI送信済みフラグ('N'設定)
-      gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                -- EDI送信日時(NULL設定)
-      gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
-      gt_head_input_class( gn_head_data_no )             := cv_tkn_null;                -- 入力区分
-      gn_head_data_no := gn_head_data_no + 1;
+        gt_head_sales_classification( gn_head_data_no )    := cv_tkn_null;                -- 伝票区分
+        gt_head_invoice_class( gn_head_data_no )           := lt_head_invoice_type;       -- 伝票分類コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+--      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;          -- 入金拠点コード(導出)
+        gt_head_receiv_base_code( gn_head_data_no )        := lt_cash_receiv_base_code;   -- 入金拠点コード(導出)
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
+        gt_head_change_out_time_100( gn_head_data_no )     := cv_tkn_null;                -- つり銭切れ時間100円
+        gt_head_change_out_time_10( gn_head_data_no )      := cv_tkn_null;                -- つり銭切れ時間10円
+        gt_head_hht_dlv_input_date( gn_head_data_no )      := lt_head_invoice_date;       -- HHT納品入力日時(成型日時)
+        gt_head_dlv_by_code( gn_head_data_no )             := lt_head_employee_num;       -- 納品者コード
+        gt_head_business_date( gn_head_data_no )           := gd_process_date;            -- 登録業務日付(初期処理取得)
+        gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                -- 受注ソースID(NULL設定)
+        gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号(NULL設定)
+        gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
+        gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
+        gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- GL-IF済フラグ('N')
+        gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- 情報システム-IF済フラグ('N')
+        gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- EDI送信済みフラグ('N'設定)
+        gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                -- EDI送信日時(NULL設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+--        gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
+        gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+        gt_head_input_class( gn_head_data_no )             := cv_tkn_null;                -- 入力区分
+        gn_head_data_no := gn_head_data_no + 1;
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+--
+        <<line_set_loop>>
+        FOR in_data_num IN 1..ln_line_data_count LOOP
+--
+          ln_tran_rowid_num := ln_tran_rowid_num + 1;
+--
+          -- ===================
+          -- 登録用明細ID取得
+          -- ===================
+          SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+          INTO   ln_sales_exp_line_id
+          FROM   DUAL;
+--
+          gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+          gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+          gt_line_dlv_invoice_number( gn_line_data_no )      := gt_accumulation_data(in_data_num).dlv_invoice_number;    -- 納品伝票番号
+          gt_line_dlv_invoice_l_num( gn_line_data_no )       := gt_accumulation_data(in_data_num).dlv_invoice_line_number; -- 納品明細番号
+          gt_line_sales_class( gn_line_data_no )             := gt_accumulation_data(in_data_num).sales_class;           -- 売上区分
+          gt_line_red_black_flag( gn_line_data_no )          := gt_accumulation_data(in_data_num).red_black_flag;        -- 赤黒フラグ
+          gt_line_item_code( gn_line_data_no )               := gt_accumulation_data(in_data_num).item_code;             -- 品目コード
+          gt_line_standard_qty( gn_line_data_no )            := gt_accumulation_data(in_data_num).standard_qty;          -- 基準数量
+          gt_line_standard_uom_code( gn_line_data_no )       := gt_accumulation_data(in_data_num).standard_uom_code;     -- 基準単位
+          gt_line_standard_unit_price( gn_line_data_no )     := gt_accumulation_data(in_data_num).standard_unit_price;   -- 基準単価
+          gt_line_business_cost( gn_line_data_no )           := gt_accumulation_data(in_data_num).business_cost;         -- 営業原価
+          gt_line_sale_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).sale_amount;           -- 売上金額
+          gt_line_pure_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).pure_amount;           -- 本体金額
+          gt_line_tax_amount( gn_line_data_no )              := gt_accumulation_data(in_data_num).tax_amount;            -- 消費税金額
+          gt_line_cash_and_card( gn_line_data_no )           := gt_accumulation_data(in_data_num).cash_and_card;         -- 現金・カード併用額
+          gt_line_ship_from_subinv_co( gn_line_data_no )     := gt_accumulation_data(in_data_num).ship_from_subinventory_code; -- 出荷元保管場所
+          gt_line_delivery_base_code( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_base_code;    -- 納品拠点コード
+          gt_line_hot_cold_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).hot_cold_class;        -- Ｈ＆Ｃ
+          gt_line_column_no( gn_line_data_no )               := gt_accumulation_data(in_data_num).column_no;             -- コラムNo
+          gt_line_sold_out_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).sold_out_class;        -- 売切区分
+          gt_line_sold_out_time( gn_line_data_no )           := gt_accumulation_data(in_data_num).sold_out_time;         -- 売切時間
+          gt_line_to_calculate_fees_flag( gn_line_data_no )  := gt_accumulation_data(in_data_num).to_calculate_fees_flag;-- 手数料計算IF済フラグ
+          gt_line_unit_price_mst_flag( gn_line_data_no )     := gt_accumulation_data(in_data_num).unit_price_mst_flag;   -- 単価マスタ作成済フラグ
+          gt_line_inv_interface_flag( gn_line_data_no )      := gt_accumulation_data(in_data_num).inv_interface_flag;    -- INVインタフェース済フラグ
+          gt_line_order_invoice_l_num( gn_line_data_no )     := gt_accumulation_data(in_data_num).order_invoice_line_number;   -- 注文明細番号
+          gt_line_not_tax_amount( gn_line_data_no )          := gt_accumulation_data(in_data_num).standard_unit_price_excluded;-- 税抜基準単価
+          gt_line_delivery_pat_class( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_pattern_class;      -- 納品形態区分
+          gt_line_dlv_qty( gn_line_data_no )                 := gt_accumulation_data(in_data_num).dlv_qty;                     -- 納品数量
+          gt_line_dlv_uom_code( gn_line_data_no )            := gt_accumulation_data(in_data_num).dlv_uom_code;                -- 納品単位
+          gt_dlv_unit_price( gn_line_data_no )               := gt_accumulation_data(in_data_num).dlv_unit_price;              -- 納品単価
+          gn_line_data_no := gn_line_data_no + 1;
+          --
+          gt_dlv_tran_head_row_id(ln_tran_rowid_num)               := gt_accumulation_data(in_data_num).row_id;
+        END LOOP line_set_loop;
+      END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
     END LOOP trans_head_loop;
 --
   EXCEPTION
@@ -1946,13 +2244,15 @@ AS
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 # 
-    WHEN delivered_from_err_expt THEN
-      --
-      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
---      lv_errbuf := lv_errmsg;
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-      ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--    WHEN delivered_from_err_expt THEN
+--      --
+--      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
+----      lv_errbuf := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2079,6 +2379,9 @@ AS
     lv_depart_code               xxcmm_cust_accounts.dept_hht_div%TYPE;           -- HHT百貨店入力区分
     lt_inc_num                   xxcmm_system_items_b.inc_num%TYPE;               -- 内訳入数
     lt_sale_base_code            xxcmm_cust_accounts.sale_base_code%TYPE;         -- 売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+    lt_cash_receiv_base_code          xxcos_cust_hierarchy_v.cash_receiv_base_code%TYPE;         -- 入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
     lt_sales_cost                ic_item_mst_b.attribute7%TYPE;                   -- 営業原価
     lt_sale_amount_sum           xxcos_sales_exp_headers.sale_amount_sum%TYPE;    -- 売上金額合計
     lt_pure_amount_sum           xxcos_sales_exp_headers.pure_amount_sum%TYPE;    -- 本体金額合計
@@ -2122,6 +2425,12 @@ AS
 --************************** 2009/03/18 1.5 T.kitajima ADD START ************************************
     ln_amount                    NUMBER;                                          -- 作業用金額変数
 --************************** 2009/03/18 1.5 T.kitajima ADD  END  ************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+    lt_row_id                    ROWID;                                           -- 更新用行ID
+    lv_state_flg                 VARCHAR2(1);                                     -- データ警告確認フラグ
+    ln_line_data_count           NUMBER;                                          -- 明細件数(ヘッダ単位)
+    lv_dept_hht_div_flg          VARCHAR2(1);                                     -- HHT百貨店区分エラーフラグ
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
    --****** ユーザー定義ローカルカーソル ********--
     -- OM受注データ取得カーソル
     CURSOR get_oe_order_cur
@@ -2171,6 +2480,16 @@ AS
       ln_max_invoice_num              := 0;
       --積上営業原価合計
 --      ln_all_sales_cost               := 0;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      -- 明細件数カウント(初期化)
+      ln_line_data_count              := 0;
+      -- データ警告確認フラグ(初期化)
+      lv_state_flg                    := cv_status_normal;
+      -- HHT百貨店区分エラー(初期化)
+      lv_dept_hht_div_flg             := cv_status_normal;
+--
+      lt_row_id                    := gt_dlv_edi_headers_data( ck_no ).row_id;                   -- 行ID
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
       lt_order_no_hht              := gt_dlv_edi_headers_data( ck_no ).order_no_hht;             -- 受注No.(HHT)
       lt_digestion_ln_number       := gt_dlv_edi_headers_data( ck_no ).digestion_ln_number;      -- 枝番
       lt_order_no_ebs              := gt_dlv_edi_headers_data( ck_no ).order_no_ebs;             -- 受注No.（EBS）
@@ -2202,22 +2521,29 @@ AS
       lt_results_forward_flag      := gt_dlv_edi_headers_data( ck_no ).results_forward_flag;     -- 販売実績連携済フラグ
       lt_results_forward_date      := gt_dlv_edi_headers_data( ck_no ).results_forward_date;     -- 販売実績連携済日付
       lt_cancel_correct_class      := gt_dlv_edi_headers_data( ck_no ).cancel_correct_class;     -- 取消・訂正区分
---
-      --================================
-      --販売実績ヘッダID(シーケンス取得)
-      --================================
-      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
-      INTO ln_actual_id
-      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--      --================================
+--      --販売実績ヘッダID(シーケンス取得)
+--      --================================
+--      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+--      INTO ln_actual_id
+--      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   *****************************************
 --
       --=========================
       --顧客マスタ付帯情報の導出
       --=========================
       BEGIN
         SELECT  xca.sale_base_code, --売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                xch.cash_receiv_base_code,  --入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 --hca.tax_rounding_rule --税金-端数処理
                 xch.bill_tax_round_rule -- 税金-端数処理(サイト)
         INTO    lt_sale_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                lt_cash_receiv_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 lt_tax_odd
         FROM    hz_cust_accounts hca,  --顧客マスタ
                 xxcmm_cust_accounts xca, --顧客追加情報
@@ -2234,12 +2560,32 @@ AS
         WHEN NO_DATA_FOUND THEN
           -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
-          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
-          lv_key_data2 := lt_customer_number;
-          RAISE no_data_extract;
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
+--          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
+--          lv_key_data2 := lt_customer_number;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code ), -- 項目名称２
+            iv_data_value1 => ( cv_customer_type_c||cv_con_char||cv_customer_type_u ),         -- データの値１
+            iv_data_value2 => lt_customer_number,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       --========================
@@ -2275,11 +2621,31 @@ AS
           -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg(cv_application, cv_msg_lookup_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
-          lv_key_data1 := lt_consumption_tax_class;
-          lv_key_data2 := cv_lookup_type;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
+--          lv_key_data1 := lt_consumption_tax_class;
+--          lv_key_data2 := cv_lookup_type;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type ), -- 項目名称２
+            iv_data_value1 => lt_consumption_tax_class,         -- データの値１
+            iv_data_value2 => cv_lookup_type,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       --====================
@@ -2303,11 +2669,29 @@ AS
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax );
-          lv_key_name2 := NULL;
-          lv_key_data1 := lt_consum_code;
-          lv_key_data2 := NULL;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax );
+--          lv_key_name2 := NULL;
+--          lv_key_data1 := lt_consum_code;
+--          lv_key_data2 := NULL;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
+            iv_data_value1 => lt_consum_code,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       -- 消費税率算出
@@ -2337,140 +2721,207 @@ AS
           -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_data1 := lt_base_code;
-          lv_key_data2 := cv_bace_branch;
-        RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_data1 := lt_base_code;
+--          lv_key_data2 := cv_bace_branch;
+--        RAISE no_data_extract;
+          lv_dept_hht_div_flg := cv_status_warn;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称２
+            iv_data_value1 => lt_base_code,         -- データの値１
+            iv_data_value2 => cv_bace_branch,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      IF (lv_dept_hht_div_flg <> cv_status_warn) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL )
-        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+        IF ( lv_depart_code IS NULL )
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-end==========================--*/
-        --参照コードマスタ：営業車の保管場所分類コード取得
-        BEGIN
-          SELECT  look_val.meaning      --保管場所分類コード
-          INTO    lt_location_type_code
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
-          AND     gd_process_date      >= look_val.start_date_active
-          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
-          AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-          AND     look_val.lookup_code = cv_xxcos_001_a05_05;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
-            --キー編集処理用変数
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
-            lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
-            lv_key_data2 := cv_xxcos_001_a05_05;
-          RAISE no_data_extract;
-        END;
+          --参照コードマスタ：営業車の保管場所分類コード取得
+          BEGIN
+            SELECT  look_val.meaning      --保管場所分類コード
+            INTO    lt_location_type_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     app.application_short_name = cv_application
+            AND     look_val.enabled_flag = cv_tkn_yes
+            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code = cv_xxcos_001_a05_05;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+              --キー編集処理用変数
+              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
+              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
+              lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
+              lv_key_data2 := cv_xxcos_001_a05_05;
+              RAISE no_data_extract;
+          END;
 --
-        --保管場所マスタデータ取得
-        BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
-          INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    --保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_location_type_code
-          AND    msi.attribute3 = lt_dlv_by_code;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-            --キー編集処理用変数
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-            lv_key_data1 := lt_base_code;
-            lv_key_data2 := cv_xxcos_001_a05_05;
-          RAISE no_data_extract;
-        END;
+          --保管場所マスタデータ取得
+          BEGIN
+            SELECT msi.secondary_inventory_name     -- 保管場所コード
+            INTO   lt_secondary_inventory_name
+            FROM   mtl_secondary_inventories msi    --保管場所マスタ
+            WHERE  msi.attribute7 = lt_base_code
+            AND    msi.attribute13 = lt_location_type_code
+            AND    msi.attribute3 = lt_dlv_by_code;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+              --キー編集処理用変数
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_05;
+--            RAISE no_data_extract;
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+                iv_data_value1 => lt_base_code,         -- データの値１
+                iv_data_value2 => cv_xxcos_001_a05_05,       -- データの値２
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,    --アプリケーション短縮名
+                                                    iv_name          => cv_msg_no_data,    --メッセージコード
+                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                    iv_token_value1  => gv_tkn1,           --トークン値1
+                                                    iv_token_name2   => cv_key_data,       --トークンコード2
+                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+          END;
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
 --      ELSIF ( lv_depart_code IS NOT NULL ) THEN
-      ELSIF ( lv_depart_code = cv_depart_type ) 
-        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+        ELSIF ( lv_depart_code = cv_depart_type ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
-        --参照コードマスタ：百貨店の保管場所分類コード取得
-        BEGIN
-          SELECT  look_val.meaning    --保管場所分類コード
-          INTO    lt_depart_location_type_code
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
-          AND     gd_process_date      >= look_val.start_date_active
-          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
-          AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-          AND     look_val.lookup_code = cv_xxcos_001_a05_09;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-        --キー編集処理
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
-            --キー編集処理用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
-            lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
-            lv_key_data2 := cv_xxcos_001_a05_09;
-          RAISE no_data_extract;
-        END;
+          --参照コードマスタ：百貨店の保管場所分類コード取得
+          BEGIN
+            SELECT  look_val.meaning    --保管場所分類コード
+            INTO    lt_depart_location_type_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     app.application_short_name = cv_application
+            AND     look_val.enabled_flag = cv_tkn_yes
+            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code = cv_xxcos_001_a05_09;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+          --キー編集処理
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+              --キー編集処理用変数設定
+              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
+              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
+              lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
+              lv_key_data2 := cv_xxcos_001_a05_09;
+            RAISE no_data_extract;
+          END;
 --
-        --保管場所マスタデータ取得
-        BEGIN
-          SELECT msi.secondary_inventory_name           -- 保管場所名称
-          INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
-                 mtl_parameters mp                      -- 組織パラメータ
-          WHERE  msi.organization_id=mp.organization_id
-          AND    mp.organization_code = gv_orga_code
-          AND    msi.attribute4       = lt_keep_in_code
-          AND    msi.attribute13      = lt_depart_location_type_code;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-            --キー編集処理用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-            lv_key_data1 := lt_base_code;
-            lv_key_data2 := cv_xxcos_001_a05_09;
-          RAISE no_data_extract;
-        END;
+          --保管場所マスタデータ取得
+          BEGIN
+            SELECT msi.secondary_inventory_name           -- 保管場所名称
+            INTO   lt_secondary_inventory_name
+            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                   mtl_parameters mp                      -- 組織パラメータ
+            WHERE  msi.organization_id=mp.organization_id
+            AND    mp.organization_code = gv_orga_code
+            AND    msi.attribute4       = lt_keep_in_code
+            AND    msi.attribute13      = lt_depart_location_type_code;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+              --キー編集処理用変数設定
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_09;
+--            RAISE no_data_extract;
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+                iv_data_value1 => lt_base_code,         -- データの値１
+                iv_data_value2 => cv_xxcos_001_a05_09,       -- データの値２
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,    --アプリケーション短縮名
+                                                    iv_name          => cv_msg_no_data,    --メッセージコード
+                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                    iv_token_value1  => gv_tkn1,           --トークン値1
+                                                    iv_token_name2   => cv_key_data,       --トークンコード2
+                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+          END;
 --
+        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
       END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --
       -- ==================
       -- 納品形態区分の導出
@@ -2485,7 +2936,14 @@ AS
                                            lv_retcode, 
                                            lv_errmsg );
       IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE delivered_from_err_expt;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        RAISE delivered_from_err_expt;
+      lv_state_flg    := cv_status_warn;
+      gn_wae_data_num := gn_wae_data_num + 1 ;
+      gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,
+                                                iv_name          => cv_msg_delivered_from_err );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
       END IF;
 --
       -- ===================
@@ -2502,14 +2960,32 @@ AS
 /*--==============2009/2/3-END=========================--*/
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            -- ログ出力
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_emp_data_mst );
-            --キー編集用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
-            lv_key_name2 := NULL;
-            lv_key_data1 := lt_dlv_by_code;
-            lv_key_data2 := NULL;
-      RAISE no_data_extract;
+          -- ログ出力
+          gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_emp_data_mst );
+          --キー編集用変数設定
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
+--            lv_key_name2 := NULL;
+--            lv_key_data1 := lt_dlv_by_code;
+--            lv_key_data2 := NULL;
+--        RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv ), -- 項目名称１
+            iv_data_value1 => lt_dlv_by_code,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       -- =====================
@@ -2547,11 +3023,29 @@ AS
               -- ログ出力          
               gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
               --キー編集表変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
-              lv_key_name2 := NULL;
-              lv_key_data1 := lt_input_class;
-              lv_key_data2 := NULL;
-            RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
+--              lv_key_name2 := NULL;
+--              lv_key_data1 := lt_input_class;
+--              lv_key_data2 := NULL;
+--            RAISE no_data_extract;
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp ), -- 項目名称１
+                iv_data_value1 => lt_input_class,         -- データの値１
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,    --アプリケーション短縮名
+                                                    iv_name          => cv_msg_no_data,    --メッセージコード
+                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                    iv_token_value1  => gv_tkn1,           --トークン値1
+                                                    iv_token_name2   => cv_key_data,       --トークンコード2
+                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
           END;
 --
         --入力区分がその他の場合
@@ -2584,11 +3078,29 @@ AS
               -- ログ出力          
               gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
               --キー編集表変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
-              lv_key_name2 := NULL;
-              lv_key_data1 := lt_input_class;
-              lv_key_data2 := NULL;
-            RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
+--              lv_key_name2 := NULL;
+--              lv_key_data1 := lt_input_class;
+--              lv_key_data2 := NULL;
+--            RAISE no_data_extract;
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp ), -- 項目名称１
+                iv_data_value1 => lt_input_class,         -- データの値１
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                    iv_application   => cv_application,    --アプリケーション短縮名
+                                                    iv_name          => cv_msg_no_data,    --メッセージコード
+                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                    iv_token_value1  => gv_tkn1,           --トークン値1
+                                                    iv_token_name2   => cv_key_data,       --トークンコード2
+                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
           END;
         END IF;
 --
@@ -2617,13 +3129,18 @@ AS
         lt_lin_cash_and_card         := gt_dlv_edi_lines_data( line_no ).cash_and_card;         -- 現金・カード併用額
 --
         EXIT WHEN ( ( lt_order_no_hht || lt_digestion_ln_number ) <> ( lt_lin_order_no_hht || lt_lin_digestion_ln_number ) );
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
         --====================================
         --営業原価の導出(販売実績明細(コラム))
@@ -2654,43 +3171,67 @@ AS
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
           --キー編集処理
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
-            lv_key_data1 := lt_lin_item_code_self;
-            lv_key_data2 := gn_orga_id;
-            RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
+--            lv_key_data1 := lt_lin_item_code_self;
+--            lv_key_data2 := gn_orga_id;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code ), -- 項目名称１
+              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id ),    -- 項目名称２
+              iv_data_value1 => lt_lin_item_code_self,         -- データの値１
+              iv_data_value2 => gn_orga_id,           -- データの値２
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
         END;
-      -- ===================================
-      -- 営業原価判定
-      -- ===================================
-      IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
-        lt_sales_cost := lt_old_sales_cost;
-      ELSE
-        lt_sales_cost := lt_new_sales_cost;
-      END IF;
 --
-        -- ============
-        -- 明細金額算出
-        -- ============
-        -- 基準単価
-        lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
-        
-        IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+          -- ===================================
+          -- 営業原価判定
+          -- ===================================
+          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
+            lt_sales_cost := lt_old_sales_cost;
+          ELSE
+            lt_sales_cost := lt_new_sales_cost;
+          END IF;
 --
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
-          lt_tax_amount            := cn_cons_tkn_zero;
+          -- ============
+          -- 明細金額算出
+          -- ============
+          -- 基準単価
+          lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
 --
-        ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+          IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
-          -- 売上金額
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
+            lt_tax_amount            := cn_cons_tkn_zero;
+--
+          ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+--
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -2704,26 +3245,26 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_tax_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
 --          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
@@ -2737,25 +3278,25 @@ AS
 --              lt_tax_amount := ROUND( lt_tax_amount );
 --            END IF;
 --          END IF;
-          ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-          -- 売上金額
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -2769,26 +3310,26 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_tax_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
 --          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
@@ -2802,42 +3343,42 @@ AS
 --              lt_tax_amount := ROUND( lt_tax_amount );
 --            END IF;
 --          END IF;
-          ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := ( lt_lin_wholesale_unit_ploce / ln_tax_data );
-          IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := ( lt_lin_wholesale_unit_ploce / ln_tax_data );
+            IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+              END IF;
             END IF;
-          END IF;
-          -- 本体金額
+            -- 本体金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
---         lt_pure_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
+--          lt_pure_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
 --          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
 --            IF ( lt_tax_odd = cv_amount_up ) THEN
 --              lt_pure_amount := ( TRUNC( lt_pure_amount ) + 1 );
@@ -2849,117 +3390,161 @@ AS
 --              lt_pure_amount := ROUND( lt_pure_amount );
 --            END IF;
 --          END IF;
-         ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+            ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
               lt_pure_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
               lt_pure_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_pure_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_pure_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額
-          lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
+            -- 消費税金額
+            lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
                                          - lt_pure_amount );
 --
-        END IF;
+          END IF;
 --
-        --対照データが非課税でないときのとき
-        IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
-          --消費税合計積上げ
+          --対照データが非課税でないときのとき
+          IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+            --消費税合計積上げ
             ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
-          --明細別最大消費税算出
-          IF ( ln_max_tax_data < lt_tax_amount ) THEN
-            ln_max_tax_data := lt_tax_amount;
-            ln_max_no_data  := gn_line_data_no;
+            --明細別最大消費税算出
+            IF ( ln_max_tax_data < lt_tax_amount ) THEN
+              ln_max_tax_data := lt_tax_amount;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--              ln_max_no_data  := gn_line_data_no;
+              ln_max_no_data  := ln_line_data_count;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+            END IF;
           END IF;
-        END IF;
 --
-        -- 最大明細行No取得
-        IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
-          IF ( ln_max_invoice_num IS NULL) OR ( ln_max_invoice_num < lt_lin_line_no_hht ) THEN
-            ln_max_invoice_num := lt_lin_line_no_hht;
+          -- 最大明細行No取得
+          IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+            IF ( ln_max_invoice_num IS NULL) OR ( ln_max_invoice_num < lt_lin_line_no_hht ) THEN
+              ln_max_invoice_num := lt_lin_line_no_hht;
+            END IF;
           END IF;
-        END IF;
 --
-        -- 赤・黒の金額換算
-        --黒の時
-        IF ( lt_red_black_flag = cv_black_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := lt_lin_replenish_number;
-          -- 売上金額
-          lt_set_sale_amount := lt_sale_amount;
-          -- 本体金額
-          lt_set_pure_amount := lt_pure_amount;
-          -- 消費税金額
-          lt_set_tax_amount := lt_tax_amount;
-        -- 赤の時
-        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := ( lt_lin_replenish_number * ( -1 ) );
-          -- 売上金額
-          lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
-          -- 本体金額
-          lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
-          -- 消費税金額
-          lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
-        END IF;
-        --====================
-        --明細データの変数挿入
-        --====================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := lt_lin_line_no_hht;           -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := lt_lin_sale_class;            -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := lt_lin_item_code_self;        -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := lt_lin_cash_and_card;         -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := lt_lin_h_and_c;               -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := lt_lin_column_no;             -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := lt_lin_sold_out_class;        -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := lt_lin_sold_out_time;         -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算-IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INV-IF済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
-        gn_line_data_no := gn_line_data_no + 1;
-        ln_line_no := ln_line_no + 1;
+          -- 赤・黒の金額換算
+          --黒の時
+          IF ( lt_red_black_flag = cv_black_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := lt_lin_replenish_number;
+            -- 売上金額
+            lt_set_sale_amount := lt_sale_amount;
+            -- 本体金額
+            lt_set_pure_amount := lt_pure_amount;
+            -- 消費税金額
+            lt_set_tax_amount := lt_tax_amount;
+          -- 赤の時
+          ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := ( lt_lin_replenish_number * ( -1 ) );
+            -- 売上金額
+            lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
+            -- 本体金額
+            lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
+            -- 消費税金額
+            lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        --====================
+--        --明細データの変数挿入
+--        --====================
+--        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+--        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+--        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
+--        gt_line_dlv_invoice_l_num( gn_line_data_no )       := lt_lin_line_no_hht;           -- 納品明細番号
+--        gt_line_sales_class( gn_line_data_no )             := lt_lin_sale_class;            -- 売上区分
+--        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
+--        gt_line_item_code( gn_line_data_no )               := lt_lin_item_code_self;        -- 品目コード
+--        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
+--        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
+--        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
+--        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+--        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
+--        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
+--        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
+--        gt_line_cash_and_card( gn_line_data_no )           := lt_lin_cash_and_card;         -- 現金・カード併用額
+--        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
+--        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
+--        gt_line_hot_cold_class( gn_line_data_no )          := lt_lin_h_and_c;               -- Ｈ＆Ｃ
+--        gt_line_column_no( gn_line_data_no )               := lt_lin_column_no;             -- コラムNo
+--        gt_line_sold_out_class( gn_line_data_no )          := lt_lin_sold_out_class;        -- 売切区分
+--        gt_line_sold_out_time( gn_line_data_no )           := lt_lin_sold_out_time;         -- 売切時間
+--        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算-IF済フラグ
+--        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
+--        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INV-IF済フラグ
+--        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
+--        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
+--        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
+--        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
+--        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
+--        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
+--        gn_line_data_no := gn_line_data_no + 1;
+        -- ===================
+        -- 一時格納用
+        -- ===================
+        gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_hht_invoice_no;             -- 納品伝票番号
+        gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := lt_lin_line_no_hht;            -- 納品明細番号
+        gt_accumulation_data(ln_line_data_count).sales_class                := lt_lin_sale_class;             -- 売上区分
+        gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;             -- 赤黒フラグ
+        gt_accumulation_data(ln_line_data_count).item_code                  := lt_lin_item_code_self;         -- 品目コード
+        gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_set_replenish_number;       -- 納品数量
+        gt_accumulation_data(ln_line_data_count).standard_qty               := lt_set_replenish_number;       -- 基準数量
+        gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;                 -- 納品単位
+        gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;                 -- 基準単位
+        gt_accumulation_data(ln_line_data_count).dlv_unit_price             := lt_standard_unit_price;        -- 納品単価
+        gt_accumulation_data(ln_line_data_count).standard_unit_price        := lt_standard_unit_price;        -- 基準単価
+        gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+        gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount;            -- 売上金額
+        gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount;            -- 本体金額
+        gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount;             -- 消費税金額
+        gt_accumulation_data(ln_line_data_count).cash_and_card              := lt_lin_cash_and_card;          -- 現金・カード併用額
+        gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
+        gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
+        gt_accumulation_data(ln_line_data_count).hot_cold_class             := lt_lin_h_and_c;                -- Ｈ＆Ｃ
+        gt_accumulation_data(ln_line_data_count).column_no                  := lt_lin_column_no;              -- コラムNo
+        gt_accumulation_data(ln_line_data_count).sold_out_class             := lt_lin_sold_out_class;         -- 売切区分
+        gt_accumulation_data(ln_line_data_count).sold_out_time              := lt_lin_sold_out_time;          -- 売切時間
+        gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                      -- 手数料計算インタフェース済フラグ
+        gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                      -- 単価マスタ作成済フラグ
+        gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                      -- INVインタフェース済フラグ
+        gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;                   -- 注文明細番号(NULL設定)
+        gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := lt_stand_unit_price_excl;    -- 税抜基準単価
+        gt_accumulation_data(ln_line_data_count).delivery_pattern_class     :=   lv_delivery_type;            -- 納品形態区分(導出)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+      ln_line_no := ln_line_no + 1;
 --
       END LOOP line_loop;
       -- 値引きが発生している場合
       IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
         -- =======================================
         -- 値引金額明細生成(A-8)
         -- =======================================
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
 --
         -- =================================
         -- 営業原価、基準単位を導出
@@ -2988,7 +3573,7 @@ AS
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             --キー編集処理
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
             lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
             lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
@@ -3005,86 +3590,91 @@ AS
           lt_sales_cost := lt_new_sales_cost;
         END IF;
 --
-/*--==============2009/2/3-START=========================--*/
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--/*--==============2009/2/3-START=========================--*/
 --        IF ( lv_depart_code = cv_depart_car ) THEN
-        IF ( lv_depart_code IS NULL ) 
-          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
-/*--==============2009/2/3-END==========================--*/
-          --保管場所マスタデータ取得
-          BEGIN
-            SELECT msi.secondary_inventory_name     -- 保管場所コード
-            INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi    --保管場所マスタ
-            WHERE  msi.attribute7 = lt_base_code
-            AND    msi.attribute13 = lt_location_type_code;
+--        IF ( lv_depart_code IS NULL ) 
+--          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+--/*--==============2009/2/3-END==========================--*/
+--          --保管場所マスタデータ取得
+--          BEGIN
+--            SELECT msi.secondary_inventory_name     -- 保管場所コード
+--            INTO   lt_secondary_inventory_name
+--            FROM   mtl_secondary_inventories msi    --保管場所マスタ
+--            WHERE  msi.attribute7 = lt_base_code
+--            AND    msi.attribute13 = lt_location_type_code;
 --            AND    msi.attribute3 = lt_dlv_by_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-              --キー編集処理用変数
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-              lv_key_data1 := lt_base_code;
-              lv_key_data2 := cv_xxcos_001_a05_05;
-            RAISE no_data_extract;
-          END;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--              --キー編集処理用変数
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--              lv_key_data1 := lt_base_code;
+--              lv_key_data2 := cv_xxcos_001_a05_05;
+--            RAISE no_data_extract;
+--          END;
 --
-/*--==============2009/2/3-START=========================--*/
---        ELSIF ( lv_depart_code = cv_depart_type ) THEN
---        ELSIF ( lv_depart_code IS NOT NULL ) THEN
-        ELSIF ( lv_depart_code = cv_depart_type ) 
-          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
-/*--==============2009/2/3-END==========================--*/
-          --参照コードマスタ：百貨店の保管場所分類コード取得
+--/*--==============2009/2/3-START=========================--*/
+----        ELSIF ( lv_depart_code = cv_depart_type ) THEN
+----        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--        ELSIF ( lv_depart_code = cv_depart_type ) 
+--          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+--/*--==============2009/2/3-END==========================--*/
+--          --参照コードマスタ：百貨店の保管場所分類コード取得
 --
-          --保管場所マスタデータ取得
-          BEGIN
-            SELECT msi.secondary_inventory_name           -- 保管場所名称
-            INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
-                   mtl_parameters mp                      -- 組織パラメータ
-            WHERE  msi.organization_id=mp.organization_id
-            AND    mp.organization_code = gv_orga_code
-            AND    msi.attribute4       = lt_keep_in_code
-            AND    msi.attribute13      = lt_depart_location_type_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-              --キー編集処理用変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-              lv_key_data1 := lt_base_code;
-              lv_key_data2 := cv_xxcos_001_a05_09;
-            RAISE no_data_extract;
-          END;
+--          --保管場所マスタデータ取得
+--          BEGIN
+--            SELECT msi.secondary_inventory_name           -- 保管場所名称
+--            INTO   lt_secondary_inventory_name
+--            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+--                   mtl_parameters mp                      -- 組織パラメータ
+--            WHERE  msi.organization_id=mp.organization_id
+--            AND    mp.organization_code = gv_orga_code
+--            AND    msi.attribute4       = lt_keep_in_code
+--            AND    msi.attribute13      = lt_depart_location_type_code;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--              --キー編集処理用変数設定
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--              lv_key_data1 := lt_base_code;
+--              lv_key_data2 := cv_xxcos_001_a05_09;
+--            RAISE no_data_extract;
+--          END;
 --
-        END IF;
+--        END IF;
 --
-        -- ================
-        -- 金額算出処理
-        -- ================
-        IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+          -- ================
+          -- 金額算出処理
+          -- ================
+          IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
-          lt_sale_amount           := lt_sale_discount_amount;
-          -- 本体金額
-          lt_pure_amount           := lt_sale_discount_amount;
-          -- 消費税金額
-          lt_tax_amount            := cn_cons_tkn_zero;
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
+            lt_sale_amount           := lt_sale_discount_amount;
+            -- 本体金額
+            lt_pure_amount           := lt_sale_discount_amount;
+            -- 消費税金額
+            lt_tax_amount            := cn_cons_tkn_zero;
 --
-        ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+          ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -3098,46 +3688,46 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_sale_discount_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 本体金額
-          lt_pure_amount           := lt_sale_discount_amount;
-          -- 消費税金額
-          ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            -- 本体金額
+            lt_pure_amount           := lt_sale_discount_amount;
+            -- 消費税金額
+            ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount := ln_amount;
-          END IF;
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := ( lt_sale_discount_amount  );
-          -- 売上金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := ( lt_sale_discount_amount  );
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --         lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -3151,59 +3741,59 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-         ln_amount           := ( lt_sale_discount_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_sale_discount_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 本体金額
-          lt_pure_amount           := lt_sale_discount_amount;
-          -- 消費税金額
-          ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            -- 本体金額
+            lt_pure_amount           := lt_sale_discount_amount;
+            -- 消費税金額
+            ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount := ln_amount;
-          END IF;
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := ( lt_sale_discount_amount / ln_tax_data);
-          IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := ( lt_sale_discount_amount / ln_tax_data);
+            IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+              END IF;
             END IF;
-          END IF;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
-          lt_sale_amount           := lt_sale_discount_amount;
-          -- 本体金額
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
+            lt_sale_amount           := lt_sale_discount_amount;
+            -- 本体金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_pure_amount           := ( lt_sale_discount_amount / ln_tax_data );
 --          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
@@ -3217,109 +3807,149 @@ AS
 --              lt_pure_amount := ROUND( lt_pure_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount / ln_tax_data );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_pure_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_pure_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_sale_discount_amount / ln_tax_data );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_pure_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_pure_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_pure_amount := ln_amount;
             END IF;
-          ELSE
-            lt_pure_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額
-          lt_tax_amount            := TRUNC( lt_sale_amount - lt_pure_amount );
+            -- 消費税金額
+            lt_tax_amount            := TRUNC( lt_sale_amount - lt_pure_amount );
+          END IF;
+--
+          -- 値引用納品明細番号設定
+          ln_max_invoice_num := ln_max_invoice_num + 1;
+          -- 登録用値引金額設定
+          lt_sale_amount := ( lt_sale_amount * ( -1 ) );
+          lt_pure_amount := ( lt_pure_amount * ( -1 ) );
+          lt_tax_amount  := ( lt_tax_amount * ( -1 ) );
+--
+          -- 赤・黒の金額換算
+          --黒の時
+          IF ( lt_red_black_flag = cv_black_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := cn_disc_standard_qty;
+            -- 売上金額
+            lt_set_sale_amount := lt_sale_amount;
+            -- 本体金額
+            lt_set_pure_amount := lt_pure_amount;
+            -- 消費税金額
+            lt_set_tax_amount := lt_tax_amount;
+          -- 赤の時
+          ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := ( cn_disc_standard_qty * ( -1 ) );
+            -- 売上金額
+            lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
+            -- 本体金額
+            lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
+            -- 消費税金額
+            lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START   ***************************************
+--        -- =========================================
+--        -- 値引き明細データセット
+--        -- =========================================
+--        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+--        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+
+--        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
+--        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_max_invoice_num;           -- 納品明細番号
+--        gt_line_sales_class( gn_line_data_no )             := cv_sales_st_class;            -- 売上区分
+--        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
+--        gt_line_item_code( gn_line_data_no )               := gv_disc_item;                 -- 品目コード
+--        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
+--        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
+--        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
+--        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
+--        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
+--        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
+--        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
+--        gt_line_cash_and_card( gn_line_data_no )           := cn_tkn_zero;                  -- 現金・カード併用額
+--        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
+--        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
+--        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;                  -- Ｈ＆Ｃ
+--        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;                  -- コラムNo
+--        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;                  -- 売切区分
+--        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;                  -- 売切時間
+--        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算IF済フラグ
+--        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
+--        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INVインタフェース済フラグ
+--        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
+--        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
+--        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
+--        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
+--        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
+--        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
+--        gn_line_data_no := gn_line_data_no + 1;
+          -- ===================
+          -- 一時格納用
+          -- ===================
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_hht_invoice_no;             -- 納品伝票番号
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := ln_max_invoice_num;            -- 納品明細番号
+          gt_accumulation_data(ln_line_data_count).sales_class                := cv_sales_st_class;             -- 売上区分
+          gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;             -- 赤黒フラグ
+          gt_accumulation_data(ln_line_data_count).item_code                  := gv_disc_item;                  -- 品目コード
+          gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_set_replenish_number;       -- 納品数量
+          gt_accumulation_data(ln_line_data_count).standard_qty               := lt_set_replenish_number;       -- 基準数量
+          gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;                 -- 納品単位
+          gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;                 -- 基準単位
+          gt_accumulation_data(ln_line_data_count).dlv_unit_price             := lt_standard_unit_price;        -- 納品単価
+          gt_accumulation_data(ln_line_data_count).standard_unit_price        := lt_standard_unit_price;        -- 基準単価
+          gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+          gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount;            -- 売上金額
+          gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount;            -- 本体金額
+          gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount;             -- 消費税金額
+          gt_accumulation_data(ln_line_data_count).cash_and_card              := cn_tkn_zero;                   -- 現金・カード併用額
+          gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
+          gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
+          gt_accumulation_data(ln_line_data_count).hot_cold_class             := cv_tkn_null;                   -- Ｈ＆Ｃ
+          gt_accumulation_data(ln_line_data_count).column_no                  := cv_tkn_null;                   -- コラムNo
+          gt_accumulation_data(ln_line_data_count).sold_out_class             := cv_tkn_null;                   -- 売切区分
+          gt_accumulation_data(ln_line_data_count).sold_out_time              := cv_tkn_null;                   -- 売切時間
+          gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                      -- 手数料計算インタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                      -- 単価マスタ作成済フラグ
+          gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                      -- INVインタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;                   -- 注文明細番号(NULL設定)
+          gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := lt_stand_unit_price_excl;    -- 税抜基準単価
+          gt_accumulation_data(ln_line_data_count).delivery_pattern_class     := lv_delivery_type;              -- 納品形態区分(導出)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
         END IF;
---
-        -- 値引用納品明細番号設定
-        ln_max_invoice_num := ln_max_invoice_num + 1;
-        -- 登録用値引金額設定
-        lt_sale_amount := ( lt_sale_amount * ( -1 ) );
-        lt_pure_amount := ( lt_pure_amount * ( -1 ) );
-        lt_tax_amount  := ( lt_tax_amount * ( -1 ) );
---
-        -- 赤・黒の金額換算
-        --黒の時
-        IF ( lt_red_black_flag = cv_black_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := cn_disc_standard_qty;
-          -- 売上金額
-          lt_set_sale_amount := lt_sale_amount;
-          -- 本体金額
-          lt_set_pure_amount := lt_pure_amount;
-          -- 消費税金額
-          lt_set_tax_amount := lt_tax_amount;
-        -- 赤の時
-        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := ( cn_disc_standard_qty * ( -1 ) );
-          -- 売上金額
-          lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
-          -- 本体金額
-          lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
-          -- 消費税金額
-          lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
-        END IF;
-        -- =========================================
-        -- 値引き明細データセット
-        -- =========================================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_max_invoice_num;           -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := cv_sales_st_class;            -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := gv_disc_item;                 -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := cn_tkn_zero;                  -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;                  -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;                  -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;                  -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;                  -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INVインタフェース済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
-        gn_line_data_no := gn_line_data_no + 1;
---
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
       END IF;
 --
-      -- ==================
-      -- ヘッダ登録用金額算出
-      -- ==================
-      IF ( lt_consumption_tax_class = cv_non_tax ) THEN           -- 非課税
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+        -- ==================
+        -- ヘッダ登録用金額算出
+        -- ==================
+        IF ( lt_consumption_tax_class = cv_non_tax ) THEN           -- 非課税
 --
-        -- 売上金額合計
-        lt_sale_amount_sum := lt_total_amount;
-        -- 本体金額合計
-        lt_pure_amount_sum := lt_total_amount;
-        -- 消費税金額合計
-        lt_tax_amount_sum  := lt_sales_consumption_tax;
-      ELSE
-       --値引発生時
-        IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+          -- 売上金額合計
+          lt_sale_amount_sum := lt_total_amount;
+          -- 本体金額合計
+          lt_pure_amount_sum := lt_total_amount;
+          -- 消費税金額合計
+          lt_tax_amount_sum  := lt_sales_consumption_tax;
+        ELSE
+         --値引発生時
+          IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
-          IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+            IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-            -- 売上金額合計
+              -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_sale_amount_sum := ( lt_tax_include * ln_tax_data );
 --              IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
@@ -3333,7 +3963,7 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --                END IF;
 --              END IF;
-            ln_amount := ( lt_tax_include );
+              ln_amount := ( lt_tax_include );
               IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
                 IF ( lt_tax_odd = cv_amount_up ) THEN
                 lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
@@ -3352,34 +3982,34 @@ AS
               lt_pure_amount_sum := lt_tax_include;
               -- 消費税金額合計
               ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_tax_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_tax_amount_sum := ROUND( ln_amount );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_tax_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_tax_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_tax_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_tax_amount_sum   := ln_amount;
-            END IF;
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+            ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_tax_include;
-            -- 本体金額合計
-            lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-            -- 消費税金額合計
-            lt_tax_amount_sum  := lt_sales_consumption_tax;
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_tax_include;
+              -- 本体金額合計
+              lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+              -- 消費税金額合計
+              lt_tax_amount_sum  := lt_sales_consumption_tax;
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+            ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_tax_include;
-            -- 本体金額合計
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_tax_include;
+              -- 本体金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_pure_amount_sum := ( lt_tax_include / ln_tax_data );
 --            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
@@ -3393,20 +4023,20 @@ AS
 --                 lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := ( lt_tax_include / ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_pure_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_tax_include / ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_pure_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_pure_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_pure_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_pure_amount_sum   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
             -- 値引消費税算出
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
@@ -3422,29 +4052,29 @@ AS
 --                 ln_discount_tax:= ROUND( ln_discount_tax );
 --              END IF;
 --            END IF;
-            ln_amount    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                ln_discount_tax := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                ln_discount_tax := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                 ln_discount_tax:= ROUND( ln_amount );
+              ln_amount    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  ln_discount_tax := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  ln_discount_tax := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                   ln_discount_tax:= ROUND( ln_amount );
+                END IF;
+              ELSE
+                ln_discount_tax:= ln_amount;
               END IF;
-            ELSE
-              ln_discount_tax:= ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( ln_all_tax_amount - ln_discount_tax );
+              -- 消費税金額合計
+              lt_tax_amount_sum  := ( ln_all_tax_amount - ln_discount_tax );
 --
-          END IF;
-        --値引未発生時金額算出
-        ELSE
+            END IF;
+          --値引未発生時金額算出
+          ELSE
 --
-          IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+            IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
             -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
@@ -3460,42 +4090,42 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --              END IF;
 --            END IF;
-           ln_amount := ( lt_total_amount	 );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_total_amount	 );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_sale_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_sale_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_sale_amount_sum := ln_amount;
               END IF;
-            ELSE
-              lt_sale_amount_sum := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
-            -- 消費税金額合計
-            ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_tax_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_tax_amount_sum := ROUND( ln_amount );
+              -- 本体金額合計
+              lt_pure_amount_sum := lt_total_amount;
+              -- 消費税金額合計
+              ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_tax_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_tax_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_tax_amount_sum := ln_amount;
               END IF;
-            ELSE
-              lt_tax_amount_sum := ln_amount;
-            END IF;
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+            ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-            -- 売上金額合計
+              -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
 --            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN            
@@ -3509,31 +4139,31 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := ( lt_total_amount * ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_total_amount * ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_sale_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_sale_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_sale_amount_sum := ln_amount;
               END IF;
-            ELSE
-              lt_sale_amount_sum := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+              -- 本体金額合計
+              lt_pure_amount_sum := lt_total_amount;
+              -- 消費税金額合計
+              lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
---  
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_total_amount;
-            -- 本体金額合計
+            ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+--
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_total_amount;
+              -- 本体金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_pure_amount_sum := ( lt_total_amount / ln_tax_data );
 --            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
@@ -3547,154 +4177,247 @@ AS
 --                lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := ( lt_total_amount / ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_pure_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_total_amount / ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_pure_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_pure_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_pure_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_pure_amount_sum   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-           -- 消費税金額合計
-            lt_tax_amount_sum  := ln_all_tax_amount;
+              -- 消費税金額合計
+              lt_tax_amount_sum  := ln_all_tax_amount;
 --
-          END IF;
-        END IF;
-      END IF;
---
-      --非課税以外のとき
-      IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
-        --================================================
-        --ヘッダ売上消費税額と明細売上消費税額比較判断処理
-        --================================================
-        -- 値引明細がnull以外の時
-        IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
-        AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
-          ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
-        END IF;
-        IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
-          -- 外税 OR 内税(伝票課税の時)
-          IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-            IF ( lt_red_black_flag = cv_black_flag ) THEN
-              gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
-            ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-              gt_line_tax_amount( ln_max_no_data ) := ( ( ln_max_tax_data 
-                                                        + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
             END IF;
           END IF;
         END IF;
-      END IF;
 --
-      BEGIN
-        OPEN  get_oe_order_cur;
-        -- バルクフェッチ
-        FETCH get_oe_order_cur BULK COLLECT INTO gt_oe_order_all;
-        -- 抽出件数セット
-        gn_om_data_cnt := get_oe_order_cur%ROWCOUNT;
-        -- カーソルCLOSE
-        CLOSE get_oe_order_cur;
-      EXCEPTION
-        WHEN OTHERS THEN
-          IF( get_oe_order_cur%ISOPEN ) THEN
-            CLOSE get_oe_order_cur;
+        --非課税以外のとき
+        IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+          --================================================
+          --ヘッダ売上消費税額と明細売上消費税額比較判断処理
+          --================================================
+          -- 値引明細がnull以外の時
+          IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
+          AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
+            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
           END IF;
-          gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
-          --キー編集表変数設定
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_order_no );
-          lv_key_name2 := NULL;
-          lv_key_data1 := lt_order_no_ebs;
-          lv_key_data2 := NULL;
-        RAISE no_data_extract;
-      END;
+          IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
+            -- 外税 OR 内税(伝票課税の時)
+            IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+              IF ( lt_red_black_flag = cv_black_flag ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
+--                gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+              ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+--                gt_line_tax_amount( ln_max_no_data ) := ( ( ln_max_tax_data 
+--                                                          + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
+                                                                      + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+--******************************* 2009/04/16 N.Maeda Var1.10 MOD END   ***************************************
+              END IF;
+            END IF;
+          END IF;
+        END IF;
 --
-      IF ( gn_om_data_cnt > 0 ) THEN
-        <<om_order_loop>>
-        FOR om_data_no IN ln_cnt_om_order..gn_om_data_cnt LOOP
-          -- ====================================
-          -- OM受注情報格納
-          -- ====================================
-          gt_oe_order_number( ln_cnt_om_order )      := gt_oe_order_all( om_data_no ).order_number;
-          gt_oe_header_id( ln_cnt_om_order )         := gt_oe_order_all( om_data_no ).header_id;
-          gt_oe_he_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).head_flow_status_code;
-          gt_oe_order_source_id( ln_cnt_om_order )   := gt_oe_order_all( om_data_no ).order_source_id;
-          gt_oe_cust_po_number( ln_cnt_om_order )    := gt_oe_order_all( om_data_no ).cust_po_number;
-          gt_oe_line_id( ln_cnt_om_order )           := gt_oe_order_all( om_data_no ).line_id;
-          gt_oe_li_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).line_flow_status_code;
-          ln_cnt_om_order := ln_cnt_om_order + 1;
-        END LOOP om_order_loop;
-      END IF;
+        BEGIN
+          OPEN  get_oe_order_cur;
+          -- バルクフェッチ
+          FETCH get_oe_order_cur BULK COLLECT INTO gt_oe_order_all;
+          -- 抽出件数セット
+          gn_om_data_cnt := get_oe_order_cur%ROWCOUNT;
+          -- カーソルCLOSE
+          CLOSE get_oe_order_cur;
+        EXCEPTION
+          WHEN OTHERS THEN
+            IF( get_oe_order_cur%ISOPEN ) THEN
+              CLOSE get_oe_order_cur;
+            END IF;
+            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_om_order );
+            --キー編集表変数設定
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_order_no );
+--            lv_key_name2 := NULL;
+--            lv_key_data1 := lt_order_no_ebs;
+--            lv_key_data2 := NULL;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_order_no ), -- 項目名称１
+            iv_data_value1 => lt_order_no_ebs,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+        END;
 --
-      -- 赤・黒の金額換算
-      --黒の時
-      IF ( lt_red_black_flag = cv_black_flag) THEN
-        -- 売上金額合計
-        lt_set_sale_amount_sum := lt_sale_amount_sum;
-        -- 本体金額合計
-        lt_set_pure_amount_sum := lt_pure_amount_sum;
-        -- 消費税金額合計
-        lt_set_tax_amount_sum := lt_tax_amount_sum;
-      -- 赤の時
-      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-        -- 売上金額合計
-        lt_set_sale_amount_sum := ( lt_sale_amount_sum * ( -1 ) );
-        -- 本体金額合計
-        lt_set_pure_amount_sum := ( lt_pure_amount_sum * ( -1 ) );
-        -- 消費税金額合計
-        lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
-      END IF;
-      --==========================
-      -- ヘッダデータの変数挿入
-      --==========================
-      gt_head_id( gn_head_data_no )                      := ln_actual_id;               -- 販売実績ヘッダID
-      gt_head_order_no_ebs( gn_head_data_no )            := lt_order_no_ebs;            -- 受注番号
-      gt_head_hht_invoice_no( gn_head_data_no )          := lt_hht_invoice_no;          -- 納品伝票番号
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        IF ( gn_om_data_cnt > 0 ) THEN
+        IF ( gn_om_data_cnt > 0 ) AND ( lv_state_flg <> cv_status_warn )THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+          <<om_order_loop>>
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          FOR om_data_no IN ln_cnt_om_order..gn_om_data_cnt LOOP
+          FOR om_data_no IN 1..gn_om_data_cnt LOOP
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+            -- ====================================
+            -- OM受注情報格納
+            -- ====================================
+            ln_cnt_om_order := ln_cnt_om_order + 1;
+            gt_oe_order_number( ln_cnt_om_order )      := gt_oe_order_all( om_data_no ).order_number;
+            gt_oe_header_id( ln_cnt_om_order )         := gt_oe_order_all( om_data_no ).header_id;
+            gt_oe_he_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).head_flow_status_code;
+            gt_oe_order_source_id( ln_cnt_om_order )   := gt_oe_order_all( om_data_no ).order_source_id;
+            gt_oe_cust_po_number( ln_cnt_om_order )    := gt_oe_order_all( om_data_no ).cust_po_number;
+            gt_oe_line_id( ln_cnt_om_order )           := gt_oe_order_all( om_data_no ).line_id;
+            gt_oe_li_flow_status_code( ln_cnt_om_order )  := gt_oe_order_all( om_data_no ).line_flow_status_code;
+          END LOOP om_order_loop;
+        END IF;
+--
+        -- 赤・黒の金額換算
+        --黒の時
+        IF ( lt_red_black_flag = cv_black_flag) THEN
+          -- 売上金額合計
+          lt_set_sale_amount_sum := lt_sale_amount_sum;
+          -- 本体金額合計
+          lt_set_pure_amount_sum := lt_pure_amount_sum;
+          -- 消費税金額合計
+          lt_set_tax_amount_sum := lt_tax_amount_sum;
+        -- 赤の時
+        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+          -- 売上金額合計
+          lt_set_sale_amount_sum := ( lt_sale_amount_sum * ( -1 ) );
+          -- 本体金額合計
+          lt_set_pure_amount_sum := ( lt_pure_amount_sum * ( -1 ) );
+          -- 消費税金額合計
+          lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
+        END IF;
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      --================================
+      --販売実績ヘッダID(シーケンス取得)
+      --================================
+        SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+        INTO ln_actual_id
+        FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--
+        --==========================
+        -- ヘッダデータの変数挿入
+        --==========================
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        gt_dlv_hht_head_row_id( gn_head_data_no )          := lt_row_id;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+        gt_head_id( gn_head_data_no )                      := ln_actual_id;               -- 販売実績ヘッダID
+        gt_head_order_no_ebs( gn_head_data_no )            := lt_order_no_ebs;            -- 受注番号
+        gt_head_hht_invoice_no( gn_head_data_no )          := lt_hht_invoice_no;          -- 納品伝票番号
 --      gt_head_delivery_pat_class( gn_head_data_no )      := lv_delivery_type;           -- 納品形態区分
-      gt_head_order_no_hht( gn_head_data_no )            := lt_order_no_hht;            -- 受注No(HHT)
-      gt_head_digestion_ln_number( gn_head_data_no )     := lt_digestion_ln_number;     -- 受注No(HHT)枝番
-      gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;        -- 納品伝票区分(導出)
-      gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cancel_correct_class;    -- 取消・訂正区分
-      gt_head_system_class( gn_head_data_no )            := lt_system_class;            -- 業態区分(業態小分類)
-      gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                -- 納品日
-      gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;            -- 検収日(売上計上日)
-      gt_head_customer_number( gn_head_data_no )         := lt_customer_number;         -- 顧客【納品先】
-      gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;     -- 売上金額合計
-      gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;     -- 本体金額合計
-      gt_head_sales_consump_tax( gn_head_data_no )       := lt_set_tax_amount_sum;      -- 消費税金額合計(半導出)
-      gt_head_consump_tax_class( gn_head_data_no )       := lt_consum_type;             -- 消費税区分(導出)
-      gt_head_tax_code( gn_head_data_no )                := lt_consum_code;             -- 税金コード(導出)
-      gt_head_tax_rate( gn_head_data_no )                := lt_tax_consum;              -- 消費税率(導出)
-      gt_head_performance_by_code( gn_head_data_no )     := lt_performance_by_code;     -- 成績計上者コード
-      gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;          -- 売上拠点コード(導出)
-      gt_head_card_sale_class( gn_head_data_no )         := lt_card_sale_class;         -- カード売り区分
+        gt_head_order_no_hht( gn_head_data_no )            := lt_order_no_hht;            -- 受注No(HHT)
+        gt_head_digestion_ln_number( gn_head_data_no )     := lt_digestion_ln_number;     -- 受注No(HHT)枝番
+        gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;        -- 納品伝票区分(導出)
+        gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cancel_correct_class;    -- 取消・訂正区分
+        gt_head_system_class( gn_head_data_no )            := lt_system_class;            -- 業態区分(業態小分類)
+        gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                -- 納品日
+        gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;            -- 検収日(売上計上日)
+        gt_head_customer_number( gn_head_data_no )         := lt_customer_number;         -- 顧客【納品先】
+        gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;     -- 売上金額合計
+        gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;     -- 本体金額合計
+        gt_head_sales_consump_tax( gn_head_data_no )       := lt_set_tax_amount_sum;      -- 消費税金額合計(半導出)
+        gt_head_consump_tax_class( gn_head_data_no )       := lt_consum_type;             -- 消費税区分(導出)
+        gt_head_tax_code( gn_head_data_no )                := lt_consum_code;             -- 税金コード(導出)
+        gt_head_tax_rate( gn_head_data_no )                := lt_tax_consum;              -- 消費税率(導出)
+        gt_head_performance_by_code( gn_head_data_no )     := lt_performance_by_code;     -- 成績計上者コード
+        gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;          -- 売上拠点コード(導出)
+        gt_head_card_sale_class( gn_head_data_no )         := lt_card_sale_class;         -- カード売り区分
 --      gt_head_sales_classification( gn_head_data_no )    := lt_sales_classification;    -- 伝票区分
 --      gt_head_invoice_class( gn_head_data_no )           := lt_sales_invoice;           -- 伝票分類コード
-      gt_head_sales_classification( gn_head_data_no )    := lt_sales_invoice;    -- 伝票区分
-      gt_head_invoice_class( gn_head_data_no )           := lt_sales_classification;           -- 伝票分類コード
-      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;          -- 入金拠点コード(導出)
-      gt_head_change_out_time_100( gn_head_data_no )     := lt_change_out_time_100;     -- つり銭切れ時間100円
-      gt_head_change_out_time_10( gn_head_data_no )      := lt_change_out_time_10;      -- つり銭切れ時間10円
-      gt_head_hht_dlv_input_date( gn_head_data_no )      := ld_input_date;              -- HHT納品入力日時(成型日時)
-      gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;             -- 納品者コード
-      gt_head_business_date( gn_head_data_no )           := gd_process_date;            -- 登録業務日付(初期処理取得)
-      gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                -- 受注ソースID(NULL設定)
-      gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号
-      gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
-      gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
-      gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- GL-IF済フラグ('N')
-      gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- 情報システム-IF済フラグ('N')
-      gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- EDI送信済みフラグ('N'設定)
-      gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                -- EDI送信日時(NULL設定)
-      gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
-      gt_head_input_class( gn_head_data_no )             := lt_input_class;             -- 入力区分
-      gn_head_data_no := gn_head_data_no + 1;
+        gt_head_sales_classification( gn_head_data_no )    := lt_sales_invoice;    -- 伝票区分
+        gt_head_invoice_class( gn_head_data_no )           := lt_sales_classification;           -- 伝票分類コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+--      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;          -- 入金拠点コード(導出)
+        gt_head_receiv_base_code( gn_head_data_no )        := lt_cash_receiv_base_code;   -- 入金拠点コード(導出)
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
+        gt_head_change_out_time_100( gn_head_data_no )     := lt_change_out_time_100;     -- つり銭切れ時間100円
+        gt_head_change_out_time_10( gn_head_data_no )      := lt_change_out_time_10;      -- つり銭切れ時間10円
+        gt_head_hht_dlv_input_date( gn_head_data_no )      := ld_input_date;              -- HHT納品入力日時(成型日時)
+        gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;             -- 納品者コード
+        gt_head_business_date( gn_head_data_no )           := gd_process_date;            -- 登録業務日付(初期処理取得)
+        gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                -- 受注ソースID(NULL設定)
+        gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                -- 注文伝票番号
+        gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                -- 受注関連番号(NULL設定)
+        gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- AR-IF済フラグ('N')
+        gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                   -- GL-IF済フラグ('N')
+        gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- 情報システム-IF済フラグ('N')
+        gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                   -- EDI送信済みフラグ('N'設定)
+        gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                -- EDI送信日時(NULL設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+--        gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
+        gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;        -- 作成元区分(｢4｣設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+        gt_head_input_class( gn_head_data_no )             := lt_input_class;             -- 入力区分
+        gn_head_data_no := gn_head_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
 --
+        <<line_set_loop>>
+        FOR in_data_num IN 1..ln_line_data_count LOOP
+--
+          -- ===================
+          -- 登録用明細ID取得
+          -- ===================
+          SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+          INTO   ln_sales_exp_line_id
+          FROM   DUAL;
+--
+          gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+          gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+          gt_line_dlv_invoice_number( gn_line_data_no )      := gt_accumulation_data(in_data_num).dlv_invoice_number;    -- 納品伝票番号
+          gt_line_dlv_invoice_l_num( gn_line_data_no )       := gt_accumulation_data(in_data_num).dlv_invoice_line_number; -- 納品明細番号
+          gt_line_sales_class( gn_line_data_no )             := gt_accumulation_data(in_data_num).sales_class;           -- 売上区分
+          gt_line_red_black_flag( gn_line_data_no )          := gt_accumulation_data(in_data_num).red_black_flag;        -- 赤黒フラグ
+          gt_line_item_code( gn_line_data_no )               := gt_accumulation_data(in_data_num).item_code;             -- 品目コード
+          gt_line_standard_qty( gn_line_data_no )            := gt_accumulation_data(in_data_num).standard_qty;          -- 基準数量
+          gt_line_standard_uom_code( gn_line_data_no )       := gt_accumulation_data(in_data_num).standard_uom_code;     -- 基準単位
+          gt_line_standard_unit_price( gn_line_data_no )     := gt_accumulation_data(in_data_num).standard_unit_price;   -- 基準単価
+          gt_line_business_cost( gn_line_data_no )           := gt_accumulation_data(in_data_num).business_cost;         -- 営業原価
+          gt_line_sale_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).sale_amount;           -- 売上金額
+          gt_line_pure_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).pure_amount;           -- 本体金額
+          gt_line_tax_amount( gn_line_data_no )              := gt_accumulation_data(in_data_num).tax_amount;            -- 消費税金額
+          gt_line_cash_and_card( gn_line_data_no )           := gt_accumulation_data(in_data_num).cash_and_card;         -- 現金・カード併用額
+          gt_line_ship_from_subinv_co( gn_line_data_no )     := gt_accumulation_data(in_data_num).ship_from_subinventory_code; -- 出荷元保管場所
+          gt_line_delivery_base_code( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_base_code;    -- 納品拠点コード
+          gt_line_hot_cold_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).hot_cold_class;        -- Ｈ＆Ｃ
+          gt_line_column_no( gn_line_data_no )               := gt_accumulation_data(in_data_num).column_no;             -- コラムNo
+          gt_line_sold_out_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).sold_out_class;        -- 売切区分
+          gt_line_sold_out_time( gn_line_data_no )           := gt_accumulation_data(in_data_num).sold_out_time;         -- 売切時間
+          gt_line_to_calculate_fees_flag( gn_line_data_no )  := gt_accumulation_data(in_data_num).to_calculate_fees_flag;-- 手数料計算IF済フラグ
+          gt_line_unit_price_mst_flag( gn_line_data_no )     := gt_accumulation_data(in_data_num).unit_price_mst_flag;   -- 単価マスタ作成済フラグ
+          gt_line_inv_interface_flag( gn_line_data_no )      := gt_accumulation_data(in_data_num).inv_interface_flag;    -- INVインタフェース済フラグ
+          gt_line_order_invoice_l_num( gn_line_data_no )     := gt_accumulation_data(in_data_num).order_invoice_line_number;   -- 注文明細番号
+          gt_line_not_tax_amount( gn_line_data_no )          := gt_accumulation_data(in_data_num).standard_unit_price_excluded;-- 税抜基準単価
+          gt_line_delivery_pat_class( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_pattern_class;      -- 納品形態区分
+          gt_line_dlv_qty( gn_line_data_no )                 := gt_accumulation_data(in_data_num).dlv_qty;                     -- 納品数量
+          gt_line_dlv_uom_code( gn_line_data_no )            := gt_accumulation_data(in_data_num).dlv_uom_code;                -- 納品単位
+          gt_dlv_unit_price( gn_line_data_no )               := gt_accumulation_data(in_data_num).dlv_unit_price;              -- 納品単価
+          gn_line_data_no := gn_line_data_no + 1;
+        END LOOP line_set_loop;
+      END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
 --
     END LOOP header_loop;
 --
@@ -3753,13 +4476,15 @@ AS
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 #
-    WHEN delivered_from_err_expt THEN
-      --
-      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
---      lv_errbuf := lv_errmsg;
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-      ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--    WHEN delivered_from_err_expt THEN
+--      --
+--      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
+----      lv_errbuf := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -3894,6 +4619,9 @@ AS
     lv_depart_code               xxcmm_cust_accounts.dept_hht_div%TYPE;           -- HHT百貨店入力区分
     lt_inc_num                   xxcmm_system_items_b.inc_num%TYPE;               -- 内訳入数
     lt_sale_base_code            xxcmm_cust_accounts.sale_base_code%TYPE;         -- 売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+    lt_cash_receiv_base_code          xxcos_cust_hierarchy_v.cash_receiv_base_code%TYPE;         -- 入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
     lt_sales_cost                ic_item_mst_b.attribute7%TYPE;                   -- 営業原価
     lt_sale_amount_sum           xxcos_sales_exp_headers.sale_amount_sum%TYPE;    -- 売上金額合計
     lt_pure_amount_sum           xxcos_sales_exp_headers.pure_amount_sum%TYPE;    -- 本体金額合計
@@ -3924,6 +4652,12 @@ AS
 --************************** 2009/03/18 1.5 T.kitajima ADD START ************************************
     ln_amount                    NUMBER;                                          -- 作業用金額変数
 --************************** 2009/03/18 1.5 T.kitajima ADD  END  ************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+    lt_row_id                    ROWID;                                           -- 更新用行ID
+    lv_state_flg                 VARCHAR2(1);                                     -- データ警告確認フラグ
+    ln_line_data_count           NUMBER;                                          -- 明細件数(ヘッダ単位)
+    lv_dept_hht_div_flg          VARCHAR2(1);                                     -- HHT百貨店区分エラーフラグ
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --
   BEGIN
 --
@@ -3947,7 +4681,16 @@ AS
       ln_max_invoice_num              := 0;
       -- 最大明細番号
       ln_max_no_data                  := 0;
-      lt_order_no_hht              := TRUNC( gt_inp_dlv_hht_headers_data( ck_no ).order_no_hht );             -- 受注No.(HHT)
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      -- 明細件数カウント(初期化)
+      ln_line_data_count              := 0;
+      -- データ警告確認フラグ(初期化)
+      lv_state_flg                    := cv_status_normal;
+      -- HHT百貨店区分エラー(初期化)
+      lv_dept_hht_div_flg             := cv_status_normal;
+      lt_row_id                    := gt_inp_dlv_hht_headers_data( ck_no ).row_id;                   -- 行ID
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+      lt_order_no_hht              := TRUNC( gt_inp_dlv_hht_headers_data( ck_no ).order_no_hht );    -- 受注No.(HHT)
       lt_digestion_ln_number       := gt_inp_dlv_hht_headers_data( ck_no ).digestion_ln_number;      -- 枝番
       lt_order_no_ebs              := gt_inp_dlv_hht_headers_data( ck_no ).order_no_ebs;             -- 受注No.（EBS）
       lt_base_code                 := gt_inp_dlv_hht_headers_data( ck_no ).base_code;                -- 拠点コード
@@ -3979,21 +4722,29 @@ AS
       lt_results_forward_date      := gt_inp_dlv_hht_headers_data( ck_no ).results_forward_date;     -- 販売実績連携済日付
       lt_cancel_correct_class      := gt_inp_dlv_hht_headers_data( ck_no ).cancel_correct_class;     -- 取消・訂正区分
 --
-      --================================
-      --販売実績ヘッダID(シーケンス取得)
-      --================================
-      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
-      INTO ln_actual_id
-      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--      --================================
+--      --販売実績ヘッダID(シーケンス取得)
+--      --================================
+--      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+--      INTO ln_actual_id
+--      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
       --=========================
       --顧客マスタ付帯情報の導出
       --=========================
       BEGIN
         SELECT  xca.sale_base_code, --売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                xch.cash_receiv_base_code,  --入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 --hca.tax_rounding_rule --税金-端数処理
                 xch.bill_tax_round_rule -- 税金-端数処理(サイト)
         INTO    lt_sale_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                lt_cash_receiv_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 lt_tax_odd
         FROM    hz_cust_accounts hca,  --顧客マスタ
                 xxcmm_cust_accounts xca, --顧客追加情報
@@ -4011,11 +4762,31 @@ AS
           -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
-          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
-          lv_key_data2 := lt_customer_number;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
+--          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
+--          lv_key_data2 := lt_customer_number;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code ), -- 項目名称２
+            iv_data_value1 => ( cv_customer_type_c||cv_con_char||cv_customer_type_u ),         -- データの値１
+            iv_data_value2 => lt_customer_number,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       -- ========================
@@ -4051,11 +4822,31 @@ AS
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg(cv_application, cv_msg_lookup_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
-          lv_key_data1 := lt_consumption_tax_class;
-          lv_key_data2 := cv_lookup_type;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
+--          lv_key_data1 := lt_consumption_tax_class;
+--          lv_key_data2 := cv_lookup_type;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type ), -- 項目名称２
+            iv_data_value1 => lt_consumption_tax_class,         -- データの値１
+            iv_data_value2 => cv_lookup_type,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
       --====================
@@ -4079,11 +4870,29 @@ AS
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax );
-          lv_key_name2 := NULL;
-          lv_key_data1 := lt_consum_code;
-          lv_key_data2 := NULL;
-          RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax );
+--          lv_key_name2 := NULL;
+--          lv_key_data1 := lt_consum_code;
+--          lv_key_data2 := NULL;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
+            iv_data_value1 => lt_consum_code,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
       -- 消費税率算出
       ln_tax_data := ( (100 + lt_tax_consum) / 100 );
@@ -4112,140 +4921,207 @@ AS
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_data1 := lt_base_code;
-          lv_key_data2 := cv_bace_branch;
-        RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_data1 := lt_base_code;
+--          lv_key_data2 := cv_bace_branch;
+--        RAISE no_data_extract;
+          lv_dept_hht_div_flg := cv_status_warn;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称２
+            iv_data_value1 => lt_base_code,         -- データの値１
+            iv_data_value2 => cv_bace_branch,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
       END;
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      IF (lv_dept_hht_div_flg <> cv_status_warn) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL )
-        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+        IF ( lv_depart_code IS NULL )
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
-        --参照コードマスタ：営業車の保管場所分類コード取得
-        BEGIN
-          SELECT  look_val.meaning      --保管場所分類コード
-          INTO    lt_location_type_code
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
-          AND     gd_process_date      >= look_val.start_date_active
-          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
-          AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-          AND     look_val.lookup_code = cv_xxcos_001_a05_05;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
-            --キー編集処理用変数
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
-            lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
-            lv_key_data2 := cv_xxcos_001_a05_05;
-          RAISE no_data_extract;
-        END;
+          --参照コードマスタ：営業車の保管場所分類コード取得
+          BEGIN
+            SELECT  look_val.meaning      --保管場所分類コード
+            INTO    lt_location_type_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     app.application_short_name = cv_application
+            AND     look_val.enabled_flag = cv_tkn_yes
+            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code = cv_xxcos_001_a05_05;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+              --キー編集処理用変数
+              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
+              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
+              lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
+              lv_key_data2 := cv_xxcos_001_a05_05;
+            RAISE no_data_extract;
+          END;
 --
-        --保管場所マスタデータ取得
-        BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
-          INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    --保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_location_type_code
-          AND    msi.attribute3 = lt_dlv_by_code;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-            --キー編集処理用変数
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-            lv_key_data1 := lt_base_code;
-            lv_key_data2 := cv_xxcos_001_a05_05;
-          RAISE no_data_extract;
-        END;
+          --保管場所マスタデータ取得
+          BEGIN
+            SELECT msi.secondary_inventory_name     -- 保管場所コード
+            INTO   lt_secondary_inventory_name
+            FROM   mtl_secondary_inventories msi    --保管場所マスタ
+            WHERE  msi.attribute7 = lt_base_code
+            AND    msi.attribute13 = lt_location_type_code
+            AND    msi.attribute3 = lt_dlv_by_code;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+              --キー編集処理用変数
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_05;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+              iv_data_value1 => lt_base_code,         -- データの値１
+              iv_data_value2 => cv_xxcos_001_a05_05,       -- データの値２
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   *****************************************
+          END;
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
 --      ELSIF ( lv_depart_code IS NOT NULL ) THEN
-      ELSIF ( lv_depart_code = cv_depart_type ) 
-        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+        ELSIF ( lv_depart_code = cv_depart_type ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END==========================--*/
-        --参照コードマスタ：百貨店の保管場所分類コード取得
-        BEGIN
-          SELECT  look_val.meaning    --保管場所分類コード
-          INTO    lt_depart_location_type_code
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
-          AND     gd_process_date      >= look_val.start_date_active
-          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
-          AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-          AND     look_val.lookup_code = cv_xxcos_001_a05_09;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-        --キー編集処理
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
-            --キー編集処理用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
-            lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
-            lv_key_data2 := cv_xxcos_001_a05_09;
-          RAISE no_data_extract;
-        END;
+          --参照コードマスタ：百貨店の保管場所分類コード取得
+          BEGIN
+            SELECT  look_val.meaning    --保管場所分類コード
+            INTO    lt_depart_location_type_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     app.application_short_name = cv_application
+            AND     look_val.enabled_flag = cv_tkn_yes
+            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code = cv_xxcos_001_a05_09;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              --キー編集処理
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+              --キー編集処理用変数設定
+              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
+              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
+              lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
+              lv_key_data2 := cv_xxcos_001_a05_09;
+            RAISE no_data_extract;
+          END;
 --
-        --保管場所マスタデータ取得
-        BEGIN
-          SELECT msi.secondary_inventory_name           -- 保管場所名称
-          INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
-                 mtl_parameters mp                      -- 組織パラメータ
-          WHERE  msi.organization_id=mp.organization_id
-          AND    mp.organization_code = gv_orga_code
-          AND    msi.attribute4       = lt_keep_in_code
-          AND    msi.attribute13      = lt_depart_location_type_code;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-            --キー編集処理用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-            lv_key_data1 := lt_base_code;
-            lv_key_data2 := cv_xxcos_001_a05_09;
-          RAISE no_data_extract;
-        END;
+          --保管場所マスタデータ取得
+          BEGIN
+            SELECT msi.secondary_inventory_name           -- 保管場所名称
+            INTO   lt_secondary_inventory_name
+            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                   mtl_parameters mp                      -- 組織パラメータ
+            WHERE  msi.organization_id=mp.organization_id
+            AND    mp.organization_code = gv_orga_code
+            AND    msi.attribute4       = lt_keep_in_code
+            AND    msi.attribute13      = lt_depart_location_type_code;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+              --キー編集処理用変数設定
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_09;
+--            RAISE no_data_extract;
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+                iv_data_value1 => lt_base_code,         -- データの値１
+                iv_data_value2 => cv_xxcos_001_a05_09,       -- データの値２
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
+          END;
 --
+        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
       END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --
       -- =============
       -- 納品形態区分の導出
@@ -4260,7 +5136,14 @@ AS
                                            lv_retcode,
                                            lv_errmsg );
       IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE delivered_from_err_expt;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        RAISE delivered_from_err_expt;
+      lv_state_flg    := cv_status_warn;
+      gn_wae_data_num := gn_wae_data_num + 1 ;
+      gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,
+                                                iv_name          => cv_msg_delivered_from_err );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END IF;
 --
       -- ===================
@@ -4280,11 +5163,29 @@ AS
             -- ログ出力          
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_emp_data_mst );
             --キー編集用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
-            lv_key_name2 := NULL;
-            lv_key_data1 := lt_dlv_by_code;
-            lv_key_data2 := NULL;
-      RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
+--            lv_key_name2 := NULL;
+--            lv_key_data1 := lt_dlv_by_code;
+--            lv_key_data2 := NULL;
+--         RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv ), -- 項目名称１
+              iv_data_value1 => lt_dlv_by_code,         -- データの値１
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END;
 --
         -- =====================
@@ -4318,14 +5219,32 @@ AS
             AND     look_val.lookup_code = lt_input_class;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
+              -- ログ出力
               gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
               --キー編集表変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
-              lv_key_name2 := NULL;
-              lv_key_data1 := lt_input_class;
-              lv_key_data2 := NULL;
-            RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
+--              lv_key_name2 := NULL;
+--              lv_key_data1 := lt_input_class;
+--              lv_key_data2 := NULL;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp ), -- 項目名称１
+              iv_data_value1 => lt_input_class,         -- データの値１
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
           END;
 --
       --明細データ取得
@@ -4354,12 +5273,17 @@ AS
 --
         EXIT WHEN ( ( lt_order_no_hht || lt_digestion_ln_number ) <> ( lt_lin_order_no_hht || lt_lin_digestion_ln_number ) );
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
         --====================================
         --営業原価の導出(販売実績明細(コラム))
@@ -4389,44 +5313,68 @@ AS
 /*--==============2009/2/4-END==========================--*/
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-          --キー編集処理
-            -- ログ出力          
+            --キー編集処理
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
-            lv_key_data1 := lt_lin_item_code_self;
-            lv_key_data2 := gn_orga_id;
-            RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
+--            lv_key_data1 := lt_lin_item_code_self;
+--            lv_key_data2 := gn_orga_id;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code ), -- 項目名称１
+              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id ), -- 項目名称２
+              iv_data_value1 => lt_lin_item_code_self,         -- データの値１
+              iv_data_value2 => gn_orga_id,       -- データの値２
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
         END;
-        -- ===================================
-        -- 営業原価判定
-        -- ===================================
-        IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
-          lt_sales_cost := lt_old_sales_cost;
-        ELSE
-          lt_sales_cost := lt_new_sales_cost;
-        END IF;
 --
-        -- ============
-        -- 明細金額算出
-        -- ============
-        -- 基準単価
-        lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
-        
-        IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+          -- ===================================
+          -- 営業原価判定
+          -- ===================================
+          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
+            lt_sales_cost := lt_old_sales_cost;
+          ELSE
+            lt_sales_cost := lt_new_sales_cost;
+          END IF;
 --
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
-          lt_tax_amount            := cn_cons_tkn_zero;
+          -- ============
+          -- 明細金額算出
+          -- ============
+          -- 基準単価
+          lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
 --
-        ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+          IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
-          -- 売上金額
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
+            lt_tax_amount            := cn_cons_tkn_zero;
+--
+          ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+--
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
 --                                        * ln_tax_data );
@@ -4441,26 +5389,26 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-         -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_tax_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
 --          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
@@ -4474,25 +5422,25 @@ AS
 --              lt_tax_amount := ROUND( lt_tax_amount );
 --            END IF;
 --          END IF;
-          ln_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            ln_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-          -- 売上金額
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
 --                                        * ln_tax_data );
@@ -4507,26 +5455,26 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_tax_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
 --          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
@@ -4540,42 +5488,42 @@ AS
 --              lt_tax_amount := ROUND( lt_tax_amount );
 --            END IF;
 --          END IF;
-          ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 税抜基準単価
-          ln_amount := ( lt_lin_wholesale_unit_ploce / ln_tax_data );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_stand_unit_price_excl := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_stand_unit_price_excl := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_stand_unit_price_excl := ROUND( ln_amount );
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 税抜基準単価
+            ln_amount := ( lt_lin_wholesale_unit_ploce / ln_tax_data );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_stand_unit_price_excl := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_stand_unit_price_excl := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_stand_unit_price_excl := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_stand_unit_price_excl := ln_amount;
             END IF;
-          ELSE
-            lt_stand_unit_price_excl := ln_amount;
-          END IF;
-          -- 本体金額
+            -- 本体金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_pure_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
 --          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
@@ -4589,101 +5537,140 @@ AS
 --              lt_pure_amount := ROUND( lt_pure_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_pure_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_pure_amount := ROUND( ln_amount );
+            ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_pure_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_pure_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_pure_amount := ln_amount;
             END IF;
-          ELSE
-            lt_pure_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額
-          lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
-                                         - lt_pure_amount );
+            -- 消費税金額
+            lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
+                                           - lt_pure_amount );
 --
-        END IF;
---
-        -- 非課税時以外
-        IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
-          -- 消費税合計積上げ
-            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
-          -- 明細最大消費税取得
-          IF ( ln_max_tax_data < lt_tax_amount ) THEN
-            ln_max_tax_data := lt_tax_amount;
-            ln_max_no_data  := gn_line_data_no;
           END IF;
-        END IF;
 --
-        -- 明細最大行No確認
-        IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
-          IF ( ln_max_invoice_num IS NULL) OR ( ln_max_invoice_num < lt_lin_line_no_hht ) THEN
-            ln_max_invoice_num := lt_lin_line_no_hht;
+          -- 非課税時以外
+          IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+            -- 消費税合計積上げ
+              ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+            -- 明細最大消費税取得
+            IF ( ln_max_tax_data < lt_tax_amount ) THEN
+              ln_max_tax_data := lt_tax_amount;
+--******************************* 2009/04/21 N.Maeda Var1.10 MOD START ***************************************
+             -- ln_max_no_data  := gn_line_data_no;
+              ln_max_no_data  := ln_line_data_count;
+--******************************* 2009/04/21 N.Maeda Var1.10 MOD END   ***************************************
+            END IF;
           END IF;
-        END IF;
 --
-        -- 赤・黒の金額換算
-        --黒の時
-        IF ( lt_red_black_flag = cv_black_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := lt_lin_replenish_number;
-          -- 売上金額
-          lt_set_sale_amount := lt_sale_amount;
-          -- 本体金額
-          lt_set_pure_amount := lt_pure_amount;
-          -- 消費税金額
-          lt_set_tax_amount := lt_tax_amount;
-        -- 赤の時
-        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := ( lt_lin_replenish_number * ( -1 ) );
-          -- 売上金額
-          lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
-          -- 本体金額
-          lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
-          -- 消費税金額
-          lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          -- 明細最大行No確認
+          IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+            IF ( ln_max_invoice_num IS NULL) OR ( ln_max_invoice_num < lt_lin_line_no_hht ) THEN
+              ln_max_invoice_num := lt_lin_line_no_hht;
+            END IF;
+          END IF;
+--
+          -- 赤・黒の金額換算
+          --黒の時
+          IF ( lt_red_black_flag = cv_black_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := lt_lin_replenish_number;
+            -- 売上金額
+            lt_set_sale_amount := lt_sale_amount;
+            -- 本体金額
+            lt_set_pure_amount := lt_pure_amount;
+            -- 消費税金額
+            lt_set_tax_amount := lt_tax_amount;
+          -- 赤の時
+          ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := ( lt_lin_replenish_number * ( -1 ) );
+            -- 売上金額
+            lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
+            -- 本体金額
+            lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
+            -- 消費税金額
+            lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        --====================
+--        --明細データの変数挿入
+--        --====================
+--        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+--        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+--        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
+--        gt_line_dlv_invoice_l_num( gn_line_data_no )       := lt_lin_line_no_hht;           -- 納品明細番号
+--        gt_line_sales_class( gn_line_data_no )             := lt_lin_sale_class;            -- 売上区分
+--        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
+--        gt_line_item_code( gn_line_data_no )               := lt_lin_item_code_self;        -- 品目コード
+--        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
+--        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
+--        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
+--        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
+--        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
+--        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
+--        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
+--        gt_line_cash_and_card( gn_line_data_no )           := lt_lin_cash_and_card;         -- 現金・カード併用額
+--        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
+--        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
+--        gt_line_hot_cold_class( gn_line_data_no )          := lt_lin_h_and_c;               -- Ｈ＆Ｃ
+--        gt_line_column_no( gn_line_data_no )               := lt_lin_column_no;             -- コラムNo
+--        gt_line_sold_out_class( gn_line_data_no )          := lt_lin_sold_out_class;        -- 売切区分
+--        gt_line_sold_out_time( gn_line_data_no )           := lt_lin_sold_out_time;         -- 売切時間
+--        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算-IF済フラグ
+--        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
+--        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INV-IF済フラグ
+--        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
+--        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
+--        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
+--        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
+--        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
+--        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
+--        gn_line_data_no := gn_line_data_no + 1;
+          -- ===================
+          -- 一時格納用
+          -- ===================
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_hht_invoice_no;             -- 納品伝票番号
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := lt_lin_line_no_hht;            -- 納品明細番号
+          gt_accumulation_data(ln_line_data_count).sales_class                := lt_lin_sale_class;             -- 売上区分
+          gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;             -- 赤黒フラグ
+          gt_accumulation_data(ln_line_data_count).item_code                  := lt_lin_item_code_self;         -- 品目コード
+          gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_set_replenish_number;       -- 納品数量
+          gt_accumulation_data(ln_line_data_count).standard_qty               := lt_set_replenish_number;       -- 基準数量
+          gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;                 -- 納品単位
+          gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;                 -- 基準単位
+          gt_accumulation_data(ln_line_data_count).dlv_unit_price             := lt_standard_unit_price;        -- 納品単価
+          gt_accumulation_data(ln_line_data_count).standard_unit_price        := lt_standard_unit_price;        -- 基準単価
+          gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+          gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount;            -- 売上金額
+          gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount;            -- 本体金額
+          gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount;             -- 消費税金額
+          gt_accumulation_data(ln_line_data_count).cash_and_card              := lt_lin_cash_and_card;          -- 現金・カード併用額
+          gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
+          gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
+          gt_accumulation_data(ln_line_data_count).hot_cold_class             := lt_lin_h_and_c;                -- Ｈ＆Ｃ
+          gt_accumulation_data(ln_line_data_count).column_no                  := lt_lin_column_no;              -- コラムNo
+          gt_accumulation_data(ln_line_data_count).sold_out_class             := lt_lin_sold_out_class;         -- 売切区分
+          gt_accumulation_data(ln_line_data_count).sold_out_time              := lt_lin_sold_out_time;          -- 売切時間
+          gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                      -- 手数料計算インタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                      -- 単価マスタ作成済フラグ
+          gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                      -- INVインタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;                   -- 注文明細番号(NULL設定)
+          gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := lt_stand_unit_price_excl;    -- 税抜基準単価
+          gt_accumulation_data(ln_line_data_count).delivery_pattern_class     :=   lv_delivery_type;            -- 納品形態区分(導出)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
         END IF;
-        --====================
-        --明細データの変数挿入
-        --====================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := lt_lin_line_no_hht;           -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := lt_lin_sale_class;            -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := lt_lin_item_code_self;        -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := lt_lin_cash_and_card;         -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := lt_lin_h_and_c;               -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := lt_lin_column_no;             -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := lt_lin_sold_out_class;        -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := lt_lin_sold_out_time;         -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算-IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INV-IF済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
-        gn_line_data_no := gn_line_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
         ln_line_no := ln_line_no + 1;
 --
       END LOOP line_loop;
@@ -4694,12 +5681,17 @@ AS
       -- 値引きが発生している場合
       IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
 --
         -- =================================
         -- 営業原価、基準単位を導出
@@ -4728,7 +5720,7 @@ AS
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             --キー編集処理
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
             lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
             lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
@@ -4736,94 +5728,99 @@ AS
             lv_key_data2 := gn_orga_id;
             RAISE no_data_extract;
         END;
-        -- ===================================
-        -- 営業原価判定
-        -- ===================================
-        IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
-          lt_sales_cost := lt_old_sales_cost;
-        ELSE
-          lt_sales_cost := lt_new_sales_cost;
-        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
+          -- ===================================
+          -- 営業原価判定
+          -- ===================================
+          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
+            lt_sales_cost := lt_old_sales_cost;
+          ELSE
+            lt_sales_cost := lt_new_sales_cost;
+          END IF;
 --
-/*--==============2009/2/3-START=========================--*/
---        IF ( lv_depart_code = cv_depart_car ) THEN
-        IF ( lv_depart_code IS NULL )
-          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
-/*--==============2009/2/3-END==========================--*/
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--/*--==============2009/2/3-START=========================--*/
+----        IF ( lv_depart_code = cv_depart_car ) THEN
+--        IF ( lv_depart_code IS NULL )
+--          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+--/*--==============2009/2/3-END==========================--*/
+----
+--          --保管場所マスタデータ取得
+--          BEGIN
+--            SELECT msi.secondary_inventory_name     -- 保管場所コード
+--            INTO   lt_secondary_inventory_name
+--            FROM   mtl_secondary_inventories msi    --保管場所マスタ
+--            WHERE  msi.attribute7 = lt_base_code
+--            AND    msi.attribute13 = lt_location_type_code;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力          
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--              --キー編集処理用変数
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--              lv_key_data1 := lt_base_code;
+--              lv_key_data2 := cv_xxcos_001_a05_05;
+--            RAISE no_data_extract;
+--          END;
+----
+--/*--==============2009/2/3-START=========================--*/
+----        ELSIF ( lv_depart_code = cv_depart_type ) THEN
+----        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--        ELSIF ( lv_depart_code = cv_depart_type ) 
+--          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+--/*--==============2009/2/3-END==========================--*/
+----
+--          --保管場所マスタデータ取得
+--          BEGIN
+--            SELECT msi.secondary_inventory_name           -- 保管場所名称
+--            INTO   lt_secondary_inventory_name
+--            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+--                   mtl_parameters mp                      -- 組織パラメータ
+--            WHERE  msi.organization_id=mp.organization_id
+--            AND    mp.organization_code = gv_orga_code
+--            AND    msi.attribute4       = lt_keep_in_code
+--            AND    msi.attribute13      = lt_depart_location_type_code;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--              --キー編集処理用変数設定
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--              lv_key_data1 := lt_base_code;
+--              lv_key_data2 := cv_xxcos_001_a05_09;
+--            RAISE no_data_extract;
+--          END;
+----
+--        END IF;
 --
-          --保管場所マスタデータ取得
-          BEGIN
-            SELECT msi.secondary_inventory_name     -- 保管場所コード
-            INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi    --保管場所マスタ
-            WHERE  msi.attribute7 = lt_base_code
-            AND    msi.attribute13 = lt_location_type_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-              --キー編集処理用変数
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-              lv_key_data1 := lt_base_code;
-              lv_key_data2 := cv_xxcos_001_a05_05;
-            RAISE no_data_extract;
-          END;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
+          -- ================
+          -- 金額算出処理
+          -- ================
+          IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
-/*--==============2009/2/3-START=========================--*/
---        ELSIF ( lv_depart_code = cv_depart_type ) THEN
---        ELSIF ( lv_depart_code IS NOT NULL ) THEN
-        ELSIF ( lv_depart_code = cv_depart_type ) 
-          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
-/*--==============2009/2/3-END==========================--*/
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
+            lt_sale_amount           := lt_sale_discount_amount;
+            -- 本体金額
+            lt_pure_amount           := lt_sale_discount_amount;
+            -- 消費税金額
+            lt_tax_amount            := ( lt_sale_amount - lt_pure_amount );
 --
-          --保管場所マスタデータ取得
-          BEGIN
-            SELECT msi.secondary_inventory_name           -- 保管場所名称
-            INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
-                   mtl_parameters mp                      -- 組織パラメータ
-            WHERE  msi.organization_id=mp.organization_id
-            AND    mp.organization_code = gv_orga_code
-            AND    msi.attribute4       = lt_keep_in_code
-            AND    msi.attribute13      = lt_depart_location_type_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-              --キー編集処理用変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-              lv_key_data1 := lt_base_code;
-              lv_key_data2 := cv_xxcos_001_a05_09;
-            RAISE no_data_extract;
-          END;
+          ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-        END IF;
---
-        -- ================
-        -- 金額算出処理
-        -- ================
-        IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
---
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
-          lt_sale_amount           := lt_sale_discount_amount;
-          -- 本体金額
-          lt_pure_amount           := lt_sale_discount_amount;
-          -- 消費税金額
-          lt_tax_amount            := ( lt_sale_amount - lt_pure_amount );
---
-        ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
---
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -4837,46 +5834,46 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := lt_sale_discount_amount;
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := lt_sale_discount_amount;
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 本体金額
-          lt_pure_amount           := lt_sale_discount_amount;
-          -- 消費税金額
-          ln_amount            := ( lt_sale_amount * ( ln_tax_data - 1 ) );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            -- 本体金額
+            lt_pure_amount           := lt_sale_discount_amount;
+            -- 消費税金額
+            ln_amount            := ( lt_sale_amount * ( ln_tax_data - 1 ) );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount := ln_amount;
-          END IF;
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := ( lt_sale_discount_amount );
-          -- 売上金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := ( lt_sale_discount_amount );
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -4890,62 +5887,61 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_sale_discount_amount );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 本体金額
-          lt_pure_amount           := lt_sale_discount_amount;
-          -- 消費税金額
-          ln_amount            := ( lt_sale_amount * ( ln_tax_data - 1 ) );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            -- 本体金額
+            lt_pure_amount           := lt_sale_discount_amount;
+            -- 消費税金額
+            ln_amount            := ( lt_sale_amount * ( ln_tax_data - 1 ) );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount := ln_amount;
-          END IF;
-          
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-          -- 税抜基準単価
-          ln_amount := ( lt_sale_discount_amount / ln_tax_data);
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_stand_unit_price_excl := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_stand_unit_price_excl := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_stand_unit_price_excl := ROUND( ln_amount );
+            -- 税抜基準単価
+            ln_amount := ( lt_sale_discount_amount / ln_tax_data);
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_stand_unit_price_excl := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_stand_unit_price_excl := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_stand_unit_price_excl := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_stand_unit_price_excl := ln_amount;
             END IF;
-          ELSE
-            lt_stand_unit_price_excl := ln_amount;
-          END IF;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
-          lt_sale_amount           := lt_sale_discount_amount;
-          -- 本体金額
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
+            lt_sale_amount           := lt_sale_discount_amount;
+            -- 本体金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_pure_amount           := ( lt_sale_discount_amount / ln_tax_data);
 --          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
@@ -4959,110 +5955,150 @@ AS
 --              lt_pure_amount := ROUND( lt_pure_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount / ln_tax_data);
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_pure_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_pure_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_sale_discount_amount / ln_tax_data);
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_pure_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_pure_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_pure_amount := ln_amount;
             END IF;
-          ELSE
-            lt_pure_amount := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額
-          lt_tax_amount            := ( lt_sale_amount - lt_pure_amount );
-        END IF;
+            -- 消費税金額
+            lt_tax_amount            := ( lt_sale_amount - lt_pure_amount );
+          END IF;
 --
-        -- 値引用納品明細番号設定
-        ln_max_invoice_num := ln_max_invoice_num + 1;
-        -- 登録用値引金額設定
-        lt_sale_amount := ( lt_sale_amount * ( -1 ) );
-        lt_pure_amount := ( lt_pure_amount * ( -1 ) );
-        lt_tax_amount  := ( lt_tax_amount * ( -1 ) );
+          -- 値引用納品明細番号設定
+          ln_max_invoice_num := ln_max_invoice_num + 1;
+          -- 登録用値引金額設定
+          lt_sale_amount := ( lt_sale_amount * ( -1 ) );
+          lt_pure_amount := ( lt_pure_amount * ( -1 ) );
+          lt_tax_amount  := ( lt_tax_amount * ( -1 ) );
 --
-        -- 赤・黒の金額換算
-        --黒の時
-        IF ( lt_red_black_flag = cv_black_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := cn_disc_standard_qty;
-          -- 売上金額
-          lt_set_sale_amount := lt_sale_amount;
-          -- 本体金額
-          lt_set_pure_amount := lt_pure_amount;
-          -- 消費税金額
-          lt_set_tax_amount := lt_tax_amount;
-        -- 赤の時
-        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := ( cn_disc_standard_qty * ( -1 ) );
-          -- 売上金額
-          lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
-          -- 本体金額
-          lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
-          -- 消費税金額
-          lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          -- 赤・黒の金額換算
+          --黒の時
+          IF ( lt_red_black_flag = cv_black_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := cn_disc_standard_qty;
+            -- 売上金額
+            lt_set_sale_amount := lt_sale_amount;
+            -- 本体金額
+            lt_set_pure_amount := lt_pure_amount;
+            -- 消費税金額
+            lt_set_tax_amount := lt_tax_amount;
+          -- 赤の時
+          ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := ( cn_disc_standard_qty * ( -1 ) );
+            -- 売上金額
+            lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
+            -- 本体金額
+            lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
+            -- 消費税金額
+            lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        -- =========================================
+--        -- 値引き明細データセット
+--        -- =========================================
+--        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+--        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+--        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
+--        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_max_invoice_num;           -- 納品明細番号
+--        gt_line_sales_class( gn_line_data_no )             := cv_sales_st_class;            -- 売上区分
+--        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
+--        gt_line_item_code( gn_line_data_no )               := gv_disc_item;                 -- 品目コード
+--        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
+--        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
+--        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
+--        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
+--        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
+--        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
+--        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
+--        gt_line_cash_and_card( gn_line_data_no )           := cn_tkn_zero;                  -- 現金・カード併用額
+--        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
+--        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
+--        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;                  -- Ｈ＆Ｃ
+--        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;                  -- コラムNo
+--        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;                  -- 売切区分
+--        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;                  -- 売切時間
+--        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算IF済フラグ
+--        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
+--        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INVインタフェース済フラグ
+--        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
+--        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
+--        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
+--        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
+--        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
+--        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
+--        gn_line_data_no := gn_line_data_no + 1;
+--
+          -- ===================
+          -- 一時格納用
+          -- ===================
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_hht_invoice_no;             -- 納品伝票番号
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := ln_max_invoice_num;            -- 納品明細番号
+          gt_accumulation_data(ln_line_data_count).sales_class                := cv_sales_st_class;             -- 売上区分
+          gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;             -- 赤黒フラグ
+          gt_accumulation_data(ln_line_data_count).item_code                  := gv_disc_item;                  -- 品目コード
+          gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_set_replenish_number;       -- 納品数量
+          gt_accumulation_data(ln_line_data_count).standard_qty               := lt_set_replenish_number;       -- 基準数量
+          gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;                 -- 納品単位
+          gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;                 -- 基準単位
+          gt_accumulation_data(ln_line_data_count).dlv_unit_price             := lt_standard_unit_price;        -- 納品単価
+          gt_accumulation_data(ln_line_data_count).standard_unit_price        := lt_standard_unit_price;        -- 基準単価
+          gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+          gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount;            -- 売上金額
+          gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount;            -- 本体金額
+          gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount;             -- 消費税金額
+          gt_accumulation_data(ln_line_data_count).cash_and_card              := cn_tkn_zero;                   -- 現金・カード併用額
+          gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
+          gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
+          gt_accumulation_data(ln_line_data_count).hot_cold_class             := cv_tkn_null;                   -- Ｈ＆Ｃ
+          gt_accumulation_data(ln_line_data_count).column_no                  := cv_tkn_null;                   -- コラムNo
+          gt_accumulation_data(ln_line_data_count).sold_out_class             := cv_tkn_null;                   -- 売切区分
+          gt_accumulation_data(ln_line_data_count).sold_out_time              := cv_tkn_null;                   -- 売切時間
+          gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                      -- 手数料計算インタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                      -- 単価マスタ作成済フラグ
+          gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                      -- INVインタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;                   -- 注文明細番号(NULL設定)
+          gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := lt_stand_unit_price_excl;    -- 税抜基準単価
+          gt_accumulation_data(ln_line_data_count).delivery_pattern_class     := lv_delivery_type;              -- 納品形態区分(導出)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
         END IF;
-        -- =========================================
-        -- 値引き明細データセット
-        -- =========================================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_max_invoice_num;           -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := cv_sales_st_class;            -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := gv_disc_item;                 -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := cn_tkn_zero;                  -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;                  -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;                  -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;                  -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;                  -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INVインタフェース済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
-        gn_line_data_no := gn_line_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --
       END IF;
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
 --
-      -- ==================
-      -- ヘッダ登録用金額算出
-      -- ==================
-      IF ( lt_consumption_tax_class = cv_non_tax ) THEN           -- 非課税
+        -- ==================
+        -- ヘッダ登録用金額算出
+        -- ==================
+        IF ( lt_consumption_tax_class = cv_non_tax ) THEN           -- 非課税
 --
-        -- 売上金額合計
-        lt_sale_amount_sum := lt_total_amount;
-        -- 本体金額合計
-        lt_pure_amount_sum := lt_total_amount;
-        -- 消費税金額合計
-        lt_tax_amount_sum  := NVL( lt_sales_consumption_tax, cn_cons_tkn_zero );
-      ELSE
-       --値引発生時
-        IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+          -- 売上金額合計
+          lt_sale_amount_sum := lt_total_amount;
+          -- 本体金額合計
+          lt_pure_amount_sum := lt_total_amount;
+          -- 消費税金額合計
+          lt_tax_amount_sum  := NVL( lt_sales_consumption_tax, cn_cons_tkn_zero );
+        ELSE
+         --値引発生時
+          IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
-          IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+            IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-            -- 売上金額合計
+              -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_sale_amount_sum := ( ( lt_total_amount - lt_sale_discount_amount ) * ln_tax_data );
 --              IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
@@ -5076,42 +6112,42 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --                END IF;
 --              END IF;
-              ln_amount := lt_tax_include;
-              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-                IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-                -- 切捨て
-                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                  lt_sale_amount_sum := TRUNC( ln_amount );
-                -- 四捨五入
-                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
+                ln_amount := lt_tax_include;
+                IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                  IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                  -- 切捨て
+                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                    lt_sale_amount_sum := TRUNC( ln_amount );
+                  -- 四捨五入
+                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                    lt_sale_amount_sum := ROUND( ln_amount );
+                  END IF;
+                ELSE
+                  lt_sale_amount_sum := ln_amount;
                 END IF;
-              ELSE
-                lt_sale_amount_sum := ln_amount;
-              END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
               -- 本体金額合計
-              lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-              -- 消費税金額合計
-              ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-                IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
-                -- 切捨て
-                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                  lt_tax_amount_sum := TRUNC( ln_amount );
-                -- 四捨五入
-                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_tax_amount_sum := ROUND( ln_amount );
+                lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+                -- 消費税金額合計
+                ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+                IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                  IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                  -- 切捨て
+                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                    lt_tax_amount_sum := TRUNC( ln_amount );
+                  -- 四捨五入
+                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_tax_amount_sum := ROUND( ln_amount );
+                  END IF;
+                ELSE
+                  lt_tax_amount_sum := ln_amount;
                 END IF;
-              ELSE
-                lt_tax_amount_sum := ln_amount;
-              END IF;
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+            ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-            -- 売上金額合計
+              -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_sale_amount_sum := ( ( lt_total_amount - lt_sale_discount_amount ) * ln_tax_data );
 --            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
@@ -5139,18 +6175,18 @@ AS
 --            ELSE
 --              lt_sale_amount_sum   := ln_amount;
 --            END IF;
-            lt_sale_amount_sum := lt_tax_include;
+              lt_sale_amount_sum := lt_tax_include;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-            -- 消費税金額合計
-            lt_tax_amount_sum  := lt_sales_consumption_tax;
+              -- 本体金額合計
+              lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+              -- 消費税金額合計
+              lt_tax_amount_sum  := lt_sales_consumption_tax;
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+            ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-            -- 売上金額合計
-            lt_sale_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-            -- 本体金額合計
+              -- 売上金額合計
+              lt_sale_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+              -- 本体金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_pure_amount_sum := ( lt_sale_amount_sum / ln_tax_data );
 --            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
@@ -5164,22 +6200,22 @@ AS
 --                 lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := ( lt_sale_amount_sum / ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                 lt_pure_amount_sum:= ROUND( ln_amount );
+              ln_amount := ( lt_sale_amount_sum / ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_pure_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                   lt_pure_amount_sum:= ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_pure_amount_sum := ln_amount;
               END IF;
-            ELSE
-              lt_pure_amount_sum := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 値引消費税算出
+              -- 値引消費税算出
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            ln_discount_tax    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
 --            IF ( ln_discount_tax <> TRUNC( ln_discount_tax ) ) THEN
@@ -5193,29 +6229,78 @@ AS
 --                 ln_discount_tax:= ROUND( ln_discount_tax );
 --              END IF;
 --            END IF;
-            ln_amount    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                ln_discount_tax := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                ln_discount_tax := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                ln_discount_tax := ROUND( ln_amount );
+              ln_amount    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  ln_discount_tax := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  ln_discount_tax := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  ln_discount_tax := ROUND( ln_amount );
+                END IF;
+              ELSE
+                ln_discount_tax   := ln_amount;
               END IF;
-            ELSE
-              ln_discount_tax   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( ln_all_tax_amount - ln_discount_tax );
+              -- 消費税金額合計
+              lt_tax_amount_sum  := ( ln_all_tax_amount - ln_discount_tax );
 --
-          END IF;
-        --値引未発生時金額算出
-        ELSE
+            END IF;
+          --値引未発生時金額算出
+          ELSE
 --
-          IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+            IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+--
+              -- 売上金額合計
+--************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
+--            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
+--            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+--              IF ( lt_tax_odd = cv_amount_up ) THEN
+--              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+--              -- 切捨て
+--              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+--              -- 四捨五入
+--              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+--              END IF;
+--            END IF;
+              ln_amount := lt_total_amount;
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_sale_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_sale_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_sale_amount_sum   := ln_amount;
+              END IF;
+--************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
+              -- 本体金額合計
+              lt_pure_amount_sum := lt_total_amount;
+              -- 消費税金額合計
+              ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_tax_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_tax_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_tax_amount_sum := ln_amount;
+              END IF;
+--
+            ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
             -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
@@ -5231,80 +6316,31 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := lt_total_amount;
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_total_amount * ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_sale_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_sale_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_sale_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_sale_amount_sum   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
+              -- 本体金額合計
+              lt_pure_amount_sum := lt_total_amount;
             -- 消費税金額合計
-            ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_tax_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_tax_amount_sum := ROUND( ln_amount );
-              END IF;
-            ELSE
-              lt_tax_amount_sum := ln_amount;
-            END IF;
+              lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+            ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-            -- 売上金額合計
---************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
---            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
---            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
---              IF ( lt_tax_odd = cv_amount_up ) THEN
---              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
---              -- 切捨て
---              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
---                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
---              -- 四捨五入
---              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
---                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
---              END IF;
---            END IF;
-            ln_amount := ( lt_total_amount * ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
-              END IF;
-            ELSE
-              lt_sale_amount_sum   := ln_amount;
-            END IF;
---************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
---
-          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
---
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_total_amount;
-            -- 本体金額合計
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_total_amount;
+              -- 本体金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_pure_amount_sum := ( lt_total_amount / ln_tax_data );
 --            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
@@ -5318,113 +6354,183 @@ AS
 --                lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := ( lt_total_amount / ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+              ln_amount := ( lt_total_amount / ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
                 lt_pure_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_pure_amount_sum := ROUND( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_pure_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_pure_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_pure_amount_sum   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額合計
-          lt_tax_amount_sum  := ln_all_tax_amount;
+            -- 消費税金額合計
+            lt_tax_amount_sum  := ln_all_tax_amount;
 --
-          END IF;
-        END IF;
-      END IF;
---
-      --非課税以外の時
-      IF (lt_consumption_tax_class <> cv_non_tax) THEN
-        -- ================================================
-        -- ヘッダ売上消費税額と明細売上消費税額比較判断処理
-        -- ================================================
---        -- 値引明細がnull以外の時
-        IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
-        AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
-          ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
-        END IF;
-        IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
-          -- 外税 OR 内税(伝票課税の時)
-          IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-            IF ( lt_red_black_flag = cv_black_flag) THEN
-              gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
-            ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-              gt_line_tax_amount( ln_max_no_data ) := ( ( ln_max_tax_data 
-                                                        + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
             END IF;
           END IF;
         END IF;
-      END IF;
 --
-      -- 赤・黒の金額換算
-      --黒の時
-      IF ( lt_red_black_flag = cv_black_flag) THEN
-        -- 売上金額合計
-        lt_set_sale_amount_sum := lt_sale_amount_sum;
-        -- 本体金額合計
-        lt_set_pure_amount_sum := lt_pure_amount_sum;
-        -- 消費税金額合計
-        lt_set_tax_amount_sum := lt_tax_amount_sum;
-      -- 赤の時
-      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-        -- 売上金額合計
-        lt_set_sale_amount_sum := ( lt_sale_amount_sum * ( -1 ) );
-        -- 本体金額合計
-        lt_set_pure_amount_sum := ( lt_pure_amount_sum * ( -1 ) );
-        -- 消費税金額合計
-        lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
+        --非課税以外の時
+        IF (lt_consumption_tax_class <> cv_non_tax) THEN
+          -- ================================================
+          -- ヘッダ売上消費税額と明細売上消費税額比較判断処理
+          -- ================================================
+          -- 値引明細がnull以外の時
+          IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
+          AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
+            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+          END IF;
+          IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
+            -- 外税 OR 内税(伝票課税の時)
+            IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+--******************************* 2009/04/21 N.Maeda Var1.10 MOD START ***************************************
+              IF ( lt_red_black_flag = cv_black_flag) THEN
+--                gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+              ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+--                gt_line_tax_amount( ln_max_no_data ) := ( ( ln_max_tax_data 
+--                                                          + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
+                                                                      + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+--******************************* 2009/04/21 N.Maeda Var1.10 MOD END   ***************************************
+              END IF;
+            END IF;
+          END IF;
+        END IF;
+--
+        -- 赤・黒の金額換算
+        --黒の時
+        IF ( lt_red_black_flag = cv_black_flag) THEN
+          -- 売上金額合計
+          lt_set_sale_amount_sum := lt_sale_amount_sum;
+          -- 本体金額合計
+          lt_set_pure_amount_sum := lt_pure_amount_sum;
+          -- 消費税金額合計
+          lt_set_tax_amount_sum := lt_tax_amount_sum;
+        -- 赤の時
+        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+          -- 売上金額合計
+          lt_set_sale_amount_sum := ( lt_sale_amount_sum * ( -1 ) );
+          -- 本体金額合計
+          lt_set_pure_amount_sum := ( lt_pure_amount_sum * ( -1 ) );
+          -- 消費税金額合計
+          lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
+        END IF;
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        --================================
+        --販売実績ヘッダID(シーケンス取得)
+        --================================
+        SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+        INTO ln_actual_id
+        FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--
+        --==========================
+        -- ヘッダデータの変数挿入
+        --==========================
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        gt_dlv_hht_head_row_id( gn_head_data_no )          := lt_row_id;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+        gt_head_id( gn_head_data_no )                      := ln_actual_id;                 -- 販売実績ヘッダID
+        gt_head_order_no_ebs( gn_head_data_no )            := lt_order_no_ebs;              -- 受注番号
+        gt_head_hht_invoice_no( gn_head_data_no )          := lt_hht_invoice_no;            -- 納品伝票番号
+        gt_head_order_no_hht( gn_head_data_no )            := lt_order_no_hht;              -- 受注No(HHT)
+        gt_head_digestion_ln_number( gn_head_data_no )     := lt_digestion_ln_number;       -- 枝番(受注No(HHT)枝番)
+        gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;          -- 納品伝票区分(導出)
+        gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cancel_correct_class;      -- 取消・訂正区分
+        gt_head_system_class( gn_head_data_no )            := lt_system_class;              -- 業態区分(業態小分類)
+        gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                  -- 納品日
+        gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;              -- 検収日(売上計上日)
+        gt_head_customer_number( gn_head_data_no )         := lt_customer_number;           -- 顧客【納品先
+        gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;       -- 売上金額合計
+        gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;       -- 本体金額合計
+        gt_head_sales_consump_tax( gn_head_data_no )       := lt_set_tax_amount_sum;        -- 消費税金額合計(半導出)
+        gt_head_consump_tax_class( gn_head_data_no )       := lt_consum_type;               -- 消費税区分(導出)
+        gt_head_tax_code( gn_head_data_no )                := lt_consum_code;               -- 税金コード(導出)
+        gt_head_tax_rate( gn_head_data_no )                := lt_tax_consum;                -- 消費税率(導出)
+        gt_head_performance_by_code( gn_head_data_no )     := lt_performance_by_code;       -- 成績計上者コード
+        gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;            -- 売上拠点コード(導出)
+        gt_head_card_sale_class( gn_head_data_no )         := lt_card_sale_class;           -- カード売り区分
+--        gt_head_sales_classification( gn_head_data_no )    := lt_sales_classification;      -- 伝票区分
+--        gt_head_invoice_class( gn_head_data_no )           := lt_sales_invoice;             -- 伝票分類コード
+        gt_head_sales_classification( gn_head_data_no )    := lt_sales_invoice;             -- 伝票区分
+        gt_head_invoice_class( gn_head_data_no )           := lt_sales_classification;      -- 伝票分類コード
+-- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+--        gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;          -- 入金拠点コード(導出)
+        gt_head_receiv_base_code( gn_head_data_no )        := lt_cash_receiv_base_code;   -- 入金拠点コード(導出)
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+        gt_head_change_out_time_100( gn_head_data_no )     := lt_change_out_time_100;       -- つり銭切れ時間100円
+        gt_head_change_out_time_10( gn_head_data_no )      := lt_change_out_time_10;        -- つり銭切れ時間10円
+        gt_head_hht_dlv_input_date( gn_head_data_no )      := ld_input_date;                -- HHT納品入力日時(成型日時)
+        gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;               -- 納品者コード
+        gt_head_business_date( gn_head_data_no )           := gd_process_date;              -- 登録業務日付(初期処理取得)
+        gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
+        gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
+        gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
+        gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
+        gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
+        gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- 情報システムIF済フラグ('N')
+        gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- EDI送信済みフラグ('N'設定)
+        gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                  -- EDI送信日時(NULL設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+--        gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
+        gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+        gt_head_input_class( gn_head_data_no )             := lt_input_class;               -- 入力区分
+        gn_head_data_no := gn_head_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--
+        <<line_set_loop>>
+        FOR in_data_num IN 1..ln_line_data_count LOOP
+--
+          -- ===================
+          -- 登録用明細ID取得
+          -- ===================
+          SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+          INTO   ln_sales_exp_line_id
+          FROM   DUAL;
+--
+          gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+          gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+          gt_line_dlv_invoice_number( gn_line_data_no )      := gt_accumulation_data(in_data_num).dlv_invoice_number;    -- 納品伝票番号
+          gt_line_dlv_invoice_l_num( gn_line_data_no )       := gt_accumulation_data(in_data_num).dlv_invoice_line_number; -- 納品明細番号
+          gt_line_sales_class( gn_line_data_no )             := gt_accumulation_data(in_data_num).sales_class;           -- 売上区分
+          gt_line_red_black_flag( gn_line_data_no )          := gt_accumulation_data(in_data_num).red_black_flag;        -- 赤黒フラグ
+          gt_line_item_code( gn_line_data_no )               := gt_accumulation_data(in_data_num).item_code;             -- 品目コード
+          gt_line_standard_qty( gn_line_data_no )            := gt_accumulation_data(in_data_num).standard_qty;          -- 基準数量
+          gt_line_standard_uom_code( gn_line_data_no )       := gt_accumulation_data(in_data_num).standard_uom_code;     -- 基準単位
+          gt_line_standard_unit_price( gn_line_data_no )     := gt_accumulation_data(in_data_num).standard_unit_price;   -- 基準単価
+          gt_line_business_cost( gn_line_data_no )           := gt_accumulation_data(in_data_num).business_cost;         -- 営業原価
+          gt_line_sale_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).sale_amount;           -- 売上金額
+          gt_line_pure_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).pure_amount;           -- 本体金額
+          gt_line_tax_amount( gn_line_data_no )              := gt_accumulation_data(in_data_num).tax_amount;            -- 消費税金額
+          gt_line_cash_and_card( gn_line_data_no )           := gt_accumulation_data(in_data_num).cash_and_card;         -- 現金・カード併用額
+          gt_line_ship_from_subinv_co( gn_line_data_no )     := gt_accumulation_data(in_data_num).ship_from_subinventory_code; -- 出荷元保管場所
+          gt_line_delivery_base_code( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_base_code;    -- 納品拠点コード
+          gt_line_hot_cold_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).hot_cold_class;        -- Ｈ＆Ｃ
+          gt_line_column_no( gn_line_data_no )               := gt_accumulation_data(in_data_num).column_no;             -- コラムNo
+          gt_line_sold_out_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).sold_out_class;        -- 売切区分
+          gt_line_sold_out_time( gn_line_data_no )           := gt_accumulation_data(in_data_num).sold_out_time;         -- 売切時間
+          gt_line_to_calculate_fees_flag( gn_line_data_no )  := gt_accumulation_data(in_data_num).to_calculate_fees_flag;-- 手数料計算IF済フラグ
+          gt_line_unit_price_mst_flag( gn_line_data_no )     := gt_accumulation_data(in_data_num).unit_price_mst_flag;   -- 単価マスタ作成済フラグ
+          gt_line_inv_interface_flag( gn_line_data_no )      := gt_accumulation_data(in_data_num).inv_interface_flag;    -- INVインタフェース済フラグ
+          gt_line_order_invoice_l_num( gn_line_data_no )     := gt_accumulation_data(in_data_num).order_invoice_line_number;   -- 注文明細番号
+          gt_line_not_tax_amount( gn_line_data_no )          := gt_accumulation_data(in_data_num).standard_unit_price_excluded;-- 税抜基準単価
+          gt_line_delivery_pat_class( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_pattern_class;      -- 納品形態区分
+          gt_line_dlv_qty( gn_line_data_no )                 := gt_accumulation_data(in_data_num).dlv_qty;                     -- 納品数量
+          gt_line_dlv_uom_code( gn_line_data_no )            := gt_accumulation_data(in_data_num).dlv_uom_code;                -- 納品単位
+          gt_dlv_unit_price( gn_line_data_no )               := gt_accumulation_data(in_data_num).dlv_unit_price;              -- 納品単価
+          gn_line_data_no := gn_line_data_no + 1;
+        END LOOP line_set_loop;
       END IF;
-      --==========================
-      -- ヘッダデータの変数挿入
-      --==========================
-      gt_head_id( gn_head_data_no )                      := ln_actual_id;                 -- 販売実績ヘッダID
-      gt_head_order_no_ebs( gn_head_data_no )            := lt_order_no_ebs;              -- 受注番号
-      gt_head_hht_invoice_no( gn_head_data_no )          := lt_hht_invoice_no;            -- 納品伝票番号
-      gt_head_order_no_hht( gn_head_data_no )            := lt_order_no_hht;              -- 受注No(HHT)
-      gt_head_digestion_ln_number( gn_head_data_no )     := lt_digestion_ln_number;       -- 枝番(受注No(HHT)枝番)
-      gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;          -- 納品伝票区分(導出)
-      gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cancel_correct_class;      -- 取消・訂正区分
-      gt_head_system_class( gn_head_data_no )            := lt_system_class;              -- 業態区分(業態小分類)
-      gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                  -- 納品日
-      gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;              -- 検収日(売上計上日)
-      gt_head_customer_number( gn_head_data_no )         := lt_customer_number;           -- 顧客【納品先
-      gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;       -- 売上金額合計
-      gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;       -- 本体金額合計
-      gt_head_sales_consump_tax( gn_head_data_no )       := lt_set_tax_amount_sum;        -- 消費税金額合計(半導出)
-      gt_head_consump_tax_class( gn_head_data_no )       := lt_consum_type;               -- 消費税区分(導出)
-      gt_head_tax_code( gn_head_data_no )                := lt_consum_code;               -- 税金コード(導出)
-      gt_head_tax_rate( gn_head_data_no )                := lt_tax_consum;                -- 消費税率(導出)
-      gt_head_performance_by_code( gn_head_data_no )     := lt_performance_by_code;       -- 成績計上者コード
-      gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;            -- 売上拠点コード(導出)
-      gt_head_card_sale_class( gn_head_data_no )         := lt_card_sale_class;           -- カード売り区分
---      gt_head_sales_classification( gn_head_data_no )    := lt_sales_classification;      -- 伝票区分
---      gt_head_invoice_class( gn_head_data_no )           := lt_sales_invoice;             -- 伝票分類コード
-      gt_head_sales_classification( gn_head_data_no )    := lt_sales_invoice;             -- 伝票区分
-      gt_head_invoice_class( gn_head_data_no )           := lt_sales_classification;      -- 伝票分類コード
-      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;            -- 入金拠点コード(導出)
-      gt_head_change_out_time_100( gn_head_data_no )     := lt_change_out_time_100;       -- つり銭切れ時間100円
-      gt_head_change_out_time_10( gn_head_data_no )      := lt_change_out_time_10;        -- つり銭切れ時間10円
-      gt_head_hht_dlv_input_date( gn_head_data_no )      := ld_input_date;                -- HHT納品入力日時(成型日時)
-      gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;               -- 納品者コード
-      gt_head_business_date( gn_head_data_no )           := gd_process_date;              -- 登録業務日付(初期処理取得)
-      gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
-      gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
-      gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
-      gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
-      gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
-      gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- 情報システムIF済フラグ('N')
-      gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- EDI送信済みフラグ('N'設定)
-      gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                  -- EDI送信日時(NULL設定)
-      gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
-      gt_head_input_class( gn_head_data_no )             := lt_input_class;               -- 入力区分
-      gn_head_data_no := gn_head_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
     END LOOP header_loop;
 --
   EXCEPTION
@@ -5448,14 +6554,16 @@ AS
                                              cv_key_data, gv_tkn2 );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                                            --# 任意 #                                            --# 任意 #
-    WHEN delivered_from_err_expt THEN
-      --
-      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
---      lv_errbuf := lv_errmsg;
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
       ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--    WHEN delivered_from_err_expt THEN
+--      --
+--      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
+----      lv_errbuf := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -5590,6 +6698,9 @@ AS
     lv_depart_code               xxcmm_cust_accounts.dept_hht_div%TYPE;           -- HHT百貨店入力区分
     lt_inc_num                   xxcmm_system_items_b.inc_num%TYPE;               -- 内訳入数
     lt_sale_base_code            xxcmm_cust_accounts.sale_base_code%TYPE;         -- 売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+    lt_cash_receiv_base_code     xxcos_cust_hierarchy_v.cash_receiv_base_code%TYPE;  -- 入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
     lt_sales_cost                ic_item_mst_b.attribute7%TYPE;                   -- 営業原価
     lt_sale_amount_sum           xxcos_sales_exp_headers.sale_amount_sum%TYPE;    -- 売上金額合計
     lt_pure_amount_sum           xxcos_sales_exp_headers.pure_amount_sum%TYPE;    -- 本体金額合計
@@ -5617,8 +6728,14 @@ AS
     lv_key_name2                 VARCHAR2(500);                                   -- キーデータ名称2
     lv_key_data1                 VARCHAR2(500);                                   -- キーデータ1
     lv_key_data2                 VARCHAR2(500);                                   -- キーデータ2
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+    lt_row_id                    ROWID;                                           -- 更新用行ID
+    lv_state_flg                 VARCHAR2(1);                                     -- データ警告確認フラグ
+    ln_line_data_count           NUMBER;                                          -- 明細件数(ヘッダ単位)
+    lv_dept_hht_div_flg          VARCHAR2(1);                                     -- HHT百貨店区分エラーフラグ
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --************************** 2009/03/18 1.5 T.kitajima ADD START ************************************
-  ln_amount                       NUMBER;                                            -- 作業用金額変数
+  ln_amount                      NUMBER;                                          -- 作業用金額変数
 --************************** 2009/03/18 1.5 T.kitajima ADD  END  ************************************
 --
   BEGIN
@@ -5643,6 +6760,18 @@ AS
       ln_max_invoice_num              := 0;
       -- 最大明細番号
       ln_max_no_data                  := 0;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      -- 明細件数カウント(初期化)
+      ln_line_data_count              := 0;
+      -- データ警告確認フラグ(初期化)
+      lv_state_flg                    := cv_status_normal;
+      -- HHT百貨店区分エラー(初期化)
+      lv_dept_hht_div_flg             := cv_status_normal;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      lt_row_id                    := gt_dlv_hht_headers_data( ck_no ).row_id;                   -- 行ID
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
       lt_order_no_hht              := gt_dlv_hht_headers_data( ck_no ).order_no_hht;             -- 受注No.(HHT)
       lt_digestion_ln_number       := gt_dlv_hht_headers_data( ck_no ).digestion_ln_number;      -- 枝番
       lt_order_no_ebs              := gt_dlv_hht_headers_data( ck_no ).order_no_ebs;             -- 受注No.（EBS）
@@ -5675,21 +6804,29 @@ AS
       lt_results_forward_date      := gt_dlv_hht_headers_data( ck_no ).results_forward_date;     -- 販売実績連携済日付
       lt_cancel_correct_class      := gt_dlv_hht_headers_data( ck_no ).cancel_correct_class;     -- 取消・訂正区分
 --
-      --================================
-      --販売実績ヘッダID(シーケンス取得)
-      --================================
-      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
-      INTO ln_actual_id
-      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--      --================================
+--      --販売実績ヘッダID(シーケンス取得)
+--      --================================
+--      SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+--      INTO ln_actual_id
+--      FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
       --=========================
       --顧客マスタ付帯情報の導出
       --=========================
       BEGIN
         SELECT  xca.sale_base_code, --売上拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                xch.cash_receiv_base_code,  --入金拠点コード
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 --hca.tax_rounding_rule --税金-端数処理
                 xch.bill_tax_round_rule -- 税金-端数処理(サイト)
         INTO    lt_sale_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD START ****************************************************************
+                lt_cash_receiv_base_code,
+-- ************** 2009/04/16 1.12 N.Maeda ADD  END  ****************************************************************
                 lt_tax_odd
         FROM    hz_cust_accounts hca,  --顧客マスタ
                 xxcmm_cust_accounts xca, --顧客追加情報
@@ -5706,12 +6843,32 @@ AS
         WHEN NO_DATA_FOUND THEN
           -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
-          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
-          lv_key_data2 := lt_customer_number;
-          RAISE no_data_extract;
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code );
+--          lv_key_data1 := cv_customer_type_c||cv_con_char||cv_customer_type_u;
+--          lv_key_data2 := lt_customer_number;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code ), -- 項目名称２
+            iv_data_value1 => (cv_customer_type_c||cv_con_char||cv_customer_type_u),         -- データの値１
+            iv_data_value2 => lt_customer_number,   -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END;
 --
       -- ========================
@@ -5746,12 +6903,32 @@ AS
         WHEN NO_DATA_FOUND THEN
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg(cv_application, cv_msg_lookup_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
-          lv_key_data1 := lt_consumption_tax_class;
-          lv_key_data2 := cv_lookup_type;
-          RAISE no_data_extract;
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type );
+--          lv_key_data1 := lt_consumption_tax_class;
+--          lv_key_data2 := cv_lookup_type;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_type ), -- 項目名称２
+            iv_data_value1 => lt_consumption_tax_class,         -- データの値１
+            iv_data_value2 => cv_lookup_type,                   -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END;
 --
       --====================
@@ -5774,15 +6951,33 @@ AS
         WHEN NO_DATA_FOUND THEN
           -- ログ出力          
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax );
-          lv_key_name2 := NULL;
-          lv_key_data1 := lt_consum_code;
-          lv_key_data2 := NULL;
-          RAISE no_data_extract;
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax );
+--          lv_key_name2 := NULL;
+--          lv_key_data1 := lt_consum_code;
+--          lv_key_data2 := NULL;
+--          RAISE no_data_extract;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
+            iv_data_value1 => lt_consum_code,         -- データの値１
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END;
-      -- 消費税率算出
-      ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+        -- 消費税率算出
+        ln_tax_data := ( (100 + lt_tax_consum) / 100 );
 --
       -- =========================
       -- HHT納品入力日時の成型処理
@@ -5805,142 +7000,208 @@ AS
         AND    hca.customer_class_code = cv_bace_branch;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-          -- ログ出力          
+          -- ログ出力
           gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
           --キー編集処理
-          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
-          lv_key_data1 := lt_base_code;
-          lv_key_data2 := cv_bace_branch;
-        RAISE no_data_extract;
+--          lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--          lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type );
+--          lv_key_data1 := lt_base_code;
+--          lv_key_data2 := cv_bace_branch;
+--        RAISE no_data_extract;
+          lv_dept_hht_div_flg := cv_status_warn;
+          lv_state_flg    := cv_status_warn;
+          gn_wae_data_num := gn_wae_data_num + 1 ;
+          xxcos_common_pkg.makeup_key_info(
+            iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+            iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_type ), -- 項目名称２
+            iv_data_value1 => lt_base_code,         -- データの値１
+            iv_data_value2 => cv_bace_branch,       -- データの値２
+            ov_key_info    => gv_tkn2,              -- キー情報
+            ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+            ov_retcode     => lv_retcode,           -- リターン・コード
+            ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END;
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      IF (lv_dept_hht_div_flg <> cv_status_warn) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL )
-        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+        IF ( lv_depart_code IS NULL )
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
 /*--==============2009/2/3-END==========================--*/
-        --参照コードマスタ：営業車の保管場所分類コード取得
-        BEGIN
-          SELECT  look_val.meaning      --保管場所分類コード
-          INTO    lt_location_type_code
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
-          AND     gd_process_date      >= look_val.start_date_active
-          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
-          AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-          AND     look_val.lookup_code = cv_xxcos_001_a05_05;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
-            --キー編集処理用変数
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
-            lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
-            lv_key_data2 := cv_xxcos_001_a05_05;
-          RAISE no_data_extract;
-        END;
+          --参照コードマスタ：営業車の保管場所分類コード取得
+          BEGIN
+            SELECT  look_val.meaning      --保管場所分類コード
+            INTO    lt_location_type_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     app.application_short_name = cv_application
+            AND     look_val.enabled_flag = cv_tkn_yes
+            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code = cv_xxcos_001_a05_05;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+              --キー編集処理用変数
+              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
+              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
+              lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
+              lv_key_data2 := cv_xxcos_001_a05_05;
+            RAISE no_data_extract;
+          END;
 --
-        --保管場所マスタデータ取得
-        BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
-          INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    --保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_location_type_code
-          AND    msi.attribute3 = lt_dlv_by_code;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-            --キー編集処理用変数
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-            lv_key_data1 := lt_base_code;
-            lv_key_data2 := cv_xxcos_001_a05_05;
-          RAISE no_data_extract;
-        END;
+          --保管場所マスタデータ取得
+          BEGIN
+            SELECT msi.secondary_inventory_name     -- 保管場所コード
+            INTO   lt_secondary_inventory_name
+            FROM   mtl_secondary_inventories msi    --保管場所マスタ
+            WHERE  msi.attribute7 = lt_base_code
+            AND    msi.attribute13 = lt_location_type_code
+            AND    msi.attribute3 = lt_dlv_by_code;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+              --キー編集処理用変数
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_05;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+              iv_data_value1 => lt_base_code,         -- データの値１
+              iv_data_value2 => cv_xxcos_001_a05_05,       -- データの値２
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
+          END;
 --
 /*--==============2009/2/3-START=========================--*/
-      ELSIF ( lv_depart_code = cv_depart_type ) 
-        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
---      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+        ELSIF ( lv_depart_code = cv_depart_type ) 
+          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+--        ELSIF ( lv_depart_code IS NOT NULL ) THEN
 /*--==============2009/2/3-END==========================--*/
-        --参照コードマスタ：百貨店の保管場所分類コード取得
-        BEGIN
-          SELECT  look_val.meaning    --保管場所分類コード
-          INTO    lt_depart_location_type_code
-          FROM    fnd_lookup_values     look_val,
-                  fnd_lookup_types_tl   types_tl,
-                  fnd_lookup_types      types,
-                  fnd_application_tl    appl,
-                  fnd_application       app
-          WHERE   appl.application_id   = types.application_id
-          AND     app.application_id    = appl.application_id
-          AND     types_tl.lookup_type  = look_val.lookup_type
-          AND     types.lookup_type     = types_tl.lookup_type
-          AND     types.security_group_id   = types_tl.security_group_id
-          AND     types.view_application_id = types_tl.view_application_id
-          AND     types_tl.language = USERENV( 'LANG' )
-          AND     look_val.language = USERENV( 'LANG' )
-          AND     appl.language     = USERENV( 'LANG' )
-          AND     gd_process_date      >= look_val.start_date_active
-          AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
-          AND     app.application_short_name = cv_application
-          AND     look_val.enabled_flag = cv_tkn_yes
-          AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
-          AND     look_val.lookup_code = cv_xxcos_001_a05_09;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-        --キー編集処理
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
-            --キー編集処理用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
-            lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
-            lv_key_data2 := cv_xxcos_001_a05_09;
-          RAISE no_data_extract;
-        END;
+          --参照コードマスタ：百貨店の保管場所分類コード取得
+          BEGIN
+            SELECT  look_val.meaning    --保管場所分類コード
+            INTO    lt_depart_location_type_code
+            FROM    fnd_lookup_values     look_val,
+                    fnd_lookup_types_tl   types_tl,
+                    fnd_lookup_types      types,
+                    fnd_application_tl    appl,
+                    fnd_application       app
+            WHERE   appl.application_id   = types.application_id
+            AND     app.application_id    = appl.application_id
+            AND     types_tl.lookup_type  = look_val.lookup_type
+            AND     types.lookup_type     = types_tl.lookup_type
+            AND     types.security_group_id   = types_tl.security_group_id
+            AND     types.view_application_id = types_tl.view_application_id
+            AND     types_tl.language = USERENV( 'LANG' )
+            AND     look_val.language = USERENV( 'LANG' )
+            AND     appl.language     = USERENV( 'LANG' )
+            AND     gd_process_date      >= look_val.start_date_active
+            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+            AND     app.application_short_name = cv_application
+            AND     look_val.enabled_flag = cv_tkn_yes
+            AND     look_val.lookup_type = cv_xxcos1_hokan_mst_001_a05
+            AND     look_val.lookup_code = cv_xxcos_001_a05_09;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+              --キー編集処理用変数設定
+              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_type );
+              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_code );
+              lv_key_data1 := cv_xxcos1_hokan_mst_001_a05;
+              lv_key_data2 := cv_xxcos_001_a05_09;
+            RAISE no_data_extract;
+          END;
 --
-        --保管場所マスタデータ取得
-        BEGIN
-          SELECT msi.secondary_inventory_name           -- 保管場所名称
-          INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
-                 mtl_parameters mp                      -- 組織パラメータ
-          WHERE  msi.organization_id=mp.organization_id
-          AND    mp.organization_code = gv_orga_code
-          AND    msi.attribute4       = lt_keep_in_code
-          AND    msi.attribute13      = lt_depart_location_type_code;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-            --キー編集処理用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-            lv_key_data1 := lt_base_code;
-            lv_key_data2 := cv_xxcos_001_a05_09;
-          RAISE no_data_extract;
-        END;
+          --保管場所マスタデータ取得
+          BEGIN
+            SELECT msi.secondary_inventory_name           -- 保管場所名称
+            INTO   lt_secondary_inventory_name
+            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                   mtl_parameters mp                      -- 組織パラメータ
+            WHERE  msi.organization_id=mp.organization_id
+            AND    mp.organization_code = gv_orga_code
+            AND    msi.attribute4       = lt_keep_in_code
+            AND    msi.attribute13      = lt_depart_location_type_code;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- ログ出力          
+              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+              --キー編集処理用変数設定
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_09;
+--            RAISE no_data_extract;
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+              xxcos_common_pkg.makeup_key_info(
+                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code ), -- 項目名称１
+                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type ), -- 項目名称２
+                iv_data_value1 => lt_base_code,         -- データの値１
+                iv_data_value2 => cv_xxcos_001_a05_09,       -- データの値２
+                ov_key_info    => gv_tkn2,              -- キー情報
+                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+                ov_retcode     => lv_retcode,           -- リターン・コード
+                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
+          END;
 --
+        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
       END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
 --
       -- =============
       -- 納品形態区分の導出
@@ -5955,7 +7216,14 @@ AS
                                            lv_retcode,
                                            lv_errmsg );
       IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE delivered_from_err_expt;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        RAISE delivered_from_err_expt;
+        lv_state_flg    := cv_status_warn;
+        gn_wae_data_num := gn_wae_data_num + 1 ;
+        gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,
+                                                iv_name          => cv_msg_delivered_from_err );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END IF;
 --
       -- ===================
@@ -5972,14 +7240,32 @@ AS
 /*--==============2009/2/3-END=========================--*/
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_emp_data_mst );
             --キー編集用変数設定
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
-            lv_key_name2 := NULL;
-            lv_key_data1 := lt_dlv_by_code;
-            lv_key_data2 := NULL;
-      RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv );
+--            lv_key_name2 := NULL;
+--            lv_key_data1 := lt_dlv_by_code;
+--            lv_key_data2 := NULL;
+--          RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv ), -- 項目名称１
+              iv_data_value1 => lt_dlv_by_code,         -- データの値１
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
       END;
 --
         -- =====================
@@ -6015,12 +7301,30 @@ AS
             WHEN NO_DATA_FOUND THEN
               -- ログ出力          
               gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst );
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
               --キー編集表変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
-              lv_key_name2 := NULL;
-              lv_key_data1 := lt_input_class;
-              lv_key_data2 := NULL;
-            RAISE no_data_extract;
+--              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp );
+--              lv_key_name2 := NULL;
+--              lv_key_data1 := lt_input_class;
+--              lv_key_data2 := NULL;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_inp ), -- 項目名称１
+              iv_data_value1 => lt_input_class,         -- データの値１
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                  iv_application   => cv_application,    --アプリケーション短縮名
+                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
           END;
 --
       --明細データ取得
@@ -6049,12 +7353,17 @@ AS
 --
         EXIT WHEN ( ( lt_order_no_hht || lt_digestion_ln_number ) <> ( lt_lin_order_no_hht || lt_lin_digestion_ln_number ) );
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
 --
         --====================================
         --営業原価の導出(販売実績明細(コラム))
@@ -6084,44 +7393,66 @@ AS
 /*--==============2009/2/4-END==========================--*/
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
-          --キー編集処理
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
-            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
-            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
-            lv_key_data1 := lt_lin_item_code_self;
-            lv_key_data2 := gn_orga_id;
-            RAISE no_data_extract;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
+--            lv_key_data1 := lt_lin_item_code_self;
+--            lv_key_data2 := gn_orga_id;
+--            RAISE no_data_extract;
+            lv_state_flg    := cv_status_warn;
+            gn_wae_data_num := gn_wae_data_num + 1 ;
+            xxcos_common_pkg.makeup_key_info(
+              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code ), -- 項目名称１
+              iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id ), -- 項目名称２
+              iv_data_value1 => lt_lin_item_code_self,         -- データの値１
+              iv_data_value2 => gn_orga_id,       -- データの値２
+              ov_key_info    => gv_tkn2,              -- キー情報
+              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+              ov_retcode     => lv_retcode,           -- リターン・コード
+              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                iv_application   => cv_application,    --アプリケーション短縮名
+                                                iv_name          => cv_msg_no_data,    --メッセージコード
+                                                iv_token_name1   => cv_tkn_table_name, --トークンコード1
+                                                iv_token_value1  => gv_tkn1,           --トークン値1
+                                                iv_token_name2   => cv_key_data,       --トークンコード2
+                                                iv_token_value2  => gv_tkn2 );         --トークン値2
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END *****************************************
         END;
-        -- ===================================
-        -- 営業原価判定
-        -- ===================================
-        IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
-          lt_sales_cost := lt_old_sales_cost;
-        ELSE
-          lt_sales_cost := lt_new_sales_cost;
-        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+          -- ===================================
+          -- 営業原価判定
+          -- ===================================
+          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
+            lt_sales_cost := lt_old_sales_cost;
+          ELSE
+            lt_sales_cost := lt_new_sales_cost;
+          END IF;
 --
-        -- ============
-        -- 明細金額算出
-        -- ============
-        -- 基準単価
-        lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
+          -- ============
+          -- 明細金額算出
+          -- ============
+          -- 基準単価
+          lt_standard_unit_price   := lt_lin_wholesale_unit_ploce;
 --
-        IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
+          IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
-          lt_tax_amount            := cn_cons_tkn_zero;
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
+            lt_tax_amount            := cn_cons_tkn_zero;
 --
-        ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+          ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-          -- 売上金額
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
 --                                        * ln_tax_data );
@@ -6136,26 +7467,26 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_tax_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
 --          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
@@ -6164,29 +7495,29 @@ AS
 --            -- 切捨て
 --            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
 --              lt_tax_amount := TRUNC( lt_tax_amount );
---            -- 四捨五入
---            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
---              lt_tax_amount := ROUND( lt_tax_amount );
---            END IF;
+--          -- 四捨五入
+--          ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--            lt_tax_amount := ROUND( lt_tax_amount );
 --          END IF;
---          ln_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          ln_amount            := lt_pure_amount * ( ln_tax_data - 1 );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+--        END IF;
+--        ln_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+            ln_amount            := lt_pure_amount * ( ln_tax_data - 1 );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
           -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
@@ -6203,26 +7534,26 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-         -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 消費税金額
+           -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_lin_wholesale_unit_ploce;
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 消費税金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_tax_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
 --          IF ( lt_tax_amount <> TRUNC( lt_tax_amount ) ) THEN
@@ -6237,40 +7568,40 @@ AS
 --            END IF;
 --          END IF;
 --          ln_amount            := ( ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
-          ln_amount            := lt_pure_amount * ( ln_tax_data - 1 );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            ln_amount            := lt_pure_amount * ( ln_tax_data - 1 );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := ( lt_lin_wholesale_unit_ploce / ln_tax_data );
-          IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := ( lt_lin_wholesale_unit_ploce / ln_tax_data );
+            IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+              END IF;
             END IF;
-          END IF;
-          -- 本体金額
+            -- 本体金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_pure_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
 --          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
@@ -6284,101 +7615,140 @@ AS
 --              lt_pure_amount := ROUND( lt_pure_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_pure_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_pure_amount := ROUND( ln_amount );
+            ln_amount           := ( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) / ln_tax_data);
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_pure_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_pure_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_pure_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_pure_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額
-          lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
+            -- 消費税金額
+            lt_tax_amount            := TRUNC( ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number )
                                          - lt_pure_amount );
 --
-        END IF;
---
-        -- 非課税時以外
-        IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
-          -- 消費税合計積上げ
-            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
-          -- 明細最大消費税取得
-          IF ( ln_max_tax_data < lt_tax_amount ) THEN
-            ln_max_tax_data := lt_tax_amount;
-            ln_max_no_data  := gn_line_data_no;
           END IF;
-        END IF;
 --
-        -- 明細最大行No確認
-        IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
-          IF ( ln_max_invoice_num IS NULL) OR ( ln_max_invoice_num < lt_lin_line_no_hht ) THEN
-            ln_max_invoice_num := lt_lin_line_no_hht;
+          -- 非課税時以外
+          IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+            -- 消費税合計積上げ
+              ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+            -- 明細最大消費税取得
+            IF ( ln_max_tax_data < lt_tax_amount ) THEN
+              ln_max_tax_data := lt_tax_amount;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--              ln_max_no_data  := gn_line_data_no;
+              ln_max_no_data  := ln_line_data_count;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+            END IF;
           END IF;
-        END IF;
 --
-        -- 赤・黒の金額換算
-        --黒の時
-        IF ( lt_red_black_flag = cv_black_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := lt_lin_replenish_number;
-          -- 売上金額
-          lt_set_sale_amount := lt_sale_amount;
-          -- 本体金額
-          lt_set_pure_amount := lt_pure_amount;
-          -- 消費税金額
-          lt_set_tax_amount := lt_tax_amount;
-        -- 赤の時
-        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := ( lt_lin_replenish_number * ( -1 ) );
-          -- 売上金額
-          lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
-          -- 本体金額
-          lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
-          -- 消費税金額
-          lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
-        END IF;
+          -- 明細最大行No確認
+          IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+            IF ( ln_max_invoice_num IS NULL) OR ( ln_max_invoice_num < lt_lin_line_no_hht ) THEN
+              ln_max_invoice_num := lt_lin_line_no_hht;
+            END IF;
+          END IF;
+--
+          -- 赤・黒の金額換算
+          --黒の時
+          IF ( lt_red_black_flag = cv_black_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := lt_lin_replenish_number;
+            -- 売上金額
+            lt_set_sale_amount := lt_sale_amount;
+            -- 本体金額
+            lt_set_pure_amount := lt_pure_amount;
+            -- 消費税金額
+            lt_set_tax_amount := lt_tax_amount;
+          -- 赤の時
+          ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := ( lt_lin_replenish_number * ( -1 ) );
+            -- 売上金額
+            lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
+            -- 本体金額
+            lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
+            -- 消費税金額
+            lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          END IF;
         --====================
         --明細データの変数挿入
         --====================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := lt_lin_line_no_hht;           -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := lt_lin_sale_class;            -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := lt_lin_item_code_self;        -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := lt_lin_cash_and_card;         -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := lt_lin_h_and_c;               -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := lt_lin_column_no;             -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := lt_lin_sold_out_class;        -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := lt_lin_sold_out_time;         -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算-IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INV-IF済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
-        gn_line_data_no := gn_line_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+--        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+--        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
+--        gt_line_dlv_invoice_l_num( gn_line_data_no )       := lt_lin_line_no_hht;           -- 納品明細番号
+--        gt_line_sales_class( gn_line_data_no )             := lt_lin_sale_class;            -- 売上区分
+--        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
+--        gt_line_item_code( gn_line_data_no )               := lt_lin_item_code_self;        -- 品目コード
+--        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
+--        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
+--        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
+--        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
+--        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
+--        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
+--        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
+--        gt_line_cash_and_card( gn_line_data_no )           := lt_lin_cash_and_card;         -- 現金・カード併用額
+--        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
+--        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
+--        gt_line_hot_cold_class( gn_line_data_no )          := lt_lin_h_and_c;               -- Ｈ＆Ｃ
+--        gt_line_column_no( gn_line_data_no )               := lt_lin_column_no;             -- コラムNo
+--        gt_line_sold_out_class( gn_line_data_no )          := lt_lin_sold_out_class;        -- 売切区分
+--        gt_line_sold_out_time( gn_line_data_no )           := lt_lin_sold_out_time;         -- 売切時間
+--        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算-IF済フラグ
+--        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
+--        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INV-IF済フラグ
+--        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
+--        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
+--        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
+--        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
+--        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
+--        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
+--        gn_line_data_no := gn_line_data_no + 1;
+          -- ===================
+          -- 一時格納用
+          -- ===================
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_hht_invoice_no;             -- 納品伝票番号
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := lt_lin_line_no_hht;            -- 納品明細番号
+          gt_accumulation_data(ln_line_data_count).sales_class                := lt_lin_sale_class;             -- 売上区分
+          gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;             -- 赤黒フラグ
+          gt_accumulation_data(ln_line_data_count).item_code                  := lt_lin_item_code_self;         -- 品目コード
+          gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_set_replenish_number;       -- 納品数量
+          gt_accumulation_data(ln_line_data_count).standard_qty               := lt_set_replenish_number;       -- 基準数量
+          gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;                 -- 納品単位
+          gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;                 -- 基準単位
+          gt_accumulation_data(ln_line_data_count).dlv_unit_price             := lt_standard_unit_price;        -- 納品単価
+          gt_accumulation_data(ln_line_data_count).standard_unit_price        := lt_standard_unit_price;        -- 基準単価
+          gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+          gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount;            -- 売上金額
+          gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount;            -- 本体金額
+          gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount;             -- 消費税金額
+          gt_accumulation_data(ln_line_data_count).cash_and_card              := lt_lin_cash_and_card;          -- 現金・カード併用額
+          gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
+          gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
+          gt_accumulation_data(ln_line_data_count).hot_cold_class             := lt_lin_h_and_c;                -- Ｈ＆Ｃ
+          gt_accumulation_data(ln_line_data_count).column_no                  := lt_lin_column_no;              -- コラムNo
+          gt_accumulation_data(ln_line_data_count).sold_out_class             := lt_lin_sold_out_class;         -- 売切区分
+          gt_accumulation_data(ln_line_data_count).sold_out_time              := lt_lin_sold_out_time;          -- 売切時間
+          gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                      -- 手数料計算インタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                      -- 単価マスタ作成済フラグ
+          gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                      -- INVインタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;                   -- 注文明細番号(NULL設定)
+          gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := lt_stand_unit_price_excl;    -- 税抜基準単価
+          gt_accumulation_data(ln_line_data_count).delivery_pattern_class     :=   lv_delivery_type;            -- 納品形態区分(導出)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
         ln_line_no := ln_line_no + 1;
 --
       END LOOP line_loop;
@@ -6389,12 +7759,18 @@ AS
       -- 値引きが発生している場合
       IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
-        -- ===================
-        -- 登録用明細ID取得
-        -- ===================
-        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
-        INTO   ln_sales_exp_line_id
-        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        ln_line_data_count := ln_line_data_count + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--        -- ===================
+--        -- 登録用明細ID取得
+--        -- ===================
+--        SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+--        INTO   ln_sales_exp_line_id
+--        FROM   DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
         -- =================================
         -- 営業原価、基準単位を導出
@@ -6423,7 +7799,7 @@ AS
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             --キー編集処理
-            -- ログ出力          
+            -- ログ出力
             gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
             lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
             lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
@@ -6440,85 +7816,90 @@ AS
           lt_sales_cost := lt_new_sales_cost;
         END IF;
 --
-/*--==============2009/2/3-START=========================--*/
---        IF ( lv_depart_code = cv_depart_car ) THEN
-        IF ( lv_depart_code IS NULL )
-          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
-/*--==============2009/2/3-END==========================--*/
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--/*--==============2009/2/3-START=========================--*/
+----        IF ( lv_depart_code = cv_depart_car ) THEN
+--        IF ( lv_depart_code IS NULL )
+--          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+--/*--==============2009/2/3-END==========================--*/
+----
+--          --保管場所マスタデータ取得
+--          BEGIN
+--            SELECT msi.secondary_inventory_name     -- 保管場所コード
+--            INTO   lt_secondary_inventory_name
+--            FROM   mtl_secondary_inventories msi    --保管場所マスタ
+--            WHERE  msi.attribute7 = lt_base_code
+--            AND    msi.attribute13 = lt_location_type_code;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力          
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--            --キー編集処理用変数
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_05;
+--          RAISE no_data_extract;
+--          END;
 --
-          --保管場所マスタデータ取得
-          BEGIN
-            SELECT msi.secondary_inventory_name     -- 保管場所コード
-            INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi    --保管場所マスタ
-            WHERE  msi.attribute7 = lt_base_code
-            AND    msi.attribute13 = lt_location_type_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-              --キー編集処理用変数
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-              lv_key_data1 := lt_base_code;
-              lv_key_data2 := cv_xxcos_001_a05_05;
-            RAISE no_data_extract;
-          END;
+--/*--==============2009/2/3-START=========================--*/
+----        ELSIF ( lv_depart_code = cv_depart_type ) THEN
+----        ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--        ELSIF ( lv_depart_code = cv_depart_type ) 
+--          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
+--/*--==============2009/2/3-END==========================--*/
+----
+--          --保管場所マスタデータ取得
+--          BEGIN
+--            SELECT msi.secondary_inventory_name           -- 保管場所名称
+--            INTO   lt_secondary_inventory_name
+--            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+--                   mtl_parameters mp                      -- 組織パラメータ
+--            WHERE  msi.organization_id=mp.organization_id
+--            AND    mp.organization_code = gv_orga_code
+--            AND    msi.attribute4       = lt_keep_in_code
+--            AND    msi.attribute13      = lt_depart_location_type_code;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
+--              --キー編集処理用変数設定
+--            lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
+--            lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
+--            lv_key_data1 := lt_base_code;
+--            lv_key_data2 := cv_xxcos_001_a05_09;
+--          RAISE no_data_extract;
+--          END;
 --
-/*--==============2009/2/3-START=========================--*/
---        ELSIF ( lv_depart_code = cv_depart_type ) THEN
---        ELSIF ( lv_depart_code IS NOT NULL ) THEN
-        ELSIF ( lv_depart_code = cv_depart_type ) 
-          OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
-/*--==============2009/2/3-END==========================--*/
+--        END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END *****************************************
 --
-          --保管場所マスタデータ取得
-          BEGIN
-            SELECT msi.secondary_inventory_name           -- 保管場所名称
-            INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
-                   mtl_parameters mp                      -- 組織パラメータ
-            WHERE  msi.organization_id=mp.organization_id
-            AND    mp.organization_code = gv_orga_code
-            AND    msi.attribute4       = lt_keep_in_code
-            AND    msi.attribute13      = lt_depart_location_type_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_location_mst );
-              --キー編集処理用変数設定
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_base_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_location_type );
-              lv_key_data1 := lt_base_code;
-              lv_key_data2 := cv_xxcos_001_a05_09;
-            RAISE no_data_extract;
-          END;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END *****************************************
+          -- ================
+          -- 金額算出処理
+          -- ================
+          IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
 --
-        END IF;
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_sale_discount_amount );
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_sale_discount_amount );
+            -- 消費税金額
+            lt_tax_amount            := cn_cons_tkn_zero;
 --
-        -- ================
-        -- 金額算出処理
-        -- ================
-        IF ( lt_consumption_tax_class = cv_non_tax ) THEN         -- 非課税
+          ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_sale_discount_amount );
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_sale_discount_amount );
-          -- 消費税金額
-          lt_tax_amount            := cn_cons_tkn_zero;
---
-        ELSIF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
---
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_sale_amount           := ( lt_sale_discount_amount * ln_tax_data);
 --          IF ( lt_sale_amount <> TRUNC( lt_sale_amount ) ) THEN
@@ -6532,44 +7913,44 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := lt_sale_discount_amount;
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := lt_sale_discount_amount;
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+             -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-         -- 本体金額
-          lt_pure_amount           := TRUNC( lt_sale_discount_amount );
-          -- 消費税金額
-          ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_sale_discount_amount );
+            -- 消費税金額
+            ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount   := ln_amount;
-          END IF;
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := lt_sale_discount_amount;
-          -- 基準単価
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := lt_sale_discount_amount;
+            -- 基準単価
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_standard_unit_price   := ( lt_sale_discount_amount * ln_tax_data );
 --          IF ( lt_standard_unit_price <> TRUNC( lt_standard_unit_price ) ) THEN
@@ -6595,7 +7976,7 @@ AS
 --              lt_standard_unit_price := ROUND( ln_amount );
 --            END IF;
 --          END IF;
-          lt_standard_unit_price := ( lt_sale_discount_amount );
+            lt_standard_unit_price := ( lt_sale_discount_amount );
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
           -- 売上金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
@@ -6611,59 +7992,59 @@ AS
 --              lt_sale_amount := ROUND( lt_sale_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := lt_sale_discount_amount;
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_sale_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_sale_amount := ROUND( ln_amount );
+            ln_amount           := lt_sale_discount_amount;
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_sale_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_sale_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_sale_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_sale_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 本体金額
-          lt_pure_amount           := TRUNC( lt_sale_discount_amount );
-          -- 消費税金額
-          ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_tax_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_tax_amount := ROUND( ln_amount );
+            -- 本体金額
+            lt_pure_amount           := TRUNC( lt_sale_discount_amount );
+            -- 消費税金額
+            ln_amount            := ( lt_sale_discount_amount * ( ln_tax_data - 1 ) );
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_tax_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_tax_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_tax_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_tax_amount   := ln_amount;
-          END IF;
 --
-        ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-          -- 税抜基準単価
-          lt_stand_unit_price_excl := ( lt_sale_discount_amount / ln_tax_data);
-          IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+            -- 税抜基準単価
+            lt_stand_unit_price_excl := ( lt_sale_discount_amount / ln_tax_data);
+            IF ( lt_stand_unit_price_excl <> TRUNC( lt_stand_unit_price_excl ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_stand_unit_price_excl := ( TRUNC( lt_stand_unit_price_excl ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_stand_unit_price_excl := TRUNC( lt_stand_unit_price_excl );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_stand_unit_price_excl := ROUND( lt_stand_unit_price_excl );
+              END IF;
             END IF;
-          END IF;
-          -- 基準単価
-          lt_standard_unit_price   := lt_sale_discount_amount;
-          -- 売上金額
-          lt_sale_amount           := TRUNC( lt_sale_discount_amount );
-          -- 本体金額
+            -- 基準単価
+            lt_standard_unit_price   := lt_sale_discount_amount;
+            -- 売上金額
+            lt_sale_amount           := TRUNC( lt_sale_discount_amount );
+            -- 本体金額
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --          lt_pure_amount           := ( lt_sale_discount_amount / ln_tax_data);
 --          IF ( lt_pure_amount <> TRUNC( lt_pure_amount ) ) THEN
@@ -6677,110 +8058,150 @@ AS
 --              lt_pure_amount := ROUND( lt_pure_amount );
 --            END IF;
 --          END IF;
-          ln_amount           := ( lt_sale_discount_amount / ln_tax_data);
-          IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-            IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
-            -- 切捨て
-            ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-              lt_pure_amount := TRUNC( ln_amount );
-            -- 四捨五入
-            ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-              lt_pure_amount := ROUND( ln_amount );
+            ln_amount           := ( lt_sale_discount_amount / ln_tax_data);
+            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+              IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_pure_amount := ( TRUNC( ln_amount ) + 1 );
+              -- 切捨て
+              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                lt_pure_amount := TRUNC( ln_amount );
+              -- 四捨五入
+              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                lt_pure_amount := ROUND( ln_amount );
+              END IF;
+            ELSE
+              lt_pure_amount   := ln_amount;
             END IF;
-          ELSE
-            lt_pure_amount   := ln_amount;
-          END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額
-          lt_tax_amount            := TRUNC( lt_sale_amount - lt_pure_amount );
-        END IF;
+            -- 消費税金額
+            lt_tax_amount            := TRUNC( lt_sale_amount - lt_pure_amount );
+          END IF;
 --
-        -- 値引用納品明細番号設定
-        ln_max_invoice_num := ln_max_invoice_num + 1;
-        -- 登録用値引金額設定
-        lt_sale_amount := ( lt_sale_amount * ( -1 ) );
-        lt_pure_amount := ( lt_pure_amount * ( -1 ) );
-        lt_tax_amount  := ( lt_tax_amount * ( -1 ) );
+          -- 値引用納品明細番号設定
+          ln_max_invoice_num := ln_max_invoice_num + 1;
+          -- 登録用値引金額設定
+          lt_sale_amount := ( lt_sale_amount * ( -1 ) );
+          lt_pure_amount := ( lt_pure_amount * ( -1 ) );
+          lt_tax_amount  := ( lt_tax_amount * ( -1 ) );
 --
-        -- 赤・黒の金額換算
-        --黒の時
-        IF ( lt_red_black_flag = cv_black_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := cn_disc_standard_qty;
-          -- 売上金額
-          lt_set_sale_amount := lt_sale_amount;
-          -- 本体金額
-          lt_set_pure_amount := lt_pure_amount;
-          -- 消費税金額
-          lt_set_tax_amount := lt_tax_amount;
-        -- 赤の時
-        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-          -- 基準数量(納品数量)
-          lt_set_replenish_number := ( cn_disc_standard_qty * ( -1 ) );
-          -- 売上金額
-          lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
-          -- 本体金額
-          lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
-          -- 消費税金額
-          lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          -- 赤・黒の金額換算
+          --黒の時
+          IF ( lt_red_black_flag = cv_black_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := cn_disc_standard_qty;
+            -- 売上金額
+            lt_set_sale_amount := lt_sale_amount;
+            -- 本体金額
+            lt_set_pure_amount := lt_pure_amount;
+            -- 消費税金額
+            lt_set_tax_amount := lt_tax_amount;
+          -- 赤の時
+          ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+            -- 基準数量(納品数量)
+            lt_set_replenish_number := ( cn_disc_standard_qty * ( -1 ) );
+            -- 売上金額
+            lt_set_sale_amount := ( lt_sale_amount * ( -1 ) );
+            -- 本体金額
+            lt_set_pure_amount := ( lt_pure_amount * ( -1 ) );
+            -- 消費税金額
+            lt_set_tax_amount := ( lt_tax_amount * ( -1 ) );
+          END IF;
+          -- =========================================
+          -- 値引き明細データセット
+          -- =========================================
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+--          gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+--          gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+--          gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
+--          gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_max_invoice_num;           -- 納品明細番号
+--          gt_line_sales_class( gn_line_data_no )             := cv_sales_st_class;            -- 売上区分
+--          gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
+--          gt_line_item_code( gn_line_data_no )               := gv_disc_item;                 -- 品目コード
+--          gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
+--          gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
+--          gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
+--          gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
+--          gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
+--          gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
+--          gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
+--          gt_line_cash_and_card( gn_line_data_no )           := cn_tkn_zero;                  -- 現金・カード併用額
+--          gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
+--          gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
+--          gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;                  -- Ｈ＆Ｃ
+--          gt_line_column_no( gn_line_data_no )               := cv_tkn_null;                  -- コラムNo
+--          gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;                  -- 売切区分
+--          gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;                  -- 売切時間
+--          gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算IF済フラグ
+--          gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
+--          gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INVインタフェース済フラグ
+--          gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
+--          gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
+--          gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
+--          gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
+--          gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
+--          gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
+--          gn_line_data_no := gn_line_data_no + 1;
+          -- ===================
+          -- 一時格納用
+          -- ===================
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_number         := lt_hht_invoice_no;             -- 納品伝票番号
+          gt_accumulation_data(ln_line_data_count).dlv_invoice_line_number    := ln_max_invoice_num;            -- 納品明細番号
+          gt_accumulation_data(ln_line_data_count).sales_class                := cv_sales_st_class;             -- 売上区分
+          gt_accumulation_data(ln_line_data_count).red_black_flag             := lt_red_black_flag;             -- 赤黒フラグ
+          gt_accumulation_data(ln_line_data_count).item_code                  := gv_disc_item;                  -- 品目コード
+          gt_accumulation_data(ln_line_data_count).dlv_qty                    := lt_set_replenish_number;       -- 納品数量
+          gt_accumulation_data(ln_line_data_count).standard_qty               := lt_set_replenish_number;       -- 基準数量
+          gt_accumulation_data(ln_line_data_count).dlv_uom_code               := lt_stand_unit;                 -- 納品単位
+          gt_accumulation_data(ln_line_data_count).standard_uom_code          := lt_stand_unit;                 -- 基準単位
+          gt_accumulation_data(ln_line_data_count).dlv_unit_price             := lt_standard_unit_price;        -- 納品単価
+          gt_accumulation_data(ln_line_data_count).standard_unit_price        := lt_standard_unit_price;        -- 基準単価
+          gt_accumulation_data(ln_line_data_count).business_cost              := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
+          gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount;            -- 売上金額
+          gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount;            -- 本体金額
+          gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount;             -- 消費税金額
+          gt_accumulation_data(ln_line_data_count).cash_and_card              := cn_tkn_zero;                   -- 現金・カード併用額
+          gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
+          gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
+          gt_accumulation_data(ln_line_data_count).hot_cold_class             := cv_tkn_null;                   -- Ｈ＆Ｃ
+          gt_accumulation_data(ln_line_data_count).column_no                  := cv_tkn_null;                   -- コラムNo
+          gt_accumulation_data(ln_line_data_count).sold_out_class             := cv_tkn_null;                   -- 売切区分
+          gt_accumulation_data(ln_line_data_count).sold_out_time              := cv_tkn_null;                   -- 売切時間
+          gt_accumulation_data(ln_line_data_count).to_calculate_fees_flag     := cv_tkn_n;                      -- 手数料計算インタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).unit_price_mst_flag        := cv_tkn_n;                      -- 単価マスタ作成済フラグ
+          gt_accumulation_data(ln_line_data_count).inv_interface_flag         := cv_tkn_n;                      -- INVインタフェース済フラグ
+          gt_accumulation_data(ln_line_data_count).order_invoice_line_number  := cv_tkn_null;                   -- 注文明細番号(NULL設定)
+          gt_accumulation_data(ln_line_data_count).standard_unit_price_excluded := lt_stand_unit_price_excl;    -- 税抜基準単価
+          gt_accumulation_data(ln_line_data_count).delivery_pattern_class     := lv_delivery_type;              -- 納品形態区分(導出)
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
         END IF;
-        -- =========================================
-        -- 値引き明細データセット
-        -- =========================================
-        gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
-        gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
-        gt_line_dlv_invoice_number( gn_line_data_no )      := lt_hht_invoice_no;            -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_max_invoice_num;           -- 納品明細番号
-        gt_line_sales_class( gn_line_data_no )             := cv_sales_st_class;            -- 売上区分
-        gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;            -- 赤黒フラグ
-        gt_line_item_code( gn_line_data_no )               := gv_disc_item;                 -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := lt_set_replenish_number;      -- 基準数量
-        gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;                -- 基準単位
-        gt_line_standard_unit_price( gn_line_data_no )     := lt_standard_unit_price;       -- 基準単価
-        gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero ); -- 営業原価
-        gt_line_sale_amount( gn_line_data_no )             := lt_set_sale_amount;           -- 売上金額
-        gt_line_pure_amount( gn_line_data_no )             := lt_set_pure_amount;           -- 本体金額
-        gt_line_tax_amount( gn_line_data_no )              := lt_set_tax_amount;            -- 消費税金額
-        gt_line_cash_and_card( gn_line_data_no )           := cn_tkn_zero;                  -- 現金・カード併用額
-        gt_line_ship_from_subinv_co( gn_line_data_no )     := lt_secondary_inventory_name;  -- 出荷元保管場所
-        gt_line_delivery_base_code( gn_line_data_no )      := lt_dlv_base_code;             -- 納品拠点コード
-        gt_line_hot_cold_class( gn_line_data_no )          := cv_tkn_null;                  -- Ｈ＆Ｃ
-        gt_line_column_no( gn_line_data_no )               := cv_tkn_null;                  -- コラムNo
-        gt_line_sold_out_class( gn_line_data_no )          := cv_tkn_null;                  -- 売切区分
-        gt_line_sold_out_time( gn_line_data_no )           := cv_tkn_null;                  -- 売切時間
-        gt_line_to_calculate_fees_flag( gn_line_data_no )  := cv_tkn_n;                     -- 手数料計算IF済フラグ
-        gt_line_unit_price_mst_flag( gn_line_data_no )     := cv_tkn_n;                     -- 単価マスタ作成済フラグ
-        gt_line_inv_interface_flag( gn_line_data_no )      := cv_tkn_n;                     -- INVインタフェース済フラグ
-        gt_line_order_invoice_l_num( gn_line_data_no )     := cv_tkn_null;                  -- 注文明細番号(NULL設定)
-        gt_line_not_tax_amount( gn_line_data_no )          := lt_stand_unit_price_excl;     -- 税抜基準単価
-        gt_line_delivery_pat_class( gn_line_data_no )      := lv_delivery_type;             -- 納品形態区分
-        gt_line_dlv_qty( gn_line_data_no )                 := lt_set_replenish_number;      -- 納品数量
-        gt_line_dlv_uom_code( gn_line_data_no )            := lt_stand_unit;                -- 納品単位
-        gt_dlv_unit_price( gn_line_data_no )               := lt_standard_unit_price;       -- 納品単価
-        gn_line_data_no := gn_line_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
 --
       END IF;
 --
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+      IF ( lv_state_flg <> cv_status_warn ) THEN
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
 --
-      -- ==================
-      -- ヘッダ登録用金額算出
-      -- ==================
-      IF ( lt_consumption_tax_class = cv_non_tax ) THEN           -- 非課税
+        -- ==================
+        -- ヘッダ登録用金額算出
+        -- ==================
+        IF ( lt_consumption_tax_class = cv_non_tax ) THEN           -- 非課税
 --
-        -- 売上金額合計
-        lt_sale_amount_sum := lt_total_amount;
-        -- 本体金額合計
-        lt_pure_amount_sum := lt_total_amount;
-        -- 消費税金額合計
-        lt_tax_amount_sum  := lt_sales_consumption_tax;
-      ELSE
-       --値引発生時
-        IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+          -- 売上金額合計
+          lt_sale_amount_sum := lt_total_amount;
+          -- 本体金額合計
+          lt_pure_amount_sum := lt_total_amount;
+          -- 消費税金額合計
+          lt_tax_amount_sum  := lt_sales_consumption_tax;
+        ELSE
+         --値引発生時
+          IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
-          IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+            IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
-            -- 売上金額合計
+              -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_sale_amount_sum := ( lt_tax_include * ln_tax_data );
 --              IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
@@ -6794,7 +8215,134 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --                END IF;
 --              END IF;
-            ln_amount := lt_tax_include;
+              ln_amount := lt_tax_include;
+                IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                  IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                  -- 切捨て
+                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                    lt_sale_amount_sum := TRUNC( ln_amount );
+                  -- 四捨五入
+                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                    lt_sale_amount_sum := ROUND( ln_amount );
+                  END IF;
+                ELSE
+                  lt_sale_amount_sum := ln_amount;
+                END IF;
+--************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
+                -- 本体金額合計
+                lt_pure_amount_sum := lt_tax_include;
+                -- 消費税金額合計
+                ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+                IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                  IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                  -- 切捨て
+                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                    lt_tax_amount_sum := TRUNC( ln_amount );
+                  -- 四捨五入
+                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                    lt_tax_amount_sum := ROUND( ln_amount );
+                  END IF;
+                ELSE
+                  lt_tax_amount_sum := ln_amount;
+                END IF;
+--
+            ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+--
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_tax_include;
+              -- 本体金額合計
+              lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+              -- 消費税金額合計
+              lt_tax_amount_sum  := lt_sales_consumption_tax;
+--
+            ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
+--
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_tax_include;
+              -- 本体金額合計
+--************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
+--            lt_pure_amount_sum := ( lt_tax_include / ln_tax_data );
+--            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
+--              IF ( lt_tax_odd = cv_amount_up ) THEN
+--                lt_pure_amount_sum := ( TRUNC( lt_pure_amount_sum ) + 1 );
+--              -- 切捨て
+--              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--                lt_pure_amount_sum := TRUNC( lt_pure_amount_sum );
+--              -- 四捨五入
+--              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--                 lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
+--              END IF;
+--            END IF;
+              ln_amount := ( lt_tax_include / ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_pure_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_pure_amount_sum:= ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_pure_amount_sum   := ln_amount;
+              END IF;
+--************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
+              -- 値引消費税算出
+--************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
+--            ln_discount_tax    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
+--            IF ( ln_discount_tax <> TRUNC( ln_discount_tax ) ) THEN
+--              IF ( lt_tax_odd = cv_amount_up ) THEN
+--                ln_discount_tax := ( TRUNC( ln_discount_tax ) + 1 );
+--              -- 切捨て
+--              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--                ln_discount_tax := TRUNC( ln_discount_tax );
+--              -- 四捨五入
+--              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--                 ln_discount_tax:= ROUND( ln_discount_tax );
+--              END IF;
+--            END IF;
+              ln_amount    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  ln_discount_tax := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  ln_discount_tax := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  ln_discount_tax := ROUND( ln_amount );
+                END IF;
+              ELSE
+                ln_discount_tax   := ln_amount;
+              END IF;
+--************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
+              -- 消費税金額合計
+              lt_tax_amount_sum  := ( ln_all_tax_amount - ln_discount_tax );
+--
+            END IF;
+          --値引未発生時金額算出
+          ELSE
+--
+            IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
+--
+              -- 売上金額合計
+--************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
+--            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
+--            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
+--              IF ( lt_tax_odd = cv_amount_up ) THEN
+--              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
+--              -- 切捨て
+--              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
+--              -- 四捨五入
+--              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
+--              END IF;
+--            END IF;
+              ln_amount := lt_total_amount;
               IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
                 IF ( lt_tax_odd = cv_amount_up ) THEN
                 lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
@@ -6806,11 +8354,11 @@ AS
                   lt_sale_amount_sum := ROUND( ln_amount );
                 END IF;
               ELSE
-                lt_sale_amount_sum := ln_amount;
+                lt_sale_amount_sum   := ln_amount;
               END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
               -- 本体金額合計
-              lt_pure_amount_sum := lt_tax_include;
+              lt_pure_amount_sum := lt_total_amount;
               -- 消費税金額合計
               ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
               IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
@@ -6827,87 +8375,9 @@ AS
                 lt_tax_amount_sum := ln_amount;
               END IF;
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+            ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_tax_include;
-            -- 本体金額合計
-            lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-            -- 消費税金額合計
-            lt_tax_amount_sum  := lt_sales_consumption_tax;
---
-          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
---
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_tax_include;
-            -- 本体金額合計
---************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
---            lt_pure_amount_sum := ( lt_tax_include / ln_tax_data );
---            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
---              IF ( lt_tax_odd = cv_amount_up ) THEN
---                lt_pure_amount_sum := ( TRUNC( lt_pure_amount_sum ) + 1 );
---              -- 切捨て
---              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
---                lt_pure_amount_sum := TRUNC( lt_pure_amount_sum );
---              -- 四捨五入
---              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
---                 lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
---              END IF;
---            END IF;
-            ln_amount := ( lt_tax_include / ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                 lt_pure_amount_sum:= ROUND( ln_amount );
-              END IF;
-            ELSE
-              lt_pure_amount_sum   := ln_amount;
-            END IF;
---************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 値引消費税算出
---************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
---            ln_discount_tax    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
---            IF ( ln_discount_tax <> TRUNC( ln_discount_tax ) ) THEN
---              IF ( lt_tax_odd = cv_amount_up ) THEN
---                ln_discount_tax := ( TRUNC( ln_discount_tax ) + 1 );
---              -- 切捨て
---              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
---                ln_discount_tax := TRUNC( ln_discount_tax );
---              -- 四捨五入
---              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
---                 ln_discount_tax:= ROUND( ln_discount_tax );
---              END IF;
---            END IF;
-            ln_amount    := ( lt_sale_discount_amount - ( lt_sale_discount_amount / ln_tax_data ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                ln_discount_tax := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                ln_discount_tax := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                ln_discount_tax := ROUND( ln_amount );
-              END IF;
-            ELSE
-              ln_discount_tax   := ln_amount;
-            END IF;
---************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( ln_all_tax_amount - ln_discount_tax );
---
-          END IF;
-        --値引未発生時金額算出
-        ELSE
---
-          IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
---
-            -- 売上金額合計
+              -- 売上金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
 --            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
@@ -6921,80 +8391,31 @@ AS
 --                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := lt_total_amount;
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_total_amount * ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_sale_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_sale_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_sale_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_sale_amount_sum   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
-            -- 消費税金額合計
-            ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_tax_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_tax_amount_sum := ROUND( ln_amount );
-              END IF;
-            ELSE
-              lt_tax_amount_sum := ln_amount;
-            END IF;
+              -- 本体金額合計
+              lt_pure_amount_sum := lt_total_amount;
+              -- 消費税金額合計
+              lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
 --
-          ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
+            ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
-            -- 売上金額合計
---************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
---            lt_sale_amount_sum := ( lt_total_amount * ln_tax_data );
---            IF ( lt_sale_amount_sum <> TRUNC( lt_sale_amount_sum ) ) THEN
---              IF ( lt_tax_odd = cv_amount_up ) THEN
---              lt_sale_amount_sum := ( TRUNC( lt_sale_amount_sum ) + 1 );
---              -- 切捨て
---              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
---                lt_sale_amount_sum := TRUNC( lt_sale_amount_sum );
---              -- 四捨五入
---              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
---                lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
---              END IF;
---            END IF;
-            ln_amount := ( lt_total_amount * ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-              lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_sale_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_sale_amount_sum := ROUND( ln_amount );
-              END IF;
-            ELSE
-              lt_sale_amount_sum   := ln_amount;
-            END IF;
---************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-            -- 本体金額合計
-            lt_pure_amount_sum := lt_total_amount;
-            -- 消費税金額合計
-            lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
---
-          ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
---  
-            -- 売上金額合計
-            lt_sale_amount_sum := lt_total_amount;
-            -- 本体金額合計
+              -- 売上金額合計
+              lt_sale_amount_sum := lt_total_amount;
+              -- 本体金額合計
 --************************** 2009/03/18 1.5 T.kitajima MOD START ************************************
 --            lt_pure_amount_sum := ( lt_total_amount / ln_tax_data );
 --            IF ( lt_pure_amount_sum <> TRUNC( lt_pure_amount_sum ) ) THEN
@@ -7008,113 +8429,183 @@ AS
 --                lt_pure_amount_sum:= ROUND( lt_pure_amount_sum );
 --              END IF;
 --            END IF;
-            ln_amount := ( lt_total_amount / ln_tax_data );
-            IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
-              IF ( lt_tax_odd = cv_amount_up ) THEN
-                lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
-              -- 切捨て
-              ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                lt_pure_amount_sum := TRUNC( ln_amount );
-              -- 四捨五入
-              ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                lt_pure_amount_sum := ROUND( ln_amount );
+              ln_amount := ( lt_total_amount / ln_tax_data );
+              IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                IF ( lt_tax_odd = cv_amount_up ) THEN
+                  lt_pure_amount_sum := ( TRUNC( ln_amount ) + 1 );
+                -- 切捨て
+                ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                  lt_pure_amount_sum := TRUNC( ln_amount );
+                -- 四捨五入
+                ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                  lt_pure_amount_sum := ROUND( ln_amount );
+                END IF;
+              ELSE
+                lt_pure_amount_sum   := ln_amount;
               END IF;
-            ELSE
-              lt_pure_amount_sum   := ln_amount;
-            END IF;
 --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-          -- 消費税金額合計
-          lt_tax_amount_sum  := ln_all_tax_amount;
+            -- 消費税金額合計
+            lt_tax_amount_sum  := ln_all_tax_amount;
 --
-          END IF;
-        END IF;
-      END IF;
---
-      --非課税以外の時
-      IF (lt_consumption_tax_class <> cv_non_tax) THEN
-        -- ================================================
-        -- ヘッダ売上消費税額と明細売上消費税額比較判断処理
-        -- ================================================
---        -- 値引明細がnull以外の時
-        IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
-        AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
-          ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
-        END IF;
-        IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
-          -- 外税 OR 内税(伝票課税の時)
-          IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-            IF ( lt_red_black_flag = cv_black_flag) THEN
-              gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
-            ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-              gt_line_tax_amount( ln_max_no_data ) := ( ( ln_max_tax_data 
-                                                        + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
             END IF;
           END IF;
         END IF;
-      END IF;
 --
-      -- 赤・黒の金額換算
-      --黒の時
-      IF ( lt_red_black_flag = cv_black_flag) THEN
-        -- 売上金額合計
-        lt_set_sale_amount_sum := lt_sale_amount_sum;
-        -- 本体金額合計
-        lt_set_pure_amount_sum := lt_pure_amount_sum;
-        -- 消費税金額合計
-        lt_set_tax_amount_sum := lt_tax_amount_sum;
-      -- 赤の時
-      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-        -- 売上金額合計
-        lt_set_sale_amount_sum := ( lt_sale_amount_sum * ( -1 ) );
-        -- 本体金額合計
-        lt_set_pure_amount_sum := ( lt_pure_amount_sum * ( -1 ) );
-        -- 消費税金額合計
-        lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
-      END IF;
-      --==========================
-      -- ヘッダデータの変数挿入
-      --==========================
-      gt_head_id( gn_head_data_no )                      := ln_actual_id;                 -- 販売実績ヘッダID
-      gt_head_order_no_ebs( gn_head_data_no )            := lt_order_no_ebs;              -- 受注番号
-      gt_head_hht_invoice_no( gn_head_data_no )          := lt_hht_invoice_no;            -- 納品伝票番号
-      gt_head_order_no_hht( gn_head_data_no )            := lt_order_no_hht;              -- 受注No(HHT)
-      gt_head_digestion_ln_number( gn_head_data_no )     := lt_digestion_ln_number;       -- 枝番(受注No(HHT)枝番)
-      gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;          -- 納品伝票区分(導出)
-      gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cancel_correct_class;      -- 取消・訂正区分
-      gt_head_system_class( gn_head_data_no )            := lt_system_class;              -- 業態区分(業態小分類)
-      gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                  -- 納品日
-      gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;              -- 検収日(売上計上日)
-      gt_head_customer_number( gn_head_data_no )         := lt_customer_number;           -- 顧客【納品先
-      gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;       -- 売上金額合計
-      gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;       -- 本体金額合計
-      gt_head_sales_consump_tax( gn_head_data_no )       := lt_set_tax_amount_sum;        -- 消費税金額合計(半導出)
-      gt_head_consump_tax_class( gn_head_data_no )       := lt_consum_type;               -- 消費税区分(導出)
-      gt_head_tax_code( gn_head_data_no )                := lt_consum_code;               -- 税金コード(導出)
-      gt_head_tax_rate( gn_head_data_no )                := lt_tax_consum;                -- 消費税率(導出)
-      gt_head_performance_by_code( gn_head_data_no )     := lt_performance_by_code;       -- 成績計上者コード
-      gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;            -- 売上拠点コード(導出)
-      gt_head_card_sale_class( gn_head_data_no )         := lt_card_sale_class;           -- カード売り区分
+        --非課税以外の時
+        IF (lt_consumption_tax_class <> cv_non_tax) THEN
+          -- ================================================
+          -- ヘッダ売上消費税額と明細売上消費税額比較判断処理
+          -- ================================================
+--          -- 値引明細がnull以外の時
+          IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
+          AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
+            ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+          END IF;
+          IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
+            -- 外税 OR 内税(伝票課税の時)
+            IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+--******************************* 2009/04/21 N.Maeda Var1.10 MOD START ***************************************
+              IF ( lt_red_black_flag = cv_black_flag) THEN
+--                gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+              ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+--                gt_line_tax_amount( ln_max_no_data ) := ( ( ln_max_tax_data 
+--                                                          + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
+                                                                      + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+              END IF;
+--******************************* 2009/04/21 N.Maeda Var1.10 MOD END   ***************************************
+            END IF;
+          END IF;
+        END IF;
+--
+        -- 赤・黒の金額換算
+        --黒の時
+        IF ( lt_red_black_flag = cv_black_flag) THEN
+          -- 売上金額合計
+          lt_set_sale_amount_sum := lt_sale_amount_sum;
+          -- 本体金額合計
+          lt_set_pure_amount_sum := lt_pure_amount_sum;
+          -- 消費税金額合計
+          lt_set_tax_amount_sum := lt_tax_amount_sum;
+        -- 赤の時
+        ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+          -- 売上金額合計
+          lt_set_sale_amount_sum := ( lt_sale_amount_sum * ( -1 ) );
+          -- 本体金額合計
+          lt_set_pure_amount_sum := ( lt_pure_amount_sum * ( -1 ) );
+          -- 消費税金額合計
+          lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
+        END IF;
+--
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        --================================
+        --販売実績ヘッダID(シーケンス取得)
+        --================================
+        SELECT xxcos_sales_exp_headers_s01.NEXTVAL AS NEXTVAL 
+        INTO ln_actual_id
+        FROM DUAL;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+--
+        --==========================
+        -- ヘッダデータの変数挿入
+        --==========================
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+        gt_dlv_hht_head_row_id( gn_head_data_no )          := lt_row_id;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
+        gt_head_id( gn_head_data_no )                      := ln_actual_id;                 -- 販売実績ヘッダID
+        gt_head_order_no_ebs( gn_head_data_no )            := lt_order_no_ebs;              -- 受注番号
+        gt_head_hht_invoice_no( gn_head_data_no )          := lt_hht_invoice_no;            -- 納品伝票番号
+        gt_head_order_no_hht( gn_head_data_no )            := lt_order_no_hht;              -- 受注No(HHT)
+        gt_head_digestion_ln_number( gn_head_data_no )     := lt_digestion_ln_number;       -- 枝番(受注No(HHT)枝番)
+        gt_head_dlv_invoice_class( gn_head_data_no )       := lt_ins_invoice_type;          -- 納品伝票区分(導出)
+        gt_head_cancel_cor_cls( gn_head_data_no )          := lt_cancel_correct_class;      -- 取消・訂正区分
+        gt_head_system_class( gn_head_data_no )            := lt_system_class;              -- 業態区分(業態小分類)
+        gt_head_dlv_date( gn_head_data_no )                := lt_dlv_date;                  -- 納品日
+        gt_head_inspect_date( gn_head_data_no )            := lt_inspect_date;              -- 検収日(売上計上日)
+        gt_head_customer_number( gn_head_data_no )         := lt_customer_number;           -- 顧客【納品先
+        gt_head_tax_include( gn_head_data_no )             := lt_set_sale_amount_sum;       -- 売上金額合計
+        gt_head_total_amount( gn_head_data_no )            := lt_set_pure_amount_sum;       -- 本体金額合計
+        gt_head_sales_consump_tax( gn_head_data_no )       := lt_set_tax_amount_sum;        -- 消費税金額合計(半導出)
+        gt_head_consump_tax_class( gn_head_data_no )       := lt_consum_type;               -- 消費税区分(導出)
+        gt_head_tax_code( gn_head_data_no )                := lt_consum_code;               -- 税金コード(導出)
+        gt_head_tax_rate( gn_head_data_no )                := lt_tax_consum;                -- 消費税率(導出)
+        gt_head_performance_by_code( gn_head_data_no )     := lt_performance_by_code;       -- 成績計上者コード
+        gt_head_sales_base_code( gn_head_data_no )         := lt_sale_base_code;            -- 売上拠点コード(導出)
+        gt_head_card_sale_class( gn_head_data_no )         := lt_card_sale_class;           -- カード売り区分
 --      gt_head_sales_classification( gn_head_data_no )    := lt_sales_classification;      -- 伝票区分
 --      gt_head_invoice_class( gn_head_data_no )           := lt_sales_invoice;             -- 伝票分類コード
-      gt_head_sales_classification( gn_head_data_no )    := lt_sales_invoice;             -- 伝票区分
-      gt_head_invoice_class( gn_head_data_no )           := lt_sales_classification;      -- 伝票分類コード
-      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;            -- 入金拠点コード(導出)
-      gt_head_change_out_time_100( gn_head_data_no )     := lt_change_out_time_100;       -- つり銭切れ時間100円
-      gt_head_change_out_time_10( gn_head_data_no )      := lt_change_out_time_10;        -- つり銭切れ時間10円
-      gt_head_hht_dlv_input_date( gn_head_data_no )      := ld_input_date;                -- HHT納品入力日時(成型日時)
-      gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;               -- 納品者コード
-      gt_head_business_date( gn_head_data_no )           := gd_process_date;              -- 登録業務日付(初期処理取得)
-      gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
-      gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
-      gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
-      gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
-      gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
-      gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- 情報システムIF済フラグ('N')
-      gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- EDI送信済みフラグ('N'設定)
-      gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                  -- EDI送信日時(NULL設定)
-      gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
-      gt_head_input_class( gn_head_data_no )             := lt_input_class;               -- 入力区分
-      gn_head_data_no := gn_head_data_no + 1;
+        gt_head_sales_classification( gn_head_data_no )    := lt_sales_invoice;             -- 伝票区分
+        gt_head_invoice_class( gn_head_data_no )           := lt_sales_classification;      -- 伝票分類コード
+-- ************** 2009/04/16 1.12 N.Maeda MO START ****************************************************************
+--      gt_head_receiv_base_code( gn_head_data_no )        := lt_sale_base_code;          -- 入金拠点コード(導出)
+        gt_head_receiv_base_code( gn_head_data_no )        := lt_cash_receiv_base_code;   -- 入金拠点コード(導出)
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+        gt_head_change_out_time_100( gn_head_data_no )     := lt_change_out_time_100;       -- つり銭切れ時間100円
+        gt_head_change_out_time_10( gn_head_data_no )      := lt_change_out_time_10;        -- つり銭切れ時間10円
+        gt_head_hht_dlv_input_date( gn_head_data_no )      := ld_input_date;                -- HHT納品入力日時(成型日時)
+        gt_head_dlv_by_code( gn_head_data_no )             := lt_dlv_by_code;               -- 納品者コード
+        gt_head_business_date( gn_head_data_no )           := gd_process_date;              -- 登録業務日付(初期処理取得)
+        gt_head_order_source_id( gn_head_data_no )         := cv_tkn_null;                  -- 受注ソースID(NULL設定)
+        gt_head_order_invoice_number( gn_head_data_no )    := cv_tkn_null;                  -- 注文伝票番号(NULL設定)
+        gt_head_order_connection_num( gn_head_data_no )    := cv_tkn_null;                  -- 受注関連番号(NULL設定)
+        gt_head_ar_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- AR-IF済フラグ('N')
+        gt_head_gl_interface_flag( gn_head_data_no )       := cv_tkn_n;                     -- GL-IF済フラグ('N')
+        gt_head_dwh_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- 情報システムIF済フラグ('N')
+        gt_head_edi_interface_flag( gn_head_data_no )      := cv_tkn_n;                     -- EDI送信済みフラグ('N'設定)
+        gt_head_edi_send_date( gn_head_data_no )           := cv_tkn_null;                  -- EDI送信日時(NULL設定)
+-- ************** 2009/04/16 1.12 N.Maeda MO START ****************************************************************
+--        gt_head_create_class( gn_head_data_no )            := cn_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
+        gt_head_create_class( gn_head_data_no )            := cv_tkn_shipping_chk;          -- 作成元区分(｢4｣設定)
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+        gt_head_input_class( gn_head_data_no )             := lt_input_class;               -- 入力区分
+        gn_head_data_no := gn_head_data_no + 1;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
+--
+        <<line_set_loop>>
+        FOR in_data_num IN 1..ln_line_data_count LOOP
+--
+          -- ===================
+          -- 登録用明細ID取得
+          -- ===================
+          SELECT xxcos_sales_exp_lines_s01.NEXTVAL AS NEXTVAL
+          INTO   ln_sales_exp_line_id
+          FROM   DUAL;
+--
+          gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;         -- 販売実績明細ID
+          gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;                 -- 販売実績ヘッダID
+          gt_line_dlv_invoice_number( gn_line_data_no )      := gt_accumulation_data(in_data_num).dlv_invoice_number;    -- 納品伝票番号
+          gt_line_dlv_invoice_l_num( gn_line_data_no )       := gt_accumulation_data(in_data_num).dlv_invoice_line_number; -- 納品明細番号
+          gt_line_sales_class( gn_line_data_no )             := gt_accumulation_data(in_data_num).sales_class;           -- 売上区分
+          gt_line_red_black_flag( gn_line_data_no )          := gt_accumulation_data(in_data_num).red_black_flag;        -- 赤黒フラグ
+          gt_line_item_code( gn_line_data_no )               := gt_accumulation_data(in_data_num).item_code;             -- 品目コード
+          gt_line_standard_qty( gn_line_data_no )            := gt_accumulation_data(in_data_num).standard_qty;          -- 基準数量
+          gt_line_standard_uom_code( gn_line_data_no )       := gt_accumulation_data(in_data_num).standard_uom_code;     -- 基準単位
+          gt_line_standard_unit_price( gn_line_data_no )     := gt_accumulation_data(in_data_num).standard_unit_price;   -- 基準単価
+          gt_line_business_cost( gn_line_data_no )           := gt_accumulation_data(in_data_num).business_cost;         -- 営業原価
+          gt_line_sale_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).sale_amount;           -- 売上金額
+          gt_line_pure_amount( gn_line_data_no )             := gt_accumulation_data(in_data_num).pure_amount;           -- 本体金額
+          gt_line_tax_amount( gn_line_data_no )              := gt_accumulation_data(in_data_num).tax_amount;            -- 消費税金額
+          gt_line_cash_and_card( gn_line_data_no )           := gt_accumulation_data(in_data_num).cash_and_card;         -- 現金・カード併用額
+          gt_line_ship_from_subinv_co( gn_line_data_no )     := gt_accumulation_data(in_data_num).ship_from_subinventory_code; -- 出荷元保管場所
+          gt_line_delivery_base_code( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_base_code;    -- 納品拠点コード
+          gt_line_hot_cold_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).hot_cold_class;        -- Ｈ＆Ｃ
+          gt_line_column_no( gn_line_data_no )               := gt_accumulation_data(in_data_num).column_no;             -- コラムNo
+          gt_line_sold_out_class( gn_line_data_no )          := gt_accumulation_data(in_data_num).sold_out_class;        -- 売切区分
+          gt_line_sold_out_time( gn_line_data_no )           := gt_accumulation_data(in_data_num).sold_out_time;         -- 売切時間
+          gt_line_to_calculate_fees_flag( gn_line_data_no )  := gt_accumulation_data(in_data_num).to_calculate_fees_flag;-- 手数料計算IF済フラグ
+          gt_line_unit_price_mst_flag( gn_line_data_no )     := gt_accumulation_data(in_data_num).unit_price_mst_flag;   -- 単価マスタ作成済フラグ
+          gt_line_inv_interface_flag( gn_line_data_no )      := gt_accumulation_data(in_data_num).inv_interface_flag;    -- INVインタフェース済フラグ
+          gt_line_order_invoice_l_num( gn_line_data_no )     := gt_accumulation_data(in_data_num).order_invoice_line_number;   -- 注文明細番号
+          gt_line_not_tax_amount( gn_line_data_no )          := gt_accumulation_data(in_data_num).standard_unit_price_excluded;-- 税抜基準単価
+          gt_line_delivery_pat_class( gn_line_data_no )      := gt_accumulation_data(in_data_num).delivery_pattern_class;      -- 納品形態区分
+          gt_line_dlv_qty( gn_line_data_no )                 := gt_accumulation_data(in_data_num).dlv_qty;                     -- 納品数量
+          gt_line_dlv_uom_code( gn_line_data_no )            := gt_accumulation_data(in_data_num).dlv_uom_code;                -- 納品単位
+          gt_dlv_unit_price( gn_line_data_no )               := gt_accumulation_data(in_data_num).dlv_unit_price;              -- 納品単価
+          gn_line_data_no := gn_line_data_no + 1;
+        END LOOP line_set_loop;
+      END IF;
+--******************************* 2009/04/16 N.Maeda Var1.12 ADD END   ***************************************
     END LOOP header_loop;
 --
   EXCEPTION
@@ -7138,14 +8629,16 @@ AS
                                              cv_key_data, gv_tkn2 );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                                            --# 任意 #                                            --# 任意 #
-    WHEN delivered_from_err_expt THEN
-      --
-      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
---      lv_errbuf := lv_errmsg;
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-      ov_retcode := cv_status_error;                                            --# 任意 #
+      ov_retcode := cv_status_error;                                            --# 任意 # 
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL START ***************************************
+--    WHEN delivered_from_err_expt THEN
+--      --
+--      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_delivered_from_err );
+----      lv_errbuf := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB ( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+--******************************* 2009/04/16 N.Maeda Var1.12 DEL END   ***************************************
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -7232,21 +8725,42 @@ AS
              dhs.results_forward_flag,     -- 販売実績連携済フラグ
              dhs.results_forward_date,     -- 販売実績連携済日付
              dhs.cancel_correct_class      -- 取消・訂正区分
-      FROM   xxcos_dlv_headers dhs           --納品ヘッダ
-      WHERE  dhs.order_no_hht IN (SELECT dls.order_no_hht
-                                  FROM   xxcos_dlv_lines dls              --納品明細
-                                  WHERE  dls.program_application_id IS NOT NULL )
-      AND    dhs.digestion_ln_number IN (SELECT dhs.digestion_ln_number
-                                         FROM   xxcos_dlv_lines dls              --納品明細
-                                         WHERE  dls.program_application_id IS NOT NULL )
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      FROM   xxcos_dlv_headers dhs,
+             xxcos_dlv_lines dls
+      WHERE  dhs.order_no_hht = dls.order_no_hht
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND    dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
-      AND    dhs.results_forward_flag = cn_tkn_zero
---      AND    dhs.order_no_ebs IS NULL 
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+      AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.order_no_ebs = cn_tkn_zero 
-      AND    dhs.program_application_id IS NOT NULL --通常データ
-      ORDER BY dhs.order_no_hht,dhs.digestion_ln_number
-    FOR UPDATE NOWAIT;
+      AND    dhs.program_application_id IS NOT NULL
+      AND    dls.program_application_id  IS NOT NULL
+      GROUP BY dhs.ROWID,dhs.order_no_hht,dhs.digestion_ln_number,dhs.order_no_ebs,
+                      dhs.base_code,dhs.performance_by_code,dhs.dlv_by_code,dhs.hht_invoice_no,
+                      dhs.dlv_date,dhs.inspect_date,dhs.sales_classification,dhs.sales_invoice,
+                      dhs.card_sale_class,dhs.dlv_time,dhs.customer_number,dhs.change_out_time_100,
+                      dhs.change_out_time_10,dhs.system_class,dhs.input_class,dhs.consumption_tax_class,
+                      dhs.total_amount,dhs.sale_discount_amount,dhs.sales_consumption_tax,dhs.tax_include,
+                      dhs.keep_in_code,dhs.department_screen_class,dhs.red_black_flag,dhs.stock_forward_flag,
+                      dhs.stock_forward_date,dhs.results_forward_flag,dhs.results_forward_date,dhs.cancel_correct_class
+--      FROM   xxcos_dlv_headers dhs           --納品ヘッダ
+--      WHERE  dhs.order_no_hht IN (SELECT dls.order_no_hht
+--                                  FROM   xxcos_dlv_lines dls              --納品明細
+--                                  WHERE  dls.program_application_id IS NOT NULL )
+--      AND    dhs.digestion_ln_number IN (SELECT dhs.digestion_ln_number
+--                                         FROM   xxcos_dlv_lines dls              --納品明細
+--                                         WHERE  dls.program_application_id IS NOT NULL )
+--      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--      AND    dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+----      AND    dhs.order_no_ebs IS NULL 
+--      AND    dhs.order_no_ebs = cn_tkn_zero 
+--      AND    dhs.program_application_id IS NOT NULL --通常データ
+      ORDER BY dhs.order_no_hht,dhs.digestion_ln_number;
+--    FOR UPDATE NOWAIT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
 --
     --納品明細(HHT)
     CURSOR dlv_line_hht_cur
@@ -7271,30 +8785,43 @@ AS
              dls.sold_out_time,         -- 売切時間
              dls.replenish_number,      -- 補充数
              dls.cash_and_card          -- 現金・カード併用額
-      FROM   xxcos_dlv_lines dls           -- 納品明細
-      WHERE  dls.order_no_hht IN ( SELECT  dhs.order_no_hht
-                                   FROM    xxcos_dlv_headers dhs
-                                   WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-                                   AND    dhs.input_class  
-                                            NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
-                                   AND    dhs.results_forward_flag = cn_tkn_zero
-                                   --AND    dhs.order_no_ebs IS NULL 
-                                   AND    dhs.order_no_ebs = cn_tkn_zero
-                                   AND    dhs.program_application_id IS NOT NULL)
-      AND    dls.digestion_ln_number IN ( SELECT dhs.digestion_ln_number
-                                          FROM    xxcos_dlv_headers dhs
-                                          WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-                                          AND    dhs.input_class  
-                                                   NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
-                                          AND    dhs.results_forward_flag = cn_tkn_zero
-                                          --AND    dhs.order_no_ebs IS NULL
-                                          AND    dhs.order_no_ebs = cn_tkn_zero
-                                          AND    dhs.program_application_id IS NOT NULL)
-      AND    dls.program_application_id IS NOT NULL --通常データ
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      FROM   xxcos_dlv_headers dhs,
+             xxcos_dlv_lines dls
+      WHERE  dhs.order_no_hht = dls.order_no_hht
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+      AND    dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+      AND    dhs.results_forward_flag = cv_untreated_flg
+      AND    dhs.order_no_ebs = cn_tkn_zero
+      AND    dhs.program_application_id IS NOT NULL
+      AND    dls.program_application_id  IS NOT NULL
+--      FROM   xxcos_dlv_lines dls           -- 納品明細
+--      WHERE  dls.order_no_hht IN ( SELECT  dhs.order_no_hht
+--                                   FROM    xxcos_dlv_headers dhs
+--                                   WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--                                   AND    dhs.input_class  
+--                                            NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
+--                                   AND    dhs.results_forward_flag = cn_tkn_zero
+--                                   --AND    dhs.order_no_ebs IS NULL 
+--                                   AND    dhs.order_no_ebs = cn_tkn_zero
+--                                   AND    dhs.program_application_id IS NOT NULL)
+--      AND    dls.digestion_ln_number IN ( SELECT dhs.digestion_ln_number
+--                                          FROM    xxcos_dlv_headers dhs
+--                                          WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--                                          AND    dhs.input_class  
+--                                                   NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
+--                                          AND    dhs.results_forward_flag = cn_tkn_zero
+--                                          --AND    dhs.order_no_ebs IS NULL
+--                                          AND    dhs.order_no_ebs = cn_tkn_zero
+--                                          AND    dhs.program_application_id IS NOT NULL)
+--      AND    dls.program_application_id IS NOT NULL --通常データ
       ORDER BY dls.order_no_hht,dls.digestion_ln_number,dls.line_no_hht
     FOR UPDATE NOWAIT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
 --
-    -- 納品ヘッダ(受注画面入力データ)(HHT)
+    -- 納品ヘッダ(受注画面入力データ)
     CURSOR dlv_inp_head_hht_cur
     IS
       SELECT dhs.ROWID,                    -- 行ID
@@ -7329,24 +8856,54 @@ AS
              dhs.results_forward_flag,     -- 販売実績連携済フラグ
              dhs.results_forward_date,     -- 販売実績連携済日付
              dhs.cancel_correct_class      -- 取消・訂正区分
-      FROM   xxcos_dlv_headers dhs           --納品ヘッダ
-      WHERE  dhs.order_no_hht IN (SELECT dls.order_no_hht
-                                  FROM   xxcos_dlv_lines dls              --納品明細
-                                  WHERE  dls.program_application_id IS NULL )
-      AND    dhs.digestion_ln_number IN (SELECT dhs.digestion_ln_number
-                                         FROM   xxcos_dlv_lines dls              --納品明細
-                                         WHERE  dls.program_application_id IS NULL )
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      FROM   xxcos_dlv_headers dhs,           --納品ヘッダ
+             xxcos_dlv_lines dls              --納品明細
+      WHERE  dhs.order_no_hht = dls.order_no_hht
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-      AND ( ( ( dhs.order_no_ebs = cn_tkn_zero )
+      AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
           AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
-        OR ( ( dhs.order_no_ebs <> cn_tkn_zero ) 
+        OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
           AND ( dhs.input_class  = cv_input_delivery ) ) )
-      AND    dhs.results_forward_flag = cn_tkn_zero
-      AND    dhs.program_application_id IS NULL --通常データ
-      ORDER BY dhs.order_no_hht,dhs.digestion_ln_number
-    FOR UPDATE NOWAIT;
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+      AND    dhs.results_forward_flag = cv_untreated_flg
+      AND    dhs.program_application_id IS NULL
+      AND    dls.program_application_id IS NULL
+      GROUP BY  dhs.ROWID,dhs.order_no_hht,dhs.digestion_ln_number,dhs.order_no_ebs,
+                dhs.base_code,dhs.performance_by_code,dhs.dlv_by_code,dhs.hht_invoice_no,
+                dhs.dlv_date,dhs.inspect_date,dhs.sales_classification,dhs.sales_invoice,
+                dhs.card_sale_class,dhs.dlv_time,dhs.customer_number,dhs.change_out_time_100,
+                dhs.change_out_time_10,dhs.system_class,dhs.input_class,dhs.consumption_tax_class,
+                dhs.total_amount,dhs.sale_discount_amount,dhs.sales_consumption_tax,dhs.tax_include,
+                dhs.keep_in_code,dhs.department_screen_class,dhs.red_black_flag,dhs.stock_forward_flag,
+                dhs.stock_forward_date,dhs.results_forward_flag,dhs.results_forward_date,dhs.cancel_correct_class
+--      FROM   xxcos_dlv_headers dhs           --納品ヘッダ
+--      WHERE  dhs.order_no_hht IN (SELECT dls.order_no_hht
+--                                  FROM   xxcos_dlv_lines dls              --納品明細
+--                                  WHERE  dls.program_application_id IS NULL )
+--      AND    dhs.digestion_ln_number IN (SELECT dhs.digestion_ln_number
+--                                         FROM   xxcos_dlv_lines dls              --納品明細
+--                                         WHERE  dls.program_application_id IS NULL )
+---- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+----      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+----      AND ( ( ( dhs.order_no_ebs = cn_tkn_zero )
+----          AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+----        OR ( ( dhs.order_no_ebs <> cn_tkn_zero ) 
+----          AND ( dhs.input_class  = cv_input_delivery ) ) )
+--      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--      AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
+--          AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+--        OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
+--          AND ( dhs.input_class  = cv_input_delivery ) ) )
+---- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+--      AND    dhs.program_application_id IS NULL --通常データ
+      ORDER BY dhs.order_no_hht,dhs.digestion_ln_number;
+--    FOR UPDATE NOWAIT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
 --
-    --納品明細(受注画面入力データ)(HHT)
+    --納品明細(受注画面入力データ)
     CURSOR dlv_inp_line_hht_cur
     IS
       SELECT dls.order_no_hht,          -- 受注No.（HHT）
@@ -7369,30 +8926,59 @@ AS
              dls.sold_out_time,         -- 売切時間
              dls.replenish_number,      -- 補充数
              dls.cash_and_card          -- 現金・カード併用額
-      FROM   xxcos_dlv_lines dls           -- 納品明細
-      WHERE  dls.order_no_hht IN ( SELECT  dhs.order_no_hht
-                                   FROM    xxcos_dlv_headers dhs
-                                   WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-                                   AND ( ( ( dhs.order_no_ebs = cn_tkn_zero )
-                                       AND dhs.input_class  
-                                             NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
-                                     OR ( ( dhs.order_no_ebs <> cn_tkn_zero )
-                                       AND ( dhs.input_class  = cv_input_delivery ) ) ) 
-                                   AND    dhs.program_application_id IS NULL
-                                   AND    dhs.results_forward_flag = cn_tkn_zero )
-      AND    dls.digestion_ln_number IN ( SELECT dhs.digestion_ln_number
-                                          FROM    xxcos_dlv_headers dhs
-                                          WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-                                          AND ( ( ( dhs.order_no_ebs = cn_tkn_zero )
-                                              AND dhs.input_class  
-                                                  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
-                                            OR ( ( dhs.order_no_ebs <> cn_tkn_zero )
-                                              AND ( dhs.input_class  = cv_input_delivery ) ) )
-                                              AND    dhs.program_application_id IS NULL 
-                                              AND    dhs.results_forward_flag = cn_tkn_zero )
-      AND    dls.program_application_id IS NULL --受注画面入力データ
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      FROM   xxcos_dlv_headers dhs,     --納品ヘッダ
+             xxcos_dlv_lines dls        -- 納品明細
+      WHERE  dhs.order_no_hht = dls.order_no_hht
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+      AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
+          AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+        OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
+          AND ( dhs.input_class  = cv_input_delivery ) ) )
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+      AND    dhs.results_forward_flag = cv_untreated_flg
+      AND    dhs.program_application_id IS NULL
+      AND    dls.program_application_id IS NULL
+--      FROM   xxcos_dlv_lines dls           -- 納品明細
+--      WHERE  dls.order_no_hht IN ( SELECT  dhs.order_no_hht
+--                                   FROM    xxcos_dlv_headers dhs
+--                                   WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+---- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+----                                   AND ( ( ( dhs.order_no_ebs = cn_tkn_zero )
+----                                       AND dhs.input_class  
+----                                             NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+----                                     OR ( ( dhs.order_no_ebs <> cn_tkn_zero )
+----                                       AND ( dhs.input_class  = cv_input_delivery ) ) ) 
+--                                   AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
+--                                       AND dhs.input_class  
+--                                             NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+--                                     OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero )
+--                                       AND ( dhs.input_class  = cv_input_delivery ) ) ) 
+-- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+--                                   AND    dhs.program_application_id IS NULL
+--                                   AND    dhs.results_forward_flag = cn_tkn_zero )
+--      AND    dls.digestion_ln_number IN ( SELECT dhs.digestion_ln_number
+--                                          FROM    xxcos_dlv_headers dhs
+--                                          WHERE   dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+---- ************** 2009/04/16 1.12 N.Maeda MOD START ****************************************************************
+----                                          AND ( ( ( dhs.order_no_ebs = cn_tkn_zero )
+----                                              AND dhs.input_class  
+----                                                  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+----                                            OR ( ( dhs.order_no_ebs <> cn_tkn_zero )
+----                                              AND ( dhs.input_class  = cv_input_delivery ) ) )
+--                                          AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
+--                                              AND dhs.input_class  
+--                                                  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+--                                            OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero )
+--                                              AND ( dhs.input_class  = cv_input_delivery ) ) )
+---- ************** 2009/04/16 1.12 N.Maeda MOD  END  ****************************************************************
+--                                              AND    dhs.program_application_id IS NULL 
+--                                              AND    dhs.results_forward_flag = cn_tkn_zero )
+--      AND    dls.program_application_id IS NULL --受注画面入力データ
       ORDER BY dls.order_no_hht,dls.digestion_ln_number,dls.line_no_hht
     FOR UPDATE NOWAIT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD END ***************************************
 --
     -- 納品ヘッダ(EDI)
     CURSOR dlv_head_edi_cur
@@ -7429,20 +9015,42 @@ AS
              dhs.results_forward_flag,     -- 販売実績連携済フラグ
              dhs.results_forward_date,     -- 販売実績連携済日付
              dhs.cancel_correct_class      -- 取消・訂正区分
-      FROM   xxcos_dlv_headers dhs           --納品ヘッダ
-      WHERE  dhs.order_no_hht IN (SELECT dls.order_no_hht
-                                  FROM   xxcos_dlv_lines dls              --納品明細
-                                  WHERE   dls.program_application_id IS NOT NULL )
-      AND    dhs.digestion_ln_number IN (SELECT dhs.digestion_ln_number
-                                         FROM   xxcos_dlv_lines dls              --納品明細
-                                         WHERE  dls.program_application_id IS NOT NULL )
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      FROM   xxcos_dlv_headers dhs,           --納品ヘッダ
+             xxcos_dlv_lines dls              -- 納品明細
+      WHERE  dhs.order_no_hht = dls.order_no_hht
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND    dhs.input_class  = cv_input_delivery
-      AND    dhs.results_forward_flag = cn_tkn_zero
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+      AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.order_no_ebs <> cn_tkn_zero
       AND    dhs.program_application_id IS NOT NULL
-      ORDER BY dhs.order_no_hht,dhs.digestion_ln_number
-    FOR UPDATE NOWAIT;
+      AND    dls.program_application_id IS NOT NULL
+      GROUP BY dhs.ROWID,dhs.order_no_hht,dhs.digestion_ln_number,dhs.order_no_ebs,
+               dhs.base_code,dhs.performance_by_code,dhs.dlv_by_code,dhs.hht_invoice_no,
+               dhs.dlv_date,dhs.inspect_date,dhs.sales_classification,dhs.sales_invoice,
+               dhs.card_sale_class,dhs.dlv_time,dhs.customer_number,dhs.change_out_time_100,
+               dhs.change_out_time_10,dhs.system_class,dhs.input_class,dhs.consumption_tax_class,
+               dhs.total_amount,dhs.sale_discount_amount,dhs.sales_consumption_tax,
+               dhs.tax_include,dhs.keep_in_code,dhs.department_screen_class,dhs.red_black_flag,
+               dhs.stock_forward_flag,dhs.stock_forward_date,dhs.results_forward_flag,
+               dhs.results_forward_date,dhs.cancel_correct_class
+--      FROM   xxcos_dlv_headers dhs           --納品ヘッダ
+--      WHERE  dhs.order_no_hht IN (SELECT dls.order_no_hht
+--                                  FROM   xxcos_dlv_lines dls              --納品明細
+--                                  WHERE   dls.program_application_id IS NOT NULL )
+--      AND    dhs.digestion_ln_number IN (SELECT dhs.digestion_ln_number
+--                                         FROM   xxcos_dlv_lines dls              --納品明細
+--                                         WHERE  dls.program_application_id IS NOT NULL )
+--      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--      AND    dhs.input_class  = cv_input_delivery
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+--      AND    dhs.order_no_ebs <> cn_tkn_zero
+--      AND    dhs.program_application_id IS NOT NULL
+      ORDER BY dhs.order_no_hht,dhs.digestion_ln_number;
+--    FOR UPDATE NOWAIT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
 --
     --納品明細(EDI)
     CURSOR dlv_line_edi_cur
@@ -7467,24 +9075,37 @@ AS
              dls.sold_out_time,         -- 売切時間
              dls.replenish_number,      -- 補充数
              dls.cash_and_card          -- 現金・カード併用額
-      FROM   xxcos_dlv_lines dls        -- 納品明細
-      WHERE  dls.order_no_hht IN ( SELECT dhs.order_no_hht
-                                   FROM   xxcos_dlv_headers dhs        -- 納品ヘッダ
-                                   WHERE  dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-                                   AND    dhs.input_class  = cv_input_delivery
-                                   AND    dhs.results_forward_flag = cn_tkn_zero
-                                   AND    dhs.order_no_ebs <> cn_tkn_zero
-                                   AND    dhs.program_application_id IS NOT NULL )
-      AND    dls.digestion_ln_number IN ( SELECT dhs.digestion_ln_number
-                                          FROM   xxcos_dlv_headers dhs        -- 納品ヘッダ
-                                          WHERE  dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-                                          AND    dhs.input_class  = cv_input_delivery
-                                          AND    dhs.results_forward_flag = cn_tkn_zero
-                                          AND    dhs.order_no_ebs <> cn_tkn_zero
-                                          AND    dhs.program_application_id IS NOT NULL )
-      AND    dls.program_application_id IS NOT NULL 
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
+      FROM   xxcos_dlv_headers dhs,           --納品ヘッダ
+             xxcos_dlv_lines dls              -- 納品明細
+      WHERE  dhs.order_no_hht = dls.order_no_hht
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+      AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+      AND    dhs.input_class  = cv_input_delivery
+--      AND    dhs.results_forward_flag = cn_tkn_zero
+      AND    dhs.results_forward_flag = cv_untreated_flg
+      AND    dhs.order_no_ebs <> cn_tkn_zero
+      AND    dhs.program_application_id IS NOT NULL
+      AND    dls.program_application_id IS NOT NULL
+--      FROM   xxcos_dlv_lines dls        -- 納品明細
+--      WHERE  dls.order_no_hht IN ( SELECT dhs.order_no_hht
+--                                   FROM   xxcos_dlv_headers dhs        -- 納品ヘッダ
+--                                   WHERE  dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--                                   AND    dhs.input_class  = cv_input_delivery
+--                                   AND    dhs.results_forward_flag = cn_tkn_zero
+--                                   AND    dhs.order_no_ebs <> cn_tkn_zero
+--                                   AND    dhs.program_application_id IS NOT NULL )
+--      AND    dls.digestion_ln_number IN ( SELECT dhs.digestion_ln_number
+--                                          FROM   xxcos_dlv_headers dhs        -- 納品ヘッダ
+--                                          WHERE  dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+--                                          AND    dhs.input_class  = cv_input_delivery
+--                                          AND    dhs.results_forward_flag = cn_tkn_zero
+--                                          AND    dhs.order_no_ebs <> cn_tkn_zero
+--                                          AND    dhs.program_application_id IS NOT NULL )
+--      AND    dls.program_application_id IS NOT NULL 
       ORDER BY dls.order_no_hht,dls.digestion_ln_number,dls.line_no_hht
     FOR UPDATE NOWAIT;
+--******************************* 2009/04/16 N.Maeda Var1.12 MOD START ***************************************
 --
     --HHT入出庫一時ヘッダ用抽出
     CURSOR transaction_head_cur
@@ -7619,7 +9240,7 @@ AS
         IF( dlv_head_edi_cur%ISOPEN ) THEN
           CLOSE dlv_head_edi_cur;
         END IF;
-        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
+        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_tab );
         lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_loc_err, cv_tkn_table, gv_tkn1 );
         RAISE;
       WHEN OTHERS THEN
@@ -7629,7 +9250,7 @@ AS
         IF( dlv_head_edi_cur%ISOPEN ) THEN
           CLOSE dlv_head_edi_cur;
         END IF;
-        gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_head );
+        gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_tab );
         lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_extract_err, cv_tkn_table, gv_tkn1 );
         RAISE data_extract_err_expt;
     END;
@@ -7680,7 +9301,7 @@ AS
         IF( dlv_line_edi_cur%ISOPEN ) THEN
           CLOSE dlv_line_edi_cur;
         END IF;
-        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_line );
+        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_tab );
         lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_loc_err, cv_tkn_table, gv_tkn1 );
         RAISE;
       WHEN OTHERS THEN
@@ -7690,7 +9311,7 @@ AS
         IF( dlv_line_edi_cur%ISOPEN ) THEN
           CLOSE dlv_line_edi_cur;
         END IF;
-        gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_line );
+        gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_tab );
         lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_extract_err, cv_tkn_table, gv_tkn1 );
         RAISE data_extract_err_expt;
     END;
@@ -8085,6 +9706,34 @@ AS
       END IF;
     END IF;
 --
+--******************************* 2009/04/16 N.Maeda Var1. ADD START ***************************************
+    IF ( gn_wae_data_num <> 0 ) THEN
+      ov_retcode := cv_status_warn;
+      <<war_msg_loop>>
+      FOR war_num IN 1..gn_wae_data_num LOOP
+        --メッセージ生成
+        lv_errmsg := gt_msg_war_data(war_num);
+        lv_errbuf := lv_errmsg;
+        --メッセージ出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_errmsg);
+        --ログ出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+         ,buff   => lv_errbuf);
+        --空行挿入
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+          ,buff   => ''
+          );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+          ,buff   => ''
+          );
+      END LOOP war_msg_loop;
+    END IF;
+--******************************* 2009/04/16 N.Maeda Var1. ADD END   ***************************************
     IF ( lv_retcode <> cv_status_error ) 
     AND ( ( gn_target_cnt + gn_target_edi_cnt + gn_transaction_cnt + gn_inp_target_cnt ) = 0 ) THEN
       ov_retcode := cv_status_warn;
@@ -8226,7 +9875,8 @@ AS
                      iv_application  => cv_application
                     ,iv_name         => cv_msg_count_he_target
                     ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR( gn_target_cnt + gn_target_edi_cnt + gn_inp_target_cnt )
+                    ,iv_token_value1 => TO_CHAR( gn_target_cnt + gn_target_edi_cnt 
+                                                   + gn_inp_target_cnt + gn_transaction_head_cnt)
                    );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
@@ -8324,3 +9974,4 @@ AS
 --
 END XXCOS001A05C;
 /
+
