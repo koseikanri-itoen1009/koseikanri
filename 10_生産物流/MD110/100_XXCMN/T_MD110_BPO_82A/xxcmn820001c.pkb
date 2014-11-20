@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/07/09    1.2   Oracle 山根一浩  I_S_192対応
  *  2008/09/10    1.3   Oracle 山根一浩  PT 2-2_18 指摘62対応
  *  2009/04/09    1.4   SCS丸下          本番障害1395 年度切替対応
+ *  2009/04/27    1.5   SCS 椎名         本番障害1407対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1084,8 +1085,10 @@ AS
       INTO in_item_id
       FROM xxcmn_item_mst2_v ximv    -- OPM品目情報VIEW2
       WHERE ximv.item_no = ir_report_rec.item_code
-        AND ximv.obsolete_class = cv_obsolete_handling
-        AND ximv.obsolete_date IS NULL
+-- 2009/04/27 v1.5 DELETE START
+--        AND ximv.obsolete_class = cv_obsolete_handling
+--        AND ximv.obsolete_date IS NULL
+-- 2009/04/27 v1.5 DELETE END
         AND ROWNUM = 1;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1103,8 +1106,10 @@ AS
       INTO ln_count
       FROM xxcmn_item_mst2_v ximv    -- OPM品目情報VIEW2
       WHERE ximv.item_no = ir_report_rec.item_code_detail
-        AND ximv.obsolete_class = cv_obsolete_handling
-        AND ximv.obsolete_date IS NULL
+-- 2009/04/27 v1.5 DELETE START
+--        AND ximv.obsolete_class = cv_obsolete_handling
+--        AND ximv.obsolete_date IS NULL
+-- 2009/04/27 v1.5 DELETE END
         AND ROWNUM = 1;
   --
       IF (ln_count = 0) THEN
@@ -1769,6 +1774,39 @@ AS
       ln_head_count := 0;
       ln_line_count := 0;
 --
+-- 2009/04/27 v1.5 ADD START
+      ----------------------
+      -- 対象データ削除処理
+      ----------------------
+      -- 明細を削除
+      DELETE
+      FROM xxpo_price_lines xpl
+      WHERE EXISTS
+      (
+        SELECT 'X'
+        FROM  xxcmn_standard_cost_if xsci,
+              xxpo_price_headers xph
+        WHERE xsci.item_code        = xph.item_code
+        AND   xph.price_type        = '2' -- 標準原価
+        AND   xph.start_date_active = xsci.start_date_active
+        AND   xph.price_header_id   = xpl.price_header_id
+        AND   xsci.request_id       = gt_request_id_tbl(ln_req_count)
+      );
+--
+      -- ヘッダを削除
+      DELETE
+      FROM  xxpo_price_headers xph
+      WHERE xph.price_type = '2' -- 標準原価
+      AND EXISTS
+      (
+        SELECT 'X'
+        FROM  xxcmn_standard_cost_if xsci
+        WHERE xsci.item_code         = xph.item_code
+        AND   xsci.start_date_active = xph.start_date_active
+        AND   xsci.request_id        = gt_request_id_tbl(ln_req_count)
+      );
+--
+-- 2009/04/27 v1.5 ADD END
       <<get_standard_if_loop>>
       FOR get_stand_data IN get_standard_if_cur(gt_request_id_tbl(ln_req_count))
       LOOP

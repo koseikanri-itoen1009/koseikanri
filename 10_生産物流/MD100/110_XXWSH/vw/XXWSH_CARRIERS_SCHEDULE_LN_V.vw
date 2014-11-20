@@ -159,8 +159,12 @@ AND   xlvv2.lookup_code(+)        = xoha.shipping_method_code         -- ”z‘—‹æ•
 AND   xlvv3.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
 AND   xlvv3.lookup_code(+)        = xoha.result_shipping_method_code  -- ”z‘—‹æ•ª_ÀÑ
 AND   xilv.segment1(+)            = xoha.deliver_from                 -- o‰×Œ³•ÛŠÇêŠ–¼Ìæ“¾
-AND   xcasv.party_site_id(+)      = xoha.deliver_to_id                -- o‰×æ–¼Ì
-AND   xcasv2.party_site_id(+)     = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
+-- 2009/04/24 Y.Kazama –{”ÔáŠQ#1398‘Î‰(60A) Mod Start
+AND   xcasv.party_site_number(+)  = xoha.deliver_to                   -- o‰×æ–¼Ì
+AND   xcasv2.party_site_number(+) = xoha.result_deliver_to            -- o‰×æ_ÀÑ–¼Ì
+--AND   xcasv.party_site_id(+)      = xoha.deliver_to_id
+--AND   xcasv2.party_site_id(+)     = xoha.result_deliver_to_id
+-- 2009/04/24 Y.Kazama –{”ÔáŠQ#1398‘Î‰(60A) Mod End
 AND   xvsv.vendor_site_id(+)      = xoha.vendor_site_id               -- æˆøæƒTƒCƒg–¼Ì
 AND   xcav.party_number(+)        = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
 AND   xcav.customer_class_code(+) = '1'                               -- ŒÚ‹q‹æ•ª
@@ -264,8 +268,12 @@ AND   xlvv2.lookup_code(+)        = xoha.shipping_method_code         -- ”z‘—‹æ•
 AND   xlvv3.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
 AND   xlvv3.lookup_code(+)        = xoha.result_shipping_method_code  -- ”z‘—‹æ•ª_ÀÑ
 AND   xilv.segment1(+)            = xoha.deliver_from                 -- o‰×Œ³•ÛŠÇêŠ–¼Ìæ“¾
-AND   xcasv.party_site_id(+)      = xoha.deliver_to_id                -- o‰×æ–¼Ì
-AND   xcasv2.party_site_id(+)     = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
+-- 2009/04/24 Y.Kazama –{”ÔáŠQ#1398‘Î‰(60A) Mod Start
+AND   xcasv.party_site_number(+)  = xoha.deliver_to                   -- o‰×æ–¼Ì
+AND   xcasv2.party_site_number(+) = xoha.result_deliver_to            -- o‰×æ_ÀÑ–¼Ì
+--AND   xcasv.party_site_id(+)      = xoha.deliver_to_id
+--AND   xcasv2.party_site_id(+)     = xoha.result_deliver_to_id
+-- 2009/04/24 Y.Kazama –{”ÔáŠQ#1398‘Î‰(60A) Mod End
 AND   xvsv.vendor_site_id(+)      = xoha.vendor_site_id               -- æˆøæƒTƒCƒg–¼Ì
 AND   xcav.party_number(+)        = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
 AND   xcav.customer_class_code(+) = '1'                               -- ŒÚ‹q‹æ•ª

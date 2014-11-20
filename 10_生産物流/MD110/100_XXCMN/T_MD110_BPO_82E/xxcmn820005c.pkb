@@ -7,7 +7,7 @@ AS
  * Description      : 原価コピー処理
  * MD.050           : 標準原価マスタT_MD050_BPO_821
  * MD.070           : 原価コピー処理(82E) T_MD070_BPO_82E
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/01/08    1.1   N.Yoshida        本番#968対応
  *  2009/03/18    1.2   A.Shiina         本番#1304対応
  *  2009/03/23    1.3   A.Shiina         マスタ受信日時はOPM品目マスタのDFFを参照する
+ *  2009/04/28    1.4   A.Shiina         本番#1407対応
  *
  *****************************************************************************************/
 --
@@ -1202,7 +1203,10 @@ AS
         INTO   lt_master_receive_date                    -- マスタ受信日
               ,lt_cmpntcost_id                           -- 原価詳細ID
         FROM   cm_cmpt_dtl         ccd                   -- 品目原価マスタ
-              ,xxcmn_item_mst_v    ximv                  -- OPM品目情報VEIW
+-- 2009/04/28 v1.4 UPDATE START
+--              ,xxcmn_item_mst_v    ximv                  -- OPM品目情報VEIW
+              ,xxcmn_item_mst2_v   ximv                  -- OPM品目情報VEIW2
+-- 2009/04/28 v1.4 UPDATE END
         WHERE  ccd.item_id          = it_item_id         -- 品目ID
         AND    ccd.item_id          = ximv.item_id
         AND    ccd.cost_cmpntcls_id = cost_cmpntcls_id_tab(loop_cnt) -- コンポーネント区分ID
@@ -1211,6 +1215,10 @@ AS
         AND    ccd.calendar_code    = gv_calendar_code    -- カレンダ
         AND    ccd.cost_mthd_code   = gv_cost_div         -- 原価方法
         AND    ccd.delete_mark      = 0                   -- 削除フラグ
+-- 2009/04/28 v1.4 ADD START
+        AND    ximv.start_date_active <= TRUNC(SYSDATE)
+        AND    ximv.end_date_active   >= TRUNC(SYSDATE)
+-- 2009/04/28 v1.4 ADD END
         AND    ROWNUM               = 1
         ;
 -- 2009/03/23 v1.3 UPDATE END
@@ -1365,7 +1373,10 @@ AS
             ,xph.item_id                 item_id           -- 品目ID
             ,ximv.cost_manage_code       cost_manage_code  -- 原価管理区分
       FROM   xxpo_price_headers          xph               -- 仕入/標準原価ヘッダ
-            ,xxcmn_item_mst_v            ximv              -- OPM品目情報VIEW
+-- 2009/04/28 v1.4 UPDATE START
+--            ,xxcmn_item_mst_v            ximv              -- OPM品目情報VIEW
+            ,xxcmn_item_mst2_v           ximv              -- OPM品目情報VIEW
+-- 2009/04/28 v1.4 UPDATE END
             ,xxcmn_item_categories5_v    xicv              -- OPM品目カテゴリ割当情報VIEW
             ,(
              SELECT xph1.item_id                item_id
@@ -1395,6 +1406,10 @@ AS
         OR    (xph.end_date_active   BETWEEN gt_start_date AND gt_end_date)          -- 適用終了日が原価カレンダ開始日範囲内～原価カレンダ終了日範囲内
         OR    ((xph.start_date_active < gt_start_date)                               -- 適用開始日が原価カレンダ開始日より前かつ、適用終了日が原価カレンダ終了日より後
           AND  (xph.end_date_active   > gt_end_date)))
+-- 2009/04/28 v1.4 ADD START
+      AND    ximv.start_date_active <= TRUNC(SYSDATE)
+      AND    ximv.end_date_active   >= TRUNC(SYSDATE)
+-- 2009/04/28 v1.4 ADD END
     ;
 --
   BEGIN
