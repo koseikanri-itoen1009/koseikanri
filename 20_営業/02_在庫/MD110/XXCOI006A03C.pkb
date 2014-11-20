@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/03/17    1.5   H.Sasaki         [T1_0076]月首棚卸高算出の実行条件変更
  *  2009/03/30    1.6   H.Sasaki         [T1_0195]棚卸情報登録時の拠点コード変換条件変更
  *  2009/04/27    1.7   H.Sasaki         [T1_0553]年月日の設定値変更
+ *  2009/05/11    1.8   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
  *
  *****************************************************************************************/
 --
@@ -1595,7 +1596,9 @@ AS
         WHEN  cv_trans_type_280 THEN   -- 36.棚卸減耗減
           gt_quantity(36)  :=  gt_quantity(36) + ir_daily_trans.transaction_qty;
         WHEN  cv_trans_type_290 THEN
-          IF (ir_daily_trans.base_code = ir_daily_trans.sub_base_code) THEN
+-- == 2009/05/11 V1.8 Deleted START ===============================================================
+--          IF (ir_daily_trans.base_code = ir_daily_trans.sub_base_code) THEN
+-- == 2009/05/11 V1.8 Deleted END   ===============================================================
             IF (ir_daily_trans.transaction_qty < 0) THEN
               -- 37.保管場所移動＿自拠点出庫
               gt_quantity(37)  :=  gt_quantity(37) + ir_daily_trans.transaction_qty;
@@ -1603,7 +1606,9 @@ AS
               -- 38.保管場所移動＿自拠点入庫
               gt_quantity(38)  :=  gt_quantity(38) + ir_daily_trans.transaction_qty;
             END IF;
-          END IF;
+-- == 2009/05/11 V1.8 Deleted START ===============================================================
+--          END IF;
+-- == 2009/05/11 V1.8 Deleted END   ===============================================================
         ELSE  NULL;
       END CASE;
     END IF;

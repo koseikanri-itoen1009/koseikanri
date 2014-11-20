@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/05    1.0   Sai.u            新規作成
  *  2009/04/06    1.1   H.Sasaki         [T1_0197]月次在庫受払表（累計）の作成
+ *  2009/05/08    1.2   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
  *
  *****************************************************************************************/
 --
@@ -1741,7 +1742,9 @@ AS
         WHEN  cv_trans_type_280 THEN   -- 36.棚卸減耗減
           gt_quantity(36)  :=  gt_quantity(36) + material_transaction_rec.transaction_qty;
         WHEN  cv_trans_type_290 THEN
-          IF (material_transaction_rec.base_code = material_transaction_rec.sub_base_code) THEN
+-- == 2009/05/08 V1.2 Deleted START ===============================================================
+--          IF (material_transaction_rec.base_code = material_transaction_rec.sub_base_code) THEN
+-- == 2009/05/08 V1.2 Deleted END   ===============================================================
             IF (material_transaction_rec.transaction_qty < 0) THEN
               -- 37.保管場所移動＿自拠点出庫
               gt_quantity(37)  :=  gt_quantity(37) + material_transaction_rec.transaction_qty;
@@ -1749,7 +1752,9 @@ AS
               -- 38.保管場所移動＿自拠点入庫
               gt_quantity(38)  :=  gt_quantity(38) + material_transaction_rec.transaction_qty;
             END IF;
-          END IF;
+-- == 2009/05/08 V1.2 Deleted START ===============================================================
+--          END IF;
+-- == 2009/05/08 V1.2 Deleted END   ===============================================================
         ELSE  NULL;
       END CASE;
       --
