@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/04/17    1.21 SCS    H.Itou     本番障害#1398対応
  *  2009/04/20    1.22 SCS    H.Itou     本番障害#1398再対応
  *  2009/07/23    1.23 SCS    H.Itou     本番障害#1336対応
+ *  2009/07/28    1.24 SCS    H.Itou     本番障害#1336再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7540,7 +7541,10 @@ debug_log(FND_FILE.LOG,'--------- 配送区分検索用入出庫場所取得 ---------');
          ,it_prod_class                 => gv_prod_class                                    -- 05.商品区分
          ,it_weight_capacity_class      => lt_intensive_tab(ln_cnt).weight_capacity_class   -- 06.重量容積区分
          ,id_standard_date              => gd_date_from                                     -- 07.基準日
-         ,iv_where_zero_flg             => '1'                                              -- 08.[1]:重量容積>0を条件に追加する
+-- 2009/07/28 H.Itou Mod Start 本番障害#1338 0より大きい条件を追加するフラグは「0」
+--         ,iv_where_zero_flg             => '1'                                              -- 08.[1]:重量容積>0を条件に追加する
+         ,iv_where_zero_flg             => '0'                                              -- 08.[0]:重量容積>0を条件に追加する
+-- 2009/07/28 H.Itou Mod End
          ,ov_retcode                    => lv_retcode                                       -- 09.リターンコード
          ,ov_errmsg                     => lv_errmsg                                        -- 10.エラーメッセージ
          ,ot_entering_despatching_code1 => lt_intensive_tab(ln_cnt).ship_method_search_from -- 11.配送区分検索用入出庫場所１(入出庫場所１かALL値)
