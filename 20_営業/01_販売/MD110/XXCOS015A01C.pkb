@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.13
+ * Version          : 2.14
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2009/09/28    2.11  N.Maeda          [0001299]販売実績ヘッダ更新時エラー時出力内容修正
  *  2009/11/24    2.12  N.Maeda          [E_本番_XXXX] 販売実績対象データ取得条件「検収日」⇒「納品日」へ修正
  *  2009/12/29    2.13  K.Kiriu          [E_本番_00531]伝票番号の桁数オーバー切捨て対応
+ *  2010/01/06    2.14  K.Atsushiba      [E_本稼働_00922]情報系への売上実績連携のAR情報不正対応
  *
  *****************************************************************************************/
 --
@@ -2121,13 +2122,19 @@ AS
         gn_ar_trx_num_warn := cn_1;
         --12桁に切捨て
         gt_ar_deal_tbl(ln_idx).rcta_trx_number
-          := TO_NUMBER( SUBSTRB( TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number ), 1, cn_trx_num_length ) );
+/*2010/01/06 Ver2.14 Mod Start   */
+          := SUBSTRB( gt_ar_deal_tbl(ln_idx).rcta_trx_number , 1, cn_trx_num_length );
+--          := TO_NUMBER( SUBSTRB( TO_CHAR( gt_ar_deal_tbl(ln_idx).rcta_trx_number ), 1, cn_trx_num_length ) );
+/*2010/01/06 Ver2.14 Mod End   */
       END IF;
       --
 /*2009/12/29 Ver2.13 Add End   */
       lv_buffer :=
         cv_d_cot || gt_company_code || cv_d_cot                                  || cv_delimiter    -- 会社コード
-        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
+/*2010/01/06 Ver2.14 Mod Start   */
+        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rctlgda_gl_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
+--        || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_date,cv_date_format_non_sep)  || cv_delimiter    -- 納品日
+/*2010/01/06 Ver2.14 Mod End   */
         || cv_d_cot || TO_CHAR(gt_ar_deal_tbl(ln_idx).rcta_trx_number) || cv_d_cot || cv_delimiter    -- 伝票番号
         || TO_CHAR(gt_ar_deal_tbl(ln_idx).rctla_line_number)                     || cv_delimiter    -- 行No
         || cv_d_cot || it_sales_rec.xseh_ship_to_customer_code || cv_d_cot       || cv_delimiter    -- 顧客コード
