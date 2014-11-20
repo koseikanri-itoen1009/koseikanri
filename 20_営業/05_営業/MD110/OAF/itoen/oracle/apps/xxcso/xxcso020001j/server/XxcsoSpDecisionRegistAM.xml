@@ -214,6 +214,10 @@
       Name="XxcsoSpDecisionBmFormatVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBmFormatVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCardSaleClassListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoSpDecHeaderInstCustVL1"
       ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderInstCustVL"

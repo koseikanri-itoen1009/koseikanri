@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-05-25 1.1  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
 * 2009-08-04 1.2  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
 * 2013-04-19 1.3  SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
+* 2014-01-31 1.4  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -535,6 +536,9 @@ public class XxcsoSpDecisionInitUtils
       scVo.next();
       scVo.insertRow(scRow);
       scRow.setFixedPrice(              scRow2.getFixedPrice()              );
+// 2014-01-31 [E_本稼動_11397] Add Start
+      scRow.setCardSaleClass(           scRow2.getCardSaleClass()           );
+// 2014-01-31 [E_本稼動_11397] Add End
       scRow.setSalesPrice(              scRow2.getSalesPrice()              );
       scRow.setBmRatePerSalesPrice(     scRow2.getBmRatePerSalesPrice()     );
       scRow.setBmAmountPerSalesPrice(   scRow2.getBmAmountPerSalesPrice()   );

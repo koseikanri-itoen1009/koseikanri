@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.17
+* バージョン : 1.18
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -25,6 +25,7 @@
 * 2010-03-01 1.15 SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2011-04-04 1.16 SCS吉元強樹  [E_本稼動_02498]SP専決回送先承認者必須チェック対応
 * 2013-04-19 1.17 SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
+* 2014-01-31 1.18 SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -3704,7 +3705,10 @@ public class XxcsoSpDecisionValidateUtils
   )
   {
     XxcsoUtils.debug(txn, "[START]");
-    
+
+// 2014-01-31 [E_本稼動_11397] Add Start
+    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
+// 2014-01-31 [E_本稼動_11397] Add End    
     List errorList = new ArrayList();
     List fixedPriceList = new ArrayList();
     List salesPriceList = new ArrayList();
@@ -3742,6 +3746,9 @@ public class XxcsoSpDecisionValidateUtils
       String bm2BmAmt   = scRow.getBm2BmAmount();
       String bm3BmRate  = scRow.getBm3BmRate();
       String bm3BmAmt   = scRow.getBm3BmAmount();
+// 2014-01-31 [E_本稼動_11397] Add Start
+      String cardSaleClass = scRow.getCardSaleClass();
+// 2014-01-31 [E_本稼動_11397] Add End
 
       errorList.addAll(
         validateFixedPrice(txn, fixedPrice, submitFlag, index)
@@ -3767,6 +3774,15 @@ public class XxcsoSpDecisionValidateUtils
       errorList.addAll(
         validateBm3BmAmt(txn, bm3BmAmt, submitFlag, index)
       );
+// 2014-01-31 [E_本稼動_11397] Add Start
+      errorList
+        = utils.requiredCheck(
+              errorList
+             ,cardSaleClass
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CARD_SALE_CLASS
+             ,index
+            );
+// 2014-01-31 [E_本稼動_11397] Add End
 
       if ( ! submitFlag )
       {
@@ -3966,25 +3982,63 @@ public class XxcsoSpDecisionValidateUtils
     {
       index++;
       String fixedPrice = scRow.getFixedPrice().replaceAll(",","");
-      if ( fixedPriceList.contains(fixedPrice) )
+// 2014-01-31 [E_本稼動_11397] Add Start
+      String cardSaleclass = scRow.getCardSaleClass();
+      String chkStr = fixedPrice + cardSaleclass;
+      String tokenValCardSale = "";
+// 2014-01-31 [E_本稼動_11397] Add End
+// 2014-01-31 [E_本稼動_11397] Mod Start
+//      if ( fixedPriceList.contains(fixedPrice) )
+//      {
+//        if ( ! repeatFixedPriceList.contains(fixedPrice) )
+//        {
+//          repeatFixedPriceList.add(fixedPrice);
+//        }
+//
+//        OAException error
+//          = XxcsoMessage.createErrorMessage(
+//              XxcsoConstants.APP_XXCSO1_00425
+//             ,XxcsoConstants.TOKEN_PRICE
+//             ,fixedPrice
+//            );
+
+//        errorList.add(error);
+      if ( fixedPriceList.contains(chkStr) )
       {
-        if ( ! repeatFixedPriceList.contains(fixedPrice) )
+        //既に同一の組み合わせでエラーリストに登録されているものは除外
+        if ( ! repeatFixedPriceList.contains(chkStr) )
         {
-          repeatFixedPriceList.add(fixedPrice);
+          //メッセージ編集
+          if ( XxcsoSpDecisionConstants.CARD_SALE_CLASS_SALE.equals(cardSaleclass) )
+          {
+            tokenValCardSale = XxcsoSpDecisionConstants.TOKEN_VALUE_CARD_SALE_CLASS_SALE; //現金
+          }
+          else
+          {
+            tokenValCardSale = XxcsoSpDecisionConstants.TOKEN_VALUE_CARD_SALE_CLASS_CARD; //カード
+          }
+
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00425
+               ,XxcsoConstants.TOKEN_PRICE
+               ,fixedPrice
+               ,XxcsoConstants.TOKEN_CARD_SALE
+               ,tokenValCardSale
+              );
+
+          errorList.add(error);
+
+          repeatFixedPriceList.add(chkStr);          
         }
-
-        OAException error
-          = XxcsoMessage.createErrorMessage(
-              XxcsoConstants.APP_XXCSO1_00425
-             ,XxcsoConstants.TOKEN_PRICE
-             ,fixedPrice
-            );
-
-        errorList.add(error);
+// 2014-01-31 [E_本稼動_11397] Mod End
       }
       else
       {
-        fixedPriceList.add(fixedPrice);
+// 2014-01-31 [E_本稼動_11397] Mod Start
+//        fixedPriceList.add(fixedPrice);
+        fixedPriceList.add(chkStr);
+// 2014-01-31 [E_本稼動_11397] Mod End
       }
       
       String salesPrice = scRow.getSalesPrice().replaceAll(",","");
@@ -3992,17 +4046,23 @@ public class XxcsoSpDecisionValidateUtils
       {
         if ( ! repeatSalesPriceList.contains(salesPrice) )
         {
+// 2014-01-31 [E_本稼動_11397] Del Start
+//          repeatSalesPriceList.add(salesPrice);
+//        }
+// 2014-01-31 [E_本稼動_11397] Del End
+
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00426
+               ,XxcsoConstants.TOKEN_PRICE
+               ,salesPrice
+              );
+
+          errorList.add(error);
+// 2014-01-31 [E_本稼動_11397] Add Start
           repeatSalesPriceList.add(salesPrice);
         }
-
-        OAException error
-          = XxcsoMessage.createErrorMessage(
-              XxcsoConstants.APP_XXCSO1_00426
-             ,XxcsoConstants.TOKEN_PRICE
-             ,salesPrice
-            );
-
-        errorList.add(error);
+// 2014-01-31 [E_本稼動_11397] Add End
       }
       else
       {
@@ -5115,46 +5175,47 @@ public class XxcsoSpDecisionValidateUtils
          ,index
         );
 
-    double doubleValue = 0;
-    boolean unitErrorFlag = false;
+// 2014-01-31 [E_本稼動_11397] Del Start
+//    double doubleValue = 0;
+//    boolean unitErrorFlag = false;
 
-    if ( salesPrice != null               &&
-         ! "".equals(salesPrice.trim())   &&
-         ! "0".equals(salesPrice.trim())
-       )
-    {
-      try
-      {
-        doubleValue = Double.parseDouble(salesPrice.replaceAll(",",""));
-      }
-      catch ( NumberFormatException nfe )
-      {
-        unitErrorFlag = true;
-      }
+//    if ( salesPrice != null               &&
+//         ! "".equals(salesPrice.trim())   &&
+//         ! "0".equals(salesPrice.trim())
+//       )
+//    {
+//      try
+//      {
+//        doubleValue = Double.parseDouble(salesPrice.replaceAll(",",""));
+//      }
+//      catch ( NumberFormatException nfe )
+//      {
+//        unitErrorFlag = true;
+//      }
+//      if ( (doubleValue % (double)10) != (double)0 )
+//      {
+//        unitErrorFlag = true;
+//      }
+//    }
+//    else
+//    {
+//      unitErrorFlag = true;
+//    }
 
-      if ( (doubleValue % (double)10) != (double)0 )
-      {
-        unitErrorFlag = true;
-      }
-    }
-    else
-    {
-      unitErrorFlag = true;
-    }
+//    if ( submitFlag && unitErrorFlag )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00300
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_SALES_PRICE
+//           ,XxcsoConstants.TOKEN_INDEX
+//           ,String.valueOf(index)
+//         );
 
-    if ( submitFlag && unitErrorFlag )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00300
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoSpDecisionConstants.TOKEN_VALUE_SALES_PRICE
-           ,XxcsoConstants.TOKEN_INDEX
-           ,String.valueOf(index)
-          );
-
-      errorList.add(error);
-    }
+//      errorList.add(error);
+//    }
+// 2014-01-31 [E_本稼動_11397] Del End
     
     XxcsoUtils.debug(txn, "[END]");
 

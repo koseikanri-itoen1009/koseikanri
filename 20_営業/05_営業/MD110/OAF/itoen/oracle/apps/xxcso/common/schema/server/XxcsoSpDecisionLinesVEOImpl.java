@@ -57,7 +57,10 @@ public class XxcsoSpDecisionLinesVEOImpl extends OAPlsqlEntityImpl
   protected static final int PROGRAMAPPLICATIONID = 21;
   protected static final int PROGRAMID = 22;
   protected static final int PROGRAMUPDATEDATE = 23;
-  protected static final int XXCSOSPDECISIONHEADERSVEO = 24;
+  protected static final int CARDSALECLASS = 24;
+  protected static final int XXCSOSPDECISIONHEADERSVEO = 25;
+
+
 
 
 
@@ -95,6 +98,8 @@ public class XxcsoSpDecisionLinesVEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
 
 
 
@@ -867,6 +872,8 @@ public class XxcsoSpDecisionLinesVEOImpl extends OAPlsqlEntityImpl
         return getProgramId();
       case PROGRAMUPDATEDATE:
         return getProgramUpdateDate();
+      case CARDSALECLASS:
+        return getCardSaleClass();
       case XXCSOSPDECISIONHEADERSVEO:
         return getXxcsoSpDecisionHeadersVEO();
       default:
@@ -951,6 +958,9 @@ public class XxcsoSpDecisionLinesVEOImpl extends OAPlsqlEntityImpl
       case PROGRAMUPDATEDATE:
         setProgramUpdateDate((Date)value);
         return;
+      case CARDSALECLASS:
+        setCardSaleClass((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -976,6 +986,25 @@ public class XxcsoSpDecisionLinesVEOImpl extends OAPlsqlEntityImpl
     setAttributeInternal(XXCSOSPDECISIONHEADERSVEO, value);
   }
 
+
+  /**
+   * 
+   * Gets the attribute value for CardSaleClass, using the alias name CardSaleClass
+   */
+  public String getCardSaleClass()
+  {
+    return (String)getAttributeInternal(CARDSALECLASS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for CardSaleClass
+   */
+  public void setCardSaleClass(String value)
+  {
+    setAttributeInternal(CARDSALECLASS, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -984,6 +1013,7 @@ public class XxcsoSpDecisionLinesVEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {spDecisionLineId});
   }
+
 
 
 

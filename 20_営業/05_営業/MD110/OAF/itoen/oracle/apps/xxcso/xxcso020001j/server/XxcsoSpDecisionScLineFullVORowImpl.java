@@ -49,16 +49,18 @@ public class XxcsoSpDecisionScLineFullVORowImpl extends OAViewRowImpl
   protected static final int PROGRAMAPPLICATIONID = 21;
   protected static final int PROGRAMID = 22;
   protected static final int PROGRAMUPDATEDATE = 23;
-  protected static final int SELECTFLAG = 24;
-  protected static final int FIXEDPRICEREADONLY = 25;
-  protected static final int SALESPRICEREADONLY = 26;
-  protected static final int SCBM1BMRATEREADONLY = 27;
-  protected static final int SCBM1BMAMOUNTREADONLY = 28;
-  protected static final int SCBM2BMRATEREADONLY = 29;
-  protected static final int SCBM2BMAMOUNTREADONLY = 30;
-  protected static final int SCBM3BMRATEREADONLY = 31;
-  protected static final int SCBM3BMAMOUNTREADONLY = 32;
-  protected static final int SCMULTIPLESELECTIONRENDER = 33;
+  protected static final int CARDSALECLASS = 24;
+  protected static final int SELECTFLAG = 25;
+  protected static final int FIXEDPRICEREADONLY = 26;
+  protected static final int SALESPRICEREADONLY = 27;
+  protected static final int SCBM1BMRATEREADONLY = 28;
+  protected static final int SCBM1BMAMOUNTREADONLY = 29;
+  protected static final int SCBM2BMRATEREADONLY = 30;
+  protected static final int SCBM2BMAMOUNTREADONLY = 31;
+  protected static final int SCBM3BMRATEREADONLY = 32;
+  protected static final int SCBM3BMAMOUNTREADONLY = 33;
+  protected static final int SCMULTIPLESELECTIONRENDER = 34;
+  protected static final int CARDSALECLASSREADONLY = 35;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -561,6 +563,8 @@ public class XxcsoSpDecisionScLineFullVORowImpl extends OAViewRowImpl
         return getProgramId();
       case PROGRAMUPDATEDATE:
         return getProgramUpdateDate();
+      case CARDSALECLASS:
+        return getCardSaleClass();
       case SELECTFLAG:
         return getSelectFlag();
       case FIXEDPRICEREADONLY:
@@ -581,6 +585,8 @@ public class XxcsoSpDecisionScLineFullVORowImpl extends OAViewRowImpl
         return getScBm3BmAmountReadOnly();
       case SCMULTIPLESELECTIONRENDER:
         return getScMultipleSelectionRender();
+      case CARDSALECLASSREADONLY:
+        return getCardSaleClassReadOnly();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -663,6 +669,9 @@ public class XxcsoSpDecisionScLineFullVORowImpl extends OAViewRowImpl
       case PROGRAMUPDATEDATE:
         setProgramUpdateDate((Date)value);
         return;
+      case CARDSALECLASS:
+        setCardSaleClass((String)value);
+        return;
       case SELECTFLAG:
         setSelectFlag((String)value);
         return;
@@ -692,6 +701,9 @@ public class XxcsoSpDecisionScLineFullVORowImpl extends OAViewRowImpl
         return;
       case SCMULTIPLESELECTIONRENDER:
         setScMultipleSelectionRender((Boolean)value);
+        return;
+      case CARDSALECLASSREADONLY:
+        setCardSaleClassReadOnly((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -900,6 +912,44 @@ public class XxcsoSpDecisionScLineFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(SCBM3BMAMOUNTREADONLY, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for CARD_SALE_CLASS using the alias name CardSaleClass
+   */
+  public String getCardSaleClass()
+  {
+    return (String)getAttributeInternal(CARDSALECLASS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for CARD_SALE_CLASS using the alias name CardSaleClass
+   */
+  public void setCardSaleClass(String value)
+  {
+    setAttributeInternal(CARDSALECLASS, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CardSaleClassReadOnly
+   */
+  public Boolean getCardSaleClassReadOnly()
+  {
+    return (Boolean)getAttributeInternal(CARDSALECLASSREADONLY);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CardSaleClassReadOnly
+   */
+  public void setCardSaleClassReadOnly(Boolean value)
+  {
+    setAttributeInternal(CARDSALECLASSREADONLY, value);
+  }
+
+
 
 
 

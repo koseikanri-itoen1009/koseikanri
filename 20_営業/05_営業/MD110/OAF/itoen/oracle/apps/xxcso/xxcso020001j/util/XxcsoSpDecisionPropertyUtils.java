@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2009-10-14 1.5  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 * 2011-04-25 1.6  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 * 2013-04-19 1.7  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
+* 2014-01-31 1.8  SCSK桐生和幸  [E_本稼動_11397]売価1円対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -761,6 +762,9 @@ public class XxcsoSpDecisionPropertyUtils
     while ( scRow != null )
     {
       scRow.setFixedPriceReadOnly(                 Boolean.TRUE  );
+// 2014-01-31 [E_本稼動_11397] Add Start
+      scRow.setCardSaleClassReadOnly(              Boolean.TRUE  );
+// 2014-01-31 [E_本稼動_11397] Add End
       scRow.setSalesPriceReadOnly(                 Boolean.TRUE  );
       scRow.setScBm1BmRateReadOnly(                Boolean.TRUE  );
       scRow.setScBm1BmAmountReadOnly(              Boolean.TRUE  );
@@ -1729,6 +1733,9 @@ public class XxcsoSpDecisionPropertyUtils
     {
       scRow.setScMultipleSelectionRender(        Boolean.TRUE  );
       scRow.setFixedPriceReadOnly(               Boolean.FALSE );
+// 2014-01-31 [E_本稼動_11397] Add Start
+      scRow.setCardSaleClassReadOnly(            Boolean.FALSE );
+// 2014-01-31 [E_本稼動_11397] Add End
       scRow.setSalesPriceReadOnly(               Boolean.FALSE );
       scRow.setScBm1BmRateReadOnly(              Boolean.FALSE );
       scRow.setScBm1BmAmountReadOnly(            Boolean.FALSE );

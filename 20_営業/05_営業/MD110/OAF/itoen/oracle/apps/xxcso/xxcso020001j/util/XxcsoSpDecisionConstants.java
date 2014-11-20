@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2010-01-12 1.6  SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
 * 2010-01-20 1.7  SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
 * 2010-03-04 1.8  SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2014-01-31 1.9  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -269,6 +270,15 @@ public class XxcsoSpDecisionConstants
   public static final String APPR_CONT_RETURN  = "4";
 // 2009-04-20 [ST障害T1_0302] Add End
 
+// 2014-01-31 [E_本稼動_11397] Add Start
+  /*****************************************************************************
+   * カード売区分
+   *****************************************************************************
+   */
+  public static final String CARD_SALE_CLASS_SALE = "0";
+  public static final String CARD_SALE_CLASS_CARD = "1";
+// 2014-01-31 [E_本稼動_11397] Add End
+
   /*****************************************************************************
    * オペレーションモード
    *****************************************************************************
@@ -503,4 +513,12 @@ public class XxcsoSpDecisionConstants
   public static final String
      TOKEN_VALUE_SITE_USE_CODE_CHK     = "顧客使用目的チェック";
 // 2010-01-12 [E_本稼動_00823] Add End
+// 2014-01-31 [E_本稼動_11397] Add Start
+  public static final String
+     TOKEN_VALUE_CARD_SALE_CLASS       = "カード売区分";
+  public static final String
+     TOKEN_VALUE_CARD_SALE_CLASS_SALE  = "現金";
+  public static final String
+     TOKEN_VALUE_CARD_SALE_CLASS_CARD  = "カード";
+// 2014-01-31 [E_本稼動_11397] Add End
 }

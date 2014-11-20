@@ -36,7 +36,10 @@ SELECT XxcsoSpDecisionLinesVEO.SP_DECISION_LINE_ID,
        XxcsoSpDecisionLinesVEO.REQUEST_ID, 
        XxcsoSpDecisionLinesVEO.PROGRAM_APPLICATION_ID, 
        XxcsoSpDecisionLinesVEO.PROGRAM_ID, 
-       XxcsoSpDecisionLinesVEO.PROGRAM_UPDATE_DATE
+       XxcsoSpDecisionLinesVEO.PROGRAM_UPDATE_DATE,
+-- 2014/01/14 E_–{‰Ò“®_11397 Add Start
+       XxcsoSpDecisionLinesVEO.CARD_SALE_CLASS
+-- 2014/01/14 E_–{‰Ò“®_11397 Add End
 FROM XXCSO_SP_DECISION_LINES_V XxcsoSpDecisionLinesVEO
 WHERE XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE IS NULL
    ]]></SQLQuery>
@@ -230,6 +233,12 @@ WHERE XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE IS NULL
       AliasName="PROGRAM_UPDATE_DATE" >
    </ViewAttribute>
    <ViewAttribute
+      Name="CardSaleClass"
+      EntityAttrName="CardSaleClass"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="CardSaleClass" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="SelectFlag"
       IsQueriable="false"
       IsPersistent="false"
@@ -313,6 +322,15 @@ WHERE XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE IS NULL
    </ViewAttribute>
    <ViewAttribute
       Name="ScMultipleSelectionRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CardSaleClassReadOnly"
       IsQueriable="false"
       IsPersistent="false"
       Type="java.lang.Boolean"

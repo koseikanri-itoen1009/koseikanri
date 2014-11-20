@@ -451,6 +451,14 @@ HISTORY
                                           <oa:messageChoice id="FixedPrice" pickListViewName="XxcsoFiexedPriceListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" viewAttr="FixedPrice" readOnly="${oa.XxcsoSpDecisionScLineFullVO1.FixedPriceReadOnly}"/>
                                        </ui:contents>
                                     </oa:column>
+                                    <oa:column id="CardSaleClassCol" width="12%">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="CardSaleClassColHdr" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/CardSaleClassColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageChoice id="CardSaleClass" readOnly="${oa.XxcsoSpDecisionScLineFullVO1.CardSaleClassReadOnly}" viewAttr="CardSaleClass" pickListViewName="XxcsoCardSaleClassListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                       </ui:contents>
+                                    </oa:column>
                                     <oa:column id="SalesPriceCol" width="7%">
                                        <ui:columnHeader>
                                           <oa:sortableHeader id="SalesPriceColHdr" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/SalesPriceColHdr" cellNoWrapFormat="true"/>

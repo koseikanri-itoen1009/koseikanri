@@ -316,6 +316,18 @@
          <Attr Name="_DisplaySize" Value="7" />
       </DesignTime>
    </Attribute>
+   <Attribute
+      Name="CardSaleClass"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="CARD_SALE_CLASS"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_LINES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
    <AccessorAttribute
       Name="XxcsoSpDecisionHeadersVEO"
       Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderLineAO"

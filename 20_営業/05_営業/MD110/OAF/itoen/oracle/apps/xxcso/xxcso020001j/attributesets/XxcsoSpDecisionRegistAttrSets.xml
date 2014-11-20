@@ -276,4 +276,5 @@
    <attributeSet docName="ReflectContractButton" prompt="情報反映"/>
    <attributeSet docName="ContainerConditionHdrRN" text="一律条件・容器別条件"/>
    <attributeSet docName="VdHint" text="申請区分：条件変更時は不要です。"/>
+   <attributeSet docName="CardSaleClassColHdr" prompt="カード売区分"/>
 </package>
