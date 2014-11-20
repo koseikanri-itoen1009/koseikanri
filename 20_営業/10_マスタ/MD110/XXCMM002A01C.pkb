@@ -51,6 +51,7 @@ AS
  *  2009/04/03    1.2   SCS 吉川 博章    追加従業員情報詳細のコンテキスト設定を追加
  *  2009/04/16    1.3   SCS 吉川 博章    障害No.483 対応
  *                                       submain の処理を大幅修正
+ *  2009/05/21    1.4   SCS 吉川 博章    障害No.T1_0966 対応
  *
  *****************************************************************************************/
 --
@@ -60,7 +61,7 @@ AS
   cv_status_normal           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal;  -- 正常:0
   cv_status_warn             CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;    -- 警告:1
   cv_status_error            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;   -- 異常:2
-
+  --
   --WHOカラム
   cn_created_by              CONSTANT NUMBER      := fnd_global.user_id;         -- CREATED_BY
   cd_creation_date           CONSTANT DATE        := SYSDATE;                    -- CREATION_DATE
@@ -71,10 +72,9 @@ AS
   cn_program_application_id  CONSTANT NUMBER      := fnd_global.prog_appl_id;    -- PROGRAM_APPLICATION_ID
   cn_program_id              CONSTANT NUMBER      := fnd_global.conc_program_id; -- PROGRAM_ID
   cd_program_update_date     CONSTANT DATE        := SYSDATE;                    -- PROGRAM_UPDATE_DATE
---
+  --
   cv_msg_part                CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(3) := '.';
---
 --
 --################################  固定部 END   ##################################
 --
@@ -90,7 +90,7 @@ AS
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
   gn_skip_cnt      NUMBER;                    -- スキップ件数
-
+  --
 --################################  固定部 END   ##################################
 --
 --##########################  固定共通例外宣言部 START  ###########################
@@ -110,11 +110,10 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
---
   lock_expt                   EXCEPTION;     -- ロック取得例外
---
+  --
   PRAGMA EXCEPTION_INIT(lock_expt, -54);
---
+  --
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
@@ -125,7 +124,7 @@ AS
 -- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
   gn_org_id            CONSTANT NUMBER       := FND_GLOBAL.ORG_ID;   -- ORG_ID
 -- End
---
+  --
   -- 更新区分をあらわすステータス(masters_rec.proc_flg)
   gv_sts_error     CONSTANT VARCHAR2(1) := 'E';   --ステータス(更新中止)
   gv_sts_thru      CONSTANT VARCHAR2(1) := 'S';   --ステータス(変更なし)
@@ -134,16 +133,16 @@ AS
   gv_sts_yes       CONSTANT VARCHAR2(1) := 'Y';   --ステータス(連携対象)
   -- 職責自動連携(masters_rec.resp_kbn)
   gv_sts_no        CONSTANT VARCHAR2(1) := 'N';   --ステータス(自動職責不可)
---
+  --
   -- 現社員状態をあらわすステータス(masters_rec.emp_kbn)
   gv_kbn_new       CONSTANT VARCHAR2(1) := 'I';   --ステータス(現データなし：新規社員)
   gv_kbn_employee  CONSTANT VARCHAR2(1) := 'U';   --ステータス(既存社員)
   gv_kbn_retiree   CONSTANT VARCHAR2(1) := 'D';   --ステータス(退職者)
---
+  --
   gv_msg_pnt       CONSTANT VARCHAR2(3) := ',';
   gv_flg_on        CONSTANT VARCHAR2(1) := '1';
   gv_const_y       CONSTANT VARCHAR2(1) := 'Y';
---
+  --
   gv_def_sex       CONSTANT VARCHAR2(1) := 'M';
   gv_owner         CONSTANT VARCHAR2(4) := 'CUST';
   gv_info_category CONSTANT VARCHAR2(2) := 'JP';
@@ -151,10 +150,10 @@ AS
   gv_upd_mode      CONSTANT VARCHAR2(15)    := 'CORRECTION';
   gv_user_person_type    CONSTANT VARCHAR2(10) := '従業員';
   gv_user_person_type_ex CONSTANT VARCHAR2(10) := '退職者';
---
+  --
   --メッセージ番号
   --共通メッセージ番号
---
+  --
   -- メッセージ番号(マスタ)
   cv_file_data_no_err  CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00001';  -- 対象データ無しメッセージ
   cv_prf_get_err       CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00002';  -- プロファイル取得エラー
@@ -187,7 +186,7 @@ AS
   cv_error_msg         CONSTANT VARCHAR2(30) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
   cv_file_name         CONSTANT VARCHAR2(20) := 'APP-XXCCP1-05102'; -- ファイル名メッセージ
   cv_input_no_msg      CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
-
+  --
   --プロファイル
   cv_prf_dir           CONSTANT VARCHAR2(30) := 'XXCMM1_JINJI_IN_DIR';          -- 人事(INBOUND)連携用CSVファイル保管場所
   cv_prf_fil           CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_IN_FILE';        -- 人事連携用社員データ取込用CSVファイル出力先
@@ -245,7 +244,7 @@ AS
   cv_employee_nm        CONSTANT VARCHAR2(10) := '社員番号';            -- 項目名
   cv_employee_err_nm    CONSTANT VARCHAR2(20) := '社員番号重複';        -- 項目名
   cv_data_err           CONSTANT VARCHAR2(20) := 'データ異常';          -- 項目名
-
+  --
   --参照コードマスタ.タイプ(fnd_lookup_values_vl.lookup_type)
   cv_flv_license        CONSTANT VARCHAR2(30) := 'XXCMM_QUALIFICATION_CODE';    -- 資格テーブル
   cv_flv_job_post       CONSTANT VARCHAR2(30) := 'XXCMM_POSITION_CODE';         -- 職位テーブル
@@ -255,31 +254,37 @@ AS
   cv_flv_consent        CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';             -- 承認区分テーブル
   cv_flv_agent          CONSTANT VARCHAR2(30) := 'XXCMM_002A01_**';             -- 代行区分テーブル
   cv_flv_responsibility CONSTANT VARCHAR2(30) := 'XXCMM1_002A01_RESP';          -- 職責自動割当テーブル
---
+  --
   -- テーブル名
   cd_sysdate            DATE := SYSDATE;                -- 処理開始時間(YYYYMMDDHH24MISS)
   cd_process_date       DATE;                           -- 業務日付(YYYYMMDD)
   cc_process_date       CHAR(8);                        -- 業務日付(YYYYMMDD)
---
+  --
 -- Ver1.3 Add  2009/04/16  従業員 郵便送付先設定用
   cv_send_to_addres     CONSTANT VARCHAR2(1) := 'O';    -- 郵便送付先(コード)
 -- End Ver1.3
 --
+-- Ver1.4 Add  2009/05/21  アプリケーション短縮名(ICX)、セキュリティ属性名の固定値を追加  T1_0966
+  cv_appl_short_nm_icx  CONSTANT VARCHAR2(10) := 'ICX';                 -- Self-Service Web Applications
+  cv_att_code_ihp       CONSTANT VARCHAR2(20) := 'ICX_HR_PERSON_ID';    -- セキュリティ属性名（ICX_HR_PERSON_ID）
+  cv_att_code_tp        CONSTANT VARCHAR2(20) := 'TO_PERSON_ID';        -- セキュリティ属性名（TO_PERSON_ID）
+-- End Ver1.4
+  --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
---
+  --
   -- 各マスタへの反映処理に必要なデータを格納するレコード
   TYPE masters_rec IS RECORD(
---   -- 従業員インタフェース
+   -- 従業員インタフェース
     -- 区分
-    proc_flg                VARCHAR2(1),  -- 更新区分('U':処理対象(gv_sts_update),'E':更新不可能(gv_sts_error),'S':変更なし(gv_sts_thru))
-    proc_kbn                VARCHAR2(1),  -- 連携区分('Y':連携するデータ)
-    emp_kbn                 VARCHAR2(1),  -- 社員状態('I':新規社員(gv_kbn_new)、'U'：既存社員(gv_kbn_employee)、'D'：退職者(gv_kbn_retiree))
-    ymd_kbn                 VARCHAR2(1),  -- 入社日連携区分('Y':日付変更データ)
-    retire_kbn              VARCHAR2(1),  -- 退職区分('Y':退職するデータ)
-    resp_kbn                VARCHAR2(1),  -- 職責・管理者変更区分('Y':変更するデータ,'N':自動割当不可,NULL：変更しない)
-    location_id_kbn         VARCHAR2(1),  -- 事業所変更区分('Y':変更する)
+    proc_flg                VARCHAR2(1),     -- 更新区分('U':処理対象(gv_sts_update),'E':更新不可能(gv_sts_error),'S':変更なし(gv_sts_thru))
+    proc_kbn                VARCHAR2(1),     -- 連携区分('Y':連携するデータ)
+    emp_kbn                 VARCHAR2(1),     -- 社員状態('I':新規社員(gv_kbn_new)、'U'：既存社員(gv_kbn_employee)、'D'：退職者(gv_kbn_retiree))
+    ymd_kbn                 VARCHAR2(1),     -- 入社日連携区分('Y':日付変更データ)
+    retire_kbn              VARCHAR2(1),     -- 退職区分('Y':退職するデータ)
+    resp_kbn                VARCHAR2(1),     -- 職責・管理者変更区分('Y':変更するデータ,'N':自動割当不可,NULL：変更しない)
+    location_id_kbn         VARCHAR2(1),     -- 事業所変更区分('Y':変更する)
     row_err_message         VARCHAR2(1000),  -- 警告メッセージ
     -- 社員取込インタフェース
     employee_number         xxcmm_in_people_if.employee_number%type,            -- 社員番号
@@ -344,11 +349,10 @@ AS
     period_of_service_id    per_periods_of_service.period_of_service_id%TYPE,   -- サービスID
     ppos_version            per_periods_of_service.object_version_number%TYPE   -- バージョン番号
   );
-
---
+  --
   -- 各マスタへ反映するデータを格納する結合配列
   TYPE masters_tbl IS TABLE OF masters_rec INDEX BY BINARY_INTEGER;
---
+  --
   -- 各マスタのデータを格納するレコード
   TYPE check_rec IS RECORD(
     -- 従業員マスタ
@@ -459,17 +463,26 @@ AS
     job_post_order_old        xxcmm_in_people_if.job_post_order_old%type,        -- 職位並順コード（旧）
     consent_division_old      xxcmm_in_people_if.consent_division_old%type,      -- 承認区分（旧）
     agent_division_old        xxcmm_in_people_if.agent_division_old%type,        -- 代行区分（旧）
---
+    --
     message                   VARCHAR2(1000)
   );
---
+  --
   -- 出力するレポートを格納する結合配列
   TYPE report_normal_tbl IS TABLE OF report_rec INDEX BY BINARY_INTEGER;
   TYPE report_warn_tbl IS TABLE OF report_rec INDEX BY BINARY_INTEGER;
+  --
+-- Ver1.4 Add  2009/05/21  セキュリティ属性登録用配列用構造体を追加  T1_0966
+  -- セキュリティ属性登録用配列用構造体
+  TYPE sec_att_code_ttype IS TABLE OF VARCHAR2(20) INDEX BY BINARY_INTEGER;
+-- End Ver1.4
 --
 -- Ver1.3 Add  2009/04/16  ＣＣＩＤ取得用（fnd_flex_ext.get_combination_id）
   g_aff_segments_tab    fnd_flex_ext.segmentarray;
 -- End Ver1.3
+-- Ver1.4 Add  2009/05/21  セキュリティ属性登録用配列用構造体を追加  T1_0966
+  -- セキュリティ属性登録用配列
+  g_sec_att_code_tab    sec_att_code_ttype;
+-- End Ver1.4
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -479,12 +492,12 @@ AS
 -- End Ver1.3
   gn_rep_n_cnt      NUMBER;     -- レポート件数(正常)
   gn_rep_w_cnt      NUMBER;     -- レポート件数(警告)
-
+  --
   gv_bisiness_grp_id    per_person_types.business_group_id%TYPE;    -- ビジネスグループID(従業員)
   gv_bisiness_grp_id_ex per_person_types.business_group_id%TYPE;    -- ビジネスグループID(退職者)
   gv_person_type        per_person_types.person_type_id%TYPE;       -- パーソンタイプ(従業員)
   gv_person_type_ex     per_person_types.person_type_id%TYPE;       -- パーソンタイプ(退職者)
-
+  --
 --プロファイル
   gv_directory      VARCHAR2(255);         -- プロファイル・ファイルパス名
   gv_file_name      VARCHAR2(255);         -- プロファイル・ファイル名
@@ -501,6 +514,10 @@ AS
   gn_chart_of_acct_id         gl_sets_of_books.chart_of_accounts_id%TYPE;
   gv_id_flex_code             fnd_id_flex_structures_vl.id_flex_code%TYPE;
 -- End Ver1.3
+-- Ver1.4 Add  2009/05/21  アプリケーションID(ICX)用変数を追加  T1_0966
+  -- アプリケーションID【ICX：Self-Service Web Applications】
+  gn_appl_id_icx                      fnd_application.application_id%TYPE;
+-- End Ver1.4
 --
   gf_file_hand                UTL_FILE.FILE_TYPE;   -- ファイル・ハンドルの宣言
 --
@@ -509,7 +526,7 @@ AS
 -- End Ver1.3
   gt_report_normal_tbl        report_normal_tbl;    -- 結合配列の定義
   gt_report_warn_tbl          report_warn_tbl;      -- 結合配列の定義
---
+  --
   -- 定数
   gn_created_by               NUMBER;               -- 作成者
   gd_creation_date            DATE;                 -- 作成日
@@ -520,11 +537,11 @@ AS
   gn_program_application_id   NUMBER;               -- プログラムアプリケーションID
   gn_program_id               NUMBER;               -- プログラムID
   gd_program_update_date      DATE;                 -- プログラム更新日
---
+  --
   -- ===============================
   -- ユーザー定義グローバルカーソル
   -- ===============================
---
+  --
   -- 社員インタフェース
   CURSOR gc_xip_cur
   IS
@@ -591,7 +608,145 @@ AS
                   AND    pap.person_id = fu.employee_id)
            AND    fu.user_id = fug.user_id)
     FOR UPDATE OF fug.user_id NOWAIT;
-  --
+--
+-- Ver1.4 Add  2009/05/21  セキュリティ属性登録プロシージャを追加  T1_0966
+  /***********************************************************************************
+   * Procedure Name   : ins_user_sec
+   * Description      : セキュリティ属性を登録します。
+   ***********************************************************************************/
+  PROCEDURE ins_user_sec(
+    ir_masters_rec IN  masters_rec    --   対象データ
+   ,ov_errbuf      OUT VARCHAR2       --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode     OUT VARCHAR2       --   リターン・コード             --# 固定 #
+   ,ov_errmsg      OUT VARCHAR2 )     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_user_sec';   -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    --
+    -- *** ローカル変数 ***
+    lv_api_name                VARCHAR2(200);     -- エラートークン用
+    lv_sqlerrm                 VARCHAR2(5000);    -- SQLERRM退避
+    --
+    ln_exist_cnt               NUMBER;
+    --
+    -- OUTパラメータ（ICX_USER_SEC_ATTR_PUB.CREATE_USER_SEC_ATTR）
+    lv_return_status           VARCHAR2(200);
+    ln_msg_count               NUMBER;
+    lv_msg_data                VARCHAR2(200);
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --
+    <<user_sec_loop>>
+    FOR ln_cnt IN 1..2 LOOP
+      -- 登録済みチェック
+      SELECT    COUNT( ROWID )
+      INTO      ln_exist_cnt
+      FROM      ak_web_user_sec_attr_values
+      WHERE     web_user_id              = ir_masters_rec.user_id
+      AND       attribute_code           = g_sec_att_code_tab( ln_cnt )
+      AND       attribute_application_id = gn_appl_id_icx
+      AND       ROWNUM = 1;
+      --
+      -- 未登録の場合登録する（更新APIが無いため）
+      IF ( ln_exist_cnt = 0 ) THEN
+        -- セキュリティ属性登録API
+        ICX_USER_SEC_ATTR_PUB.CREATE_USER_SEC_ATTR(
+          p_api_version_number    => 1.0
+         ,p_init_msg_list         => FND_API.G_TRUE
+         ,p_return_status         => lv_return_status                -- OUT
+         ,p_msg_count             => ln_msg_count                    -- OUT
+         ,p_msg_data              => lv_msg_data                     -- OUT
+         ,p_web_user_id           => ir_masters_rec.user_id          -- ユーザID
+         ,p_attribute_code        => g_sec_att_code_tab( ln_cnt )    -- 属性名 【ICX_HR_PERSON_ID, TO_PERSON_ID】
+         ,p_attribute_appl_id     => gn_appl_id_icx                  -- アプリケーションID 【ICX】
+         ,p_varchar2_value        => NULL
+         ,p_date_value            => NULL
+         ,p_number_value          => ir_masters_rec.person_id        -- 従業員ID
+         ,p_created_by            => cn_created_by
+         ,p_creation_date         => cd_creation_date
+         ,p_last_updated_by       => cn_last_updated_by
+         ,p_last_update_date      => cd_last_update_date
+         ,p_last_update_login     => cn_last_update_login
+        );
+        -- APIでエラー発生か判定
+        IF ( lv_return_status <> FND_API.G_RET_STS_SUCCESS ) THEN 
+          lv_sqlerrm := lv_msg_data;
+          lv_api_name := 'ICX_USER_SEC_ATTR_PUB.CREATE_USER_SEC_ATTR';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_api_err
+                      ,iv_token_name1  => cv_tkn_apiname
+                      ,iv_token_value1 => lv_api_name
+                      ,iv_token_name2  => cv_tkn_ng_word
+                      ,iv_token_value2 => cv_employee_nm    -- '社員番号'
+                      ,iv_token_name3  => cv_tkn_ng_data
+                      ,iv_token_value3 => ir_masters_rec.employee_number
+                      );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+        END IF;
+        --
+      END IF;
+      --
+    END LOOP user_sec_loop;
+    --
+--
+  EXCEPTION
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+    -- *** API関数エラー時(関数使用直後) ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||lv_sqlerrm,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END ins_user_sec;
+-- End Ver1.4
 --
 -- Ver1.3 Add  2009/04/16  ＣＣＩＤ取得プロシージャ作成
   /***********************************************************************************
@@ -731,12 +886,12 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lv_token_value1  VARCHAR2(40);
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -751,28 +906,28 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 社員データ取込用CSVファイル保管場所の取得
     gv_directory := fnd_profile.value(cv_prf_dir);
---
+    --
     -- プロファイルが取得できない場合はエラー
     IF (gv_directory IS NULL) THEN
       lv_token_value1 := cv_prf_dir_nm;
       RAISE global_process_expt;
     END IF;
---
+    --
     -- 社員データ取込用ファイル名取得
     gv_file_name := FND_PROFILE.VALUE(cv_prf_fil);
---
+    --
     -- プロファイルが取得できない場合はエラー
     IF (gv_file_name IS NULL) THEN
       lv_token_value1 := cv_prf_fil_nm;
       RAISE global_process_expt;
     END IF;
---
+     --
     -- 管理者従業員番号取得
     gv_supervisor := fnd_profile.value(cv_prf_supervisor);
---
+    --
     -- プロファイルが取得できない場合はエラー
     IF (gv_supervisor IS NULL) THEN
       lv_token_value1 := cv_prf_supervisor_nm;
@@ -876,13 +1031,13 @@ AS
     --
     -- 初期パスワード取得
     gv_password := FND_PROFILE.VALUE(cv_prf_password);
---
+    --
     -- プロファイルが取得できない場合はエラー
     IF (gv_password IS NULL) THEN
       lv_token_value1 := cv_prf_password_nm;
       RAISE global_process_expt;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -948,12 +1103,12 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lv_token_value1  VARCHAR2(40);
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -963,16 +1118,16 @@ AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
---
+    --
     -- ***************************************
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 社員インタフェース
     BEGIN
       OPEN gc_xip_cur;
---
+    --
     EXCEPTION
       WHEN lock_expt THEN
         lv_token_value1 := cv_xxcmm1_in_if_nm;
@@ -981,11 +1136,11 @@ AS
         RAISE global_api_others_expt;
     END;
     CLOSE gc_xip_cur;
---
+    --
     -- 従業員マスタ
     BEGIN
       OPEN gc_ppf_cur;
---
+    --
     EXCEPTION
       WHEN lock_expt THEN
         lv_token_value1 := cv_per_all_people_f_nm;
@@ -994,11 +1149,11 @@ AS
         RAISE global_api_others_expt;
     END;
     CLOSE gc_ppf_cur;
---
+    --
     -- アサインメントマスタ
     BEGIN
       OPEN gc_paf_cur;
---
+    --
     EXCEPTION
       WHEN lock_expt THEN
         lv_token_value1 := cv_per_all_assignments_f_nm;
@@ -1007,11 +1162,11 @@ AS
         RAISE global_api_others_expt;
     END;
     CLOSE gc_paf_cur;
---
+    --
     -- ユーザーマスタ
     BEGIN
       OPEN gc_fu_cur;
---
+    --
     EXCEPTION
       WHEN lock_expt THEN
         lv_token_value1 := cv_fnd_user_nm;
@@ -1020,7 +1175,7 @@ AS
         RAISE global_api_others_expt;
     END;
     CLOSE gc_fu_cur;
---
+    --
     -- ユーザー職責マスタ
     BEGIN
       OPEN gc_fug_cur;
@@ -1032,7 +1187,7 @@ AS
         RAISE global_api_others_expt;
     END;
     CLOSE gc_fug_cur;
-
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -1054,26 +1209,26 @@ AS
       -- カーソルのクローズ
          CLOSE gc_xip_cur;
       END IF;
-
-    -- 従業員マスタ
+      --
+      -- 従業員マスタ
       IF (gc_ppf_cur%ISOPEN) THEN
       -- カーソルのクローズ
          CLOSE gc_ppf_cur;
       END IF;
-
-    -- アサインメントマスタ
+      --
+      -- アサインメントマスタ
       IF (gc_ppf_cur%ISOPEN) THEN
          -- カーソルのクローズ
          CLOSE gc_ppf_cur;
       END IF;
---
-    -- ユーザーマスタ
+      --
+      -- ユーザーマスタ
       IF (gc_fu_cur%ISOPEN) THEN
          -- カーソルのクローズ
         CLOSE gc_fu_cur;
       END IF;
---
-    -- ユーザー職責マスタ
+      --
+      -- ユーザー職責マスタ
       IF (gc_fug_cur%ISOPEN) THEN
       -- カーソルのクローズ
         CLOSE gc_fug_cur;
@@ -1094,26 +1249,26 @@ AS
       -- カーソルのクローズ
          CLOSE gc_xip_cur;
       END IF;
-
-    -- 従業員マスタ
+      --
+      -- 従業員マスタ
       IF (gc_ppf_cur%ISOPEN) THEN
       -- カーソルのクローズ
          CLOSE gc_ppf_cur;
       END IF;
-
-    -- アサインメントマスタ
+      --
+      -- アサインメントマスタ
       IF (gc_ppf_cur%ISOPEN) THEN
          -- カーソルのクローズ
          CLOSE gc_ppf_cur;
       END IF;
---
-    -- ユーザーマスタ
+      --
+      -- ユーザーマスタ
       IF (gc_fu_cur%ISOPEN) THEN
          -- カーソルのクローズ
         CLOSE gc_fu_cur;
       END IF;
---
-    -- ユーザー職責マスタ
+      --
+      -- ユーザー職責マスタ
       IF (gc_fug_cur%ISOPEN) THEN
       -- カーソルのクローズ
         CLOSE gc_fug_cur;
@@ -1158,12 +1313,12 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lv_bumon    VARCHAR2(4);
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -1178,10 +1333,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     IF  iv_flg IS NULL THEN
       BEGIN
-    -- AFF部門（部門階層ビュー）
+      -- AFF部門（部門階層ビュー）
         SELECT xhd.cur_dpt_cd
         INTO   lv_bumon
         FROM   xxcmm_hierarchy_dept_v xhd
@@ -1195,7 +1350,7 @@ AS
       END;
     ELSE
       BEGIN
-    -- AFF部門（全部門階層ビュー）
+      -- AFF部門（全部門階層ビュー）
         SELECT xhd.cur_dpt_cd
         INTO   lv_bumon
         FROM   xxcmm_hierarchy_dept_all_v xhd
@@ -1208,7 +1363,7 @@ AS
           RAISE global_api_others_expt;
       END;
     END IF;
---
+    --
     IF (lv_bumon IS NULL) THEN
       -- マスタ存在チェックエラー
       lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -1221,7 +1376,7 @@ AS
                     );
       RAISE global_api_expt;
     END IF;
-
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -1274,13 +1429,13 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     cv_office_location  CONSTANT VARCHAR2(30) := '勤務地拠点コード(新)'; -- 項目名
     cv_locations_all_nm CONSTANT VARCHAR2(20) := '事業所マスタ';         -- ファイル名
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -1295,14 +1450,14 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     BEGIN
     -- 事業所マスタ
       SELECT hla.location_id
       INTO   ir_masters_rec.location_id  -- ロケーションID
       FROM   hr_locations_all hla        -- 事業所マスタ
       WHERE  hla.location_code  = ir_masters_rec.office_location_code; -- 勤務地拠点コード(新)
-
+      --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
       -- マスタ存在チェックエラー
@@ -1318,7 +1473,7 @@ AS
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -1376,11 +1531,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- 従業員マスタ/アサインメントマスタ/従業員サービス期間マスタ(※check_recと同じ並びにする）
     CURSOR gc_per_cur(lv_emp in varchar2)
     IS
@@ -1450,7 +1605,7 @@ AS
       AND    pap.effective_start_date = ppos.date_start           -- 登録年月日(入社日)
       ORDER BY pap.person_id,pap.effective_start_date desc ,pap.effective_end_date
     ;
---
+    --
     -- *** ローカル・レコード ***
     gc_per_rec gc_per_cur%ROWTYPE;
 --
@@ -1542,7 +1697,7 @@ AS
         ||ir_masters_rec.job_post_old||ir_masters_rec.job_post_name_old||ir_masters_rec.job_duty_old||ir_masters_rec.job_duty_name_old
         ||ir_masters_rec.job_type_old||ir_masters_rec.job_type_name_old||ir_masters_rec.job_system_old||ir_masters_rec.job_system_name_old
         ||ir_masters_rec.job_post_order_old||ir_masters_rec.consent_division_old||ir_masters_rec.agent_division_old) THEN
-
+        --
         ir_masters_rec.proc_kbn := NULL;  -- 連携なし（差異なし）
         ir_masters_rec.resp_kbn := NULL;  -- 職責・管理者変更なし
         ir_masters_rec.location_id_kbn := NULL;  -- 事業所 変更なし
@@ -1692,16 +1847,15 @@ AS
     cv_office_location  CONSTANT VARCHAR2(20) := '勤務地拠点コード';    -- 項目名
     cv_new              CONSTANT VARCHAR2(10) := '(新)';                -- 項目名
     cv_old              CONSTANT VARCHAR2(10) := '(旧)';                -- 項目名
-
+    --
     cv_all              CONSTANT VARCHAR2(1) := 'A';
---
+    --
     -- *** ローカル変数 ***
     lv_token_value2  VARCHAR2(30);
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
---
 --
   BEGIN
 --
@@ -1710,13 +1864,13 @@ AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
---
+    --
     -- ***************************************
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
-      --入社年月日
+    --
+    --入社年月日
     IF (ir_masters_rec.hire_date IS NULL) THEN
        lv_token_value2 := cv_ymd_err_nm; -- '入社年月日未設定'
        RAISE global_process_expt;
@@ -1734,7 +1888,7 @@ AS
        lv_token_value2 := cv_hire_date_nm; -- '入社年月日'
        RAISE global_process_expt;
     END IF;
-
+    --
     --退職年月日
     IF (ir_masters_rec.actual_termination_date IS NOT NULL) THEN
       IF (LENGTHB(TO_CHAR(ir_masters_rec.actual_termination_date,'YYYYMMDD')) <> 8) THEN -- 日付妥当性チェック
@@ -1752,7 +1906,7 @@ AS
         RAISE global_process2_expt;
       END IF;
     END IF;
-
+    --
     --カナ姓・カナ名
     IF (ir_masters_rec.last_name IS NULL) then
       lv_token_value2 := cv_last_name_err_nm;  -- 'カナ姓未設定';
@@ -1764,7 +1918,7 @@ AS
       lv_token_value2 := cv_first_name_nm; -- 'カナ名'
       RAISE global_process_expt;
     END IF;
-
+    --
     --漢字姓・漢字名
     IF (xxccp_common_pkg.chk_double_byte(ir_masters_rec.last_name_kanji) = FALSE) THEN
       lv_token_value2 := cv_last_kanji_nm; -- '漢字姓'
@@ -1773,7 +1927,7 @@ AS
       lv_token_value2 := cv_first_kanji_nm; -- '漢字名'
       RAISE global_process_expt;
     END IF;
-
+    --
     --発令日
     IF (ir_masters_rec.announce_date IS NULL) THEN
       lv_token_value2 := cv_announce_date_nm1; -- '発令日未設定'
@@ -1788,19 +1942,19 @@ AS
       lv_token_value2 := cv_announce_date_nm2; -- '発令日未来日付'
       RAISE global_process_expt;
     END IF;
-
+    --
     --性別
     IF (ir_masters_rec.sex NOT IN ('M','F')) THEN
       lv_token_value2 := cv_sex_nm; -- '性別'
       RAISE global_process_expt;
     END IF;
-
+    --
     --社員・外部委託区分
     IF (ir_masters_rec.employee_division NOT IN ('1','2')) THEN
       lv_token_value2 := cv_division_nm; -- '社員・外部委託区分'
       RAISE global_process_expt;
     END IF;
-
+    --
     --所属コード(新)
     IF (ir_masters_rec.location_code IS NULL) THEN
       lv_token_value2 := cv_location_cd||cv_new; -- '所属コード(新)'
@@ -1814,12 +1968,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
---
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process2_expt;
       END IF;
     END IF;
-
+    --
     --勤務地拠点コード(新)
     IF (ir_masters_rec.office_location_code IS NULL) THEN
       lv_token_value2 := cv_office_location||cv_new; -- '勤務地拠点コード(新)'
@@ -1833,12 +1987,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
---
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process2_expt;
       END IF;
     END IF;
---
+    --
     --所属コード(旧)
     IF (ir_masters_rec.location_code_old IS NOT NULL) THEN
       check_aff_bumon(    --AFF部門コード存在チェック
@@ -1849,12 +2003,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
---
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process2_expt;
       END IF;
     END IF;
-
+    --
     --勤務地拠点コード(旧)
     IF (ir_masters_rec.office_location_code_old IS NOT NULL) THEN
       check_aff_bumon(            --AFF部門コード存在チェック
@@ -1865,12 +2019,12 @@ AS
         ,lv_retcode  -- リターン・コード             --# 固定 #
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
---
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process2_expt;
       END IF;
     END IF;
-
+    --
     -- データ連携対象チェック
     in_if_check_emp(
        ir_masters_rec
@@ -1878,13 +2032,13 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
---
+    --
     IF (lv_retcode = cv_status_warn) THEN
       RAISE global_process2_expt;
     ELSIF (lv_retcode = cv_status_error) THEN
       RAISE global_api_others_expt;
     END IF;
-
+    --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1955,11 +2109,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -1974,7 +2128,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     BEGIN
       -- ユーザーマスタ
       SELECT fu.user_id
@@ -1987,11 +2141,11 @@ AS
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         ir_masters_rec.user_id := NULL; -- 該当データなし
---
+      --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -2047,12 +2201,12 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lv_flg  VARCHAR2(1) := NULL;
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -2062,12 +2216,12 @@ AS
     ov_retcode := cv_status_normal;
 --
 --###########################  固定部 END   ############################
---
+    --
     -- ***************************************
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     BEGIN
       -- 参照コードテーブル
       SELECT '1'
@@ -2085,7 +2239,7 @@ AS
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
---
+    --
     IF (lv_flg IS NULL) THEN
       -- マスタ存在チェックエラー
       lv_errmsg := xxccp_common_pkg.get_msg(
@@ -2164,11 +2318,11 @@ AS
     lv_post_order_nm  CONSTANT VARCHAR2(30) := '職位並順コード(新)';  -- 職位並順コード
     lv_consent_nm     CONSTANT VARCHAR2(30) := '承認区分(新)';  -- 承認区分
     lv_agent_nm       CONSTANT VARCHAR2(30) := '代行区分(新)';  -- 代行区分
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -2183,7 +2337,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 資格コード(新)
     IF (((ir_masters_rec.emp_kbn = gv_kbn_new) AND (ir_masters_rec.license_code IS NOT NULL))
       OR (NVL(ir_masters_rec.license_code,' ') <> NVL(lr_check_rec.license_code,' '))) THEN
@@ -2204,7 +2358,7 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     -- 職位コード(新)
     IF (((ir_masters_rec.emp_kbn = gv_kbn_new) AND (ir_masters_rec.job_post IS NOT NULL))
       OR (NVL(ir_masters_rec.job_post,' ') <> NVL(lr_check_rec.job_post,' '))) THEN
@@ -2225,7 +2379,7 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     -- 職務コード(新)
     IF (((ir_masters_rec.emp_kbn = gv_kbn_new) AND (ir_masters_rec.job_duty IS NOT NULL))
       OR (NVL(ir_masters_rec.job_duty,' ') <> NVL(lr_check_rec.job_duty,' '))) THEN
@@ -2246,7 +2400,7 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     -- 職種コード(新)
     IF (((ir_masters_rec.emp_kbn = gv_kbn_new) AND (ir_masters_rec.job_type IS NOT NULL))
       OR (NVL(ir_masters_rec.job_type,' ') <> NVL(lr_check_rec.job_type,' '))) THEN
@@ -2267,7 +2421,7 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     -- 職位並順コード(新)
     IF (((ir_masters_rec.emp_kbn = gv_kbn_new) AND (ir_masters_rec.job_post_order IS NOT NULL))
       OR (NVL(ir_masters_rec.job_post_order,' ') <> NVL(lr_check_rec.job_post_order,' '))) THEN
@@ -2420,7 +2574,7 @@ AS
     cv_level5  CONSTANT VARCHAR2(2):= 'L5';  -- レベル５
     cv_level6  CONSTANT VARCHAR2(2):= 'L6';  -- レベル６
     cv_all     CONSTANT VARCHAR2(1):= '-';   -- 全コート対象
---
+    --
     -- *** ローカル変数 ***
     lv_location_cd  VARCHAR2(60);  -- 最下層部門コード
     lv_location_cd1 VARCHAR2(60);  -- １階層目部門コード
@@ -2436,7 +2590,7 @@ AS
     lv_responsibility_key       fnd_responsibility.responsibility_key%TYPE; -- 職責キー
     lv_application_short_name   fnd_application.application_short_name%TYPE;-- アプリケーション名
     ld_st_date      DATE;
---
+    --
     -- *** ローカル・カーソル ***
     -- 職責自動割当カーソル
     CURSOR resp_cur
@@ -2458,7 +2612,7 @@ AS
       AND   ((NVL(flv.attribute6,cv_all) = cv_all)  OR
              (NVL(flv.attribute6,cv_all) = ir_masters_rec.job_type))     -- 職種コード
       ORDER BY flv.attribute1,flv.attribute2;
---
+    --
     -- 管理者割当カーソル
     CURSOR person_cur
     IS
@@ -2473,7 +2627,7 @@ AS
       AND    ppos.date_start <= ir_masters_rec.hire_date -- 入社日
       AND    NVL(ppos.actual_termination_date ,ir_masters_rec.hire_date) >= ir_masters_rec.hire_date -- 退職日
       ORDER BY post_order;
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -2488,7 +2642,6 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
-
 -- 職責の取得
 -- 職責の取得時に使用する日付
     --新規社員・再雇用時は入社日にて職責検索／既存社員で
@@ -2501,7 +2654,7 @@ AS
     ELSE
       ld_st_date := ir_masters_rec.actual_termination_date;
     END IF;
-
+    --
     BEGIN
     -- AFF部門（部門階層ビュー）
       SELECT xhd.cur_dpt_cd,        -- 最下層部門コード
@@ -2525,7 +2678,7 @@ AS
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
---
+    --
     <<resp_loop>>
     FOR resp_rec IN resp_cur LOOP
       IF (resp_rec.location_level = cv_level1 AND resp_rec.location = lv_location_cd1)
@@ -2534,7 +2687,7 @@ AS
         OR (resp_rec.location_level = cv_level4 AND resp_rec.location = lv_location_cd4)
         OR (resp_rec.location_level = cv_level5 AND resp_rec.location = lv_location_cd5)
         OR (resp_rec.location_level = cv_level6 AND resp_rec.location = lv_location_cd6) THEN
-
+        --
         BEGIN
           -- 職責マスタ存在チェック
           SELECT fres.application_id,
@@ -2550,7 +2703,7 @@ AS
           AND    NVL(fres.end_date,ld_st_date)  >= ld_st_date
           AND    fapp.application_id = fres.application_id
           AND    ROWNUM = 1;
-
+        --
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             ln_application_id := NULL;
@@ -2559,7 +2712,7 @@ AS
           WHEN OTHERS THEN
             RAISE global_api_others_expt;
         END;
-
+        --
         IF ln_application_id IS NOT NULL THEN
           BEGIN
             -- 職責自動割当ワークへ待避
@@ -2596,7 +2749,7 @@ AS
         END IF;
       END IF;
     END LOOP resp_loop;
-
+    --
     IF (ln_resp_cnt = 0) THEN
 /*  --職責が割当られなかった時の警告エラーはなし（コメントにしておく）
         -- 自動職責割当て不可メッセージ
@@ -2613,8 +2766,8 @@ AS
 */
       ir_masters_rec.resp_kbn := gv_sts_no;  -- 職責自動連携不可
     END IF;
---
--- 管理者情報の取得
+    --
+    -- 管理者情報の取得
     IF (ir_masters_rec.hire_date >= gn_person_start) THEN
       ir_masters_rec.supervisor_id := gn_person_id; --プロファイルの設定された社員のperson_idを初期設定
     END IF;
@@ -2638,9 +2791,9 @@ AS
         EXIT person_loop;
       END IF;
       ln_post_order := person_rec.post_order;
-
+      --
     END LOOP person_loop;
-
+    --
     -- 管理者が本人だった場合はNULLを設定
     IF (ir_masters_rec.supervisor_id = ir_masters_rec.person_id) THEN
       ir_masters_rec.supervisor_id := NULL;
@@ -2698,13 +2851,13 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
---
+    --
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2717,7 +2870,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- ユーザマスタ存在チェック
     check_fnd_user(
        ir_masters_rec
@@ -2741,7 +2894,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
-
+    --
     -- コードチェック処理(資格・職位・職務・職種・適用労働時間制・承認区分・代行区分)
     check_code(
        ir_masters_rec
@@ -2756,7 +2909,7 @@ AS
     ELSIF (lv_retcode = cv_status_error) THEN   -- その他のエラー
       RAISE global_api_expt;
     END IF;
---
+    --
     -- =================================
     -- 職責・管理者情報の取得処理(A-7)
     -- =================================
@@ -2769,7 +2922,7 @@ AS
     IF (lv_retcode = cv_status_error) THEN  -- SQLエラーのみ
       RAISE global_api_expt;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -2828,11 +2981,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -2847,7 +3000,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- ユーザマスタ存在チェック
     check_fnd_user(
        ir_masters_rec
@@ -2855,7 +3008,7 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
-
+    --
     -- ユーザ取得エラー
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
@@ -2872,7 +3025,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
-
+    --
     -- 社員インタフェース.入社日＜アサインメントマスタ.登録年月日
     IF (ir_masters_rec.hire_date < lr_check_rec.paa_effective_start_date) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
@@ -2886,7 +3039,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
---
+    --
     -- 社員インタフェース.退職年月日＜アサインメントマスタ.登録年月日の場合、エラー
     IF (ir_masters_rec.actual_termination_date < lr_check_rec.paa_effective_start_date) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
@@ -2900,7 +3053,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
---
+    --
     -- 退職者の場合
     IF (ir_masters_rec.emp_kbn = gv_kbn_retiree) THEN
       -- 連携区分が’Y’(入社年月日・退職年月日以外にデータ差異がある)の場合、
@@ -2939,7 +3092,7 @@ AS
         END IF;
       END IF;
     END IF;
-
+    --
     -- 資格・職位・職務・職種・適用労働時間制・職位並順・承認区分・代行区分に差分がある場合、コードチェックを行う
     IF ((ir_masters_rec.license_code||ir_masters_rec.job_post||ir_masters_rec.job_duty||ir_masters_rec.job_type
       ||ir_masters_rec.job_system||ir_masters_rec.job_post_order
@@ -2962,7 +3115,7 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     -- =================================
     -- 職責・管理者情報の取得処理(A-7)
     -- =================================
@@ -2977,7 +3130,7 @@ AS
         RAISE global_process_expt;
       END IF;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3039,12 +3192,12 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lr_report_rec report_rec;
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3101,16 +3254,16 @@ AS
     lr_report_rec.job_post_order_old       := ir_masters_rec.job_post_order_old; --職位並順コード（旧）
     lr_report_rec.consent_division_old     := ir_masters_rec.consent_division_old; --承認区分（旧）
     lr_report_rec.agent_division_old       := ir_masters_rec.agent_division_old; --代行区分（旧）
-
+    --
     lr_report_rec.message                  := ir_masters_rec.row_err_message;
---
+    --
     -- レポートテーブルに追加
     IF  ir_masters_rec.proc_flg = gv_sts_update THEN
       gt_report_normal_tbl(gn_normal_cnt) := lr_report_rec;
     ELSIF  ir_masters_rec.proc_flg = gv_sts_error THEN
       gt_report_warn_tbl(gn_warn_cnt) := lr_report_rec;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3168,12 +3321,12 @@ AS
     cv_warning    CONSTANT VARCHAR2(20) := '<<警告データ>>';  -- 見出し
     cv_errmsg     CONSTANT VARCHAR2(20) := ' [エラーメッセージ]';  -- エラーメッセージ
     lv_sep_com    CONSTANT VARCHAR2(1)  := ',';     -- カンマ
---
+    --
     -- *** ローカル変数 ***
     lv_dspbuf     VARCHAR2(5000);  -- エラー・メッセージ
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3188,13 +3341,13 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- ログ見出し
     gv_out_msg := xxccp_common_pkg.get_msg(
                   iv_application  => cv_appl_short_name
                  ,iv_name         => cv_rep_msg
                 );
-
+    --
     IF (iv_disp_kbn = cv_status_warn) THEN
       -- ログ見出し
       FND_FILE.PUT_LINE(
@@ -3267,7 +3420,7 @@ AS
         ,buff   => ''
       );
     END IF;
-
+    --
     IF (iv_disp_kbn = cv_status_normal) THEN
       -- ログ見出し
       FND_FILE.PUT_LINE(
@@ -3328,7 +3481,7 @@ AS
         );
       END LOOP report_n_loop;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3382,7 +3535,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     ln_retcd                 NUMBER;
     lb_retst                 BOOLEAN;
@@ -3391,12 +3544,12 @@ AS
     ln_security_group_id     fnd_user_resp_groups_all.security_group_id%TYPE;
     ld_start_date            fnd_user_resp_groups_all.start_date%TYPE;
     ld_start_date_u          fnd_user_resp_groups_all.start_date%TYPE;
---
+    --
     lv_api_name              VARCHAR2(200);
     lv_update_flg            VARCHAR2(1);
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- 職責自動割当ワーク
     CURSOR wk_pr1_cur
     IS
@@ -3411,7 +3564,7 @@ AS
       WHERE  xwpr.employee_number = ir_masters_rec.employee_number
       AND    xwpr.responsibility_id > 0
       ORDER BY xwpr.employee_number,xwpr.responsibility_id;
-
+    --
     -- ユーザー職責マスタ
     CURSOR furg_cur(in_responsibility_id in number)
     IS
@@ -3421,7 +3574,7 @@ AS
       WHERE  fug.user_id           = ir_masters_rec.user_id
       AND    fug.responsibility_id = in_responsibility_id
       AND    ROWNUM = 1;
-
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3443,7 +3596,7 @@ AS
       <<furg_rec_loop>>
       FOR furg_rec IN furg_cur(wk_pr1_rec.responsibility_id) LOOP
         EXIT WHEN furg_cur%NOTFOUND;
-
+        --
         BEGIN
           FND_USER_RESP_GROUPS_API.UPDATE_ASSIGNMENT(
              USER_ID                       => wk_pr1_rec.user_id
@@ -3472,10 +3625,10 @@ AS
             RAISE global_process_expt;
         END;
       END LOOP furg_rec_loop;
-
+      --
       IF lv_update_flg IS NULL THEN
-         -- 新規社員職責登録
-      -- ユーザ職責マスタ
+        -- 新規社員職責登録
+        -- ユーザ職責マスタ
         BEGIN
           FND_USER_RESP_GROUPS_API.LOAD_ROW(
             X_USER_NAME         => wk_pr1_rec.employee_number
@@ -3506,7 +3659,7 @@ AS
         END;
       END IF;
     END LOOP wk_pr1_loop;
-
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3565,16 +3718,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     ln_user_id                  fnd_user_resp_groups_all.user_id%TYPE;
     ln_responsibility_id        fnd_user_resp_groups_all.responsibility_id%TYPE;
     ln_responsibility_app_id    fnd_user_resp_groups_all.responsibility_application_id%TYPE;
     ln_security_group_id        fnd_user_resp_groups_all.security_group_id%TYPE;
     ld_start_date               fnd_user_resp_groups_all.start_date%TYPE;
---
+    --
     lv_api_name                 VARCHAR2(200); -- エラートークン用
---
+    --
     -- *** ローカル・カーソル ***
     CURSOR fug_cur
     IS
@@ -3585,7 +3738,7 @@ AS
              fug.start_date         start_date
       FROM   fnd_user_resp_groups_all fug                      -- ユーザー職責マスタ
       WHERE  fug.user_id = ir_masters_rec.user_id;
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3600,10 +3753,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     <<fug_cur_loop>>
     FOR fug_rec IN fug_cur LOOP
---
+      --
       BEGIN
         -- API起動
         FND_USER_RESP_GROUPS_API.UPDATE_ASSIGNMENT(
@@ -3615,7 +3768,7 @@ AS
            ,END_DATE                      => cd_process_date
            ,DESCRIPTION                   => gv_const_y
         );
---
+        --
       EXCEPTION
         WHEN OTHERS THEN
           lv_api_name := 'FND_USER_RESP_GROUPS_API.UPDATE_ASSIGNMENT';
@@ -3633,7 +3786,7 @@ AS
           RAISE global_process_expt;
       END;
     END LOOP fug_cur_loop;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3695,14 +3848,14 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lv_api_name                 VARCHAR2(200); -- エラートークン用
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
---
+    --
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3715,9 +3868,9 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     BEGIN
-
+      --
       -- ユーザ職責マスタ
       FND_USER_RESP_GROUPS_API.LOAD_ROW(
         X_USER_NAME         => iv_emp_number
@@ -3746,7 +3899,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3805,11 +3958,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3824,8 +3977,8 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
---  退職処理に使用（退職前の対象従業員のｻｰﾋﾞｽIDを求める）
+    --
+    -- 退職処理に使用（退職前の対象従業員のｻｰﾋﾞｽIDを求める）
     SELECT ppos.period_of_service_id,           -- サービスID
            ppos.object_version_number           -- ｻｰﾋﾞｽ期間ﾏｽﾀのﾊﾞｰｼﾞｮﾝ
     INTO   ir_masters_rec.period_of_service_id,
@@ -3835,7 +3988,7 @@ AS
     WHERE  ppos.person_id = ir_masters_rec.person_id
     AND    ppos.actual_termination_date IS NULL
     AND    ROWNUM = 1;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3891,11 +4044,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3910,7 +4063,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- ===============================
     -- パーソンタイプの取得
     -- ===============================
@@ -3927,11 +4080,11 @@ AS
       WHEN NO_DATA_FOUND THEN
         ov_person_type_id    := NULL;
         ov_business_group_id := NULL;
---
+      --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -3985,7 +4138,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     -- HR_PERSON_API.UPDATE_PERSON
     lv_full_name                per_all_people_f.full_name%TYPE;
@@ -3993,13 +4146,13 @@ AS
     lb_name_combination_warning BOOLEAN;
     lb_assign_payroll_warning   BOOLEAN;
     lb_orig_hire_warning        BOOLEAN;
---
+    --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG
     lv_concatenated_segments    VARCHAR2(200);
     ln_soft_coding_keyflex_id   per_all_assignments_f.soft_coding_keyflex_id%type;
     lb_no_managers_warning      BOOLEAN;
     lb_other_manager_warning    BOOLEAN;
-
+    --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA
     ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%type;
     ln_people_group_id              per_all_assignments_f.people_group_id%type;
@@ -4008,11 +4161,11 @@ AS
     lb_spp_delete_warning           BOOLEAN;
     lv_entries_changes_warn         VARCHAR2(1);
     lb_tax_district_changed_warn    BOOLEAN;
-
+    --
     lv_api_name                   VARCHAR2(200); -- エラートークン用
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -4030,7 +4183,7 @@ AS
 
     -- 従業員マスタ(API)
     BEGIN
-
+      --
       HR_PERSON_API.UPDATE_PERSON(
          P_VALIDATE                     =>  FALSE
         ,P_EFFECTIVE_DATE               =>  SYSDATE
@@ -4079,7 +4232,7 @@ AS
         ,P_ASSIGN_PAYROLL_WARNING       =>  lb_assign_payroll_warning             -- OUT
         ,P_ORIG_HIRE_WARNING            =>  lb_orig_hire_warning                  -- OUT
         );
---
+    --
     EXCEPTION
       WHEN OTHERS THEN
         lv_api_name := 'HR_PERSON_API.UPDATE_PERSON';
@@ -4096,7 +4249,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
---
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
@@ -4137,8 +4290,8 @@ AS
         ,P_EFFECTIVE_END_DATE     =>  ir_masters_rec.effective_end_date        -- OUT（登録期限年月日）
         ,P_NO_MANAGERS_WARNING    =>  lb_no_managers_warning                   -- OUT
         ,P_OTHER_MANAGER_WARNING  =>  lb_other_manager_warning                 -- OUT
-    );
-
+      );
+    --
     EXCEPTION
       WHEN OTHERS THEN
         lv_api_name := 'HR_ASSIGNMENT_API.UPDATE_EMP_ASG';
@@ -4155,7 +4308,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
-
+    --
     IF (ir_masters_rec.location_id_kbn = gv_sts_yes) THEN  -- 事業所 変更あり
       -- アサインメントマスタ(API)
       BEGIN
@@ -4194,7 +4347,7 @@ AS
           RAISE global_process_expt;
       END;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -4254,7 +4407,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     -- HR_EX_EMPLOYEE_API.ACTUAL_TERMINATION_EMP
     ld_last_std_process_date    DATE;
@@ -4267,16 +4420,16 @@ AS
     lv_entries_changed_warn     VARCHAR2(200);
     lb_pay_proposal_warn        BOOLEAN;
     lb_dod_warn                 BOOLEAN;
-
+    --
     -- HR_EX_EMPLOYEE_API.FINAL_PROCESS_EMP(
     lb_org_now_no_manager_warning   BOOLEAN;
     lb_asg_future_changes_warning   BOOLEAN;
     lv_entries_changed_warning      VARCHAR2(1);
---
+    --
     lv_api_name                 VARCHAR2(200); -- エラートークン用
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -4291,7 +4444,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- サービス期間ID取得
     get_service_id(
        ir_masters_rec
@@ -4303,7 +4456,7 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
---
+    --
     BEGIN
       -- 従業員マスタ(API)
       HR_EX_EMPLOYEE_API.ACTUAL_TERMINATION_EMP(
@@ -4325,7 +4478,7 @@ AS
        ,P_PAY_PROPOSAL_WARNING       => lb_pay_proposal_warn        -- OUT
        ,P_DOD_WARNING                => lb_dod_warn                 -- OUT
       );
---
+    --
     EXCEPTION
       WHEN OTHERS THEN
         lv_api_name := 'HR_EX_EMPLOYEE_API.ACTUAL_TERMINATION_EMP';
@@ -4342,7 +4495,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
---
+    --
     BEGIN
       HR_EX_EMPLOYEE_API.FINAL_PROCESS_EMP(
         P_VALIDATE                      => FALSE
@@ -4353,7 +4506,7 @@ AS
        ,P_ASG_FUTURE_CHANGES_WARNING    => lb_asg_future_changes_warning    -- OUT
        ,P_ENTRIES_CHANGED_WARNING       => lv_entries_changed_warning   -- OUT
       );
---
+    --
     EXCEPTION
       WHEN OTHERS THEN
         lv_api_name := 'HR_EX_EMPLOYEE_API.FINAL_PROCESS_EMP';
@@ -4370,7 +4523,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
---
+    --
     IF ir_masters_rec.emp_kbn = gv_kbn_new THEN  -- 新規社員はinsert_procにて更新
       NULL;
     ELSE
@@ -4381,7 +4534,7 @@ AS
           ,X_OWNER                => gv_owner                       -- 'CUST'
           ,X_END_DATE             => ir_retire_date                 -- 有効日（至）
         );
---
+      --
       EXCEPTION
         WHEN OTHERS THEN
           lv_api_name := 'FND_USER_PKG.UPDATEUSER';
@@ -4399,7 +4552,7 @@ AS
           RAISE global_process_expt;
       END;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -4459,20 +4612,22 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     -- HR_EX_EMPLOYEE_API.RE_HIRE_EX_EMPLOYEE
     ln_assignment_sequence      per_all_assignments_f.assignment_sequence%TYPE;
     lb_assign_payroll_warning   BOOLEAN;
---
+    --
     -- 退職データの待避(PERSON_TYPE_ID:'EMP')
     ln_assignment_id_old        per_all_assignments_f.assignment_id%TYPE;
     ld_effective_start_date_old per_all_assignments_f.effective_start_date%TYPE;
---
+    --
     lv_api_name                 VARCHAR2(200); -- エラートークン用
---
+    --
+    lv_sqlerrm                  VARCHAR2(5000);  -- SQLERRM退避
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -4487,7 +4642,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- ユーザ存在チェック
     check_fnd_user(
        ir_masters_rec
@@ -4495,12 +4650,12 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
---
+    --
     -- ユーザ取得エラー
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
-
+    --
     -- 従業員マスタの退職後レコードの取得（PERSON_TYPE_ID:EX_EMP のレコードを再雇用レコードに更新）
     BEGIN
       SELECT object_version_number
@@ -4514,19 +4669,19 @@ AS
       WHEN OTHERS THEN
           RAISE global_api_others_expt;
     END;
---
+    --
     -- 従業員マスタの履歴レコードの待避
     ln_assignment_id_old        := ir_masters_rec.assignment_id;
     ld_effective_start_date_old := ir_masters_rec.effective_start_date;
-
+    --
     BEGIN
       -- 従業員マスタ(API) -- 再雇用 --
       HR_EMPLOYEE_API.RE_HIRE_EX_EMPLOYEE(
-        P_VALIDATE                  => FALSE
-       ,P_HIRE_DATE                 =>  ir_masters_rec.hire_date    -- 社員ｲﾝﾀﾌｪｰｽ.入社年月日
-       ,P_PERSON_ID                 =>  ir_masters_rec.person_id    -- 従業員ID
-       ,P_PER_OBJECT_VERSION_NUMBER =>  ir_masters_rec.pap_version  -- 従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
-       ,P_PERSON_TYPE_ID            =>  gv_person_type              -- パーソンタイプ
+        P_VALIDATE                  =>  FALSE
+       ,P_HIRE_DATE                 =>  ir_masters_rec.hire_date            -- 社員ｲﾝﾀﾌｪｰｽ.入社年月日
+       ,P_PERSON_ID                 =>  ir_masters_rec.person_id            -- 従業員ID
+       ,P_PER_OBJECT_VERSION_NUMBER =>  ir_masters_rec.pap_version          -- 従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号(IN/OUT)
+       ,P_PERSON_TYPE_ID            =>  gv_person_type                      -- パーソンタイプ
        ,P_REHIRE_REASON             =>  NULL
        ,P_ASSIGNMENT_ID             =>  ir_masters_rec.assignment_id        -- OUT（新ｱｻｲﾝﾒﾝﾄID）
        ,P_ASG_OBJECT_VERSION_NUMBER =>  ir_masters_rec.paa_version          -- OUT（新ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
@@ -4536,9 +4691,10 @@ AS
        ,P_ASSIGNMENT_NUMBER         =>  ir_masters_rec.assignment_number    -- OUT（新ｱｻｲﾝﾒﾝﾄ番号）
        ,P_ASSIGN_PAYROLL_WARNING    =>  lb_assign_payroll_warning           -- OUT
         );
---
+    --
     EXCEPTION
       WHEN OTHERS THEN
+        lv_sqlerrm := SQLERRM;
         lv_api_name := 'HR_EMPLOYEE_API.RE_HIRE_EX_EMPLOYEE';
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -4553,7 +4709,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
-
+    --
     -- アサインメントマスタに新レコードが作成された場合(UPDATEではなく履歴が作成 assignment_sequenceもｶｳﾝﾄｱｯﾌﾟ)
     IF ir_masters_rec.assignment_id <> ln_assignment_id_old THEN
       -- 自販機・営業帳票側に、更新レコードとして２レコードが送られる為、旧データの
@@ -4571,7 +4727,7 @@ AS
             RAISE global_api_others_expt;
       END;
     END IF;
-
+    --
     -- アサインメントマスタ・サービス期間マスタの新情報取得
     --(再雇用処理ではupdatemodeがない為、ｱｻｲﾝﾒﾝﾄﾏｽﾀ・ｻｰﾋﾞｽ期間ﾏｽﾀが履歴として作成される。情報を再取得する）
     BEGIN
@@ -4589,10 +4745,10 @@ AS
       WHEN OTHERS THEN
           RAISE global_api_others_expt;
     END;
---
+    --
     -- 再雇用処理後時は事業所の更新を行う
     ir_masters_rec.location_id_kbn := gv_sts_yes;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -4601,7 +4757,8 @@ AS
     -- *** API関数エラー時(関数使用直後) ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||SQLERRM,1,5000);
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||SQLERRM,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||lv_sqlerrm,1,5000);
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   #######################################
@@ -4651,7 +4808,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG
     lv_concatenated_segments    VARCHAR2(200);
@@ -4659,7 +4816,7 @@ AS
     ln_comment_id               per_all_people_f.comment_id%TYPE;
     lb_no_managers_warning      BOOLEAN;
     lb_other_manager_warning    BOOLEAN;
-
+    --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA
     ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%type;
     ln_people_group_id              per_all_assignments_f.people_group_id%type;
@@ -4668,11 +4825,11 @@ AS
     lb_spp_delete_warning           BOOLEAN;
     lv_entries_changes_warn         VARCHAR2(1);
     lb_tax_district_changed_warn    BOOLEAN;
-
+    --
     lv_api_name                   VARCHAR2(200); -- エラートークン用
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -4687,7 +4844,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
@@ -4726,8 +4883,8 @@ AS
         ,P_EFFECTIVE_END_DATE     =>  ir_masters_rec.effective_end_date        -- OUT（登録期限年月日）
         ,P_NO_MANAGERS_WARNING    =>  lb_no_managers_warning                   -- OUT
         ,P_OTHER_MANAGER_WARNING  =>  lb_other_manager_warning                 -- OUT
-    );
-
+      );
+    --
     EXCEPTION
       WHEN OTHERS THEN
         lv_api_name := 'HR_ASSIGNMENT_API.UPDATE_EMP_ASG';
@@ -4744,7 +4901,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
-
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA(
@@ -4781,8 +4938,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
-
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -4834,6 +4990,8 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    --
+    lv_sqlerrm VARCHAR2(5000);  -- SQLERRM退避
 --
 --#####################################  固定部 END   #############################################
 --
@@ -4841,23 +4999,23 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     -- HR_EMPLOYEE_API.CREATE_EMPLOYEE
-    lv_full_name                per_all_people_f.full_name%type;  -- フルネーム
-    ln_per_comment_id           per_all_people_f.comment_id%type;
-    ln_assignment_sequence      per_all_assignments_f.assignment_sequence%type;
-    lb_name_combination_warning BOOLEAN;
-    lb_assign_payroll_warning   BOOLEAN;
-    lb_orig_hire_warning        BOOLEAN;
-
+    lv_full_name                    per_all_people_f.full_name%type;  -- フルネーム
+    ln_per_comment_id               per_all_people_f.comment_id%type;
+    ln_assignment_sequence          per_all_assignments_f.assignment_sequence%type;
+    lb_name_combination_warning     BOOLEAN;
+    lb_assign_payroll_warning       BOOLEAN;
+    lb_orig_hire_warning            BOOLEAN;
+    --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG
-    lv_concatenated_segments    VARCHAR2(200);
-    ln_soft_coding_keyflex_id   per_all_assignments_f.soft_coding_keyflex_id%type;
-    ln_comment_id               per_all_people_f.comment_id%TYPE;
-    lb_no_managers_warning      BOOLEAN;
-
+    lv_concatenated_segments        VARCHAR2(200);
+    ln_soft_coding_keyflex_id       per_all_assignments_f.soft_coding_keyflex_id%type;
+    ln_comment_id                   per_all_people_f.comment_id%TYPE;
+    lb_no_managers_warning          BOOLEAN;
+    --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA
     ln_people_group_id              per_all_assignments_f.people_group_id%type;
     ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id %type;
@@ -4867,11 +5025,11 @@ AS
     lb_spp_delete_warning           BOOLEAN;
     lv_entries_changes_warn         VARCHAR2(200);
     lb_tax_district_changed_warn    BOOLEAN;
---
-    lv_api_name                   VARCHAR2(200); -- エラートークン用
---
+    --
+    lv_api_name                     VARCHAR2(200); -- エラートークン用
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -4886,66 +5044,67 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 新規登録社員
-
+    --
     -- 従業員マスタ(API)
     BEGIN
---
+      --
       HR_EMPLOYEE_API.CREATE_EMPLOYEE(
-         P_VALIDATE                     =>  FALSE
-        ,P_HIRE_DATE                    =>  ir_masters_rec.hire_date              -- 入社年月日
-        ,P_BUSINESS_GROUP_ID            =>  gv_bisiness_grp_id                    -- ビジネスグループID
-        ,P_LAST_NAME                    =>  ir_masters_rec.last_name              -- カナ姓
-        ,P_SEX                          =>  ir_masters_rec.sex                    -- 性別
-        ,P_PERSON_TYPE_ID               =>  gv_person_type                        -- パーソンタイプ
-        ,P_EMPLOYEE_NUMBER              =>  ir_masters_rec.employee_number        -- 社員番号
+         P_VALIDATE                     => FALSE
+        ,P_HIRE_DATE                    => ir_masters_rec.hire_date              -- 入社年月日
+        ,P_BUSINESS_GROUP_ID            => gv_bisiness_grp_id                    -- ビジネスグループID
+        ,P_LAST_NAME                    => ir_masters_rec.last_name              -- カナ姓
+        ,P_SEX                          => ir_masters_rec.sex                    -- 性別
+        ,P_PERSON_TYPE_ID               => gv_person_type                        -- パーソンタイプ
+        ,P_EMPLOYEE_NUMBER              => ir_masters_rec.employee_number        -- 社員番号
 -- Ver1.3 Add  2009/04/16  「O:会社」を設定
-        ,P_EXPENSE_CHECK_SEND_TO_ADDRES =>  cv_send_to_addres                     -- 郵便送付先(コード)
+        ,P_EXPENSE_CHECK_SEND_TO_ADDRES => cv_send_to_addres                     -- 郵便送付先(コード)
 -- Ver1.3 End
-        ,P_FIRST_NAME                   =>  ir_masters_rec.first_name             -- カナ名
+        ,P_FIRST_NAME                   => ir_masters_rec.first_name             -- カナ名
 -- Ver1.2  2009/04/03 Add コンテキストに SALES-OU を設定 
-        ,P_ATTRIBUTE_CATEGORY           =>  gn_org_id                             -- ORG_ID
+        ,P_ATTRIBUTE_CATEGORY           => gn_org_id                             -- ORG_ID
 -- End
-        ,P_ATTRIBUTE3                   =>  ir_masters_rec.employee_division      -- 従業員区分
-        ,P_ATTRIBUTE7                   =>  ir_masters_rec.license_code           -- 資格コード（新）
-        ,P_ATTRIBUTE8                   =>  ir_masters_rec.license_name           -- 資格名（新）
-        ,P_ATTRIBUTE9                   =>  ir_masters_rec.license_code_old       -- 資格コード（旧）
-        ,P_ATTRIBUTE10                  =>  ir_masters_rec.license_code_name_old  -- 資格名（旧）
-        ,P_ATTRIBUTE11                  =>  ir_masters_rec.job_post               -- 職位コード（新）
-        ,P_ATTRIBUTE12                  =>  ir_masters_rec.job_post_name          -- 職位名（新）
-        ,P_ATTRIBUTE13                  =>  ir_masters_rec.job_post_old           -- 職位コード（旧）
-        ,P_ATTRIBUTE14                  =>  ir_masters_rec.job_post_name_old      -- 職位名（旧）
-        ,P_ATTRIBUTE15                  =>  ir_masters_rec.job_duty               -- 職務コード（新）
-        ,P_ATTRIBUTE16                  =>  ir_masters_rec.job_duty_name          -- 職務名（新）
-        ,P_ATTRIBUTE17                  =>  ir_masters_rec.job_duty_old           -- 職務コード（旧）
-        ,P_ATTRIBUTE18                  =>  ir_masters_rec.job_duty_name_old      -- 職務名（旧）
-        ,P_ATTRIBUTE19                  =>  ir_masters_rec.job_type               -- 職種コード（新）
-        ,P_ATTRIBUTE20                  =>  ir_masters_rec.job_type_name          -- 職種名（新）
-        ,P_ATTRIBUTE21                  =>  ir_masters_rec.job_type_old           -- 職種コード（旧）
-        ,P_ATTRIBUTE22                  =>  ir_masters_rec.job_type_name_old      -- 職種名（旧）
-        ,P_ATTRIBUTE28                  =>  ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
-        ,P_ATTRIBUTE29                  =>  ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
-        ,P_ATTRIBUTE30                  =>  ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
-        ,P_PER_INFORMATION_CATEGORY     =>  gv_info_category                      -- 'JP'
-        ,P_PER_INFORMATION18            =>  ir_masters_rec.last_name_kanji        -- 漢字姓
-        ,P_PER_INFORMATION19            =>  ir_masters_rec.first_name_kanji       -- 漢字名
-        ,P_PERSON_ID                    =>  ir_masters_rec.person_id              -- OUT（従業員ID）
-        ,P_ASSIGNMENT_ID                =>  ir_masters_rec.assignment_id          -- OUT（ｱｻｲﾝﾒﾝﾄID）
-        ,P_PER_OBJECT_VERSION_NUMBER    =>  ir_masters_rec.pap_version            -- OUT（従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
-        ,P_ASG_OBJECT_VERSION_NUMBER    =>  ir_masters_rec.paa_version            -- OUT（ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
-        ,P_PER_EFFECTIVE_START_DATE     =>  ir_masters_rec.effective_start_date   -- OUT（登録年月日）
-        ,P_PER_EFFECTIVE_END_DATE       =>  ir_masters_rec.effective_end_date     -- OUT（登録期限年月日）
-        ,P_FULL_NAME                    =>  lv_full_name                          -- OUT（フルネーム）
-        ,P_PER_COMMENT_ID               =>  ln_per_comment_id                     -- OUT
-        ,P_ASSIGNMENT_SEQUENCE          =>  ln_assignment_sequence                -- OUT
-        ,P_ASSIGNMENT_NUMBER            =>  ir_masters_rec.assignment_number      -- OUT（ｱｻｲﾝﾒﾝﾄ番号）
-        ,P_NAME_COMBINATION_WARNING     =>  lb_name_combination_warning           -- OUT
-        ,P_ASSIGN_PAYROLL_WARNING       =>  lb_assign_payroll_warning             -- OUT
-        ,P_ORIG_HIRE_WARNING            =>  lb_orig_hire_warning                  -- OUT
+        ,P_ATTRIBUTE3                   => ir_masters_rec.employee_division      -- 従業員区分
+        ,P_ATTRIBUTE7                   => ir_masters_rec.license_code           -- 資格コード（新）
+        ,P_ATTRIBUTE8                   => ir_masters_rec.license_name           -- 資格名（新）
+        ,P_ATTRIBUTE9                   => ir_masters_rec.license_code_old       -- 資格コード（旧）
+        ,P_ATTRIBUTE10                  => ir_masters_rec.license_code_name_old  -- 資格名（旧）
+        ,P_ATTRIBUTE11                  => ir_masters_rec.job_post               -- 職位コード（新）
+        ,P_ATTRIBUTE12                  => ir_masters_rec.job_post_name          -- 職位名（新）
+        ,P_ATTRIBUTE13                  => ir_masters_rec.job_post_old           -- 職位コード（旧）
+        ,P_ATTRIBUTE14                  => ir_masters_rec.job_post_name_old      -- 職位名（旧）
+        ,P_ATTRIBUTE15                  => ir_masters_rec.job_duty               -- 職務コード（新）
+        ,P_ATTRIBUTE16                  => ir_masters_rec.job_duty_name          -- 職務名（新）
+        ,P_ATTRIBUTE17                  => ir_masters_rec.job_duty_old           -- 職務コード（旧）
+        ,P_ATTRIBUTE18                  => ir_masters_rec.job_duty_name_old      -- 職務名（旧）
+        ,P_ATTRIBUTE19                  => ir_masters_rec.job_type               -- 職種コード（新）
+        ,P_ATTRIBUTE20                  => ir_masters_rec.job_type_name          -- 職種名（新）
+        ,P_ATTRIBUTE21                  => ir_masters_rec.job_type_old           -- 職種コード（旧）
+        ,P_ATTRIBUTE22                  => ir_masters_rec.job_type_name_old      -- 職種名（旧）
+        ,P_ATTRIBUTE28                  => ir_masters_rec.location_code          -- 起票部門(所属コード（新）)
+        ,P_ATTRIBUTE29                  => ir_masters_rec.location_code          -- 照会範囲(所属コード（新）)
+        ,P_ATTRIBUTE30                  => ir_masters_rec.location_code          -- 承認者範囲(所属コード（新）)
+        ,P_PER_INFORMATION_CATEGORY     => gv_info_category                      -- 'JP'
+        ,P_PER_INFORMATION18            => ir_masters_rec.last_name_kanji        -- 漢字姓
+        ,P_PER_INFORMATION19            => ir_masters_rec.first_name_kanji       -- 漢字名
+        ,P_PERSON_ID                    => ir_masters_rec.person_id              -- OUT（従業員ID）
+        ,P_ASSIGNMENT_ID                => ir_masters_rec.assignment_id          -- OUT（ｱｻｲﾝﾒﾝﾄID）
+        ,P_PER_OBJECT_VERSION_NUMBER    => ir_masters_rec.pap_version            -- OUT（従業員ﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
+        ,P_ASG_OBJECT_VERSION_NUMBER    => ir_masters_rec.paa_version            -- OUT（ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号）
+        ,P_PER_EFFECTIVE_START_DATE     => ir_masters_rec.effective_start_date   -- OUT（登録年月日）
+        ,P_PER_EFFECTIVE_END_DATE       => ir_masters_rec.effective_end_date     -- OUT（登録期限年月日）
+        ,P_FULL_NAME                    => lv_full_name                          -- OUT（フルネーム）
+        ,P_PER_COMMENT_ID               => ln_per_comment_id                     -- OUT
+        ,P_ASSIGNMENT_SEQUENCE          => ln_assignment_sequence                -- OUT
+        ,P_ASSIGNMENT_NUMBER            => ir_masters_rec.assignment_number      -- OUT（ｱｻｲﾝﾒﾝﾄ番号）
+        ,P_NAME_COMBINATION_WARNING     => lb_name_combination_warning           -- OUT
+        ,P_ASSIGN_PAYROLL_WARNING       => lb_assign_payroll_warning             -- OUT
+        ,P_ORIG_HIRE_WARNING            => lb_orig_hire_warning                  -- OUT
       );
     EXCEPTION
       WHEN OTHERS THEN
+        lv_sqlerrm := SQLERRM;
         lv_api_name := 'HR_EMPLOYEE_API.CREATE_EMPLOYEE';
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -4960,40 +5119,40 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
---
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG(
-         P_VALIDATE              =>  FALSE
-        ,P_EFFECTIVE_DATE        =>  SYSDATE
-        ,P_DATETRACK_UPDATE_MODE =>  gv_upd_mode                             -- 'CORRECTION'
-        ,P_ASSIGNMENT_ID         =>  ir_masters_rec.assignment_id            -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_ID
-        ,P_OBJECT_VERSION_NUMBER =>  ir_masters_rec.paa_version              -- IN/OUT(ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号)
-        ,P_SUPERVISOR_ID         =>  ir_masters_rec.supervisor_id            -- 管理者
-        ,P_ASSIGNMENT_NUMBER     =>  ir_masters_rec.assignment_number        -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_NUMBER
+         P_VALIDATE               => FALSE
+        ,P_EFFECTIVE_DATE         => SYSDATE
+        ,P_DATETRACK_UPDATE_MODE  => gv_upd_mode                             -- 'CORRECTION'
+        ,P_ASSIGNMENT_ID          => ir_masters_rec.assignment_id            -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_ID
+        ,P_OBJECT_VERSION_NUMBER  => ir_masters_rec.paa_version              -- IN/OUT(ｱｻｲﾝﾒﾝﾄﾏｽﾀﾊﾞｰｼﾞｮﾝ番号)
+        ,P_SUPERVISOR_ID          => ir_masters_rec.supervisor_id            -- 管理者
+        ,P_ASSIGNMENT_NUMBER      => ir_masters_rec.assignment_number        -- HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_ASSIGNMENT_NUMBER
 -- Ver1.3
---        ,P_DEFAULT_CODE_COMB_ID  =>  gv_default                              -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
-        ,P_SET_OF_BOOKS_ID       =>  gn_set_of_book_id                       -- 会計帳簿ID
-        ,P_DEFAULT_CODE_COMB_ID  =>  ir_masters_rec.default_code_comb_id     -- デフォルト費用勘定
+--        ,P_DEFAULT_CODE_COMB_ID   => gv_default                              -- ﾌﾟﾛﾌｧｲﾙｵﾌﾟｼｮﾝ.ﾃﾞﾌｫﾙﾄ費用勘定
+        ,P_SET_OF_BOOKS_ID        => gn_set_of_book_id                       -- 会計帳簿ID
+        ,P_DEFAULT_CODE_COMB_ID   => ir_masters_rec.default_code_comb_id     -- デフォルト費用勘定
 -- End Ver1.3
-        ,P_ASS_ATTRIBUTE1        =>  ir_masters_rec.change_code              -- 異動事由コード
-        ,P_ASS_ATTRIBUTE2        =>  ir_masters_rec.announce_date            -- 発令日
-        ,P_ASS_ATTRIBUTE3        =>  ir_masters_rec.office_location_code     -- 勤務地拠点コード（新）
-        ,P_ASS_ATTRIBUTE4        =>  ir_masters_rec.office_location_code_old -- 勤務地拠点コード（旧）
-        ,P_ASS_ATTRIBUTE5        =>  ir_masters_rec.location_code            -- 拠点コード（新）
-        ,P_ASS_ATTRIBUTE6        =>  ir_masters_rec.location_code_old        -- 拠点コード（旧）
-        ,P_ASS_ATTRIBUTE7        =>  ir_masters_rec.job_system               -- 適用労働時間制コード（新）
-        ,P_ASS_ATTRIBUTE8        =>  ir_masters_rec.job_system_name          -- 適用労働名（新）
-        ,P_ASS_ATTRIBUTE9        =>  ir_masters_rec.job_system_old           -- 適用労働時間制コード（旧）
-        ,P_ASS_ATTRIBUTE10       =>  ir_masters_rec.job_system_name_old      -- 適用労働名（旧）
-        ,P_ASS_ATTRIBUTE11       =>  ir_masters_rec.job_post_order           -- 職位並順コード（新）
-        ,P_ASS_ATTRIBUTE12       =>  ir_masters_rec.job_post_order_old       -- 職位並順コード（旧）
-        ,P_ASS_ATTRIBUTE13       =>  ir_masters_rec.consent_division         -- 承認区分（新）
-        ,P_ASS_ATTRIBUTE14       =>  ir_masters_rec.consent_division_old     -- 承認区分（旧）
-        ,P_ASS_ATTRIBUTE15       =>  ir_masters_rec.agent_division           -- 代行区分（新）
-        ,P_ASS_ATTRIBUTE16       =>  ir_masters_rec.agent_division_old       -- 代行区分（旧）
-        ,P_ASS_ATTRIBUTE17       =>  NULL                                    -- 差分連携用日付（自販機）
-        ,P_ASS_ATTRIBUTE18       =>  NULL                                    -- 差分連携用日付（帳票）
+        ,P_ASS_ATTRIBUTE1         => ir_masters_rec.change_code              -- 異動事由コード
+        ,P_ASS_ATTRIBUTE2         => ir_masters_rec.announce_date            -- 発令日
+        ,P_ASS_ATTRIBUTE3         => ir_masters_rec.office_location_code     -- 勤務地拠点コード（新）
+        ,P_ASS_ATTRIBUTE4         => ir_masters_rec.office_location_code_old -- 勤務地拠点コード（旧）
+        ,P_ASS_ATTRIBUTE5         => ir_masters_rec.location_code            -- 拠点コード（新）
+        ,P_ASS_ATTRIBUTE6         => ir_masters_rec.location_code_old        -- 拠点コード（旧）
+        ,P_ASS_ATTRIBUTE7         => ir_masters_rec.job_system               -- 適用労働時間制コード（新）
+        ,P_ASS_ATTRIBUTE8         => ir_masters_rec.job_system_name          -- 適用労働名（新）
+        ,P_ASS_ATTRIBUTE9         => ir_masters_rec.job_system_old           -- 適用労働時間制コード（旧）
+        ,P_ASS_ATTRIBUTE10        => ir_masters_rec.job_system_name_old      -- 適用労働名（旧）
+        ,P_ASS_ATTRIBUTE11        => ir_masters_rec.job_post_order           -- 職位並順コード（新）
+        ,P_ASS_ATTRIBUTE12        => ir_masters_rec.job_post_order_old       -- 職位並順コード（旧）
+        ,P_ASS_ATTRIBUTE13        => ir_masters_rec.consent_division         -- 承認区分（新）
+        ,P_ASS_ATTRIBUTE14        => ir_masters_rec.consent_division_old     -- 承認区分（旧）
+        ,P_ASS_ATTRIBUTE15        => ir_masters_rec.agent_division           -- 代行区分（新）
+        ,P_ASS_ATTRIBUTE16        => ir_masters_rec.agent_division_old       -- 代行区分（旧）
+        ,P_ASS_ATTRIBUTE17        => NULL                                    -- 差分連携用日付（自販機）
+        ,P_ASS_ATTRIBUTE18        => NULL                                    -- 差分連携用日付（帳票）
         ,P_CONCATENATED_SEGMENTS  => lv_concatenated_segments                -- OUT
         ,P_SOFT_CODING_KEYFLEX_ID => ln_soft_coding_keyflex_id               -- IN/OUT
         ,P_COMMENT_ID             => ln_comment_id                           -- OUT
@@ -5002,9 +5161,10 @@ AS
         ,P_NO_MANAGERS_WARNING    => lb_no_managers_warning                  -- OUT
         ,P_OTHER_MANAGER_WARNING  => lb_other_manager_warning                -- OUT
         );
-
+    --
     EXCEPTION
       WHEN OTHERS THEN
+        lv_sqlerrm := SQLERRM;
         lv_api_name := 'HR_ASSIGNMENT_API.UPDATE_EMP_ASG';
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -5019,7 +5179,7 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
-
+    --
     -- アサインメントマスタ(API)
     BEGIN
       HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA(
@@ -5042,6 +5202,7 @@ AS
       );
       EXCEPTION
         WHEN OTHERS THEN
+          lv_sqlerrm := SQLERRM;
           lv_api_name := 'HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA';
           lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
@@ -5055,9 +5216,8 @@ AS
                       );
           lv_errbuf := lv_errmsg;
           RAISE global_process_expt;
-      END;
-
---
+    END;
+    --
     -- 退職処理 (退職区分=’Y’）** 新規登録社員データに退職年月日が設定されている場合 **
     IF ir_masters_rec.retire_kbn = gv_sts_yes THEN
       retire_proc(
@@ -5067,12 +5227,12 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
       END IF;
     END IF;
-
+    --
     -- ユーザマスタ(API)
     -- 新規登録データで退職年月日が設定されている場合にも対応
     BEGIN
@@ -5085,9 +5245,10 @@ AS
                                ,X_DESCRIPTION           => ir_masters_rec.last_name -- カナ姓
                                ,X_EMPLOYEE_ID           => ir_masters_rec.person_id --HR_EMPLOYEE_API.CREATE_EMPLOYEEの出力項目のP_PERSON_ID
                                );
---
+    --
     EXCEPTION
       WHEN OTHERS THEN
+        lv_sqlerrm := SQLERRM;
         lv_api_name := 'FND_USER_PKG.CREATEUSERID';
         lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -5102,6 +5263,20 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
+    --
+-- Ver1.4 Add  2009/05/21  セキュリティ属性登録処理をコール  T1_0966
+    ins_user_sec(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+-- End Ver1.4
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -5111,7 +5286,8 @@ AS
     -- *** API関数エラー時(関数使用直後) ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||SQLERRM,1,5000);
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||SQLERRM,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||lv_sqlerrm,1,5000);
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   #######################################
@@ -5154,6 +5330,8 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    --
+    lv_sqlerrm VARCHAR2(5000);  -- SQLERRM退避
 --
 --#####################################  固定部 END   #############################################
 --
@@ -5161,13 +5339,13 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
---
+    --
     lv_api_name                 VARCHAR2(200); -- エラートークン用
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -5182,7 +5360,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 既存社員の入社年月日の変更(入社日連携区分 = 'Y'）
       -- 1.入社年月日を退職年月日として設定し、退職処理を行う。
       -- 2.新入社年月日で再雇用処理を行う。
@@ -5195,11 +5373,11 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
-
+      --
       -- 再雇用処理
       re_hire_proc(
         ir_masters_rec
@@ -5208,12 +5386,12 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
     END IF;
-
+    --
     -- 既存社員の情報変更(連携区分 = 'Y'）
     IF ir_masters_rec.proc_kbn = gv_sts_yes THEN
       -- 異動処理
@@ -5223,7 +5401,7 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
@@ -5237,12 +5415,12 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
     END IF;
-
+    --
     -- 退職年月日が設定されている場合(退職区分=’Y’）
     IF ir_masters_rec.retire_kbn = gv_sts_yes THEN
       retire_proc(
@@ -5252,12 +5430,12 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     IF  (ir_masters_rec.resp_kbn = gv_sts_yes)
      OR (ir_masters_rec.retire_kbn = gv_sts_yes) THEN  --退職者
       --ユーザ職責マスタの無効化
@@ -5267,10 +5445,11 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
+      --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
       END IF;
---
+      --
       -- ユーザ職責マスタ更新
       IF (ir_masters_rec.resp_kbn = gv_sts_yes) THEN
       --ユーザ職責マスタの設定
@@ -5284,12 +5463,12 @@ AS
           RAISE global_api_expt;
         END IF;
       END IF;
-      END IF;
---
+    END IF;
+    --
     -- 退職年月日が設定されていない場合(退職区分=NULL）END_DATEをNULLに設定
     -- (退職されている場合は、retire_procで更新済み)
     IF (ir_masters_rec.retire_kbn IS NULL) THEN
-   -- ユーザマスタ(API)
+      -- ユーザマスタ(API)
       BEGIN
         FND_USER_PKG.UPDATEUSER(
           X_USER_NAME             =>  ir_masters_rec.employee_number  -- 社員番号
@@ -5297,9 +5476,10 @@ AS
          ,X_START_DATE            =>  ir_masters_rec.hire_date        -- 入社年月日
          ,X_END_DATE              =>  FND_USER_PKG.NULL_DATE          -- 有効日（NULL）
         );
-  --
+      --
       EXCEPTION
         WHEN OTHERS THEN
+          lv_sqlerrm := SQLERRM;
           lv_api_name := 'FND_USER_PKG.UPDATEUSER';
           lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
@@ -5315,7 +5495,21 @@ AS
           RAISE global_process_expt;
       END;
     END IF;
-
+    --
+-- Ver1.4 Add  2009/05/21  セキュリティ属性登録処理をコール  T1_0966
+    ins_user_sec(
+      ir_masters_rec       -- 対象従業員情報
+     ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+     ,lv_retcode           -- リターン・コード             --# 固定 #
+     ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+-- End Ver1.4
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -5324,7 +5518,8 @@ AS
     -- *** API関数エラー時(関数使用直後) ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||SQLERRM,1,5000);
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||SQLERRM,1,5000);
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf||lv_sqlerrm,1,5000);
       ov_retcode := cv_status_error;
 --
 --#################################  固定例外処理部 START   #######################################
@@ -5374,9 +5569,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
     lv_api_name                 VARCHAR2(200); -- エラートークン用
 --
@@ -5392,7 +5587,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- 再雇用処理
     re_hire_proc(
       ir_masters_rec
@@ -5401,11 +5596,11 @@ AS
      ,lv_retcode  -- リターン・コード             --# 固定 #
      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
-
+    --
     IF (lv_retcode = cv_status_error) THEN
         RAISE global_api_expt;
     END IF;
-
+    --
     -- 既存社員の情報変更(連携区分 = 'Y'）
     IF (ir_masters_rec.proc_kbn = gv_sts_yes) THEN
       -- 異動処理
@@ -5415,7 +5610,7 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
@@ -5428,12 +5623,12 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
     END IF;
-
+    --
     IF (ir_masters_rec.retire_kbn = gv_sts_yes) THEN
       -- 退職処理
       retire_proc(
@@ -5443,13 +5638,13 @@ AS
        ,lv_retcode  -- リターン・コード             --# 固定 #
        ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
-
+      --
       IF (lv_retcode = cv_status_error) THEN
           RAISE global_api_expt;
       END IF;
-
+    --
     END IF;
---
+    --
     -- ユーザ職責マスタ(API)
     IF  (ir_masters_rec.resp_kbn = gv_sts_yes) THEN -- 退職者は職責未設定(delete_resp_allは不要)
       -- ユーザ職責マスタ更新
@@ -5463,7 +5658,7 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
---
+    --
     -- 退職年月日が設定されていない場合(退職区分=NULL）END_DATEをNULLに設定
     -- (退職されている場合は、retire_procで更新済み)
     IF (ir_masters_rec.retire_kbn IS NULL) THEN
@@ -5475,7 +5670,7 @@ AS
          ,X_START_DATE            =>  ir_masters_rec.hire_date        -- 入社年月日
          ,X_END_DATE              =>  FND_USER_PKG.NULL_DATE          -- 有効日（NULL）
         );
-  --
+      --
       EXCEPTION
         WHEN OTHERS THEN
           lv_api_name := 'FND_USER_PKG.UPDATEUSER';
@@ -5493,7 +5688,7 @@ AS
           RAISE global_process_expt;
       END;
     END IF;
---
+    --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -5546,14 +5741,14 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
---
+    --
     -- *** ローカル変数 ***
     lv_file_chk   BOOLEAN;   --存在チェック結果
     lv_file_size  NUMBER;    --ファイルサイズ
     lv_block_size NUMBER;    --ブロックサイズ
---
+    --
     -- *** ローカル・カーソル ***
---
+    --
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -5568,7 +5763,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---
+    --
     -- ===============================
     -- コンカレントメッセージ出力
     -- ===============================
@@ -5581,13 +5776,13 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
-
+    --
     --空行挿入
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-
+    --
     -- ===============================
     -- プロファイル取得
     -- ===============================
@@ -5596,11 +5791,11 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
---
+    --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
---
+    --
 -- Ver1.3 Add  2009/04/16  会計帳簿ＩＤ取得、ＣＣＩＤ取得用（fnd_flex_ext.get_combination_id）
     -- ===============================
     -- 会計帳簿ＩＤ その他取得
@@ -5636,17 +5831,17 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
---
+    --
     -- ===============================
     -- 職責自動割当ワーク削除処理
     -- ===============================
     DELETE xxcmm.xxcmm_wk_people_resp;
---
+    --
     -- ===============================
     -- 業務日付の取得
     -- ===============================
     cd_process_date := xxccp_common_pkg2.get_process_date;   -- 業務日付 --# 固定 #
---
+    --
     IF (cd_process_date IS NULL) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                    iv_application  => cv_appl_short_name
@@ -5656,7 +5851,7 @@ AS
       RAISE global_api_expt;
     END IF;
     cc_process_date := TO_CHAR(cd_process_date,'YYYYMMDD');
---
+    --
     -- ===============================
     -- パーソンタイプの取得
     -- ===============================
@@ -5673,7 +5868,7 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
-
+    --
     -- 退職者
     get_person_type(
        gv_user_person_type_ex
@@ -5687,7 +5882,20 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
---
+    --
+-- Ver1.4 Add  2009/05/21  初期処理を追加  T1_0966
+    -- セキュリティ属性名を設定
+    g_sec_att_code_tab( 1 ) := cv_att_code_ihp;    -- ICX_HR_PERSON_ID
+    g_sec_att_code_tab( 2 ) := cv_att_code_tp;     -- TO_PERSON_ID
+    --
+    -- 標準データなのでNO_DATA_FOUNDは想定しない
+    -- アプリケーションIDの取得【ICX：Self-Service Web Applications】
+    SELECT    application_id
+    INTO      gn_appl_id_icx
+    FROM      fnd_application_vl
+    WHERE     application_short_name = cv_appl_short_nm_icx;
+-- End Ver1.4
+    --
     -- ===============================
     -- 社員インタフェース０件チェック
     -- ===============================
@@ -5705,11 +5913,11 @@ AS
                    );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
---
+      --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
---
+    --
     -- ===============================
     -- ファイルロック処理
     -- ===============================
@@ -5718,15 +5926,15 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
---
+    --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_expt;
     END IF;
---
+    --
     -- ===============================
     -- 初期設定処理
     -- ===============================
---
+    --
     -- WHOカラムの取得
     gn_created_by             := FND_GLOBAL.USER_ID;           -- 作成者
     gd_creation_date          := SYSDATE;                      -- 作成日
@@ -5800,11 +6008,11 @@ AS
     l_people_if_rec      masters_rec;       -- 処理対象データ格納レコード
     l_if_clear_rec       masters_rec;       -- 処理対象データクリア用レコード
 -- Ver1.3 End
---
+    --
     lt_insert_masters    masters_tbl;       -- 各マスタへ登録するデータ
     lt_update_masters    masters_tbl;       -- 各マスタへ更新するデータ
     lt_delete_masters    masters_tbl;       -- 各マスタへ削除するデータ
---
+    --
     ln_insert_cnt        NUMBER;            -- 登録件数
     ln_update_cnt        NUMBER;            -- 更新件数
     ln_delete_cnt        NUMBER;            -- 削除件数
@@ -5819,7 +6027,7 @@ AS
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
---
+    --
     -- 社員取込インターフェース
     CURSOR in_if_cur
     IS
@@ -5885,7 +6093,7 @@ AS
       FROM   xxcmm_wk_people_resp xwpr
       WHERE  xwpr.employee_kbn = lv_emp_kbn
       ORDER BY xwpr.employee_number,xwpr.responsibility_id;
-
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -6673,7 +6881,7 @@ AS
     cv_prg_name   CONSTANT VARCHAR2(100) := 'main';  -- プログラム名
     cv_normal     CONSTANT VARCHAR2(20) := '正常データの';  -- メッセージ
     cv_warning    CONSTANT VARCHAR2(20) := '警告データの';  -- メッセージ
---
+    --
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -6681,7 +6889,7 @@ AS
     lv_retcode         VARCHAR2(1);     -- リターン・コード
     lv_errmsg          VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
     lv_message_code    VARCHAR2(100);   -- 終了メッセージコード
-
+    --
     lv_msgbuf  VARCHAR2(5000);  -- エラー・メッセージ
 --
 --#####################################  固定部 END   #############################################
@@ -6701,7 +6909,7 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_api_others_expt;
     END IF;
-
+--
 --###########################  固定部 END   #############################
 --
     -- ===============================================
@@ -6712,7 +6920,7 @@ AS
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
---
+    --
     -- ======================
     -- エラー・メッセージ出力
     -- ======================
@@ -6745,7 +6953,7 @@ AS
          ,lv_retcode  -- リターン・コード             --# 固定 #
          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
         );
---
+        --
         IF (lv_retcode = cv_status_error) THEN
           gv_out_msg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_appl_short_name
@@ -6760,7 +6968,7 @@ AS
           lv_retcode := cv_status_normal;
         END IF;
       END IF;
---
+    --
     -- ログ出力・処理結果出力 処理(警告データ出力：未更新)
       IF (gn_warn_cnt > 0) THEN
         disp_report(
@@ -6769,7 +6977,7 @@ AS
          ,lv_retcode  -- リターン・コード             --# 固定 #
          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
         );
---
+        --
         IF (lv_retcode = cv_status_error) THEN
           gv_out_msg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_appl_short_name
@@ -6788,7 +6996,7 @@ AS
       --警告件数をエラー件数として設定
       gn_error_cnt := gn_warn_cnt;
     END IF;
---
+    --
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                   iv_application  => cv_common_short_name
@@ -6842,7 +7050,7 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-
+    --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
@@ -6860,7 +7068,7 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
-
+    --
     --ステータスセット
     retcode := lv_retcode;
     --終了ステータスがエラーの場合・正常件数０件の場合はROLLBACKする
@@ -6868,7 +7076,7 @@ AS
     OR (gn_normal_cnt = 0) THEN
       ROLLBACK;
     END IF;
-
+    --
     -- ===============================
     -- CSVファイル削除処理
     -- ===============================
@@ -6887,12 +7095,12 @@ AS
     -- 職責自動割当ワーク削除処理
     -- ===============================
     DELETE xxcmm.xxcmm_wk_people_resp;
-
+    --
     -- ===============================
     -- 社員インタフェース削除処理
     -- ===============================
     DELETE xxcmm_in_people_if;
---
+    --
     COMMIT;
 --
   EXCEPTION
