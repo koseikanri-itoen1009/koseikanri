@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009-05-26    1.10  Daisuke.Abe      T1_1042対応
  *  2009-05-28    1.11  Daisuke.Abe      T1_1042(再)対応
  *  2009-05-28    1.12  Daisuke.Abe      T1_1042(再２)対応
+ *  2009-07-02    1.12  Kazuo.Satomura   統合テスト障害対応(0000229,0000334)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -289,7 +290,11 @@ AS
   -- 物件関連情報取得用カーソル
   CURSOR get_xxcso_ib_info_h_cur
   IS
-    SELECT cii.external_reference        object_code                -- 外部参照（物件コード）
+    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+    --SELECT cii.external_reference        object_code                -- 外部参照（物件コード）
+    SELECT /*+ first_rows leading(cis) use_nl(cii) */
+           cii.external_reference        object_code                -- 外部参照（物件コード）
+    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
           ,cii.attribute1                new_model                  -- 新_機種(DFF1)
           ,cii.attribute2                new_serial_number          -- 新_機番(DFF2)
           ,cii.owner_party_account_id    owner_party_account_id     -- 所有者アカウントID
@@ -325,11 +330,24 @@ AS
           ,xiih.logical_delete_flag      old_active_flag            -- 旧_論理削除フラグ
           ,xiih.account_number           old_customer_code          -- 旧_顧客コード
           /* 2009.04.07 D.Abe T1_0339対応 START */
-          ,cii.attribute5                 newold_flag                -- 新古台フラグ
+          ,cii.attribute5                newold_flag                -- 新古台フラグ
           /* 2009.04.07 D.Abe T1_0339対応 END */
+          /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+          ,xca.sale_base_code            new_department_code      -- 新_拠点コード
+          ,xca.established_site_name     new_installation_place   -- 新_設置先名
+          ,xca.state    ||
+           xca.city     ||
+           xca.address1 ||
+           xca.address2                  new_installation_address -- 新_設置先住所
+          ,xca.account_number            new_customer_code        -- 新_顧客コード
+          ,xca.customer_class_code       new_customer_class_code  -- 新_顧客区分コード
+          /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
     FROM   csi_item_instances cii    -- インストールベースマスタ
           ,xxcso_ib_info_h xiih      -- 物件関連情報変更履歴テーブル
           ,csi_instance_statuses cis -- インスタンスステータスマスタ
+          /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+          ,xxcso_cust_acct_sites_v xca -- 顧客マスタサイトビュー
+          /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
     WHERE
       (
           /* 2009.05.26 D.Abe T1_1042対応 START */
@@ -369,6 +387,9 @@ AS
             ) = cv_jisya_lease -- 自社リース
         AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
         AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
+        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+        AND xca.cust_account_id    = cii.owner_party_account_id -- アカウントID
+        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
         /* 2009.05.26 D.Abe T1_1042対応 START */
         --AND (
         --         xiih.history_creation_date < gd_process_date  -- 履歴作成日
@@ -396,6 +417,9 @@ AS
             ) = cv_jisya_lease -- 自社リース
         AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
         AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
+        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+        AND xca.cust_account_id    = cii.owner_party_account_id -- アカウントID
+        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
       )
     ;
   -- ===============================
@@ -1021,24 +1045,26 @@ AS
         RAISE g_sql_err_expt;
     END;
 --
+    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000334) START */
     /* 2009.05.20 K.Satomura T1_1095対応 START */
-    IF (gn_po_number IS NULL) THEN
-      -- 検索結果が0件である場合
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_name      --アプリケーション短縮名
-                    ,iv_name         => cv_tkn_number_20 --メッセージコード
-                    ,iv_token_name1  => cv_tkn_task_name
-                    ,iv_token_value1 => cv_tkn_msg_po_num
-                    ,iv_token_name2  => cv_tkn_bukken
-                    ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
-                   );
-      --
-      lv_errbuf := lv_errmsg || SQLERRM;
-      ov_retcode := cv_status_warn;
-      RAISE g_sql_err_expt;
-      --
-    END IF;
+    --IF (gn_po_number IS NULL) THEN
+    --  -- 検索結果が0件である場合
+    --  lv_errmsg := xxccp_common_pkg.get_msg(
+    --                 iv_application  => cv_app_name      --アプリケーション短縮名
+    --                ,iv_name         => cv_tkn_number_20 --メッセージコード
+    --                ,iv_token_name1  => cv_tkn_task_name
+    --                ,iv_token_value1 => cv_tkn_msg_po_num
+    --                ,iv_token_name2  => cv_tkn_bukken
+    --                ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
+    --               );
+    --  --
+    --  lv_errbuf := lv_errmsg || SQLERRM;
+    --  ov_retcode := cv_status_warn;
+    --  RAISE g_sql_err_expt;
+    --  --
+    --END IF;
     /* 2009.05.20 K.Satomura T1_1095対応 END */
+    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000334) END */
 --
   EXCEPTION
 --
@@ -1237,69 +1263,72 @@ AS
 --###########################  固定部 END   ############################
 --
 --
-    -- ========================================
-    -- 顧客関連情報抽出 
-    -- ========================================
-    BEGIN
-    --
-      SELECT xcasv.sale_base_code        new_department_code      -- 新_拠点コード
-            ,xcasv.established_site_name new_installation_place   -- 新_設置先名
-            ,xcasv.state    ||
-             xcasv.city     ||
-             xcasv.ADDRESS1 ||
-             xcasv.ADDRESS2              new_installation_address -- 新_設置先住所
-            ,xcasv.account_number        new_customer_code        -- 新_顧客コード
-           /* 2009.04.28 T.Mori T1_0758対応 START */
-            ,xcasv.customer_class_code   new_customer_class_code  -- 新_顧客区分コード
-           /* 2009.04.28 T.Mori T1_0758対応 END */
-      INTO   gv_department_code      -- 新_拠点コード
-            ,gv_installation_place   -- 新_設置先名
-            ,gv_installation_address -- 新_設置先住所
-            ,gv_customer_code        -- 新_顧客コード
-            /* 2009.04.28 T.Mori T1_0758対応 START */
-            ,lv_customer_class_code  -- 新_顧客区分コード
-            /* 2009.04.28 T.Mori T1_0758対応 END */
-      FROM   xxcso_cust_acct_sites_v xcasv  -- 顧客マスタサイトビュー
-      WHERE  xcasv.cust_account_id   = g_get_xxcso_ib_info_h_rec.owner_party_account_id -- アカウントID
-      AND    xcasv.account_status    = cv_cut_enb_status                                -- アカウントステータス
-      AND    xcasv.acct_site_status  = cv_cut_enb_status                                -- 顧客所在地ステータス
-      AND    xcasv.party_status      = cv_cut_enb_status                                -- パーティステータス
-      AND    xcasv.party_site_status = cv_cut_enb_status                                -- パーティサイトステータス
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- 検索結果が0件である場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_app_name                  --アプリケーション短縮名
-                      ,iv_name         => cv_tkn_number_13             --メッセージコード
-                      ,iv_token_name1  => cv_tkn_task_name
-                      ,iv_token_value1 => cv_tkn_msg_acct_info
-                      ,iv_token_name2  => cv_tkn_item
-                      ,iv_token_value2 => cv_tkn_msg_account_id
-                      ,iv_token_name3  => cv_tkn_base_value
-                      ,iv_token_value3 => g_get_xxcso_ib_info_h_rec.owner_party_account_id
-                     );
-        lv_errbuf := lv_errmsg || SQLERRM;
-        ov_retcode := cv_status_warn;
-        RAISE g_sql_err_expt;
-      WHEN OTHERS THEN
-        -- SQLエラーが発生した場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_app_name                  --アプリケーション短縮名
-                      ,iv_name         => cv_tkn_number_14             --メッセージコード
-                      ,iv_token_name1  => cv_tkn_task_name
-                      ,iv_token_value1 => cv_tkn_msg_acct_info
-                      ,iv_token_name2  => cv_tkn_item
-                      ,iv_token_value2 => cv_tkn_msg_account_id
-                      ,iv_token_name3  => cv_tkn_base_value
-                      ,iv_token_value3 => g_get_xxcso_ib_info_h_rec.owner_party_account_id
-                      ,iv_token_name4  => cv_tkn_err_msg
-                      ,iv_token_value4 => SQLERRM
-                     );
-        lv_errbuf := lv_errmsg || SQLERRM;
-        ov_retcode := cv_status_error;
-        RAISE g_sql_err_expt;
-    END;
+    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+    ---- ========================================
+    ---- 顧客関連情報抽出 
+    ---- ========================================
+    --BEGIN
+    ----
+    --  SELECT xcasv.sale_base_code        new_department_code      -- 新_拠点コード
+    --        ,xcasv.established_site_name new_installation_place   -- 新_設置先名
+    --        ,xcasv.state    ||
+    --         xcasv.city     ||
+    --         xcasv.ADDRESS1 ||
+    --         xcasv.ADDRESS2              new_installation_address -- 新_設置先住所
+    --        ,xcasv.account_number        new_customer_code        -- 新_顧客コード
+    --       /* 2009.04.28 T.Mori T1_0758対応 START */
+    --        ,xcasv.customer_class_code   new_customer_class_code  -- 新_顧客区分コード
+    --       /* 2009.04.28 T.Mori T1_0758対応 END */
+    --  INTO   gv_department_code      -- 新_拠点コード
+    --        ,gv_installation_place   -- 新_設置先名
+    --        ,gv_installation_address -- 新_設置先住所
+    --        ,gv_customer_code        -- 新_顧客コード
+    --        /* 2009.04.28 T.Mori T1_0758対応 START */
+    --        ,lv_customer_class_code  -- 新_顧客区分コード
+    --        /* 2009.04.28 T.Mori T1_0758対応 END */
+    --  FROM   xxcso_cust_acct_sites_v xcasv  -- 顧客マスタサイトビュー
+    --  WHERE  xcasv.cust_account_id   = g_get_xxcso_ib_info_h_rec.owner_party_account_id -- アカウントID
+    --  AND    xcasv.account_status    = cv_cut_enb_status                                -- アカウントステータス
+    --  AND    xcasv.acct_site_status  = cv_cut_enb_status                                -- 顧客所在地ステータス
+    --  AND    xcasv.party_status      = cv_cut_enb_status                                -- パーティステータス
+    --  AND    xcasv.party_site_status = cv_cut_enb_status                                -- パーティサイトステータス
+    --  ;
+    --EXCEPTION
+    --  WHEN NO_DATA_FOUND THEN
+    --    -- 検索結果が0件である場合
+    --    lv_errmsg := xxccp_common_pkg.get_msg(
+    --                   iv_application  => cv_app_name                  --アプリケーション短縮名
+    --                  ,iv_name         => cv_tkn_number_13             --メッセージコード
+    --                  ,iv_token_name1  => cv_tkn_task_name
+    --                  ,iv_token_value1 => cv_tkn_msg_acct_info
+    --                  ,iv_token_name2  => cv_tkn_item
+    --                  ,iv_token_value2 => cv_tkn_msg_account_id
+    --                  ,iv_token_name3  => cv_tkn_base_value
+    --                  ,iv_token_value3 => g_get_xxcso_ib_info_h_rec.owner_party_account_id
+    --                 );
+    --    lv_errbuf := lv_errmsg || SQLERRM;
+    --    ov_retcode := cv_status_warn;
+    --    RAISE g_sql_err_expt;
+    --  WHEN OTHERS THEN
+    --    -- SQLエラーが発生した場合
+    --    lv_errmsg := xxccp_common_pkg.get_msg(
+    --                   iv_application  => cv_app_name                  --アプリケーション短縮名
+    --                  ,iv_name         => cv_tkn_number_14             --メッセージコード
+    --                  ,iv_token_name1  => cv_tkn_task_name
+    --                  ,iv_token_value1 => cv_tkn_msg_acct_info
+    --                  ,iv_token_name2  => cv_tkn_item
+    --                  ,iv_token_value2 => cv_tkn_msg_account_id
+    --                  ,iv_token_name3  => cv_tkn_base_value
+    --                  ,iv_token_value3 => g_get_xxcso_ib_info_h_rec.owner_party_account_id
+    --                  ,iv_token_name4  => cv_tkn_err_msg
+    --                  ,iv_token_value4 => SQLERRM
+    --                 );
+    --    lv_errbuf := lv_errmsg || SQLERRM;
+    --    ov_retcode := cv_status_error;
+    --    RAISE g_sql_err_expt;
+    --END;
+    lv_customer_class_code := g_get_xxcso_ib_info_h_rec.new_customer_class_code;
+    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
     /* 2009.04.28 T.Mori T1_0758対応 START */
     IF (lv_customer_class_code <> cv_cust_class_10) THEN
       gv_customer_code := gv_customer_code_dammy;
@@ -2200,6 +2229,13 @@ AS
       -- 対象件数の取得
       gn_target_cnt := get_xxcso_ib_info_h_cur%ROWCOUNT;
 --
+      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+      -- 顧客関連情報を退避
+      gv_department_code      := g_get_xxcso_ib_info_h_rec.new_department_code;
+      gv_installation_place   := g_get_xxcso_ib_info_h_rec.new_installation_place;
+      gv_installation_address := g_get_xxcso_ib_info_h_rec.new_installation_address;
+      gv_customer_code        := g_get_xxcso_ib_info_h_rec.new_customer_code;
+      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
       -- ========================================
       -- A-3.発注番号抽出 
       -- ========================================
