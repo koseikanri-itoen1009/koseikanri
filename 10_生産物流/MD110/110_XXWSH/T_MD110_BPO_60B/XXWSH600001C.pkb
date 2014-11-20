@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/01/05    1.17 SCS    H.Itou     本番障害#879対応
  *  2009/01/08    1.18 SCS    H.Itou     本番障害#558,599対応
  *  2009/01/27    1.19 SCS    H.Itou     本番障害#1028対応
+ *  2009/02/27    1.20 SCS    M.Hokkanji 本番障害#1228対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4536,7 +4537,11 @@ debug_cnt number default 0;
     -- *** ローカル・カーソル ***
 --
     CURSOR set_delivery_no_cur IS
-      SELECT  xmct.intensive_no     int_no                  -- 集約No
+-- Ver1.20 M.Hokkanji Start
+--      SELECT  xmct.intensive_no     int_no                  -- 集約No
+      SELECT  /*+ leading(xcst xiclt xict xmct) hash(xcst xiclt xict xmct) */
+              xmct.intensive_no     int_no                  -- 集約No
+-- Ver1.20 M.Hokkanji End
             , xcst.request_no       req_no                  -- 依頼No
             , xmct.delivery_no      delivery_no             -- 配送No
             , xcst.prev_delivery_no prev_delivery_no        -- 前回配送No
@@ -8268,7 +8273,11 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
 --           ,  mixed.max_weight                  max_weight            -- 最大積載重量
 --           ,  mixed.max_capacity                max_capacity          -- 最大積載容積
 -- Ver1.5 M.Hokkanji End
-        FROM (SELECT  DISTINCT xict.transaction_type  -- 処理種別
+-- Ver1.20 M.Hokkanji Start
+--        FROM (SELECT  DISTINCT xict.transaction_type  -- 処理種別
+        FROM (SELECT /*+ leading(xcst xmct xict xmcv) hash(xcst xmct xict xmcv) */
+             DISTINCT xict.transaction_type  -- 処理種別
+-- Ver1.20 M.Hokkanji End
                     , xmct.mixed_class                -- 混載種別
                     , xmct.delivery_no                -- 配送No
                     , xmct.default_line_number        -- 基準明細No
@@ -8306,9 +8315,14 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
 --2008.06.26 D.Sugahara ST#297対応<-
 --              WHERE xmct.default_line_number = xict.intensive_source_no   -- 基準明細
 --                AND xmct.intensive_no = xict.intensive_no   -- 集約No
-              WHERE xmct.intensive_no = xict.intensive_no   -- 集約No 
-                AND xcst.request_no   = xmct.default_line_number --基準明細条件
-                AND xcmv.mixed_ship_method_code(+) = xmct.fixed_shipping_method_code 
+-- Ver1.20 M.Hokkanji Start
+                WHERE xcst.request_no   = xmct.default_line_number
+                  AND xmct.intensive_no = xict.intensive_no
+                  AND xmct.fixed_shipping_method_code = xcmv.mixed_ship_method_code(+)
+-- Ver1.20 M.Hokkanji End
+--              WHERE xmct.intensive_no = xict.intensive_no   -- 集約No 
+--                AND xcst.request_no   = xmct.default_line_number --基準明細条件
+--                AND xcmv.mixed_ship_method_code(+) = xmct.fixed_shipping_method_code 
 --2008.05.26 D.Sugahara 不具合No9対応<-
             ) mixed
          GROUP BY
