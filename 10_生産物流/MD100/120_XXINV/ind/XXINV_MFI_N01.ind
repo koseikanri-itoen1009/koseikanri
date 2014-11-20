@@ -1,1 +1,0 @@
-CREATE INDEX xxinv.xxinv_mfi_n01 ON xxinv.xxinv_mrp_forecast_interface( forecast_designator,created_by,base_code,item_code ) TABLESPACE xxidx;
