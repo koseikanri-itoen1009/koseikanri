@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoPageRenderVORowImpl
 * 概要説明   : ページ属性設定用ビュー行オブジェクトクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-28 1.0  SCS柳平直人  新規作成
+* 2012-06-12 1.1  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -45,6 +46,7 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
   protected static final int OWNERCHANGEFLAG = 18;
   protected static final int OWNERCHANGERENDER = 19;
   protected static final int PAYCONDINFOVIEWRENDER = 20;
+  protected static final int REJECTBUTTONRENDER = 21;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -118,6 +120,8 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
         return getOwnerChangeRender();
       case PAYCONDINFOVIEWRENDER:
         return getPayCondInfoViewRender();
+      case REJECTBUTTONRENDER:
+        return getRejectButtonRender();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -190,6 +194,9 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
         return;
       case PAYCONDINFOVIEWRENDER:
         setPayCondInfoViewRender((Boolean)value);
+        return;
+      case REJECTBUTTONRENDER:
+        setRejectButtonRender((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -563,6 +570,24 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
   public void setPayCondInfoViewRender(Boolean value)
   {
     setAttributeInternal(PAYCONDINFOVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute RejectButtonRender
+   */
+  public Boolean getRejectButtonRender()
+  {
+    return (Boolean)getAttributeInternal(REJECTBUTTONRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute RejectButtonRender
+   */
+  public void setRejectButtonRender(Boolean value)
+  {
+    setAttributeInternal(REJECTBUTTONRENDER, value);
   }
 
 

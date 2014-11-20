@@ -22,7 +22,8 @@ Regist CONTRACT_MANAGEMENT information page.
 HISTORY
 2009/01/27  H.Ogawa        Initialcode drop.
 2009/05/15  N.Yanagitaira  T1_0230
-2009/05/25  N.Yanagitaira  T1_1136-->
+2009/05/25  N.Yanagitaira  T1_1136
+2012/06/12  K.Kiriu        E_–{‰Ò“®_09602-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -30,10 +31,11 @@ HISTORY
          <ui:contents>
             <oa:pageButtonBar id="PageButtonBarRN">
                <ui:contents>
-                  <oa:submitButton id="CancelButton" text="Cancel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancelButton"/>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancelButton"/>
                   <oa:submitButton id="ApplyButton" text="Apply" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ApplyButton" rendered="${oa.XxcsoPageRenderVO1.ApplyButtonRender}"/>
                   <oa:submitButton id="SubmitButton" text="Submit" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SubmitButton" rendered="${oa.XxcsoPageRenderVO1.SubmitButtonRender}"/>
                   <oa:submitButton id="PrintPdfButton" text="Print PDF" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PrintPdfButton" rendered="${oa.XxcsoPageRenderVO1.PrintPdfButtonRender}"/>
+                  <oa:submitButton id="RejectButton" rendered="${oa.XxcsoPageRenderVO1.RejectButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/RejectButton"/>
                </ui:contents>
             </oa:pageButtonBar>
             <oa:stackLayout id="MainSlRN">

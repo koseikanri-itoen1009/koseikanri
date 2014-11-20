@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2010-02-09 1.5  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2010-03-01 1.6  SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
+* 2012-06-12 1.8  SCS桐生和幸  [E_本稼動_09602]契約取消ボタン追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -1366,6 +1367,90 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     return returnMap;
   }
 
+// 2012-06-12 Ver1.8 [E_本稼動_09602] Add Start
+  /*****************************************************************************
+   * 契約取消処理
+   *****************************************************************************
+   */
+  public HashMap handleRejectOkButton(String actionValue)
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoContractManagementFullVOImpl mngVo
+      = getXxcsoContractManagementFullVO1();
+    if ( mngVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
+    }
+
+    XxcsoContractManagementFullVORowImpl mngRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+
+    /////////////////////////////////////
+    // 検証処理：ＤＢ値検証
+    /////////////////////////////////////
+    OAException oaeMsg = null;
+
+    oaeMsg
+      = XxcsoContractRegistValidateUtils.validateDb(
+          txn
+         ,mngVo
+        );
+    if (oaeMsg != null)
+    {
+      throw oaeMsg;
+    }
+
+    // ステータスを取消済に変更
+    mngRow.setStatus(XxcsoContractRegistConstants.STS_REJECT);
+
+    this.commit();
+
+    // 正常終了メッセージ
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoConstants.TOKEN_VALUE_CONTRACT_REGIST
+         ,XxcsoConstants.TOKEN_ACTION
+         ,actionValue
+        );
+
+    // URLパラメータ用Map
+    HashMap params = new HashMap(3);
+    params.put(
+      XxcsoConstants.EXECUTE_MODE
+     ,XxcsoContractRegistConstants.MODE_UPDATE
+    );
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY1
+     ,mngRow.getSpDecisionHeaderId().toString()
+    );
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY2
+     ,mngRow.getContractManagementId().toString()
+    );
+
+    // AM戻り値用Mapへの設定
+    HashMap returnMap = new HashMap(2);
+    returnMap.put(
+      XxcsoContractRegistConstants.PARAM_URL_PARAM
+     ,params
+    );
+    returnMap.put(
+      XxcsoContractRegistConstants.PARAM_MESSAGE
+     ,msg
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnMap;
+  }
+// 2012-06-12 Ver1.8 [E_本稼動_09602] Add End
+
   /*****************************************************************************
    * オーナー変更チェックボックス変更処理
    *****************************************************************************
@@ -2528,6 +2613,46 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     return confirmMsg;
   }
 // 2011-06-06 Ver1.7 [E_本稼動_01963] Add End
+// 2012-06-12 Ver1.8 [E_本稼動_09602] Add Start
+  /*****************************************************************************
+   * 契約取消確認処理
+   *****************************************************************************
+   */
+  public void RejectContract()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.RejectContractConfirm();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 契約取消確認
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException RejectContractConfirm()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException confirmMsg = null;
+
+    //契約取消確認メッセージ取得
+    confirmMsg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00639
+        );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// 2012-06-12 Ver1.8 [E_本稼動_09602] Add End
   /**
    * 
    * Container's getter for XxcsoContractManagementFullVO1

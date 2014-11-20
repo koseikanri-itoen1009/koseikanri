@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : 自販機設置契約情報登録表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-28 1.0  SCS柳平直人  新規作成
 * 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
 * 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2012-06-12 1.3  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -80,6 +81,13 @@ public class XxcsoContractRegistPropertyUtils
     {
       setPageSecurityNone(pageRdrRow);
     }
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+    else if ( isStatusReject( mngRow.getStatus() ) )
+    {
+    // ステータスが取消済みの場合
+      setPageSecurityNone(pageRdrRow);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
+    }
     // 上記以外のステータスの場合
     else
     {
@@ -121,6 +129,13 @@ public class XxcsoContractRegistPropertyUtils
           {
             setPageSecurityNone(pageRdrRow);
           }
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+          // 新規登録の場合、契約取消ボタンは押下不可とする
+          if ( mngRow.getContractManagementId().intValue() < 0 )
+          {
+            pageRdrRow.setRejectButtonRender(Boolean.FALSE);
+          }
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
         }
         else
         {
@@ -277,6 +292,10 @@ public class XxcsoContractRegistPropertyUtils
     pageRdrRow.setApplyButtonRender(Boolean.TRUE);
     // 確定ボタン     :押下不可
     pageRdrRow.setSubmitButtonRender(Boolean.FALSE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+    // 契約取消ボタン :押下可能
+    pageRdrRow.setRejectButtonRender(Boolean.TRUE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
   }
 
   /*****************************************************************************
@@ -296,6 +315,10 @@ public class XxcsoContractRegistPropertyUtils
     pageRdrRow.setApplyButtonRender(Boolean.TRUE);
     // 確定ボタン     :押下可能
     pageRdrRow.setSubmitButtonRender(Boolean.TRUE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+    // 契約取消ボタン :押下可能
+    pageRdrRow.setRejectButtonRender(Boolean.TRUE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
   }
   
   /*****************************************************************************
@@ -315,6 +338,10 @@ public class XxcsoContractRegistPropertyUtils
     pageRdrRow.setApplyButtonRender(Boolean.FALSE);
     // 確定ボタン     :押下不可
     pageRdrRow.setSubmitButtonRender(Boolean.FALSE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+    // 契約取消ボタン :押下不可
+    pageRdrRow.setRejectButtonRender(Boolean.FALSE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
   }
   
 
@@ -339,6 +366,10 @@ public class XxcsoContractRegistPropertyUtils
     pageRdrRow.setSubmitButtonRender(Boolean.FALSE);
     // PDF作成ボタン  :押下不可
     pageRdrRow.setPrintPdfButtonRender(Boolean.FALSE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+    // 契約取消ボタン :押下不可
+    pageRdrRow.setRejectButtonRender(Boolean.FALSE);
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
   }
 
   /*****************************************************************************
@@ -351,7 +382,18 @@ public class XxcsoContractRegistPropertyUtils
   {
     return XxcsoContractRegistConstants.STS_FIX.equals(status);
   }
-
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add Start
+  /*****************************************************************************
+   * 契約管理ステータス取消済み判定
+   * @param  status 契約管理テーブル.ステータス
+   * @return boolean true:取消済み false:取消済み以外
+   *****************************************************************************
+   */
+  private static boolean isStatusReject(String status)
+  {
+    return XxcsoContractRegistConstants.STS_REJECT.equals(status);
+  }
+// 2012-06-12 Ver1.3 [E_本稼動_09602] Add End
   /*****************************************************************************
    * オーナー変更チェックボックスチェック判定
    * @param  ownerChangeFlag チェックボックスValue

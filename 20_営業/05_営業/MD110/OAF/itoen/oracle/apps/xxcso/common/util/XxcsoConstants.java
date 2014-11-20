@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.17
+* バージョン : 1.18
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -27,6 +27,7 @@
 * 2011-05-17 1.15 SCS桐生和幸  [E_本稼動_02500]原価割れチェック方法の変更対応
 * 2011-06-06 1.16 SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2011-11-14 1.17 SCSK桐生和幸 [E_本稼動_08312]問屋見積画面の改修①
+* 2012-06-12 1.18 SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -233,6 +234,9 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00618    = "APP-XXCSO1-00618";
   public static final String APP_XXCSO1_00619    = "APP-XXCSO1-00619";
 // 2011-11-14 Ver1.17 [E_本稼動_08312] Add End
+// 2012-06-12 [E_本稼動_09602] Add Start
+  public static final String APP_XXCSO1_00639    = "APP-XXCSO1-00639";
+// 2012-06-12 [E_本稼動_09602] Add End
 
   /*****************************************************************************
    * トークン名
@@ -314,6 +318,10 @@ public class XxcsoConstants
   public static final String
     TOKEN_VALUE_DECISION3              = "確定3";
 // 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
+// 2012-06-12 [E_本稼動_09602] Add Start
+  public static final String
+    TOKEN_VALUE_REJECT                 = "契約取消";
+// 2012-06-12 [E_本稼動_09602] Add End
   public static final String
     TOKEN_VALUE_CSV_CREATE             = "CSVファイル作成";
   public static final String

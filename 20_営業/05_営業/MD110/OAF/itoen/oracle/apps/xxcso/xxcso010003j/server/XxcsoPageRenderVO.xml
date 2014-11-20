@@ -213,4 +213,13 @@ FROM   DUAL
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="RejectButtonRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="REJECT_BUTTON_RENDER"
+      SQLType="BIT" >
+   </ViewAttribute>
 </ViewObject>

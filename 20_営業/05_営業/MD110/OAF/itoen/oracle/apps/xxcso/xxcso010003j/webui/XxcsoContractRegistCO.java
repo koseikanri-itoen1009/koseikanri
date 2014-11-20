@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-04-09 1.1  SCS柳平直人  [ST障害T1_0327]レイアウト調整処理修正
 * 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2011-06-06 1.3  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
+* 2012-06-12 1.4  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -316,6 +317,24 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
       this.redirect(pageContext, returnMap);
     }
+// 2012-06-12 Ver1.4 [E_本稼動_09602] Add Start
+    /////////////////////////////////////
+    // 契約取消ボタン
+    /////////////////////////////////////
+    if ( pageContext.getParameter("RejectButton") != null )
+    {
+      // 契約取消確認
+      am.invokeMethod("RejectContract");
+      // 確認メッセージの取得
+      OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+      //確認メッセージを表示
+      this.createConfirmDialog(
+        pageContext
+       ,confirmMsg
+       ,XxcsoConstants.TOKEN_VALUE_REJECT
+      );
+    }
+// 2012-06-12 Ver1.4 [E_本稼動_09602] Add End
 
     /////////////////////////////////////
     // 確認ダイアログでのOKボタン
@@ -527,6 +546,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         this.redirect(pageContext, returnMap);
       }
 // 2011-06-06 Ver1.3 [E_本稼動_01963] Add End
+// 2012-06-12 Ver1.4 [E_本稼動_09602] Add Start
+      else if ( XxcsoConstants.TOKEN_VALUE_REJECT.equals(actionValue) )
+      {
+        // AMへのパラメータ作成
+        Serializable[] params    = { actionValue };
+
+        //契約取消処理実行
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleRejectOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      }
+// 2012-06-12 Ver1.4[E_本稼動_09602] Add End
       else
       {
 // 2010-02-09 [E_本稼動_01538] Mod End
