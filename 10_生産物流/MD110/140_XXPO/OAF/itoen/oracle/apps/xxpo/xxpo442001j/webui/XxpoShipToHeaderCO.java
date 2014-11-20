@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoShipToHeaderCO
 * 概要説明   : 入庫実績入力・ヘッダコントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-24 1.0  新藤義勝     新規作成
+* 2008-08-19 1.1  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo442001j.webui;
@@ -30,7 +31,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 入庫実績入力ヘッダ画面のコントローラクラスです。
  * @author  ORACLE 新藤 義勝
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoShipToHeaderCO extends XxcmnOAControllerImpl
@@ -98,6 +99,8 @@ public class XxpoShipToHeaderCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO442001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 起動タイプ取得
         String exeType = pageContext.getParameter("ExeType");

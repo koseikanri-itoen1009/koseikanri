@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2008-07-17 1.7  伊藤ひとみ   ST不具合ログ#83対応
 * 2008-07-29 1.8  二瓶大輔     内部変更要求#164,166,173、課題#32
 * 2008-08-07 1.9  二瓶大輔     内部変更要求#166修正
+* 2008-08-19 1.10 二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -38,7 +39,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.9
+ * @version 1.10
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -305,6 +306,8 @@ public class XxpoUtility
   {
     // コミット発行
     trans.executeCommand("COMMIT ");
+    // 変更に関する警告をクリア
+    trans.setPlsqlState(OADBTransaction.STATUS_UNMODIFIED);
   } // commit
 
   /***************************************************************************
@@ -8644,7 +8647,7 @@ public class XxpoUtility
     sb.append("        ,xxwsh_order_headers_all  xoha "); // 受注ヘッダアドオン
     sb.append("        ,xxwsh_order_lines_all    xola "); // 受注明細アドオン
     sb.append("        ,xxinv_mov_lot_details    xmld "); // 移動ロット詳細(アドオン)
-    sb.append("        ,xxcmn_item_categories4_v xicv "); // OPM品目カテゴリ情報VIEW4
+    sb.append("        ,xxcmn_item_categories5_v xicv "); // OPM品目カテゴリ情報VIEW5
     sb.append("  WHERE  xoha.request_no         = :2  ");
     sb.append("  AND    xola.order_header_id    = xoha.order_header_id ");
     sb.append("  AND    xmld.mov_line_id        = xola.order_line_id   ");

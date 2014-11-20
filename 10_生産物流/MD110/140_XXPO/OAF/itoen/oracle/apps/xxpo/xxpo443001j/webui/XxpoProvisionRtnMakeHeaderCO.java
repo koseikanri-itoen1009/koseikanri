@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnMakeHeaderCO
 * 概要説明   : 支給返品作成ヘッダ画面:コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-24 1.0  熊本 和郎    新規作成
+* 2008-08-20 1.1  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.webui;
@@ -32,7 +33,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 支給返品作成ヘッダ画面のコントローラクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionRtnMakeHeaderCO extends XxcmnOAControllerImpl
@@ -102,6 +103,8 @@ public class XxpoProvisionRtnMakeHeaderCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO443001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
 
         // 起動タイプ取得
         String exeType = pageContext.getParameter("ExeType");
@@ -139,6 +142,8 @@ public class XxpoProvisionRtnMakeHeaderCO extends XxcmnOAControllerImpl
       {
         // 支給取消処理実行
         am.invokeMethod("doProvCancel");
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
 
         // 起動タイプ取得
         String exeType = pageContext.getParameter("ExeType");

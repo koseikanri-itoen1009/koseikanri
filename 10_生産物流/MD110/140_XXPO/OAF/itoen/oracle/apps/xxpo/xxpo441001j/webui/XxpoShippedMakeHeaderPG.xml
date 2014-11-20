@@ -415,7 +415,7 @@
             <oa:pageButtonBar id="PageButtonBarRN">
                <ui:contents>
                   <oa:submitButton id="Next" text="次へ" prompt="次へ"/>
-                  <oa:submitButton id="Cancel" text="取消" prompt="取消" serverUnvalidated="true" unvalidated="true" warnAboutChanges="true"/>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消" serverUnvalidated="true" unvalidated="true"/>
                </ui:contents>
             </oa:pageButtonBar>
          </ui:contents>

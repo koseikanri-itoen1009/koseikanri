@@ -10,21 +10,22 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT xola.order_header_id              order_header_id -- 受注ヘッダアドオンID
-      ,TO_CHAR(SUM(NVL(xola.quantity, 0)), 'FM999,999,990.000') inst_quantity_total -- 指示数量合計
-      ,TO_CHAR(  
-         SUM(  
-           ROUND(  
-             NVL(xola.shipped_quantity, NVL(xola.quantity, 0)) * NVL(xola.unit_price, 0)  
-           )  
-         ),'FM9,999,999,999,990'  
-       ) amount_total -- 金額
+SELECT xola.order_header_id                                             order_header_id        -- 受注ヘッダアドオンID
+      ,TO_CHAR(SUM(NVL(xola.quantity, 0)), 'FM999,999,990.000')         inst_quantity_total    -- 指示数量合計
+      ,TO_CHAR(SUM(ROUND(NVL(xola.shipped_quantity, NVL(xola.quantity, 0)) * NVL(xola.unit_price, 0))),'FM9,999,999,999,990')
+                                                                        amount_total           -- 金額
       ,TO_CHAR(SUM(NVL(xola.shipped_quantity, 0)), 'FM999,999,990.000') shipped_quantity_total -- 出荷実績数量
       ,TO_CHAR(SUM(NVL(xola.ship_to_quantity, 0)), 'FM999,999,990.000') ship_to_quantity_total -- 入庫実績数量
-FROM   xxwsh_order_lines_all xola -- 受注明細アドオン
+      ,TO_CHAR(CEIL(TRUNC(xoha.sum_weight, 1)), 'FM9,999,990')          sum_weight             -- 積載重量合計
+      ,TO_CHAR(CEIL(TRUNC(xoha.sum_capacity, 1)), 'FM9,999,990')        sum_capacity           -- 積載容積合計
+FROM   xxwsh_order_headers_all xoha -- 受注ヘッダアドオン
+      ,xxwsh_order_lines_all   xola -- 受注明細アドオン
 WHERE  xola.delete_flag     = 'N'  -- 未削除
+AND    xola.order_header_id = xoha.order_header_id
 AND    xola.order_header_id = :1  
 GROUP BY xola.order_header_id
+        ,xoha.sum_weight
+        ,xoha.sum_capacity
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
@@ -93,6 +94,32 @@ GROUP BY xola.order_header_id
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SumWeight"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SUM_WEIGHT"
+      Expression="SUM_WEIGHT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SumCapacity"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SUM_CAPACITY"
+      Expression="SUM_CAPACITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
       </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

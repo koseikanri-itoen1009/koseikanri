@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryAMImpl
 * 概要説明   : 支給返品要約:検索アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-17 1.0  熊本 和郎    新規作成
 * 2008-06-06 1.0  二瓶 大輔    内部変更要求#137対応
 * 2008-07-01 1.1  二瓶 大輔    内部変更要求#146対応
+* 2008-08-20 1.2  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -41,7 +42,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給返品要約:検索画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -373,6 +374,8 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     vo.next();
     vo.insertRow(row);
     row.setNewRowState(Row.STATUS_INITIALIZED);
+    // 変更に関する警告を設定
+    super.setWarnAboutChanges();  
   } // AddRow
 
   /*****************************************************************************
@@ -624,8 +627,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       OAException.raiseBundledOAException(exceptions);
     }
 
-    Number orderHeaderId = (Number)row.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
-    String requestNo = (String)row.getAttribute("RequestNo"); // 依頼No
+    // 変更に関する警告処理
+    doWarnAboutChanges();
+
   } // doNext
 
   /***************************************************************************
@@ -2364,6 +2368,77 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       prow.setAttribute("AddRowBtnRender", Boolean.FALSE); // 行挿入ボタン
     }
   } // handleEventUpdLine
+
+
+  /***************************************************************************
+   * 変更に関する警告をセットします。
+   ***************************************************************************
+   */
+  public void doWarnAboutChanges()
+  {
+    // 支給指示作成ヘッダVO取得
+    XxpoProvisionRtnMakeHeaderVOImpl hdrVo = getXxpoProvisionRtnMakeHeaderVO1();
+    OARow hdrRow  = (OARow)hdrVo.first();
+
+    // いづれかの項目に変更があった場合
+    if (!XxcmnUtility.isEquals(hdrRow.getAttribute("OrderTypeId"),          hdrRow.getAttribute("DbOrderTypeId"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("WeightCapacityClass"),  hdrRow.getAttribute("DbWeightCapacityClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ReqDeptCode"),          hdrRow.getAttribute("DbReqDeptCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("InstDeptCode"),         hdrRow.getAttribute("DbInstDeptCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("VendorCode"),           hdrRow.getAttribute("DbVendorCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShipToCode"),           hdrRow.getAttribute("DbShipToCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShipWhseCode"),         hdrRow.getAttribute("DbShipWhseCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("FreightCarrierCode"),   hdrRow.getAttribute("DbFreightCarrierCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"),          hdrRow.getAttribute("DbShippedDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalDate"),          hdrRow.getAttribute("DbArrivalDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeFrom"),      hdrRow.getAttribute("DbArrivalTimeFrom"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeTo"),        hdrRow.getAttribute("DbArrivalTimeTo"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingMethodCode"),   hdrRow.getAttribute("DbShippingMethodCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("FreightChargeClass"),   hdrRow.getAttribute("DbFreightChargeClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("TakebackClass"),        hdrRow.getAttribute("DbTakebackClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("DesignatedProdDate"),   hdrRow.getAttribute("DbDesignatedProdDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("DesignatedItemCode"),   hdrRow.getAttribute("DbDesignatedItemCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("DesignatedBranchNo"),   hdrRow.getAttribute("DbDesignatedBranchNo"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingInstructions"), hdrRow.getAttribute("DbShippingInstructions"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("RcvClass"),             hdrRow.getAttribute("DbRcvClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("FixClass"),             hdrRow.getAttribute("DbFixClass")))
+     {
+      // 変更に関する警告を設定
+      super.setWarnAboutChanges();  
+    } else
+    {
+      // 支給指示作成明細VO取得
+      XxpoProvisionRtnMakeLineVOImpl vo = getXxpoProvisionRtnMakeLineVO1();
+
+      /****************************
+       * 明細行取得
+       ****************************/
+      Row[] rows = vo.getAllRowsInRange();
+      if (rows != null || rows.length > 0) 
+      {
+        OARow row = null;
+        for (int i = 0; i < rows.length; i++)
+        {
+          // i番目の行を取得
+          row = (OARow)rows[i];
+
+          /******************
+           * いづれかが変更された場合
+           ******************/
+          if (!XxcmnUtility.isEquals(row.getAttribute("ItemId"),          row.getAttribute("DbItemId")) 
+           || !XxcmnUtility.isEquals(row.getAttribute("FutaiCode"),       row.getAttribute("DbFutaiCode"))
+           || !XxcmnUtility.isEquals(row.getAttribute("ReqQuantity"),     row.getAttribute("DbReqQuantity"))
+           || !XxcmnUtility.isEquals(row.getAttribute("UnitPriceNum"),    row.getAttribute("DbUnitPriceNum"))
+           || !XxcmnUtility.isEquals(row.getAttribute("LineDescription"), row.getAttribute("DbLineDescription")))
+          {
+            // 変更に関する警告を設定
+            super.setWarnAboutChanges();  
+            return;
+          }
+        }
+      }
+    }
+  } // doWarnAboutChanges
 
 //  ---------------------------------------------------------------
 //  ---    Default Method

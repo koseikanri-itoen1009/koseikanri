@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoShippedResultAMImpl
 * 概要説明   : 出庫実績要約アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-25 1.0  山本恭久     新規作成
 * 2008-06-30 1.1  二瓶大輔     内部変更要求対応#146,#149,ST不具合#248対応
 * 2008-07-31 1.2  伊藤ひとみ   内部変更要求対応#164,#174,#176対応
+* 2008-08-19 1.3  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo441001j.server;
@@ -41,7 +42,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出庫実績要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 山本恭久
- * @version 1.1
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -741,6 +742,10 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row   = (OARow)vo.first();
     // 次へ処理チェック
     chkNext(vo, row);
+
+    // 変更に関する警告処理
+    doWarnAboutChanges();
+
   } // doNext
 
   /***************************************************************************
@@ -2064,6 +2069,58 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     return XxcmnUtility.getSeq(trans, XxpoConstants.XXWSH_ORDER_LINES_ALL_S1);
 
   } // getOrderLineId
+
+  /***************************************************************************
+   * 変更に関する警告をセットします。
+   ***************************************************************************
+   */
+  public void doWarnAboutChanges()
+  {
+    // 支給指示作成ヘッダVO取得
+    XxpoShippedMakeHeaderVOImpl hdrVo = getXxpoShippedMakeHeaderVO1();
+    OARow hdrRow  = (OARow)hdrVo.first();
+
+    // 出庫日、摘要、指示受領が変更された場合
+    if (!XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"),          
+                               hdrRow.getAttribute("DbShippedDate")) 
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingInstructions"),           
+                               hdrRow.getAttribute("DbShippingInstructions"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("RcvClass"),                       
+                               hdrRow.getAttribute("DbRcvClass")))
+    {
+      // 変更に関する警告を設定
+      super.setWarnAboutChanges();  
+    } else
+    {
+      // 支給指示作成明細VO取得
+      XxpoShippedMakeLineVOImpl vo = getXxpoShippedMakeLineVO1();
+
+      /****************************
+       * 明細行取得
+       ****************************/
+      Row[] rows = vo.getAllRowsInRange();
+      if (rows != null || rows.length > 0) 
+      {
+        OARow row = null;
+        for (int i = 0; i < rows.length; i++)
+        {
+          // i番目の行を取得
+          row = (OARow)rows[i];
+
+          /******************
+           * 備考が変更された場合
+           ******************/
+          if (!XxcmnUtility.isEquals(row.getAttribute("LineDescription"), 
+                                     row.getAttribute("DbLineDescription")))
+          {
+            // 変更に関する警告を設定
+            super.setWarnAboutChanges();  
+            return;
+          }
+        }
+      }
+    }
+  } // doWarnAboutChanges
 
   /**
    * 

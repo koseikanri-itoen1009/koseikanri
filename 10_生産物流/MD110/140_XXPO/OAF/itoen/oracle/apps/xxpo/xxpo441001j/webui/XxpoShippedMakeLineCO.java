@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoShippedMakeLineCO
 * 概要説明   : 出庫実績入力明細コントローラ
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-31 1.0  山本恭久     新規作成
 * 2008-07-01 1.1  二瓶大輔     不具合対応(retainAM)
+* 2008-08-19 1.2  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo441001j.webui;
@@ -31,7 +32,7 @@ import oracle.apps.fnd.common.MessageToken;
 /***************************************************************************
  * 出庫実績入力明細画面のコントローラクラスです。
  * @author  ORACLE 山本 恭久
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
@@ -170,6 +171,8 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO441001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 明細ID取得
         String lineId           = pageContext.getParameter("ORDER_LINE_ID");
@@ -198,6 +201,8 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO441001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 明細ID取得
         String lineId           = pageContext.getParameter("ORDER_LINE_ID");
@@ -250,6 +255,8 @@ public class XxpoShippedMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO441001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         //パラメータ用HashMap生成
         HashMap pageParams = new HashMap();

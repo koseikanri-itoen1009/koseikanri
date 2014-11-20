@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnMakeLineCO
 * 概要説明   : 支給返品作成明細コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-04-01 1.0  熊本 和郎    新規作成
+* 2008-08-20 1.1  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.webui;
@@ -35,7 +36,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 支給返品作成明細画面のコントローラクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionRtnMakeLineCO extends XxcmnOAControllerImpl
@@ -251,6 +252,8 @@ public class XxpoProvisionRtnMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO443001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
         // 新規フラグ取得
         String newFlag = pageContext.getParameter("NewFlag");
         // 新規フラグが「Y」の場合、retainAMをFalseで遷移
@@ -278,6 +281,8 @@ public class XxpoProvisionRtnMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO443001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
         // 明細ID取得
         String lineId = pageContext.getParameter("ORDER_LINE_ID");
         // ヘッダ更新日時取得
@@ -302,34 +307,36 @@ public class XxpoProvisionRtnMakeLineCO extends XxcmnOAControllerImpl
           OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
           OAWebBeanConstants.IGNORE_MESSAGES);    
 
-      // 入庫実績アイコン押下時
-      } else if ("shipToIcon".equals(pageContext.getParameter(EVENT_PARAM))) 
-      {
-        // 【共通処理】トランザクション終了
-        TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
-        // 明細ID取得
-        String lineId           = pageContext.getParameter("ORDER_LINE_ID");
-        // ヘッダ更新日時取得
-        String xohaUpdateDate   = pageContext.getParameter("HDR_UPD_DATE");
-        // 明細更新日時取得
-        String xolaUpdateDate   = pageContext.getParameter("LINE_UPD_DATE");
-        //パラメータ用HashMap生成
-        HashMap pageParams = new HashMap();
-        pageParams.put(XxwshConstants.URL_PARAM_CALL_PICTURE_KBN,   XxwshConstants.CALL_PIC_KBN_RETURN);
-        pageParams.put(XxwshConstants.URL_PARAM_LINE_ID,            lineId);
-        pageParams.put(XxwshConstants.URL_PARAM_HEADER_UPDATE_DATE, xohaUpdateDate);
-        pageParams.put(XxwshConstants.URL_PARAM_LINE_UPDATE_DATE,   xolaUpdateDate);
-        pageParams.put(XxwshConstants.URL_PARAM_EXE_KBN,            exeType);
-        // 入庫実績ロット入力画面へ遷移
-        pageContext.setForwardURL(
-          XxwshConstants.URL_XXWSH920001J_2,
-          null,
-          OAWebBeanConstants.KEEP_MENU_CONTEXT,
-          null,
-          pageParams,
-          true, // Retain AM
-          OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
-          OAWebBeanConstants.IGNORE_MESSAGES);    
+// 2008/08/20 D.Nihei Del Start 不要の為削除
+//      // 入庫実績アイコン押下時
+//      } else if ("shipToIcon".equals(pageContext.getParameter(EVENT_PARAM))) 
+//      {
+//        // 【共通処理】トランザクション終了
+//        TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
+//        // 明細ID取得
+//        String lineId           = pageContext.getParameter("ORDER_LINE_ID");
+//        // ヘッダ更新日時取得
+//        String xohaUpdateDate   = pageContext.getParameter("HDR_UPD_DATE");
+//        // 明細更新日時取得
+//        String xolaUpdateDate   = pageContext.getParameter("LINE_UPD_DATE");
+//        //パラメータ用HashMap生成
+//        HashMap pageParams = new HashMap();
+//        pageParams.put(XxwshConstants.URL_PARAM_CALL_PICTURE_KBN,   XxwshConstants.CALL_PIC_KBN_RETURN);
+//        pageParams.put(XxwshConstants.URL_PARAM_LINE_ID,            lineId);
+//        pageParams.put(XxwshConstants.URL_PARAM_HEADER_UPDATE_DATE, xohaUpdateDate);
+//        pageParams.put(XxwshConstants.URL_PARAM_LINE_UPDATE_DATE,   xolaUpdateDate);
+//        pageParams.put(XxwshConstants.URL_PARAM_EXE_KBN,            exeType);
+//        // 入庫実績ロット入力画面へ遷移
+//        pageContext.setForwardURL(
+//          XxwshConstants.URL_XXWSH920001J_2,
+//          null,
+//          OAWebBeanConstants.KEEP_MENU_CONTEXT,
+//          null,
+//          pageParams,
+//          true, // Retain AM
+//          OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
+//          OAWebBeanConstants.IGNORE_MESSAGES);    
+// 2008/08/20 D.Nihei Del End
       }
     } catch (OAException oae)
     {

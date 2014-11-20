@@ -481,7 +481,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell304" styleClass="OraTableCellText" hAlign="right">
                            <ui:contents>
-                              <oa:messageStyledText id="SumWeight" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="SumWeight" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="SumWeight" viewName="XxpoProvisionRtnMakeTotalVO1" viewAttr="SumWeight" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell305" hAlign="right">
@@ -524,7 +524,7 @@
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell404" styleClass="OraTableCellText" hAlign="right">
                            <ui:contents>
-                              <oa:messageStyledText id="SumCapacity" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="SumCapacity" styleClass="OraFieldNumber"/>
+                              <oa:messageStyledText id="SumCapacity" viewName="XxpoProvisionRtnMakeTotalVO1" viewAttr="SumCapacity" styleClass="OraFieldNumber"/>
                            </ui:contents>
                         </oa:cellFormat>
                         <oa:cellFormat id="Cell405" hAlign="right">
@@ -545,7 +545,7 @@
                <ui:contents>
                   <oa:submitButton id="Apply" text="適用" prompt="適用"/>
                   <oa:submitButton id="Cancel" serverUnvalidated="true" unvalidated="true" text="取消" prompt="取消"/>
-                  <oa:submitButton id="Back" serverUnvalidated="true" unvalidated="true" text="戻る" prompt="戻る" warnAboutChanges="false"/>
+                  <oa:submitButton id="Back" serverUnvalidated="true" unvalidated="true" text="戻る" prompt="戻る"/>
                </ui:contents>
             </oa:pageButtonBar>
          </ui:contents>
