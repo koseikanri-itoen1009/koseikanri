@@ -7,7 +7,7 @@ AS
  * Description     : 標準発注書出力処理
  * MD.050          : MD050_CFO_016_A01_標準発注書出力処理
  * MD.070          : MD050_CFO_016_A01_標準発注書出力処理
- * Version         : 1.7
+ * Version         : 1.8
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009-03-23    1.5  SCS 開原拓也  [障害T1_0059]機種コードの変更対応
  *  2009-04-14    1.6  SCS 嵐田勇人  [障害T1_0533]SVF出力ファイル名格納変数桁数対応
  *  2009-07-03    1.7  SCS 嵐田勇人  [障害0000131]発注担当者郵便番号ハイフン対応
+ *  2009-12-24    1.8  SCS 寺内真紀  [障害E_本稼動_00592]仕入先敬称追加・納品場所変更対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -138,6 +139,9 @@ AS
   gv_msg_cfo_00033   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00033'; -- コンカレントパラメータ値大小チェックエラーメッセージ
   gv_msg_cfo_00035   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00035'; -- データ作成エラーメッセージエラーメッセージ
   gv_msg_cfo_00036   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00036'; -- システムエラーメッセージ
+--ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+  gv_msg_cfo_00001   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00001'; --プロファイル取得エラーメッセージ
+--ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
 --
   -- トークン
   gv_tkn_param_name_from CONSTANT VARCHAR2(15) := 'PARAM_NAME_FROM';  -- 大小チェックFrom 文字用
@@ -153,13 +157,19 @@ AS
   gv_tkn_un_number_id    CONSTANT VARCHAR2(15) := 'UN_NUMBER_ID';     -- 機種番号ID
   gv_tkn_errmsg          CONSTANT VARCHAR2(15) := 'ERRMSG';           -- SQLERRM対応
   gv_tkn_func_name       CONSTANT VARCHAR2(15) := 'FUNC_NAME';        -- 処理名
+--ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+  gv_tkn_prof            CONSTANT VARCHAR2(15) := 'PROF_NAME';       -- プロファイル名
+--ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
 --
   --プロファイル
   gv_set_of_bks_id   CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID'; -- 会計帳簿ID
   gv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
   gv_conc_request_id CONSTANT VARCHAR2(30) := 'CONC_REQUEST_ID';  -- 要求ID
---
   gv_lookup_type     CONSTANT VARCHAR2(100) := 'XXCFO1_SEARCH_LONG_TEXT';  -- 長い文書検索文字列
+--ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+  cv_report_title    CONSTANT VARCHAR2(30) := 'XXCFO1_REPORT_TITLE'; --XXCFO:帳票用敬称
+--ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
+--
 --
   --===============================================================
   -- グローバル変数
@@ -176,7 +186,9 @@ AS
   gn_rep_standard_po_cnt       NUMBER;                                     -- 標準発注書作成用帳票ワークテーブル登録件数
   gt_no_data_msg               xxcfo_rep_standard_po.data_empty_message%TYPE;
                                                                            -- 0件メッセージ
-
+--ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+  gv_report_title              VARCHAR2(10);                               -- XXCFO:帳票用敬称取得
+--ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
 --
   --===============================================================
   -- グローバルテーブルタイプ
@@ -222,7 +234,10 @@ AS
           ,d_xla.address_line1                    po_address_line1           -- 発注担当者_住所
           ,d_xla.phone                            po_phone                   -- 発注担当者_電話番号
           ,d_xla.fax                              po_fax                     -- 発注担当者_FAX
-          ,l_xla.location_short_name              location_short_name        -- 納入先事業所
+--MOD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+--          ,l_xla.location_short_name              location_short_name        -- 納入先事業所
+          ,l_xla.location_name                    location_name              -- 納入先事業所
+--MOD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
           ,l_xla.division_code                    deliver_division_code      -- 納入先事本部コード
           ,pvsa.phone                             vendor_phone               -- 仕入先電話番号
           ,pvsa.fax                               vendor_fax                 -- 仕入先FAX番号
@@ -534,6 +549,23 @@ AS
 --
     -- プロファイルから要求ID取得
     gn_conc_request_id := TO_NUMBER(FND_PROFILE.VALUE(gv_conc_request_id));
+--
+--ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+    -- プロファイルからXXCFO:帳票用敬称取得
+    gv_report_title := FND_PROFILE.VALUE( cv_report_title );
+    -- 取得エラー時
+    IF ( gv_report_title IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( gv_msg_kbn_cfo    -- アプリケーション短縮名：XXCFO
+                                                    ,gv_msg_cfo_00001  -- プロファイル取得エラー
+                                                    ,gv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name( cv_report_title ))
+                                                                       -- XXCFO:帳票用敬称
+                                                   ,1
+                                                   ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
 --
     -- 発注作成日チェック
     IF (  iv_po_creation_date_from IS NOT NULL
@@ -1090,7 +1122,10 @@ AS
       ,program_update_date            -- プログラム更新日
     )
     VALUES ( 
-       g_xxcfo_po_data_rec.vendor_name
+--MOD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
+--       g_xxcfo_po_data_rec.vendor_name
+       g_xxcfo_po_data_rec.vendor_name || gv_report_title
+--MOD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
       ,g_xxcfo_po_data_rec.vendor_phone
       ,g_xxcfo_po_data_rec.vendor_fax
       ,g_xxcfo_po_data_rec.area_code
@@ -1108,7 +1143,10 @@ AS
       ,g_xxcfo_po_data_rec.apply_location_short_name
       ,DECODE(g_xxcfo_po_data_rec.attache_judge_code, gv_judge_code_10
                                                   , SUBSTRB( gt_party_name ,1 ,240 )            -- 納品場所名
-                                                  , g_xxcfo_po_data_rec.location_short_name)
+--MOD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------                                                  
+--                                                  , g_xxcfo_po_data_rec.location_short_name)
+                                                  , g_xxcfo_po_data_rec.location_name)
+--MOD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
       ,DECODE(g_xxcfo_po_data_rec.attache_judge_code, gv_judge_code_10, gt_un_number            -- 発注商品
                                                   , g_xxcfo_po_data_rec.vendor_product_num)
       ,g_xxcfo_po_data_rec.unit_price

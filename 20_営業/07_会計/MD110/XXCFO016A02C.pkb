@@ -7,7 +7,7 @@ AS
  * Description     : 発注書データ出力処理
  * MD.050          : MD050_CFO_016_A02_発注書データ出力処理
  * MD.070          : MD050_CFO_016_A02_発注書データ出力処理
- * Version         : 1.6
+ * Version         : 1.7
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009-03-17    1.4  SCS 嵐田勇人  [障害T1_0051]共通関数エラー時対応
  *  2009-03-23    1.5  SCS 開原拓也  [障害T1_0059]機種コードの変更対応
  *  2009-11-25    1.6  SCS 寺内真紀  [障害E_本稼動_00063]顧客情報取得エラー対応
+ *  2009-12-24    1.7  SCS 寺内真紀  [障害E_本稼動_00592]納品場所変更対応
   ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -234,7 +235,10 @@ AS
           ,d_xla.address_line1                    po_address_line1           -- 発注担当者_住所
           ,d_xla.phone                            po_phone                   -- 発注担当者_電話番号
           ,d_xla.fax                              po_fax                     -- 発注担当者_FAX
-          ,l_xla.location_short_name              location_short_name        -- 納入先事業所
+--MOD_Ver.1.7_2009/12/24_START----------------------------------------------------------------------------
+--          ,l_xla.location_short_name              location_short_name        -- 納入先事業所
+          ,l_xla.location_name                    location_name              -- 納入先事業所
+--MOD_Ver.1.7_2009/12/24_END------------------------------------------------------------------------------
           ,l_hl.location_code                     location_code              -- 納入先事業所コード
           ,pvsa.phone                             vendor_phone               -- 仕入先電話番号
           ,pvsa.fax                               vendor_fax                 -- 仕入先FAX番号
@@ -1412,7 +1416,10 @@ AS
                                                   , g_xxcfo_po_data_rec.location_code)
       ,DECODE(g_xxcfo_po_data_rec.attache_judge_code, gv_judge_code_10
                                                   , SUBSTRB( gt_party_name ,1 , 240 )          -- 納品場所名
-                                                  , g_xxcfo_po_data_rec.location_short_name)
+--MOD_Ver.1.7_2009/12/24_START----------------------------------------------------------------------------
+--                                                  , g_xxcfo_po_data_rec.location_short_name)
+                                                  , g_xxcfo_po_data_rec.location_name)
+--MOD_Ver.1.7_2009/12/24_END------------------------------------------------------------------------------
       ,g_xxcfo_po_data_rec.promised_date                                           -- 納期
       ,g_xxcfo_po_data_rec.need_by_date                                            -- 希望入手日
       ,DECODE(g_xxcfo_po_data_rec.attache_judge_code, gv_judge_code_10, 
