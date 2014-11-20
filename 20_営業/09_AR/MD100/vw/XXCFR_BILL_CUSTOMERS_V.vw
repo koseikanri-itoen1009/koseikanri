@@ -5,7 +5,7 @@ CREATE OR REPLACE VIEW xxcfr_bill_customers_v
  * Description     : 請求先顧客ビュー
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- -------------  -------------------------------------
@@ -14,6 +14,7 @@ CREATE OR REPLACE VIEW xxcfr_bill_customers_v
  *  2009-01-30    1.0  SCS 吉村 憲司   初回作成
  *  2009/04/07    1.1  SCS 大川 恵   [障害T1_0383] 取得顧客不正対応
  *  2009/04/14    1.2  SCS 大川 恵   [障害T1_0546] 顧客プロファイル取得不正対応
+ *  2009/06/26    1.3  SCS 萱原 伸哉 [統合テスト障害0000030] マルチオルグビュー対応
  ************************************************************************/
 (
   pay_customer_id,                   -- 入金先顧客ID
@@ -54,7 +55,10 @@ AS
           bcus.inv_prt_type                                  inv_prt_type,         -- 請求書出力形式
           bcus.cons_inv_flag                                 cons_inv_flag,        -- 一括請求書発行フラグ
           NVL(chcar.org_id,bcus.org_id)                      org_id                -- 組織ID
-  FROM    hz_cust_acct_relate_all chcar,     -- 顧客関連（入金先-請求先）
+-- Modify 2009.06.26 Ver1.3 Start
+--  FROM    hz_cust_acct_relate_all chcar,     -- 顧客関連（入金先-請求先）
+  FROM    hz_cust_acct_relate     chcar,     -- 顧客関連（入金先-請求先）
+-- Modify 2009.06.26 Ver1.3 End  
           hz_cust_accounts        chca,      -- 顧客（入金先）
           hz_parties              chp,       -- パーティ（入金先）
           xxcmm_cust_accounts     cxca,      -- 顧客アドオン（入金先）
@@ -97,8 +101,12 @@ AS
                    xhcas.org_id              org_id                    -- 組織ID
            FROM    hz_cust_accounts        xhca,                       -- 顧客アカウント（請求先）
                    hz_parties              xhp,                        -- パーティ（請求先）
-                   hz_cust_acct_sites_all  xhcas,                      -- 顧客サイト（請求先）
-                   hz_cust_site_uses_all   xhcsu,                      -- 顧客使用目的（請求先）
+-- Modify 2009.06.26 Ver1.3 Start
+--                   hz_cust_acct_sites_all  xhcas,                      -- 顧客サイト（請求先）
+--                   hz_cust_site_uses_all   xhcsu,                      -- 顧客使用目的（請求先）
+                   hz_cust_acct_sites      xhcas,                      -- 顧客サイト（請求先）
+                   hz_cust_site_uses       xhcsu,                      -- 顧客使用目的（請求先）
+-- Modify 2009.06.26 Ver1.3 Start
                    hz_customer_profiles    xhcp,                       -- 顧客プロファイル（請求先）
                    xxcmm_cust_accounts     xxca,                       -- 顧客アドオン（請求先）
                    (SELECT flex_value,
@@ -115,9 +123,11 @@ AS
 --           AND     xhca.status              = 'A'                       --ステータス
 -- Modify 2009.04.07 Ver1.1 END
            AND     xhca.cust_account_id     = xhcas.cust_account_id
+-- Modify 2009.06.26 Ver1.3 Start
 -- Modify 2009.04.07 Ver1.1 Start
-           AND     xhcas.org_id             = fnd_profile.value('ORG_ID') -- 請求先顧客所在地
+--           AND     xhcas.org_id             = fnd_profile.value('ORG_ID') -- 請求先顧客所在地
 -- Modify 2009.04.07 Ver1.1 END
+-- Modify 2009.06.26 Ver1.3 End
            AND     xhcas.bill_to_flag       IS NOT NULL                 --
            AND     xhcas.cust_acct_site_id  = xhcsu.cust_acct_site_id
            AND     xhcsu.site_use_code      = 'BILL_TO'                 --使用目的
@@ -131,7 +141,10 @@ AS
            AND     xxca.bill_base_code      = xffvv.flex_value(+)
            AND     EXISTS
                    (SELECT   'X'
-                    FROM     hz_cust_acct_relate_all hcar
+-- Modify 2009.06.26 Ver1.3 Start
+--                    FROM     hz_cust_acct_relate_all hcar
+                    FROM     hz_cust_acct_relate     hcar
+-- Modify 2009.06.26 Ver1.3 End
                     WHERE    hcar.attribute1  = '1'
                     AND      hcar.status      = 'A'
                     AND      hcar.cust_account_id = xhca.cust_account_id
@@ -160,8 +173,12 @@ AS
                    yhcas.org_id              org_id                    -- 組織ID
            FROM    hz_cust_accounts        yhca,                       -- 顧客アカウント（請求先）
                    hz_parties              yhp,                        -- パーティ（請求先）
-                   hz_cust_acct_sites_all  yhcas,                      -- 顧客サイト（請求先）
-                   hz_cust_site_uses_all   yhcsu,                      -- 顧客使用目的（請求先）
+-- Modify 2009.06.26 Ver1.3 Start
+--                   hz_cust_acct_sites_all  yhcas,                      -- 顧客サイト（請求先）
+--                   hz_cust_site_uses_all   yhcsu,                      -- 顧客使用目的（請求先）
+                   hz_cust_acct_sites      yhcas,                      -- 顧客サイト（請求先）
+                   hz_cust_site_uses       yhcsu,                      -- 顧客使用目的（請求先）
+-- Modify 2009.06.26 Ver1.3 End
                    hz_customer_profiles    yhcp,                       -- 顧客プロファイル（請求先）
                    xxcmm_cust_accounts     yxca,                       -- 顧客アドオン（請求先）
                    (SELECT  flex_value,
@@ -180,9 +197,11 @@ AS
            AND     yhca.cust_account_id     = yhcas.cust_account_id
            AND     yhcas.bill_to_flag       IS NOT NULL                 --
            AND     yhcas.cust_acct_site_id  = yhcsu.cust_acct_site_id
+-- Modify 2009.06.26 Ver1.3 Start
 -- Modify 2009.04.07 Ver1.1 Start
-           AND     yhcas.org_id             = fnd_profile.value('ORG_ID') -- 請求先顧客所在地
+--           AND     yhcas.org_id             = fnd_profile.value('ORG_ID') -- 請求先顧客所在地
 -- Modify 2009.04.07 Ver1.1 END
+-- Modify 2009.06.26 Ver1.3 End
            AND     yhcsu.site_use_code      = 'BILL_TO'                 --使用目的
 -- Modify 2009.04.07 Ver1.1 Start
            AND     yhcsu.primary_flag       = 'Y'
@@ -194,7 +213,10 @@ AS
            AND     yxca.bill_base_code      = yffvv.flex_value(+)
            AND     NOT EXISTS
                    (SELECT   'X'
-                    FROM     hz_cust_acct_relate_all hcar
+-- Modify 2009.06.26 Ver1.3 Start
+--                    FROM     hz_cust_acct_relate_all hcar
+                    FROM     hz_cust_acct_relate     hcar
+-- Modify 2009.06.26 Ver1.3 End
                     WHERE    hcar.attribute1  = '1'
                     AND      hcar.status      = 'A'
                     AND      hcar.related_cust_account_id = yhca.cust_account_id

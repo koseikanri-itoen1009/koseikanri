@@ -102,27 +102,40 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
           ,bill_hsua_1.tax_rounding_rule       AS bill_tax_round_rule     --税金－端数処理      
           ,ship_hzad_1.sale_base_code          AS ship_sale_base_code     --売上拠点コード      
     FROM   hz_cust_accounts          bill_hzca_1              --請求先顧客マスタ
-          ,hz_cust_acct_sites_all    bill_hasa_1              --請求先顧客所在地
-          ,hz_cust_site_uses_all     bill_hsua_1              --請求先顧客使用目的
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    bill_hasa_1              --請求先顧客所在地
+--          ,hz_cust_site_uses_all     bill_hsua_1              --請求先顧客使用目的
+          ,hz_cust_acct_sites        bill_hasa_1              --請求先顧客所在地
+          ,hz_cust_site_uses         bill_hsua_1              --請求先顧客使用目的
+-- Modify 2009.06.26 kayahara end
           ,xxcmm_cust_accounts       bill_hzad_1              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_1              --請求先パーティサイト  
           ,hz_locations              bill_hzlo_1              --請求先顧客事業所      
           ,hz_customer_profiles      bill_hzcp_1              --請求先顧客プロファイル
           ,hz_cust_accounts          ship_hzca_1              --出荷先顧客マスタ
-          ,hz_cust_acct_sites_all    ship_hasa_1              --出荷先顧客所在地
-          ,hz_cust_site_uses_all     ship_hsua_1              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    ship_hasa_1              --出荷先顧客所在地
+--          ,hz_cust_site_uses_all     ship_hsua_1              --出荷先顧客使用目的
+          ,hz_cust_acct_sites        ship_hasa_1              --出荷先顧客所在地
+          ,hz_cust_site_uses         ship_hsua_1              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara end
           ,xxcmm_cust_accounts       ship_hzad_1              --出荷先顧客追加情報
-          ,hz_cust_acct_relate_all   bill_hcar_1              --顧客関連マスタ(請求関連)
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_relate_all   bill_hcar_1              --顧客関連マスタ(請求関連)
+          ,hz_cust_acct_relate       bill_hcar_1              --顧客関連マスタ(請求関連)
+-- Modify 2009.06.26 kayahara end
     WHERE  bill_hzca_1.cust_account_id = bill_hcar_1.cust_account_id         --請求先顧客マスタ.顧客ID = 顧客関連マスタ.顧客ID
     AND    bill_hcar_1.related_cust_account_id = ship_hzca_1.cust_account_id --顧客関連マスタ.関連先顧客ID = 出荷先顧客マスタ.顧客ID
     AND    bill_hzca_1.customer_class_code = '14'                            --請求先顧客.顧客区分 = '14'(売掛管理先顧客)
     AND    bill_hcar_1.status = 'A'                                          --顧客関連マスタ.ステータス = ‘A’
     AND    bill_hcar_1.attribute1 = '1'                                      --顧客関連マスタ.関連分類 = ‘1’ (請求)
-    AND    bill_hasa_1.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    ship_hasa_1.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    bill_hcar_1.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(請求関連).組織ID = ログインユーザの組織ID
-    AND    bill_hsua_1.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客使用目的.組織ID = ログインユーザの組織ID
-    AND    ship_hsua_1.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start    
+--    AND    bill_hasa_1.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    ship_hasa_1.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    bill_hcar_1.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(請求関連).組織ID = ログインユーザの組織ID
+--    AND    bill_hsua_1.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客使用目的.組織ID = ログインユーザの組織ID
+--    AND    ship_hsua_1.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end   
     AND    bill_hzca_1.cust_account_id = bill_hzad_1.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    bill_hzca_1.cust_account_id = bill_hasa_1.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
     AND    bill_hasa_1.cust_acct_site_id = bill_hsua_1.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
@@ -136,11 +149,16 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
     AND    bill_hsua_1.site_use_id = bill_hzcp_1.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
     AND NOT EXISTS (
                 SELECT 'X'
-                FROM   hz_cust_acct_relate_all   cash_hcar_1   --顧客関連マスタ(入金関連)
+-- Modify 2009.06.26 kayahara start                
+--                FROM   hz_cust_acct_relate_all   cash_hcar_1   --顧客関連マスタ(入金関連)
+                FROM   hz_cust_acct_relate       cash_hcar_1   --顧客関連マスタ(入金関連)
+-- Modify 2009.06.26 kayahara end
                 WHERE  cash_hcar_1.status = 'A'                                          --顧客関連マスタ(入金関連).ステータス = ‘A’
                 AND    cash_hcar_1.attribute1 = '2'                                      --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
                 AND    cash_hcar_1.related_cust_account_id = bill_hzca_1.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
-                AND    cash_hcar_1.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(入金関連).組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start                 
+--                AND    cash_hcar_1.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(入金関連).組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end                     
                      )
     UNION ALL
     --②入金先顧客－請求先顧客－出荷先顧客
@@ -174,21 +192,36 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
           ,bill_hsua_2.tax_rounding_rule         AS bill_tax_round_rule     --税金－端数処理      
           ,ship_hzad_2.sale_base_code            AS ship_sale_base_code     --売上拠点コード      
     FROM   hz_cust_accounts          cash_hzca_2              --入金先顧客マスタ
-          ,hz_cust_acct_sites_all    cash_hasa_2              --入金先顧客所在地
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    cash_hasa_2              --入金先顧客所在地
+          ,hz_cust_acct_sites        cash_hasa_2              --入金先顧客所在地
+-- Modify 2009.06.26 kayahara end
           ,xxcmm_cust_accounts       cash_hzad_2              --入金先顧客追加情報
           ,hz_cust_accounts          bill_hzca_2              --請求先顧客マスタ
-          ,hz_cust_acct_sites_all    bill_hasa_2              --請求先顧客所在地
-          ,hz_cust_site_uses_all     bill_hsua_2              --請求先顧客使用目的
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    bill_hasa_2              --請求先顧客所在地
+--          ,hz_cust_site_uses_all     bill_hsua_2              --請求先顧客使用目的
+          ,hz_cust_acct_sites        bill_hasa_2              --請求先顧客所在地
+          ,hz_cust_site_uses         bill_hsua_2              --請求先顧客使用目的
+-- Modify 2009.06.26 kayahara end          
           ,xxcmm_cust_accounts       bill_hzad_2              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_2              --請求先パーティサイト  
           ,hz_locations              bill_hzlo_2              --請求先顧客事業所      
           ,hz_customer_profiles      bill_hzcp_2              --請求先顧客プロファイル      
           ,hz_cust_accounts          ship_hzca_2              --出荷先顧客マスタ
-          ,hz_cust_acct_sites_all    ship_hasa_2              --出荷先顧客所在地
-          ,hz_cust_site_uses_all     ship_hsua_2              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    ship_hasa_2              --出荷先顧客所在地
+--          ,hz_cust_site_uses_all     ship_hsua_2              --出荷先顧客使用目的
+          ,hz_cust_acct_sites        ship_hasa_2              --出荷先顧客所在地
+          ,hz_cust_site_uses         ship_hsua_2              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara end           
           ,xxcmm_cust_accounts       ship_hzad_2              --出荷先顧客追加情報
-          ,hz_cust_acct_relate_all   cash_hcar_2              --顧客関連マスタ(入金関連)
-          ,hz_cust_acct_relate_all   bill_hcar_2              --顧客関連マスタ(請求関連)
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_relate_all   cash_hcar_2              --顧客関連マスタ(入金関連)
+--          ,hz_cust_acct_relate_all   bill_hcar_2              --顧客関連マスタ(請求関連)
+          ,hz_cust_acct_relate       cash_hcar_2              --顧客関連マスタ(入金関連)
+          ,hz_cust_acct_relate       bill_hcar_2              --顧客関連マスタ(請求関連)
+-- Modify 2009.06.26 kayahara end            
     WHERE  cash_hzca_2.cust_account_id = cash_hcar_2.cust_account_id         --入金先顧客マスタ.顧客ID = 顧客関連マスタ(入金関連).顧客ID
     AND    cash_hzca_2.cust_account_id = cash_hzad_2.customer_id             --入金先顧客マスタ.顧客ID = 入金先顧客追加情報.顧客ID
     AND    cash_hcar_2.related_cust_account_id = bill_hzca_2.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
@@ -200,13 +233,15 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
     AND    cash_hcar_2.attribute1 = '2'                                      --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
     AND    bill_hcar_2.status = 'A'                                          --顧客関連マスタ(請求関連).ステータス = ‘A’
     AND    bill_hcar_2.attribute1 = '1'                                      --顧客関連マスタ(請求関連).関連分類 = ‘1’ (請求)
-    AND    cash_hasa_2.org_id = fnd_profile.value('ORG_ID')                  --入金先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    bill_hasa_2.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    ship_hasa_2.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    cash_hcar_2.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(入金関連).組織ID = ログインユーザの組織ID
-    AND    bill_hcar_2.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(請求関連).組織ID = ログインユーザの組織ID
-    AND    bill_hsua_2.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客使用目的.組織ID = ログインユーザの組織ID
-    AND    ship_hsua_2.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start    
+--    AND    cash_hasa_2.org_id = fnd_profile.value('ORG_ID')                  --入金先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    bill_hasa_2.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    ship_hasa_2.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    cash_hcar_2.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(入金関連).組織ID = ログインユーザの組織ID
+--    AND    bill_hcar_2.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(請求関連).組織ID = ログインユーザの組織ID
+--    AND    bill_hsua_2.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客使用目的.組織ID = ログインユーザの組織ID
+--    AND    ship_hsua_2.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end    
     AND    bill_hzca_2.cust_account_id = bill_hzad_2.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    bill_hzca_2.cust_account_id = bill_hasa_2.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
     AND    bill_hasa_2.cust_acct_site_id = bill_hsua_2.cust_acct_site_id     --請求先顧客所在地.顧客所在地ID = 請求先顧客使用目的.顧客所在地ID
@@ -251,17 +286,28 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
           ,bill_hsua_3.tax_rounding_rule           AS bill_tax_round_rule     --税金－端数処理      
           ,bill_hzad_3.sale_base_code              AS ship_sale_base_code     --売上拠点コード      
     FROM   hz_cust_accounts          cash_hzca_3              --入金先顧客マスタ
-          ,hz_cust_acct_sites_all    cash_hasa_3              --入金先顧客所在地
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    cash_hasa_3              --入金先顧客所在地
+          ,hz_cust_acct_sites        cash_hasa_3              --入金先顧客所在地
+-- Modify 2009.06.26 kayahara end         
           ,xxcmm_cust_accounts       cash_hzad_3              --入金先顧客追加情報
           ,hz_cust_accounts          ship_hzca_3              --出荷先顧客マスタ　※請求先含む
-          ,hz_cust_acct_sites_all    bill_hasa_3              --請求先顧客所在地
-          ,hz_cust_site_uses_all     bill_hsua_3              --請求先顧客使用目的
-          ,hz_cust_site_uses_all     ship_hsua_3              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    bill_hasa_3              --請求先顧客所在地
+--          ,hz_cust_site_uses_all     bill_hsua_3              --請求先顧客使用目的
+--          ,hz_cust_site_uses_all     ship_hsua_3              --出荷先顧客使用目的
+          ,hz_cust_acct_sites        bill_hasa_3              --請求先顧客所在地
+          ,hz_cust_site_uses         bill_hsua_3              --請求先顧客使用目的
+          ,hz_cust_site_uses         ship_hsua_3              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara end           
           ,xxcmm_cust_accounts       bill_hzad_3              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_3              --請求先パーティサイト  
           ,hz_locations              bill_hzlo_3              --請求先顧客事業所      
-          ,hz_customer_profiles      bill_hzcp_3              --請求先顧客プロファイル      
-          ,hz_cust_acct_relate_all   cash_hcar_3              --顧客関連マスタ(入金関連)
+          ,hz_customer_profiles      bill_hzcp_3              --請求先顧客プロファイル 
+-- Modify 2009.06.26 kayahara start     
+--          ,hz_cust_acct_relate_all   cash_hcar_3              --顧客関連マスタ(入金関連)
+          ,hz_cust_acct_relate       cash_hcar_3              --顧客関連マスタ(入金関連)
+-- Modify 2009.06.26 kayahara end           
     WHERE  cash_hzca_3.cust_account_id = cash_hcar_3.cust_account_id         --入金先顧客マスタ.顧客ID = 顧客関連マスタ(入金関連).顧客ID
     AND    cash_hzca_3.cust_account_id = cash_hzad_3.customer_id             --入金先顧客マスタ.顧客ID = 入金先顧客追加情報.顧客ID
     AND    cash_hcar_3.related_cust_account_id = ship_hzca_3.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
@@ -269,17 +315,24 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
     AND    ship_hzca_3.customer_class_code = '10'                            --請求先顧客.顧客区分 = '10'(顧客)
     AND    cash_hcar_3.status = 'A'                                          --顧客関連マスタ(入金関連).ステータス = ‘A’
     AND    cash_hcar_3.attribute1 = '2'                                      --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
-    AND    cash_hasa_3.org_id = fnd_profile.value('ORG_ID')                  --入金先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    bill_hasa_3.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    cash_hcar_3.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(入金関連).組織ID = ログインユーザの組織ID
-    AND    bill_hsua_3.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客使用目的.組織ID = ログインユーザの組織ID
-    AND    ship_hsua_3.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start   
+--    AND    cash_hasa_3.org_id = fnd_profile.value('ORG_ID')                  --入金先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    bill_hasa_3.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    cash_hcar_3.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(入金関連).組織ID = ログインユーザの組織ID
+--    AND    bill_hsua_3.org_id = fnd_profile.value('ORG_ID')                  --請求先顧客使用目的.組織ID = ログインユーザの組織ID
+--    AND    ship_hsua_3.org_id = fnd_profile.value('ORG_ID')                  --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end    
     AND    NOT EXISTS (
                SELECT ROWNUM
-               FROM   hz_cust_acct_relate_all ex_hcar_3       --顧客関連マスタ(請求関連)
+-- Modify 2009.06.26 kayahara start
+--               FROM   hz_cust_acct_relate_all ex_hcar_3       --顧客関連マスタ(請求関連)
+               FROM   hz_cust_acct_relate     ex_hcar_3       --顧客関連マスタ(請求関連)
+-- Modify 2009.06.26 kayahara end                 
                WHERE  ex_hcar_3.cust_account_id = ship_hzca_3.cust_account_id         --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_3.status = 'A'                                          --顧客関連マスタ(請求関連).ステータス = ‘A’
-               AND    ex_hcar_3.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(請求関連).組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start               
+--               AND    ex_hcar_3.org_id = fnd_profile.value('ORG_ID')                  --顧客関連マスタ(請求関連).組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end                    
                     )
     AND    ship_hzca_3.cust_account_id = bill_hzad_3.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    ship_hzca_3.cust_account_id = bill_hasa_3.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
@@ -323,25 +376,37 @@ CREATE OR REPLACE FORCE VIEW XXCFR_CUST_HIERARCHY_V (
           ,bill_hsua_4.tax_rounding_rule             AS bill_tax_round_rule     --税金－端数処理      
           ,bill_hzad_4.sale_base_code                AS ship_sale_base_code     --売上拠点コード      
     FROM   hz_cust_accounts          ship_hzca_4              --出荷先顧客マスタ　※入金先・請求先含む
-          ,hz_cust_acct_sites_all    bill_hasa_4              --請求先顧客所在地
-          ,hz_cust_site_uses_all     bill_hsua_4              --請求先顧客使用目的
-          ,hz_cust_site_uses_all     ship_hsua_4              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara start
+--          ,hz_cust_acct_sites_all    bill_hasa_4              --請求先顧客所在地
+--          ,hz_cust_site_uses_all     bill_hsua_4              --請求先顧客使用目的
+--          ,hz_cust_site_uses_all     ship_hsua_4              --出荷先顧客使用目的
+          ,hz_cust_acct_sites        bill_hasa_4              --請求先顧客所在地
+          ,hz_cust_site_uses         bill_hsua_4              --請求先顧客使用目的
+          ,hz_cust_site_uses         ship_hsua_4              --出荷先顧客使用目的
+-- Modify 2009.06.26 kayahara end          
           ,xxcmm_cust_accounts       bill_hzad_4              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_4              --請求先パーティサイト  
           ,hz_locations              bill_hzlo_4              --請求先顧客事業所      
           ,hz_customer_profiles      bill_hzcp_4              --請求先顧客プロファイル      
     WHERE  ship_hzca_4.customer_class_code = '10'             --請求先顧客.顧客区分 = '10'(顧客)
-    AND    bill_hasa_4.org_id = fnd_profile.value('ORG_ID')   --請求先顧客所在地.組織ID = ログインユーザの組織ID
-    AND    bill_hsua_4.org_id = fnd_profile.value('ORG_ID')   --請求先顧客使用目的.組織ID = ログインユーザの組織ID
-    AND    ship_hsua_4.org_id = fnd_profile.value('ORG_ID')   --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start
+--    AND    bill_hasa_4.org_id = fnd_profile.value('ORG_ID')   --請求先顧客所在地.組織ID = ログインユーザの組織ID
+--    AND    bill_hsua_4.org_id = fnd_profile.value('ORG_ID')   --請求先顧客使用目的.組織ID = ログインユーザの組織ID
+--    AND    ship_hsua_4.org_id = fnd_profile.value('ORG_ID')   --出荷先顧客使用目的.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end
     AND    NOT EXISTS (
                SELECT ROWNUM
-               FROM   hz_cust_acct_relate_all ex_hcar_4       --顧客関連マスタ
+-- Modify 2009.06.26 kayahara start
+--               FROM   hz_cust_acct_relate_all ex_hcar_4       --顧客関連マスタ
+               FROM   hz_cust_acct_relate     ex_hcar_4       --顧客関連マスタ
+-- Modify 2009.06.26 kayahara end               
                WHERE 
                      (ex_hcar_4.cust_account_id = ship_hzca_4.cust_account_id           --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
                OR     ex_hcar_4.related_cust_account_id = ship_hzca_4.cust_account_id)  --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_4.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
-               AND    ex_hcar_4.org_id = fnd_profile.value('ORG_ID')                    --請求先顧客所在地.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara start               
+--               AND    ex_hcar_4.org_id = fnd_profile.value('ORG_ID')                    --請求先顧客所在地.組織ID = ログインユーザの組織ID
+-- Modify 2009.06.26 kayahara end                    
                     )
     AND    ship_hzca_4.cust_account_id = bill_hzad_4.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    ship_hzca_4.cust_account_id = bill_hasa_4.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
