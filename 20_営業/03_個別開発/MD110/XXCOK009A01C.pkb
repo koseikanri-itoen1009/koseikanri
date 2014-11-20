@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : âcã∆ÉVÉXÉeÉÄç\ízÉvÉçÉWÉFÉNÉg
  * MD.050           : ÉAÉhÉIÉìÅFîÑè„ÅEîÑè„å¥âøêUë÷édñÛÇÃçÏê¨ îÃîÑï®ó¨ MD050_COK_009_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  * 2009/09/08     1.3   SCS K.YAMAGUCHI  [è·äQ0001318]ê´î\â¸ëP
  * 2009/10/09     1.4   SCS S.MORIYAMA   [è·äQE_T3_00632]ì`ï[ì¸óÕé“ÇêUë÷å≥å⁄ãqÇÃíSìñâcã∆àıÇ÷ïœçX
  *                                                       édñÛèWñÒíPà Ç…êUë÷å≥å⁄ãqÇí«â¡
+ * 2009/12/21     1.5   SCS K.NAKAMURA   [è·äQE_ñ{â“ìÆ_00562]íSìñâcã∆àıéÊìæÇÃîªíËèåèèCê≥
  *
  *****************************************************************************************/
   --===============================
@@ -1185,7 +1186,9 @@ AS
     lv_out_msg            VARCHAR2(5000) DEFAULT NULL;              -- ÉÅÉbÉZÅ[ÉWèoóÕïœêî
 -- 2009/10/09 Ver.1.4 [è·äQE_T3_00632] SCS S.Moriyama ADD START
     lt_sales_staff_code jtf_rs_resource_extns.source_number%TYPE;   -- íSìñâcã∆àıÉRÅ[Éh
-    lt_selling_from_cust  xxcok_selling_trns_info.selling_from_cust_code%TYPE;   -- êUë÷å≥å⁄ãq
+-- 2009/12/21 Ver.1.5 [è·äQE_ñ{â“ìÆ_00562] SCS K.Nakamura DEL START
+--    lt_selling_from_cust  xxcok_selling_trns_info.selling_from_cust_code%TYPE;   -- êUë÷å≥å⁄ãq
+-- 2009/12/21 Ver.1.5 [è·äQE_ñ{â“ìÆ_00562] SCS K.Nakamura DEL END
 -- 2009/10/09 Ver.1.4 [è·äQE_T3_00632] SCS S.Moriyama ADD END
     --===============================
     --ÉçÅ[ÉJÉãó·äO
@@ -1205,15 +1208,21 @@ AS
       --ì`ï[î‘çÜèâä˙âª
       --================================================================
       gv_slip_number := NULL;
+-- 2009/12/21 Ver.1.5 [è·äQE_ñ{â“ìÆ_00562] SCS K.Nakamura MOD START
 -- 2009/10/09 Ver.1.4 [è·äQE_T3_00632] SCS S.Moriyama ADD START
-      IF ( g_get_journal_rec.selling_from_cust_code != lt_selling_from_cust
-          OR g_get_journal_rec.selling_from_cust_code IS NULL )
-      THEN
-        lt_sales_staff_code := xxcok_common_pkg.get_sales_staff_code_f(
-                                   iv_customer_code => g_get_journal_rec.selling_from_cust_code
-                                 , id_proc_date     => g_get_journal_rec.xsti_selling_date
-                               );
-      END IF;
+--      IF ( g_get_journal_rec.selling_from_cust_code != lt_selling_from_cust
+--          OR g_get_journal_rec.selling_from_cust_code IS NULL )
+--      THEN
+--        lt_sales_staff_code := xxcok_common_pkg.get_sales_staff_code_f(
+--                                   iv_customer_code => g_get_journal_rec.selling_from_cust_code
+--                                 , id_proc_date     => g_get_journal_rec.xsti_selling_date
+--                               );
+--      END IF;
+      lt_sales_staff_code := xxcok_common_pkg.get_sales_staff_code_f(
+                                 iv_customer_code => g_get_journal_rec.selling_from_cust_code
+                               , id_proc_date     => g_get_journal_rec.xsti_selling_date
+                             );
+-- 2009/12/21 Ver.1.5 [è·äQE_ñ{â“ìÆ_00562] SCS K.Nakamura MOD END
 --
       IF ( lt_sales_staff_code IS NOT NULL ) THEN
 -- 2009/10/09 Ver.1.4 [è·äQE_T3_00632] SCS S.Moriyama ADD END
@@ -1296,7 +1305,9 @@ AS
         ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
         ov_retcode := cv_status_warn;
       END IF;
-      lt_selling_from_cust := g_get_journal_rec.selling_from_cust_code;
+-- 2009/12/21 Ver.1.5 [è·äQE_ñ{â“ìÆ_00562] SCS K.Nakamura DEL START
+--      lt_selling_from_cust := g_get_journal_rec.selling_from_cust_code;
+-- 2009/12/21 Ver.1.5 [è·äQE_ñ{â“ìÆ_00562] SCS K.Nakamura DEL START
 -- 2009/10/09 Ver.1.4 [è·äQE_T3_00632] SCS S.Moriyama ADD END
 --
     END LOOP journal_loop;
