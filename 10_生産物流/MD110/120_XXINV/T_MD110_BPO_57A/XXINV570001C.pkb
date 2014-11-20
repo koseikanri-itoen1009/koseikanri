@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/02/19    1.0   Sumie Nakamura   新規作成
  *  2008/04/08    1.1   Sumie Nakamura   内部変更要求No49
  *  2008/06/02    1.2   Kazuo Kumamoto   結合テスト障害対応(出庫実績数量≠入庫実績数量のステータス変更)
+ *  2008/07/24    1.3   Takao Ohashi     T_TE080_BPO_540 指摘5対応
  *
  *****************************************************************************************/
 --
@@ -115,8 +116,12 @@ AS
   gv_c_tkn_table               CONSTANT VARCHAR2(30)  := 'TABLE';
   gv_c_tkn_table_val           CONSTANT VARCHAR2(60)  := '移動依頼/指示ヘッダ(アドオン)';
   gv_c_tkn_err_val             CONSTANT VARCHAR2(60)  := '移動依頼/指示情報';
-  gv_c_tkn_api_val_a           CONSTANT VARCHAR2(60)  := '在庫数量API';
-  gv_c_tkn_api_val_x           CONSTANT VARCHAR2(60)  := '在庫転送API';
+--mod start 1.3
+--  gv_c_tkn_api_val_a           CONSTANT VARCHAR2(60)  := '在庫数量API';
+--  gv_c_tkn_api_val_x           CONSTANT VARCHAR2(60)  := '在庫転送API';
+  gv_c_tkn_api_val_a           CONSTANT VARCHAR2(60)  := '在庫数量';
+  gv_c_tkn_api_val_x           CONSTANT VARCHAR2(60)  := '在庫転送';
+--mod end 1.3
 --
   gv_c_tkn_val_mov_num         CONSTANT VARCHAR2(60)  := '移動番号';
   gv_c_tkn_val_line_num        CONSTANT VARCHAR2(60)  := '明細番号';
@@ -197,6 +202,10 @@ AS
    ,uom_code                xxinv_mov_req_instr_lines.uom_code%TYPE              -- 単位
    ,shipped_quantity        xxinv_mov_req_instr_lines.shipped_quantity%TYPE      -- 出庫実績数量
    ,ship_to_quantity        xxinv_mov_req_instr_lines.ship_to_quantity%TYPE      -- 入庫実績数量
+-- add start 1.3
+   ,mov_lot_dtl_id          xxinv_mov_lot_details.mov_lot_dtl_id%TYPE            -- ロット詳細ID(出庫用)
+   ,mov_lot_dtl_id2         xxinv_mov_lot_details.mov_lot_dtl_id%TYPE            -- ロット詳細ID(入庫用)
+-- add end 1.3
    ,lot_id                  xxinv_mov_lot_details.lot_id%TYPE                    -- ロットID
    ,lot_no                  xxinv_mov_lot_details.lot_no%TYPE                    -- ロットNo
    ,lot_out_actual_date     xxinv_mov_lot_details.actual_date%TYPE               -- 実績日  [出庫]
@@ -620,6 +629,10 @@ AS
             ,xmril.uom_code                                  -- 単位
             ,xmril.shipped_quantity                          -- 出庫実績数量
             ,xmril.ship_to_quantity                          -- 入庫実績数量
+-- add start 1.3
+            ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+            ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+-- add end 1.3
             ,xmld.lot_id                                     -- ロットID
             ,xmld.lot_no                                     -- ロットNo
             ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
@@ -672,6 +685,10 @@ AS
             ,xmril.uom_code                                  -- 単位
             ,xmril.shipped_quantity                          -- 出庫実績数量
             ,xmril.ship_to_quantity                          -- 入庫実績数量
+-- add start 1.3
+            ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+            ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+-- add end 1.3
             ,xmld.lot_id                                     -- ロットID
             ,xmld.lot_no                                     -- ロット№
             ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
@@ -747,6 +764,10 @@ AS
             ,move_data_rec_tbl(gn_rec_idx).uom_code                   -- 単位
             ,move_data_rec_tbl(gn_rec_idx).shipped_quantity           -- 出庫実績数量
             ,move_data_rec_tbl(gn_rec_idx).ship_to_quantity           -- 入庫実績数量
+-- add start 1.3
+            ,move_data_rec_tbl(gn_rec_idx).mov_lot_dtl_id             -- ロット詳細ID(出庫用)
+            ,move_data_rec_tbl(gn_rec_idx).mov_lot_dtl_id2            -- ロット詳細ID(入庫用)
+-- add end 1.3
             ,move_data_rec_tbl(gn_rec_idx).lot_id                     -- ロットID
             ,move_data_rec_tbl(gn_rec_idx).lot_no                     -- ロットNo
             ,move_data_rec_tbl(gn_rec_idx).lot_out_actual_date        -- 実績日  [出庫]
@@ -810,6 +831,10 @@ AS
             ,move_data_rec_tbl(gn_rec_idx).uom_code                   -- 単位
             ,move_data_rec_tbl(gn_rec_idx).shipped_quantity           -- 出庫実績数量
             ,move_data_rec_tbl(gn_rec_idx).ship_to_quantity           -- 入庫実績数量
+-- add start 1.3
+            ,move_data_rec_tbl(gn_rec_idx).mov_lot_dtl_id             -- ロット詳細ID(出庫用)
+            ,move_data_rec_tbl(gn_rec_idx).mov_lot_dtl_id2            -- ロット詳細ID(入庫用)
+-- add end 1.3
             ,move_data_rec_tbl(gn_rec_idx).lot_id                     -- ロットID
             ,move_data_rec_tbl(gn_rec_idx).lot_no                     -- ロットNo
             ,move_data_rec_tbl(gn_rec_idx).lot_out_actual_date        -- 実績日  [出庫]
@@ -4006,6 +4031,10 @@ AS
     l_ic_adjs_jnl_row1    ic_adjs_jnl%ROWTYPE;
     l_ic_adjs_jnl_row2    ic_adjs_jnl%ROWTYPE;
     l_setup_return_sts    BOOLEAN;
+-- add start 1.3
+    l_loop_cnt            NUMBER;
+    l_dummy_cnt           NUMBER;
+-- add end 1.3
 --
     -- *** ローカル・カーソル ***
 --
@@ -4069,6 +4098,23 @@ AS
         -- API実行結果エラーの場合
         IF (l_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
           ROLLBACK;
+-- add start 1.3
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPAPI.INVENTORY_POSTING 実行結果 = '||l_return_status);
+          -- エラー内容ログ出力
+          IF l_msg_count > 0 THEN
+            l_loop_cnt := 1;
+            LOOP
+              FND_MSG_PUB.Get(
+                  p_msg_index     => l_loop_cnt,
+                  p_data          => l_msg_data,
+                  p_encoded       => FND_API.G_FALSE,
+                  p_msg_index_out => l_dummy_cnt);
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'エラーメッセージ ='||l_msg_data);
+                  l_loop_cnt := l_loop_cnt+1;
+              EXIT WHEN l_loop_cnt > l_msg_count;
+            END LOOP;
+          END IF;
+-- add end 1.3
           -- エラーメッセージ
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
                                                 gv_c_msg_57a_003,  -- カレンダクローズメッセージ
@@ -4116,6 +4162,23 @@ AS
         -- API実行結果エラーの場合
         IF (l_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
           ROLLBACK;
+-- add start 1.3
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPAPI.INVENTORY_POSTING 実行結果 = '||l_return_status);
+          -- エラー内容ログ出力
+          IF l_msg_count > 0 THEN
+            l_loop_cnt := 1;
+            LOOP
+              FND_MSG_PUB.Get(
+                  p_msg_index     => l_loop_cnt,
+                  p_data          => l_msg_data,
+                  p_encoded       => FND_API.G_FALSE,
+                  p_msg_index_out => l_dummy_cnt);
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'エラーメッセージ ='||l_msg_data);
+                  l_loop_cnt := l_loop_cnt+1;
+              EXIT WHEN l_loop_cnt > l_msg_count;
+            END LOOP;
+          END IF;
+-- add end 1.3
           -- エラーメッセージ
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
                                                 gv_c_msg_57a_003,  -- カレンダクローズメッセージ
@@ -4262,7 +4325,10 @@ AS
         -- API実行結果エラーの場合
         IF (l_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
           ROLLBACK;
-          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPAPI.INVENTORY_POSTING 実行結果 = '||l_return_status);
+-- mod start 1.3
+--          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPAPI.INVENTORY_POSTING 実行結果 = '||l_return_status);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPXFR.INVENTORY_TRANSFER 実行結果 = '||l_return_status);
+-- mod end 1.3
           -------------------------
           -- for debug
           IF l_msg_count > 0 THEN
@@ -4316,6 +4382,23 @@ AS
         -- API実行結果エラーの場合
         IF (l_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
           ROLLBACK;
+-- add start 1.3
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPXFR.INVENTORY_TRANSFER 実行結果 = '||l_return_status);
+          -- エラー内容ログ出力
+          IF l_msg_count > 0 THEN
+            l_loop_cnt := 1;
+            LOOP
+              FND_MSG_PUB.Get(
+                  p_msg_index     => l_loop_cnt,
+                  p_data          => l_msg_data,
+                  p_encoded       => FND_API.G_FALSE,
+                  p_msg_index_out => l_dummy_cnt);
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'エラーメッセージ ='||l_msg_data);
+                  l_loop_cnt := l_loop_cnt+1;
+              EXIT WHEN l_loop_cnt > l_msg_count;
+            END LOOP;
+          END IF;
+-- add end 1.3
           -- エラーメッセージ
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
                                                 gv_c_msg_57a_003,  -- カレンダクローズメッセージ
@@ -4353,6 +4436,23 @@ AS
         -- API実行結果エラーの場合
         IF (l_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
           ROLLBACK;
+-- add start 1.3
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'GMIPXFR.INVENTORY_TRANSFER 実行結果 = '||l_return_status);
+          -- エラー内容ログ出力
+          IF l_msg_count > 0 THEN
+            l_loop_cnt := 1;
+            LOOP
+              FND_MSG_PUB.Get(
+                  p_msg_index     => l_loop_cnt,
+                  p_data          => l_msg_data,
+                  p_encoded       => FND_API.G_FALSE,
+                  p_msg_index_out => l_dummy_cnt);
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'エラーメッセージ ='||l_msg_data);
+                  l_loop_cnt := l_loop_cnt+1;
+              EXIT WHEN l_loop_cnt > l_msg_count;
+            END LOOP;
+          END IF;
+-- add end 1.3
           -- エラーメッセージ
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
                                                 gv_c_msg_57a_003,  -- カレンダクローズメッセージ
@@ -4580,6 +4680,10 @@ AS
 --
     -- *** ローカル変数 ***
     ln_idx   NUMBER := 1;
+-- add start 1.3
+    lt_pre_mov_hdr_id xxinv_mov_req_instr_headers.mov_hdr_id%TYPE;
+    lt_pre_ng_flag    NUMBER;
+-- add end 1.3
 --
     -- *** ローカル・カーソル ***
 --
@@ -4600,18 +4704,47 @@ AS
 --
     <<update_loop>>
     FOR gn_rec_idx IN 1 .. move_data_rec_tbl.COUNT LOOP
-      -- フラグ更新
-      UPDATE XXINV_MOV_REQ_INSTR_HEADERS
-      SET    comp_actual_flg        = gv_c_ynkbn_y  -- 実績計上済フラグ=ON
-            ,correct_actual_flg     = gv_c_ynkbn_n  -- 実績訂正フラグ=OFF
-            ,last_updated_by        = gn_user_id
-            ,last_update_date       = gd_sysdate
-            ,last_update_login      = gn_login_id
-            ,request_id             = gn_conc_request_id
-            ,program_application_id = gn_prog_appl_id
-            ,program_id             = gn_conc_program_id
-            ,program_update_date    = gd_sysdate
-      WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
+-- mod start 1.3
+--      UPDATE XXINV_MOV_REQ_INSTR_HEADERS
+--      SET    comp_actual_flg        = gv_c_ynkbn_y  -- 実績計上済フラグ=ON
+--            ,correct_actual_flg     = gv_c_ynkbn_n  -- 実績訂正フラグ=OFF
+--            ,last_updated_by        = gn_user_id
+--            ,last_update_date       = gd_sysdate
+--            ,last_update_login      = gn_login_id
+--            ,request_id             = gn_conc_request_id
+--            ,program_application_id = gn_prog_appl_id
+--            ,program_id             = gn_conc_program_id
+--            ,program_update_date    = gd_sysdate
+--      WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
+      IF ((lt_pre_mov_hdr_id IS NULL AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0) 
+           OR (lt_pre_mov_hdr_id <> move_data_rec_tbl(gn_rec_idx).mov_hdr_id AND move_data_rec_tbl(gn_rec_idx).ng_flag = 0)
+           OR (lt_pre_mov_hdr_id = move_data_rec_tbl(gn_rec_idx).mov_hdr_id AND lt_pre_ng_flag = 0))THEN
+        -- フラグ更新
+        UPDATE XXINV_MOV_REQ_INSTR_HEADERS
+        SET    comp_actual_flg        = gv_c_ynkbn_y  -- 実績計上済フラグ=ON
+              ,correct_actual_flg     = gv_c_ynkbn_n  -- 実績訂正フラグ=OFF
+              ,last_updated_by        = gn_user_id
+              ,last_update_date       = gd_sysdate
+              ,last_update_login      = gn_login_id
+              ,request_id             = gn_conc_request_id
+              ,program_application_id = gn_prog_appl_id
+              ,program_id             = gn_conc_program_id
+              ,program_update_date    = gd_sysdate
+        WHERE mov_hdr_id        = move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
+        -- 訂正前実績数量更新(出庫)
+        UPDATE XXINV_MOV_LOT_DETAILS
+        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).shipped_quantity
+        WHERE  mov_lot_dtl_id         = move_data_rec_tbl(gn_rec_idx).mov_lot_dtl_id;
+--
+        -- 訂正前実績数量更新(入庫)
+        UPDATE XXINV_MOV_LOT_DETAILS
+        SET    before_actual_quantity = move_data_rec_tbl(gn_rec_idx).ship_to_quantity
+        WHERE  mov_lot_dtl_id         = move_data_rec_tbl(gn_rec_idx).mov_lot_dtl_id2;
+      ELSE
+        lt_pre_mov_hdr_id := move_data_rec_tbl(gn_rec_idx).mov_hdr_id;
+        lt_pre_ng_flag    := move_data_rec_tbl(gn_rec_idx).ng_flag;
+      END IF;
+-- mod end 1.3
 --
     END LOOP update_loop;
 --
@@ -4826,7 +4959,7 @@ AS
 --
       FND_FILE.PUT_LINE(FND_FILE.LOG,'----- get_data_proc END -----');
 --
---/*
+--
       -- ===============================
       -- 実績訂正全赤情報登録 (A-6)
       -- ===============================
@@ -4902,7 +5035,7 @@ AS
       FND_FILE.PUT_LINE(FND_FILE.LOG,'---update_flg_proc end  ---');
 --
 --
---*/
+--
     END IF;  -- 処理対象の移動依頼/指示データが存在する場合のIF文
     gn_normal_cnt := gn_target_cnt - gn_warn_cnt;
 --
