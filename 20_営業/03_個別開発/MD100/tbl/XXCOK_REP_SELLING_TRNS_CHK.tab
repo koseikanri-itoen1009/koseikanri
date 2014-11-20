@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_SELLING_TRNS_CHK
  * Description : 売上振替割合チェックリスト帳票ワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2009/07/24    1.2   M.Hiruta         [障害0000803]売上振替割合の列定義を修正
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_SELLING_TRNS_CHK
@@ -30,7 +31,10 @@ CREATE TABLE XXCOK.XXCOK_REP_SELLING_TRNS_CHK
     SELLING_TO_BASE_NAME      VARCHAR2(100),
     SELLING_TO_EMP_CODE       VARCHAR2(5),
     SELLING_TO_EMP_NAME       VARCHAR2(300),
-    SELLING_TRNS_RATE         NUMBER(5),
+-- Start 2009/07/24 Ver_1.2 0000803 M.Hiruta REPAIR
+--    SELLING_TRNS_RATE         NUMBER(5),
+    SELLING_TRNS_RATE         NUMBER(5,1),
+-- End   2009/07/24 Ver_1.2 0000803 M.Hiruta REPAIR
     SECTION_CODE              VARCHAR2(5),
     NO_DATA_MESSAGE           VARCHAR2(30),
     CREATED_BY                NUMBER(15,0) NOT NULL,
