@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産依頼書兼生産指図書）
  * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産依頼書兼生産指図書）          (T_MD070_BPO_23A)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *                                          T_TE080_BPO_230 No15対応 生産指図書の時、手配済も対象とする
  *                                          統合障害#499対応 製造日、在庫入数の参照先変更
  *  2009/01/16    1.8   Daisuke  Nihei      本番障害#1032対応 生産指図書を「確定済」でも出力する
+ *  2009/02/02    1.9   Daisuke  Nihei      本番障害#1111対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -167,6 +168,9 @@ AS
      ,l_move_place_nm     xxcmn_item_locations_v.description%TYPE       -- 移動場所名称
      ,l_irai_total        gme_material_details.attribute7%TYPE          -- 依頼総数
      ,l_plan_qty          gme_material_details.plan_qty%TYPE            -- 計画数
+-- 2009/02/02 v1.9 D.Nihei ADD START
+     ,l_inst_qty          gme_material_details.attribute23%TYPE         -- 指図総数
+-- 2009/02/02 v1.9 D.Nihei ADD END
      ,l_seizouhin_kbn     gmd_routings_vl.attribute16%TYPE              -- 製造品区分
      ,l_batch_id          gme_batch_header.batch_id%TYPE                -- バッチID
      ,l_last_updated_user gme_batch_header.last_updated_by%TYPE         -- 最終更新者
@@ -641,7 +645,7 @@ AS
     -- 指図総数
     ln_sasizu_total           NUMBER DEFAULT 0;
 -- 2008/10/28 v1.7 D.Nihei ADD START
-    lt_prev_item_no           xxcmn_item_mst2_v.item_no%TYPE;  -- 退避用品目コード
+    lt_material_detail_id     gme_material_details.material_detail_id%TYPE;  -- 退避用生産原料詳細ID
 -- 2008/10/28 v1.7 D.Nihei ADD END
 --
     -- *** ローカル・例外処理 ***
@@ -814,7 +818,10 @@ AS
     IF (ir_param.iv_chohyo_kbn = gv_chohyo_kbn_irai) THEN
       ln_sasizu_total := it_head_data(in_head_index).l_irai_total;
     ELSE
-      ln_sasizu_total := it_head_data(in_head_index).l_plan_qty;
+-- 2009/02/02 v1.9 D.Nihei MOD START
+--      ln_sasizu_total := it_head_data(in_head_index).l_plan_qty;
+      ln_sasizu_total := it_head_data(in_head_index).l_inst_qty;
+-- 2009/02/02 v1.9 D.Nihei MOD END
     END IF;
 --
     IF (it_head_data(in_head_index).l_seizouhin_kbn = gv_seizouhin_kbn_drink) THEN
@@ -858,7 +865,7 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
 -- 2008/10/28 v1.7 D.Nihei ADD START
-    lt_prev_item_no := 'ZZZ';
+    lt_material_detail_id := -1;
 -- 2008/10/28 v1.7 D.Nihei ADD END
     <<tonyu_data_loop>>
     FOR i IN 1..it_tonyu_data.COUNT LOOP
@@ -873,7 +880,7 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
       END IF;
 -- 2008/10/28 v1.7 D.Nihei ADD START
-      IF ( ( lt_prev_item_no <> it_tonyu_data(i).l_item_cd ) OR ( it_tonyu_data(i).l_lot_no IS NOT NULL ) ) THEN
+      IF ( ( lt_material_detail_id <> it_tonyu_data(i).l_material_detail_id ) OR ( it_tonyu_data(i).l_lot_no IS NOT NULL ) ) THEN
 -- 2008/10/28 v1.7 D.Nihei ADD END
         -- -----------------------------------------------------
         -- 投入Ｇデータタグ出力
@@ -959,7 +966,10 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_total';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_total * -1;
+-- 2009/02/02 v1.9 D.Nihei MOD START
+--        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_total * -1;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_total;
+-- 2009/02/02 v1.9 D.Nihei MOD END
         -- 単位
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_unit';
@@ -972,7 +982,7 @@ AS
 --
 -- 2008/10/28 v1.7 D.Nihei ADD START
       END IF;
-      lt_prev_item_no := it_tonyu_data(i).l_item_cd;
+      lt_material_detail_id := it_tonyu_data(i).l_material_detail_id;
 -- 2008/10/28 v1.7 D.Nihei ADD END
       -- 明細情報を出力した場合
       IF (i = it_tonyu_data.COUNT) THEN
@@ -987,7 +997,7 @@ AS
     END LOOP tonyu_data_loop ;
 --
 -- 2008/10/28 v1.7 D.Nihei ADD START
-    lt_prev_item_no := 'ZZZ';
+    lt_material_detail_id := -1;
 -- 2008/10/28 v1.7 D.Nihei ADD END
     <<utikomi_data_loop>>
     FOR i IN 1..it_utikomi_data.COUNT LOOP
@@ -1001,7 +1011,7 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
       END IF;
 -- 2008/10/28 v1.7 D.Nihei ADD START
-      IF ( ( lt_prev_item_no <> it_utikomi_data(i).l_item_cd ) OR ( it_utikomi_data(i).l_lot_no IS NOT NULL ) ) THEN
+      IF ( ( lt_material_detail_id <> it_utikomi_data(i).l_material_detail_id ) OR ( it_utikomi_data(i).l_lot_no IS NOT NULL ) ) THEN
 -- 2008/10/28 v1.7 D.Nihei ADD END
         -- -----------------------------------------------------
         -- 打込Ｇデータタグ出力
@@ -1056,7 +1066,10 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_total';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_total * -1;
+-- 2009/02/02 v1.9 D.Nihei MOD START
+--        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_total * -1;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_total;
+-- 2009/02/02 v1.9 D.Nihei MOD END
         -- 単位
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_unit';
@@ -1069,7 +1082,7 @@ AS
 --
 -- 2008/10/28 v1.7 D.Nihei ADD START
       END IF;
-      lt_prev_item_no := it_utikomi_data(i).l_item_cd;
+      lt_material_detail_id := it_utikomi_data(i).l_material_detail_id;
 -- 2008/10/28 v1.7 D.Nihei ADD END
       IF (i = it_utikomi_data.COUNT) THEN
         -- -----------------------------------------------------
@@ -1489,7 +1502,11 @@ AS
             ,ilm.attribute1           AS attribute1         -- 製造日
             ,ilm.attribute6           AS attribute6         -- 在庫入数
 -- 2008/10/28 v1.7 D.Nihei MOD END
-            ,itp.trans_qty            AS trans_qty          -- 総数
+-- 2009/02/02 v1.9 D.Nihei MOD START 
+--            ,itp.trans_qty            AS trans_qty          -- 総数
+            ,NVL(xmd.instructions_qty, gmd.attribute7) 
+                                      AS trans_qty          -- 総数
+-- 2009/02/02 v1.9 D.Nihei MOD END
             ,itp.trans_um             AS trans_um           -- 単位
             ,gmd.material_detail_id   AS material_detail_id -- 生産原料詳細ID
             ,grv.attribute17          AS shinkansen_kbn     -- 新缶煎区分
@@ -1669,6 +1686,9 @@ AS
             ,xilv2.description        AS l_move_place_nm          -- 移動場所名称
             ,gmd.attribute7           AS l_irai_total             -- 依頼総数
             ,gmd.plan_qty             AS l_plan_qty               -- 計画数
+-- 2009/02/02 v1.9 D.Nihei ADD START
+            ,gmd.attribute23          AS l_inst_qty               -- 指図総数
+-- 2009/02/02 v1.9 D.Nihei ADD END
             ,grv.attribute16          AS l_seizouhin_kbn          -- 製造品区分
             ,gbh.batch_id             AS l_batch_id               -- バッチID
             ,gbh.last_updated_by      AS l_last_updated_user      -- 最終更新者
