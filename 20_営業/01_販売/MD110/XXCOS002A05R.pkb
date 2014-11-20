@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.6
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,15 @@ AS
  *                                          ⇒卸単価:納品単価（売上単)
  *                                          ⇒売価:定価単価
  *  2009/05/01    1.6   N.Maeda          [T1_0885]抽出対象に｢上様顧客｣を追加
+ *  2009/05/18    1.7   Kin              障害[T1_0434],[T1_0435],[T1_0930]対応
+ *  2009/05/27    1.8   Kin              障害[T1_0433]対応
+ *  2009/06/05    1.9   T.Tominaga       障害[T1_1148]対応
+ *                                       メインカーソルの変更
+ *                                       "確認"の判定条件変更
+ *                                         ・（定価(新)）定価適用開始 >= 納品日⇒定価適用開始 <= 納品日
+ *                                         ・（旧定価）定価適用開始 < 納品日   ⇒定価適用開始 > 納品日
+ *                                       障害[T1_1361]対応
+ *                                       delete_rpt_wrk_dataコール部分のコメント削除
  *
  *****************************************************************************************/
 --
@@ -177,6 +186,7 @@ AS
 --
   -- クイックコード（業態小分類特定マスタ）
   ct_qck_gyotai_sho_mst         CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_GYOTAI_SHO_MST_002_A03';
+  ct_qck_gyotai_sho_mst1        CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_GYOTAI_SHO_MST_002_A05';
 --
   -- Yes/No
   cv_yes                        CONSTANT VARCHAR2(1)   := 'Y';
@@ -188,6 +198,8 @@ AS
   -- デフォルト値
   cn_zero                       CONSTANT NUMBER        := 0;
   cn_one                        CONSTANT NUMBER        := 1;
+  cn_two                        CONSTANT NUMBER        := 2;
+  cn_thr                        CONSTANT NUMBER        := 3;
 --
   -- カード売り区分
   ct_cash                       CONSTANT xxcos_sales_exp_headers.card_sale_class%TYPE := '0';   -- 現金
@@ -203,6 +215,14 @@ AS
 -- ******************** 2009/05/01 Var.1.6 N.Maeda ADD START  ******************************************
   ct_cust_class_customer_u      CONSTANT hz_cust_accounts.customer_class_code%TYPE    := '12';  -- 上様顧客
 -- ******************** 2009/05/01 Var.1.6 N.Maeda ADD  END   ******************************************
+-- ******************** 2009/05/27 Var.1.7 K.KIN ADD START  ******************************************
+  cv_round_rule_up         CONSTANT  VARCHAR2(10)  := 'UP';                             -- 切り上げ
+  cv_round_rule_down       CONSTANT  VARCHAR2(10)  := 'DOWN';                           -- 切り下げ
+  cv_round_rule_nearest    CONSTANT  VARCHAR2(10)  := 'NEAREST';                        -- 四捨五入
+-- ******************** 2009/05/27 Var.1.7 K.KIN ADD START  ******************************************
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga ADD START  ******************************************
+  cv_obsolete_class_one         CONSTANT VARCHAR2(1)   := '1';
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga ADD END    ******************************************
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -360,10 +380,502 @@ AS
     lt_st_date             ic_item_mst_b.attribute6%TYPE;                   -- 定価適用開始
     lt_plice_new           ic_item_mst_b.attribute5%TYPE;                   -- 定価(新)
     lt_plice_old           ic_item_mst_b.attribute4%TYPE;                   -- 旧定価
+    lt_plice_new_no_tax    ic_item_mst_b.attribute5%TYPE;                   -- 定価(新)
+    lt_plice_old_no_tax    ic_item_mst_b.attribute4%TYPE;                   -- 旧定価
     lt_confirmation        xxcos_rep_dlv_chk_list.confirmation%TYPE;        -- 確認
     lt_set_plice           xxcos_rep_dlv_chk_list.ploce%TYPE;               -- 売値
+    lt_tax_amount          NUMBER;                                          -- 税金
+    lt_tax_rate            xxcos_sales_exp_headers.tax_rate%TYPE;           -- 消費税税率
 --
     -- *** ローカル・カーソル ***
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+--    -- 販売実績データ抽出
+--    CURSOR get_sale_data_cur(
+--                               icp_delivery_date       DATE       -- 納品日
+--                              ,icp_delivery_base_code  VARCHAR2   -- 拠点
+--                              ,icp_dlv_by_code         VARCHAR2   -- 営業員
+--                              ,icp_hht_invoice_no      VARCHAR2   -- HHT伝票No
+--                            )
+--    IS
+--      SELECT
+--         infh.delivery_date                     AS target_date                     -- 対象日付
+--        ,infh.sales_base_code                   AS base_code                       -- 拠点コード
+--        ,MIN( SUBSTRB( parb.party_name, 1, 40 ) )
+--                                                AS base_name                       -- 拠点名称
+--        ,riv.employee_number                    AS employee_num                    -- 納品者コード
+--        ,MIN( riv.employee_name )               AS employee_name                   -- 営業員氏名
+--        ,MIN( riv.group_code )                  AS group_code                      -- グループ番号
+--        ,MIN( riv.group_in_sequence )           AS group_in_sequence               -- グループ内順序
+--        ,infh.dlv_invoice_number                AS invoice_no                      -- 伝票番号
+--        ,infh.inspect_date                      AS dlv_date                        -- 納品日
+--        ,infh.ship_to_customer_code             AS party_num                       -- 顧客コード
+--        ,MIN( SUBSTRB( parc.party_name, 1, 40 ) )
+--                                                AS customer_name                   -- 顧客名
+--        ,incl.meaning                           AS input_class                     -- 入力区分
+--        ,infh.results_employee_code             AS performance_by_code             -- 成績計上者コード
+--        ,MIN( ppf.per_information18 || ' ' || ppf.per_information19 )
+--                                                AS performance_by_name             -- 成績者名
+--        ,CASE gysm1.vd_gyotai
+--           WHEN  cv_yes  THEN MIN( cscl.meaning )
+--           ELSE  NULL
+--         END                                    AS card_sale_class                 -- カード売り区分
+--        ,MIN( infh.sale_amount_sum )            AS sudstance_total_amount          -- 売上額
+--        ,MIN( disc.sale_discount_amount )       AS sale_discount_amount            -- 売上値引額
+--        ,MIN( infh.tax_amount_sum )             AS consumption_tax_total_amount    -- 消費税金額合計
+--        ,MIN( tacl.meaning )                    AS consumption_tax_class_mst       -- 消費税区分（マスタ）
+--        ,infh.invoice_classification_code       AS invoice_classification_code     -- 伝票分類コード
+--        ,infh.invoice_class                     AS invoice_class                   -- 伝票区分
+--        ,MIN( sacl.meaning )                    AS sale_class                      -- 売上区分
+--        ,sel.item_code                          AS item_code                       -- 品目コード
+--        ,MIN( ximb.item_short_name )            AS item_name                       -- 商品名
+--        ,SUM( sel.standard_qty )                AS quantity                        -- 数量
+--        ,sel.standard_unit_price                AS wholesale_unit_ploce            -- 卸単価
+--        ,MIN( gysm.enabled_flag )               AS enabled_flag                    -- 業態小分類使用可
+--        ,MIN( sel.standard_unit_price )         AS standard_unit_price             -- 基準単価
+--        ,MIN( sel.business_cost )               AS business_cost                   -- 営業原価
+--        ,MIN( iimb.attribute6 )                 AS st_date                         -- 定価適用開始
+--        ,MIN( iimb.attribute5 )                 AS plice_new                       -- 定価(新)
+--        ,MIN( iimb.attribute4 )                 AS plice_old                       -- 旧定価
+--        ,htcl.meaning                           AS consum_tax_calss_entered        -- 消費税区分（入力）
+--        ,CASE infh.card_sale_class
+--           WHEN  ct_cash  THEN MIN( sel.cash_and_card )
+--           WHEN  ct_card  THEN MIN( sel.sale_amount )
+--           ELSE  cn_zero
+--         END                                    AS card_amount                     -- カード金額
+--        ,sel.column_no                          AS column_no                       -- コラム
+--        ,hccl.meaning                           AS h_and_c                         -- H/C
+--        ,pacl.meaning                           AS payment_class                   -- 入金区分
+----        ,pay.payment_amount                     AS payment_amount                  -- 入金額
+--        ,CASE gysm1.vd_gyotai
+--           WHEN  cv_yes  THEN SUM( sel.standard_qty ) * sel.standard_unit_price 
+--                                              -DECODE( infh.card_sale_class
+--                                                , ct_cash, MIN( sel.cash_and_card )
+--                                                , ct_card, MIN( sel.sale_amount )
+--                                                , cn_zero )
+--           ELSE  NULL
+--         END                                    AS payment_amount                  -- 入金額
+--        ,MIN( cust.tax_rounding_rule )          AS tax_rounding_rule
+--        ,MIN( infh.tax_rate )                   AS tax_rate                        -- 消費税税率
+--        ,MIN( infh.consumption_tax_class )      AS consumption_tax_class           -- 消費税区分
+--      FROM
+--         xxcos_sales_exp_lines    sel           -- 販売実績明細テーブル
+--        ,hz_cust_accounts         base          -- 顧客マスタ_拠点
+--        ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
+--        ,xxcmm_cust_accounts      cuac          -- 顧客追加情報
+--        ,hz_parties               parb          -- パーティ_拠点
+--        ,hz_parties               parc          -- パーティ_顧客
+--        ,xxcos_payment            pay           -- 入金テーブル
+--        ,ic_item_mst_b            iimb          -- OPM品目
+--        ,xxcmn_item_mst_b         ximb          -- OPM品目アドオン
+--        ,per_people_f             ppf           -- 従業員マスタ_納品
+--        ,xxcos_rs_info_v          riv           -- 営業員情報view
+--        ,(
+--           SELECT
+--              seh.delivery_date               AS delivery_date                -- 対象日付
+--             ,seh.sales_base_code             AS sales_base_code              -- 拠点コード
+--             ,seh.dlv_by_code                 AS dlv_by_code                  -- 納品者コード
+--             ,seh.dlv_invoice_number          AS dlv_invoice_number           -- 伝票番号
+--             ,seh.delivery_date               AS dlv_date                     -- 納品日
+--             ,seh.ship_to_customer_code       AS ship_to_customer_code        -- 顧客コード
+--             ,seh.input_class                 AS input_class                  -- 入力区分
+--             ,seh.results_employee_code       AS results_employee_code        -- 成績計上者コード
+--             ,seh.card_sale_class             AS card_sale_class              -- カード売り区分
+--             ,seh.consumption_tax_class       AS consumption_tax_class        -- 消費税区分
+--             ,seh.invoice_classification_code AS invoice_classification_code  -- 伝票分類コード
+--             ,seh.invoice_class               AS invoice_class                -- 伝票区分
+--             ,SUM(
+--               CASE sel.item_code
+--                 WHEN diit.lookup_code THEN sel.sale_amount
+--                 ELSE cn_zero
+--               END
+--              )                               AS sale_discount_amount         -- 売上値引額
+--           FROM
+--              xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
+--             ,xxcos_sales_exp_lines     sel           -- 販売実績明細テーブル
+--             ,(
+--                SELECT  look_val.lookup_code        lookup_code
+--                       ,look_val.meaning            meaning
+--                FROM    fnd_lookup_values     look_val
+--                       ,fnd_lookup_types_tl   types_tl
+--                       ,fnd_lookup_types      types
+--                       ,fnd_application_tl    appl
+--                       ,fnd_application       app
+--                WHERE   app.application_short_name = cv_application             -- XXCOS
+--                AND     look_val.lookup_type       = ct_qck_discount_item_type  -- XXCOS1_DISCOUNT_ITEM_CODE
+--                AND     look_val.enabled_flag      = cv_yes                     -- Y
+--                AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--                AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--                AND     types_tl.language          = USERENV( 'LANG' )
+--                AND     look_val.language          = USERENV( 'LANG' )
+--                AND     appl.language              = USERENV( 'LANG' )
+--                AND     appl.application_id        = types.application_id
+--                AND     app.application_id         = appl.application_id
+--                AND     types_tl.lookup_type       = look_val.lookup_type
+--                AND     types.lookup_type          = types_tl.lookup_type
+--                AND     types.security_group_id    = types_tl.security_group_id
+--                AND     types.view_application_id  = types_tl.view_application_id
+--              ) diit    -- 値引品目
+--           WHERE
+--             seh.delivery_date           = icp_delivery_date                        -- パラメータの納品日
+--           AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
+--           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
+--           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )
+--                                                                                  -- パラメータの伝票番号
+--           AND seh.sales_exp_header_id   = sel.sales_exp_header_id
+--           AND sel.item_code             = diit.lookup_code(+)
+--           GROUP BY
+--              seh.delivery_date                      -- 納品日
+--             ,seh.sales_base_code                    -- 拠点コード
+--             ,seh.dlv_by_code                        -- 納品者コード
+--             ,seh.dlv_invoice_number                 -- 伝票番号
+--             ,seh.ship_to_customer_code              -- 顧客コード
+--             ,seh.input_class                        -- 入力区分
+--             ,seh.results_employee_code              -- 成績計上者コード
+--             ,seh.card_sale_class                    -- カード売り区分
+--             ,seh.consumption_tax_class              -- 消費税区分
+--             ,seh.invoice_classification_code        -- 伝票分類コード
+--             ,seh.invoice_class                      -- 伝票区分
+--         ) disc         -- 売上値引額
+--        ,(
+--           SELECT
+--              MIN( seh.sales_exp_header_id )         AS sales_exp_header_id             -- 販売実績ヘッダID
+--             ,seh.delivery_date                      AS delivery_date                   -- 対象日付
+--             ,seh.sales_base_code                    AS sales_base_code                 -- 拠点コード
+--             ,seh.dlv_by_code                        AS dlv_by_code                     -- 納品者コード
+--             ,seh.dlv_invoice_number                 AS dlv_invoice_number              -- 伝票番号
+--             ,seh.delivery_date                      AS dlv_date                        -- 納品日
+--             ,seh.inspect_date                       AS inspect_date                    -- 検収日
+--             ,seh.ship_to_customer_code              AS ship_to_customer_code           -- 顧客コード
+--             ,seh.input_class                        AS input_class                     -- 入力区分
+--             ,MIN( seh.cust_gyotai_sho )             AS cust_gyotai_sho                 -- 業態小分類
+--             ,seh.results_employee_code              AS results_employee_code           -- 成績計上者コード
+--             ,seh.card_sale_class                    AS card_sale_class                 -- カード売り区分
+--             ,SUM( seh.sale_amount_sum )             AS sale_amount_sum                 -- 売上額
+--             ,SUM( seh.tax_amount_sum  )             AS tax_amount_sum                  -- 消費税金額合計
+--             ,seh.consumption_tax_class              AS consumption_tax_class           -- 消費税区分
+--             ,seh.invoice_classification_code        AS invoice_classification_code     -- 伝票分類コード
+--             ,seh.invoice_class                      AS invoice_class                   -- 伝票区分
+--             ,MIN( seh.create_class )                AS create_class                    -- 作成元区分
+--             ,MIN( seh.tax_rate )                    AS tax_rate                        -- 消費税税率
+--           FROM
+--             xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
+--           WHERE
+--             seh.delivery_date           = icp_delivery_date                        -- パラメータの納品日
+--           AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
+--           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
+--           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )
+--                                                                                  -- パラメータの伝票番号
+--           GROUP BY
+--              seh.delivery_date                      -- 納品日
+--             ,seh.sales_base_code                    -- 拠点コード
+--             ,seh.dlv_by_code                        -- 納品者コード
+--             ,seh.inspect_date                       -- 検収日
+--             ,seh.dlv_invoice_number                 -- 伝票番号
+--             ,seh.ship_to_customer_code              -- 顧客コード
+--             ,seh.input_class                        -- 入力区分
+--             ,seh.results_employee_code              -- 成績計上者コード
+--             ,seh.card_sale_class                    -- カード売り区分
+--             ,seh.consumption_tax_class              -- 消費税区分
+--             ,seh.invoice_classification_code        -- 伝票分類コード
+--             ,seh.invoice_class                      -- 伝票区分
+--         ) infh         -- ヘッダ情報
+--        ,(
+--            SELECT  look_val.meaning      meaning 
+--            FROM    fnd_lookup_values     look_val
+--                   ,fnd_lookup_types_tl   types_tl
+--                   ,fnd_lookup_types      types
+--                   ,fnd_application_tl    appl
+--                   ,fnd_application       app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_org_cls_type     -- XXCOS1_MK_ORG_CLS_MST_002_A05
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  orct    -- 作成元区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_input_class      -- XXCOS1_INPUT_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  incl    -- 入力区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_card_sale_class  -- XXCOS1_CARD_SALE_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  cscl    -- カード売区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_sale_class       -- XXCOS1_SALE_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  sacl    -- 売上区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--                   ,look_val.attribute3         attribute3
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_tax_class        -- XXCOS1_CONSUMPTION_TAX_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  htcl    -- HHT消費税区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  pacl    -- 入金区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_hc_class         -- XXCOS1_HC_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  hccl    -- H/C区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--                   ,look_val.attribute3         attribute3
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_tax_class        -- XXCOS1_CONSUMPTION_TAX_CLASS
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  tacl    -- 消費税区分
+--        ,(
+--            SELECT  look_val.lookup_code        lookup_code
+--                   ,look_val.meaning            meaning
+--                   ,look_val.enabled_flag       enabled_flag
+--            FROM    fnd_lookup_values           look_val
+--                   ,fnd_lookup_types_tl         types_tl
+--                   ,fnd_lookup_types            types
+--                   ,fnd_application_tl          appl
+--                   ,fnd_application             app
+--            WHERE   app.application_short_name = cv_application          -- XXCOS
+--            AND     look_val.lookup_type       = ct_qck_gyotai_sho_mst   -- XXCOS1_GYOTAI_SHO_MST_002_A03
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     types_tl.language          = USERENV( 'LANG' )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--            AND     appl.language              = USERENV( 'LANG' )
+--            AND     appl.application_id        = types.application_id
+--            AND     app.application_id         = appl.application_id
+--            AND     types_tl.lookup_type       = look_val.lookup_type
+--            AND     types.lookup_type          = types_tl.lookup_type
+--            AND     types.security_group_id    = types_tl.security_group_id
+--            AND     types.view_application_id  = types_tl.view_application_id
+--         )  gysm    -- 業態小分類特定マスタ
+--        ,(
+--            SELECT  look_val.meaning            meaning
+--                   ,look_val.attribute1         vd_gyotai
+--            FROM    fnd_lookup_values           look_val
+--            WHERE   look_val.lookup_type       = ct_qck_gyotai_sho_mst1   -- XXCOS1_GYOTAI_SHO_MST_002_A05
+--            AND     look_val.enabled_flag      = cv_yes                  -- Y
+--            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+--            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+--            AND     look_val.language          = USERENV( 'LANG' )
+--         )  gysm1    -- 業態小分類特定マスタ
+--      WHERE
+--        infh.delivery_date           = icp_delivery_date               -- パラメータの納品日
+--      AND infh.sales_base_code       = icp_delivery_base_code          -- パラメータの拠点
+--      AND infh.sales_exp_header_id   = sel.sales_exp_header_id          -- 販売実績ヘッダ＆明細.販売実績ヘッダID
+--      AND base.customer_class_code   = ct_cust_class_base              -- 顧客区分＝拠点
+--      AND infh.sales_base_code       = base.account_number             -- 販売実績ヘッダ＝顧客マスタ_拠点
+--      AND base.party_id              = parb.party_id                   -- 顧客マスタ_拠点＝パーティ_拠点
+---- ******************** 2009/05/01 Var.1.6 N.Maeda MOD START  ******************************************
+----      AND cust.customer_class_code   = ct_cust_class_customer          -- 顧客区分＝顧客
+--      AND cust.customer_class_code   IN ( ct_cust_class_customer , ct_cust_class_customer_u ) -- 顧客区分IN 顧客,上様顧客
+---- ******************** 2009/05/01 Var.1.6 N.Maeda MOD  END   ******************************************
+--      AND infh.ship_to_customer_code = cust.account_number             -- 販売実績ヘッダ＝顧客マスタ_顧客
+--      AND cust.cust_account_id       = cuac.customer_id                -- 顧客マスタ_顧客＝顧客追加情報
+--      AND cust.party_id              = parc.party_id                   -- 顧客マスタ_顧客＝パーティ_顧客
+--      AND infh.create_class IN ( orct.meaning )                        -- 作成元区分＝クイックコード
+--      AND infh.results_employee_code = ppf.employee_number(+)
+--      AND sel.item_code              = iimb.item_no
+--      AND iimb.item_id               = ximb.item_id
+--      AND infh.sales_base_code       = riv.base_code
+--      AND riv.employee_number        = NVL( icp_dlv_by_code, riv.employee_number )
+--      AND infh.delivery_date        >= NVL( riv.effective_start_date, infh.delivery_date )
+--      AND infh.delivery_date        <= NVL( riv.effective_end_date, infh.delivery_date )
+--      AND infh.delivery_date        >= riv.per_effective_start_date
+--      AND infh.delivery_date        <= riv.per_effective_end_date
+--      AND infh.delivery_date        >= riv.paa_effective_start_date
+--      AND infh.delivery_date        <= riv.paa_effective_end_date
+--      AND infh.dlv_invoice_number    = NVL( icp_hht_invoice_no, infh.dlv_invoice_number )
+--      AND infh.dlv_invoice_number    = pay.hht_invoice_no(+)
+--      AND incl.lookup_code           = infh.input_class
+--      AND cscl.lookup_code           = NVL( infh.card_sale_class, cv_x )
+--      AND sacl.lookup_code           = sel.sales_class
+--      AND htcl.attribute3            = infh.consumption_tax_class
+--      AND pacl.lookup_code(+)        = pay.payment_class
+--      AND hccl.lookup_code(+)        = NVL( sel.hot_cold_class, cv_x )
+--      AND tacl.attribute3            = cuac.tax_div
+--      AND gysm.meaning(+)            = infh.cust_gyotai_sho
+--      AND infh.delivery_date         = disc.delivery_date                -- ヘッダ情報、売上値引額.納品日
+--      AND infh.sales_base_code       = disc.sales_base_code              -- ヘッダ情報、売上値引額.拠点コード
+--      AND riv.employee_number        = infh.dlv_by_code                  -- 営業員情報、ヘッダ情報.納品者コード
+--      AND infh.dlv_invoice_number    = disc.dlv_invoice_number           -- ヘッダ情報、売上値引額.伝票番号
+--      AND infh.dlv_date              = disc.dlv_date                     -- ヘッダ情報、売上値引額.納品日
+--      AND infh.ship_to_customer_code = disc.ship_to_customer_code        -- ヘッダ情報、売上値引額.顧客コード
+--      AND infh.results_employee_code = disc.results_employee_code        -- ヘッダ情報、売上値引額.成績計上者コード
+--      AND NVL( infh.invoice_classification_code, cv_x )
+--            = NVL( disc.invoice_classification_code, cv_x )              -- ヘッダ情報、売上値引額.伝票分類コード
+--      AND NVL( infh.invoice_class, cv_x )
+--                                     = NVL( disc.invoice_class, cv_x )   -- ヘッダ情報、売上値引額.伝票区分
+--      AND NVL( infh.card_sale_class, cv_x )
+--                                     = NVL( disc.card_sale_class, cv_x ) -- ヘッダ情報、売上値引額.カード売り区分
+--      AND cuac.business_low_type     = gysm1.meaning( + )
+--      GROUP BY
+--         infh.delivery_date                      -- 対象日付
+--        ,infh.sales_base_code                    -- 拠点コード
+--        ,riv.employee_number                     -- 納品者コード
+--        ,infh.dlv_invoice_number                 -- 伝票番号
+--        ,infh.dlv_date                           -- 納品日
+--        ,infh.inspect_date                       -- 検収日(納品日)
+--        ,infh.ship_to_customer_code              -- 顧客コード
+--        ,incl.meaning                            -- 入力区分
+--        ,infh.results_employee_code              -- 成績計上者コード
+--        ,infh.card_sale_class                    -- カード売り区分
+--        ,htcl.meaning                            -- 消費税区分
+--        ,infh.invoice_classification_code        -- 伝票分類コード
+--        ,infh.invoice_class                      -- 伝票区分
+--        ,sel.item_code                           -- 品目コード
+--        ,sel.standard_unit_price                 -- 卸単価
+--        ,sel.column_no                           -- コラム
+--        ,sel.red_black_flag                      -- 赤黒フラグ
+--        ,hccl.meaning                            -- H/C
+--        ,pacl.meaning                            -- 入金区分
+----        ,pay.payment_amount                      -- 入金額
+--        ,gysm1.vd_gyotai
+--      HAVING
+--        ( SUM( sel.sale_amount )  != 0           -- 売上金額
+--          OR
+--          SUM( sel.standard_qty ) != 0 )         -- 納品数量
+--      ;
+--
     -- 販売実績データ抽出
     CURSOR get_sale_data_cur(
                                icp_delivery_date       DATE       -- 納品日
@@ -373,62 +885,60 @@ AS
                             )
     IS
       SELECT
-         infh.delivery_date                     AS target_date                     -- 対象日付
-        ,infh.sales_base_code                   AS base_code                       -- 拠点コード
-        ,MIN( SUBSTRB( parb.party_name, 1, 40 ) )
-                                                AS base_name                       -- 拠点名称
-        ,riv.employee_number                    AS employee_num                    -- 納品者コード
-        ,MIN( riv.employee_name )               AS employee_name                   -- 営業員氏名
-        ,MIN( riv.group_code )                  AS group_code                      -- グループ番号
-        ,MIN( riv.group_in_sequence )           AS group_in_sequence               -- グループ内順序
-        ,infh.dlv_invoice_number                AS invoice_no                      -- 伝票番号
-        ,infh.inspect_date                      AS dlv_date                        -- 納品日
-        ,infh.ship_to_customer_code             AS party_num                       -- 顧客コード
-        ,MIN( SUBSTRB( parc.party_name, 1, 40 ) )
-                                                AS customer_name                   -- 顧客名
-        ,incl.meaning                           AS input_class                     -- 入力区分
-        ,infh.results_employee_code             AS performance_by_code             -- 成績計上者コード
-        ,MIN( ppf.per_information18 || ' ' || ppf.per_information19 )
-                                                AS performance_by_name             -- 成績者名
-        ,MIN( cscl.meaning )                    AS card_sale_class                 -- カード売り区分
-        ,MIN( infh.sale_amount_sum )            AS sudstance_total_amount          -- 売上額
-        ,MIN( disc.sale_discount_amount )       AS sale_discount_amount            -- 売上値引額
-        ,MIN( infh.tax_amount_sum )             AS consumption_tax_total_amount    -- 消費税金額合計
-        ,MIN( tacl.meaning )                    AS consumption_tax_class_mst       -- 消費税区分（マスタ）
-        ,infh.invoice_classification_code       AS invoice_classification_code     -- 伝票分類コード
-        ,infh.invoice_class                     AS invoice_class                   -- 伝票区分
-        ,MIN( sacl.meaning )                    AS sale_class                      -- 売上区分
-        ,sel.item_code                          AS item_code                       -- 品目コード
-        ,MIN( ximb.item_short_name )            AS item_name                       -- 商品名
-        ,SUM( sel.standard_qty )                AS quantity                        -- 数量
-        ,sel.standard_unit_price                AS wholesale_unit_ploce            -- 卸単価
-        ,MIN( gysm.enabled_flag )               AS enabled_flag                    -- 業態小分類使用可
-        ,MIN( sel.standard_unit_price )         AS standard_unit_price             -- 基準単価
-        ,MIN( sel.business_cost )               AS business_cost                   -- 営業原価
-        ,MIN( iimb.attribute6 )                 AS st_date                         -- 定価適用開始
-        ,MIN( iimb.attribute5 )                 AS plice_new                       -- 定価(新)
-        ,MIN( iimb.attribute4 )                 AS plice_old                       -- 旧定価
-        ,htcl.meaning                           AS consum_tax_calss_entered        -- 消費税区分（入力）
-        ,CASE infh.card_sale_class
-           WHEN  ct_cash  THEN MIN( sel.cash_and_card )
-           WHEN  ct_card  THEN MIN( sel.sale_amount )
-           ELSE  cn_zero
-         END                                    AS card_amount                     -- カード金額
-        ,sel.column_no                          AS column_no                       -- コラム
-        ,hccl.meaning                           AS h_and_c                         -- H/C
-        ,pacl.meaning                           AS payment_class                   -- 入金区分
-        ,pay.payment_amount                     AS payment_amount                  -- 入金額
+         infh.delivery_date                        AS target_date                     -- 対象日付
+        ,infh.sales_base_code                      AS base_code                       -- 拠点コード
+        ,SUBSTRB( parb.party_name, 1, 40 )         AS base_name                       -- 拠点名称
+        ,riv.employee_number                       AS employee_num                    -- 納品者コード
+        ,riv.employee_name                         AS employee_name                   -- 営業員氏名
+        ,riv.group_code                            AS group_code                      -- グループ番号
+        ,riv.group_in_sequence                     AS group_in_sequence               -- グループ内順序
+        ,infh.dlv_invoice_number                   AS invoice_no                      -- 伝票番号
+        ,infh.inspect_date                         AS dlv_date                        -- 検収日
+        ,infh.ship_to_customer_code                AS party_num                       -- 顧客コード
+        ,SUBSTRB( parc.party_name, 1, 40 )         AS customer_name                   -- 顧客名
+        ,incl.meaning                              AS input_class                     -- 入力区分
+        ,infh.results_employee_code                AS performance_by_code             -- 成績計上者コード
+        ,ppf.per_information18 || ' ' || ppf.per_information19
+                                                   AS performance_by_name             -- 成績者名
+        ,CASE gysm1.vd_gyotai
+           WHEN  cv_yes  THEN cscl.meaning
+           ELSE  NULL
+         END                                       AS card_sale_class                 -- カード売り区分
+        ,infh.sale_amount_sum                      AS sudstance_total_amount          -- 売上額
+        ,disc.sale_discount_amount                 AS sale_discount_amount            -- 売上値引額
+        ,infh.tax_amount_sum                       AS consumption_tax_total_amount    -- 消費税金額合計
+        ,tacl.meaning                              AS consumption_tax_class_mst       -- 消費税区分（マスタ）
+        ,infh.invoice_classification_code          AS invoice_classification_code     -- 伝票分類コード
+        ,infh.invoice_class                        AS invoice_class                   -- 伝票区分
+        ,sacl.meaning                              AS sale_class                      -- 売上区分
+        ,infd.item_code                            AS item_code                       -- 品目コード
+        ,ximb.item_short_name                      AS item_name                       -- 商品名
+        ,infd.quantity                             AS quantity                        -- 数量
+        ,infd.wholesale_unit_ploce                 AS wholesale_unit_ploce            -- 卸単価
+        ,gysm.enabled_flag                         AS enabled_flag                    -- 業態小分類使用可
+        ,infd.standard_unit_price                  AS standard_unit_price             -- 基準単価
+        ,infd.business_cost                        AS business_cost                   -- 営業原価
+        ,iimb.attribute6                           AS st_date                         -- 定価適用開始
+        ,iimb.attribute5                           AS plice_new                       -- 定価(新)
+        ,iimb.attribute4                           AS plice_old                       -- 旧定価
+        ,htcl.meaning                              AS consum_tax_calss_entered        -- 消費税区分（入力）
+        ,infd.card_amount                          AS card_amount                     -- カード金額
+        ,infd.column_no                            AS column_no                       -- コラム
+        ,hccl.meaning                              AS h_and_c                         -- H/C
+        ,infd.payment_class                        AS payment_class                   -- 入金区分
+        ,infd.payment_amount                       AS payment_amount                  -- 入金額
+        ,infd.tax_rounding_rule                    AS tax_rounding_rule
+        ,infd.tax_rate                             AS tax_rate                        -- 消費税税率
+        ,infd.consumption_tax_class                AS consumption_tax_class           -- 消費税区分
       FROM
-         xxcos_sales_exp_lines    sel           -- 販売実績明細テーブル
-        ,hz_cust_accounts         base          -- 顧客マスタ_拠点
+         hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
         ,xxcmm_cust_accounts      cuac          -- 顧客追加情報
         ,hz_parties               parb          -- パーティ_拠点
         ,hz_parties               parc          -- パーティ_顧客
-        ,xxcos_payment            pay           -- 入金テーブル
+        ,per_people_f             ppf           -- 従業員マスタ_成績者名
         ,ic_item_mst_b            iimb          -- OPM品目
         ,xxcmn_item_mst_b         ximb          -- OPM品目アドオン
-        ,per_people_f             ppf           -- 従業員マスタ_納品
         ,xxcos_rs_info_v          riv           -- 営業員情報view
         ,(
            SELECT
@@ -437,13 +947,15 @@ AS
              ,seh.dlv_by_code                 AS dlv_by_code                  -- 納品者コード
              ,seh.dlv_invoice_number          AS dlv_invoice_number           -- 伝票番号
              ,seh.delivery_date               AS dlv_date                     -- 納品日
+             ,seh.inspect_date                AS inspect_date                 -- 検収日
              ,seh.ship_to_customer_code       AS ship_to_customer_code        -- 顧客コード
              ,seh.input_class                 AS input_class                  -- 入力区分
              ,seh.results_employee_code       AS results_employee_code        -- 成績計上者コード
              ,seh.card_sale_class             AS card_sale_class              -- カード売り区分
-             ,seh.consumption_tax_class       AS consumption_tax_class        -- 消費税区分
              ,seh.invoice_classification_code AS invoice_classification_code  -- 伝票分類コード
+             ,seh.consumption_tax_class       AS consumption_tax_class        -- 消費税区分
              ,seh.invoice_class               AS invoice_class                -- 伝票区分
+             ,seh.create_class                AS create_class                 -- 作成元区分
              ,SUM(
                CASE sel.item_code
                  WHEN diit.lookup_code THEN sel.sale_amount
@@ -457,31 +969,17 @@ AS
                 SELECT  look_val.lookup_code        lookup_code
                        ,look_val.meaning            meaning
                 FROM    fnd_lookup_values     look_val
-                       ,fnd_lookup_types_tl   types_tl
-                       ,fnd_lookup_types      types
-                       ,fnd_application_tl    appl
-                       ,fnd_application       app
-                WHERE   app.application_short_name = cv_application             -- XXCOS
-                AND     look_val.lookup_type       = ct_qck_discount_item_type  -- XXCOS1_DISCOUNT_ITEM_CODE
+                WHERE   look_val.lookup_type       = ct_qck_discount_item_type  -- XXCOS1_DISCOUNT_ITEM_CODE
                 AND     look_val.enabled_flag      = cv_yes                     -- Y
                 AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
                 AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-                AND     types_tl.language          = USERENV( 'LANG' )
                 AND     look_val.language          = USERENV( 'LANG' )
-                AND     appl.language              = USERENV( 'LANG' )
-                AND     appl.application_id        = types.application_id
-                AND     app.application_id         = appl.application_id
-                AND     types_tl.lookup_type       = look_val.lookup_type
-                AND     types.lookup_type          = types_tl.lookup_type
-                AND     types.security_group_id    = types_tl.security_group_id
-                AND     types.view_application_id  = types_tl.view_application_id
               ) diit    -- 値引品目
            WHERE
-             seh.delivery_date           = icp_delivery_date                        -- パラメータの納品日
-           AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
-           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
-           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )
-                                                                                  -- パラメータの伝票番号
+               seh.delivery_date         = icp_delivery_date                                    -- パラメータの納品日
+           AND seh.sales_base_code       = icp_delivery_base_code                               -- パラメータの拠点
+           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )              -- パラメータの営業員
+           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )    -- パラメータの伝票番号
            AND seh.sales_exp_header_id   = sel.sales_exp_header_id
            AND sel.item_code             = diit.lookup_code(+)
            GROUP BY
@@ -489,18 +987,59 @@ AS
              ,seh.sales_base_code                    -- 拠点コード
              ,seh.dlv_by_code                        -- 納品者コード
              ,seh.dlv_invoice_number                 -- 伝票番号
+             ,seh.inspect_date                       -- 検収日
              ,seh.ship_to_customer_code              -- 顧客コード
              ,seh.input_class                        -- 入力区分
              ,seh.results_employee_code              -- 成績計上者コード
              ,seh.card_sale_class                    -- カード売り区分
-             ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_classification_code        -- 伝票分類コード
+             ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_class                      -- 伝票区分
+             ,seh.create_class                       -- 作成元区分
          ) disc         -- 売上値引額
         ,(
            SELECT
-              MIN( seh.sales_exp_header_id )         AS sales_exp_header_id             -- 販売実績ヘッダID
-             ,seh.delivery_date                      AS delivery_date                   -- 対象日付
+              seh.delivery_date               AS delivery_date                -- 対象日付
+             ,seh.sales_base_code             AS sales_base_code              -- 拠点コード
+             ,seh.dlv_by_code                 AS dlv_by_code                  -- 納品者コード
+             ,seh.dlv_invoice_number          AS dlv_invoice_number           -- 伝票番号
+             ,seh.delivery_date               AS dlv_date                     -- 納品日
+             ,seh.inspect_date                AS inspect_date                 -- 検収日
+             ,seh.ship_to_customer_code       AS ship_to_customer_code        -- 顧客コード
+             ,seh.input_class                 AS input_class                  -- 入力区分
+             ,seh.results_employee_code       AS results_employee_code        -- 成績計上者コード
+             ,seh.card_sale_class             AS card_sale_class              -- カード売り区分
+             ,seh.invoice_classification_code AS invoice_classification_code  -- 伝票分類コード
+             ,seh.consumption_tax_class       AS consumption_tax_class        -- 消費税区分
+             ,seh.invoice_class               AS invoice_class                -- 伝票区分
+             ,seh.create_class                AS create_class                 -- 作成元区分
+             ,SUM( seh.sale_amount_sum )      AS sale_amount_sum              -- 売上額
+             ,SUM( seh.tax_amount_sum  )      AS tax_amount_sum               -- 消費税金額合計
+           FROM
+              xxcos_sales_exp_headers   seh          -- 販売実績ヘッダテーブル
+           WHERE
+               seh.delivery_date         = icp_delivery_date                                   -- パラメータの納品日
+           AND seh.sales_base_code       = icp_delivery_base_code                              -- パラメータの拠点
+           AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )             -- パラメータの営業員
+           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )   -- パラメータの伝票番号
+           GROUP BY
+              seh.delivery_date                      -- 納品日
+             ,seh.sales_base_code                    -- 拠点コード
+             ,seh.dlv_by_code                        -- 納品者コード
+             ,seh.dlv_invoice_number                 -- 伝票番号
+             ,seh.inspect_date                       -- 検収日
+             ,seh.ship_to_customer_code              -- 顧客コード
+             ,seh.input_class                        -- 入力区分
+             ,seh.results_employee_code              -- 成績計上者コード
+             ,seh.card_sale_class                    -- カード売り区分
+             ,seh.invoice_classification_code        -- 伝票分類コード
+             ,seh.consumption_tax_class              -- 消費税区分
+             ,seh.invoice_class                      -- 伝票区分
+             ,seh.create_class                       -- 作成元区分
+         ) infh         -- ヘッダ情報
+        ,(
+           SELECT
+              seh.delivery_date                      AS delivery_date                   -- 対象日付
              ,seh.sales_base_code                    AS sales_base_code                 -- 拠点コード
              ,seh.dlv_by_code                        AS dlv_by_code                     -- 納品者コード
              ,seh.dlv_invoice_number                 AS dlv_invoice_number              -- 伝票番号
@@ -508,265 +1047,220 @@ AS
              ,seh.inspect_date                       AS inspect_date                    -- 検収日
              ,seh.ship_to_customer_code              AS ship_to_customer_code           -- 顧客コード
              ,seh.input_class                        AS input_class                     -- 入力区分
-             ,MIN( seh.cust_gyotai_sho )             AS cust_gyotai_sho                 -- 業態小分類
              ,seh.results_employee_code              AS results_employee_code           -- 成績計上者コード
              ,seh.card_sale_class                    AS card_sale_class                 -- カード売り区分
-             ,SUM( seh.sale_amount_sum )             AS sale_amount_sum                 -- 売上額
-             ,SUM( seh.tax_amount_sum  )             AS tax_amount_sum                  -- 消費税金額合計
-             ,seh.consumption_tax_class              AS consumption_tax_class           -- 消費税区分
              ,seh.invoice_classification_code        AS invoice_classification_code     -- 伝票分類コード
+             ,seh.consumption_tax_class              AS consumption_tax_class           -- 消費税区分
              ,seh.invoice_class                      AS invoice_class                   -- 伝票区分
-             ,MIN( seh.create_class )                AS create_class                    -- 作成元区分
+             ,seh.create_class                       AS create_class                    -- 作成元区分
+             ,MAX( sel.sales_class )                 AS sale_class                      -- 売上区分
+             ,sel.item_code                          AS item_code                       -- 品目コード
+             ,SUM( sel.standard_qty )                AS quantity                        -- 数量
+             ,sel.standard_unit_price                AS wholesale_unit_ploce            -- 卸単価
+             ,MAX( sel.standard_unit_price )         AS standard_unit_price             -- 基準単価
+             ,MAX( sel.business_cost )               AS business_cost                   -- 営業原価
+             ,CASE seh.card_sale_class
+                WHEN  ct_cash  THEN SUM( sel.cash_and_card )
+                WHEN  ct_card  THEN SUM( sel.sale_amount )
+                ELSE  cn_zero
+              END                                    AS card_amount                     -- カード金額
+             ,sel.column_no                          AS column_no                       -- コラム
+             ,sel.hot_cold_class                     AS h_and_c                         -- H/C区分
+             ,NULL                                   AS payment_class                   -- 入金区分
+             ,CASE MAX(gysm.vd_gyotai)
+                WHEN  cv_yes  THEN SUM( sel.standard_qty ) * MAX( sel.standard_unit_price )
+                                                   -DECODE( seh.card_sale_class
+                                                     , ct_cash, SUM( sel.cash_and_card )
+                                                     , ct_card, SUM( sel.sale_amount )
+                                                     , cn_zero )
+                ELSE  NULL
+              END                                    AS payment_amount                  -- 入金額
+             ,MAX( cust.tax_rounding_rule )          AS tax_rounding_rule
+             ,MAX( seh.tax_rate )                    AS tax_rate                        -- 消費税税率
            FROM
-             xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
+               xxcos_sales_exp_lines     sel           -- 販売実績明細テーブル
+              ,xxcos_sales_exp_headers   seh           -- 販売実績ヘッダテーブル
+              ,hz_cust_accounts          cust          -- 顧客マスタ_顧客
+              ,xxcmm_cust_accounts       cuac          -- 顧客追加情報
+              ,hz_parties                parc          -- パーティ_顧客
+              ,(
+                  SELECT  look_val.meaning            meaning
+                         ,look_val.attribute1         vd_gyotai
+                  FROM    fnd_lookup_values           look_val
+                  WHERE   look_val.lookup_type       = ct_qck_gyotai_sho_mst1       -- XXCOS1_GYOTAI_SHO_MST_002_A05
+                  AND     look_val.enabled_flag      = cv_yes                       -- Y
+                  AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+                  AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+                  AND     look_val.language          = USERENV( 'LANG' )
+               )  gysm     -- 業態小分類特定マスタ
            WHERE
-             seh.delivery_date           = icp_delivery_date                        -- パラメータの納品日
+               seh.sales_exp_header_id   = sel.sales_exp_header_id                  -- 販売実績ヘッダ＆明細.販売実績ヘッダID
+           AND seh.delivery_date         = icp_delivery_date                        -- パラメータの納品日
            AND seh.sales_base_code       = icp_delivery_base_code                   -- パラメータの拠点
            AND seh.dlv_by_code           = NVL( icp_dlv_by_code, seh.dlv_by_code )  -- パラメータの営業員
-           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )
-                                                                                  -- パラメータの伝票番号
+           AND seh.dlv_invoice_number    = NVL( icp_hht_invoice_no, seh.dlv_invoice_number )   -- パラメータの伝票番号
+           AND seh.ship_to_customer_code = cust.account_number                      -- 販売実績ヘッダ＝顧客マスタ_顧客
+           AND cust.customer_class_code  IN ( ct_cust_class_customer , ct_cust_class_customer_u )  
+                                                                                    -- 顧客区分IN 顧客,上様顧客
+           AND cust.cust_account_id      = cuac.customer_id                         -- 顧客マスタ_顧客＝顧客追加情報
+           AND cust.party_id             = parc.party_id                            -- 顧客マスタ_顧客＝パーティ_顧客
+           AND cuac.business_low_type    = gysm.meaning( + )                        -- 業態小分類
            GROUP BY
               seh.delivery_date                      -- 納品日
              ,seh.sales_base_code                    -- 拠点コード
              ,seh.dlv_by_code                        -- 納品者コード
-             ,seh.inspect_date                       -- 検収日
              ,seh.dlv_invoice_number                 -- 伝票番号
+             ,seh.inspect_date                       -- 検収日
              ,seh.ship_to_customer_code              -- 顧客コード
              ,seh.input_class                        -- 入力区分
              ,seh.results_employee_code              -- 成績計上者コード
              ,seh.card_sale_class                    -- カード売り区分
-             ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_classification_code        -- 伝票分類コード
+             ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_class                      -- 伝票区分
-         ) infh         -- ヘッダ情報
+             ,seh.create_class                       -- 作成元区分
+             ,sel.item_code                          -- 品目コード
+             ,sel.standard_unit_price                -- 卸単価
+             ,sel.column_no                          -- コラム
+             ,sel.hot_cold_class                     -- H/C区分
+         ) infd     -- 明細情報
         ,(
             SELECT  look_val.meaning      meaning 
             FROM    fnd_lookup_values     look_val
-                   ,fnd_lookup_types_tl   types_tl
-                   ,fnd_lookup_types      types
-                   ,fnd_application_tl    appl
-                   ,fnd_application       app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_org_cls_type     -- XXCOS1_MK_ORG_CLS_MST_002_A05
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_org_cls_type      -- XXCOS1_MK_ORG_CLS_MST_002_A05
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  orct    -- 作成元区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_input_class      -- XXCOS1_INPUT_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_input_class       -- XXCOS1_INPUT_CLASS
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  incl    -- 入力区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_card_sale_class  -- XXCOS1_CARD_SALE_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_card_sale_class   -- XXCOS1_CARD_SALE_CLASS
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  cscl    -- カード売区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_sale_class       -- XXCOS1_SALE_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_sale_class        -- XXCOS1_SALE_CLASS
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  sacl    -- 売上区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
                    ,look_val.attribute3         attribute3
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_tax_class        -- XXCOS1_CONSUMPTION_TAX_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_tax_class         -- XXCOS1_CONSUMPTION_TAX_CLASS
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  htcl    -- HHT消費税区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_money_class      -- XXCOS1_RECEIPT_MONEY_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_hc_class          -- XXCOS1_HC_CLASS
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
-         )  pacl    -- 入金区分
-        ,(
-            SELECT  look_val.lookup_code        lookup_code
-                   ,look_val.meaning            meaning
-            FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_hc_class         -- XXCOS1_HC_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
-            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
-            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
-            AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  hccl    -- H/C区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
                    ,look_val.attribute3         attribute3
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_tax_class        -- XXCOS1_CONSUMPTION_TAX_CLASS
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_tax_class         -- XXCOS1_CONSUMPTION_TAX_CLASS
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  tacl    -- 消費税区分
         ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
                    ,look_val.enabled_flag       enabled_flag
             FROM    fnd_lookup_values           look_val
-                   ,fnd_lookup_types_tl         types_tl
-                   ,fnd_lookup_types            types
-                   ,fnd_application_tl          appl
-                   ,fnd_application             app
-            WHERE   app.application_short_name = cv_application          -- XXCOS
-            AND     look_val.lookup_type       = ct_qck_gyotai_sho_mst   -- XXCOS1_GYOTAI_SHO_MST_002_A03
-            AND     look_val.enabled_flag      = cv_yes                  -- Y
+            WHERE   look_val.lookup_type       = ct_qck_gyotai_sho_mst    -- XXCOS1_GYOTAI_SHO_MST_002_A03
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
             AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
             AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
-            AND     types_tl.language          = USERENV( 'LANG' )
             AND     look_val.language          = USERENV( 'LANG' )
-            AND     appl.language              = USERENV( 'LANG' )
-            AND     appl.application_id        = types.application_id
-            AND     app.application_id         = appl.application_id
-            AND     types_tl.lookup_type       = look_val.lookup_type
-            AND     types.lookup_type          = types_tl.lookup_type
-            AND     types.security_group_id    = types_tl.security_group_id
-            AND     types.view_application_id  = types_tl.view_application_id
          )  gysm    -- 業態小分類特定マスタ
+        ,(
+            SELECT  look_val.meaning            meaning
+                   ,look_val.attribute1         vd_gyotai
+            FROM    fnd_lookup_values           look_val
+            WHERE   look_val.lookup_type       = ct_qck_gyotai_sho_mst1   -- XXCOS1_GYOTAI_SHO_MST_002_A05
+            AND     look_val.enabled_flag      = cv_yes                   -- Y
+            AND     icp_delivery_date         >= NVL( look_val.start_date_active, icp_delivery_date )
+            AND     icp_delivery_date         <= NVL( look_val.end_date_active, icp_delivery_date )
+            AND     look_val.language          = USERENV( 'LANG' )
+         )  gysm1   -- 業態小分類特定マスタ
       WHERE
-        infh.delivery_date           = icp_delivery_date               -- パラメータの納品日
-      AND infh.sales_base_code       = icp_delivery_base_code          -- パラメータの拠点
-      AND infh.sales_exp_header_id   = sel.sales_exp_header_id          -- 販売実績ヘッダ＆明細.販売実績ヘッダID
-      AND base.customer_class_code   = ct_cust_class_base              -- 顧客区分＝拠点
-      AND infh.sales_base_code       = base.account_number             -- 販売実績ヘッダ＝顧客マスタ_拠点
-      AND base.party_id              = parb.party_id                   -- 顧客マスタ_拠点＝パーティ_拠点
--- ******************** 2009/05/01 Var.1.6 N.Maeda MOD START  ******************************************
---      AND cust.customer_class_code   = ct_cust_class_customer          -- 顧客区分＝顧客
-      AND cust.customer_class_code   IN ( ct_cust_class_customer , ct_cust_class_customer_u ) -- 顧客区分IN 顧客,上様顧客
--- ******************** 2009/05/01 Var.1.6 N.Maeda MOD  END   ******************************************
-      AND infh.ship_to_customer_code = cust.account_number             -- 販売実績ヘッダ＝顧客マスタ_顧客
-      AND cust.cust_account_id       = cuac.customer_id                -- 顧客マスタ_顧客＝顧客追加情報
-      AND cust.party_id              = parc.party_id                   -- 顧客マスタ_顧客＝パーティ_顧客
-      AND infh.create_class IN ( orct.meaning )                        -- 作成元区分＝クイックコード
+          infh.delivery_date                            = disc.delivery_date                             -- [ヘッダ=値引] 対象日付
+      AND infh.sales_base_code                          = disc.sales_base_code                           --               拠点コード
+      AND infh.dlv_by_code                              = disc.dlv_by_code                               --               納品者コード
+      AND infh.dlv_invoice_number                       = disc.dlv_invoice_number                        --               伝票番号
+      AND infh.dlv_date                                 = disc.dlv_date                                  --               納品日
+      AND infh.inspect_date                             = disc.inspect_date                              --               検収日
+      AND infh.ship_to_customer_code                    = disc.ship_to_customer_code                     --               顧客コード
+      AND infh.input_class                              = disc.input_class                               --               入力区分
+      AND infh.results_employee_code                    = disc.results_employee_code                     --               成績計上者コード
+      AND NVL( infh.card_sale_class            , cv_x ) = NVL( disc.card_sale_class            , cv_x )  --               カード売り区分
+      AND NVL( infh.invoice_classification_code, cv_x ) = NVL( disc.invoice_classification_code, cv_x )  --               伝票分類コード
+      AND infh.consumption_tax_class                    = disc.consumption_tax_class                     --               消費税区分
+      AND NVL( infh.invoice_class              , cv_x ) = NVL( disc.invoice_class              , cv_x )  --               伝票区分
+      AND infh.create_class                             = disc.create_class                              --               作成元区分
+      AND infh.delivery_date                            = infd.delivery_date                             -- [ヘッダ=明細] 対象日付
+      AND infh.sales_base_code                          = infd.sales_base_code                           --               拠点コード
+      AND infh.dlv_by_code                              = infd.dlv_by_code                               --               納品者コード
+      AND infh.dlv_invoice_number                       = infd.dlv_invoice_number                        --               伝票番号
+      AND infh.dlv_date                                 = infd.dlv_date                                  --               納品日
+      AND infh.inspect_date                             = infd.inspect_date                              --               検収日
+      AND infh.ship_to_customer_code                    = infd.ship_to_customer_code                     --               顧客コード
+      AND infh.input_class                              = infd.input_class                               --               入力区分
+      AND infh.results_employee_code                    = infd.results_employee_code                     --               成績計上者コード
+      AND NVL( infh.card_sale_class            , cv_x ) = NVL( infd.card_sale_class            , cv_x )  --               カード売り区分
+      AND NVL( infh.invoice_classification_code, cv_x ) = NVL( infd.invoice_classification_code, cv_x )  --               伝票分類コード
+      AND infh.consumption_tax_class                    = infd.consumption_tax_class                     --               消費税区分
+      AND NVL( infh.invoice_class              , cv_x ) = NVL( infd.invoice_class              , cv_x )  --               伝票区分
+      AND infh.create_class                             = infd.create_class                              --               作成元区分
+      AND base.customer_class_code   = ct_cust_class_base                                                -- 顧客区分＝拠点
+      AND infh.sales_base_code       = base.account_number                                               -- 販売実績ヘッダ＝顧客マスタ_拠点
+      AND base.party_id              = parb.party_id                                                     -- 顧客マスタ_拠点＝パーティ_拠点
+      AND cust.customer_class_code   IN ( ct_cust_class_customer , ct_cust_class_customer_u )            -- 顧客区分IN 顧客,上様顧客
+      AND infh.ship_to_customer_code = cust.account_number                                               -- 販売実績ヘッダ＝顧客マスタ_顧客
+      AND cust.cust_account_id       = cuac.customer_id                                                  -- 顧客マスタ_顧客＝顧客追加情報
+      AND cust.party_id              = parc.party_id                                                     -- 顧客マスタ_顧客＝パーティ_顧客
+      AND infh.create_class IN ( orct.meaning )                                                          -- 作成元区分＝クイックコード
       AND infh.results_employee_code = ppf.employee_number(+)
-      AND sel.item_code              = iimb.item_no
+      AND infd.item_code             = iimb.item_no
       AND iimb.item_id               = ximb.item_id
+      AND ximb.obsolete_class       <> cv_obsolete_class_one
+      AND ximb.start_date_active    <= infh.delivery_date
+      AND ximb.end_date_active      >= infh.delivery_date
       AND infh.sales_base_code       = riv.base_code
+      AND riv.employee_number        = infh.dlv_by_code
       AND riv.employee_number        = NVL( icp_dlv_by_code, riv.employee_number )
       AND infh.delivery_date        >= NVL( riv.effective_start_date, infh.delivery_date )
       AND infh.delivery_date        <= NVL( riv.effective_end_date, infh.delivery_date )
@@ -775,53 +1269,17 @@ AS
       AND infh.delivery_date        >= riv.paa_effective_start_date
       AND infh.delivery_date        <= riv.paa_effective_end_date
       AND infh.dlv_invoice_number    = NVL( icp_hht_invoice_no, infh.dlv_invoice_number )
-      AND infh.dlv_invoice_number    = pay.hht_invoice_no(+)
       AND incl.lookup_code           = infh.input_class
-      AND cscl.lookup_code           = NVL( infh.card_sale_class, cv_x )
-      AND sacl.lookup_code           = sel.sales_class
+      AND cscl.lookup_code(+)        = NVL( infh.card_sale_class, cv_x )
+      AND sacl.lookup_code           = infd.sale_class
       AND htcl.attribute3            = infh.consumption_tax_class
-      AND pacl.lookup_code(+)        = pay.payment_class
-      AND hccl.lookup_code(+)        = NVL( sel.hot_cold_class, cv_x )
+      AND hccl.lookup_code(+)        = NVL( infd.h_and_c, cv_x )
       AND tacl.attribute3            = cuac.tax_div
-      AND gysm.meaning(+)            = infh.cust_gyotai_sho
-      AND infh.delivery_date         = disc.delivery_date                -- ヘッダ情報、売上値引額.納品日
-      AND infh.sales_base_code       = disc.sales_base_code              -- ヘッダ情報、売上値引額.拠点コード
-      AND riv.employee_number        = infh.dlv_by_code                  -- 営業員情報、ヘッダ情報.納品者コード
-      AND infh.dlv_invoice_number    = disc.dlv_invoice_number           -- ヘッダ情報、売上値引額.伝票番号
-      AND infh.dlv_date              = disc.dlv_date                     -- ヘッダ情報、売上値引額.納品日
-      AND infh.ship_to_customer_code = disc.ship_to_customer_code        -- ヘッダ情報、売上値引額.顧客コード
-      AND infh.results_employee_code = disc.results_employee_code        -- ヘッダ情報、売上値引額.成績計上者コード
-      AND NVL( infh.invoice_classification_code, cv_x )
-            = NVL( disc.invoice_classification_code, cv_x )              -- ヘッダ情報、売上値引額.伝票分類コード
-      AND NVL( infh.invoice_class, cv_x )
-                                     = NVL( disc.invoice_class, cv_x )   -- ヘッダ情報、売上値引額.伝票区分
-      AND NVL( infh.card_sale_class, cv_x )
-                                     = NVL( disc.card_sale_class, cv_x ) -- ヘッダ情報、売上値引額.カード売り区分
-      GROUP BY
-         infh.delivery_date                      -- 対象日付
-        ,infh.sales_base_code                    -- 拠点コード
-        ,riv.employee_number                     -- 納品者コード
-        ,infh.dlv_invoice_number                 -- 伝票番号
-        ,infh.dlv_date                           -- 納品日
-        ,infh.inspect_date                       -- 検収日(納品日)
-        ,infh.ship_to_customer_code              -- 顧客コード
-        ,incl.meaning                            -- 入力区分
-        ,infh.results_employee_code              -- 成績計上者コード
-        ,infh.card_sale_class                    -- カード売り区分
-        ,htcl.meaning                            -- 消費税区分
-        ,infh.invoice_classification_code        -- 伝票分類コード
-        ,infh.invoice_class                      -- 伝票区分
-        ,sel.item_code                           -- 品目コード
-        ,sel.standard_unit_price                 -- 卸単価
-        ,sel.column_no                           -- コラム
-        ,hccl.meaning                            -- H/C
-        ,pacl.meaning                            -- 入金区分
-        ,pay.payment_amount                      -- 入金額
-      HAVING
-        ( SUM( sel.sale_amount )  != 0           -- 売上金額
-          OR
-          SUM( sel.standard_qty ) != 0 )         -- 納品数量
+      AND cuac.business_low_type     = gysm.meaning(+)                                                   -- 業態小分類
+      AND cuac.business_low_type     = gysm1.meaning(+)
+      AND infd.quantity             != cn_zero                                                           -- 納品数量 != 0
       ;
+-- ******************** 2009/06/02 Var.1.9 T.Tominaga MOD END    ******************************************
 --
 --
     -- *** ローカル・レコード ***
@@ -943,24 +1401,99 @@ AS
         lt_st_date             := lt_get_sale_data(in_no).st_date;               -- 定価適用開始
         lt_plice_new           := lt_get_sale_data(in_no).plice_new;             -- 定価(新)
         lt_plice_old           := lt_get_sale_data(in_no).plice_old;             -- 旧定価
+        lt_plice_new_no_tax    := lt_get_sale_data(in_no).plice_new;             -- 定価(新)
+        lt_plice_old_no_tax    := lt_get_sale_data(in_no).plice_old;             -- 旧定価
+        lt_tax_rate            := lt_get_sale_data(in_no).tax_rate;              --税率
 --
         -- 判定
         IF ( lt_enabled_flag = cv_yes ) THEN
           lt_confirmation := NULL;
 --
         ELSE
+          --営業原価の税処理
+          lt_tax_amount          := lt_business_cost * lt_tax_rate / 100;
+          -- 端数処理
+          IF ( lt_get_sale_data(in_no).tax_rounding_rule    = cv_round_rule_up ) THEN
+            -- 切り上げの場合
+            IF ( lt_tax_amount - TRUNC( lt_tax_amount ) <> 0 ) THEN
+              lt_tax_amount := TRUNC( lt_tax_amount ) + 1;
+            END IF;
+          ELSIF ( lt_get_sale_data(in_no).tax_rounding_rule = cv_round_rule_down ) THEN
+            -- 切り下げの場合
+            lt_tax_amount := TRUNC( lt_tax_amount );
+          ELSIF ( lt_get_sale_data(in_no).tax_rounding_rule = cv_round_rule_nearest ) THEN
+            -- 四捨五入の場合
+            lt_tax_amount := ROUND( lt_tax_amount );
+          END IF;
+          IF ( lt_get_sale_data(in_no).consumption_tax_class IS NULL
+             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
+             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+            lt_tax_amount := 0;
+          END IF;
+          lt_business_cost  := lt_business_cost + lt_tax_amount;
+--
+          --定価（新）の税処理
+          lt_tax_amount          := lt_plice_new * lt_tax_rate / 100;
+          -- 端数処理
+          IF ( lt_get_sale_data(in_no).tax_rounding_rule    = cv_round_rule_up ) THEN
+            -- 切り上げの場合
+            IF ( lt_tax_amount - TRUNC( lt_tax_amount ) <> 0 ) THEN
+              lt_tax_amount := TRUNC( lt_tax_amount ) + 1;
+            END IF;
+          ELSIF ( lt_get_sale_data(in_no).tax_rounding_rule = cv_round_rule_down ) THEN
+            -- 切り下げの場合
+            lt_tax_amount := TRUNC( lt_tax_amount );
+          ELSIF ( lt_get_sale_data(in_no).tax_rounding_rule = cv_round_rule_nearest ) THEN
+            -- 四捨五入の場合
+            lt_tax_amount := ROUND( lt_tax_amount );
+          END IF;
+          IF ( lt_get_sale_data(in_no).consumption_tax_class IS NULL
+             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
+             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+              lt_tax_amount := 0;
+          END IF;
+          lt_plice_new  := lt_plice_new + lt_tax_amount;
+--
+          --定価（旧）の税処理
+          lt_tax_amount          := lt_plice_old * lt_tax_rate / 100;
+          -- 端数処理
+          IF ( lt_get_sale_data(in_no).tax_rounding_rule    = cv_round_rule_up ) THEN
+            -- 切り上げの場合
+            IF ( lt_tax_amount - TRUNC( lt_tax_amount ) <> 0 ) THEN
+              lt_tax_amount := TRUNC( lt_tax_amount ) + 1;
+            END IF;
+          ELSIF ( lt_get_sale_data(in_no).tax_rounding_rule = cv_round_rule_down ) THEN
+            -- 切り下げの場合
+            lt_tax_amount := TRUNC( lt_tax_amount );
+          ELSIF ( lt_get_sale_data(in_no).tax_rounding_rule = cv_round_rule_nearest ) THEN
+            -- 四捨五入の場合
+            lt_tax_amount := ROUND( lt_tax_amount );
+          END IF;
+          IF ( lt_get_sale_data(in_no).consumption_tax_class IS NULL
+             OR ( lt_get_sale_data(in_no).consumption_tax_class <> cn_two 
+             AND lt_get_sale_data(in_no).consumption_tax_class <> cn_thr ) ) THEN
+              lt_tax_amount := 0;
+          END IF;
+          lt_plice_old  := lt_plice_old + lt_tax_amount;
+--
           IF ( lt_standard_unit_price < lt_business_cost ) THEN    -- 基準単価 < 営業原価
             lt_confirmation := lv_check_mark;
 --
-          ELSIF ( lt_st_date >= iv_delivery_date ) THEN            -- 定価適用開始 >= 納品日
-            IF ( lt_plice_new > lt_standard_unit_price ) THEN      -- 定価(新) > 基準単価
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+--          ELSIF ( lt_st_date >= iv_delivery_date ) THEN            -- 定価適用開始 >= 納品日
+          ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+            IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
               lt_confirmation := lv_check_mark;
             ELSE
               lt_confirmation := NULL;
             END IF;
 --
-          ELSIF ( lt_st_date < iv_delivery_date ) THEN             -- 定価適用開始 < 納品日
-            IF ( lt_plice_old > lt_standard_unit_price ) THEN      -- 旧定価 > 基準単価
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+--          ELSIF ( lt_st_date < iv_delivery_date ) THEN             -- 定価適用開始 < 納品日
+          ELSIF ( lt_st_date > iv_delivery_date ) THEN             -- 定価適用開始 > 納品日
+-- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
+            IF ( lt_plice_old < lt_standard_unit_price ) THEN      -- 旧定価 < 基準単価
               lt_confirmation := lv_check_mark;
             ELSE
               lt_confirmation := NULL;
@@ -974,9 +1507,9 @@ AS
 --
         -- 売値判定
         IF ( lt_st_date <= iv_delivery_date ) THEN
-          lt_set_plice := lt_plice_new;
+          lt_set_plice := lt_plice_new_no_tax;
         ELSE
-          lt_set_plice := lt_plice_old;
+          lt_set_plice := lt_plice_old_no_tax;
         END IF;
 --
         -- 対象日付
@@ -1045,9 +1578,9 @@ AS
         -- HC
         gt_dlv_chk_list(ln_num).h_and_c                      := lt_get_sale_data(in_no).h_and_c;
         -- 入金区分
-        gt_dlv_chk_list(ln_num).payment_class                := NULL;
+        gt_dlv_chk_list(ln_num).payment_class                := lt_get_sale_data(in_no).payment_class;
         -- 入金額
-        gt_dlv_chk_list(ln_num).payment_amount               := NULL;
+        gt_dlv_chk_list(ln_num).payment_amount               := lt_get_sale_data(in_no).payment_amount;
         -- 作成者
         gt_dlv_chk_list(ln_num).created_by                   := cn_created_by;
         -- 作成日
@@ -1067,7 +1600,7 @@ AS
         -- ﾌﾟﾛｸﾞﾗﾑ更新日
         gt_dlv_chk_list(ln_num).program_update_date          := cd_program_update_date;
 --
-        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
+/*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
 --
@@ -1172,7 +1705,7 @@ AS
           -- 伝票番号格納
           lt_invoice_num( lt_get_sale_data(in_no).invoice_no ) := in_no;
 --
-        END IF;
+        END IF;*/
 --
       END LOOP;
 --
@@ -1382,6 +1915,7 @@ AS
           ,hz_parties               parc          -- パーティ_顧客
           ,xxcos_rs_info_v          riv           -- 営業員情報view
           ,xxcos_salesreps_v        salv          -- 担当営業員view
+          ,xxcmm_cust_accounts      cuac          -- 顧客追加情報
           ,(
             SELECT  look_val.lookup_code        lookup_code
                    ,look_val.meaning            meaning
@@ -1421,19 +1955,19 @@ AS
         AND pay.payment_date    <= riv.paa_effective_end_date
         AND pay.hht_invoice_no   = NVL( iv_hht_invoice_no, pay.hht_invoice_no )
         AND pay.payment_class    = pacl.lookup_code
-        AND NOT EXISTS
-          (
-            SELECT
-              ROWID
-            FROM
-              xxcos_sales_exp_headers  sale       -- 販売実績ヘッダテーブル
-            WHERE
-              sale.dlv_invoice_number      = pay.hht_invoice_no
-            AND sale.delivery_date         = pay.payment_date
-            AND sale.ship_to_customer_code = pay.customer_number
-            AND sale.sales_base_code       = pay.base_code
-            AND ROWNUM = 1
-          )
+--        AND NOT EXISTS
+--          (
+--            SELECT
+--              ROWID
+--            FROM
+--              xxcos_sales_exp_headers  sale       -- 販売実績ヘッダテーブル
+--            WHERE
+--              sale.dlv_invoice_number      = pay.hht_invoice_no
+--            AND sale.delivery_date         = pay.payment_date
+--            AND sale.ship_to_customer_code = pay.customer_number
+--            AND sale.sales_base_code       = pay.base_code
+--            AND ROWNUM = 1
+--          )
         AND pay.base_code            = base.account_number
         AND base.customer_class_code = ct_cust_class_base
         AND base.party_id            = parb.party_id
@@ -1443,6 +1977,18 @@ AS
         AND cust.customer_class_code   IN ( ct_cust_class_customer , ct_cust_class_customer_u )
 -- ******************** 2009/05/01 Var.1.6 N.Maeda MOD  END   ******************************************
         AND cust.party_id            = parc.party_id
+        AND cust.cust_account_id     = cuac.customer_id                -- 顧客マスタ_顧客＝顧客追加情報
+        AND NOT EXISTS
+          (
+             SELECT  look_val.attribute1         vd_gyotai
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type       = ct_qck_gyotai_sho_mst1   -- XXCOS1_GYOTAI_SHO_MST_002_A05
+             AND     look_val.enabled_flag      = cv_yes                  -- Y
+             AND     ld_delivery_date          >= NVL( look_val.start_date_active, ld_delivery_date )
+             AND     ld_delivery_date          <= NVL( look_val.end_date_active, ld_delivery_date )
+             AND     look_val.language          = USERENV( 'LANG' )
+             AND     look_val.meaning           = cuac.business_low_type
+          )  -- 業態小分類特定マスタ
         ;
 --
       -- 対象件数取得
@@ -1886,11 +2432,11 @@ AS
     --  ===============================
     --  帳票ワークテーブルデータ削除(A-8)
     --  ===============================
-  /*  delete_rpt_wrk_data(
+    delete_rpt_wrk_data(
        lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-    );*/
+    );
 --
     -- エラー処理
     IF ( lv_retcode = cv_status_error ) THEN
