@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.14
+ * Version          : 1.15
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
@@ -33,6 +33,7 @@ AS
  *  2008/12/10    1.12 Takao Ohashi     本番#639対応
  *  2008/12/16    1.13 Naoki Fukuda     本番#639対応
  *  2008/12/26    1.14 Takao Ohashi     本番#809,867対応
+ *  2009/01/09    1.15 Takao Ohashi     I_S_50対応(履歴全削除)
  *****************************************************************************************/
 --
 --#######################  固定グローバル変数宣言部 START   #######################
@@ -50,24 +51,25 @@ AS
     (
       errbuf                  OUT    VARCHAR2     -- エラーメッセージ
      ,retcode                 OUT    VARCHAR2     -- エラーコード
-     ,iv_date_from            IN     VARCHAR2     -- 01 : 年月日_FROM
-     ,iv_date_to              IN     VARCHAR2     -- 02 : 年月日_TO
-     ,iv_out_item_ctl         IN     VARCHAR2     -- 03 : 払出品目区分
-     ,iv_item1                IN     VARCHAR2     -- 04 : 品目ID1
-     ,iv_item2                IN     VARCHAR2     -- 05 : 品目ID2
-     ,iv_item3                IN     VARCHAR2     -- 06 : 品目ID3
-     ,iv_reason_code          IN     VARCHAR2     -- 07 : 事由コード
-     ,iv_item_location_id     IN     VARCHAR2     -- 08 : 保管倉庫ID
-     ,iv_dept_id              IN     VARCHAR2     -- 09 : 担当部署ID
-     ,iv_entry_no1            IN     VARCHAR2     -- 10 : 伝票No1
-     ,iv_entry_no2            IN     VARCHAR2     -- 11 : 伝票No2
-     ,iv_entry_no3            IN     VARCHAR2     -- 12 : 伝票No3
-     ,iv_entry_no4            IN     VARCHAR2     -- 13 : 伝票No4
-     ,iv_entry_no5            IN     VARCHAR2     -- 14 : 伝票No5
-     ,iv_price_ctl_flg        IN     VARCHAR2     -- 15 : 金額表示
-     ,iv_emp_no               IN     VARCHAR2     -- 16 : 担当者
-     ,iv_creation_date_from   IN     VARCHAR2     -- 17 : 更新時間FROM
-     ,iv_creation_date_to     IN     VARCHAR2     -- 18 : 更新時間TO
+     ,iv_target_class         IN     VARCHAR2     -- 01 : 予実区分
+     ,iv_date_from            IN     VARCHAR2     -- 02 : 年月日_FROM
+     ,iv_date_to              IN     VARCHAR2     -- 03 : 年月日_TO
+     ,iv_out_item_ctl         IN     VARCHAR2     -- 04 : 払出品目区分
+     ,iv_item1                IN     VARCHAR2     -- 05 : 品目ID1
+     ,iv_item2                IN     VARCHAR2     -- 06 : 品目ID2
+     ,iv_item3                IN     VARCHAR2     -- 07 : 品目ID3
+     ,iv_reason_code          IN     VARCHAR2     -- 08 : 事由コード
+     ,iv_item_location_id     IN     VARCHAR2     -- 09 : 保管倉庫ID
+     ,iv_dept_id              IN     VARCHAR2     -- 10 : 担当部署ID
+     ,iv_entry_no1            IN     VARCHAR2     -- 11 : 伝票No1
+     ,iv_entry_no2            IN     VARCHAR2     -- 12 : 伝票No2
+     ,iv_entry_no3            IN     VARCHAR2     -- 13 : 伝票No3
+     ,iv_entry_no4            IN     VARCHAR2     -- 14 : 伝票No4
+     ,iv_entry_no5            IN     VARCHAR2     -- 15 : 伝票No5
+     ,iv_price_ctl_flg        IN     VARCHAR2     -- 16 : 金額表示
+     ,iv_emp_no               IN     VARCHAR2     -- 17 : 担当者
+     ,iv_creation_date_from   IN     VARCHAR2     -- 18 : 更新時間FROM
+     ,iv_creation_date_to     IN     VARCHAR2     -- 19 : 更新時間TO
      
     ) ;
 END XXINV550003C ;
