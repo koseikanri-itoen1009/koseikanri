@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,10 @@ AS
  *  2009/04/16   1.3    K.Kiriu          [ST障害No.T1_0075対応] 桁数超過対応
  *                                       [ST障害No.T1_0079対応] ホット警告残数の計算ロジック修正
  *  2009/04/22   1.4    N.Maeda          [ST障害No.T1_0754対応]ファイル出力時の｢"｣付加修正
+ *  2009/07/15   1.5    M.Sano           [SCS障害No.0000652対応]明細データのファイル出力方法変更
+ *                                       [SCS障害No.0000653対応]ホット警告残数出力不正対応
+ *                                       [SCS障害No.0000690対応]出力関連変数初期化不良対応
+ *  2009/07/24   1.6    M.Sano           [SCS障害No.0000691対応]コラム変更、H/C区分変更時のホット警告残数変更
  *
  *****************************************************************************************/
 --
@@ -92,6 +96,10 @@ AS
   column_no_data_expt       EXCEPTION;     --ベンダコラムマスタにデータが存在しない場合
   line_no_data_expt         EXCEPTION;     --ベンダ納品実績情報テーブルにデータが存在しない場合
   file_open_expt            EXCEPTION;     --ファイルオープンエラー
+-- 2009/07/24 Add Ver.1.6 Start
+  column_change_data_expt   EXCEPTION;     --コラム変更が実施された場合
+  hctype_change_data_expt   EXCEPTION;     --H/C区分変更が実施された場合
+-- 2009/07/24 Add Ver.1.6 End
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -213,6 +221,9 @@ AS
   gn_skip_cnt                 NUMBER DEFAULT 0;                      -- 対象外件数
   gn_main_loop_cnt            NUMBER DEFAULT 0;
   
+-- 2009/07/15 Add Ver.1.5 Start
+  gn_deli_l_cnt               NUMBER DEFAULT 0;                      -- 出力対象の納品実績情報明細用件数
+-- 2009/07/15 Add Ver.1.5 End
   
 --
 --カーソル
@@ -290,12 +301,42 @@ AS
 
   line_rec line_cur%ROWTYPE;
   
+-- 2009/07/15 Add Ver.1.5 Start
+  -- ===============================
+  -- ユーザー定義グローバルRECORD型宣言
+  -- ===============================
+  -- 納品実績情報明細レコード
+  TYPE g_deli_line_rtype  IS RECORD
+    (
+      account_number                hz_cust_accounts.account_number%TYPE,  -- 顧客コード 
+      column_no                     xxcoi_mst_vd_column.column_no%TYPE,    -- コラムNo 
+      monthly_sales                 NUMBER,                                -- 月販数
+      sales_days                    NUMBER,                                -- 販売日数
+      inventory_quantity_sum        NUMBER,                                -- 基準在庫数
+      hot_warn_qty                  NUMBER,                                -- ホット警告残数
+      sales_qty_1                   NUMBER,                                -- 前回売上数
+      sales_qty_2                   NUMBER,                                -- 前々回売上数
+      sales_qty_3                   NUMBER,                                -- 前々前回売上数
+      replacement_rate              NUMBER                                 -- 補充率
+    );
+    
+--
+  -- ===============================
+  -- ユーザー定義グローバルTABLE型宣言
+  -- ===============================
+  -- 納品実績情報明細テーブル型
+  TYPE g_deli_line_ttype  IS TABLE OF g_deli_line_rtype  INDEX BY BINARY_INTEGER;
+--
+-- 2009/07/15 Add Ver.1.5 End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
     
     gt_deli_h_handle       UTL_FILE.FILE_TYPE; --納品実績情報ヘッダファイルハンドル
     gt_deli_l_handle       UTL_FILE.FILE_TYPE; --納品実績情報明細ファイルハンドル
+-- 2009/07/15 Add Ver.1.5 Start
+    gt_deli_l_tab          g_deli_line_ttype;  --出力対象の納品実績情報明細データ
+-- 2009/07/15 Add Ver.1.5 End
 
 --
   /**********************************************************************************
@@ -1026,6 +1067,10 @@ AS
 --
     -- *** ローカル変数 ***
     ln_sales_total_qty NUMBER;
+-- 2009/07/24 Add Ver.1.6 Start
+    lt_change_column_date  xxcos_vd_deliv_lines.dlv_date%TYPE;
+    lt_change_hctype_date  xxcos_vd_deliv_lines.dlv_date%TYPE;
+-- 2009/07/24 Add Ver.1.6 End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1040,6 +1085,66 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2009/07/24 Add Ver.1.6 Start
+    -- ■ コラム変更の最終更新納品日を取得する。
+    BEGIN
+      SELECT MIN(xvdl.dlv_date)                                           -- コラムを最後に変更した日時
+      INTO   lt_change_column_date
+      FROM   xxcos_vd_deliv_lines xvdl                                    -- (TABLE)ベンダ納品明細
+            ,( SELECT MAX(xvdl_m.dlv_date_time) dlv_date_time             -- 最後にコラム変更を実施する前の日時
+               FROM   xxcos_vd_deliv_lines xvdl_m                         -- (TABLE)ベンダ納品明細
+               WHERE  xvdl_m.customer_number = main_rec.account_number
+               AND    xvdl_m.column_num      = column_rec.column_no
+               AND    xvdl_m.item_code      <> gv_item_code
+             ) xvdl_v
+      WHERE  xvdl.customer_number = main_rec.account_number
+      AND    xvdl.column_num      = column_rec.column_no
+      AND    xvdl_v.dlv_date_time IS NOT NULL
+      AND    xvdl.dlv_date_time   > xvdl_v.dlv_date_time
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lt_change_column_date := NULL;
+    END;
+--
+    -- ■ コラム変更が閾値内で実施された場合、後続の処理を実施しない。
+    IF (   lt_change_column_date IS NOT NULL
+       AND header_rec.dlv_date < lt_change_column_date + TO_NUMBER(gv_hot_stock_days)
+       ) THEN
+      RAISE column_change_data_expt;
+    END IF;
+--
+    -- ■ H/C区分変更の最終更新納品日を取得する。
+    BEGIN
+      SELECT MIN(xvdl.dlv_date)
+      INTO   lt_change_hctype_date
+      FROM   xxcos_vd_deliv_lines xvdl
+            ,( SELECT MAX(xvdl_m.dlv_date_time) dlv_date_time
+               FROM   xxcos_vd_deliv_lines xvdl_m
+               WHERE  xvdl_m.customer_number = main_rec.account_number
+               AND    xvdl_m.column_num      = column_rec.column_no
+               AND    xvdl_m.item_code       = gv_item_code
+               AND    xvdl_m.hot_cold_type  <> gv_hot_cold_type
+             ) xvdl_v
+      WHERE  xvdl.customer_number = main_rec.account_number
+      AND    xvdl.column_num      = column_rec.column_no
+      AND    xvdl_v.dlv_date_time IS NOT NULL
+      AND    xvdl.dlv_date_time   > xvdl_v.dlv_date_time
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lt_change_hctype_date := NULL;
+    END;
+--
+    -- ■ コラム変更が閾値内で実施された場合、後続の処理を実施しない。
+    IF (   lt_change_hctype_date IS NOT NULL
+       AND header_rec.dlv_date < lt_change_hctype_date + TO_NUMBER(gv_hot_stock_days)
+       ) THEN
+      RAISE hctype_change_data_expt;
+    END IF;
+--
+    -- ■ 上記の条件を満たさない場合、ホット警告残数を取得する。
+-- 2009/07/24 Add Ver.1.6 End
     BEGIN
       SELECT NVL(SUM(xvdl.sales_qty),0)
       INTO   ln_sales_total_qty
@@ -1058,11 +1163,22 @@ AS
     gn_hot_warn_qty := column_rec.inventory_quantity - ln_sales_total_qty;
 -- 2009/04/16 K.Kiriu Ver.1.3 Mod end
 --
+-- 2009/07/15 Ver.1.5 Mod Start
+    IF ( gn_hot_warn_qty < 0 ) THEN
+      gn_hot_warn_qty := 0;
+    END IF;
+-- 2009/07/15 Ver.1.5 Mod End
 --
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
 --
+    -- *** 共通関数例外ハンドラ ***
+    WHEN column_change_data_expt THEN
+      gn_hot_warn_qty := 0;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN hctype_change_data_expt THEN
+      gn_hot_warn_qty := 0;
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -1124,26 +1240,48 @@ AS
 --###########################  固定部 END   ############################
 --
   --編集
-    SELECT                  cv_quot || main_rec.account_number             || cv_quot --顧客コード 
-           || cv_delimit || cv_quot || column_rec.column_no                || cv_quot --コラムNo        A-5で抽出したコラムNo
-           || cv_delimit || TO_CHAR(gn_monthly_sales)                                 --月販数（表示用）A-9で抽出した月販数
-           || cv_delimit || TO_CHAR(gn_monthly_sales)                                 --月販数          A-9で抽出した月販数
-           || cv_delimit || TO_CHAR(gn_sales_days)                                    --販売日数        A-10で抽出した販売日数
-           || cv_delimit || TO_CHAR(gn_sales_days)                                    --基準日数        A-10で抽出した販売日数
--- 2009/04/16 K.Kiriu Ver.1.3 Mod start
---           || cv_delimit || TO_CHAR(NVL(gn_inventory_quantity_sum,0))                 --基準在庫数      A-9で抽出した基準在庫数
---           || cv_delimit || TO_CHAR(NVL(gn_hot_warn_qty,0))                           --ホット警告残数  A-11で抽出したホット警告残数を設定。
-           || cv_delimit || SUBSTRB(TO_CHAR(NVL(gn_inventory_quantity_sum,0)), 1, 3)  --基準在庫数      A-9で抽出した基準在庫数(3桁以上の場合は先頭3桁)
-           || cv_delimit || SUBSTRB(TO_CHAR(NVL(gn_hot_warn_qty,0)), 1, 2)            --ホット警告残数  A-11で抽出したホット警告残数を設定。(2桁以上の場合は先頭2桁)
-                                                                                                        --H/CがC（コールド）の場合は0を設定
--- 2009/04/16 K.Kiriu Ver.1.3 Mod end
-           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_1 ,0))                           --前回売上数      A-6で抽出した1件目の売上数
-           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_2 ,0))                           --前々回売上数    A-6で抽出した2件目の売上数
-           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_3 ,0))                           --前々前回売上数  A-6で抽出した3件目の売上数
-           || cv_delimit || TO_CHAR(NVL(gn_replacement_rate,0))                       --補充率          A-12で抽出した補充率
+-- 2009/07/15 Ver.1.5 Mod Start
+--    SELECT                  cv_quot || main_rec.account_number             || cv_quot --顧客コード 
+--           || cv_delimit || cv_quot || column_rec.column_no                || cv_quot --コラムNo        A-5で抽出したコラムNo
+--           || cv_delimit || TO_CHAR(gn_monthly_sales)                                 --月販数（表示用）A-9で抽出した月販数
+--           || cv_delimit || TO_CHAR(gn_monthly_sales)                                 --月販数          A-9で抽出した月販数
+--           || cv_delimit || TO_CHAR(gn_sales_days)                                    --販売日数        A-10で抽出した販売日数
+--           || cv_delimit || TO_CHAR(gn_sales_days)                                    --基準日数        A-10で抽出した販売日数
+---- 2009/04/16 K.Kiriu Ver.1.3 Mod start
+----           || cv_delimit || TO_CHAR(NVL(gn_inventory_quantity_sum,0))                 --基準在庫数      A-9で抽出した基準在庫数
+----           || cv_delimit || TO_CHAR(NVL(gn_hot_warn_qty,0))                           --ホット警告残数  A-11で抽出したホット警告残数を設定。
+--           || cv_delimit || SUBSTRB(TO_CHAR(NVL(gn_inventory_quantity_sum,0)), 1, 3)  --基準在庫数      A-9で抽出した基準在庫数(3桁以上の場合は先頭3桁)
+--           || cv_delimit || SUBSTRB(TO_CHAR(NVL(gn_hot_warn_qty,0)), 1, 2)            --ホット警告残数  A-11で抽出したホット警告残数を設定。(2桁以上の場合は先頭2桁)
+--                                                                                                        --H/CがC（コールド）の場合は0を設定
+---- 2009/04/16 K.Kiriu Ver.1.3 Mod end
+--           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_1 ,0))                           --前回売上数      A-6で抽出した1件目の売上数
+--           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_2 ,0))                           --前々回売上数    A-6で抽出した2件目の売上数
+--           || cv_delimit || TO_CHAR(NVL(gn_sales_qty_3 ,0))                           --前々前回売上数  A-6で抽出した3件目の売上数
+--           || cv_delimit || TO_CHAR(NVL(gn_replacement_rate,0))                       --補充率          A-12で抽出した補充率
+--    INTO gv_deli_l_file_data
+--    FROM DUAL
+--    ;
+    SELECT             cv_quot || gt_deli_l_tab(gn_deli_l_cnt).account_number || cv_quot --顧客コード      A-13の顧客コード
+      || cv_delimit || cv_quot || gt_deli_l_tab(gn_deli_l_cnt).column_no      || cv_quot --コラムNo        A-13のコラムNo
+      || cv_delimit || TO_CHAR(gt_deli_l_tab(gn_deli_l_cnt).monthly_sales)               --月販数（表示用）A-13の月販数
+      || cv_delimit || TO_CHAR(gt_deli_l_tab(gn_deli_l_cnt).monthly_sales)               --月販数          A-13の月販数
+      || cv_delimit || TO_CHAR(gt_deli_l_tab(gn_deli_l_cnt).sales_days)                  --販売日数        A-13の販売日数
+      || cv_delimit || TO_CHAR(gt_deli_l_tab(gn_deli_l_cnt).sales_days)                  --基準日数        A-13の販売日数
+      || cv_delimit || SUBSTRB(TO_CHAR(NVL(gt_deli_l_tab(gn_deli_l_cnt).inventory_quantity_sum,0)), 1, 3)
+                                                                                         --基準在庫数      A-13の基準在庫数
+                                                                                         --                ・3桁以上の場合は先頭3桁
+      || cv_delimit || SUBSTRB(TO_CHAR(NVL(gt_deli_l_tab(gn_deli_l_cnt).hot_warn_qty,0)), 1, 2)
+                                                                                         --ホット警告残数  A-13のホット警告残数
+                                                                                         --                ・2桁以上の場合は先頭2桁
+                                                                                         --                ・H/CがC（コールド）の場合は0を設定
+      || cv_delimit || TO_CHAR(NVL(gt_deli_l_tab(gn_deli_l_cnt).sales_qty_1 ,0))         --前回売上数      A-13の1件目の売上数
+      || cv_delimit || TO_CHAR(NVL(gt_deli_l_tab(gn_deli_l_cnt).sales_qty_2 ,0))         --前々回売上数    A-13の2件目の売上数
+      || cv_delimit || TO_CHAR(NVL(gt_deli_l_tab(gn_deli_l_cnt).sales_qty_3 ,0))         --前々前回売上数  A-13の3件目の売上数
+      || cv_delimit || TO_CHAR(NVL(gt_deli_l_tab(gn_deli_l_cnt).replacement_rate,0))     --補充率          A-13の補充率
     INTO gv_deli_l_file_data
     FROM DUAL
     ;
+-- 2009/07/15 Ver.1.5 Mod End
 
   --ファイル出力
     UTL_FILE.PUT_LINE(gt_deli_l_handle
@@ -1322,6 +1460,9 @@ AS
     ln_header_cnt            NUMBER;
     ln_column_cnt            NUMBER;
     ln_line_count            NUMBER;
+-- 2009/07/15 Ver.1.5 Add Start
+    ln_deli_l_cnt            NUMBER;
+-- 2009/07/15 Ver.1.5 Add End
 --
   BEGIN
 --
@@ -1338,6 +1479,18 @@ AS
         gn_main_loop_cnt := gn_main_loop_cnt + 1;
         
         
+-- 2009/07/15 Ver.1.5 Add Start
+        --変数初期化
+          --売上数
+        gv_visit_time      := NULL;
+        gn_last_visit_days := 0;
+        gn_sales_qty_sum_1 := 0;
+        gn_sales_qty_sum_2 := 0;
+        gn_sales_qty_sum_3 := 0;
+        gn_total_amount_1  := 0;
+        gn_total_amount_2  := 0;
+        gn_total_amount_3  := 0;
+-- 2009/07/15 Ver.1.5 Add End
         ln_header_cnt := 0;
         gd_dlv_date_1 := NULL;
         gd_dlv_date_2 := NULL;
@@ -1358,6 +1511,9 @@ AS
         --A-3．ベンダ納品実績情報ヘッダテーブルデータ抽出
         -- ==================================================
         ln_header_cnt := 0;
+-- 2009/07/15 Ver.1.5 Add Start
+        ln_deli_l_cnt := 0;
+-- 2009/07/15 Ver.1.5 Add End
         <<loop_2>>
         FOR header_rec_d IN header_cur LOOP
           header_rec := header_rec_d;
@@ -1375,12 +1531,29 @@ AS
             IF (lv_retcode <> cv_status_normal) THEN
               RAISE tran_in_expt;
             END IF;
+-- 2009/07/24 Add Ver.1.6 Start
+            -- 閾値がNULLの場合、該当レコードをスキップ
+            IF ( gv_hot_stock_days IS NULL ) THEN
+              RAISE tran_in_expt;
+            END IF;
+-- 2009/07/24 Add Ver.1.6 End
             -- ==================================================
             --A-5．ベンダコラムマスタデータ抽出
             -- ==================================================
             ln_column_cnt := 0;
             <<loop_3>>
             FOR column_rec_d IN column_cur LOOP
+-- 2009/07/15 Ver.1.5 Mod End
+              --納品実績情報明細関連の変数の初期化
+              gn_monthly_sales           := NULL;
+              gn_sales_days              := NULL;
+              gn_inventory_quantity_sum  := NULL;
+              gn_hot_warn_qty            := NULL;
+              gn_sales_qty_1             := NULL;
+              gn_sales_qty_2             := NULL;
+              gn_sales_qty_3             := NULL;
+              gn_replacement_rate        := NULL;
+-- 2009/07/15 Ver.1.5 Mod End
               column_rec := column_rec_d;
               ln_column_cnt := ln_column_cnt + 1;
               -- ==================================================
@@ -1462,6 +1635,10 @@ AS
                 IF (lv_retcode <> cv_status_normal) THEN
                   RAISE tran_in_expt;
                 END IF;
+-- 2009/07/15 Ver.1.5 Mod Start
+              ELSE
+                gn_hot_warn_qty := 0;
+-- 2009/07/15 Ver.1.5 Mod End
               END IF;
               
         -- ==================================================
@@ -1472,17 +1649,33 @@ AS
                 gn_replacement_rate := TRUNC(gn_monthly_sales / gn_inventory_quantity_sum * 100);
               END IF;
         
+-- 2009/07/15 Ver.1.5 Mod Start
+--        -- ==================================================
+--        --A-13.  納品実績情報明細ファイル出力
+--        -- ==================================================
+--              proc_deli_l_file_out(
+--                                   lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--                                  ,lv_retcode  -- リターン・コード             --# 固定 #
+--                                  ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--                                  );
+--              IF (lv_retcode <> cv_status_normal) THEN
+--                RAISE tran_in_expt;
+--              END IF;
         -- ==================================================
-        --A-13． 納品実績情報明細ファイル出力
+        --明細出力用変数の格納
         -- ==================================================
-              proc_deli_l_file_out(
-                                   lv_errbuf   -- エラー・メッセージ           --# 固定 #
-                                  ,lv_retcode  -- リターン・コード             --# 固定 #
-                                  ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-                                  );
-              IF (lv_retcode <> cv_status_normal) THEN
-                RAISE tran_in_expt;
-              END IF;
+              ln_deli_l_cnt := ln_deli_l_cnt + 1;
+              gt_deli_l_tab(ln_deli_l_cnt).account_number         := main_rec.account_number;   -- 顧客コード
+              gt_deli_l_tab(ln_deli_l_cnt).column_no              := column_rec.column_no;      -- A-5で抽出したコラムNo
+              gt_deli_l_tab(ln_deli_l_cnt).monthly_sales          := gn_monthly_sales;          -- A-9で抽出した月販数
+              gt_deli_l_tab(ln_deli_l_cnt).sales_days             := gn_sales_days;             -- A-10で抽出した販売日数
+              gt_deli_l_tab(ln_deli_l_cnt).inventory_quantity_sum := gn_inventory_quantity_sum; -- A-9で抽出した基準在庫数
+              gt_deli_l_tab(ln_deli_l_cnt).hot_warn_qty           := gn_hot_warn_qty;           -- A-11で抽出したホット警告残数
+              gt_deli_l_tab(ln_deli_l_cnt).sales_qty_1            := gn_sales_qty_1;            -- A-6で抽出した1件目の売上数
+              gt_deli_l_tab(ln_deli_l_cnt).sales_qty_2            := gn_sales_qty_2;            -- A-6で抽出した2件目の売上数
+              gt_deli_l_tab(ln_deli_l_cnt).sales_qty_3            := gn_sales_qty_3;            -- A-6で抽出した3件目の売上数
+              gt_deli_l_tab(ln_deli_l_cnt).replacement_rate       := gn_replacement_rate;       -- A-12で抽出した補充率
+-- 2009/07/15 Ver.1.5 Mod End
 
             END LOOP loop_3;
             
@@ -1506,6 +1699,24 @@ AS
           
         END LOOP loop_2;
         IF ln_header_cnt > 0 THEN
+-- 2009/07/15 Ver.1.5 Add Start
+--
+          -- ==================================================
+          --A-13.  納品実績情報明細ファイル出力
+          -- ==================================================
+          << output_deli_l_loop >>
+          FOR ln_deli_l_idx in 1..ln_deli_l_cnt LOOP
+            gn_deli_l_cnt := ln_deli_l_idx;
+            proc_deli_l_file_out(
+                                 lv_errbuf   -- エラー・メッセージ           --# 固定 #
+                                ,lv_retcode  -- リターン・コード             --# 固定 #
+                                ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+                                );
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE tran_in_expt;
+            END IF;
+          END LOOP output_deli_l_loop;
+-- 2009/07/15 Ver.1.5 Add End
         
           -- ==================================================
           --A-14．前回訪問日数導出
