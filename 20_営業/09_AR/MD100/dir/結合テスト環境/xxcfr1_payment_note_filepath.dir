@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY xxcfr1_payment_note_filepath
+  AS '/ebst/tebs05/ebsif/inbound/ca_iffile/jx';
