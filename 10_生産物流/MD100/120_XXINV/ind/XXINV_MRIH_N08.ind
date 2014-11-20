@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_mrih_n08 ON xxinv.xxinv_mov_req_instr_headers(delivery_no) TABLESPACE xxidx ;
