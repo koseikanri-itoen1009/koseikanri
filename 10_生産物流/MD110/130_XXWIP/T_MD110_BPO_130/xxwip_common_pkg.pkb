@@ -45,6 +45,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2007/11/13   1.0   H.Itou           新規作成
  *  2008/05/28   1.1   Oracle 二瓶 大輔 結合テスト不具合対応(委託加工費更新関数修正)
+ *  2008/06/02   1.2   Oracle 二瓶 大輔 内部変更要求#130(委託加工費更新関数修正)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -2309,7 +2310,7 @@ AS
     ln_trust_price           NUMBER;   -- 委託加工単価
     ln_trust_price_total     NUMBER;   -- 委託加工費
     lb_return_status         BOOLEAN;
-    lt_trust_calculate_type  xxpo_price_headers.calculate_type%TYPE;  -- 計算区分
+    lt_trust_calculate_type  xxpo_price_headers.calculate_type%TYPE;       -- 計算区分
     lt_material_detail_id    gme_material_details.material_detail_id%TYPE; -- 生産原料詳細ID
 --
     -- *** ローカル・カーソル ***
@@ -2326,17 +2327,28 @@ AS
     -- ***  投入品計取得                           ***
     -- ***********************************************
     BEGIN
-      SELECT SUM(gmd.actual_qty) invest_actual_qty 
+-- 2008/06/02 D.Nihei MOD START
+--      SELECT SUM(gmd.actual_qty) invest_actual_qty 
+--      INTO   ln_invest_actual_qty
+--      FROM   gme_material_details      gmd
+--            ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
+--      WHERE  gmd.batch_id          = it_batch_id
+--      AND    gmd.item_id           = xicv.item_id
+--      AND    gmd.line_type         = gn_material
+--      AND    xicv.item_class_code  IN(gv_item_type_mtl
+--                                     ,gv_item_type_harf_prod
+--                                     ,gv_item_type_prod)
+--      AND    gmd.attribute24       IS NULL
+      SELECT SUM(xmd.invested_qty) invest_actual_qty 
       INTO   ln_invest_actual_qty
-      FROM   gme_material_details      gmd
+      FROM   xxwip_material_detail     xmd  -- 生産原料詳細アドオン
             ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
-      WHERE  gmd.batch_id          = it_batch_id
-      AND    gmd.item_id           = xicv.item_id
-      AND    gmd.line_type         = gn_material
+      WHERE  xmd.batch_id          = it_batch_id
+      AND    xmd.item_id           = xicv.item_id
       AND    xicv.item_class_code  IN(gv_item_type_mtl
                                      ,gv_item_type_harf_prod
                                      ,gv_item_type_prod)
-      AND    gmd.attribute24       IS NULL
+-- 2008/06/02 D.Nihei MOD END
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
