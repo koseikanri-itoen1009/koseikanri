@@ -1,0 +1,54 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcos_mail_send_status_trn
+ * Description     : メール配信状況トラン
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2013/06/12   1.0   K.Kiriu      新規作成
+ ************************************************************************/
+CREATE TABLE xxcos.xxcos_mail_send_status_trn
+(
+  mail_trn_id                     NUMBER       NOT NULL,
+  send_time                       VARCHAR2(5)  NOT NULL,
+  summary_type                    VARCHAR2(1)  NOT NULL,
+  send_flag                       VARCHAR2(1)  NOT NULL,
+  target_date                     DATE         NOT NULL,
+  created_by                      NUMBER(15)   NOT NULL,
+  creation_date                   DATE         NOT NULL,
+  last_updated_by                 NUMBER(15)   NOT NULL,
+  last_update_date                DATE         NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcos_mail_send_status_trn_pk PRIMARY KEY
+  (
+    mail_trn_id     --内部ID
+  )
+  USING INDEX TABLESPACE xxidx2
+)
+;
+--
+COMMENT ON TABLE xxcos.xxcos_mail_send_status_trn                          IS 'メール配信状況トラン';
+--
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.mail_trn_id             IS 'メールトランID';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.send_time               IS '配信タイミング';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.summary_type            IS '集計区分';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.send_flag               IS '送信フラグ';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.target_date             IS '対象日';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.created_by              IS '作成者';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcos.xxcos_mail_send_status_trn.program_update_date     IS 'プログラム更新日';
+--

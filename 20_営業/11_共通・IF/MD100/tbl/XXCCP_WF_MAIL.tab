@@ -1,0 +1,56 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxccp_wf_mail
+ * Description     : アラートメール送信テーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2013/06/14    1.0  K.Kiriu      初回作成
+ ************************************************************************/
+CREATE TABLE xxccp.xxccp_wf_mail
+(
+  wf_mail_id                      NUMBER         NOT NULL,
+  mail_to                         VARCHAR2(600)  NOT NULL,
+  mail_cc                         VARCHAR2(600),
+  mail_bcc                        VARCHAR2(600),
+  mail_subject                    VARCHAR2(200),
+  mail_text                       VARCHAR2(4000),
+  created_by                      NUMBER(15)   NOT NULL,
+  creation_date                   DATE         NOT NULL,
+  last_updated_by                 NUMBER(15)   NOT NULL,
+  last_update_date                DATE         NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxccp_wf_mail_pk PRIMARY KEY
+  (
+    wf_mail_id             -- メールID
+  )
+  USING INDEX TABLESPACE xxidx2
+)
+;
+--
+COMMENT ON TABLE xxccp.xxccp_wf_mail                          IS 'アラートメール送信テーブル';
+--
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.wf_mail_id              IS 'メールID';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.mail_to                 IS '宛先';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.mail_cc                 IS 'CC';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.mail_bcc                IS 'BCC';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.mail_subject            IS 'メール件名';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.mail_text               IS 'メール本文';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.created_by              IS '作成者';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.creation_date           IS '作成日';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.request_id              IS '要求ID';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxccp.xxccp_wf_mail.program_update_date     IS 'プログラム更新日';
+--

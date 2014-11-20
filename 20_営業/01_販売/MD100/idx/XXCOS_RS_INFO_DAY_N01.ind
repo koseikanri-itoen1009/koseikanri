@@ -1,0 +1,16 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcos_rs_info_day 
+ * Description     : 営業員情報日次テーブル(INDEX)
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2013/06/12   1.0  K.kiriu       新規作成
+ ************************************************************************/
+CREATE INDEX xxcos.xxcos_rs_info_day_n01 ON xxcos.xxcos_rs_info_day ( 
+  employee_number    --営業員コード
+) TABLESPACE xxidx2;

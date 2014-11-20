@@ -1,0 +1,67 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_RS_INFO_DAY
+ * Description : 営業員情報日次テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2013/06/12    1.0  K.Kiriu          新規作成
+ ****************************************************************************************/
+CREATE TABLE xxcos.xxcos_rs_info_day
+(
+  rs_info_id                       NUMBER            NOT NULL,
+  base_code                        VARCHAR2(150),
+  employee_number                  VARCHAR2(30),
+  employee_name                    VARCHAR2(301),
+  group_code                       VARCHAR2(150),
+  group_in_sequence                VARCHAR2(150),
+  effective_start_date             DATE,
+  effective_end_date               DATE,
+  per_effective_start_date         DATE,
+  per_effective_end_date           DATE,
+  paa_effective_start_date         DATE,
+  paa_effective_end_date           DATE,
+  created_by                       NUMBER(15)        NOT NULL,
+  creation_date                    DATE              NOT NULL,
+  last_updated_by                  NUMBER(15)        NOT NULL,
+  last_update_date                 DATE              NOT NULL,
+  last_update_login                NUMBER(15),
+  request_id                       NUMBER(15),
+  program_application_id           NUMBER(15),
+  program_id                       NUMBER(15),
+  program_update_date              DATE,
+  CONSTRAINT xxcos_rs_info_day_pk PRIMARY KEY
+  (
+    rs_info_id     --内部ID
+  )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON TABLE  xxcos.xxcos_rs_info_day                             IS '営業員情報日次テーブル';
+--
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.rs_info_id                  IS '営業員情報ID';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.base_code                   IS '拠点コード';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.employee_number             IS '営業員コード';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.employee_name               IS '営業員名称';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.group_code                  IS 'グループ番号';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.group_in_sequence           IS 'グループ内番号';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.effective_start_date        IS '拠点適用開始日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.effective_end_date          IS '拠点適用終了日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.per_effective_start_date    IS '従業員適用開始日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.per_effective_end_date      IS '従業員適用終了日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.paa_effective_start_date    IS 'アサインメント適用開始日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.paa_effective_end_date      IS 'アサインメント適用終了日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.created_by                  IS '作成者';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.creation_date               IS '作成日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.last_updated_by             IS '最終更新者';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.last_update_date            IS '最終更新日';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.last_update_login           IS '最終更新ログイン';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.request_id                  IS '要求ID';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.program_id                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcos.xxcos_rs_info_day.program_update_date         IS 'プログラム更新日';
+--

@@ -1,0 +1,16 @@
+EXECUTE ad_dd.register_table('XXCCP', 'XXCCP_WF_MAIL', 'T');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'WF_MAIL_ID',            1, 'NUMBER',   38,   'N', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'MAIL_TO',               2, 'VARCHAR2', 600,  'N', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'MAIL_CC',               3, 'VARCHAR2', 600,  'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'MAIL_BCC',              4, 'VARCHAR2', 600,  'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'MAIL_SUBJECT',          5, 'VARCHAR2', 200,  'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'MAIL_TEXT',             6, 'VARCHAR2', 4000, 'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'CREATED_BY',            7, 'NUMBER',   15,   'N', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'CREATION_DATE',         8, 'DATE',     9,    'N', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'LAST_UPDATED_BY',       9, 'NUMBER',   15,   'N', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'LAST_UPDATE_DATE',      10,'DATE',     9,    'N', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'LAST_UPDATE_LOGIN',     11,'NUMBER',   15,   'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'REQUEST_ID',            12,'NUMBER',   15,   'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'PROGRAM_APPLICATION_ID',13,'NUMBER',   15,   'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'PROGRAM_ID',            14,'NUMBER',   15,   'Y', 'N');
+EXECUTE ad_dd.register_column('XXCCP', 'XXCCP_WF_MAIL', 'PROGRAM_UPDATE_DATE',   15,'DATE',     9,    'Y', 'N');

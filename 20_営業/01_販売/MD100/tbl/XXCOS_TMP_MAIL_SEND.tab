@@ -1,0 +1,38 @@
+/*****************************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_TMP_MAIL_SEND
+ * Description : 売上目標状況メール配信一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2013/06/12    1.0   K.Kiriu          新規作成
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcos.xxcos_tmp_mail_send
+(
+   area_base_code       VARCHAR2(4),      --地区コード
+   area_base_name       VARCHAR2(360),    --地区名称
+   base_code            VARCHAR2(4),      --拠点コード
+   base_name            VARCHAR2(360),    --拠点名
+   mail_to_1            VARCHAR2(150),    --宛先１
+   mail_to_2            VARCHAR2(150),    --宛先２
+   mail_to_3            VARCHAR2(150),    --宛先３
+   mail_to_4            VARCHAR2(150),    --宛先４
+   base_sort_code       VARCHAR2(240)     --本部コード(新)
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  xxcos.xxcos_tmp_mail_send                 IS '売上目標状況メール配信一時表'
+/
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.area_base_code  IS '地区コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.area_base_name  IS '地区名称';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.base_code       IS '拠点コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.base_name       IS '拠点名';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.mail_to_1       IS '宛先１';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.mail_to_2       IS '宛先２';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.mail_to_3       IS '宛先３';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.mail_to_4       IS '宛先４';
+COMMENT ON COLUMN xxcos.xxcos_tmp_mail_send.base_sort_code  IS '本部コード(新)';
