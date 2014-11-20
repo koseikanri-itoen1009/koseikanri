@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/11/13    1.15  Y.Yamamoto       統合指摘#595対応、内部変更#168
  *  2008/11/20    1.16  Y.Yamamoto       統合指摘#464、#686対応
  *  2008/11/27    1.17  A.Shiina         本番#185対応
+ *  2009/01/23    1.18  N.Yoshida        本番#765対応
  *
  *****************************************************************************************/
 --
@@ -887,9 +888,13 @@ AS
     || ' ELSE' 
     || ' CASE ' 
     || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_w ||''' ) THEN' 
-    || ' xola.pallet_weight + xoha.sum_weight' 
+-- 2009/01/23 v1.18 N.Yoshida UPDATE START
+--    || ' xola.pallet_weight + xoha.sum_weight' 
+    || ' NVL(xoha.sum_pallet_weight, 0) + xoha.sum_weight' 
     || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN' 
-    || ' xola.pallet_weight + xoha.sum_capacity' 
+--    || ' xola.pallet_weight + xoha.sum_capacity' 
+    || ' NVL(xoha.sum_pallet_weight, 0) + xoha.sum_capacity' 
+-- 2009/01/23 v1.18 N.Yoshida UPDATE END
     || ' END' 
     || ' END AS sum_weightm_capacity' 
     || ' ,CASE' 
@@ -1785,9 +1790,13 @@ AS
     || ' ELSE' 
     || ' CASE ' 
     || ' WHEN ( xmrih.weight_capacity_class = '''|| gc_wei_cap_kbn_w ||''' ) THEN' 
-    || ' xmril.pallet_weight + xmrih.sum_weight' 
+-- 2009/01/23 v1.18 N.Yoshida UPDATE START
+--    || ' xmril.pallet_weight + xmrih.sum_weight' 
+    || ' NVL(xmrih.sum_pallet_weight, 0) + xmrih.sum_weight' 
     || ' WHEN ( xmrih.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN' 
-    || ' xmril.pallet_weight + xmrih.sum_capacity' 
+--    || ' xmril.pallet_weight + xmrih.sum_capacity' 
+    || ' NVL(xmrih.sum_pallet_weight, 0) + xmrih.sum_capacity' 
+-- 2009/01/23 v1.18 N.Yoshida UPDATE END
     || ' END' 
     || ' END AS sum_weightm_capacity' 
     || ' ,CASE' 
