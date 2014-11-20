@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.23
+ * Version                : 1.24
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2008/08/28   1.21  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#32対応
  *  2008/09/02   1.22  Oracle 北寒寺正夫[配車解除関数] 統合テスト環境不具合対応
  *  2008/09/03   1.23  Oracle 河野優子  [引当解除関数] 統合テスト不具合対応 移動：複数明細・複数ロット解除対応
+ *  2008/09/03   1.24  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#59対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4852,8 +4853,7 @@ AS
   END cancel_reserve;
 --
   /**********************************************************************************
-   * Function Name    : 
-   
+   * Function Name    : cancel_careers_schedule
    * Description      : 配車解除関数
    ***********************************************************************************/
   FUNCTION cancel_careers_schedule(
@@ -4924,8 +4924,125 @@ AS
     cv_tkn_cap_char        CONSTANT VARCHAR2(30)  := '積載効率(容積)の取得';   -- トークン「積載効率(容積)」
     cv_include             CONSTANT VARCHAR2(1)   := '1';                -- 小口区分(対象)
 -- Ver1.20 M.Hokkanji END
+-- 2008/09/03 H.Itou Add Start PT 1-2_8対応
+    cv_delivery_mixed_flag_deli CONSTANT VARCHAR2(1) := '1'; -- 配送No/混載元No識別フラグ「配送No」
+    cv_delivery_mixed_flag_mix  CONSTANT VARCHAR2(1) := '2'; -- 配送No/混載元No識別フラグ「混載元No」
+    cv_delivery_mixed_flag_no   CONSTANT VARCHAR2(1) := '0'; -- 配送No/混載元No識別フラグ「配送No、混載元No共になし」
+-- 2008/09/03 H.Itou Add End
 --
     cv_tkn_req_mov_no      CONSTANT VARCHAR2(30)  := 'REQ_MOV';          -- 依頼No/移動番号
+-- 2008/09/03 H.Itou Add Start PT 1-2_8対応
+    -- =============================
+    -- 出荷データ取得SQL
+    -- =============================
+    cv_ship_select CONSTANT VARCHAR2(32000) := 
+         '  SELECT xoha.order_header_id             order_header_id             ' -- 受注ヘッダアドオンID
+      || '        ,xoha.req_status                  req_status                  ' -- ステータス
+      || '        ,xoha.request_no                  request_no                  ' -- 依頼No
+      || '        ,xoha.notif_status                notif_status                ' -- 通知ステータス
+      || '        ,xoha.prev_notif_status           prev_notif_status           ' -- 前回通知ステータス
+      || '        ,xola.shipped_quantity            shipped_quantity            ' -- 出荷実績数量
+      || '        ,xola.ship_to_quantity            ship_to_quantity            ' -- 入庫実績実績数量
+      || '        ,xoha.shipping_method_code        shipping_method_code        ' -- 配送区分
+      || '        ,xoha.prod_class                  prod_class                  ' -- 商品区分
+      || '        ,xoha.based_weight                based_weight                ' -- 基本重量
+      || '        ,xoha.based_capacity              based_capacity              ' -- 基本容積
+      || '        ,xoha.weight_capacity_class       weight_capacity_class       ' -- 重量容積区分
+      || '        ,xoha.deliver_from                deliver_from                ' -- 出荷元
+      || '        ,xoha.deliver_to                  deliver_to                  ' -- 配送先
+      || '        ,xoha.schedule_ship_date          schedule_ship_date          ' -- 出庫予定日
+      || '        ,xoha.sum_weight                  sum_weight                  ' -- 積載重量合計
+      || '        ,xoha.sum_capacity                sum_capacity                ' -- 積載容積合計
+      || '        ,xoha.sum_pallet_weight           sum_pallet_weight           ' -- 合計パレット重量
+      || '        ,xoha.freight_charge_class        freight_charge_class        ' -- 運賃区分
+      || '        ,xoha.loading_efficiency_weight   loading_efficiency_weight   ' -- 積載率(重量)
+      || '        ,xoha.loading_efficiency_capacity loading_efficiency_capacity ' -- 積載率(容積)
+      ;
+    cv_ship_from CONSTANT VARCHAR2(32000) := 
+         '  FROM   xxwsh_order_headers_all          xoha  '     -- 受注ヘッダアドオン
+      || '        ,xxwsh_order_lines_all            xola  '     -- 受注明細アドオン
+      || '        ,xxwsh_oe_transaction_types2_v    xott  '     -- 受注タイプ情報VIEW
+      ;
+    cv_ship_where CONSTANT VARCHAR2(32000) := 
+         '  WHERE                                                                         '
+            -- *** 結合条件 *** --
+      || '         xoha.order_header_id                =  xola.order_header_id            ' -- 結合条件 受注ヘッダアドオン AND 受注明細アドオン
+      || '  AND    xoha.order_type_id                  =  xott.transaction_type_id        ' -- 結合条件 受注ヘッダアドオン AND 受注タイプ情報VIEW
+      || '  AND    xott.start_date_active             <= TRUNC( xoha.schedule_ship_date ) ' -- 結合条件 受注ヘッダアドオン AND 受注タイプ情報VIEW
+      || '  AND    NVL(xott.end_date_active, TO_DATE(''99991231'',''YYYYMMDD''))          ' -- 結合条件 受注ヘッダアドオン AND 受注タイプ情報VIEW
+      || '                                            >= TRUNC( xoha.schedule_ship_date ) '
+            -- *** 抽出条件 *** --
+      || '  AND    NVL(xoha.latest_external_flag, ''' || cv_flag_no || ''') = ''' || cv_flag_yes   || ''' ' -- 抽出条件 受注ヘッダアドオン.最新フラグ：「Y」
+      || '  AND    NVL(xola.delete_flag,          ''' || cv_flag_no || ''') = ''' || cv_flag_no    || ''' ' -- 抽出条件 受注明細アドオン.削除フラグ：「N」
+      || '  AND    xott.shipping_shikyu_class                               = ''' || cv_ship_req   || ''' ' -- 抽出条件 受注タイプ情報VIEW.出荷支給区分：「1：出荷依頼」
+      || '  AND    xott.order_category_code                                 = ''' || cv_cate_order || ''' ' -- 抽出条件 受注タイプ情報VIEW.受注カテゴリコード：「ORDER：受注」
+      ;
+    cv_ship_where_request_no CONSTANT VARCHAR2(32000) := 
+         '  AND    xoha.request_no  = :lv_search_key_no   '; -- 抽出条件 受注ヘッダアドオン.依頼No：「IN依頼No」
+    cv_ship_where_delivery_no CONSTANT VARCHAR2(32000) := 
+         '  AND    xoha.delivery_no = :lv_search_key_no   '  -- 抽出条件 受注ヘッダアドオン.配送No：ロック取得時に取得した配送No/混載元No
+      || '  AND    xoha.delivery_no IS NOT NULL           '  -- 抽出条件 受注ヘッダアドオン.配送NoがNULLでない
+      ;
+    cv_ship_where_mixed_no CONSTANT VARCHAR2(32000) := 
+         '  AND    xoha.mixed_no    = :lv_search_key_no   '  -- 抽出条件 受注ヘッダアドオン.混載元No：ロック取得時に取得した配送No/混載元No
+      || '  AND    xoha.delivery_no IS NULL               '  -- 抽出条件 受注ヘッダアドオン.配送NoがNULL
+      ;
+    cv_ship_order_by CONSTANT VARCHAR2(32000) := 
+         '  ORDER BY order_header_id     ';  -- 受注ヘッダアドオン.受注ヘッダアドオンID
+    cv_union_all CONSTANT VARCHAR2(32000) := 
+         '  UNION ALL ';
+--
+    -- =============================
+    -- 支給データ取得SQL
+    -- =============================
+    cv_supply_select CONSTANT VARCHAR2(32000) := 
+         '  SELECT xoha.order_header_id             order_header_id             ' -- 受注ヘッダアドオンID
+      || '        ,xoha.req_status                  req_status                  ' -- ステータス
+      || '        ,xoha.request_no                  request_no                  ' -- 依頼No
+      || '        ,xoha.notif_status                notif_status                ' -- 通知ステータス
+      || '        ,xoha.prev_notif_status           prev_notif_status           ' -- 前回通知ステータス
+      || '        ,xola.shipped_quantity            shipped_quantity            ' -- 出荷実績数量
+      || '        ,xola.ship_to_quantity            ship_to_quantity            ' -- 入庫実績実績数量
+      || '        ,xoha.shipping_method_code        shipping_method_code        ' -- 配送区分
+      || '        ,xoha.prod_class                  prod_class                  ' -- 商品区分
+      || '        ,xoha.based_weight                based_weight                ' -- 基本重量
+      || '        ,xoha.based_capacity              based_capacity              ' -- 基本容積
+      || '        ,xoha.weight_capacity_class       weight_capacity_class       ' -- 重量容積区分
+      || '        ,xoha.deliver_from                deliver_from                ' -- 出荷元
+      || '        ,xoha.vendor_site_code            vendor_site_code            ' -- 取引先サイト
+      || '        ,xoha.schedule_ship_date          schedule_ship_date          ' -- 出庫予定日
+      || '        ,xoha.sum_weight                  sum_weight                  ' -- 積載重量合計
+      || '        ,xoha.sum_capacity                sum_capacity                ' -- 積載容積合計
+      || '        ,xoha.freight_charge_class        freight_charge_class        ' -- 運賃区分
+      || '        ,xoha.loading_efficiency_weight   loading_efficiency_weight   ' -- 積載率(重量)
+      || '        ,xoha.loading_efficiency_capacity loading_efficiency_capacity ' -- 積載率(容積)
+      ;
+    cv_supply_from CONSTANT VARCHAR2(32000) := 
+         '  FROM   xxwsh_order_headers_all          xoha  '     -- 受注ヘッダアドオン
+      || '        ,xxwsh_order_lines_all            xola  '     -- 受注明細アドオン
+      || '        ,xxwsh_oe_transaction_types2_v    xott  '     -- 受注タイプ情報VIEW
+      ;
+    cv_supply_where CONSTANT VARCHAR2(32000) := 
+         '  WHERE                                                                          '
+            -- *** 結合条件 *** --
+      || '         xoha.order_header_id                =  xola.order_header_id            ' -- 結合条件 受注ヘッダアドオン AND 受注明細アドオン
+      || '  AND    xoha.order_type_id                  =  xott.transaction_type_id        ' -- 結合条件 受注ヘッダアドオン AND 受注タイプ情報VIEW
+      || '  AND    xott.start_date_active             <= TRUNC( xoha.schedule_ship_date ) ' -- 結合条件 受注ヘッダアドオン AND 受注タイプ情報VIEW
+      || '  AND    NVL(xott.end_date_active, TO_DATE(''99991231'',''YYYYMMDD''))          ' -- 結合条件 受注ヘッダアドオン AND 受注タイプ情報VIEW
+      || '                                            >= TRUNC( xoha.schedule_ship_date ) '
+            -- *** 抽出条件 *** --
+      || '  AND    NVL(xoha.latest_external_flag, ''' || cv_flag_no || ''') = ''' || cv_flag_yes   || ''' ' -- 抽出条件 受注ヘッダアドオン.最新フラグ：「Y」
+      || '  AND    NVL(xola.delete_flag,          ''' || cv_flag_no || ''') = ''' || cv_flag_no    || ''' ' -- 抽出条件 受注明細アドオン.削除フラグ：「N」
+      || '  AND    xott.shipping_shikyu_class                               = ''' || cv_supply_req || ''' ' -- 抽出条件 受注タイプ情報VIEW.出荷支給区分：「2：支給依頼」
+      || '  AND    xott.order_category_code                                 = ''' || cv_cate_order || ''' ' -- 抽出条件 受注タイプ情報VIEW.受注カテゴリコード：「ORDER：受注」
+      ;
+    cv_supply_where_request_no CONSTANT VARCHAR2(32000) := 
+         '  AND    xoha.request_no  = :lv_search_key_no   '; -- 抽出条件 受注ヘッダアドオン.依頼No：「IN依頼No」
+    cv_supply_where_delivery_no CONSTANT VARCHAR2(32000) := 
+         '  AND    xoha.delivery_no = :lv_search_key_no   '; -- 抽出条件 受注ヘッダアドオン.配送No：ロック取得時に取得した配送No
+    cv_supply_order_by CONSTANT VARCHAR2(32000) := 
+         '  ORDER BY xoha.order_header_id     ';  -- 受注ヘッダアドオン.受注ヘッダアドオンID
+-- 2008/09/03 H.Itou Add End
 --
     -- *** ローカル変数 ***
     lv_status               VARCHAR2(2);              -- ステータス
@@ -4982,8 +5099,19 @@ AS
     ln_sum_weight                   NUMBER;                                         -- 合計重量
     ln_sum_capacity                 NUMBER;                                         -- 合計容積
 -- Ver1.20 M.Hokkanji END
+-- 2008/09/03 H.Itou Add Start PT 1-2_8対応
+    lv_delivery_mixed_flag          VARCHAR2(1); -- 配送No/混載元No識別フラグ
+    lv_sql                          VARCHAR2(32767); -- 動的SQL用
+    lv_where_search_key             VARCHAR2(32767); -- 検索キーWHERE句
+    lv_search_key_no                VARCHAR2(32767); -- 検索キー
+-- 2008/09/03 H.Itou Add End
 --
     -- *** ローカル・カーソル ***
+-- 2008/09/03 H.Itou Add Start PT 1-2_8対応
+    TYPE ref_cursor   IS REF CURSOR ;
+    cur_ship_data     ref_cursor ;  -- 出荷データ
+    cur_supply_data   ref_cursor ;  -- 支給データ
+-- 2008/09/03 H.Itou Add End
 --
     -- *** ローカル・レコード ***
 --
@@ -5030,8 +5158,8 @@ AS
     IF (iv_biz_type = cv_ship) THEN
       SELECT xoha.req_status,                               -- ステータス
 -- Ver1.20 M.Hokkanji Start
---             xoha.delivery_no                               -- 配送No
-             NVL(xoha.delivery_no,xoha.mixed_no)              -- 配送No/混載元No
+--             xoha.delivery_no                             -- 配送No
+             NVL(xoha.delivery_no,xoha.mixed_no)            -- 配送No/混載元No
 -- Ver1.20 M.Hokkanji End
       INTO   lv_status,
              lv_delivery_no
@@ -5082,52 +5210,106 @@ AS
     -- **************************************************
     -- *** 2.配車解除可否チェック(出荷)
     -- **************************************************
-    SELECT xoha.order_header_id,                          -- 受注ヘッダアドオンID
-           xoha.req_status,                               -- ステータス
-           xoha.request_no,
-           xoha.notif_status,
-           xoha.prev_notif_status,
-           xola.shipped_quantity,                         -- 出荷実績数量
-           xola.ship_to_quantity,                         -- 入庫実績実績数量
--- Ver1.20 M.Hokkanji START
-           xoha.shipping_method_code,                     -- 配送区分
-           xoha.prod_class,                               -- 商品区分
-           xoha.based_weight,                             -- 基本重量
-           xoha.based_capacity,                           -- 基本容積
-           xoha.weight_capacity_class,                    -- 重量容積区分
-           xoha.deliver_from,                             -- 出荷元
-           xoha.deliver_to,                               -- 配送先
-           xoha.schedule_ship_date,                       -- 出庫予定日
-           xoha.sum_weight,                               -- 積載重量合計
-           xoha.sum_capacity,                             -- 積載容積合計
-           xoha.sum_pallet_weight,                        -- 合計パレット重量
-           xoha.freight_charge_class,                     -- 運賃区分
-           xoha.loading_efficiency_weight,                -- 積載率(重量)
-           xoha.loading_efficiency_capacity               -- 積載率(容積)
--- Ver1.20 M.Hokkanji END
-    BULK COLLECT INTO
-           gt_chk_ship_tbl
-    FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
-           xxwsh_order_lines_all              xola,       -- 受注明細アドオン
-           xxwsh_oe_transaction_types2_v       xott        -- 受注タイプ情報VIEW
-    WHERE  (((iv_biz_type = cv_ship) AND (lv_delivery_no IS NULL) AND
-             (xoha.request_no = iv_request_no))
-    OR     (((iv_biz_type <> cv_ship) OR
-           ((iv_biz_type = cv_ship) AND (lv_delivery_no IS NOT NULL))) AND
--- Ver1.20 M.Hokkanji START
-             (NVL(xoha.delivery_no,xoha.mixed_no) = lv_delivery_no)))
---             (xoha.delivery_no = lv_delivery_no)))
--- Ver1.20 M.Hokkanji End
-    AND    xoha.order_type_id                         =  xott.transaction_type_id
-    AND    xoha.order_header_id                       =  xola.order_header_id
-    AND    NVL(xola.delete_flag, cv_flag_no)          =  cv_flag_no
-    AND    xott.shipping_shikyu_class                 =  cv_ship_req
-    AND    xott.order_category_code                   =  cv_cate_order
-    AND    xott.start_date_active                     <= trunc( xoha.schedule_ship_date )
-    AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
-                                                      >= trunc( xoha.schedule_ship_date )
-    AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
-    ORDER BY xoha.order_header_id;
+-- 2008/09/03 H.Itou Add Start PT 1-2_8対応 動的SQLに変更。
+    -- 業務種別が「1：出荷」以外で、DBの配送No・混載元Noに値がない場合、検索を行わない。
+    IF ((iv_biz_type <> cv_ship)
+    AND (lv_delivery_no IS NULL)) THEN
+      NULL;
+--
+    -- 上記以外の場合、検索実行
+    ELSE
+      -- INパラメータ.業務種別が「1：出荷」かつ、DBの配送No・混載元NoがNULLの場合、依頼Noで検索
+      IF ((iv_biz_type = cv_ship) 
+      AND (lv_delivery_no IS NULL)) THEN
+        -- SQL生成
+        lv_sql := cv_ship_select
+               || cv_ship_from
+               || cv_ship_where
+               || cv_ship_where_request_no
+               || cv_ship_order_by
+               ;
+--
+        -- カーソルオープン
+        OPEN cur_ship_data FOR lv_sql
+        USING iv_request_no   -- 検索キー(依頼No)
+        ;
+--
+      -- 上記以外の場合、配送No・混載元Noで検索
+      ELSE
+        -- SQL生成
+        lv_sql := cv_ship_select
+               || cv_ship_from
+               || cv_ship_where
+               || cv_ship_where_delivery_no
+               || cv_union_all
+               || cv_ship_select
+               || cv_ship_from
+               || cv_ship_where
+               || cv_ship_where_mixed_no
+               || cv_ship_order_by
+               ;
+--
+        -- カーソルオープン
+        OPEN cur_ship_data FOR lv_sql
+        USING lv_delivery_no   -- 検索キー(配送No/混載元No)
+             ,lv_delivery_no   -- 検索キー(配送No/混載元No)
+        ;
+      END IF;
+--
+      -- バルクフェッチ
+      FETCH cur_ship_data BULK COLLECT INTO gt_chk_ship_tbl;
+      -- カーソルクローズ
+      CLOSE cur_ship_data;
+--
+    END IF;
+--
+--    SELECT xoha.order_header_id,                          -- 受注ヘッダアドオンID
+--           xoha.req_status,                               -- ステータス
+--           xoha.request_no,
+--           xoha.notif_status,
+--           xoha.prev_notif_status,
+--           xola.shipped_quantity,                         -- 出荷実績数量
+--           xola.ship_to_quantity,                         -- 入庫実績実績数量
+---- Ver1.20 M.Hokkanji START
+--           xoha.shipping_method_code,                     -- 配送区分
+--           xoha.prod_class,                               -- 商品区分
+--           xoha.based_weight,                             -- 基本重量
+--           xoha.based_capacity,                           -- 基本容積
+--           xoha.weight_capacity_class,                    -- 重量容積区分
+--           xoha.deliver_from,                             -- 出荷元
+--           xoha.deliver_to,                               -- 配送先
+--           xoha.schedule_ship_date,                       -- 出庫予定日
+--           xoha.sum_weight,                               -- 積載重量合計
+--           xoha.sum_capacity,                             -- 積載容積合計
+--           xoha.sum_pallet_weight,                        -- 合計パレット重量
+--           xoha.freight_charge_class,                     -- 運賃区分
+--           xoha.loading_efficiency_weight,                -- 積載率(重量)
+--           xoha.loading_efficiency_capacity               -- 積載率(容積)
+---- Ver1.20 M.Hokkanji END
+--    BULK COLLECT INTO
+--           gt_chk_ship_tbl
+--    FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
+--           xxwsh_order_lines_all              xola,       -- 受注明細アドオン
+--           xxwsh_oe_transaction_types2_v       xott        -- 受注タイプ情報VIEW
+--    WHERE  (((iv_biz_type = cv_ship) AND (lv_delivery_no IS NULL) AND
+--             (xoha.request_no = iv_request_no))
+--    OR     (((iv_biz_type <> cv_ship) OR
+--           ((iv_biz_type = cv_ship) AND (lv_delivery_no IS NOT NULL))) AND
+---- Ver1.20 M.Hokkanji START
+--             (NVL(xoha.delivery_no,xoha.mixed_no) = lv_delivery_no)))
+----             (xoha.delivery_no = lv_delivery_no)))
+---- Ver1.20 M.Hokkanji End
+--    AND    xoha.order_type_id                         =  xott.transaction_type_id
+--    AND    xoha.order_header_id                       =  xola.order_header_id
+--    AND    NVL(xola.delete_flag, cv_flag_no)          =  cv_flag_no
+--    AND    xott.shipping_shikyu_class                 =  cv_ship_req
+--    AND    xott.order_category_code                   =  cv_cate_order
+--    AND    xott.start_date_active                     <= trunc( xoha.schedule_ship_date )
+--    AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
+--                                                      >= trunc( xoha.schedule_ship_date )
+--    AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
+--    ORDER BY xoha.order_header_id;
+-- 2008/09/03 H.Itou Mod End
     IF (gt_chk_ship_tbl.COUNT > 0) THEN
       -- データが存在する場合はカウント
       ln_data_count := ln_data_count + 1;
@@ -5641,48 +5823,88 @@ AS
     -- **************************************************
     -- *** 4.配車解除可否チェック(支給)
     -- **************************************************
-    SELECT xoha.order_header_id,                          -- 受注ヘッダアドオンID
-           xoha.req_status,                               -- ステータス
-           xoha.request_no,
-           xoha.notif_status,
-           xoha.prev_notif_status,
-           xola.shipped_quantity,                         -- 出荷実績数量
-           xola.ship_to_quantity,                         -- 入庫実績実績数量
--- Ver1.20 M.Hokkanji START
-           xoha.shipping_method_code,                     -- 配送区分
-           xoha.prod_class,                               -- 商品区分
-           xoha.based_weight,                             -- 基本重量
-           xoha.based_capacity,                           -- 基本容積
-           xoha.weight_capacity_class,                    -- 重量容積区分
-           xoha.deliver_from,                             -- 出荷元
-           xoha.vendor_site_code,                         -- 取引先サイト
-           xoha.schedule_ship_date,                       -- 出庫予定日
-           xoha.sum_weight,                               -- 積載重量合計
-           xoha.sum_capacity,                             -- 積載容積合計
-           xoha.freight_charge_class,                     -- 運賃区分
-           xoha.loading_efficiency_weight,                -- 積載率(重量)
-           xoha.loading_efficiency_capacity               -- 積載率(容積)
--- Ver1.20 M.Hokkanji END
-    BULK COLLECT INTO
-           gt_chk_supply_tbl
-    FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
-           xxwsh_order_lines_all              xola,       -- 受注明細アドオン
-           xxwsh_oe_transaction_types2_v       xott        -- 受注タイプ情報VIEW
-    WHERE  (((iv_biz_type = cv_supply) AND (lv_delivery_no IS NULL) AND
-             (xoha.request_no = iv_request_no))
-    OR     (((iv_biz_type <> cv_supply) OR
-           ((iv_biz_type = cv_supply) AND (lv_delivery_no IS NOT NULL))) AND
-             (xoha.delivery_no = lv_delivery_no)))
-    AND    xoha.order_type_id                         =  xott.transaction_type_id
-    AND    xoha.order_header_id                       =  xola.order_header_id
-    AND    NVL(xola.delete_flag, cv_flag_no)          =  cv_flag_no
-    AND    xott.shipping_shikyu_class                 =  cv_supply_req
-    AND    xott.order_category_code                   =  cv_cate_order
-    AND    xott.start_date_active                     <= trunc( xoha.schedule_ship_date )
-    AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
-                                                      >= trunc( xoha.schedule_ship_date )
-    AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
-    ORDER BY xoha.order_header_id;
+-- 2008/09/03 H.Itou Mod Start PT 1-2_8対応
+    -- 業務種別が「2：支給」以外で、DBの配送No・混載元Noに値がない場合、検索を行わない。
+    IF ((iv_biz_type <> cv_supply) 
+    AND (lv_delivery_no IS NULL)) THEN
+      NULL;
+--
+    -- 上記以外の場合、検索実行
+    ELSE
+      -- INパラメータ.業務種別が「2：支給」かつ、DBの配送NoがNULLの場合、依頼Noで検索
+      IF ((iv_biz_type = cv_supply) 
+      AND (lv_delivery_no IS NULL)) THEN
+        lv_where_search_key := cv_supply_where_request_no;
+        lv_search_key_no    := iv_request_no;
+--
+      -- 上記以外は配送Noで検索
+      ELSE
+        lv_where_search_key := cv_supply_where_delivery_no;
+        lv_search_key_no    := lv_delivery_no;
+--
+      END IF;
+--
+      -- SQL生成
+      lv_sql := cv_supply_select
+             || cv_supply_from
+             || cv_supply_where
+             || lv_where_search_key
+             || cv_supply_order_by
+             ;
+--
+      -- カーソルオープン
+      OPEN cur_supply_data FOR lv_sql
+      USING lv_search_key_no;  -- 検索キー（依頼Noか配送No/混載元No)
+      -- バルクフェッチ
+      FETCH cur_supply_data BULK COLLECT INTO gt_chk_supply_tbl;
+      -- カーソルクローズ
+      CLOSE cur_supply_data;
+    END IF;
+--
+--
+--    SELECT xoha.order_header_id,                          -- 受注ヘッダアドオンID
+--           xoha.req_status,                               -- ステータス
+--           xoha.request_no,
+--           xoha.notif_status,
+--           xoha.prev_notif_status,
+--           xola.shipped_quantity,                         -- 出荷実績数量
+--           xola.ship_to_quantity,                         -- 入庫実績実績数量
+---- Ver1.20 M.Hokkanji START
+--           xoha.shipping_method_code,                     -- 配送区分
+--           xoha.prod_class,                               -- 商品区分
+--           xoha.based_weight,                             -- 基本重量
+--           xoha.based_capacity,                           -- 基本容積
+--           xoha.weight_capacity_class,                    -- 重量容積区分
+--           xoha.deliver_from,                             -- 出荷元
+--           xoha.vendor_site_code,                         -- 取引先サイト
+--           xoha.schedule_ship_date,                       -- 出庫予定日
+--           xoha.sum_weight,                               -- 積載重量合計
+--           xoha.sum_capacity,                             -- 積載容積合計
+--           xoha.freight_charge_class,                     -- 運賃区分
+--           xoha.loading_efficiency_weight,                -- 積載率(重量)
+--           xoha.loading_efficiency_capacity               -- 積載率(容積)
+---- Ver1.20 M.Hokkanji END
+--    BULK COLLECT INTO
+--           gt_chk_supply_tbl
+--    FROM   xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
+--           xxwsh_order_lines_all              xola,       -- 受注明細アドオン
+--           xxwsh_oe_transaction_types2_v       xott        -- 受注タイプ情報VIEW
+--    WHERE  (((iv_biz_type = cv_supply) AND (lv_delivery_no IS NULL) AND
+--             (xoha.request_no = iv_request_no))
+--    OR     (((iv_biz_type <> cv_supply) OR
+--           ((iv_biz_type = cv_supply) AND (lv_delivery_no IS NOT NULL))) AND
+--             (xoha.delivery_no = lv_delivery_no)))
+--    AND    xoha.order_type_id                         =  xott.transaction_type_id
+--    AND    xoha.order_header_id                       =  xola.order_header_id
+--    AND    NVL(xola.delete_flag, cv_flag_no)          =  cv_flag_no
+--    AND    xott.shipping_shikyu_class                 =  cv_supply_req
+--    AND    xott.order_category_code                   =  cv_cate_order
+--    AND    xott.start_date_active                     <= trunc( xoha.schedule_ship_date )
+--    AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
+--                                                      >= trunc( xoha.schedule_ship_date )
+--    AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
+--    ORDER BY xoha.order_header_id;
+-- 2008/09/03 H.Itou Mod End
 --
     IF (gt_chk_supply_tbl.COUNT > 0) THEN
       -- データが存在する場合はカウント
