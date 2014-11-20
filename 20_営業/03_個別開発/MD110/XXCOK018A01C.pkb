@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/10/05    1.7   K.Yamaguchi      [仕様変更I_E_566] 取引タイプを業態（小分類）毎に設定可能に変更
  *  2009/10/19    1.8   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
  *  2010/04/26    1.9   S.Arizumi        [E_本稼動_02268] 入金時値引に対する課税時の勘定科目は仮受消費税を設定
+ *  2010/07/09    1.10  S.Arizumi        [E_本稼動_02001] AR Web Inquiryに項目を追加する件
  *
  *****************************************************************************************/
 --
@@ -164,7 +165,13 @@ AS
   cv_low_type_delivery_vd    CONSTANT VARCHAR2(2)  := '26';      -- 納品VD
   cv_low_type_digestion_vd   CONSTANT VARCHAR2(2)  := '27';      -- 消化VD
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
-  cv_validate_flag           CONSTANT VARCHAR2(1)  := 'N';       --有効フラグ
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR START
+--  cv_validate_flag           CONSTANT VARCHAR2(1)  := 'N';       --有効フラグ
+  cv_tax_validate_flag_valid CONSTANT VARCHAR2(1)  := 'Y';          --AR税金マスタ    ：有効フラグ
+  cv_cust_status_available   CONSTANT VARCHAR2(1)  := 'A';          --顧客サイトマスタ：有効
+  cn_account_name_len        CONSTANT NUMBER       := 150;          --顧客名称 最大文字数
+  cv_fmt_yyyy_mm_dd          CONSTANT VARCHAR2(10) := 'YYYY/MM/DD'; --書式：YYYY/MM/DD
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR END
   cn_no_tax                  CONSTANT NUMBER       := 0;         --消費税率
   cn_rev_num                 CONSTANT NUMBER       := 1;         --明細番号
 -- 2009/3/24     ver1.2   T.Taniguchi  ADD STR
@@ -225,6 +232,10 @@ AS
   gn_ship_address_id         NUMBER         DEFAULT NULL; --出荷先顧客サイトID
   gn_bill_account_id         NUMBER         DEFAULT NULL; --請求先顧客ID
   gn_bill_address_id         NUMBER         DEFAULT NULL; --請求先顧客サイトID
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD START
+  gt_ship_account_code       hz_cust_accounts.account_number%TYPE DEFAULT NULL; -- 出荷先顧客コード
+  gt_ship_account_name       hz_parties.party_name%TYPE           DEFAULT NULL; -- 出荷先顧客名
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD END
   gv_tax_flag                VARCHAR2(1)    DEFAULT NULL; --消費税税フラグ
   gn_tax_rate                NUMBER         DEFAULT NULL; --消費税率
   gn_tax_amt                 NUMBER         DEFAULT NULL; --消費税額
@@ -620,6 +631,12 @@ AS
       , header_attribute8            -- 個別請求書印刷
       , header_attribute9            -- 一括請求書印刷
       , header_attribute11           -- 入金拠点コード
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD START
+      , header_attribute12           -- 出荷先顧客コード
+      , header_attribute13           -- 出荷先顧客名称
+      , header_attribute14           -- 伝票番号
+      , header_attribute15           -- GL記帳日
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD END
       , creation_date                -- 新規作成日付
       , org_id                       -- オルグID
       , amount_includes_tax_flag     -- 内税フラグ
@@ -667,6 +684,12 @@ AS
       , cv_waiting                   -- 個別請求書印刷        :'WAITING'
       , cv_waiting                   -- 一括請求書印刷        :'WAITING'
       , gv_cash_receiv_base_code     -- 入金拠点コード        :顧客情報１.入金拠点コード
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD START
+      , gt_ship_account_code                                    -- 出荷先顧客コード
+      , SUBSTRB( gt_ship_account_name, 1, cn_account_name_len ) -- 出荷先顧客名称
+      , NULL                                                    -- 伝票番号
+      , TO_CHAR( it_trx_date, cv_fmt_yyyy_mm_dd )               -- GL記帳日
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD END
       , SYSDATE                      -- 新規作成日付          :SYSDATE
       , gn_org_id                    -- オルグID              :初期処理で取得した組織ID
       , gv_tax_flag                  -- 内税フラグ            :AR税金マスタから取得
@@ -823,7 +846,10 @@ AS
         FROM   ar_vat_tax_all_b           avtab                          -- AR税金マスタ
         WHERE  avtab.set_of_books_id      = gn_set_of_bks_id             -- 会計帳簿ID
         AND    avtab.tax_code             = i_discnt_amount_rec.tax_code -- 税コード
-        AND    avtab.validate_flag       <> cv_validate_flag             -- 有効フラグ
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR START
+--        AND    avtab.validate_flag       <> cv_validate_flag             -- 有効フラグ
+        AND    avtab.validate_flag        = cv_tax_validate_flag_valid     -- 有効フラグ
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR END
         AND    avtab.org_id               = gn_org_id                    -- 営業単位ID
 -- 2009/10/19 Ver.1.8 [障害E_T3_00631] SCS K.Yamaguchi REPAIR START
 --        AND    gd_operation_date BETWEEN avtab.start_date AND NVL( avtab.end_date, ( gd_operation_date ) )
@@ -1208,71 +1234,109 @@ AS
     IF( gv_slip_number IS NULL ) THEN
       RAISE get_slip_number_expt;
     END IF;
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR START
+--    --==================================================================
+--    --納品顧客コードに紐づく顧客情報を取得
+--    --==================================================================
+--    BEGIN
+--      SELECT xhv.ship_account_id       AS ship_account_id                       -- 出荷先顧客ID
+--           , xhv.cash_receiv_base_code AS cash_receiv_base_code                 -- 入金拠点コード
+--           , xca.business_low_type     AS business_low_type                     -- 業態（小分類）
+--      INTO   gn_ship_account_id
+--           , gv_cash_receiv_base_code
+--           , gv_business_low_type
+--      FROM   xxcfr_cust_hierarchy_v    xhv                                      -- 顧客階層ビュー
+--           , hz_cust_accounts          hca                                      -- 顧客マスタ
+--           , xxcmm_cust_accounts       xca                                      -- 請求先顧客追加情報
+--      WHERE  hca.cust_account_id       = xca.customer_id                        -- 顧客ID = 顧客ID
+--      AND    xhv.ship_account_number   = i_discnt_amount_rec.delivery_cust_code -- 顧客コード = 納品顧客コード
+--      AND    xhv.ship_account_number   = xca.customer_code;                     -- 顧客コード = 顧客コード
+----
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        RAISE get_cust_info_expt;
+--    END;
+--    --==================================================================
+--    --出荷先顧客IDに紐づく顧客サイトIDを取得
+--    --==================================================================
+--    BEGIN
+--      SELECT hcasa.cust_acct_site_id AS cust_acct_site_id                       -- 顧客サイトID
+--      INTO   gn_ship_address_id
+--      FROM   hz_cust_acct_sites_all  hcasa                                      -- 顧客サイトマスタ
+--      WHERE  hcasa.cust_account_id   = gn_ship_account_id                       -- 出荷先顧客ID
+---- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+--      AND    hcasa.org_id            = gn_org_id;                               -- 組織ID
+---- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+----
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        RAISE get_cust_info_expt;
+--    END;
+--    --==================================================================
+--    --請求顧客コードに紐づく顧客情報を取得
+--    --==================================================================
+--    BEGIN
+--      SELECT xhv.bill_account_id     AS bill_account_id                         -- 請求先顧客ID
+--      INTO   gn_bill_account_id
+--      FROM   xxcfr_cust_hierarchy_v  xhv                                        -- 顧客階層ビュー
+--      WHERE  xhv.bill_account_number = i_discnt_amount_rec.demand_to_cust_code  -- 請求顧客コード
+---- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+--      AND    xhv.ship_account_number = i_discnt_amount_rec.delivery_cust_code;  -- 納品顧客コード
+---- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+----
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        RAISE get_cust_info_expt;
+--    END;
+--    --==================================================================
+--    --請求先顧客IDに紐づく顧客サイトIDを取得
+--    --==================================================================
+--    BEGIN
+--      SELECT hcasa.cust_acct_site_id AS cust_acct_site_id                       -- 顧客サイトID
+--      INTO   gn_bill_address_id
+--      FROM   hz_cust_acct_sites_all  hcasa                                      -- 顧客サイトマスタ
+--      WHERE  hcasa.cust_account_id   = gn_bill_account_id                       -- 請求先顧客ID
+---- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+--      AND    hcasa.org_id            = gn_org_id;                               -- 組織ID
+---- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+----
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        RAISE get_cust_info_expt;
+--    END;
     --==================================================================
-    --納品顧客コードに紐づく顧客情報を取得
+    -- 顧客情報を取得
     --==================================================================
     BEGIN
-      SELECT xhv.ship_account_id       AS ship_account_id                       -- 出荷先顧客ID
-           , xhv.cash_receiv_base_code AS cash_receiv_base_code                 -- 入金拠点コード
-           , xca.business_low_type     AS business_low_type                     -- 業態（小分類）
-      INTO   gn_ship_account_id
-           , gv_cash_receiv_base_code
-           , gv_business_low_type
-      FROM   xxcfr_cust_hierarchy_v    xhv                                      -- 顧客階層ビュー
-           , hz_cust_accounts          hca                                      -- 顧客マスタ
-           , xxcmm_cust_accounts       xca                                      -- 請求先顧客追加情報
-      WHERE  hca.cust_account_id       = xca.customer_id                        -- 顧客ID = 顧客ID
-      AND    xhv.ship_account_number   = i_discnt_amount_rec.delivery_cust_code -- 顧客コード = 納品顧客コード
-      AND    xhv.ship_account_number   = xca.customer_code;                     -- 顧客コード = 顧客コード
---
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        RAISE get_cust_info_expt;
-    END;
-    --==================================================================
-    --出荷先顧客IDに紐づく顧客サイトIDを取得
-    --==================================================================
-    BEGIN
-      SELECT hcasa.cust_acct_site_id AS cust_acct_site_id                       -- 顧客サイトID
-      INTO   gn_ship_address_id
-      FROM   hz_cust_acct_sites_all  hcasa                                      -- 顧客サイトマスタ
-      WHERE  hcasa.cust_account_id   = gn_ship_account_id                       -- 出荷先顧客ID
--- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
-      AND    hcasa.org_id            = gn_org_id;                               -- 組織ID
--- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
---
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        RAISE get_cust_info_expt;
-    END;
-    --==================================================================
-    --請求顧客コードに紐づく顧客情報を取得
-    --==================================================================
-    BEGIN
-      SELECT xhv.bill_account_id     AS bill_account_id                         -- 請求先顧客ID
-      INTO   gn_bill_account_id
-      FROM   xxcfr_cust_hierarchy_v  xhv                                        -- 顧客階層ビュー
-      WHERE  xhv.bill_account_number = i_discnt_amount_rec.demand_to_cust_code  -- 請求顧客コード
--- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
-      AND    xhv.ship_account_number = i_discnt_amount_rec.delivery_cust_code;  -- 納品顧客コード
--- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
---
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        RAISE get_cust_info_expt;
-    END;
-    --==================================================================
-    --請求先顧客IDに紐づく顧客サイトIDを取得
-    --==================================================================
-    BEGIN
-      SELECT hcasa.cust_acct_site_id AS cust_acct_site_id                       -- 顧客サイトID
-      INTO   gn_bill_address_id
-      FROM   hz_cust_acct_sites_all  hcasa                                      -- 顧客サイトマスタ
-      WHERE  hcasa.cust_account_id   = gn_bill_account_id                       -- 請求先顧客ID
--- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
-      AND    hcasa.org_id            = gn_org_id;                               -- 組織ID
--- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
---
+      SELECT    xchv.cash_receiv_base_code  AS cash_receiv_base_code  -- 入金拠点コード
+              , ship_xca.business_low_type  AS ship_business_low_type -- 【出荷先】業態(小分類)
+              , xchv.ship_account_id        AS ship_account_id        -- 【出荷先】顧客ID
+              , ship_hcas.cust_acct_site_id AS ship_acct_site_id      -- 【出荷先】顧客サイトID
+              , xchv.ship_account_number    AS ship_account_number    -- 【出荷先】顧客コード
+              , xchv.ship_account_name      AS ship_account_name      -- 【出荷先】顧客名
+              , xchv.bill_account_id        AS bill_account_id        -- 【請求先】顧客ID
+              , bill_hcas.cust_acct_site_id AS bill_acct_site_id      -- 【請求先】顧客サイトID
+      INTO  gv_cash_receiv_base_code  -- 入金拠点コード
+          , gv_business_low_type      -- 業態(小分類)
+          , gn_ship_account_id        -- 出荷先顧客ID
+          , gn_ship_address_id        -- 出荷先顧客サイトID
+          , gt_ship_account_code      -- 出荷先顧客コード
+          , gt_ship_account_name      -- 出荷先顧客名
+          , gn_bill_account_id        -- 請求先顧客ID
+          , gn_bill_address_id        -- 請求先顧客サイトID
+      FROM      xxcfr_cust_hierarchy_v  xchv      -- 顧客階層ビュー
+              , xxcmm_cust_accounts     ship_xca  -- 【出荷先】顧客アドオン
+              , hz_cust_acct_sites      ship_hcas -- 【出荷先】顧客サイトマスタ
+              , hz_cust_acct_sites      bill_hcas -- 【請求先】顧客サイトマスタ
+      WHERE     xchv.ship_account_number  =  i_discnt_amount_rec.delivery_cust_code
+        AND     xchv.bill_account_number  =  i_discnt_amount_rec.demand_to_cust_code
+        AND     ship_xca.customer_id      =  xchv.ship_account_id
+        AND     ship_hcas.cust_account_id =  ship_xca.customer_id
+        AND     ship_hcas.status          =  cv_cust_status_available -- ステータス：有効
+        AND     bill_hcas.cust_account_id =  xchv.bill_account_id
+        AND     bill_hcas.status          =  cv_cust_status_available -- ステータス：有効
+      ;
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         RAISE get_cust_info_expt;
@@ -1451,6 +1515,24 @@ AS
 --
     <<ar_coordination_data_loop>>
     FOR g_discnt_amount_rec IN g_discnt_amount_cur LOOP
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD START
+      --================================================================
+      --グローバル変数の初期化
+      --================================================================
+      gv_slip_number            := NULL;  -- 伝票番号
+      gv_cash_receiv_base_code  := NULL;  -- 入金拠点コード
+      gv_business_low_type      := NULL;  -- 業態(小分類)
+      gn_ship_account_id        := NULL;  -- 出荷先顧客ID
+      gn_ship_address_id        := NULL;  -- 出荷先顧客サイトID
+      gt_ship_account_code      := NULL;  -- 出荷先顧客コード
+      gt_ship_account_name      := NULL;  -- 出荷先顧客名
+      gn_bill_account_id        := NULL;  -- 請求先顧客ID
+      gn_bill_address_id        := NULL;  -- 請求先顧客サイトID
+      gn_term_id                := NULL;  -- 支払条件ID
+      gv_tax_flag               := NULL;  -- 消費税税フラグ
+      gn_tax_rate               := NULL;  -- 消費税率
+      gn_tax_amt                := NULL;  -- 消費税額
+-- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD START
       --================================================================
       --入金時値引の抽出件数
       --================================================================
