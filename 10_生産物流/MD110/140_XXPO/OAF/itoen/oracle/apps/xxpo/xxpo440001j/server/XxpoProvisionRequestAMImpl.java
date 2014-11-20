@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.17
+* バージョン : 1.18
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -27,6 +27,7 @@
 * 2009-02-13 1.15 伊藤ひとみ   本番障害#863,1184対応
 * 2009-03-06 1.16 飯田  甫     本番障害#1131対応
 * 2009-03-13 1.17 飯田  甫     本番障害#1300対応
+* 2010-04-13 1.18 北寒寺 正夫  本稼動障害#2103対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -5450,7 +5451,13 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("  SELECT COUNT(xola.quantity)         " );
     sb.append("  INTO   :1                           " );
     sb.append("  FROM   xxwsh_order_lines_all   xola " );
-    sb.append("  WHERE  xola.request_no = :2         " );
+// 2010-04-13 M.Hokkanji Mod Start
+    sb.append("        ,xxwsh_order_headers_all xoha " );
+    sb.append(" WHERE   xoha.request_no = :2         " );
+    sb.append("   AND   xoha.latest_external_flag = 'Y' ");
+    sb.append("   AND   xola.order_header_id = xoha.order_header_id ");
+//    sb.append("  WHERE  xola.request_no = :2         " );
+// 2010-04-13 M.Hokkanji Mod End
     sb.append("  AND    xola.delete_flag = 'N'       " );
     sb.append("  AND    NVL(xola.quantity, 0) > 0    " );
     sb.append("  AND    ROWNUM = 1;                  " );

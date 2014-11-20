@@ -87,8 +87,14 @@ SELECT xoha.request_no                    request_no            -- 依頼No
                                           sum_capacity          -- 積載容積合計
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.00'), '')
                                           efficiency_capacity   -- 容積積載効率
-      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
-                                          xola_last_update_date -- 最終更新日(受注明細アドオン)
+-- 2010-04-14 M.Hokkanji Mod Start #2103
+      ,TO_CHAR((SELECT MAX(xola.last_update_date) last_update_date
+                  FROM xxwsh_order_lines_all xola
+                 WHERE xola.order_header_id = xoha.order_header_id)
+              ,'YYYY/MM/DD HH24:MI:SS')   xola_last_update_date -- 最終更新日(受注明細アドオン)
+--      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+--                                          xola_last_update_date -- 最終更新日(受注明細アドオン)
+-- 2010-04-14 M.Hokkanji Mod End #2103
       ,xvv.spare2                         price_list            -- 価格表
 /*    DB項目     */ 
       ,xoha.arrival_date                  db_arrival_date          -- 入庫日
@@ -111,11 +117,13 @@ FROM   xxwsh_order_headers_all        xoha  -- 受注ヘッダアドオン
       ,xxcmn_lookup_values_v          xlvv5 -- クイックコード情報VIEW(配送区分用)
       ,xxcmn_item_mst2_v              ximv  -- OPM品目情報VIEW2
       ,xxcmn_item_locations2_v        xilv  -- OPM保管場所情報VIEW
-      ,(SELECT xol.order_header_id          order_header_id
-              ,MAX(xol.last_update_date)    last_update_date       -- 最終更新日
-        FROM   xxwsh_order_lines_all   xol
-        GROUP BY xol.order_header_id
-       )    xola  -- 受注明細アドオン
+-- 2010-04-14 M.Hokkanji Del Start #2103
+--      ,(SELECT xol.order_header_id          order_header_id
+--              ,MAX(xol.last_update_date)    last_update_date       -- 最終更新日
+--        FROM   xxwsh_order_lines_all   xol
+--        GROUP BY xol.order_header_id
+--       )    xola  -- 受注明細アドオン
+-- 2010-04-14 M.Hokkanji Del End E_#2103
 WHERE  
 /* 結合条件 */
        xoha.order_type_id   = xottv.transaction_type_id
@@ -133,7 +141,9 @@ AND    NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
                                         = xlvv5.lookup_code(+)
 AND    xoha.designated_item_id          = ximv.inventory_item_id(+)
 AND    xoha.deliver_from_id             = xilv.inventory_location_id
-AND    xoha.order_header_id             = xola.order_header_id
+-- 2010-04-14 M.Hokkanji Del Start #2103
+--AND    xoha.order_header_id             = xola.order_header_id
+-- 2010-04-14 M.Hokkanji Del End #2103
 /* 抽出条件 */
 AND    xoha.latest_external_flag    = 'Y'  -- 最新
 AND    xlvv1.lookup_type            = 'XXPO_TRANSACTION_STATUS' -- 支給依頼ステータス
