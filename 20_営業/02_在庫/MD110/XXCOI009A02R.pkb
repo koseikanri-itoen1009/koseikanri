@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/04/30    1.4   T.Nakamura       最終行にバックスラッシュを追加
  *  2009/05/21    1.5   T.Nakamura       [障害T1_0987] 営業原価額を四捨五入し整数値に変換するよう修正
  *                                       [障害T1_1030] 倉替データ取得時の取得条件を追加
+ *  2009/05/22    1.6   H.Sasaki         [障害T1_1162] 運送費算出処理の実行条件を追加（倉替のみ）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -407,7 +408,7 @@ AS
     it_transaction_date        IN mtl_material_transactions.transaction_date%TYPE,     -- 取引日
     it_item_code               IN mtl_system_items_b.segment1%TYPE,                    -- 商品
     it_item_name               IN xxcmn_item_mst_b.item_short_name%TYPE,               -- 商品名
-    it_slip_no                 IN mtl_material_transactions.attribute1%TYPE,           -- 伝票No                  
+    it_slip_no                 IN mtl_material_transactions.attribute1%TYPE,           -- 伝票No
     it_transaction_qty         IN mtl_material_transactions.transaction_quantity%TYPE, -- 取引数量
     iv_trading_cost            IN NUMBER,                  -- 営業原価額
     iv_dlv_cost                IN NUMBER,                  -- 振替運送費
@@ -1611,14 +1612,27 @@ AS
         -- ================================================
         -- 運送費算出処理(A-8)
         -- ================================================
-        get_div_cost(
-           in_cs_qty                    =>   ln_cs_qty                -- 数量（CS）
-          ,it_set_unit_price            =>   ln_set_unit_price        -- 設定単価
-          ,on_dlv_cost_budget_amt       =>   ln_dlv_cost_budget_amt   -- 運送費予算金額
-          ,ov_errbuf                    =>   lv_errbuf                -- エラー・メッセージ
-          ,ov_retcode                   =>   lv_retcode               -- リターン・コード
-          ,ov_errmsg                    =>   lv_errmsg                -- ユーザー・エラー・メッセージ
-        );
+-- == 2009/05/22 V1.6 Modified START ==================================================================
+--        get_div_cost(
+--           in_cs_qty                    =>   ln_cs_qty                -- 数量（CS）
+--          ,it_set_unit_price            =>   ln_set_unit_price        -- 設定単価
+--          ,on_dlv_cost_budget_amt       =>   ln_dlv_cost_budget_amt   -- 運送費予算金額
+--          ,ov_errbuf                    =>   lv_errbuf                -- エラー・メッセージ
+--          ,ov_retcode                   =>   lv_retcode               -- リターン・コード
+--          ,ov_errmsg                    =>   lv_errmsg                -- ユーザー・エラー・メッセージ
+--        );
+--
+        IF (lr_info_kuragae_rec.transaction_type_id = ln_tran_type_kuragae) THEN
+          get_div_cost(
+             in_cs_qty                    =>   ln_cs_qty                -- 数量（CS）
+            ,it_set_unit_price            =>   ln_set_unit_price        -- 設定単価
+            ,on_dlv_cost_budget_amt       =>   ln_dlv_cost_budget_amt   -- 運送費予算金額
+            ,ov_errbuf                    =>   lv_errbuf                -- エラー・メッセージ
+            ,ov_retcode                   =>   lv_retcode               -- リターン・コード
+            ,ov_errmsg                    =>   lv_errmsg                -- ユーザー・エラー・メッセージ
+          );
+        END IF;
+-- == 2009/05/22 V1.6 Modified END   ==================================================================
 --
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -1970,7 +1984,7 @@ AS
     END IF;
 --
     -- =====================================
-    -- プロファイル値取得(在庫組織コード)   
+    -- プロファイル値取得(在庫組織コード)
     -- =====================================
     lv_organization_code := FND_PROFILE.VALUE(cv_profile_name);
     IF ( lv_organization_code IS NULL ) THEN
@@ -1983,10 +1997,10 @@ AS
                   );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- 在庫組織ID取得                       
+    -- 在庫組織ID取得
     -- =====================================
     gn_organization_id := xxcoi_common_pkg.get_organization_id(lv_organization_code);
     IF ( gn_organization_id IS NULL ) THEN
@@ -2002,7 +2016,7 @@ AS
     END IF;         
 --
     -- =====================================
-    -- プロファイル値取得(マスタ組織コード)   
+    -- プロファイル値取得(マスタ組織コード)
     -- =====================================
     lv_mst_organization_code := FND_PROFILE.VALUE(cv_mstorg_code);
     IF ( lv_mst_organization_code IS NULL ) THEN
@@ -2018,7 +2032,7 @@ AS
     END IF;         
 --
     -- =====================================
-    -- マスタ品目組織ID取得                       
+    -- マスタ品目組織ID取得
     -- =====================================
     gn_mst_organization_id := xxcoi_common_pkg.get_organization_id(lv_mst_organization_code);
     IF ( gn_mst_organization_id IS NULL ) THEN
@@ -2034,7 +2048,7 @@ AS
     END IF;         
 --    
     -- =====================================
-    -- 所属拠点取得                       
+    -- 所属拠点取得
     -- =====================================
     gv_base_code := xxcoi_common_pkg.get_base_code( 
                         in_user_id     => cn_created_by     -- ユーザーID
@@ -2115,7 +2129,7 @@ AS
   EXCEPTION
 --
     --*** 値エラー ***
-    WHEN get_value_expt THEN                                                    
+    WHEN get_value_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;

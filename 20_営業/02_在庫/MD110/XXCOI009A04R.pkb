@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/12/05    1.0   SCS.Tsuboi       新規作成
  *  2009/04/02    1.1   H.Sasaki         [T1_0002]VD預け先の顧客コード出力
  *  2009/05/15    1.2   H.Sasaki         [T1_0785]帳票出力のソート項目の設定値を変更
+ *  2009/05/22    1.3   H.Sasaki         [T1_0950]VD預け先の顧客コード出力
  *
  *****************************************************************************************/
 --
@@ -922,14 +923,25 @@ AS
            ,xhit.case_in_quantity           case_in_quantity            -- ケース入数
            ,xhit.quantity                   quantity                    -- 本数
            ,xhit.total_quantity             total_quantity              -- 総数
--- == 2009/04/02 V1.1 Modified START ===============================================================
---           ,xhit.invoice_no                invoice_no                 -- 伝票No
-           ,CASE  WHEN  xhit.record_type = cv_record_type_30  THEN
-                    NVL(xhit.inside_cust_code, xhit.invoice_no)
+-- == 2009/05/22 V1.3 Modified START ===============================================================
+---- == 2009/04/02 V1.1 Modified START ===============================================================
+----           ,xhit.invoice_no                invoice_no                 -- 伝票No
+--           ,CASE  WHEN  xhit.record_type = cv_record_type_30  THEN
+--                    NVL(xhit.inside_cust_code, xhit.invoice_no)
+--                  ELSE
+--                    NVL(xhit.inside_code, xhit.invoice_no)
+--            END                             invoice_no                  -- 伝票№
+---- == 2009/04/02 V1.1 Modified END   ===============================================================
+           ,CASE  WHEN  xhit.record_type  = '30'  THEN
+                    CASE  WHEN  SUBSTRB(xhit.outside_subinv_code, 1, 1) = 'V' THEN
+                            xhit.outside_cust_code
+                          ELSE
+                            NVL(xhit.inside_cust_code, xhit.invoice_no)
+                    END
                   ELSE
                     NVL(xhit.inside_code, xhit.invoice_no)
             END                             invoice_no                  -- 伝票№
--- == 2009/04/02 V1.1 Modified END   ===============================================================
+-- == 2009/05/22 V1.3 Modified END   ===============================================================
     FROM    xxcoi_hht_inv_transactions xhit                           -- HHT入出庫一時表
            ,hz_cust_accounts           hca                            -- 顧客マスタ
            ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
