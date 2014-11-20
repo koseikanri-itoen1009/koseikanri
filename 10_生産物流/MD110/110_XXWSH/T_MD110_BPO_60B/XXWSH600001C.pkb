@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/07/14    1.4  Oracle 山根一浩   仕様変更No.95対応
  *  2008/08/04    1.5  Oracle M.Hokkanji 結合再テスト不具合対応(400TE080_159原因2)ST#513対応
  *  2008/08/06    1.6  Oracle M.Hokkanji ST不具合493対応
+ *  2008/08/08    1.7  Oracle M.Hokkanji ST不具合510対応、内部変更173対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1201,6 +1202,7 @@ debug_log(FND_FILE.LOG,'B-3 出荷依頼0件処理');
                      ,gv_tkn_key          -- トークン'KEY'
                      ,gv_parameters       -- エラーデータ
                      ) ,1 ,5000);
+       lv_errbuf := lv_errmsg;
 --
         RAISE no_data;
 --
@@ -1224,6 +1226,7 @@ debug_log(FND_FILE.LOG,'B-3 移動指示0件処理');
                      ,gv_tkn_key          -- トークン'KEY'
                      ,gv_parameters       -- エラーデータ
                      ) ,1 ,5000);
+        lv_errbuf := lv_errmsg;
 --
         RAISE no_data;
 --
@@ -1251,6 +1254,7 @@ debug_log(FND_FILE.LOG,'B-3 出荷依頼・移動指示0件処理（処理種別指定なし)');
                      ,gv_tkn_key          -- トークン'KEY'
                      ,gv_parameters       -- エラーデータ
                      ) ,1 ,5000);
+        lv_errbuf := lv_errmsg;
 --
         RAISE no_data;
 --
@@ -2625,7 +2629,11 @@ debug_log(FND_FILE.LOG,'混載配送区分:'||lv_mixed_ship_method);
 
 --
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+          lv_errmsg := lv_errbuf;
+-- Ver1.7 M.Hokkanji End
 --
 debug_log(FND_FILE.LOG,'関数エラー');
 --
@@ -2683,7 +2691,11 @@ debug_log(FND_FILE.LOG,'エラーメッセージ:'||lv_errmsg);
           , ov_mixed_ship_method           => lv_mixed_ship_method      -- 18.混載配送区分
         );
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+          lv_errmsg := lv_errbuf;
+--        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji End
           RAISE global_api_expt;
         END IF;
 --
@@ -3285,7 +3297,11 @@ debug_log(FND_FILE.LOG,'B7_1.11 積載効率オーバーチェック(移動指示のみ)');
                 , ov_mixed_ship_method           => lv_mixed_ship_method      -- 18.混載配送区分
               );
               -- 共通関数がエラーの場合
-              IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+              IF (lv_retcode <> gv_status_normal) THEN
+--              IF (lv_retcode = gv_status_error) THEN
+                lv_errmsg := lv_errbuf;
+-- Ver1.7 M.Hokkanji End
 debug_log(FND_FILE.LOG,'B7_1.111　移動積載効率オーバーチェック関数エラー(重量)');
                 RAISE global_api_expt;
               END IF;
@@ -3359,7 +3375,11 @@ debug_log(FND_FILE.LOG,'B7_1.13.0 積載容積合計:'||it_group_sum_add_tab(ln_loop_c
                 , ov_mixed_ship_method           => lv_mixed_ship_method      -- 18.混載配送区分
               );
               -- 共通関数がエラーの場合
-              IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+              IF (lv_retcode <> gv_status_normal) THEN
+--              IF (lv_retcode = gv_status_error) THEN
+                lv_errmsg := lv_errbuf;
+-- Ver1.7 M.Hokkanji End
 debug_log(FND_FILE.LOG,'B7_1.131　移動積載効率オーバーチェック関数エラー(容積)');
                 RAISE global_api_expt;
               END IF;
@@ -4903,7 +4923,9 @@ debug_log(FND_FILE.LOG,'配送No設定処理終了');
          AND  xicl.request_no = xoha.request_no                   -- 依頼No
          AND  xoha.latest_external_flag = cv_yes                  -- 最新フラグ
          AND  xoha.order_type_id = xotv.transaction_type_id       -- 取引タイプID
-         AND  xoha.mixed_no IS NULL                               -- 混載元No
+-- Ver1.7 M.Hokkanji START
+--         AND  xoha.mixed_no IS NULL                               -- 混載元No
+-- Ver1.7 M.Hokkanji END
       UNION ALL
       SELECT  xict.intensive_no               int_no              -- 集約No
             , xict.transaction_type           ship_type           -- 処理種別:出荷依頼
@@ -6282,7 +6304,10 @@ debug_log(FND_FILE.LOG,'★★★★★★★★★★★★★★★');
                                                             -- 18.混載配送区分
         );
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji End
           gv_err_key  :=  ln_intensive_weight -- 1.合計重量
                           || gv_msg_comma ||
                           NULL                -- 2.合計容積
@@ -6365,7 +6390,10 @@ debug_log(FND_FILE.LOG,'★★★★★★★★★★★★★★★');
                                                             -- 18.混載配送区分
         );
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji End
           gv_err_key  :=  NULL                  -- 1.合計重量
                           || gv_msg_comma ||
                           ln_intensive_capacity -- 2.合計容積
@@ -7967,7 +7995,10 @@ debug_log(FND_FILE.LOG,'3-1-2混載合計重量設定');
           , ov_mixed_ship_method           => lv_mixed_ship_method        -- 18.混載配送区分
         );
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji END
           gv_err_key  :=  cur_rec.mix_total_weight        --  1.合計重量
                           || gv_msg_comma ||
                           NULL                            --  2.合計容積
@@ -8056,7 +8087,10 @@ debug_log(FND_FILE.LOG,'3-2-2混載合計容積');
           , ov_mixed_ship_method           => lv_mixed_ship_method        -- 18.混載配送区分
         );
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji END
           gv_err_key  :=  NULL                        --  1.合計重量
                           || gv_msg_comma ||
                           cur_rec.mix_total_capacity  --  2.合計容積
@@ -8686,26 +8720,34 @@ debug_log(FND_FILE.LOG,'B-15_g2 重量積載効率:' || ln_load_efficiency_weight);
 debug_log(FND_FILE.LOG,'B-15_g2 容積積載効率:' || ln_load_efficiency_capacity);
 debug_log(FND_FILE.LOG,'B-15_g2 混載配送区分:' || lv_mixed_ship_method);
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+          lv_errmsg := lv_errbuf;
+-- Ver1.7 M.Hokkanji END
 --
 debug_log(FND_FILE.LOG,'B-15_g3【重量積載効率取得エラー】');
 --
           RAISE global_api_expt;
         END IF;
 --
+-- Ver 1.7 M.Hokkanji Start
+-- 各ヘッダに設定するときは積載オーバーを除外
+-- Ver 1.7 M.Hokkanji End
         -- 積載オーバーの場合
-        IF (lv_loading_over_class = cv_loading_over) THEN
-debug_log(FND_FILE.LOG,'B-15_g4【重量積載効率積載オーバー】');
+--        IF (lv_loading_over_class = cv_loading_over) THEN
+--debug_log(FND_FILE.LOG,'B-15_g4【重量積載効率積載オーバー】');
           -- エラーメッセージ取得
-          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
-                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
-                         , gv_msg_xxwsh_11803  -- メッセージ：APP-XXWSH-11803 積載オーバーメッセージ
-                         , gv_tkn_req_no       -- トークン：REQ_NO
-                         , cur_rec.request_no  -- 出荷依頼No
-                        ),1,5000);
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
+--          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+--                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+--                         , gv_msg_xxwsh_11803  -- メッセージ：APP-XXWSH-11803 積載オーバーメッセージ
+--                         , gv_tkn_req_no       -- トークン：REQ_NO
+--                         , cur_rec.request_no  -- 出荷依頼No
+--                        ),1,5000);
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_api_expt;
+--        END IF;
+-- Ver 1.7 M.Hokkanji End
 debug_log(FND_FILE.LOG,'B-15_g5【重量積載効率セット】');
         -- 重量積載効率をセット
         ln_set_efficiency_weight := ln_load_efficiency_weight;
@@ -8759,26 +8801,33 @@ debug_log(FND_FILE.LOG,'B-15_h2 重量積載効率:' || ln_load_efficiency_weight);
 debug_log(FND_FILE.LOG,'B-15_h2 容積積載効率:' || ln_load_efficiency_capacity);
 debug_log(FND_FILE.LOG,'B-15_h2 混載配送区分:' || lv_mixed_ship_method);
         -- 共通関数がエラーの場合
-        IF (lv_retcode = gv_status_error) THEN
---
+-- Ver1.7 M.Hokkanji START
+        IF (lv_retcode <> gv_status_normal) THEN
+--        IF (lv_retcode = gv_status_error) THEN
+          lv_errmsg := lv_errbuf;
+-- Ver1.7 M.Hokkanji END
+--       
 debug_log(FND_FILE.LOG,'B-15_h3【容積積載効率取得エラー】');
 --
           RAISE global_api_expt;
         END IF;
 --
+-- Ver 1.7 M.Hokkanji Start
+-- 各ヘッダに積載率を設定する場合は積載オーバを除外
         -- 積載オーバーの場合
-        IF (lv_loading_over_class = cv_loading_over) THEN
-debug_log(FND_FILE.LOG,'B-15_h4【容積積載効率積載オーバー】');
+--        IF (lv_loading_over_class = cv_loading_over) THEN
+--debug_log(FND_FILE.LOG,'B-15_h4【容積積載効率積載オーバー】');
           -- エラーメッセージ取得
-          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
-                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
-                         , gv_msg_xxwsh_11803  -- メッセージ：APP-XXWSH-11803 積載オーバーメッセージ
-                         , gv_tkn_req_no       -- トークン：REQ_NO
-                         , cur_rec.request_no  -- 出荷依頼No
-                        ),1,5000);
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
+--          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+--                           gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+--                         , gv_msg_xxwsh_11803  -- メッセージ：APP-XXWSH-11803 積載オーバーメッセージ
+--                         , gv_tkn_req_no       -- トークン：REQ_NO
+--                         , cur_rec.request_no  -- 出荷依頼No
+--                        ),1,5000);
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_api_expt;
+--        END IF;
+-- Ver 1.7 M.Hokkanji End
 debug_log(FND_FILE.LOG,'B-15_h5【容積積載効率セット】');
         -- 容積積載効率をセット
         ln_set_efficiency_capacity := ln_load_efficiency_capacity;

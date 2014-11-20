@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.17
+ * Version                : 1.18
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -56,6 +56,13 @@ AS
  *  2008/07/11   1.16  Oracle 福田直樹  [最大パレット枚数算出関数]変更要求対応#95
  *  2008/08/04   1.17  Oracle 伊藤ひとみ[最大配送区分算出関数][最大パレット枚数算出関数]
  *                                       コード区分2 = 4,11の場合、入出庫場所コード2 = ZZZZで検索する。
+ *  2008/08/07   1.18  Oracle 伊藤ひとみ[重量容積小口個数更新関数]
+ *                                       内部課題#32   小口個数･･･出荷入数 > 0の場合に出荷入数で計算するように変更
+ *                                       変更要求#166  小口個数･･･明細単位で切り上げて集計するように変更
+ *                                       変更要求##173 重量積載効率/容積積載効率･･･運賃区分「1」の時、無条件で取得するように変更
+ *                                                     運賃区分「1」の時･･･重量積載効率/容積積載効率  処理で取得した値に更新
+ *                                                     運賃区分「1」でない時･･･重量積載効率/容積積載効率/基本重量/基本容積/配送区分 NULLに更新
+ *                                                     常に更新･･･積載重量合計/積載容積合計/パレット合計枚数/小口個数
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2405,6 +2412,11 @@ AS
 --
             -- 正常時は更新項目に値を追加
             ELSE
+-- 2008/08/07 H.Itou Add Start 変更要求#173 積載重量合計・積載容積合計がNULLにならないように、NVLする。
+              ln_sum_weight        := NVL(ln_sum_weight, 0);       -- 合計重量
+              ln_sum_capacity      := NVL(ln_sum_capacity, 0);     -- 合計容積
+              ln_sum_pallet_weight := NVL(ln_sum_pallet_weight, 0);-- 合計パレット数
+-- 2008/08/07 H.Itou Add End
               -- 【明細更新項目】
               lt_update_tbl(ln_counter).update_weight            :=  ln_sum_weight;
               lt_update_tbl(ln_counter).update_capacity          :=  ln_sum_capacity;
@@ -2422,21 +2434,36 @@ AS
                 NULL;
 --
               -- ②(3)で取得した出荷入数が設定されている場合
-              ELSIF (lt_ship_tab(ln_counter).num_of_deliver IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 内部課題#32 出荷入数 > 0 に条件変更。
+--              ELSIF (lt_ship_tab(ln_counter).num_of_deliver IS NOT NULL) THEN
+              ELSIF (lt_ship_tab(ln_counter).num_of_deliver > 0 ) THEN
+-- 2008/08/07 H.Itou Mod End
                 ln_update_small_quantity := NVL(ln_update_small_quantity, 0)
-                                            + (ROUND(lt_ship_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod Start 変更要求#166 明細単位で整数に切り上げ、合計する。
+--                                            + (ROUND(lt_ship_tab(ln_counter).shipped_quantity
+                                            + (CEIL(lt_ship_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod End
                                             / lt_ship_tab(ln_counter).num_of_deliver));
 --
               -- ③(3)で取得したケース入数が設定されている場合
-              ELSIF (lt_ship_tab(ln_counter).num_of_cases IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 内部課題#32 入出庫換算単位 IS NOT NULL に条件変更。
+--              ELSIF (lt_ship_tab(ln_counter).num_of_cases IS NOT NULL) THEN
+              ELSIF (lt_ship_tab(ln_counter).conv_unit IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod End
                 ln_update_small_quantity := NVL(ln_update_small_quantity, 0)
-                                            + (ROUND(lt_ship_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod Start 変更要求#166 明細単位で整数に切り上げ、合計する。
+--                                            + (ROUND(lt_ship_tab(ln_counter).shipped_quantity
+                                            + (CEIL(lt_ship_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod End
                                             / lt_ship_tab(ln_counter).num_of_cases));
 --
               -- ④いずれの条件にも当てはまらない場合
               ELSE
                 ln_update_small_quantity  := NVL(ln_update_small_quantity, 0)
-                                             + lt_ship_tab(ln_counter).shipped_quantity;
+-- 2008/08/07 H.Itou Mod Start 変更要求#166 明細単位で整数に切り上げ、合計する。
+--                                             + lt_ship_tab(ln_counter).shipped_quantity;
+                                             + CEIL(lt_ship_tab(ln_counter).shipped_quantity);
+-- 2008/08/07 H.Itou Mod End
 --
               END IF;
 --
@@ -2480,104 +2507,116 @@ AS
         lv_errmsg_code  :=NULL;   -- エラーメッセージコード
         lv_errmsg       :=NULL;   -- エラーメッセージ
 --
+-- 2008/08/07 H.Itou Mod Start 変更要求#173 積載効率算出条件は、配送Noではなく、運賃区分で判定
         -- (5)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
 --mod start 1.14
---        IF (lv_update_delivery_no IS NOT NULL) THEN
-        IF (lv_update_delivery_no IS NOT NULL 
-        AND lv_freight_charge_class = gv_freight_charge_yes) THEN
+----        IF (lv_update_delivery_no IS NOT NULL) THEN
+--        IF (lv_update_delivery_no IS NOT NULL 
+--        AND lv_freight_charge_class = gv_freight_charge_yes) THEN
+        -- 運賃区分「1」の場合
+        IF (lv_freight_charge_class = gv_freight_charge_yes) THEN
 --mod end 1.14
-          -- 合計重量が設定されている場合
-          IF (ln_update_sum_weight > 0) THEN
-            -- 重量積載効率算出
-            xxwsh_common910_pkg.calc_load_efficiency(
-              (CASE
-                -- ①(2)で取得した小口区分が｢対象｣の場合
-                WHEN (lv_small_sum_class = cv_include) THEN
-                  ln_update_sum_weight
-                -- ②(2)で取得した小口区分が｢対象｣以外の場合
-                ELSE
-                  ln_update_sum_weight + NVL(ln_update_sum_pallet_weight, 0)
-              END),                                     -- 1.合計重量
-              NULL,                                     -- 2.合計容積
-              cv_whse,                                  -- 3.コード区分１
-              lv_deliver_from,                          -- 4.入出庫場所コード１
-              cv_deliver_to,                            -- 5.コード区分２
-              lv_result_deliver_to,                     -- 6.入出庫場所コード２
-              lv_result_shipping_method_code,           -- 7.出荷方法
-              lv_prod_class,                            -- 8.商品区分
-              NULL,                                     -- 9.自動配車対象区分
-              ld_shipped_date,                          -- 10.基準日(適用日基準日)
-              lv_retcode,                               -- 11.リターンコード
-              lv_errmsg_code,                           -- 12.エラーメッセージコード
-              lv_errmsg,                                -- 13.エラーメッセージ
-              lv_loading_over_class,                    -- 14.積載オーバー区分
-              lv_ship_methods,                          -- 15.出荷方法
-              ln_load_efficiency_weight,                -- 16.重量積載効率
-              ln_load_efficiency_capacity,              -- 17.容積積載効率
-              lv_mixed_ship_method);                    -- 18.混載配送区分
+-- 2008/08/07 H.Itou Mod End
+-- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
+--          -- 合計重量が設定されている場合
+--          IF (ln_update_sum_weight > 0) THEN
+-- 2008/08/07 H.Itou Del End
+          -- 重量積載効率算出
+          xxwsh_common910_pkg.calc_load_efficiency(
+            (CASE
+              -- ①(2)で取得した小口区分が｢対象｣の場合
+              WHEN (lv_small_sum_class = cv_include) THEN
+                ln_update_sum_weight
+              -- ②(2)で取得した小口区分が｢対象｣以外の場合
+              ELSE
+                ln_update_sum_weight + NVL(ln_update_sum_pallet_weight, 0)
+            END),                                     -- 1.合計重量
+            NULL,                                     -- 2.合計容積
+            cv_whse,                                  -- 3.コード区分１
+            lv_deliver_from,                          -- 4.入出庫場所コード１
+            cv_deliver_to,                            -- 5.コード区分２
+            lv_result_deliver_to,                     -- 6.入出庫場所コード２
+            lv_result_shipping_method_code,           -- 7.出荷方法
+            lv_prod_class,                            -- 8.商品区分
+            NULL,                                     -- 9.自動配車対象区分
+            ld_shipped_date,                          -- 10.基準日(適用日基準日)
+            lv_retcode,                               -- 11.リターンコード
+            lv_errmsg_code,                           -- 12.エラーメッセージコード
+            lv_errmsg,                                -- 13.エラーメッセージ
+            lv_loading_over_class,                    -- 14.積載オーバー区分
+            lv_ship_methods,                          -- 15.出荷方法
+            ln_load_efficiency_weight,                -- 16.重量積載効率
+            ln_load_efficiency_capacity,              -- 17.容積積載効率
+            lv_mixed_ship_method);                    -- 18.混載配送区分
 --
-            -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
-            IF (lv_retcode = gn_status_error) THEN
-              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                        cv_tkn_api_name, cv_api_weight,
-                                                        cv_tkn_type, lv_tkn_biz_type,
-                                                        cv_tkn_no_type, lv_tkn_request_no,
-                                                        cv_tkn_request_no, iv_request_no,
-                                                        cv_tkn_err_msg, lv_errmsg);
-              FND_LOG.STRING(cv_log_level,gv_pkg_name
-                            || cv_colon
-                            || cv_prg_name,lv_except_msg);
-              RETURN gn_status_error;
---
-            END IF;
---
-            -- 取得した重量積載効率をヘッダ更新用項目にセット
-            ln_update_load_effi_weight := ln_load_efficiency_weight;
+          -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
+          IF (lv_retcode = gn_status_error) THEN
+            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                      cv_tkn_api_name, cv_api_weight,
+                                                      cv_tkn_type, lv_tkn_biz_type,
+                                                      cv_tkn_no_type, lv_tkn_request_no,
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, lv_errmsg);
+            FND_LOG.STRING(cv_log_level,gv_pkg_name
+                          || cv_colon
+                          || cv_prg_name,lv_except_msg);
+            RETURN gn_status_error;
 --
           END IF;
 --
-          -- 合計容積が設定されている場合
-          IF (ln_update_sum_capacity > 0) THEN
-            -- 容積積載効率算出
-            xxwsh_common910_pkg.calc_load_efficiency(
-              NULL,                                     -- 1.合計重量
-              ln_update_sum_capacity,                   -- 2.合計容積
-              cv_whse,                                  -- 3.コード区分１
-              lv_deliver_from,                          -- 4.入出庫場所コード１
-              cv_deliver_to,                            -- 5.コード区分２
-              lv_result_deliver_to,                     -- 6.入出庫場所コード２
-              lv_result_shipping_method_code,           -- 7.出荷方法
-              lv_prod_class,                            -- 8.商品区分
-              NULL,                                     -- 9.自動配車対象区分
-              ld_shipped_date,                          -- 10.基準日(適用日基準日)
-              lv_retcode,                               -- 11.リターンコード
-              lv_errmsg_code,                           -- 12.エラーメッセージコード
-              lv_errmsg,                                -- 13.エラーメッセージ
-              lv_loading_over_class,                    -- 14.積載オーバー区分
-              lv_ship_methods,                          -- 15.出荷方法
-              ln_load_efficiency_weight,                -- 16.重量積載効率
-              ln_load_efficiency_capacity,              -- 17.容積積載効率
-              lv_mixed_ship_method);                    -- 18.混載配送区分
+          -- 取得した重量積載効率をヘッダ更新用項目にセット
+          ln_update_load_effi_weight := ln_load_efficiency_weight;
 --
-            -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
-            IF (lv_retcode = gn_status_error) THEN
-              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                        cv_tkn_api_name, cv_api_capacity,
-                                                        cv_tkn_type, lv_tkn_biz_type,
-                                                        cv_tkn_no_type, lv_tkn_request_no,
-                                                        cv_tkn_request_no, iv_request_no,
-                                                        cv_tkn_err_msg, lv_errmsg);
-              FND_LOG.STRING(cv_log_level,gv_pkg_name
-                            || cv_colon
-                            || cv_prg_name,lv_except_msg);
-              RETURN gn_status_error;
+-- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
+--          END IF;
+-- 2008/08/07 H.Itou Del End
 --
-            END IF;
+-- 2008/08/07 H.Itou Del Start 変更要求#173 容積積載効率算出は積載合計容積の値に関わらず算出する。
+--          -- 合計容積が設定されている場合
+--          IF (ln_update_sum_capacity > 0) THEN
+-- 2008/08/07 H.Itou Del End
+          -- 容積積載効率算出
+          xxwsh_common910_pkg.calc_load_efficiency(
+            NULL,                                     -- 1.合計重量
+            ln_update_sum_capacity,                   -- 2.合計容積
+            cv_whse,                                  -- 3.コード区分１
+            lv_deliver_from,                          -- 4.入出庫場所コード１
+            cv_deliver_to,                            -- 5.コード区分２
+            lv_result_deliver_to,                     -- 6.入出庫場所コード２
+            lv_result_shipping_method_code,           -- 7.出荷方法
+            lv_prod_class,                            -- 8.商品区分
+            NULL,                                     -- 9.自動配車対象区分
+            ld_shipped_date,                          -- 10.基準日(適用日基準日)
+            lv_retcode,                               -- 11.リターンコード
+            lv_errmsg_code,                           -- 12.エラーメッセージコード
+            lv_errmsg,                                -- 13.エラーメッセージ
+            lv_loading_over_class,                    -- 14.積載オーバー区分
+            lv_ship_methods,                          -- 15.出荷方法
+            ln_load_efficiency_weight,                -- 16.重量積載効率
+            ln_load_efficiency_capacity,              -- 17.容積積載効率
+            lv_mixed_ship_method);                    -- 18.混載配送区分
 --
-            -- 取得した容積積載効率をヘッダ更新用項目にセット
-            ln_update_load_effi_capacity := ln_load_efficiency_capacity;
+          -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
+          IF (lv_retcode = gn_status_error) THEN
+            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                      cv_tkn_api_name, cv_api_capacity,
+                                                      cv_tkn_type, lv_tkn_biz_type,
+                                                      cv_tkn_no_type, lv_tkn_request_no,
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, lv_errmsg);
+            FND_LOG.STRING(cv_log_level,gv_pkg_name
+                          || cv_colon
+                          || cv_prg_name,lv_except_msg);
+            RETURN gn_status_error;
 --
           END IF;
+--
+          -- 取得した容積積載効率をヘッダ更新用項目にセット
+          ln_update_load_effi_capacity := ln_load_efficiency_capacity;
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 容積積載効率算出は積載合計重量の値に関わらず算出する。
+--          END IF;
+-- 2008/08/07 H.Itou Del End
 --  
         END IF;
 --
@@ -2620,28 +2659,34 @@ AS
         BEGIN
           -- (7)受注ヘッダアドオンをヘッダ更新項目に登録されている内容で更新
           UPDATE  xxwsh_order_headers_all         xoha            -- 受注ヘッダアドオン
---mod start 1.14
+-- 2008/08/07 H.Itou Mod Start 変更要求#173 運積載重量合計、積載容積合計は、運賃区分の条件無しに更新
+----mod start 1.14
 --          -- 積載重量合計
 --          SET     xoha.sum_weight         = ln_update_sum_weight,
 --          -- 積載容積合計
 --                  xoha.sum_capacity       = ln_update_sum_capacity,
+--          -- 積載重量合計
+--          SET     xoha.sum_weight         = 
+--                   (CASE
+--                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+--                       ln_update_sum_weight
+--                     ELSE
+--                       xoha.sum_weight
+--                    END),
+--          -- 積載容積合計
+--                  xoha.sum_capacity       =
+--                   (CASE
+--                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+--                       ln_update_sum_capacity
+--                     ELSE
+--                       xoha.sum_capacity
+--                    END),
+----mod end 1.14
           -- 積載重量合計
-          SET     xoha.sum_weight         = 
-                   (CASE
-                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
-                       ln_update_sum_weight
-                     ELSE
-                       xoha.sum_weight
-                    END),
+          SET     xoha.sum_weight         = ln_update_sum_weight,
           -- 積載容積合計
-                  xoha.sum_capacity       =
-                   (CASE
-                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
-                       ln_update_sum_capacity
-                     ELSE
-                       xoha.sum_capacity
-                    END),
---mod end 1.14
+                  xoha.sum_capacity       = ln_update_sum_capacity,
+-- 2008/08/07 H.Itou Mod End
           -- 合計パレット重量
                   xoha.sum_pallet_weight  = ln_update_sum_pallet_weight,
           -- 小口個数
@@ -2649,25 +2694,84 @@ AS
           -- 重量積載効率
                   xoha.loading_efficiency_weight =
                    (CASE
---mod start 1.14
---                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
-                     WHEN (lv_update_delivery_no IS NOT NULL OR lv_freight_charge_class = gv_freight_charge_yes) THEN
---mod end 1.14
+-- 2008/08/07 H.Itou Mod Start 変更要求#173
+----mod start 1.14
+----                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--                     WHEN (lv_update_delivery_no IS NOT NULL OR lv_freight_charge_class = gv_freight_charge_yes) THEN
+----mod end 1.14
+--                       ln_update_load_effi_weight
+--                     ELSE
+--                       xoha.loading_efficiency_weight
+                     -- 運賃区分「1」の場合、処理で取得した値を更新
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
                        ln_update_load_effi_weight
+--
+                     -- 上記以外の場合、NULLを更新
                      ELSE
-                       xoha.loading_efficiency_weight
+                       NULL
+-- 2008/08/07 H.Itou Mod End
                    END),
           -- 容積積載効率
                   xoha.loading_efficiency_capacity  =
                    (CASE
---mod start 1.14
---                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
-                     WHEN (lv_update_delivery_no IS NOT NULL OR lv_freight_charge_class = gv_freight_charge_yes) THEN
---mod end 1.14
+-- 2008/08/07 H.Itou Mod Start 変更要求#173
+----mod start 1.14
+----                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--                     WHEN (lv_update_delivery_no IS NOT NULL OR lv_freight_charge_class = gv_freight_charge_yes) THEN
+----mod end 1.14
+--                       ln_update_load_effi_capacity
+--                     ELSE
+--                       xoha.loading_efficiency_capacity
+                     -- 運賃区分「1」の場合、処理で取得した値を更新
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
                        ln_update_load_effi_capacity
+                     -- 上記以外の場合、NULLを更新
                      ELSE
-                       xoha.loading_efficiency_capacity
+                       NULL
+-- 2008/08/07 H.Itou Mod End
                    END),
+-- 2008/08/07 H.Itou Add Start 変更要求#173
+          -- 基本重量
+                  xoha.based_weight =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.based_weight
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 基本容積
+                  xoha.based_capacity =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.based_capacity
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 配送区分
+                  xoha.shipping_method_code =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.shipping_method_code
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 配送区分_実績
+                  xoha.result_shipping_method_code =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.result_shipping_method_code
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+-- 2008/08/07 H.Itou Add End
                   xoha.last_updated_by           =  ln_user_id,
                   xoha.last_update_date          =  ld_sysdate,
                   xoha.last_update_login         =  ln_login_id,
@@ -2732,6 +2836,9 @@ AS
                   NVL(xoha.shipped_date,
                       xoha.schedule_ship_date),         -- 出荷日、NULLのときは、出荷予定日を取得
                   xoha.prod_class                       -- 商品区分
+-- 2008/08/07 H.Itou Add Start 変更要求#173 運賃区分取得追加
+                 ,xoha.freight_charge_class             -- 運賃区分
+-- 2008/08/07 H.Itou Add End
           INTO    lv_req_status,
                   lv_result_shipping_method_code,
                   lv_result_deliver_to,
@@ -2740,6 +2847,9 @@ AS
                   ln_order_header_id,
                   ld_shipped_date,
                   lv_prod_class
+-- 2008/08/07 H.Itou Add Start 変更要求#173 運賃区分取得追加
+                 ,lv_freight_charge_class
+-- 2008/08/07 H.Itou Add End
           FROM    xxwsh_order_headers_all       xoha,       -- 受注ヘッダアドオン
                   xxwsh_oe_transaction_types2_v ott2        -- 受注タイプ情報VIEW
           WHERE   xoha.request_no                             =  iv_request_no
@@ -2828,6 +2938,11 @@ AS
 --
             -- 正常時は更新項目に値を追加
             ELSE
+-- 2008/08/07 H.Itou Add Start 変更要求#173 積載重量合計・積載容積合計がNULLにならないように、NVLする。
+              ln_sum_weight        := NVL(ln_sum_weight, 0);       -- 合計重量
+              ln_sum_capacity      := NVL(ln_sum_capacity, 0);     -- 合計容積
+              ln_sum_pallet_weight := NVL(ln_sum_pallet_weight, 0);-- 合計パレット数
+-- 2008/08/07 H.Itou Add End
               -- 【明細更新項目】
               lt_update_tbl(ln_counter).update_weight            :=  ln_sum_weight;
               lt_update_tbl(ln_counter).update_capacity          :=  ln_sum_capacity;
@@ -2877,95 +2992,107 @@ AS
         lv_errmsg_code  :=NULL;   -- エラーメッセージコード
         lv_errmsg       :=NULL;   -- エラーメッセージ
 --
-        -- (4)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
-        IF (lv_update_delivery_no IS NOT NULL) THEN
-          -- 合計重量が設定されている場合
-          IF (ln_update_sum_weight > 0) THEN
-            -- 重量積載効率算出
-            xxwsh_common910_pkg.calc_load_efficiency(
-              ln_update_sum_weight,                     -- 1.合計重量
-              NULL,                                     -- 2.合計容積
-              cv_whse,                                  -- 3.コード区分１
-              lv_deliver_from,                          -- 4.入出庫場所コード１
-              cv_supply_to,                             -- 5.コード区分２
-              lv_result_deliver_to,                     -- 6.入出庫場所コード２
-              lv_result_shipping_method_code,           -- 7.出荷方法
-              lv_prod_class,                            -- 8.商品区分
-              NULL,                                     -- 9.自動配車対象区分
-              ld_shipped_date,                          -- 10.基準日(適用日基準日)
-              lv_retcode,                               -- 11.リターンコード
-              lv_errmsg_code,                           -- 12.エラーメッセージコード
-              lv_errmsg,                                -- 13.エラーメッセージ
-              lv_loading_over_class,                    -- 14.積載オーバー区分
-              lv_ship_methods,                          -- 15.出荷方法
-              ln_load_efficiency_weight,                -- 16.重量積載効率
-              ln_load_efficiency_capacity,              -- 17.容積積載効率
-              lv_mixed_ship_method);                    -- 18.混載配送区分
+-- 2008/08/07 H.Itou Mod Start 変更要求#173 積載効率算出条件は、配送Noではなく、運賃区分で判定
+--        -- (4)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
+--        IF (lv_update_delivery_no IS NOT NULL) THEN
+        -- 運賃区分「1」の場合
+        IF (lv_freight_charge_class = gv_freight_charge_yes) THEN
+-- 2008/08/07 H.Itou Mod End
+-- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
+--          -- 合計重量が設定されている場合
+--          IF (ln_update_sum_weight > 0) THEN
+-- 2008/08/07 H.Itou Del End
+          -- 重量積載効率算出
+          xxwsh_common910_pkg.calc_load_efficiency(
+            ln_update_sum_weight,                     -- 1.合計重量
+            NULL,                                     -- 2.合計容積
+            cv_whse,                                  -- 3.コード区分１
+            lv_deliver_from,                          -- 4.入出庫場所コード１
+            cv_supply_to,                             -- 5.コード区分２
+            lv_result_deliver_to,                     -- 6.入出庫場所コード２
+            lv_result_shipping_method_code,           -- 7.出荷方法
+            lv_prod_class,                            -- 8.商品区分
+            NULL,                                     -- 9.自動配車対象区分
+            ld_shipped_date,                          -- 10.基準日(適用日基準日)
+            lv_retcode,                               -- 11.リターンコード
+            lv_errmsg_code,                           -- 12.エラーメッセージコード
+            lv_errmsg,                                -- 13.エラーメッセージ
+            lv_loading_over_class,                    -- 14.積載オーバー区分
+            lv_ship_methods,                          -- 15.出荷方法
+            ln_load_efficiency_weight,                -- 16.重量積載効率
+            ln_load_efficiency_capacity,              -- 17.容積積載効率
+            lv_mixed_ship_method);                    -- 18.混載配送区分
 --
-            -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
-            IF (lv_retcode = gn_status_error) THEN
-              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                        cv_tkn_api_name, cv_api_weight,
-                                                        cv_tkn_type, lv_tkn_biz_type,
-                                                        cv_tkn_no_type, lv_tkn_request_no,
-                                                        cv_tkn_request_no, iv_request_no,
-                                                        cv_tkn_err_msg, lv_errmsg);
-              FND_LOG.STRING(cv_log_level,gv_pkg_name
-                            || cv_colon
-                            || cv_prg_name,lv_except_msg);
-              RETURN gn_status_error;
---
-            END IF;
---
-            -- 取得した重量積載効率をヘッダ更新用項目にセット
-            ln_update_load_effi_weight := ln_load_efficiency_weight;
---
-          END IF;
---
-           -- 合計容積が設定されている場合
-          IF (ln_update_sum_capacity > 0) THEN
-            -- 容積積載効率算出
-            xxwsh_common910_pkg.calc_load_efficiency(
-              NULL,                                     -- 1.合計重量
-              ln_update_sum_capacity,                   -- 2.合計容積
-              cv_whse,                                  -- 3.コード区分１
-              lv_deliver_from,                          -- 4.入出庫場所コード１
-              cv_supply_to,                             -- 5.コード区分２
-              lv_result_deliver_to,                     -- 6.入出庫場所コード２
-              lv_result_shipping_method_code,           -- 7.出荷方法
-              lv_prod_class,                            -- 8.商品区分
-              NULL,                                     -- 9.自動配車対象区分
-              ld_shipped_date,                          -- 10.基準日(適用日基準日)
-              lv_retcode,                               -- 11.リターンコード
-              lv_errmsg_code,                           -- 12.エラーメッセージコード
-              lv_errmsg,                                -- 13.エラーメッセージ
-              lv_loading_over_class,                    -- 14.積載オーバー区分
-              lv_ship_methods,                          -- 15.出荷方法
-              ln_load_efficiency_weight,                -- 16.重量積載効率
-              ln_load_efficiency_capacity,              -- 17.容積積載効率
-              lv_mixed_ship_method);                    -- 18.混載配送区分
---
-            -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
-            IF (lv_retcode = gn_status_error) THEN
-              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                        cv_tkn_api_name, cv_api_capacity,
-                                                        cv_tkn_type, lv_tkn_biz_type,
-                                                        cv_tkn_no_type, lv_tkn_request_no,
-                                                        cv_tkn_request_no, iv_request_no,
-                                                        cv_tkn_err_msg, lv_errmsg);
-              FND_LOG.STRING(cv_log_level,gv_pkg_name
-                            || cv_colon
-                            || cv_prg_name,lv_except_msg);
+          -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
+          IF (lv_retcode = gn_status_error) THEN
+            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                      cv_tkn_api_name, cv_api_weight,
+                                                      cv_tkn_type, lv_tkn_biz_type,
+                                                      cv_tkn_no_type, lv_tkn_request_no,
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, lv_errmsg);
+            FND_LOG.STRING(cv_log_level,gv_pkg_name
+                          || cv_colon
+                          || cv_prg_name,lv_except_msg);
             RETURN gn_status_error;
 --
-            END IF;
+          END IF;
 --
-            -- 取得した容積積載効率をヘッダ更新用項目にセット
-            ln_update_load_effi_capacity := ln_load_efficiency_capacity;
+          -- 取得した重量積載効率をヘッダ更新用項目にセット
+          ln_update_load_effi_weight := ln_load_efficiency_weight;
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
+--          END IF;
+-- 2008/08/07 H.Itou Del End
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 容積積載効率算出は積載合計容積の値に関わらず算出する。
+--           -- 合計容積が設定されている場合
+--        IF (ln_update_sum_capacity > 0) THEN
+-- 2008/08/07 H.Itou Del End
+          -- 容積積載効率算出
+          xxwsh_common910_pkg.calc_load_efficiency(
+            NULL,                                     -- 1.合計重量
+            ln_update_sum_capacity,                   -- 2.合計容積
+            cv_whse,                                  -- 3.コード区分１
+            lv_deliver_from,                          -- 4.入出庫場所コード１
+            cv_supply_to,                             -- 5.コード区分２
+            lv_result_deliver_to,                     -- 6.入出庫場所コード２
+            lv_result_shipping_method_code,           -- 7.出荷方法
+            lv_prod_class,                            -- 8.商品区分
+            NULL,                                     -- 9.自動配車対象区分
+            ld_shipped_date,                          -- 10.基準日(適用日基準日)
+            lv_retcode,                               -- 11.リターンコード
+            lv_errmsg_code,                           -- 12.エラーメッセージコード
+            lv_errmsg,                                -- 13.エラーメッセージ
+            lv_loading_over_class,                    -- 14.積載オーバー区分
+            lv_ship_methods,                          -- 15.出荷方法
+            ln_load_efficiency_weight,                -- 16.重量積載効率
+            ln_load_efficiency_capacity,              -- 17.容積積載効率
+            lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+          -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
+          IF (lv_retcode = gn_status_error) THEN
+            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                      cv_tkn_api_name, cv_api_capacity,
+                                                      cv_tkn_type, lv_tkn_biz_type,
+                                                      cv_tkn_no_type, lv_tkn_request_no,
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, lv_errmsg);
+            FND_LOG.STRING(cv_log_level,gv_pkg_name
+                          || cv_colon
+                          || cv_prg_name,lv_except_msg);
+          RETURN gn_status_error;
 --
           END IF;
 --
+          -- 取得した容積積載効率をヘッダ更新用項目にセット
+          ln_update_load_effi_capacity := ln_load_efficiency_capacity;
+--
         END IF;
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 容積積載効率算出は積載合計容積の値に関わらず算出する。
+--        END IF;
+-- 2008/08/07 H.Itou Del End
 --
         BEGIN
           <<order_lines_update_loop>>
@@ -3012,19 +3139,77 @@ AS
           -- 重量積載効率
                   xoha.loading_efficiency_weight  =
                    (CASE
-                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 変更要求#173
+--                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--                       ln_update_load_effi_weight
+--                     ELSE
+--                       xoha.loading_efficiency_weight
+                     -- 運賃区分「1」の場合、処理で取得した値を更新
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
                        ln_update_load_effi_weight
+                     -- 上記以外の場合、NULLを更新
                      ELSE
-                       xoha.loading_efficiency_weight
+                       NULL
+-- 2008/08/07 H.Itou Mod End
                    END),
           -- 容積積載効率
                   xoha.loading_efficiency_capacity  =
                    (CASE
-                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 変更要求#173
+--                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--                       ln_update_load_effi_capacity
+--                     ELSE
+--                       xoha.loading_efficiency_capacity
+                     -- 運賃区分「1」の場合、処理で取得した値を更新
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
                        ln_update_load_effi_capacity
+                     -- 上記以外の場合、NULLを更新
                      ELSE
-                       xoha.loading_efficiency_capacity
+                       NULL
+-- 2008/08/07 H.Itou Mod End
                    END),
+-- 2008/08/07 H.Itou Add Start 変更要求#173
+          -- 基本重量
+                  xoha.based_weight =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.based_weight
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 基本容積
+                  xoha.based_capacity =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.based_capacity
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 配送区分
+                  xoha.shipping_method_code =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.shipping_method_code
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 配送区分_実績
+                  xoha.result_shipping_method_code =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         xoha.result_shipping_method_code
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+-- 2008/08/07 H.Itou Add End
                   xoha.last_updated_by           =  ln_user_id,
                   xoha.last_update_date          =  ld_sysdate,
                   xoha.last_update_login         =  ln_login_id,
@@ -3092,6 +3277,9 @@ AS
                   mrih.item_class,                        -- 商品区分
                   --mrih.out_pallet_qty                     -- パレット枚数（出）
                   NVL(mrih.out_pallet_qty, 0)             -- パレット枚数（出）、NULLのときは、0を設定
+-- 2008/08/07 H.Itou Add Start 変更要求#173 運賃区分取得追加
+                 ,mrih.freight_charge_class               -- 運賃区分
+-- 2008/08/07 H.Itou Add End
           INTO    lv_status,
                   lv_actual_shipping_method_code,
                   lv_delivery_no,
@@ -3102,6 +3290,9 @@ AS
                   ld_actual_ship_date,
                   lv_item_class,
                   ln_out_pallet_qty
+-- 2008/08/07 H.Itou Add Start 変更要求#173 運賃区分取得追加
+                 ,lv_freight_charge_class
+-- 2008/08/07 H.Itou Add End
           FROM    xxinv_mov_req_instr_headers      mrih   -- 移動依頼/指示ヘッダ(アドオン)
           WHERE   mrih.mov_num             =    iv_request_no
           FOR UPDATE OF mrih.mov_hdr_id NOWAIT;
@@ -3184,6 +3375,11 @@ AS
 --
             -- 正常時は更新項目に値を追加
             ELSE
+-- 2008/08/07 H.Itou Add Start 変更要求#173 積載重量合計・積載容積合計がNULLにならないように、NVLする。
+              ln_sum_weight        := NVL(ln_sum_weight, 0);       -- 合計重量
+              ln_sum_capacity      := NVL(ln_sum_capacity, 0);     -- 合計容積
+              ln_sum_pallet_weight := NVL(ln_sum_pallet_weight, 0);-- 合計パレット数
+-- 2008/08/07 H.Itou Add End
               -- 【明細更新項目】
               lt_update_tbl(ln_counter).update_weight         :=  ln_sum_weight;
               lt_update_tbl(ln_counter).update_capacity       :=  ln_sum_capacity;
@@ -3206,21 +3402,36 @@ AS
                                               + lt_move_tab(ln_counter).shipped_quantity;
 --
               -- ③(3)で取得した出荷入数が設定されている場合
-              ELSIF (lt_move_tab(ln_counter).num_of_deliver IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 内部課題#32 出荷入数 > 0 に条件変更。
+--              ELSIF (lt_move_tab(ln_counter).num_of_deliver IS NOT NULL) THEN
+              ELSIF (lt_move_tab(ln_counter).num_of_deliver > 0 ) THEN
+-- 2008/08/07 H.Itou Mod End
                 ln_update_small_quantity  :=  NVL(ln_update_small_quantity, 0)
-                                              + ROUND(lt_move_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod Start 変更要求#166 明細単位で整数に切り上げ、合計する。
+--                                              + ROUND(lt_move_tab(ln_counter).shipped_quantity
+                                              + CEIL(lt_move_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod End
                                               / lt_move_tab(ln_counter).num_of_deliver);
 --
+-- 2008/08/07 H.Itou Mod Start 内部課題#32 入出庫換算単位 IS NOT NULL に条件変更。
               -- ④(3)で取得したケース入数が設定されている場合
-              ELSIF (lt_move_tab(ln_counter).num_of_cases IS NOT NULL) THEN
+--              ELSIF (lt_move_tab(ln_counter).num_of_cases IS NOT NULL) THEN
+              ELSIF (lt_move_tab(ln_counter).conv_unit IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod End
                 ln_update_small_quantity  :=  NVL(ln_update_small_quantity, 0)
-                                              + ROUND(lt_move_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod Start 変更要求#166 明細単位で整数に切り上げ、合計する。
+--                                              + ROUND(lt_move_tab(ln_counter).shipped_quantity
+                                              + CEIL(lt_move_tab(ln_counter).shipped_quantity
+-- 2008/08/07 H.Itou Mod End
                                               / lt_move_tab(ln_counter).num_of_cases);
 --
               -- ⑤いずれの条件にも当てはまらない場合
               ELSE
                 ln_update_small_quantity  :=  NVL(ln_update_small_quantity, 0)
-                                              + lt_move_tab(ln_counter).shipped_quantity;
+-- 2008/08/07 H.Itou Mod Start 変更要求#166 明細単位で整数に切り上げ、合計する。
+--                                              + lt_move_tab(ln_counter).shipped_quantity;
+                                             + CEIL(lt_move_tab(ln_counter).shipped_quantity);
+-- 2008/08/07 H.Itou Mod End
 --
               END IF;
 --
@@ -3264,138 +3475,150 @@ AS
         lv_errmsg_code  :=NULL;   -- エラーメッセージコード
         lv_errmsg       :=NULL;   -- エラーメッセージ
 --
-        -- (5)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
-        IF (lv_update_delivery_no IS NOT NULL) THEN
-          -- 合計重量が設定されている場合
-          IF (ln_update_sum_weight > 0) THEN
+-- 2008/08/07 H.Itou Mod Start 変更要求#173 積載効率算出条件は、配送Noではなく、運賃区分で判定
+--        -- (5)(1)で配送Noが設定されている場合、共通関数｢積載効率チェック(積載効率算出)｣を呼び出す
+--        IF (lv_update_delivery_no IS NOT NULL) THEN
+        -- 運賃区分「1」の場合
+        IF (lv_freight_charge_class = gv_freight_charge_yes) THEN
+-- 2008/08/07 H.Itou Mod End
+-- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
+--          -- 合計重量が設定されている場合
+--          IF (ln_update_sum_weight > 0) THEN
+-- 2008/08/07 H.Itou Del End
 --
-            BEGIN
-              -- 取得した配送区分_実績をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
-              SELECT  xsm2.small_amount_class
-              INTO    lv_small_sum_class
-              FROM    xxwsh_ship_method2_v    xsm2
-              WHERE   xsm2.ship_method_code   =  lv_actual_shipping_method_code
-              AND     xsm2.start_date_active  <= ld_actual_ship_date
-              AND     ld_actual_ship_date     <= NVL(xsm2.end_date_active, ld_actual_ship_date);
+          BEGIN
+            -- 取得した配送区分_実績をもとにクイックコード｢XXCMN_SHIP_METHOD｣から小口区分を取得
+            SELECT  xsm2.small_amount_class
+            INTO    lv_small_sum_class
+            FROM    xxwsh_ship_method2_v    xsm2
+            WHERE   xsm2.ship_method_code   =  lv_actual_shipping_method_code
+            AND     xsm2.start_date_active  <= ld_actual_ship_date
+            AND     ld_actual_ship_date     <= NVL(xsm2.end_date_active, ld_actual_ship_date);
 --
-            EXCEPTION
-              -- 取得できなかった場合は返り値に1：処理エラーを返し終了
-              WHEN NO_DATA_FOUND THEN
-                lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_get_err,
-                                                          cv_tkn_table, cv_small_sum_class,
-                                                          cv_tkn_type, lv_tkn_biz_type,
-                                                          cv_tkn_no_type, lv_tkn_request_no,
-                                                          cv_tkn_request_no, iv_request_no);
-                FND_LOG.STRING(cv_log_level,gv_pkg_name
-                              || cv_colon
-                              || cv_prg_name,lv_except_msg);
-                RETURN gn_status_error;
---
-              -- その他の例外が発生した場合は返り値に1：処理エラーを返し終了
-              WHEN OTHERS THEN
-                lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                          cv_tkn_api_name, cv_api_small_sum_class,
-                                                          cv_tkn_type, lv_tkn_biz_type,
-                                                          cv_tkn_no_type, lv_tkn_request_no,
-                                                          cv_tkn_request_no, iv_request_no,
-                                                          cv_tkn_err_msg, SQLERRM);
-                FND_LOG.STRING(cv_log_level,gv_pkg_name
-                              || cv_colon
-                              || cv_prg_name,lv_except_msg);
-              RETURN gn_status_error;
---
-            END;
---
-            -- 重量積載効率算出
-            xxwsh_common910_pkg.calc_load_efficiency(
-              (CASE
-                -- ①(2)で取得した小口区分が｢対象｣の場合
-                WHEN (lv_small_sum_class = cv_include) THEN
-                  ln_update_sum_weight
-                -- ②(2)で取得した小口区分が｢対象｣以外の場合
-                ELSE
-                  ln_update_sum_weight + NVL(ln_update_sum_pallet_weight, 0)
-              END),                                     -- 1.合計重量
-              NULL,                                     -- 2.合計容積
-              cv_whse,                                  -- 3.コード区分１
-              lv_shipped_locat_code,                    -- 4.入出庫場所コード１
-              cv_whse,                                  -- 5.コード区分２
-              lv_ship_to_locat_code,                    -- 6.入出庫場所コード２
-              lv_actual_shipping_method_code,           -- 7.出荷方法
-              lv_item_class,                            -- 8.商品区分
-              NULL,                                     -- 9.自動配車対象区分
-              ld_actual_ship_date,                      -- 10.基準日(適用日基準日)
-              lv_retcode,                               -- 11.リターンコード
-              lv_errmsg_code,                           -- 12.エラーメッセージコード
-              lv_errmsg,                                -- 13.エラーメッセージ
-              lv_loading_over_class,                    -- 14.積載オーバー区分
-              lv_ship_methods,                          -- 15.出荷方法
-              ln_load_efficiency_weight,                -- 16.重量積載効率
-              ln_load_efficiency_capacity,              -- 17.容積積載効率
-              lv_mixed_ship_method);                    -- 18.混載配送区分
---
-            -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
-            IF (lv_retcode = gn_status_error) THEN
-              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                        cv_tkn_api_name, cv_api_weight,
+          EXCEPTION
+            -- 取得できなかった場合は返り値に1：処理エラーを返し終了
+            WHEN NO_DATA_FOUND THEN
+              lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_get_err,
+                                                        cv_tkn_table, cv_small_sum_class,
                                                         cv_tkn_type, lv_tkn_biz_type,
                                                         cv_tkn_no_type, lv_tkn_request_no,
-                                                        cv_tkn_request_no, iv_request_no,
-                                                        cv_tkn_err_msg, lv_errmsg);
+                                                        cv_tkn_request_no, iv_request_no);
               FND_LOG.STRING(cv_log_level,gv_pkg_name
                             || cv_colon
                             || cv_prg_name,lv_except_msg);
               RETURN gn_status_error;
 --
-            END IF;
---
-            -- 取得した重量積載効率をヘッダ更新用項目にセット
-            ln_update_load_effi_weight := ln_load_efficiency_weight;
---
-          END IF;
---
-          -- 合計容積が設定されている場合
-          IF (ln_update_sum_capacity > 0) THEN
-            -- 容積積載効率算出
-            xxwsh_common910_pkg.calc_load_efficiency(
-              NULL,                                     -- 1.合計重量
-              ln_update_sum_capacity,                   -- 2.合計容積
-              cv_whse,                                  -- 3.コード区分１
-              lv_shipped_locat_code,                    -- 4.入出庫場所コード１
-              cv_whse,                                  -- 5.コード区分２
-              lv_ship_to_locat_code,                    -- 6.入出庫場所コード２
-              lv_actual_shipping_method_code,           -- 7.出荷方法
-              lv_item_class,                            -- 8.商品区分
-              NULL,                                     -- 9.自動配車対象区分
-              ld_actual_ship_date,                      -- 10.基準日(適用日基準日)
-              lv_retcode,                               -- 11.リターンコード
-              lv_errmsg_code,                           -- 12.エラーメッセージコード
-              lv_errmsg,                                -- 13.エラーメッセージ
-              lv_loading_over_class,                    -- 14.積載オーバー区分
-              lv_ship_methods,                          -- 15.出荷方法
-              ln_load_efficiency_weight,                -- 16.重量積載効率
-              ln_load_efficiency_capacity,              -- 17.容積積載効率
-              lv_mixed_ship_method);                    -- 18.混載配送区分
---
-            -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
-            IF (lv_retcode = gn_status_error) THEN
+            -- その他の例外が発生した場合は返り値に1：処理エラーを返し終了
+            WHEN OTHERS THEN
               lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
-                                                        cv_tkn_api_name, cv_api_capacity,
+                                                        cv_tkn_api_name, cv_api_small_sum_class,
                                                         cv_tkn_type, lv_tkn_biz_type,
                                                         cv_tkn_no_type, lv_tkn_request_no,
                                                         cv_tkn_request_no, iv_request_no,
-                                                        cv_tkn_err_msg, lv_errmsg);
+                                                        cv_tkn_err_msg, SQLERRM);
               FND_LOG.STRING(cv_log_level,gv_pkg_name
                             || cv_colon
                             || cv_prg_name,lv_except_msg);
-              RETURN gn_status_error;
+            RETURN gn_status_error;
 --
-            END IF;
+          END;
 --
-            -- 取得した容積積載効率をヘッダ更新用項目にセット
-            ln_update_load_effi_capacity := ln_load_efficiency_capacity;
+          -- 重量積載効率算出
+          xxwsh_common910_pkg.calc_load_efficiency(
+            (CASE
+              -- ①(2)で取得した小口区分が｢対象｣の場合
+              WHEN (lv_small_sum_class = cv_include) THEN
+                ln_update_sum_weight
+              -- ②(2)で取得した小口区分が｢対象｣以外の場合
+              ELSE
+                ln_update_sum_weight + NVL(ln_update_sum_pallet_weight, 0)
+            END),                                     -- 1.合計重量
+            NULL,                                     -- 2.合計容積
+            cv_whse,                                  -- 3.コード区分１
+            lv_shipped_locat_code,                    -- 4.入出庫場所コード１
+            cv_whse,                                  -- 5.コード区分２
+            lv_ship_to_locat_code,                    -- 6.入出庫場所コード２
+            lv_actual_shipping_method_code,           -- 7.出荷方法
+            lv_item_class,                            -- 8.商品区分
+            NULL,                                     -- 9.自動配車対象区分
+            ld_actual_ship_date,                      -- 10.基準日(適用日基準日)
+            lv_retcode,                               -- 11.リターンコード
+            lv_errmsg_code,                           -- 12.エラーメッセージコード
+            lv_errmsg,                                -- 13.エラーメッセージ
+            lv_loading_over_class,                    -- 14.積載オーバー区分
+            lv_ship_methods,                          -- 15.出荷方法
+            ln_load_efficiency_weight,                -- 16.重量積載効率
+            ln_load_efficiency_capacity,              -- 17.容積積載効率
+            lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+          -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
+          IF (lv_retcode = gn_status_error) THEN
+            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                      cv_tkn_api_name, cv_api_weight,
+                                                      cv_tkn_type, lv_tkn_biz_type,
+                                                      cv_tkn_no_type, lv_tkn_request_no,
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, lv_errmsg);
+            FND_LOG.STRING(cv_log_level,gv_pkg_name
+                          || cv_colon
+                          || cv_prg_name,lv_except_msg);
+            RETURN gn_status_error;
 --
           END IF;
+--
+          -- 取得した重量積載効率をヘッダ更新用項目にセット
+          ln_update_load_effi_weight := ln_load_efficiency_weight;
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 重量積載効率算出は積載合計重量の値に関わらず算出する。
+--          END IF;
+-- 2008/08/07 H.Itou Del End
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 容積積載効率算出は積載合計容積の値に関わらず算出する。
+--          -- 合計容積が設定されている場合
+--          IF (ln_update_sum_capacity > 0) THEN
+-- 2008/08/07 H.Itou Del End
+          -- 容積積載効率算出
+          xxwsh_common910_pkg.calc_load_efficiency(
+            NULL,                                     -- 1.合計重量
+            ln_update_sum_capacity,                   -- 2.合計容積
+            cv_whse,                                  -- 3.コード区分１
+            lv_shipped_locat_code,                    -- 4.入出庫場所コード１
+            cv_whse,                                  -- 5.コード区分２
+            lv_ship_to_locat_code,                    -- 6.入出庫場所コード２
+            lv_actual_shipping_method_code,           -- 7.出荷方法
+            lv_item_class,                            -- 8.商品区分
+            NULL,                                     -- 9.自動配車対象区分
+            ld_actual_ship_date,                      -- 10.基準日(適用日基準日)
+            lv_retcode,                               -- 11.リターンコード
+            lv_errmsg_code,                           -- 12.エラーメッセージコード
+            lv_errmsg,                                -- 13.エラーメッセージ
+            lv_loading_over_class,                    -- 14.積載オーバー区分
+            lv_ship_methods,                          -- 15.出荷方法
+            ln_load_efficiency_weight,                -- 16.重量積載効率
+            ln_load_efficiency_capacity,              -- 17.容積積載効率
+            lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+          -- リターンコードが'1'(異常)の場合は返り値に1：エラーを返し終了
+          IF (lv_retcode = gn_status_error) THEN
+            lv_except_msg := xxcmn_common_pkg.get_msg(cv_msg_kbn, cv_api_err,
+                                                      cv_tkn_api_name, cv_api_capacity,
+                                                      cv_tkn_type, lv_tkn_biz_type,
+                                                      cv_tkn_no_type, lv_tkn_request_no,
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, lv_errmsg);
+            FND_LOG.STRING(cv_log_level,gv_pkg_name
+                          || cv_colon
+                          || cv_prg_name,lv_except_msg);
+            RETURN gn_status_error;
+--
+          END IF;
+--
+          -- 取得した容積積載効率をヘッダ更新用項目にセット
+          ln_update_load_effi_capacity := ln_load_efficiency_capacity;
+--
+-- 2008/08/07 H.Itou Del Start 変更要求#173 容積積載効率算出は積載合計容積の値に関わらず算出する。
+--          END IF;
+-- 2008/08/07 H.Itou Del End
 --
         END IF;
 --
@@ -3455,19 +3678,77 @@ AS
           -- 重量積載効率
                   mrih.loading_efficiency_weight =
                    (CASE
-                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 変更要求#173
+--                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--                       ln_update_load_effi_weight
+--                     ELSE
+--                       mrih.loading_efficiency_weight
+                     -- 運賃区分「1」の場合、処理で取得した値を更新
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
                        ln_update_load_effi_weight
+                     -- 上記以外の場合、NULLを更新
                      ELSE
-                       mrih.loading_efficiency_weight
+                       NULL
+-- 2008/08/07 H.Itou Mod End
                    END),
           -- 容積積載効率
                   mrih.loading_efficiency_capacity  =
                    (CASE
-                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+-- 2008/08/07 H.Itou Mod Start 変更要求#173
+--                     WHEN (lv_update_delivery_no IS NOT NULL) THEN
+--                       ln_update_load_effi_capacity
+--                     ELSE
+--                       mrih.loading_efficiency_capacity
+                     -- 運賃区分「1」の場合、処理で取得した値を更新
+                     WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
                        ln_update_load_effi_capacity
+                     -- 上記以外の場合、NULLを更新
                      ELSE
-                       mrih.loading_efficiency_capacity
+                       NULL
+-- 2008/08/07 H.Itou Mod End
                    END),
+-- 2008/08/07 H.Itou Add Start 変更要求#173
+          -- 基本重量
+                  mrih.based_weight =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         mrih.based_weight
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 基本容積
+                  mrih.based_capacity =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         mrih.based_capacity
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 配送区分
+                  mrih.shipping_method_code =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         mrih.shipping_method_code
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+          -- 配送区分_実績
+                  mrih.actual_shipping_method_code =
+                    (CASE
+                       -- 運賃区分「1」の場合、更新しない（現在の値で更新）
+                       WHEN (lv_freight_charge_class = gv_freight_charge_yes) THEN
+                         mrih.actual_shipping_method_code
+                       -- 上記以外の場合、NULLを更新
+                       ELSE
+                         NULL
+                     END),
+-- 2008/08/07 H.Itou Add End
                   mrih.last_updated_by           =  ln_user_id,
                   mrih.last_update_date          =  ld_sysdate,
                   mrih.last_update_login         =  ln_login_id,
