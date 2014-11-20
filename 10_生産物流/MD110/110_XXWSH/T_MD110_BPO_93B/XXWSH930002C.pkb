@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.58
+ * Version          : 1.59
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -161,6 +161,7 @@ AS
  *  2009/10/02    1.56 SCS    伊藤ひとみ 本番障害対応#1144 ロット管理外品で黒データ作成時に出荷実績IF済フラグを常にNに設定するよう修正
  *  2009/10/07    1.57 SCS    伊藤ひとみ 本番障害対応#1648,1345 顧客ステータスを条件としないよう修正,顧客発注番号チェック廃止
  *  2009/11/26    1.58 SCS    宮川真理子 本番障害対応#1497 パージ処理の削除条件の保留ステータス条件を削除
+ *  2009/12/28    1.59 SCS    伊藤ひとみ 本稼動障害  #695  57A入出庫実績登録処理move_results_regist_processを行わないようにする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -19691,205 +19692,207 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
 --
   END ins_upd_del_processing;
 --
- /**********************************************************************************
-  * Procedure Name   : ship_results_regist_process
-  * Description      : 出荷実績登録処理プロシージャ (A-16)
-  ***********************************************************************************/
-  PROCEDURE ship_results_regist_process(
-    iv_object_warehouse     IN  VARCHAR2,            -- 対象倉庫
-    ov_errbuf               OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode              OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg               OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'ship_results_regist_process'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    cv_pkg_name             CONSTANT VARCHAR2(20) := 'xxwsh420001c' ;   -- パッケージ名
---
-    -- *** ローカル変数 ***
-    ln_req_id               NUMBER ;
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := gv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- 出荷依頼出荷実績作成処理の呼び出しを行う。
-    ln_req_id := FND_REQUEST.SUBMIT_REQUEST (
-                  application       => gv_msg_kbn           -- アプリケーション短縮名
-                 ,program           => cv_pkg_name          -- プログラム名
-                 ,argument1         => NULL                 -- パラメータ０１(ブロック)
-                 ,argument2         => iv_object_warehouse  -- パラメータ０２(出荷元)
-                 ,argument3         => NULL                 -- パラメータ０３(依頼No)
-                 );
---
-    -- エラーの場合
-    IF (ln_req_id = 0) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(
-	                gv_msg_kbn,               -- 'XXWSH'
-                    gv_msg_93a_029,           -- 出荷実績登録処理エラーメッセージ
-                    gv_param1_token,          -- トークン'PARAM1'
-                    NULL,                     -- パラメータ(ブロック)
-                    gv_param2_token,          -- トークン'PARAM2'
-                    iv_object_warehouse,      -- パラメータ(出荷元)
-                    gv_param3_token,          -- トークン'PARAM3'
-                    NULL);                    -- パラメータ(依頼元)
---
-      lv_errbuf := lv_errmsg;
---
-      RAISE global_api_expt;
---
-    END IF ;
---
-    --==============================================================
-    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := gv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END ship_results_regist_process;
---
- /**********************************************************************************
-  * Procedure Name   : move_results_regist_process
-  * Description      : 入出庫実績登録処理プロシージャ (A-17)
-  ***********************************************************************************/
-  PROCEDURE move_results_regist_process(
-    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'move_results_regist_process'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    cv_pkg_name             CONSTANT VARCHAR2(20)  := 'xxinv570001c' ;   -- パッケージ名
-    cv_appl_name            CONSTANT VARCHAR2(100) := 'XXINV';           -- アプリケーション短縮名
---
-    -- *** ローカル変数 ***
-    ln_req_id               NUMBER ;
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := gv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- 移動入出庫実績登録処理の呼び出しを行う。
-    ln_req_id := FND_REQUEST.SUBMIT_REQUEST(
-                  application       => cv_appl_name         -- アプリケーション短縮名
-                 ,program           => cv_pkg_name          -- プログラム名
-                 ,argument1         => NULL                 -- パラメータ０１(移動番号)
-                 ) ;
---
-    -- エラーの場合
-    IF (ln_req_id = 0) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(
-	                gv_msg_kbn,               -- 'XXINV'
-                    gv_msg_93a_030,           -- 入出庫実績登録処理エラーメッセージ
-                    gv_param1_token,          -- トークン'PARAM1'
-                    NULL
-                    );                        -- パラメータ(依頼元)
---
-      lv_errbuf := lv_errmsg;
---
-      RAISE global_api_expt;
-    END IF;
---
-    --==============================================================
-    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := gv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END move_results_regist_process;
+-- 2009/12/28 H.Itou Del Start 本稼動障害#695 呼ばないプロシージャなので削除
+-- /**********************************************************************************
+--  * Procedure Name   : ship_results_regist_process
+--  * Description      : 出荷実績登録処理プロシージャ (A-16)
+--  ***********************************************************************************/
+--  PROCEDURE ship_results_regist_process(
+--    iv_object_warehouse     IN  VARCHAR2,            -- 対象倉庫
+--    ov_errbuf               OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode              OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg               OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+--  )
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'ship_results_regist_process'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+--    cv_pkg_name             CONSTANT VARCHAR2(20) := 'xxwsh420001c' ;   -- パッケージ名
+----
+--    -- *** ローカル変数 ***
+--    ln_req_id               NUMBER ;
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := gv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- 出荷依頼出荷実績作成処理の呼び出しを行う。
+--    ln_req_id := FND_REQUEST.SUBMIT_REQUEST (
+--                  application       => gv_msg_kbn           -- アプリケーション短縮名
+--                 ,program           => cv_pkg_name          -- プログラム名
+--                 ,argument1         => NULL                 -- パラメータ０１(ブロック)
+--                 ,argument2         => iv_object_warehouse  -- パラメータ０２(出荷元)
+--                 ,argument3         => NULL                 -- パラメータ０３(依頼No)
+--                 );
+----
+--    -- エラーの場合
+--    IF (ln_req_id = 0) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(--
+--                    gv_msg_kbn,               ---- 'XXWSH'
+--                    gv_msg_93a_029,           ---- 出荷実績登録処理エラーメッセージ
+--                    gv_param1_token,          ---- トークン'PARAM1'
+--                    NULL,                     ---- パラメータ(ブロック)
+--                    gv_param2_token,          ---- トークン'PARAM2'
+--                    iv_object_warehouse,      ---- パラメータ(出荷元)
+--                    gv_param3_token,          ---- トークン'PARAM3'
+--                    NULL);                    ---- パラメータ(依頼元)
+----
+--      lv_errbuf := lv_errmsg;
+----
+--      RAISE global_api_expt;
+----
+--    END IF ;
+----
+--    --==============================================================
+--    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := gv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--      ov_retcode := gv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--      ov_retcode := gv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END ship_results_regist_process;
+----
+-- /**********************************************************************************
+--  * Procedure Name   : move_results_regist_process
+--  * Description      : 入出庫実績登録処理プロシージャ (A-17)
+--  ***********************************************************************************/
+--  PROCEDURE move_results_regist_process(
+--    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+--  )
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'move_results_regist_process'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+--    cv_pkg_name             CONSTANT VARCHAR2(20)  := 'xxinv570001c' ;   -- パッケージ名
+--    cv_appl_name            CONSTANT VARCHAR2(100) := 'XXINV';           -- アプリケーション短縮名
+----
+--    -- *** ローカル変数 ***
+--    ln_req_id               NUMBER ;
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := gv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- 移動入出庫実績登録処理の呼び出しを行う。
+--    ln_req_id := FND_REQUEST.SUBMIT_REQUEST(
+--                  application       => cv_appl_name         -- アプリケーション短縮名
+--                 ,program           => cv_pkg_name          -- プログラム名
+--                 ,argument1         => NULL                 -- パラメータ０１(移動番号)
+--                 ) ;
+----
+--    -- エラーの場合
+--    IF (ln_req_id = 0) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(--
+--                    gv_msg_kbn,               ---- 'XXINV'
+--                    gv_msg_93a_030,           ---- 入出庫実績登録処理エラーメッセージ
+--                    gv_param1_token,          ---- トークン'PARAM1'
+--                    NULL
+--                    );--                        -- パラメータ(依頼元)
+----
+--      lv_errbuf := lv_errmsg;
+----
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    --==============================================================
+--    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := gv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--      ov_retcode := gv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--      ov_retcode := gv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END move_results_regist_process;
+-- 2009/12/28 H.Itou Del End
 --
  /**********************************************************************************
   * Procedure Name   : submain
@@ -20517,33 +20520,35 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
     */
     -- 2008/12/15 本番障害#648 Del End ---------------------------------------------
 --
-    -- ===============================
-    -- 入出庫実績登録処理プロシージャ (A-17)
-    -- ===============================
---  移動依頼/指示アドオンへ登録又は更新するデータが1件以上存在した場合
---
---********** 2008/07/07 ********** MODIFY START ***
---* IF ((gn_mov_h_ins_cnt > 0) OR
---*   (gn_mov_h_upd_n_cnt > 0) OR
---*   (gn_mov_h_upd_y_cnt > 0))
---* THEN
---
-    IF ((gn_mov_new_cnt     > 0) OR
-        (gn_mov_correct_cnt > 0))
-    THEN
---********** 2008/07/07 ********** MODIFY END   ***
---
-      move_results_regist_process(
-        lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-        lv_retcode,             -- リターン・コード             --# 固定 #
-        lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-      );
---
-    END IF;
---
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+-- 2009/12/28 H.Itou Del Start 本稼動障害#695 57A入出庫実績登録処理move_results_regist_processを行わないようにする
+--    -- ===============================
+--    -- 入出庫実績登録処理プロシージャ (A-17)
+--    -- ===============================
+----  移動依頼/指示アドオンへ登録又は更新するデータが1件以上存在した場合
+----
+----********** 2008/07/07 ********** MODIFY START ***
+----* IF ((gn_mov_h_ins_cnt > 0) OR
+----*   (gn_mov_h_upd_n_cnt > 0) OR
+----*   (gn_mov_h_upd_y_cnt > 0))
+----* THEN
+----
+--    IF ((gn_mov_new_cnt     > 0) OR
+--        (gn_mov_correct_cnt > 0))
+--    THEN
+----********** 2008/07/07 ********** MODIFY END   ***
+----
+--      move_results_regist_process(
+--        lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,             -- リターン・コード             --# 固定 #
+--        lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+----
+--    END IF;
+----
+--    IF (lv_retcode = gv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+-- 2009/12/28 H.Itou Del End
 --
     IF (lv_warn_flg = gv_status_warn) THEN
       ov_retcode := gv_status_warn;

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2009-02-26 1.12 二瓶大輔     本番障害#885対応
 * 2009-03-11 1.13 伊藤ひとみ   本番障害#885対応(再対応)
 * 2009-06-18 1.14 伊藤ひとみ   本番障害#1314対応
+* 2009-12-28 1.15 伊藤ひとみ   本稼動障害#695
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -49,7 +50,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.14
+ * @version 1.15
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1901,33 +1902,37 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row       = (OARow)vo.first();
     String movNum   = (String)row.getAttribute("MovNum");
 // 2008-12-25 H.Itou Add Start
-    Number movHeaderId = (Number)row.getAttribute("MovHdrId");
-    // 全移動明細出庫実績数量登録済チェック (true:登録済  false:未登録あり)
-    boolean shippedResultFlag = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "1");
-    // 全移動明細入庫実績数量登録済チェック (true:登録済  false:未登録あり)
-    boolean shipToResultFlag  = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "2");
-
-    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
-    if (shippedResultFlag && shipToResultFlag)
-    {
-// 2008-12-25 H.Itou Add End
-      // INパラメータ用HashMap生成
-      HashMap inParams = new HashMap();
-      inParams.put("MovNum", movNum);
-
-      // 移動入出庫実績登録処理実行
-      return XxinvUtility.doMovShipActualMake(
-                            getOADBTransaction(), // トランザクション
-                            inParams              // パラメータ
-                            );
-// 2008-12-25 H.Itou Add Start
-    // 移動明細の出庫実績数量・入庫実績数量が登録されていない場合、コンカレントを起動しない。
-    } else
-    {
+// 2009-12-28 H.Itou Del Start 本稼動障害#695
+//  	Number movHeaderId = (Number)row.getAttribute("MovHdrId");
+//    // 全移動明細出庫実績数量登録済チェック (true:登録済  false:未登録あり)
+//    boolean shippedResultFlag = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "1");
+//    // 全移動明細入庫実績数量登録済チェック (true:登録済  false:未登録あり)
+//    boolean shipToResultFlag  = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "2");
+//
+//    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+//    if (shippedResultFlag && shipToResultFlag)
+//    {
+//// 2008-12-25 H.Itou Add End
+//      // INパラメータ用HashMap生成
+//      HashMap inParams = new HashMap();
+//      inParams.put("MovNum", movNum);
+//
+//      // 移動入出庫実績登録処理実行
+//      return XxinvUtility.doMovShipActualMake(
+//                            getOADBTransaction(), // トランザクション
+//                            inParams              // パラメータ
+//                            );
+//// 2008-12-25 H.Itou Add Start
+//    // 移動明細の出庫実績数量・入庫実績数量が登録されていない場合、コンカレントを起動しない。
+//    } else
+//    {
+// 2009-12-28 H.Itou Del End
       HashMap retParams = new HashMap();
       retParams.put("retFlag", null);
       return retParams;
-    }
+// 2009-12-28 H.Itou Del Start 本稼動障害#695
+//    }
+// 2009-12-28 H.Itou Del End
 // 2008-12-25 H.Itou Add End
   } // doMovActualMake
 
@@ -3574,31 +3579,32 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // * コミット処理                       * //
     // ************************************** //
     doCommit();
-
-    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
-    if (shippedResultFlag && shipToResultFlag)
-    {    
-      // ******************************************* // 
-      // *  移動入出庫実績登録処理(コンカレント)   * //
-      // ******************************************* //
-      HashMap param = new HashMap();
-      param.put("MovNum", movNum); // 移動番号
-      HashMap retHashMap = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
-
-      // コンカレント正常終了の場合
-      if (XxcmnConstants.RETURN_SUCCESS.equals((String)retHashMap.get("retFlag")))
-      {
-        // コンカレント正常終了メッセージ取得
-        MessageToken[] tokens = new MessageToken[2];
-        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
-        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retHashMap.get("requestId").toString());
-        infoMsg.add(new OAException(XxcmnConstants.APPL_XXINV,
-                                    XxinvConstants.XXINV10006,
-                                    tokens,
-                                    OAException.INFORMATION,
-                                    null));
-      }
-    }
+// 2009-12-28 H.Itou Del Start 本稼動障害#695
+//    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+//    if (shippedResultFlag && shipToResultFlag)
+//    {    
+//      // ******************************************* // 
+//      // *  移動入出庫実績登録処理(コンカレント)   * //
+//      // ******************************************* //
+//      HashMap param = new HashMap();
+//      param.put("MovNum", movNum); // 移動番号
+//      HashMap retHashMap = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
+//
+//      // コンカレント正常終了の場合
+//      if (XxcmnConstants.RETURN_SUCCESS.equals((String)retHashMap.get("retFlag")))
+//      {
+//        // コンカレント正常終了メッセージ取得
+//        MessageToken[] tokens = new MessageToken[2];
+//        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
+//        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retHashMap.get("requestId").toString());
+//        infoMsg.add(new OAException(XxcmnConstants.APPL_XXINV,
+//                                    XxinvConstants.XXINV10006,
+//                                    tokens,
+//                                    OAException.INFORMATION,
+//                                    null));
+//      }
+//    }
+// 2009-12-28 H.Itou Del End
 
     // ヘッダ初期化&再検索
     initializeHdr(hdrParams);

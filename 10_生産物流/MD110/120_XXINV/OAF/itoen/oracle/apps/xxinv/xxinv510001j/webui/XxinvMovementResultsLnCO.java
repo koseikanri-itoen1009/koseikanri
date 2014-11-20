@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsLnCO
 * 概要説明   : 入出庫実績明細:検索コントローラ
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-08-18 1.4  山本恭久     内部変更#157対応、ST#249対応
 * 2008-09-24 1.5  伊藤ひとみ   内部変更#157バグ修正
 * 2009-02-26 1.6  二瓶大輔     本番障害#855対応
+* 2009-12-28 1.7  伊藤ひとみ   本稼動障害#695
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -43,7 +44,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 入出庫実績明細:検索コントローラです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.6
+ * @version 1.7
  ***************************************************************************
  */
 public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
@@ -301,24 +302,25 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
           {
             // OA例外リストを生成します。
             ArrayList exceptions = new ArrayList(100);
-
-            // コンカレント：移動入出庫実績登録処理発行
-            HashMap retParams = new HashMap();
-            retParams = (HashMap)am.invokeMethod("doMovActualMake");
-
-            // コンカレントが正常終了した場合
-            if (XxcmnConstants.RETURN_SUCCESS.equals((String)retParams.get("retFlag")))
-            {
-              // メッセージトークン取得
-              MessageToken[] tokens = new MessageToken[2];
-              tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
-              tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retParams.get("requestId").toString());
-              exceptions.add( new OAException(XxcmnConstants.APPL_XXINV,
-                                                XxinvConstants.XXINV10006,
-                                                tokens,
-                                                OAException.INFORMATION,
-                                                null));
-            }
+// 2009-12-28 H.Itou Del Start 本稼動障害#695
+//            // コンカレント：移動入出庫実績登録処理発行
+//            HashMap retParams = new HashMap();
+//            retParams = (HashMap)am.invokeMethod("doMovActualMake");
+//
+//            // コンカレントが正常終了した場合
+//            if (XxcmnConstants.RETURN_SUCCESS.equals((String)retParams.get("retFlag")))
+//            {
+//              // メッセージトークン取得
+//              MessageToken[] tokens = new MessageToken[2];
+//              tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
+//              tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retParams.get("requestId").toString());
+//              exceptions.add( new OAException(XxcmnConstants.APPL_XXINV,
+//                                                XxinvConstants.XXINV10006,
+//                                                tokens,
+//                                                OAException.INFORMATION,
+//                                                null));
+//            }
+// 2009-12-28 H.Itou Del End
             // 登録完了MSGを設定し、自画面遷移
             exceptions.add( new OAException(XxcmnConstants.APPL_XXINV,
                                    XxinvConstants.XXINV10161, 

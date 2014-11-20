@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementShippedLotAMImpl
 * 概要説明   : 出庫・入庫ロット明細画面アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-07-10 1.1  伊藤ひとみ     内部変更 自身のコンカレントコールで変更した場合、排他エラーとしない。
 * 2008-07-14 1.2  山本  恭久     内部変更 重量容積小口個数関数のコールタイミングの変更
 * 2008-10-21 1.3  伊藤ひとみ     統合テスト 指摘353対応
+* 2009-12-28 1.4  伊藤ひとみ     本稼動障害#695
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510002j.server;
@@ -37,7 +38,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出庫ロット明細画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1468,33 +1469,34 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
     // ***************** //
     XxinvUtility.commit(getOADBTransaction());
 
-
-    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
-    if (shippedResultFlag && shipToResultFlag)
-    {    
-      // ******************************************* // 
-      // *  移動入出庫実績登録処理(コンカレント)   * //
-      // ******************************************* //
-      HashMap param = new HashMap();
-      param.put("MovNum", movNum); // 移動番号
-      HashMap retHashMap = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
-
-      // コンカレント正常終了の場合
-      if (XxcmnConstants.RETURN_SUCCESS.equals((String)retHashMap.get("retFlag")))
-      {
-        // コンカレント正常終了メッセージ取得
-        MessageToken[] tokens = new MessageToken[2];
-        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
-        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retHashMap.get("requestId").toString());
-        infoMsg.add(
-          new OAException(
-                 XxcmnConstants.APPL_XXINV,
-                 XxinvConstants.XXINV10006,
-                 tokens,
-                 OAException.INFORMATION,
-                 null));
-      }
-    }
+// 2009-12-28 H.Itou Del Start 本稼動障害#695
+//    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+//    if (shippedResultFlag && shipToResultFlag)
+//    {    
+//      // ******************************************* // 
+//      // *  移動入出庫実績登録処理(コンカレント)   * //
+//      // ******************************************* //
+//      HashMap param = new HashMap();
+//      param.put("MovNum", movNum); // 移動番号
+//      HashMap retHashMap = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
+//
+//      // コンカレント正常終了の場合
+//      if (XxcmnConstants.RETURN_SUCCESS.equals((String)retHashMap.get("retFlag")))
+//      {
+//        // コンカレント正常終了メッセージ取得
+//        MessageToken[] tokens = new MessageToken[2];
+//        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
+//        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retHashMap.get("requestId").toString());
+//        infoMsg.add(
+//          new OAException(
+//                 XxcmnConstants.APPL_XXINV,
+//                 XxinvConstants.XXINV10006,
+//                 tokens,
+//                 OAException.INFORMATION,
+//                 null));
+//      }
+//    }
+// 2009-12-28 H.Itou Del End
 
     // ******************** // 
     // *  再表示          * //
@@ -1614,32 +1616,34 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
     // ***************** //
     XxinvUtility.commit(getOADBTransaction());
 
-    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
-    if (shippedResultFlag && shipToResultFlag)
-    {    
-      // ******************************************* // 
-      // *  移動入出庫実績登録処理(コンカレント)   * //
-      // ******************************************* //
-      HashMap param = new HashMap();
-      param.put("MovNum", movNum); // 移動番号
-      HashMap ret = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
-
-      // コンカレント正常終了の場合
-      if (XxcmnConstants.RETURN_SUCCESS.equals((String)ret.get("retFlag")))
-      {
-        // コンカレント正常終了メッセージ取得
-        MessageToken[] tokens = new MessageToken[2];
-        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
-        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      ret.get("requestId").toString());
-        infoMsg.add(
-          new OAException(
-                 XxcmnConstants.APPL_XXINV,
-                 XxinvConstants.XXINV10006,
-                 tokens,
-                 OAException.INFORMATION,
-                 null));
-      }
-    }
+// 2009-12-28 H.Itou Del Start 本稼動障害#695
+//    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+//    if (shippedResultFlag && shipToResultFlag)
+//    {    
+//      // ******************************************* // 
+//      // *  移動入出庫実績登録処理(コンカレント)   * //
+//      // ******************************************* //
+//      HashMap param = new HashMap();
+//      param.put("MovNum", movNum); // 移動番号
+//      HashMap retHashMap = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
+//
+//      // コンカレント正常終了の場合
+//      if (XxcmnConstants.RETURN_SUCCESS.equals((String)retHashMap.get("retFlag")))
+//      {
+//        // コンカレント正常終了メッセージ取得
+//        MessageToken[] tokens = new MessageToken[2];
+//        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
+//        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retHashMap.get("requestId").toString());
+//        infoMsg.add(
+//          new OAException(
+//                 XxcmnConstants.APPL_XXINV,
+//                 XxinvConstants.XXINV10006,
+//                 tokens,
+//                 OAException.INFORMATION,
+//                 null));
+//      }
+//    }
+// 2009-12-28 H.Itou Del End
 
     // ******************** // 
     // *  再表示          * //
