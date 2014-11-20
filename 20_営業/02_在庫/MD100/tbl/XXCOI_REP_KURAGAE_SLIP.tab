@@ -3,7 +3,7 @@
  *
  * Table Name      : XXCOI_REP_KURAGAE_SLIP
  * Description     : 倉替伝票帳票ワークテーブル
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008-11-05    1.0   K.Nakamura       新規作成
  *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
+ *  2009/07/09    1.2   S.Moriyama       [0000496]Storage句を追加
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_REP_KURAGAE_SLIP
@@ -39,6 +40,9 @@ CREATE TABLE XXCOI.XXCOI_REP_KURAGAE_SLIP
   CONSTRAINT XXCOI_REP_KURAGAE_SLIP_PK PRIMARY KEY ( KURAGAE_SLIP_ID )
   USING INDEX TABLESPACE xxidx2
 )
+-- == 2009/07/09 V1.2 Added START ===============================================================
+  STORAGE ( INITIAL 2M)
+-- == 2009/07/09 V1.2 Added END ===============================================================
 /
 COMMENT ON COLUMN XXCOI.XXCOI_REP_KURAGAE_SLIP.KURAGAE_SLIP_ID          IS '倉替伝票ID';
 /

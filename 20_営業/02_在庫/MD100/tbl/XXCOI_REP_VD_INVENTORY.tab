@@ -3,7 +3,7 @@
  *
  * Table Name      : XXCOI_REP_VD_INVENTORY
  * Description     : VD機内在庫表ワークテーブル
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009-01-07    1.0   SCS H.Wada       新規作成
  *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
  *  2009/05/19    1.2   T.Nakamura       [T1_0980]出力期間カラムを追加
+ *  2009/07/09    1.3   S.Moriyama       [0000496]Storage句を追加
  *
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_REP_VD_INVENTORY
@@ -376,6 +377,9 @@ CREATE TABLE XXCOI.XXCOI_REP_VD_INVENTORY
  ,CONSTRAINT XXCOI_REP_VD_INVENTORY_PK PRIMARY KEY ( VD_INV_WK_ID )
   USING INDEX TABLESPACE xxidx2
 )
+-- == 2009/07/09 V1.3 Added START ===============================================================
+  STORAGE ( INITIAL 2M)
+-- == 2009/07/09 V1.3 Added END ===============================================================
 /
 --
 COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.VD_INV_WK_ID                  IS 'ベンダ機内在庫表ワークID';

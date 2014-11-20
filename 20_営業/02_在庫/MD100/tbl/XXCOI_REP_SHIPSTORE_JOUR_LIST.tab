@@ -3,15 +3,16 @@
  *
  * Table Name  : XXCOI_REP_SHIPSTORE_JOUR_LIST
  * Description : 入出庫ジャーナルチェックリスト帳票ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2009/02/06    1.0  SCS.Tsuboi        新規作成
- *  2009/04/30    1.1  T.Nakamura        バックスラッシュを追加
- *  2009/06/15    1.2  H.Sasaki          [I_E_453][T1_1090]項目サイズ変更（invoice_type_name）
+ *  2009/02/06    1.0   SCS.Tsuboi       新規作成
+ *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
+ *  2009/06/15    1.2   H.Sasaki         [I_E_453][T1_1090]項目サイズ変更（invoice_type_name）
+ *  2009/07/09    1.3   S.Moriyama       [0000496]Storage句を追加
  *
  ************************************************************************/
   CREATE TABLE XXCOI.XXCOI_REP_SHIPSTORE_JOUR_LIST
@@ -46,10 +47,10 @@
      PROGRAM_APPLICATION_ID     NUMBER,
      PROGRAM_ID                 NUMBER,
      PROGRAM_UPDATE_DATE        DATE
-   ) PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
-  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
-  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
-  TABLESPACE XXDATA2
+   ) 
+-- == 2009/07/09 V1.3 Added START ===============================================================
+  STORAGE ( INITIAL 2M)
+-- == 2009/07/09 V1.3 Added END ===============================================================
 /
    COMMENT ON TABLE  XXCOI.XXCOI_REP_SHIPSTORE_JOUR_LIST                        IS '入出庫ジャーナルチェックリスト帳票ワークテーブル';
 /
