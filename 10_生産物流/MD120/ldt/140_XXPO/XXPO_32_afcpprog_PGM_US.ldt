@@ -16022,3 +16022,6029 @@ BEGIN PROGRAM "XXPO870003C2" "XXPO"
 
 END PROGRAM
 
+BEGIN EXECUTABLE "XXPO940004C" "XXPO"
+  OWNER = "SCS_YTAKAYAMA1"
+  LAST_UPDATE_DATE = "2008/07/28"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940004C.main"
+  USER_EXECUTABLE_NAME = "XXPO940004C"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理"
+END EXECUTABLE
+
+BEGIN VALUE_SET "XXPO_WF_INFO_94D"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 16:33:46"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "5"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：宛先(94D：発注・有償・移動情報抽出用)"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 16:33:46"
+    APPLICATION_TABLE_NAME = "FND_LOOKUP_VALUES"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "ATTRIBUTE3"
+    VALUE_COLUMN_TYPE = "V"
+    VALUE_COLUMN_SIZE = "5"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE =
+   "WHERE LOOKUP_TYPE = 'XXCMN_WF_INFO' AND LANGUAGE = 'JA' AND ATTRIBUTE1 = '12' AND ATTRIBUTE2 = '7' ORDER BY ATTRIBUTE3"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN VALUE_SET "XXPO_CARRIERS_CODE"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 16:50:15"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "4"
+  ALPHANUMERIC_ALLOWED_FLAG = "N"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：運送業者"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 16:50:15"
+    APPLICATION_TABLE_NAME = "XXCMN_CARRIERS_V"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "PARTY_NUMBER"
+    VALUE_COLUMN_TYPE = "C"
+    VALUE_COLUMN_SIZE = "4"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE = "ORDER BY PARTY_NUMBER"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN VALUE_SET "XXPO_SECURITY_FLG"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 10:53:58"
+  VALIDATION_TYPE = "I"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "1"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：セキュリティ区分"
+
+
+
+
+
+
+
+  BEGIN VSET_VALUE "" "1"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:08:37"
+    ENABLED_FLAG = "Y"
+    SUMMARY_FLAG = "N"
+    START_DATE_ACTIVE = "1900/01/01 00:00:00"
+    DESCRIPTION = "伊藤園ユーザ"
+  
+  
+  END VSET_VALUE
+  
+  BEGIN VSET_VALUE "" "2"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:08:37"
+    ENABLED_FLAG = "Y"
+    SUMMARY_FLAG = "N"
+    START_DATE_ACTIVE = "1900/01/01 00:00:00"
+    DESCRIPTION = "取引先ユーザ"
+  
+  
+  END VSET_VALUE
+  
+  BEGIN VSET_VALUE "" "3"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:08:37"
+    ENABLED_FLAG = "Y"
+    SUMMARY_FLAG = "N"
+    START_DATE_ACTIVE = "1900/01/01 00:00:00"
+    DESCRIPTION = "外部倉庫ユーザ"
+  
+  
+  END VSET_VALUE
+  
+  BEGIN VSET_VALUE "" "4"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:08:37"
+    ENABLED_FLAG = "Y"
+    SUMMARY_FLAG = "N"
+    START_DATE_ACTIVE = "1900/01/01 00:00:00"
+    DESCRIPTION = "東洋埠頭ユーザ"
+  
+  
+  END VSET_VALUE
+  
+END VALUE_SET
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940004C1"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 13:40:04"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940004C1"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(伊藤園ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 13:40:04"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:40:04"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "12"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:40:04"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:00:34"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_WF_INFO_94D"
+      DISPLAY_SIZE = "5"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "530"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_from" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoFROM"
+      FORM_ABOVE_PROMPT = "配送NoFROM"
+      DESCRIPTION = "配送NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_to" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoTO"
+      FORM_ABOVE_PROMPT = "配送NoTO"
+      DESCRIPTION = "配送NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoFROM"
+      FORM_ABOVE_PROMPT = "依頼NoFROM"
+      DESCRIPTION = "依頼NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_to" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoTO"
+      FORM_ABOVE_PROMPT = "依頼NoTO"
+      DESCRIPTION = "依頼NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_code" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mediation" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "斡旋者"
+      FORM_ABOVE_PROMPT = "斡旋者"
+      DESCRIPTION = "斡旋者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_location_code" "ATTRIBUTE11"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出庫倉庫"
+      FORM_ABOVE_PROMPT = "出庫倉庫"
+      DESCRIPTION = "出庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_code" "ATTRIBUTE12"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫倉庫"
+      FORM_ABOVE_PROMPT = "入庫倉庫"
+      DESCRIPTION = "入庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_site_code" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:54:40"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_SITE_CD_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送先"
+      FORM_ABOVE_PROMPT = "配送先"
+      DESCRIPTION = "配送先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_carrier_code" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 16:52:20"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_CARRIERS_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "運送業者"
+      FORM_ABOVE_PROMPT = "運送業者"
+      DESCRIPTION = "運送業者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_from" "ATTRIBUTE15"
+      OWNER = "SCS_TAKEMOTO"
+      LAST_UPDATE_DATE = "2008/07/28 14:10:43"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日FROM"
+      FORM_ABOVE_PROMPT = "納入日/出庫日FROM"
+      DESCRIPTION = "納入日/出庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_to" "ATTRIBUTE16"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:08"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日TO"
+      FORM_ABOVE_PROMPT = "納入日/出庫日TO"
+      DESCRIPTION = "納入日/出庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_from" "ATTRIBUTE17"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:08"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日FROM"
+      FORM_ABOVE_PROMPT = "入庫日FROM"
+      DESCRIPTION = "入庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_to" "ATTRIBUTE18"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:08"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日TO"
+      FORM_ABOVE_PROMPT = "入庫日TO"
+      DESCRIPTION = "入庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:01:03"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "指示部署"
+      FORM_ABOVE_PROMPT = "指示部署"
+      DESCRIPTION = "指示部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE20"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:01:03"
+      COLUMN_SEQ_NUM = "200"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_from" "ATTRIBUTE21"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:01:03"
+      COLUMN_SEQ_NUM = "210"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1900/01/01 00:00:00"
+      FORM_LEFT_PROMPT = "更新日時FROM"
+      FORM_ABOVE_PROMPT = "更新日時FROM"
+      DESCRIPTION = "更新日時FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_to" "ATTRIBUTE22"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:01:03"
+      COLUMN_SEQ_NUM = "220"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "9999/12/31 23:59:59"
+      FORM_LEFT_PROMPT = "更新日時TO"
+      FORM_ABOVE_PROMPT = "更新日時TO"
+      DESCRIPTION = "更新日時TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class" "ATTRIBUTE23"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 16:42:59"
+      COLUMN_SEQ_NUM = "230"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class" "ATTRIBUTE24"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 16:42:59"
+      COLUMN_SEQ_NUM = "240"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_sec_class" "ATTRIBUTE25"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:03:36"
+      COLUMN_SEQ_NUM = "250"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940004C1" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "仕入・有償・移動情報抽出処理(伊藤園ユーザータイプ)"
+  EXEC = "XXPO940004C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(伊藤園ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940004C1"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type XXPO_WF_INFO_94D} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_no_from 配送NoFROM\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_to 配送NoTO\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_req_no_from 依頼NoFROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_req_no_to 依頼NoTO\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_vendor_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_mediation 斡旋者\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_location_code 出庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_arvl_code 入庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_vendor_site_code 配送先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_SITE_CD_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_carrier_code 運送業者\n\
+  * @rep:paraminfo {@rep:type XXPO_CARRIERS_CODE} {@rep:displayed Y}\n\
+  * @param iv_ship_date_from 納入日/出庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_date_to 納入日/出庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_arrival_date_from 入庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_arrival_date_to 入庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_instruction_dept 指示部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_update_time_from 更新日時FROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_update_time_to 更新日時TO\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_prod_class 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y}\n\
+  * @param iv_item_class 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y}\n\
+  * @param iv_sec_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940004C2"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940004C2"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(取引先ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "12"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:01:45"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "530"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_from" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoFROM"
+      FORM_ABOVE_PROMPT = "配送NoFROM"
+      DESCRIPTION = "配送NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_to" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoTO"
+      FORM_ABOVE_PROMPT = "配送NoTO"
+      DESCRIPTION = "配送NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoFROM"
+      FORM_ABOVE_PROMPT = "依頼NoFROM"
+      DESCRIPTION = "依頼NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_to" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoTO"
+      FORM_ABOVE_PROMPT = "依頼NoTO"
+      DESCRIPTION = "依頼NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_code" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mediation" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:54"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "斡旋者"
+      FORM_ABOVE_PROMPT = "斡旋者"
+      DESCRIPTION = "斡旋者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_location_code" "ATTRIBUTE11"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出庫倉庫"
+      FORM_ABOVE_PROMPT = "出庫倉庫"
+      DESCRIPTION = "出庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_code" "ATTRIBUTE12"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫倉庫"
+      FORM_ABOVE_PROMPT = "入庫倉庫"
+      DESCRIPTION = "入庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_site_code" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_SITE_CD_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送先"
+      FORM_ABOVE_PROMPT = "配送先"
+      DESCRIPTION = "配送先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_carrier_code" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_CARRIERS_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "運送業者"
+      FORM_ABOVE_PROMPT = "運送業者"
+      DESCRIPTION = "運送業者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_from" "ATTRIBUTE15"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:42"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日FROM"
+      FORM_ABOVE_PROMPT = "納入日/出庫日FROM"
+      DESCRIPTION = "納入日/出庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_to" "ATTRIBUTE16"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:42"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日TO"
+      FORM_ABOVE_PROMPT = "納入日/出庫日TO"
+      DESCRIPTION = "納入日/出庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_from" "ATTRIBUTE17"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:42"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日FROM"
+      FORM_ABOVE_PROMPT = "入庫日FROM"
+      DESCRIPTION = "入庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_to" "ATTRIBUTE18"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:21:42"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日TO"
+      FORM_ABOVE_PROMPT = "入庫日TO"
+      DESCRIPTION = "入庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "指示部署"
+      FORM_ABOVE_PROMPT = "指示部署"
+      DESCRIPTION = "指示部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE20"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "200"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_from" "ATTRIBUTE21"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "210"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1900/01/01 00:00:00"
+      FORM_LEFT_PROMPT = "更新日時FROM"
+      FORM_ABOVE_PROMPT = "更新日時FROM"
+      DESCRIPTION = "更新日時FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_to" "ATTRIBUTE22"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "220"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "9999/12/31 23:59:59"
+      FORM_LEFT_PROMPT = "更新日時TO"
+      FORM_ABOVE_PROMPT = "更新日時TO"
+      DESCRIPTION = "更新日時TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class" "ATTRIBUTE23"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:08:56"
+      COLUMN_SEQ_NUM = "230"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class" "ATTRIBUTE24"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:12:01"
+      COLUMN_SEQ_NUM = "240"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_sec_class" "ATTRIBUTE25"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:12:01"
+      COLUMN_SEQ_NUM = "250"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940004C2" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "仕入・有償・移動情報抽出処理(取引先ユーザータイプ)"
+  EXEC = "XXPO940004C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(取引先ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940004C2"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_from 配送NoFROM\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_to 配送NoTO\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_req_no_from 依頼NoFROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_req_no_to 依頼NoTO\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_vendor_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_mediation 斡旋者\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_location_code 出庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_arvl_code 入庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_vendor_site_code 配送先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_SITE_CD_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_carrier_code 運送業者\n\
+  * @rep:paraminfo {@rep:type XXPO_CARRIERS_CODE} {@rep:displayed Y}\n\
+  * @param iv_ship_date_from 納入日/出庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_date_to 納入日/出庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_arrival_date_from 入庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_arrival_date_to 入庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_instruction_dept 指示部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_update_time_from 更新日時FROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_update_time_to 更新日時TO\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_prod_class 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y}\n\
+  * @param iv_item_class 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y}\n\
+  * @param iv_sec_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940004C3"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 17:13:36"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940004C3"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(外部倉庫ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 17:13:36"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:13:36"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "12"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:02:06"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "530"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_from" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoFROM"
+      FORM_ABOVE_PROMPT = "配送NoFROM"
+      DESCRIPTION = "配送NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_to" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoTO"
+      FORM_ABOVE_PROMPT = "配送NoTO"
+      DESCRIPTION = "配送NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoFROM"
+      FORM_ABOVE_PROMPT = "依頼NoFROM"
+      DESCRIPTION = "依頼NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_to" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoTO"
+      FORM_ABOVE_PROMPT = "依頼NoTO"
+      DESCRIPTION = "依頼NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_code" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mediation" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "斡旋者"
+      FORM_ABOVE_PROMPT = "斡旋者"
+      DESCRIPTION = "斡旋者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_location_code" "ATTRIBUTE11"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出庫倉庫"
+      FORM_ABOVE_PROMPT = "出庫倉庫"
+      DESCRIPTION = "出庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_code" "ATTRIBUTE12"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫倉庫"
+      FORM_ABOVE_PROMPT = "入庫倉庫"
+      DESCRIPTION = "入庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_site_code" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_SITE_CD_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送先"
+      FORM_ABOVE_PROMPT = "配送先"
+      DESCRIPTION = "配送先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_carrier_code" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_CARRIERS_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "運送業者"
+      FORM_ABOVE_PROMPT = "運送業者"
+      DESCRIPTION = "運送業者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_from" "ATTRIBUTE15"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:17"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日FROM"
+      FORM_ABOVE_PROMPT = "納入日/出庫日FROM"
+      DESCRIPTION = "納入日/出庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_to" "ATTRIBUTE16"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:17"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日TO"
+      FORM_ABOVE_PROMPT = "納入日/出庫日TO"
+      DESCRIPTION = "納入日/出庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_from" "ATTRIBUTE17"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:17"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日FROM"
+      FORM_ABOVE_PROMPT = "入庫日FROM"
+      DESCRIPTION = "入庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_to" "ATTRIBUTE18"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:17"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日TO"
+      FORM_ABOVE_PROMPT = "入庫日TO"
+      DESCRIPTION = "入庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "指示部署"
+      FORM_ABOVE_PROMPT = "指示部署"
+      DESCRIPTION = "指示部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE20"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "200"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_from" "ATTRIBUTE21"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "210"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1900/01/01 00:00:00"
+      FORM_LEFT_PROMPT = "更新日時FROM"
+      FORM_ABOVE_PROMPT = "更新日時FROM"
+      DESCRIPTION = "更新日時FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_to" "ATTRIBUTE22"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "220"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "9999/12/31 23:59:59"
+      FORM_LEFT_PROMPT = "更新日時TO"
+      FORM_ABOVE_PROMPT = "更新日時TO"
+      DESCRIPTION = "更新日時TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class" "ATTRIBUTE23"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "230"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class" "ATTRIBUTE24"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "240"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_sec_class" "ATTRIBUTE25"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:38:23"
+      COLUMN_SEQ_NUM = "250"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "3"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940004C3" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "仕入・有償・移動情報抽出処理(外部倉庫ユーザータイプ)"
+  EXEC = "XXPO940004C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(外部倉庫ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940004C3"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_from 配送NoFROM\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_to 配送NoTO\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_req_no_from 依頼NoFROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_req_no_to 依頼NoTO\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_vendor_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_mediation 斡旋者\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_location_code 出庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_arvl_code 入庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_vendor_site_code 配送先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_SITE_CD_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_carrier_code 運送業者\n\
+  * @rep:paraminfo {@rep:type XXPO_CARRIERS_CODE} {@rep:displayed Y}\n\
+  * @param iv_ship_date_from 納入日/出庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_date_to 納入日/出庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_arrival_date_from 入庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_arrival_date_to 入庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_instruction_dept 指示部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_update_time_from 更新日時FROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_update_time_to 更新日時TO\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_prod_class 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y}\n\
+  * @param iv_item_class 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y}\n\
+  * @param iv_sec_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940004C4"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940004C4"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(東洋埠頭ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "12"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:07:46"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "530"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_from" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoFROM"
+      FORM_ABOVE_PROMPT = "配送NoFROM"
+      DESCRIPTION = "配送NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_no_to" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送NoTO"
+      FORM_ABOVE_PROMPT = "配送NoTO"
+      DESCRIPTION = "配送NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoFROM"
+      FORM_ABOVE_PROMPT = "依頼NoFROM"
+      DESCRIPTION = "依頼NoFROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_no_to" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_12_CHAR"
+      DISPLAY_SIZE = "12"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼NoTO"
+      FORM_ABOVE_PROMPT = "依頼NoTO"
+      DESCRIPTION = "依頼NoTO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_code" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mediation" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "斡旋者"
+      FORM_ABOVE_PROMPT = "斡旋者"
+      DESCRIPTION = "斡旋者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_location_code" "ATTRIBUTE11"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "出庫倉庫"
+      FORM_ABOVE_PROMPT = "出庫倉庫"
+      DESCRIPTION = "出庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_code" "ATTRIBUTE12"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫倉庫"
+      FORM_ABOVE_PROMPT = "入庫倉庫"
+      DESCRIPTION = "入庫倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_site_code" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:47:40"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_SITE_CD_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送先"
+      FORM_ABOVE_PROMPT = "配送先"
+      DESCRIPTION = "配送先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_carrier_code" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_CARRIERS_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "運送業者"
+      FORM_ABOVE_PROMPT = "運送業者"
+      DESCRIPTION = "運送業者"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_from" "ATTRIBUTE15"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:53"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日FROM"
+      FORM_ABOVE_PROMPT = "納入日/出庫日FROM"
+      DESCRIPTION = "納入日/出庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_date_to" "ATTRIBUTE16"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:53"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "納入日/出庫日TO"
+      FORM_ABOVE_PROMPT = "納入日/出庫日TO"
+      DESCRIPTION = "納入日/出庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_from" "ATTRIBUTE17"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:53"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日FROM"
+      FORM_ABOVE_PROMPT = "入庫日FROM"
+      DESCRIPTION = "入庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arrival_date_to" "ATTRIBUTE18"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:22:53"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "入庫日TO"
+      FORM_ABOVE_PROMPT = "入庫日TO"
+      DESCRIPTION = "入庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "指示部署"
+      FORM_ABOVE_PROMPT = "指示部署"
+      DESCRIPTION = "指示部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE20"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "200"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_from" "ATTRIBUTE21"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "210"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1900/01/01 00:00:00"
+      FORM_LEFT_PROMPT = "更新日時FROM"
+      FORM_ABOVE_PROMPT = "更新日時FROM"
+      DESCRIPTION = "更新日時FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_update_time_to" "ATTRIBUTE22"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "220"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_20_DATE"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "9999/12/31 23:59:59"
+      FORM_LEFT_PROMPT = "更新日時TO"
+      FORM_ABOVE_PROMPT = "更新日時TO"
+      DESCRIPTION = "更新日時TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class" "ATTRIBUTE23"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "230"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class" "ATTRIBUTE24"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "240"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_sec_class" "ATTRIBUTE25"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 17:56:48"
+      COLUMN_SEQ_NUM = "250"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "4"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940004C4" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "仕入・有償・移動情報抽出処理(東洋埠頭ユーザータイプ)"
+  EXEC = "XXPO940004C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "仕入・有償・移動情報抽出処理(東洋埠頭ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940004C4"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_from 配送NoFROM\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_ship_no_to 配送NoTO\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_req_no_from 依頼NoFROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_req_no_to 依頼NoTO\n\
+  * @rep:paraminfo {@rep:type XXCMN_12_CHAR} {@rep:displayed Y}\n\
+  * @param iv_vendor_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_mediation 斡旋者\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_location_code 出庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_arvl_code 入庫倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_vendor_site_code 配送先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_SITE_CD_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_carrier_code 運送業者\n\
+  * @rep:paraminfo {@rep:type XXPO_CARRIERS_CODE} {@rep:displayed Y}\n\
+  * @param iv_ship_date_from 納入日/出庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_date_to 納入日/出庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_arrival_date_from 入庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_arrival_date_to 入庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_instruction_dept 指示部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_update_time_from 更新日時FROM\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_update_time_to 更新日時TO\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_20_DATE} {@rep:displayed Y}\n\
+  * @param iv_prod_class 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y}\n\
+  * @param iv_item_class 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y}\n\
+  * @param iv_sec_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940005C" "XXPO"
+  OWNER = "SCS_YTAKAYAMA1"
+  LAST_UPDATE_DATE = "2008/07/28"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940005C.main"
+  USER_EXECUTABLE_NAME = "XXPO940005C"
+  DESCRIPTION = "支給依頼アップロード処理"
+END EXECUTABLE
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940005C"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 15:20:02"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940005C"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "支給依頼アップロード処理"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:21:41"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "in_file_id" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:21:41"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "in_file_id"
+      FORM_ABOVE_PROMPT = "in_file_id"
+      DESCRIPTION = "ファイルID"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "in_file_format" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:23:36"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10/Number"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "in_file_format"
+      FORM_ABOVE_PROMPT = "in_file_format"
+      DESCRIPTION = "フォーマットパターン"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940005C" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "支給依頼アップロード処理"
+  EXEC = "XXPO940005C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "支給依頼アップロード処理"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940005C"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param in_file_id ファイルID\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param in_file_format フォーマットパターン\n\
+  * @rep:paraminfo {@rep:type 10/Number} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940006C1" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+  BEGIN INCOMPATABILITY "XXPO940006C2" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940007C" "XXPO"
+  OWNER = "SCS_YTAKAYAMA1"
+  LAST_UPDATE_DATE = "2008/07/28"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940007C.main"
+  USER_EXECUTABLE_NAME = "XXPO940007C"
+  DESCRIPTION = "ロット引当情報アップロード処理"
+END EXECUTABLE
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940007C"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 15:22:51"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940007C"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "ロット引当情報アップロード処理"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:32:25"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "file_id" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:32:25"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "file_id"
+      FORM_ABOVE_PROMPT = "file_id"
+      DESCRIPTION = "ファイルID"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "file_format" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:32:52"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10/Number"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "file_format"
+      FORM_ABOVE_PROMPT = "file_format"
+      DESCRIPTION = "フォーマットパターン"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940007C" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "ロット引当情報アップロード処理"
+  EXEC = "XXPO940007C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "ロット引当情報アップロード処理"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940007C"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param file_id ファイルID\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param file_format フォーマットパターン\n\
+  * @rep:paraminfo {@rep:type 10/Number} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940008C1" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+  BEGIN INCOMPATABILITY "XXPO940008C2" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940002C" "XXPO"
+  OWNER = "SCS_YTAKAYAMA1"
+  LAST_UPDATE_DATE = "2008/07/28"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940002C.main"
+  USER_EXECUTABLE_NAME = "XXPO940002C"
+  DESCRIPTION = "出来高実績取込処理"
+END EXECUTABLE
+
+BEGIN VALUE_SET "XXPO_VENDOR_SITE_CD_SECURITY_RF"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:13:01"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "4"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：仕入先サイトコード（コードのみ）(参照あり)"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:13:01"
+    APPLICATION_TABLE_NAME = "XXCMN_VENDOR_SITES_V XVSV,XXCMN_VENDORS_V XVV"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "XVSV.VENDOR_SITE_CODE"
+    VALUE_COLUMN_TYPE = "V"
+    VALUE_COLUMN_SIZE = "4"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE =
+   "WHERE XVV.SEGMENT1 = :$FLEX$.iv_vendor_code AND XVV.VENDOR_ID = XVSV.VENDOR_ID ORDER BY XVSV.VENDOR_SITE_CODE"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940002C1"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 13:02:12"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940002C1"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "出来高実績取込処理(伊藤園ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 13:02:12"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:02:12"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "500"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_code" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 18:23:54"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_factory_code" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:03:17"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_SITE_CD_SECURITY_RF"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "工場"
+      FORM_ABOVE_PROMPT = "工場"
+      DESCRIPTION = "工場"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_manufactured_date_from" "ATTRIBUTE4"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:18:49"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "生産日FROM"
+      FORM_ABOVE_PROMPT = "生産日FROM"
+      DESCRIPTION = "生産日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_manufactured_date_to" "ATTRIBUTE5"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:18:49"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "生産日TO"
+      FORM_ABOVE_PROMPT = "生産日TO"
+      DESCRIPTION = "生産日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_kbn" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:09:07"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940002C1" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "出来高実績取込処理(伊藤園ユーザータイプ)"
+  EXEC = "XXPO940002C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "出来高実績取込処理(伊藤園ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940002C1"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_vendor_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE_SECURITY} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_factory_code 工場\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_SITE_CD_SECURITY_RF} {@rep:displayed Y}\n\
+  * @param iv_manufactured_date_from 生産日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_manufactured_date_to 生産日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_security_kbn セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940001C" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940002C2"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 13:18:42"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940002C2"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "出来高実績取込処理(取引先ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 13:18:42"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:18:42"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "500"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor_code" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:18:42"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_factory_code" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:18:42"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_SITE_CD_SECURITY_RF"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "工場"
+      FORM_ABOVE_PROMPT = "工場"
+      DESCRIPTION = "工場"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_manufactured_date_from" "ATTRIBUTE4"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:19:18"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "生産日FROM"
+      FORM_ABOVE_PROMPT = "生産日FROM"
+      DESCRIPTION = "生産日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_manufactured_date_to" "ATTRIBUTE5"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:19:18"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "生産日TO"
+      FORM_ABOVE_PROMPT = "生産日TO"
+      DESCRIPTION = "生産日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_kbn" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:18:42"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940002C2" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "出来高実績取込処理(取引先ユーザータイプ)"
+  EXEC = "XXPO940002C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "出来高実績取込処理(取引先ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940002C2"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_vendor_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE_SECURITY} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_factory_code 工場\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_SITE_CD_SECURITY_RF} {@rep:displayed Y}\n\
+  * @param iv_manufactured_date_from 生産日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_manufactured_date_to 生産日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_security_kbn セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940001C" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940001C" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940001C.main"
+  USER_EXECUTABLE_NAME = "XXPO940001C"
+  DESCRIPTION = "出来高実績アップロード処理"
+END EXECUTABLE
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940001C"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 15:19:40"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940001C"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "出来高実績アップロード処理"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:25:50"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "file_id" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:25:50"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "file_id"
+      FORM_ABOVE_PROMPT = "file_id"
+      DESCRIPTION = "ファイルID"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "file_format" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:31:20"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10/Number"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "file_format"
+      FORM_ABOVE_PROMPT = "file_format"
+      DESCRIPTION = "フォーマットパターン"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940001C" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "出来高実績アップロード処理"
+  EXEC = "XXPO940001C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "出来高実績アップロード処理"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940001C"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param file_id ファイルID\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param file_format フォーマットパターン\n\
+  * @rep:paraminfo {@rep:type 10/Number} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940002C1" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+  BEGIN INCOMPATABILITY "XXPO940002C2" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940008C" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940008C.main"
+  USER_EXECUTABLE_NAME = "XXPO940008C"
+  DESCRIPTION = "ロット引当情報取込処理"
+END EXECUTABLE
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940008C1"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 13:22:18"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940008C1"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "ロット引当情報取込処理(伊藤園ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 13:22:18"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:24:43"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "560"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:22:18"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "倉庫"
+      FORM_ABOVE_PROMPT = "倉庫"
+      DESCRIPTION = "倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_shipped_date_from" "ATTRIBUTE3"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:20:10"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "出庫日FROM"
+      FORM_ABOVE_PROMPT = "出庫日FROM"
+      DESCRIPTION = "出庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_shipped_date_to" "ATTRIBUTE4"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:20:10"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "出庫日TO"
+      FORM_ABOVE_PROMPT = "出庫日TO"
+      DESCRIPTION = "出庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:26:29"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "指示部署"
+      FORM_ABOVE_PROMPT = "指示部署"
+      DESCRIPTION = "指示部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_kbn" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:27:16"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940008C1" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "ロット引当情報取込処理(伊藤園ユーザータイプ)"
+  EXEC = "XXPO940008C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "ロット引当情報取込処理(伊藤園ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940008C1"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_deliver_from 倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_shipped_date_from 出庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_shipped_date_to 出庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_instruction_dept 指示部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_security_kbn セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940007C" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN VALUE_SET "XXPO_ITEM_LOC_CODE_SECURITY_RF"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 16:34:59"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "4"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：倉庫(主管倉庫対応関連倉庫抽出用)"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_NYOSHIDA"
+    LAST_UPDATE_DATE = "2008/07/28 11:27:41"
+    APPLICATION_TABLE_NAME =
+   "FND_USER FU, PER_ALL_PEOPLE_F PAPF, XXCMN_ITEM_LOCATIONS_V XILV, XXCMN_ITEM_LOCATIONS_V XILV2"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "XILV2.SEGMENT1"
+    VALUE_COLUMN_TYPE = "V"
+    VALUE_COLUMN_SIZE = "4"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE =
+   "WHERE FU.EMPLOYEE_ID = PAPF.PERSON_ID \n\
+  AND PAPF.EFFECTIVE_START_DATE <= TRUNC(SYSDATE) \n\
+  AND PAPF.EFFECTIVE_END_DATE >= TRUNC(SYSDATE) \n\
+  AND ((FU.END_DATE IS NULL) OR ( FU.END_DATE >= TRUNC(SYSDATE))) \n\
+  AND FU.USER_ID = FND_GLOBAL.USER_ID AND PAPF.ATTRIBUTE4 = XILV.PURCHASE_CODE AND XILV.SEGMENT1 = XILV2.FREQUENT_WHSE_CODE\n\
+  ORDER BY XILV.SEGMENT1"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940008C2"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 15:23:01"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940008C2"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "ロット引当情報取込処理(東洋埠頭ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 13:31:11"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:31:11"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "560"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE2"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 11:28:32"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY_RF"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "倉庫"
+      FORM_ABOVE_PROMPT = "倉庫"
+      DESCRIPTION = "倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_shipped_date_from" "ATTRIBUTE3"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:20:31"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "出庫日FROM"
+      FORM_ABOVE_PROMPT = "出庫日FROM"
+      DESCRIPTION = "出庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_shipped_date_to" "ATTRIBUTE4"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:20:31"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "出庫日TO"
+      FORM_ABOVE_PROMPT = "出庫日TO"
+      DESCRIPTION = "出庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_instruction_dept" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:31:11"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "指示部署"
+      FORM_ABOVE_PROMPT = "指示部署"
+      DESCRIPTION = "指示部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_kbn" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 13:31:11"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "4"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940008C2" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "ロット引当情報取込処理(東洋埠頭ユーザータイプ)"
+  EXEC = "XXPO940008C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "ロット引当情報取込処理(東洋埠頭ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940008C2"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_deliver_from 倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY_RF} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_shipped_date_from 出庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_shipped_date_to 出庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_instruction_dept 指示部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_security_kbn セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940007C" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940006C" "XXPO"
+  OWNER = "SCS_YTAKAYAMA1"
+  LAST_UPDATE_DATE = "2008/07/28"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940006C.main"
+  USER_EXECUTABLE_NAME = "XXPO940006C"
+  DESCRIPTION = "支給依頼取込処理"
+END EXECUTABLE
+
+BEGIN VALUE_SET "XXPO_TRANS_TYPE"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:38:22"
+  VALIDATION_TYPE = "I"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "1"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：発生区分"
+
+
+
+
+
+
+
+  BEGIN VSET_VALUE "" "1"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:39:22"
+    ENABLED_FLAG = "Y"
+    SUMMARY_FLAG = "N"
+    START_DATE_ACTIVE = "1900/01/01 00:00:00"
+    DESCRIPTION = "支給依頼"
+  
+  
+  END VSET_VALUE
+  
+  BEGIN VSET_VALUE "" "2"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:39:22"
+    ENABLED_FLAG = "Y"
+    SUMMARY_FLAG = "N"
+    START_DATE_ACTIVE = "1900/01/01 00:00:00"
+    DESCRIPTION = "仕入有償"
+  
+  
+  END VSET_VALUE
+  
+END VALUE_SET
+
+BEGIN VALUE_SET "XXPO_DELIVER_TO_RF"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:14:40"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "4"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：配送先(参照あり)"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:15:24"
+    APPLICATION_TABLE_NAME = "XXCMN_VENDOR_SITES_V XVSV,XXCMN_VENDORS_V XVV"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "XVSV.VENDOR_SITE_CODE"
+    VALUE_COLUMN_TYPE = "V"
+    VALUE_COLUMN_SIZE = "4"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE =
+   "WHERE XVV.SEGMENT1 = :$FLEX$.iv_vendor AND XVV.VENDOR_ID = XVSV.VENDOR_ID ORDER BY XVSV.VENDOR_SITE_CODE"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940006C1"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:37:41"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940006C1"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "支給依頼取込処理(伊藤園ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:37:41"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:37:41"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "550"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_trans_type" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:42:21"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_TRANS_TYPE"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "発生区分"
+      FORM_ABOVE_PROMPT = "発生区分"
+      DESCRIPTION = "発生区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_dept" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:42:21"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼部署"
+      FORM_ABOVE_PROMPT = "依頼部署"
+      DESCRIPTION = "依頼部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:43:20"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_to" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:44:33"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DELIVER_TO_RF"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送先"
+      FORM_ABOVE_PROMPT = "配送先"
+      DESCRIPTION = "配送先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_time_from" "ATTRIBUTE6"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:17:57"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "入庫日FROM"
+      FORM_ABOVE_PROMPT = "入庫日FROM"
+      DESCRIPTION = "入庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_time_to" "ATTRIBUTE7"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:17:57"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "入庫日TO"
+      FORM_ABOVE_PROMPT = "入庫日TO"
+      DESCRIPTION = "入庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_class" "ATTRIBUTE8"
+      OWNER = "SCS_YKAWANO"
+      LAST_UPDATE_DATE = "2008/07/25 18:09:56"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940006C1" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "支給依頼取込処理(伊藤園ユーザータイプ)"
+  EXEC = "XXPO940006C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "支給依頼取込処理(伊藤園ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940006C1"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_trans_type 発生区分\n\
+  * @rep:paraminfo {@rep:type XXPO_TRANS_TYPE} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_req_dept 依頼部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_vendor 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_to 配送先\n\
+  * @rep:paraminfo {@rep:type XXPO_DELIVER_TO_RF} {@rep:displayed Y}\n\
+  * @param iv_arvl_time_from 入庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_arvl_time_to 入庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_security_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940005C" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940006C2"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:47:02"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940006C2"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "支給依頼取込処理(取引先ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:47:02"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_data_class" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:47:02"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "550"
+      FORM_LEFT_PROMPT = "データ種別"
+      FORM_ABOVE_PROMPT = "データ種別"
+      DESCRIPTION = "データ種別"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_trans_type" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:47:02"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_TRANS_TYPE"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "発生区分"
+      FORM_ABOVE_PROMPT = "発生区分"
+      DESCRIPTION = "発生区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_req_dept" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:47:02"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DEPT_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "依頼部署"
+      FORM_ABOVE_PROMPT = "依頼部署"
+      DESCRIPTION = "依頼部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_vendor" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:50:19"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE =
+     "SELECT PAPF.ATTRIBUTE4 FROM FND_USER FU, PER_ALL_PEOPLE_F PAPF WHERE FU.USER_ID = FND_PROFILE.VALUE('USER_ID') AND FU.EMPLOYEE_ID = PAPF.PERSON_ID AND PAPF.EFFECTIVE_START_DATE <= TRUNC(SYSDATE) AND NVL(PAPF.EFFECTIVE_END_DATE, TRUNC(SYSDATE)) >= TRUNC(SYSDATE)"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_ship_to" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 11:50:19"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_DELIVER_TO_RF"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "配送先"
+      FORM_ABOVE_PROMPT = "配送先"
+      DESCRIPTION = "配送先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_time_from" "ATTRIBUTE6"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:18:20"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "入庫日FROM"
+      FORM_ABOVE_PROMPT = "入庫日FROM"
+      DESCRIPTION = "入庫日FROM"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_arvl_time_to" "ATTRIBUTE7"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:18:20"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT TO_CHAR(SYSDATE, 'YYYY/MM/DD') FROM DUAL"
+      FORM_LEFT_PROMPT = "入庫日TO"
+      FORM_ABOVE_PROMPT = "入庫日TO"
+      DESCRIPTION = "入庫日TO"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_class" "ATTRIBUTE8"
+      OWNER = "SCS_YKAWANO"
+      LAST_UPDATE_DATE = "2008/07/25 18:41:35"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940006C2" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "支給依頼取込処理(取引先ユーザータイプ)"
+  EXEC = "XXPO940006C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "B"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "支給依頼取込処理(取引先ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940006C2"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_data_class データ種別\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_trans_type 発生区分\n\
+  * @rep:paraminfo {@rep:type XXPO_TRANS_TYPE} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_req_dept 依頼部署\n\
+  * @rep:paraminfo {@rep:type XXPO_DEPT_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_vendor 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_ship_to 配送先\n\
+  * @rep:paraminfo {@rep:type XXPO_DELIVER_TO_RF} {@rep:displayed Y}\n\
+  * @param iv_arvl_time_from 入庫日FROM\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_arvl_time_to 入庫日TO\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_security_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+  BEGIN INCOMPATABILITY "XXPO940005C" "XXPO"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25"
+    RUNNING_TYPE = "P"
+    TO_RUN_TYPE = "P"
+    INCOMPATIBILITY_TYPE = "G"
+  END INCOMPATABILITY
+  
+
+END PROGRAM
+
+BEGIN EXECUTABLE "XXPO940003C" "XXPO"
+  OWNER = "SCS_YTAKAYAMA1"
+  LAST_UPDATE_DATE = "2008/07/28"
+  EXECUTION_METHOD_CODE = "I"
+  EXECUTION_FILE_NAME = "XXPO940003C.main"
+  USER_EXECUTABLE_NAME = "XXPO940003C"
+  DESCRIPTION = "ロット在庫情報抽出処理"
+END EXECUTABLE
+
+BEGIN VALUE_SET "XXPO_WF_INFO_94C"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 16:32:27"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "5"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：宛先(94C：ロット在庫情報抽出用)"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 16:32:27"
+    APPLICATION_TABLE_NAME = "FND_LOOKUP_VALUES"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "ATTRIBUTE3"
+    VALUE_COLUMN_TYPE = "V"
+    VALUE_COLUMN_SIZE = "5"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE =
+   "WHERE LOOKUP_TYPE = 'XXCMN_WF_INFO' AND LANGUAGE = 'JA' AND ATTRIBUTE1 = '11' AND ATTRIBUTE2 = '7' ORDER BY ATTRIBUTE3"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN VALUE_SET "XXPO_LOT_NO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:09:36"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "10"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：ロットNo"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:09:36"
+    APPLICATION_TABLE_NAME = "XXINV_STC_LOT_NO_V"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "LOT_NO"
+    VALUE_COLUMN_TYPE = "C"
+    VALUE_COLUMN_SIZE = "10"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN VALUE_SET "XXPO_UNIQUE_SIGN"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 11:40:22"
+  VALIDATION_TYPE = "F"
+  PROTECTED_FLAG = "N"
+  SECURITY_ENABLED_FLAG = "N"
+  LONGLIST_FLAG = "N"
+  FORMAT_TYPE = "C"
+  MAXIMUM_SIZE = "32"
+  ALPHANUMERIC_ALLOWED_FLAG = "Y"
+  UPPERCASE_ONLY_FLAG = "N"
+  NUMERIC_MODE_ENABLED_FLAG = "N"
+  DESCRIPTION = "XXPO：固有記号"
+
+
+  BEGIN VSET_TABLE
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 11:40:22"
+    APPLICATION_TABLE_NAME = "XXCMN_LOOKUP_VALUES_V"
+    SUMMARY_ALLOWED_FLAG = "N"
+    VALUE_COLUMN_NAME = "LOOKUP_CODE"
+    VALUE_COLUMN_TYPE = "C"
+    VALUE_COLUMN_SIZE = "32"
+    ENABLED_COLUMN_NAME = "'Y'"
+    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
+    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
+    START_DATE_COLUMN_NAME = "to_date(null)"
+    END_DATE_COLUMN_NAME = "to_date(null)"
+    SUMMARY_COLUMN_NAME = "'N'"
+    ADDITIONAL_WHERE_CLAUSE = "LOOKUP_TYPE = 'XXCMN_PLANT_UNIQE_SIGN'"
+  END VSET_TABLE
+  
+
+
+
+
+
+END VALUE_SET
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940003C1"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 14:12:45"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940003C1"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "ロット在庫情報抽出処理(伊藤園ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 14:12:45"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "4 Characters"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "11"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:08:15"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_WF_INFO_94C"
+      DISPLAY_SIZE = "5"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class_code" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class_code" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_frequent_whse_flg" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_YES_NO"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "N"
+      FORM_LEFT_PROMPT = "代表倉庫区分"
+      FORM_ABOVE_PROMPT = "代表倉庫区分"
+      DESCRIPTION = "代表倉庫区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "倉庫"
+      FORM_ABOVE_PROMPT = "倉庫"
+      DESCRIPTION = "倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_customer_code" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_lot_no" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_LOT_NO"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "ロット"
+      FORM_ABOVE_PROMPT = "ロット"
+      DESCRIPTION = "ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_designated_date" "ATTRIBUTE11"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:23:20"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造日"
+      FORM_ABOVE_PROMPT = "製造日"
+      DESCRIPTION = "製造日"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_expiration_date" "ATTRIBUTE12"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:23:20"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "賞味期限"
+      FORM_ABOVE_PROMPT = "賞味期限"
+      DESCRIPTION = "賞味期限"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_uniqe_sign" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_UNIQUE_SIGN"
+      DISPLAY_SIZE = "32"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "固有記号"
+      FORM_ABOVE_PROMPT = "固有記号"
+      DESCRIPTION = "固有記号"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_factory" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造工場"
+      FORM_ABOVE_PROMPT = "製造工場"
+      DESCRIPTION = "製造工場"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_lot" "ATTRIBUTE15"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造ロット"
+      FORM_ABOVE_PROMPT = "製造ロット"
+      DESCRIPTION = "製造ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_home" "ATTRIBUTE16"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "産地"
+      FORM_ABOVE_PROMPT = "産地"
+      DESCRIPTION = "産地"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r1" "ATTRIBUTE17"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R1"
+      FORM_ABOVE_PROMPT = "R1"
+      DESCRIPTION = "R1"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r2" "ATTRIBUTE18"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R2"
+      FORM_ABOVE_PROMPT = "R2"
+      DESCRIPTION = "R2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_class" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:25:28"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940003C1" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "ロット在庫情報抽出処理(伊藤園ユーザータイプ)"
+  EXEC = "XXPO940003C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "ロット在庫情報抽出処理(伊藤園ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940003C1"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 4 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type XXPO_WF_INFO_94C} {@rep:displayed N}\n\
+  * @param iv_prod_class_code 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_item_class_code 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_frequent_whse_flg 代表倉庫区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed Y}\n\
+  * @param iv_deliver_from 倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_customer_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_lot_no ロット\n\
+  * @rep:paraminfo {@rep:type XXPO_LOT_NO} {@rep:displayed Y}\n\
+  * @param iv_designated_date 製造日\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_expiration_date 賞味期限\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_uniqe_sign 固有記号\n\
+  * @rep:paraminfo {@rep:type XXPO_UNIQUE_SIGN} {@rep:displayed Y}\n\
+  * @param iv_mf_factory 製造工場\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_mf_lot 製造ロット\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_home 産地\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r1 R1\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r2 R2\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_security_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940003C2"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940003C2"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "ロット在庫情報抽出処理(取引先ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "4 Characters"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "11"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:08:36"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class_code" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class_code" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_frequent_whse_flg" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_YES_NO"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "N"
+      FORM_LEFT_PROMPT = "代表倉庫区分"
+      FORM_ABOVE_PROMPT = "代表倉庫区分"
+      DESCRIPTION = "代表倉庫区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "倉庫"
+      FORM_ABOVE_PROMPT = "倉庫"
+      DESCRIPTION = "倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_customer_code" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:33:54"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_lot_no" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_LOT_NO"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "ロット"
+      FORM_ABOVE_PROMPT = "ロット"
+      DESCRIPTION = "ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_designated_date" "ATTRIBUTE11"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:23:50"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造日"
+      FORM_ABOVE_PROMPT = "製造日"
+      DESCRIPTION = "製造日"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_expiration_date" "ATTRIBUTE12"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:23:50"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "賞味期限"
+      FORM_ABOVE_PROMPT = "賞味期限"
+      DESCRIPTION = "賞味期限"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_uniqe_sign" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_UNIQUE_SIGN"
+      DISPLAY_SIZE = "32"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "固有記号"
+      FORM_ABOVE_PROMPT = "固有記号"
+      DESCRIPTION = "固有記号"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_factory" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造工場"
+      FORM_ABOVE_PROMPT = "製造工場"
+      DESCRIPTION = "製造工場"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_lot" "ATTRIBUTE15"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造ロット"
+      FORM_ABOVE_PROMPT = "製造ロット"
+      DESCRIPTION = "製造ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_home" "ATTRIBUTE16"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "産地"
+      FORM_ABOVE_PROMPT = "産地"
+      DESCRIPTION = "産地"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r1" "ATTRIBUTE17"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R1"
+      FORM_ABOVE_PROMPT = "R1"
+      DESCRIPTION = "R1"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r2" "ATTRIBUTE18"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R2"
+      FORM_ABOVE_PROMPT = "R2"
+      DESCRIPTION = "R2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_class" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:47:22"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940003C2" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME = "ロット在庫情報抽出処理(取引先ユーザータイプ)"
+  EXEC = "XXPO940003C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "ロット在庫情報抽出処理(取引先ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940003C2"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 4 Characters} {@rep:displayed N}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_prod_class_code 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_item_class_code 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_frequent_whse_flg 代表倉庫区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed Y}\n\
+  * @param iv_deliver_from 倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_customer_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_lot_no ロット\n\
+  * @rep:paraminfo {@rep:type XXPO_LOT_NO} {@rep:displayed Y}\n\
+  * @param iv_designated_date 製造日\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_expiration_date 賞味期限\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_uniqe_sign 固有記号\n\
+  * @rep:paraminfo {@rep:type XXPO_UNIQUE_SIGN} {@rep:displayed Y}\n\
+  * @param iv_mf_factory 製造工場\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_mf_lot 製造ロット\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_home 産地\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r1 R1\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r2 R2\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_security_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940003C3"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940003C3"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "ロット在庫情報抽出処理(外部倉庫ユーザータイプ)"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "4 Characters"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "11"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:08:57"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class_code" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class_code" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_frequent_whse_flg" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_YES_NO"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "N"
+      FORM_LEFT_PROMPT = "代表倉庫区分"
+      FORM_ABOVE_PROMPT = "代表倉庫区分"
+      DESCRIPTION = "代表倉庫区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "倉庫"
+      FORM_ABOVE_PROMPT = "倉庫"
+      DESCRIPTION = "倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_customer_code" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_lot_no" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_LOT_NO"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "ロット"
+      FORM_ABOVE_PROMPT = "ロット"
+      DESCRIPTION = "ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_designated_date" "ATTRIBUTE11"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:24:19"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造日"
+      FORM_ABOVE_PROMPT = "製造日"
+      DESCRIPTION = "製造日"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_expiration_date" "ATTRIBUTE12"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:24:19"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "賞味期限"
+      FORM_ABOVE_PROMPT = "賞味期限"
+      DESCRIPTION = "賞味期限"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_uniqe_sign" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_UNIQUE_SIGN"
+      DISPLAY_SIZE = "32"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "固有記号"
+      FORM_ABOVE_PROMPT = "固有記号"
+      DESCRIPTION = "固有記号"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_factory" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造工場"
+      FORM_ABOVE_PROMPT = "製造工場"
+      DESCRIPTION = "製造工場"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_lot" "ATTRIBUTE15"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造ロット"
+      FORM_ABOVE_PROMPT = "製造ロット"
+      DESCRIPTION = "製造ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_home" "ATTRIBUTE16"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "産地"
+      FORM_ABOVE_PROMPT = "産地"
+      DESCRIPTION = "産地"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r1" "ATTRIBUTE17"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R1"
+      FORM_ABOVE_PROMPT = "R1"
+      DESCRIPTION = "R1"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r2" "ATTRIBUTE18"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R2"
+      FORM_ABOVE_PROMPT = "R2"
+      DESCRIPTION = "R2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_class" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 14:57:40"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "3"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940003C3" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "ロット在庫情報抽出処理(外部倉庫ユーザータイプ)"
+  EXEC = "XXPO940003C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "ロット在庫情報抽出処理(外部倉庫ユーザータイプ)"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940003C3"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 4 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_prod_class_code 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_item_class_code 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_frequent_whse_flg 代表倉庫区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed Y}\n\
+  * @param iv_deliver_from 倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_customer_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_lot_no ロット\n\
+  * @rep:paraminfo {@rep:type XXPO_LOT_NO} {@rep:displayed Y}\n\
+  * @param iv_designated_date 製造日\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_expiration_date 賞味期限\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_uniqe_sign 固有記号\n\
+  * @rep:paraminfo {@rep:type XXPO_UNIQUE_SIGN} {@rep:displayed Y}\n\
+  * @param iv_mf_factory 製造工場\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_mf_lot 製造ロット\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_home 産地\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r1 R1\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r2 R2\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_security_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
+
+BEGIN DESC_FLEX "XXPO" "$SRS$.XXPO940003C4"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25 14:58:57"
+  TABLE_APPLICATION_SHORT_NAME = "FND"
+  APPLICATION_TABLE_NAME = "FND_SRS_MASTER"
+  CONTEXT_COLUMN_NAME = "STRUCTURE_COLUMN"
+  CONTEXT_REQUIRED_FLAG = "N"
+  CONTEXT_USER_OVERRIDE_FLAG = "N"
+  CONCATENATED_SEGMENT_DELIMITER = ":"
+  FREEZE_FLEX_DEFINITION_FLAG = "Y"
+  PROTECTED_FLAG = "S"
+  CONTEXT_OVERRIDE_VALUE_SET_NAM = ""
+  TITLE = "$SRS$.XXPO940003C4"
+  FORM_CONTEXT_PROMPT = "Context Value"
+  DESCRIPTION = "XXPO940003C"
+
+
+
+  BEGIN DFF_CONTEXT "Global Data Elements"
+    OWNER = "SCS_HITOU"
+    LAST_UPDATE_DATE = "2008/07/25 14:58:57"
+    ENABLED_FLAG = "Y"
+    GLOBAL_FLAG = "Y"
+    DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
+  
+    BEGIN DFF_SEGMENT "iv_wf_ope_div" "ATTRIBUTE1"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "10"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "4 Characters"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "11"
+      FORM_LEFT_PROMPT = "処理区分"
+      FORM_ABOVE_PROMPT = "処理区分"
+      DESCRIPTION = "処理区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_class" "ATTRIBUTE2"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "20"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_S_1_CHAR"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "7"
+      FORM_LEFT_PROMPT = "対象"
+      FORM_ABOVE_PROMPT = "対象"
+      DESCRIPTION = "対象"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_wf_notification" "ATTRIBUTE3"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 22:09:15"
+      COLUMN_SEQ_NUM = "30"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "S"
+      DEFAULT_VALUE = "SELECT FND_PROFILE.VALUE('USER_ID')  FROM DUAL"
+      FORM_LEFT_PROMPT = "宛先"
+      FORM_ABOVE_PROMPT = "宛先"
+      DESCRIPTION = "宛先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_prod_class_code" "ATTRIBUTE4"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "40"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_PROD_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "2"
+      FORM_LEFT_PROMPT = "商品区分"
+      FORM_ABOVE_PROMPT = "商品区分"
+      DESCRIPTION = "商品区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_class_code" "ATTRIBUTE5"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "50"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_ITEM_DIV"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "1"
+      FORM_LEFT_PROMPT = "品目区分"
+      FORM_ABOVE_PROMPT = "品目区分"
+      DESCRIPTION = "品目区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_frequent_whse_flg" "ATTRIBUTE6"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "60"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXCMN_YES_NO"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "N"
+      FORM_LEFT_PROMPT = "代表倉庫区分"
+      FORM_ABOVE_PROMPT = "代表倉庫区分"
+      DESCRIPTION = "代表倉庫区分"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_deliver_from" "ATTRIBUTE7"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "70"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_LOC_CODE_SECURITY"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "倉庫"
+      FORM_ABOVE_PROMPT = "倉庫"
+      DESCRIPTION = "倉庫"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_customer_code" "ATTRIBUTE8"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "80"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_VENDOR_CODE"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "取引先"
+      FORM_ABOVE_PROMPT = "取引先"
+      DESCRIPTION = "取引先"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_item_no" "ATTRIBUTE9"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "90"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_ITEM_NO"
+      DISPLAY_SIZE = "7"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "品目"
+      FORM_ABOVE_PROMPT = "品目"
+      DESCRIPTION = "品目"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_lot_no" "ATTRIBUTE10"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "100"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_LOT_NO"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "ロット"
+      FORM_ABOVE_PROMPT = "ロット"
+      DESCRIPTION = "ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_designated_date" "ATTRIBUTE11"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:24:44"
+      COLUMN_SEQ_NUM = "110"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造日"
+      FORM_ABOVE_PROMPT = "製造日"
+      DESCRIPTION = "製造日"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_expiration_date" "ATTRIBUTE12"
+      OWNER = "SCS_NYOSHIDA"
+      LAST_UPDATE_DATE = "2008/07/28 14:24:44"
+      COLUMN_SEQ_NUM = "120"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "賞味期限"
+      FORM_ABOVE_PROMPT = "賞味期限"
+      DESCRIPTION = "賞味期限"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_uniqe_sign" "ATTRIBUTE13"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "130"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_UNIQUE_SIGN"
+      DISPLAY_SIZE = "32"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "固有記号"
+      FORM_ABOVE_PROMPT = "固有記号"
+      DESCRIPTION = "固有記号"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_factory" "ATTRIBUTE14"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "140"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "20 Characters"
+      DISPLAY_SIZE = "20"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造工場"
+      FORM_ABOVE_PROMPT = "製造工場"
+      DESCRIPTION = "製造工場"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_mf_lot" "ATTRIBUTE15"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "150"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "製造ロット"
+      FORM_ABOVE_PROMPT = "製造ロット"
+      DESCRIPTION = "製造ロット"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_home" "ATTRIBUTE16"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "160"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "産地"
+      FORM_ABOVE_PROMPT = "産地"
+      DESCRIPTION = "産地"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r1" "ATTRIBUTE17"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "170"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R1"
+      FORM_ABOVE_PROMPT = "R1"
+      DESCRIPTION = "R1"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_r2" "ATTRIBUTE18"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "180"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "10 Characters"
+      DISPLAY_SIZE = "10"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "R2"
+      FORM_ABOVE_PROMPT = "R2"
+      DESCRIPTION = "R2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_security_class" "ATTRIBUTE19"
+      OWNER = "SCS_HITOU"
+      LAST_UPDATE_DATE = "2008/07/25 15:18:56"
+      COLUMN_SEQ_NUM = "190"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "N"
+      REQUIRED_FLAG = "Y"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXPO_SECURITY_FLG"
+      DISPLAY_SIZE = "1"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      DEFAULT_TYPE = "C"
+      DEFAULT_VALUE = "4"
+      FORM_LEFT_PROMPT = "セキュリティ区分"
+      FORM_ABOVE_PROMPT = "セキュリティ区分"
+      DESCRIPTION = "セキュリティ区分"
+    END DFF_SEGMENT
+    
+  END DFF_CONTEXT
+  
+END DESC_FLEX
+
+BEGIN PROGRAM "XXPO940003C4" "XXPO"
+  OWNER = "SCS_HITOU"
+  LAST_UPDATE_DATE = "2008/07/25"
+  USER_CONCURRENT_PROGRAM_NAME =
+ "ロット在庫情報抽出処理(東洋埠頭ユーザータイプ)"
+  EXEC = "XXPO940003C" "XXPO"
+  EXECUTION_METHOD_CODE = "I"
+  ARGUMENT_METHOD_CODE = "4"
+  QUEUE_CONTROL_FLAG = "N"
+  QUEUE_METHOD_CODE = "I"
+  REQUEST_SET_FLAG = "N"
+  ENABLED_FLAG = "Y"
+  PRINT_FLAG = "Y"
+  RUN_ALONE_FLAG = "N"
+  SRS_FLAG = "Y"
+  DESCRIPTION = "XXPO940003C"
+  SAVE_OUTPUT_FLAG = "Y"
+  REQUIRED_STYLE = "N"
+  OUTPUT_FILE_TYPE = "TEXT"
+  RESTART = "Y"
+  NLS_COMPLIANT = "Y"
+  MLS_EXEC = "" ""
+  ENABLE_TIME_STATISTICS = "N"
+  SRS_FLEX = "XXPO" "$SRS$.XXPO940003C4"
+  AUTO_ANNOTATION =
+ "/**\n\
+  * @param iv_wf_ope_div 処理区分\n\
+  * @rep:paraminfo {@rep:type 4 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_class 対象\n\
+  * @rep:paraminfo {@rep:type XXCMN_S_1_CHAR} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_wf_notification 宛先\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed N} {@rep:required}\n\
+  * @param iv_prod_class_code 商品区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_PROD_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_item_class_code 品目区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_ITEM_DIV} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_frequent_whse_flg 代表倉庫区分\n\
+  * @rep:paraminfo {@rep:type XXCMN_YES_NO} {@rep:displayed Y}\n\
+  * @param iv_deliver_from 倉庫\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_LOC_CODE_SECURITY} {@rep:displayed Y}\n\
+  * @param iv_customer_code 取引先\n\
+  * @rep:paraminfo {@rep:type XXPO_VENDOR_CODE} {@rep:displayed Y}\n\
+  * @param iv_item_no 品目\n\
+  * @rep:paraminfo {@rep:type XXPO_ITEM_NO} {@rep:displayed Y}\n\
+  * @param iv_lot_no ロット\n\
+  * @rep:paraminfo {@rep:type XXPO_LOT_NO} {@rep:displayed Y}\n\
+  * @param iv_designated_date 製造日\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_expiration_date 賞味期限\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_uniqe_sign 固有記号\n\
+  * @rep:paraminfo {@rep:type XXPO_UNIQUE_SIGN} {@rep:displayed Y}\n\
+  * @param iv_mf_factory 製造工場\n\
+  * @rep:paraminfo {@rep:type 20 Characters} {@rep:displayed Y}\n\
+  * @param iv_mf_lot 製造ロット\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_home 産地\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r1 R1\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_r2 R2\n\
+  * @rep:paraminfo {@rep:type 10 Characters} {@rep:displayed Y}\n\
+  * @param iv_security_class セキュリティ区分\n\
+  * @rep:paraminfo {@rep:type XXPO_SECURITY_FLG} {@rep:displayed N} {@rep:required}\n\
+  */"
+
+
+END PROGRAM
