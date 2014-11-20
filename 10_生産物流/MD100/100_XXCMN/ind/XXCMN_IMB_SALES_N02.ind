@@ -1,0 +1,2 @@
+CREATE INDEX xxcmn.xxcmn_imb_sales_n02 ON xxcmn.xxcmn_item_mst_b (UPPER(item_short_name)) TABLESPACE xxidx
+/

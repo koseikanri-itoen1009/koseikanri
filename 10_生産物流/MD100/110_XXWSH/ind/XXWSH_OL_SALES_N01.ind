@@ -1,0 +1,2 @@
+CREATE INDEX xxwsh.xxwsh_ol_sales_n01 ON xxwsh.xxwsh_order_lines_all (last_update_date) TABLESPACE xxidx
+/

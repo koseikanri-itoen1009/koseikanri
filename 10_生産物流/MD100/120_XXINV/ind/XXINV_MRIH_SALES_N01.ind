@@ -1,0 +1,2 @@
+CREATE INDEX xxinv.xxinv_mrih_sales_n01 ON xxinv.xxinv_mov_req_instr_headers  ( comp_actual_flg,status,correct_actual_flg ) TABLESPACE xxidx
+/

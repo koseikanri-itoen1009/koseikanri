@@ -11,6 +11,7 @@
 ##                    Oracle    椎名 昭圭    2009/03/02 1.0.2                 ##
 ##                      品目マスタ更新(日次)_呼出パラメータ｢起動区分｣追加     ##
 ##                    Oracle    椎名 昭圭    2009/03/13 1.0.3  本番#1315対応  ##
+##                    SCS丸下 2009/04/02 要求ID取得位置変更                   ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -149,10 +150,7 @@ EOF
   shell_end ${L_exit_eror}
 fi
 
-# 2009/03/13 v1.03 UPDATE START
-#L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`
-L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`
-# 2009/03/13 v1.03 UPDATE END
+L_reqid=`/usr/bin/awk 'NR==1 {print $3}' ${L_std_out}`
 
 output_log "RequestID : ${L_reqid}"
 

@@ -1,0 +1,12 @@
+CREATE INDEX xxwsh.xxwsh_oh_sales_n01
+ON xxwsh.xxwsh_order_headers_all (
+     request_no
+   , arrival_date
+   , prod_class
+   , head_sales_branch
+   , deliver_from
+   , result_deliver_to
+   , latest_external_flag
+)
+TABLESPACE xxidx
+/

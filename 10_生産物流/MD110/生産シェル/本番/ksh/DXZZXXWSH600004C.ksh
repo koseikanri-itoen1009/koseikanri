@@ -9,6 +9,7 @@
 ##        更新履歴：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
 ##                    Oracle    鈴木 雄大    2008/07/22 1.0.2                 ##
 ##                        初版                                                ##
+##                    SCS丸下 2009/04/02 要求ID取得位置変更                   ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -242,7 +243,7 @@ fi
 
 #2008/07/22 y.suzuki change
 #L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`
-L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`
+L_reqid=`/usr/bin/awk 'NR==1 {print $3}' ${L_std_out}`
 
 output_log "RequestID : ${L_reqid}"
 

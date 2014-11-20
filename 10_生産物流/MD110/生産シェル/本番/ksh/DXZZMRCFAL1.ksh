@@ -8,6 +8,7 @@
 ##        作成者  ：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
 ##        更新履歴：  Oracle    鈴木 雄大    2008/05/01 1.0.1                 ##
 ##                        初版                                                ##
+##                    SCS丸下 2009/04/02 要求ID取得位置変更                   ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -266,7 +267,7 @@ EOF
   shell_end ${L_exit_eror}
 fi
 
-L_reqid=`/usr/bin/awk 'NR==1 {print $31}' ${L_std_out}`
+L_reqid=`/usr/bin/awk 'NR==1 {print $3}' ${L_std_out}`
 
 output_log "RequestID : ${L_reqid}"
 

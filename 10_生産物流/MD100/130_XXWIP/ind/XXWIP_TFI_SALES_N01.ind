@@ -1,0 +1,6 @@
+CREATE INDEX xxwip.xxwip_tfi_sales_n01
+ON xxwip.xxwip_transfer_fare_inf (
+     target_date
+)
+TABLESPACE xxidx
+/

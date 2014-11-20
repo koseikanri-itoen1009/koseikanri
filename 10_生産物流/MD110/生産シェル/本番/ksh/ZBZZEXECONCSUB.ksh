@@ -8,6 +8,10 @@
 ##        作成者  ：  Oracle    鈴木 雄大    2008/04/01 1.0.1                 ##
 ##        更新履歴：  Oracle    鈴木 雄大    2008/04/01 1.0.1                 ##
 ##                        初版                                                ##
+##                    SCS丸下 2009/04/02 要求ID取得位置変更                   ##
+##                    SCS佐野 2009/04/28 ST環境用のパラメータへ変更           ##
+##                    SCS仁木 2009/06/17 CONCSUB要求待ち時間変更(60秒→1秒)   ##
+##                    SCS佐野 2009/08/19 一時ファイル名変更                   ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -30,8 +34,9 @@
 ################################################################################
 
 ## 変数定義
-L_shellpath="/uspg/jp1/zb/shl/PEBSITO"
-L_logpath="/var/EBS/jp1/PEBSITO/log"
+#L_shellpath="/uspg/jp1/zb/shl/PEBSITO"                             #2009/08/19 DEL
+L_logpath="/var/EBS/jp1/PEBSITO/log"  #ログファイルパス[環境依存値]
+L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"   #一時ファイルパス[環境依存値] #2009/08/19 Add
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
@@ -45,9 +50,14 @@ L_exit_norm=0
 L_exit_warn=4
 L_exit_eror=8
 
-L_tmpbase=/tmp/${L_cmdname}.$$
-L_std_out=${L_tmpbase}.stdout
-L_err_out=${L_tmpbase}.errout
+#2009/08/19 Ver1.4 Mod START
+#L_tmpbase=/var/tmp/${L_cmdname}.$$
+#L_std_out=${L_tmpbase}.stdout
+#L_err_out=${L_tmpbase}.errout
+L_tmpbase=${L_cmdname}.`/bin/date +"%Y%m%d%H%M%S"`.$$
+L_std_out=${L_tmppath}/${L_tmpbase}.stdout.tmp
+L_err_out=${L_tmppath}/${L_tmpbase}.errout.tmp
+#2009/08/19 Ver1.4 Mod End
 
 ################################################################################
 ##                                 関数定義                                   ##
@@ -162,7 +172,12 @@ L_conc_args="APPS/APPS"
 L_conc_args="${L_conc_args} \"${L_resp_appl}\""
 L_conc_args="${L_conc_args} \"${L_resp_name}\""
 L_conc_args="${L_conc_args} \"${L_user_name}\""
-L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
+
+# 2009/06/17 SCS_Shigeto.Niki mod START
+#L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
+L_conc_args="${L_conc_args} WAIT=1 CONCURRENT"
+# 2009/06/17 SCS_Shigeto.Niki mod END
+
 L_conc_args="${L_conc_args} \"${L_conc_appl}\""
 L_conc_args="${L_conc_args} \"${L_conc_name}\""
 
@@ -186,55 +201,7 @@ EOF
   shell_end ${L_exit_eror}
 fi
 
-if [ $L_paracount = 5 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $5}' ${L_std_out}`
-elif [ $L_paracount = 6 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`
-elif [ $L_paracount = 7 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`
-elif [ $L_paracount = 8 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $8}' ${L_std_out}`
-elif [ $L_paracount = 9 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $9}' ${L_std_out}`
-elif [ $L_paracount = 10 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $10}' ${L_std_out}`
-elif [ $L_paracount = 11 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $11}' ${L_std_out}`
-elif [ $L_paracount = 12 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $12}' ${L_std_out}`
-elif [ $L_paracount = 13 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $13}' ${L_std_out}`
-elif [ $L_paracount = 14 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $14}' ${L_std_out}`
-elif [ $L_paracount = 15 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $15}' ${L_std_out}`
-elif [ $L_paracount = 16 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $16}' ${L_std_out}`
-elif [ $L_paracount = 17 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $17}' ${L_std_out}`
-elif [ $L_paracount = 18 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $18}' ${L_std_out}`
-elif [ $L_paracount = 19 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $19}' ${L_std_out}`
-elif [ $L_paracount = 20 ]
-then
-  L_reqid=`/usr/bin/awk 'NR==1 {print $20}' ${L_std_out}`
-fi
+L_reqid=`/usr/bin/awk 'NR==1 {print $3}' ${L_std_out}`
 
 L_out_all=`/usr/bin/awk '{print $0}' ${L_std_out}`
 output_log "RequestID : ${L_reqid}"

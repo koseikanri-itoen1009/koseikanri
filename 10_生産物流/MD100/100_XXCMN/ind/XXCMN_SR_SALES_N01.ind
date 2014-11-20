@@ -1,0 +1,2 @@
+CREATE INDEX xxcmn.xxcmn_sr_sales_n01 ON xxcmn.xxcmn_sourcing_rules (start_date_active) TABLESPACE xxidx
+/
