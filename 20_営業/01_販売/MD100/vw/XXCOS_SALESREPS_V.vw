@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_salesreps_v
  * Description     : 担当営業員ビュー
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,8 @@
  *  2009/07/22    1.1   K.Kakishita      [0000741]パフォーマンス対応
  *                                       ・ヒント句追加
  *                                       ・'HZ_ORG_PROFILES_GROUP'の条件追加
+ *  2009/08/03    1.2   K.Kakishita      [0000741]パフォーマンス対応
+ *                                       ・ヒント句削除
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_salesreps_v (
   cust_account_id,                      --顧客ID
@@ -31,16 +33,6 @@ CREATE OR REPLACE VIEW apps.xxcos_salesreps_v (
 )
 AS
   SELECT
-    /*+
-      INDEX( hop )
-      INDEX( hopeb )
-      INDEX( efdfce )
-      INDEX( fa )
-      INDEX( jrre )
-      INDEX( hp )
-      INDEX( hca )
-      INDEX( papf )
-    */
     hca.cust_account_id                     cust_account_id,                    --顧客ID
     hca.account_number                      account_number,                     --顧客番号
     hp.party_name                           party_name,                         --顧客名称
