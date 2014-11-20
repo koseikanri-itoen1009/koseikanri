@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2008/10/24    1.8   Oracle 吉元 強樹 内部変更No174対応
  *  2008/12/04    1.9   Oracle 吉元 強樹 本番障害No420対応
  *  2008/12/06    1.10  Oracle 伊藤 ひとみ 本番障害No528対応
+ *  2008/12/15    1.11  Oracle 北寒寺 正夫 本番障害No648対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1769,22 +1770,24 @@ AS
                                           gv_request_no);
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
 --
+-- Ver1.11 M.Hokkanji Start
     -- 要求セットの設定
-    lb_ret := FND_SUBMIT.SUBMIT_PROGRAM(gv_deli_app,
-                                        gv_deli_app_name,
-                                        gv_deli_stage,
-                                        NULL,NULL,gv_request_no);
+--    lb_ret := FND_SUBMIT.SUBMIT_PROGRAM(gv_deli_app,
+--                                        gv_deli_app_name,
+--                                        gv_deli_stage,
+--                                        NULL,NULL,gv_request_no);
 --
-    IF (NOT lb_ret) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
-                                            'APP-XXPO-10024',
-                                            gv_tkn_conc_name,
-                                            gv_request_name);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+--    IF (NOT lb_ret) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_app_name,
+--                                            'APP-XXPO-10024',
+--                                            gv_tkn_conc_name,
+--                                            gv_request_name);
+ --     lv_errbuf := lv_errmsg;
+ --     RAISE global_api_expt;
+--    END IF;
 --
-    gn_b_16_flg := 1;
+--    gn_b_16_flg := 1;
+-- Ver1.11 M.Hokkanji End
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
