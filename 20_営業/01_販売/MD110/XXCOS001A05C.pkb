@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : èoâ◊ämîFèàóùÅiHHTî[ïiÉfÅ[É^Åj
  * MD.050           : èoâ◊ämîFèàóù(MD050_COS_001_A05)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2009/09/04    1.21  N.Maeda          [0001211] è¡îÔê≈ä÷òAçÄñ⁄éÊìæäÓèÄì˙èCê≥
  *  2009/10/13    1.22  N.Maeda          [0001381] éÛíçñæç◊ÇÃîÃîÑé¿ê—òAågçœÇ›ÉtÉâÉOí«â¡ëŒâû
  *  2009/10/30    1.23  M.Sano           [0001373] éQè∆ViewïœçX[xxcos_rs_info_v ÅÀ xxcos_rs_info2_v]
+ *  2009/12/08    1.24  M.Fujinuma       [E_ñ{â“ìÆ_00224]ílà¯ÇÃÇ›ÇÃÉwÉbÉ_Å[ÉfÅ[É^Ç…ëŒâû
  *
  *****************************************************************************************/
 --
@@ -2983,8 +2984,12 @@ AS
     SELECT 'Y'
     FROM   xxcos_dlv_headers dhs
           ,xxcos_dlv_lines dls
-    WHERE  dhs.order_no_hht = dls.order_no_hht
-    AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--    WHERE  dhs.order_no_hht = dls.order_no_hht
+--    AND    dhs.digestion_ln_number = dls.digestion_ln_number
+    WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+    AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
     AND    dhs.order_no_hht = lt_order_no_hht
   FOR UPDATE OF dhs.order_no_hht,dls.digestion_ln_number
   NOWAIT;
@@ -5470,26 +5475,38 @@ AS
               INTO    lt_max_cancel_correct_class
               FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                       xxcos_dlv_lines dls
-              WHERE  dhs.order_no_hht = dls.order_no_hht
-              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--              WHERE  dhs.order_no_hht = dls.order_no_hht
+--              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+              WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+              AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
               AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
               AND    dhs.input_class  = cv_input_delivery
               AND    dhs.results_forward_flag = cv_untreated_flg
               AND    dhs.order_no_ebs <> cn_tkn_zero
-              AND    dhs.program_application_id IS NOT NULL
-              AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--              AND    dhs.program_application_id IS NOT NULL
+--              AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
               AND    dhs.order_no_hht        = lt_order_no_hht
               AND    dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
                                                   FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                                                           xxcos_dlv_lines dls
-                                                  WHERE   dhs.order_no_hht = dls.order_no_hht
-                                                  AND     dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--                                                  WHERE   dhs.order_no_hht = dls.order_no_hht
+--                                                  AND     dhs.digestion_ln_number = dls.digestion_ln_number
+                                                  WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+                                                  AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
                                                   AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
                                                   AND     dhs.input_class  = cv_input_delivery
                                                   AND     dhs.results_forward_flag = cv_untreated_flg
                                                   AND     dhs.order_no_ebs <> cn_tkn_zero
-                                                  AND     dhs.program_application_id IS NOT NULL
-                                                  AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--                                                  AND     dhs.program_application_id IS NOT NULL
+--                                                  AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
                                                   AND     dhs.order_no_hht        = lt_order_no_hht )
               GROUP BY dhs.cancel_correct_class;
             EXCEPTION
@@ -5502,14 +5519,20 @@ AS
               INTO    lt_min_digestion_ln_number
               FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                       xxcos_dlv_lines dls
-              WHERE  dhs.order_no_hht = dls.order_no_hht
-              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--              WHERE  dhs.order_no_hht = dls.order_no_hht
+--              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+              WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+              AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
               AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
               AND    dhs.input_class  = cv_input_delivery
               AND    dhs.results_forward_flag = cv_untreated_flg
               AND    dhs.order_no_ebs <> cn_tkn_zero
-              AND    dhs.program_application_id IS NOT NULL
-              AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--              AND    dhs.program_application_id IS NOT NULL
+--              AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
               AND     dhs.order_no_hht        = lt_order_no_hht;
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
@@ -5974,8 +5997,12 @@ AS
     SELECT 'Y'
     FROM   xxcos_dlv_headers dhs
           ,xxcos_dlv_lines dls
-    WHERE  dhs.order_no_hht = dls.order_no_hht
-    AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--    WHERE  dhs.order_no_hht = dls.order_no_hht
+--    AND    dhs.digestion_ln_number = dls.digestion_ln_number
+    WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+    AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
     AND    dhs.order_no_hht = lt_order_no_hht
   FOR UPDATE OF dhs.order_no_hht,dls.digestion_ln_number
   NOWAIT;
@@ -8523,22 +8550,32 @@ AS
               INTO    lt_max_cancel_correct_class
               FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                       xxcos_dlv_lines dls
-              WHERE  dhs.order_no_hht = dls.order_no_hht
-              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--              WHERE  dhs.order_no_hht = dls.order_no_hht
+--              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+              WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+              AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
               AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
               AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
               AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
                 OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
                   AND ( dhs.input_class  = cv_input_delivery ) ) )
               AND    dhs.results_forward_flag = cv_untreated_flg
-              AND    dhs.program_application_id IS NULL
-              AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--              AND    dhs.program_application_id IS NULL
+--              AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
               AND    dhs.order_no_hht        = lt_order_no_hht
               AND    dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
                                                   FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                                                           xxcos_dlv_lines dls
-                                                  WHERE  dhs.order_no_hht = dls.order_no_hht
-                                                  AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--                                                  WHERE  dhs.order_no_hht = dls.order_no_hht
+--                                                  AND    dhs.digestion_ln_number = dls.digestion_ln_number
+                                                  WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+                                                  AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
                                                   AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
                                                   AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
                                                     AND dhs.input_class
@@ -8546,8 +8583,10 @@ AS
                                                   OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
                                                     AND ( dhs.input_class  = cv_input_delivery ) ) )
                                                   AND    dhs.results_forward_flag = cv_untreated_flg
-                                                  AND    dhs.program_application_id IS NULL
-                                                  AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--                                                  AND    dhs.program_application_id IS NULL
+--                                                  AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
                                                   AND     dhs.order_no_hht        = lt_order_no_hht )
               GROUP BY dhs.cancel_correct_class;
             EXCEPTION
@@ -8560,16 +8599,22 @@ AS
               INTO    lt_min_digestion_ln_number
               FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                       xxcos_dlv_lines dls
-              WHERE  dhs.order_no_hht = dls.order_no_hht
-              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--              WHERE  dhs.order_no_hht = dls.order_no_hht
+--              AND    dhs.digestion_ln_number = dls.digestion_ln_number
+              WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+              AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
               AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
               AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
               AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
                 OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
                   AND ( dhs.input_class  = cv_input_delivery ) ) )
               AND    dhs.results_forward_flag = cv_untreated_flg
-              AND    dhs.program_application_id IS NULL
-              AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--              AND    dhs.program_application_id IS NULL
+--              AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
               AND     dhs.order_no_hht        = lt_order_no_hht;
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
@@ -8987,8 +9032,12 @@ AS
     SELECT 'Y'
     FROM   xxcos_dlv_headers dhs
           ,xxcos_dlv_lines dls
-    WHERE  dhs.order_no_hht = dls.order_no_hht
-    AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--    WHERE  dhs.order_no_hht = dls.order_no_hht
+--    AND    dhs.digestion_ln_number = dls.digestion_ln_number
+    WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+    AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
     AND    dhs.order_no_hht = lt_order_no_hht
   FOR UPDATE OF dhs.order_no_hht,dls.digestion_ln_number
   NOWAIT;
@@ -11297,27 +11346,39 @@ AS
               INTO    lt_max_cancel_correct_class
               FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                       xxcos_dlv_lines dls
-              WHERE   dhs.order_no_hht = dls.order_no_hht
-              AND     dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--              WHERE   dhs.order_no_hht = dls.order_no_hht
+--              AND     dhs.digestion_ln_number = dls.digestion_ln_number
+              WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+              AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
               AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
               AND     dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
               AND     dhs.results_forward_flag = cv_untreated_flg
               AND     dhs.order_no_ebs = cn_tkn_zero 
-              AND     dhs.program_application_id IS NOT NULL
-              AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--              AND     dhs.program_application_id IS NOT NULL
+--              AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
               AND     dhs.order_no_hht        = lt_order_no_hht
               AND     dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
                                                   FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                                                           xxcos_dlv_lines dls
-                                                  WHERE   dhs.order_no_hht = dls.order_no_hht
-                                                  AND     dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--                                                  WHERE   dhs.order_no_hht = dls.order_no_hht
+--                                                  AND     dhs.digestion_ln_number = dls.digestion_ln_number
+                                                  WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+                                                  AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
                                                   AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
                                                   AND     dhs.input_class
                                                             NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
                                                   AND     dhs.results_forward_flag = cv_untreated_flg
                                                   AND     dhs.order_no_ebs = cn_tkn_zero 
-                                                  AND     dhs.program_application_id IS NOT NULL
-                                                  AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--                                                  AND     dhs.program_application_id IS NOT NULL
+--                                                  AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
                                                   AND     dhs.order_no_hht        = lt_order_no_hht )
               GROUP BY dhs.cancel_correct_class;
             EXCEPTION
@@ -11330,14 +11391,20 @@ AS
               INTO    lt_min_digestion_ln_number
               FROM    xxcos_dlv_headers dhs,            -- î[ïiÉwÉbÉ_
                       xxcos_dlv_lines dls
-              WHERE   dhs.order_no_hht = dls.order_no_hht
-              AND     dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--              WHERE   dhs.order_no_hht = dls.order_no_hht
+--              AND     dhs.digestion_ln_number = dls.digestion_ln_number
+              WHERE   dhs.order_no_hht = dls.order_no_hht(+)
+              AND     dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
               AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
               AND     dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
               AND     dhs.results_forward_flag = cv_untreated_flg
               AND     dhs.order_no_ebs = cn_tkn_zero 
-              AND     dhs.program_application_id IS NOT NULL
-              AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--              AND     dhs.program_application_id IS NOT NULL
+--              AND     dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
               AND     dhs.order_no_hht        = lt_order_no_hht;
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
@@ -11625,14 +11692,20 @@ AS
              ,dhs.hht_invoice_no            -- HHTì`ï[No.
       FROM   xxcos_dlv_headers dhs            -- î[ïiÉwÉbÉ_
              ,xxcos_dlv_lines dls             -- î[ïiñæç◊
-      WHERE  dhs.order_no_hht = dls.order_no_hht
-      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--      WHERE  dhs.order_no_hht = dls.order_no_hht
+--      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+      WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND    dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
       AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.order_no_ebs = cn_tkn_zero 
       AND    dhs.program_application_id IS NOT NULL
-      AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--      AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
 --      GROUP BY dhs.ROWID                      -- çsID
 --              ,dhs.order_no_hht              -- éÛíçNo.(HHT)
 --              ,dhs.digestion_ln_number       -- é}î‘
@@ -11788,8 +11861,12 @@ AS
              ,dhs.hht_invoice_no             -- HHTì`ï[No.
       FROM   xxcos_dlv_headers dhs,           --î[ïiÉwÉbÉ_
              xxcos_dlv_lines dls              --î[ïiñæç◊
-      WHERE  dhs.order_no_hht = dls.order_no_hht
-      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--      WHERE  dhs.order_no_hht = dls.order_no_hht
+--      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+      WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
           AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
@@ -11797,7 +11874,9 @@ AS
           AND ( dhs.input_class  = cv_input_delivery ) ) )
       AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.program_application_id IS NULL
-      AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--      AND    dls.program_application_id IS NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
 --      GROUP BY dhs.ROWID                       -- çsID
 --              ,dhs.order_no_hht               -- éÛíçNo.(HHT)
 --              ,dhs.digestion_ln_number        -- é}î‘
@@ -11980,14 +12059,20 @@ AS
              ,dhs.hht_invoice_no           -- HHTì`ï[No.
       FROM   xxcos_dlv_headers dhs,           --î[ïiÉwÉbÉ_
              xxcos_dlv_lines dls              -- î[ïiñæç◊
-      WHERE  dhs.order_no_hht = dls.order_no_hht
-      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD START ***************************************
+--      WHERE  dhs.order_no_hht = dls.order_no_hht
+--      AND    dhs.digestion_ln_number = dls.digestion_ln_number
+      WHERE  dhs.order_no_hht = dls.order_no_hht(+)
+      AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
+--******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
       AND    dhs.input_class  = cv_input_delivery
       AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.order_no_ebs <> cn_tkn_zero
       AND    dhs.program_application_id IS NOT NULL
-      AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
+--      AND    dls.program_application_id IS NOT NULL
+--******************************* 2009/12/08 M.Fujinuma Var1.24 DEL END ***************************************
 --      GROUP BY dhs.ROWID                     -- çsID
 --              ,dhs.order_no_hht             -- éÛíçNo.(HHT)
 --              ,dhs.digestion_ln_number      -- é}î‘
