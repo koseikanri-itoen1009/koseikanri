@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *                                       (RCV_RTN_QUANTITY)をセットする
  *  2008/07/04    1.12  Y.Majikina       TEMP領域エラー回避のため、xxcmn_categories4_vを使用
  *                                       しないように修正
+ *  2008/07/07    1.13  Y.Majikina       仕入金額計算時は、受入返品数量ではなく数量(QUANTITY)
+ *                                       に修正
  *
  *****************************************************************************************/
 --
@@ -681,14 +683,14 @@ AS
               || ' pla.unit_price) AS   unit_price, '                -- 単価
               || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
               || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.rcv_rtn_quantity ) * '
+              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) , '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.rcv_rtn_quantity ) * '
+              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) ), ' || cn_sts_num_zero
@@ -921,7 +923,7 @@ AS
                 || ' rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' AS total_cnt,'
                 || ' rcrt.rcv_rtn_uom           AS  rtn_uom,'
                 || ' rcrt.kobki_converted_unit_price  AS  unit_price,'
-                || ' ROUND((( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) * ( '
+                || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
                 || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
                 || ' AS amount_pay,'
                 || ' NULL                       AS  deliver_dist,'
