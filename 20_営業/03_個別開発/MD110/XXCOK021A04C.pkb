@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A04C(body)
  * Description      : 情報系システムインターフェースファイル作成-問屋支払
  * MD.050           : 情報系システムインターフェースファイル作成-問屋支払 MD050_COK_021_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/08    1.0   A.Yano           新規作成
  *  2009/02/06    1.1   T.Abe            [障害COK_016] ディレクトリパス出力対応
+ *  2009/03/19    1.2   A.Yano           [障害T1_0087] 必須項目の不具合対応
  *
  *****************************************************************************************/
 --
@@ -72,6 +73,11 @@ AS
   cv_comp_code              CONSTANT VARCHAR2(30)   := 'XXCOK1_AFF1_COMPANY_CODE';   -- XXCOK:会社コード
   cv_wholesale_dire_path    CONSTANT VARCHAR2(30)   := 'XXCOK1_WHOLESALE_DIRE_PATH'; -- XXCOK:ディレクトリパス
   cv_wholesale_file_name    CONSTANT VARCHAR2(30)   := 'XXCOK1_WHOLESALE_FILE_NAME'; -- XXCOK:ファイル名
+--【2009/03/19 A.Yano Ver.1.2 追加START】------------------------------------------------------
+  cv_emp_code_dummy         CONSTANT VARCHAR2(30)   := 'XXCOK1_EMP_CODE_DUMMY';      -- XXCOK:担当者コード_ダミー値
+  cv_estimated_type_dummy   CONSTANT VARCHAR2(30)   := 'XXCOK1_ESTIMATED_TYPE_DUMMY';-- XXCOK:見積区分_ダミー値
+  cv_estimated_no_dummy     CONSTANT VARCHAR2(30)   := 'XXCOK1_ESTIMATED_NO_DUMMY';  -- XXCOK:見積番号_ダミー値
+--【2009/03/19 A.Yano Ver.1.2 追加END  】------------------------------------------------------
   cv_organization_code      CONSTANT VARCHAR2(30)   := 'XXCOK1_ORG_CODE_SALES';      -- XXCOK:在庫組織コード_営業組織
   -- AP連携ステータス
   cv_ap_interface_status    CONSTANT VARCHAR2(1)    := '1';                          -- 連携済
@@ -97,6 +103,11 @@ AS
   gv_comp_code              VARCHAR2(5)                                          DEFAULT NULL;  -- 会社コード
   gv_wholesale_dire_path    fnd_profile_option_values.profile_option_value%TYPE  DEFAULT NULL;  -- ディレクトリパス
   gv_wholesale_file_name    fnd_profile_option_values.profile_option_value%TYPE  DEFAULT NULL;  -- ファイル名
+--【2009/03/19 A.Yano Ver.1.2 追加START】------------------------------------------------------
+  gv_emp_code_dummy         fnd_profile_option_values.profile_option_value%TYPE  DEFAULT NULL;  -- 担当者コード_ダミー値
+  gv_estimated_type_dummy   fnd_profile_option_values.profile_option_value%TYPE  DEFAULT NULL;  -- 見積区分_ダミー値
+  gv_estimated_no_dummy     fnd_profile_option_values.profile_option_value%TYPE  DEFAULT NULL;  -- 見積番号_ダミー値
+--【2009/03/19 A.Yano Ver.1.2 追加END  】------------------------------------------------------
   gn_organization_id        NUMBER                                               DEFAULT NULL;  -- 在庫組織ID
   g_file_handle             UTL_FILE.FILE_TYPE;                                                 -- ファイルハンドル
   gv_dire_path              VARCHAR2(1000)                                       DEFAULT NULL;  -- ディレクトリパス(メッセージ出力用)
@@ -147,10 +158,10 @@ AS
           ,( SELECT msib.segment1              AS item_code
                    ,iimb.attribute11           AS case_qty
                    ,CASE
-                      WHEN NVL( TO_DATE( iimb.attribute6, 'YYYY/MM/DD' ), gd_process_date ) > gd_process_date 
-                      THEN 
+                      WHEN NVL( TO_DATE( iimb.attribute6, 'YYYY/MM/DD' ), gd_process_date ) > gd_process_date
+                      THEN
                         iimb.attribute4
-                      ELSE 
+                      ELSE
                         iimb.attribute5
                     END                        AS list_price
              FROM mtl_system_items_b  msib
@@ -262,7 +273,27 @@ AS
       lv_nodata_profile := cv_wholesale_file_name;
       RAISE nodata_profile_expt;
     END IF;
-    -- (4)在庫組織コード取得
+--【2009/03/19 A.Yano Ver.1.2 追加START】------------------------------------------------------
+    -- (4)担当者コード_ダミー値取得
+    gv_emp_code_dummy := FND_PROFILE.VALUE( cv_emp_code_dummy );
+    IF( gv_emp_code_dummy IS NULL ) THEN
+      lv_nodata_profile := cv_emp_code_dummy;
+      RAISE nodata_profile_expt;
+    END IF;
+    -- (5)見積区分_ダミー値取得
+    gv_estimated_type_dummy := FND_PROFILE.VALUE( cv_estimated_type_dummy );
+    IF( gv_estimated_type_dummy IS NULL ) THEN
+      lv_nodata_profile := cv_estimated_type_dummy;
+      RAISE nodata_profile_expt;
+    END IF;
+    -- (6)見積番号_ダミー値取得
+    gv_estimated_no_dummy := FND_PROFILE.VALUE( cv_estimated_no_dummy );
+    IF( gv_estimated_no_dummy IS NULL ) THEN
+      lv_nodata_profile := cv_estimated_no_dummy;
+      RAISE nodata_profile_expt;
+    END IF;
+--【2009/03/19 A.Yano Ver.1.2 追加END  】------------------------------------------------------
+    -- (7)在庫組織コード取得
     lv_organization_code := FND_PROFILE.VALUE( cv_organization_code );
     IF( lv_organization_code IS NULL ) THEN
       lv_nodata_profile := cv_organization_code;
@@ -588,13 +619,22 @@ AS
     lv_selling_month        := g_wholesale_info_tab( in_index ).selling_month;                       -- 売上対象年月
     lv_base_code            := g_wholesale_info_tab( in_index ).base_code;                           -- 拠点コード
     lv_supplier_code        := g_wholesale_info_tab( in_index ).supplier_code;                       -- 仕入先コード
-    lv_emp_code             := g_wholesale_info_tab( in_index ).emp_code;                            -- 担当者コード
+--【2009/03/19 A.Yano Ver.1.2 START】------------------------------------------------------
+--    lv_emp_code             := g_wholesale_info_tab( in_index ).emp_code;                            -- 担当者コード
+    lv_emp_code             := NVL( g_wholesale_info_tab( in_index ).emp_code, gv_emp_code_dummy );  -- 担当者コード
+--【2009/03/19 A.Yano Ver.1.2 END  】------------------------------------------------------
     lv_wholesale_code_admin := g_wholesale_info_tab( in_index ).wholesale_code_admin;                -- 問屋管理コード
     lv_oprtn_status_code    := g_wholesale_info_tab( in_index ).oprtn_status_code;                   -- 業態コード
     lv_cust_code            := g_wholesale_info_tab( in_index ).cust_code;                           -- 顧客コード
     lv_sales_outlets_code   := g_wholesale_info_tab( in_index ).sales_outlets_code;                  -- 問屋帳合先コード
-    lv_estimated_type       := g_wholesale_info_tab( in_index ).estimated_type;                      -- 見積区分
-    lv_estimated_no         := g_wholesale_info_tab( in_index ).estimated_no;                        -- 見積番号
+--【2009/03/19 A.Yano Ver.1.2 START】------------------------------------------------------
+--    lv_estimated_type       := g_wholesale_info_tab( in_index ).estimated_type;                      -- 見積区分
+--    lv_estimated_no         := g_wholesale_info_tab( in_index ).estimated_no;                        -- 見積番号
+    lv_estimated_type       :=
+      NVL( g_wholesale_info_tab( in_index ).estimated_type, gv_estimated_type_dummy );               -- 見積区分
+    lv_estimated_no         :=
+      NVL( g_wholesale_info_tab( in_index ).estimated_no, gv_estimated_no_dummy );                   -- 見積番号
+--【2009/03/19 A.Yano Ver.1.2 END  】------------------------------------------------------
     lv_container_group_code := g_wholesale_info_tab( in_index ).container_group_code;                -- 容器群コード
     lv_case_qty             := TO_CHAR( g_wholesale_info_tab( in_index ).case_qty );                 -- ケース入数
     lv_item_code            := g_wholesale_info_tab( in_index ).item_code;                           -- 商品コード
