@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
 * 2008-06-26 1.4  伊藤ひとみ   ST#296対応
 * 2008-07-25 1.5  山本恭久     不具合指摘事項修正
+* 2008-08-20 1.6  山本恭久     ST#249対応、内部変更#167対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -839,6 +840,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         OAException.raiseBundledOAException(exceptions);
       }
     }
+
   } // checkHdr
 
   /***************************************************************************
@@ -1825,7 +1827,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
             makeHdrVORow.getAttribute("DbActualShipDate")))
       {
         // 出庫日(実績)(DB)に更新した値をセット
-        makeHdrVORow.setAttribute("DbActualShipDate", makeHdrVORow.getAttribute("ActualShipDate"));
+  //      makeHdrVORow.setAttribute("DbActualShipDate", makeHdrVORow.getAttribute("ActualShipDate"));
         // ロット詳細確認処理
         if (XxinvUtility.chkLotDetails(
                            getOADBTransaction(),         // トランザクション
@@ -1844,7 +1846,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
             makeHdrVORow.getAttribute("DbActualArrivalDate")))
       {
         // 着日(実績)(DB)に更新した値をセット
-        makeHdrVORow.setAttribute("DbActualArrivalDate", makeHdrVORow.getAttribute("ActualArrivalDate"));
+  //      makeHdrVORow.setAttribute("DbActualArrivalDate", makeHdrVORow.getAttribute("ActualArrivalDate"));
         // ロット詳細確認処理
         if (XxinvUtility.chkLotDetails(
                            getOADBTransaction(),         // トランザクション
@@ -2096,8 +2098,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     lnVo.setWhereClauseParam(1,null);
     lnVo.setWhereClauseParam(2,null);
     lnVo.setWhereClauseParam(3,null);
+// 2008/08/21 v1.6 Y.Yamamoto Mod Start
+//    lnVo.setWhereClauseParam(4, null);
+//    lnVo.setWhereClauseParam(5, null);
     lnVo.setWhereClauseParam(4,null);
-    lnVo.setWhereClauseParam(5,null);
+// 2008/08/21 v1.6 Y.Yamamoto Mod End
     lnVo.executeQuery();
 
     addRowLine();
@@ -2154,6 +2159,17 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     movementResultsLnVo.insertRow(row);
     row.setNewRowState(Row.STATUS_INITIALIZED);
 
+    movementResultsLnVo.first();
+    while (movementResultsLnVo.getCurrentRow() != null)
+    {
+      OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
+
+      movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
+      movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+
+      movementResultsLnVo.next();
+    }
+
   } // addRowLine
 
   /***************************************************************************
@@ -2194,8 +2210,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       vo.setWhereClauseParam(1,null);
       vo.setWhereClauseParam(2,null);
       vo.setWhereClauseParam(3,null);
+// 2008/08/21 v1.6 Y.Yamamoto Mod Start
+//      vo.setWhereClauseParam(4, null);
+//      vo.setWhereClauseParam(5, null);
       vo.setWhereClauseParam(4,null);
-      vo.setWhereClauseParam(5,null);
+// 2008/08/21 v1.6 Y.Yamamoto Mod End
       vo.executeQuery();
       vo.insertRow(vo.createRow());
       // 1行目を取得
@@ -2815,6 +2834,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   {
     // コミット
     getOADBTransaction().commit();
+// 2008/08/22 v1.6 Y.Yamamoto Mod Start
+    // 変更に関する警告をクリア
+    super.clearWarnAboutChanges();  
+// 2008/08/22 v1.6 Y.Yamamoto Mod End
   } // doCommit
 
   /***************************************************************************
@@ -2826,6 +2849,142 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // ロールバック
     XxcmnUtility.rollBack(getOADBTransaction());
   }
+
+// 2008/08/20 v1.6 Y.Yamamoto Mod Start
+  /***************************************************************************
+   * 変更に関する警告をセットします。
+   ***************************************************************************
+   */
+  public void doWarnAboutChanges()
+  {
+    // 移動実績情報ヘッダVO取得
+    OAViewObject hdrVo = getXxinvMovementResultsHdVO1();
+    OARow hdrRow  = (OARow)hdrVo.first();
+
+    // いづれかの項目に変更があった場合
+    if (!XxcmnUtility.isEquals(hdrRow.getAttribute("ActualShipDate"),     hdrRow.getAttribute("DbActualShipDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ActualArrivalDate"),  hdrRow.getAttribute("DbActualArrivalDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("CollectedPalletQty"), hdrRow.getAttribute("DbCollectedPalletQty"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("OutPalletQty"),       hdrRow.getAttribute("DbOutPalletQty"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("InPalletQty"),        hdrRow.getAttribute("DbInPalletQty"))) 
+    {
+      // 変更に関する警告を設定
+      super.setWarnAboutChanges();  
+    }
+  } // doWarnAboutChanges
+
+  /***************************************************************************
+   * 入出庫実績明細画面のロット実績アイコンの切り替えを行うメソッドです。
+   * @param searchParams - パラメータHashMap
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void doLotSwitcher(
+    HashMap searchParams
+  ) throws OAException
+  {
+    // パラメータ取得
+    String searchHdrId = (String)searchParams.get(XxinvConstants.URL_PARAM_SEARCH_MOV_ID);
+    String productFlg  = (String)searchParams.get(XxinvConstants.URL_PARAM_PRODUCT_FLAG);
+
+    String addRowOn    = "0";
+
+    // 入出庫実績ヘッダVO取得
+    OAViewObject makeHdrVO = getXxinvMovementResultsHdVO1();
+    // 1行目を取得
+    OARow makeHdrVORow = (OARow)makeHdrVO.first();
+
+    // 入出庫実績明細:VO取得
+    OAViewObject movementResultsLnVo = getXxinvMovementResultsLnVO1();
+    // 1行目を取得
+    movementResultsLnVo.first();
+
+    OAViewObject resultsSearchVo = getXxinvMovResultsSearchVO1();
+      
+    // 1行目を取得
+    OARow resultsSearchRow = (OARow)resultsSearchVo.first();
+    String actualFlg  = (String)resultsSearchRow.getAttribute("ActualFlg");
+
+    // ヘッダ変更がなかった場合
+    if ((XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualShipDate"),
+                         makeHdrVORow.getAttribute("DbActualShipDate")))           // 出庫日(実績)：出庫日(実績)(DB)
+           && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
+                               makeHdrVORow.getAttribute("DbActualArrivalDate")))  // 着日(実績)：着日(実績)(DB)
+           && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
+                               makeHdrVORow.getAttribute("DbOutPalletQty")))       // パレット枚数(出)：パレット枚数(出)(DB)
+           && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
+                               makeHdrVORow.getAttribute("DbInPalletQty"))))       // パレット枚数(入)：パレット枚数(入)(DB)
+    {
+      resultsSearchRow.setAttribute("ExeFlag", "1");
+    // ヘッダに変更があった場合、出庫実績ロット画面、入庫実績ロット画面遷移不可。
+    } else
+    {
+      resultsSearchRow.setAttribute("ExeFlag", null);
+    }
+    String exeFlg     = (String)resultsSearchRow.getAttribute("ExeFlag");
+
+    // キーに値をセット
+    resultsSearchRow.setAttribute("HdrId", searchHdrId);
+
+    while (movementResultsLnVo.getCurrentRow() != null)
+    {
+      OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
+
+      if (XxcmnUtility.isEquals(movementResultsLnRow.getAttribute("ItemCodeReadOnly"),Boolean.TRUE))
+      {
+        // 処理フラグ2:更新をセット
+        movementResultsLnRow.setAttribute("ProcessFlag", XxinvConstants.PROCESS_FLAG_U);
+        // 品目の入力項目制御
+        movementResultsLnRow.setAttribute("ItemCodeReadOnly", Boolean.TRUE);
+        
+        // 実績データ区分が:1(出庫実績)の場合
+        if ("1".equals(actualFlg))
+        {
+          if ("1".equals(exeFlg))
+          {
+            movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetails");
+          } else
+          {
+            movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
+          }
+          movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+
+        // 実績データ区分が:2(入庫実績)の場合
+        } else if ("2".equals(actualFlg))
+        {
+          if ("1".equals(exeFlg))
+          {
+            movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetails");
+          } else
+          {
+            movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+          }
+          movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
+        }
+        addRowOn = "0";
+      } else
+      {
+        addRowOn = "1";
+      }
+      movementResultsLnVo.next();
+    }
+
+    if ("1".equals(addRowOn)) 
+    {
+      movementResultsLnVo.first();
+
+      while (movementResultsLnVo.getCurrentRow() != null)
+      {
+        OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
+
+        movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
+        movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+
+        movementResultsLnVo.next();
+      }
+    }
+  } // doLotSwitcher
+// 2008/08/20 v1.6 Y.Yamamoto Mod End
 
   /**
    * 

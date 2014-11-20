@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-06-11 1.2  吉元強樹     ST不具合ログ#72を対応
 * 2008-06-26 1.3  北寒寺正夫   結合テスト指摘No02対応
 * 2008-07-08 1.4  二瓶大輔     変更要求#91対応
+* 2008-08-25 1.5  伊藤ひとみ   変更要求#205対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -46,7 +47,7 @@ import itoen.oracle.apps.xxpo.util.XxpoUtility;
 /***************************************************************************
  * 受入実績作成:受入実績作成アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -3423,6 +3424,9 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
       rcvRtnQtyTotal = rcvRtnQtyTotal * Double.parseDouble(itemAmount);
     }
 
+// 20080825 H.Itou Add Start
+    BigDecimal bRcvRtnQtyTotal = new BigDecimal(String.valueOf(rcvRtnQtyTotal));
+// 20080825 H.Itou Add End
 
     // 有効日ベース引当可能数
     Object inTimeQty = reservedQuantity.get("InTimeQty");
@@ -3453,14 +3457,25 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // * 処理3:受入減数計上チェック       * //
     // ************************************ //
     // 受入数量が発注数量を下回る場合
-    if (XxcmnUtility.chkCompareNumeric(1, sOrderAmount, Double.toString(rcvRtnQtyTotal)))
+// 20080825 H.Itou Mod Start
+//    if (XxcmnUtility.chkCompareNumeric(1, sOrderAmount, Double.toString(rcvRtnQtyTotal)))
+    if (XxcmnUtility.chkCompareNumeric(1, sOrderAmount, bRcvRtnQtyTotal))
+// 20080825 H.Itou Mod End
     {
       // 減数数量 = (総計)発注数量 - (画面.総計)受入数量
       double subtracterAmount = Double.parseDouble(sOrderAmount) - rcvRtnQtyTotal;
 
+// 20080825 H.Itou Add Start
+      BigDecimal bSubtracterAmount = new BigDecimal(String.valueOf(subtracterAmount));
+// 20080825 H.Itou Add End
+
       //  『減数数量 > 有効日ベース引当可能数』または、『減数数量 > 総引当可能数』
-      if ((XxcmnUtility.chkCompareNumeric(1, Double.toString(subtracterAmount), inTimeQty.toString()))
-        || (XxcmnUtility.chkCompareNumeric(1, Double.toString(subtracterAmount), totalQty.toString())))
+// 20080825 H.Itou Mod Start
+//      if ((XxcmnUtility.chkCompareNumeric(1, Double.toString(subtracterAmount), inTimeQty.toString()))
+//        || (XxcmnUtility.chkCompareNumeric(1, Double.toString(subtracterAmount), totalQty.toString())))
+      if ((XxcmnUtility.chkCompareNumeric(1, bSubtracterAmount, inTimeQty.toString()))
+        || (XxcmnUtility.chkCompareNumeric(1, bSubtracterAmount, totalQty.toString())))
+// 20080825 H.Itou Mod End
       {
 
         // 受入減数計上による供給不可の確認(警告)
@@ -3487,8 +3502,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 //      && (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)))
     // 発注区分を取得
     String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
-
-    if ((XxcmnUtility.chkCompareNumeric(1, Double.toString(rcvRtnQtyTotal), sOrderAmount))
+// 20080825 H.Itou Mod Start
+//    if ((XxcmnUtility.chkCompareNumeric(1, Double.toString(rcvRtnQtyTotal), sOrderAmount))
+    if ((XxcmnUtility.chkCompareNumeric(1, bRcvRtnQtyTotal, sOrderAmount))
+// 20080825 H.Itou Mod End
       && (XxpoConstants.PO_TYPE_3.equals(orderDivision)))
     {
 // 20080627 Upd End

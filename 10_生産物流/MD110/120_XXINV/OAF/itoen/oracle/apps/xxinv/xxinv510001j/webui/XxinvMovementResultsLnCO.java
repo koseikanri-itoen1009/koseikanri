@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsLnCO
 * 概要説明   : 入出庫実績明細:検索コントローラ
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-18 1.0  大橋孝郎     新規作成
 * 2008-06-11 1.2  大橋孝郎     不具合指摘事項修正
 * 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
+* 2008-08-18 1.4  山本恭久     内部変更#157対応、ST#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -85,6 +86,24 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       searchParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, searchHdrId);
       searchParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
 
+// 2008/08/18 v1.4 Y.Yamamoto Mod Start
+      // 商品区分の取得
+      String itemClass  = pageContext.getProfile("XXCMN_ITEM_DIV_SECURITY");
+
+      // パラメータ用HashMap設定
+      HashMap searchParamsHd = new HashMap();
+      searchParamsHd.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
+      searchParamsHd.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
+      searchParamsHd.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
+      searchParamsHd.put(XxinvConstants.URL_PARAM_ITEM_CLASS, itemClass);
+      searchParamsHd.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
+
+      // 引数設定
+      Serializable setParamsHd[] = { searchParamsHd };
+      // initializeの引数型設定
+      Class[] parameterTypesHd = { HashMap.class };
+// 2008/08/18 v1.4 Y.Yamamoto Mod End
+
       // 引数設定
       Serializable setParams[] = { searchParams };
       // initializeの引数型設定
@@ -94,20 +113,58 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       if (pageContext.getParameter("Go") != null)
       {
         // 何も処理しない
+// 2008/08/18 v1.4 Y.Yamamoto Mod Start
+        // 引数設定
+        // VO初期化処理
+        am.invokeMethod("initializeHdr", setParamsHd, parameterTypesHd);
+        Serializable paramsHd[] = { searchHdrId };
+        // 検索処理
+        am.invokeMethod("doSearchHdr", paramsHd);
+
+        // VO初期化処理
+        am.invokeMethod("initializeLine", setParams, parameterTypes);
+        // 検索処理
+        am.invokeMethod("doSearchLine", setParams, parameterTypes);
+// 2008/08/18 v1.4 Y.Yamamoto Mod End
       } else
       {
         // VO初期化処理
-        am.invokeMethod("initializeLine", setParams, parameterTypes);
+// 2008/08/18 v1.4 Y.Yamamoto Mod Start
+        if (XxcmnUtility.isBlankOrNull(updateFlag))
+        {
+          // 更新フラグがNULLの場合、VO初期化処理
+          am.invokeMethod("initializeLine", setParams, parameterTypes);
+        }
+// 2008/08/18 v1.4 Y.Yamamoto Mod End
       }
 
       // 更新フラグがNULL以外の場合
       if (!XxcmnUtility.isBlankOrNull(updateFlag))
       {
         // 検索処理
-        am.invokeMethod("doSearchLine", setParams, parameterTypes);
+// 2008/08/18 v1.4 Y.Yamamoto Mod Start
+//        am.invokeMethod("doSearchLine", setParams, parameterTypes);
+// 2008/08/18 v1.4 Y.Yamamoto Mod End
       }
       //}
       // mod start ver1.3
+// 2008/08/26 v1.4 Y.Yamamoto Mod Start
+      // 前画面が出庫ロット明細、入庫ロット明細の場合、再検索を実施
+      if (XxinvConstants.URL_XXINV510002J_1.equals(prevUrl)
+       || XxinvConstants.URL_XXINV510002J_2.equals(prevUrl))
+      {
+        // VO初期化処理
+        am.invokeMethod("initializeHdr", setParamsHd, parameterTypesHd);
+        Serializable paramsHd[] = { searchHdrId };
+        // 検索処理
+        am.invokeMethod("doSearchHdr", paramsHd);
+
+        // VO初期化処理
+        am.invokeMethod("initializeLine", setParams, parameterTypes);
+        // 検索処理
+        am.invokeMethod("doSearchLine", setParams, parameterTypes);
+      }
+// 2008/08/26 v1.4 Y.Yamamoto Mod Start
 
     // 【共通処理】ブラウザ「戻る」ボタンチェック　戻るボタンを押下した場合
     } else
@@ -144,6 +201,10 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxinvConstants.TXN_XXINV510001J);
 
+// 2008/08/20 v1.4 Y.Yamamoto Mod Start
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
+// 2008/08/20 v1.4 Y.Yamamoto Mod End
         // 入出庫実績要約画面へ
         pageContext.setForwardURL(
           XxinvConstants.URL_XXINV510001JS,
@@ -292,6 +353,10 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       } else if (ADD_ROWS_EVENT.equals(pageContext.getParameter(EVENT_PARAM)))
       {
         am.invokeMethod("addRowLine");
+// 2008/08/20 v1.4 Y.Yamamoto Mod Start
+        // 変更に関する警告を設定
+         am.invokeMethod("setWarnAboutChanges");  
+// 2008/08/20 v1.4 Y.Yamamoto Mod End
 
       // ********************************** //
       // *  出庫ロット明細アイコン押下時  * //
@@ -300,6 +365,10 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxinvConstants.TXN_XXINV510001J);
+// 2008/08/20 v1.4 Y.Yamamoto Mod Start
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
+// 2008/08/20 v1.4 Y.Yamamoto Mod End
         // 移動明細ID取得
         String movLineId   = pageContext.getParameter("MOV_LINE_ID");
         String actualFlag  = pageContext.getParameter("Actual");
@@ -334,6 +403,10 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxinvConstants.TXN_XXINV510001J);
+// 2008/08/20 v1.4 Y.Yamamoto Mod Start
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
+// 2008/08/20 v1.4 Y.Yamamoto Mod End
         // 移動明細ID取得
         String movLineId   = pageContext.getParameter("MOV_LINE_ID");
         String actualFlag  = pageContext.getParameter("Actual");

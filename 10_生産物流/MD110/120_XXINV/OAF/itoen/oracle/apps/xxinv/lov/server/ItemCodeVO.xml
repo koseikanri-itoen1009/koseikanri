@@ -16,18 +16,18 @@ SELECT xcimv.item_id               item_id         -- 品目ID
       ,xcimv.item_short_name       item_short_name -- 品目名称
       ,CASE
          -- 品目区分5(製品)かつ、入出庫換算単位設定済みの場合、入出庫換算単位
-         WHEN ((xcic4v.item_class_code = 5) AND (xcimv.conv_unit IS NOT NULL)) THEN xcimv.conv_unit
+         WHEN ((xcicv.prod_class_code = '2') AND (xcicv.item_class_code = '5') AND (xcimv.conv_unit IS NOT NULL)) THEN xcimv.conv_unit
          -- それ以外の場合、単位
          ELSE  xcimv.item_um
        END                         item_um         -- 単位
       ,xcimv.item_um               dis_item_um     -- 単位(非表示)
       ,xcimv.lot_ctl               lot_ctl         -- ロット管理区分
       ,xcimv.weight_capacity_class weight_capacity -- 重量容積区分
-      ,xcic4v.item_class_code      item_class_code -- 品目区分
+      ,xcicv.item_class_code      item_class_code -- 品目区分
 FROM xxcmn_item_mst_v xcimv
-    ,xxcmn_item_categories4_v xcic4v
-WHERE xcic4v.prod_class_code = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY')
-AND   xcimv.item_id = xcic4v.item_id
+    ,xxcmn_item_categories5_v xcicv
+WHERE xcicv.prod_class_code = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY')
+AND   xcimv.item_id = xcicv.item_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

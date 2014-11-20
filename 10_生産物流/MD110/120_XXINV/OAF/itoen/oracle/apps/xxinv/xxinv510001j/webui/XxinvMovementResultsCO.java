@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsCO
 * 概要説明   : 入出庫実績要約:検索コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-11 1.0  大橋孝郎     新規作成
+* 2008-08-18 1.1  山本恭久     内部変更#157対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -191,6 +192,10 @@ public class XxinvMovementResultsCO extends XxcmnOAControllerImpl
         pageParams.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
         pageParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
 
+// 2008/08/18 v1.1 Y.Yamamoto Mod Start
+        pageParams.put(XxinvConstants.URL_PARAM_PREV_URL, XxinvConstants.URL_XXINV510001JS);   // 前画面のURL
+// 2008/08/18 v1.1 Y.Yamamoto Mod End
+
         // 入出庫実績ヘッダ画面へ
         pageContext.setForwardURL(
           XxinvConstants.URL_XXINV510001JH,
@@ -226,6 +231,10 @@ public class XxinvMovementResultsCO extends XxcmnOAControllerImpl
         pageParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
         pageParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, searchMovHdrId);
         pageParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, "1");
+
+// 2008/08/18 v1.1 Y.Yamamoto Mod Start
+        pageParams.put(XxinvConstants.URL_PARAM_PREV_URL, XxinvConstants.URL_XXINV510001JS);   // 前画面のURL
+// 2008/08/18 v1.1 Y.Yamamoto Mod End
 
         // 入出庫実績ヘッダ画面へ
         pageContext.setForwardURL(

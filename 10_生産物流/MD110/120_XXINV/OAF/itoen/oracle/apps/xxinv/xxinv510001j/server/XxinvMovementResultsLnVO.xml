@@ -11,84 +11,56 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT mov_hdr_id             mov_hdr_id                  -- 移動ヘッダID
-      ,mov_line_id            mov_line_id                 -- 移動明細ID
-      ,line_number            line_number                 -- 明細番号
-      ,item_id                item_id                     -- OPM品目ID
-      ,item_code              item_code                   -- 品目
-      ,item_short_name        item_short_name             -- 品名略称
-      ,CASE
-         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
-          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
-          AND :0 = '1' THEN                                      -- 製品識別区分が1:製品
-             -- 換算する
-             REPLACE(TO_CHAR(instruct_qty/num_of_cases,'999,999,990.000'),' ')
-         ELSE
-             -- 換算しない
-             REPLACE(TO_CHAR(instruct_qty,'999,999,990.000'),' ')
-       END                           instruct_sum                -- 指示総数
-      ,instruct_qty           instruct_qty                       -- 指示総数(非表示)
-      ,CASE
-         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
-          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
-          AND :1 = '1' THEN                                      -- 製品識別区分が1:製品
-             -- 換算単位
-             conv_unit
-         ELSE
-             -- 品目単位
-             item_um
-       END                    conv_unit                   -- 単位
-      ,uom_code               uom_code                    -- 単位(非表示)
-      ,CASE
-         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
-          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
-          AND :2 = '1' THEN                                      -- 製品識別区分が1:製品
-             -- 換算する
-             REPLACE(TO_CHAR(shipped_quantity/num_of_cases,'999,999,990.000'),' ')
-         ELSE
-             -- 換算しない
-             REPLACE(TO_CHAR(shipped_quantity,'999,999,990.000'),' ')
-       END                           shipped_sum                 -- 出庫実績数量
-      ,shipped_quantity       shipped_quantity                   -- 出庫実績数量(非表示)
-      ,CASE
-         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
-          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
-          AND :3 = '1' THEN                                      -- 製品識別区分が1:製品
-             -- 換算する
-             REPLACE(TO_CHAR(ship_to_quantity/num_of_cases,'999,999,990.000'),' ')
-         ELSE
-             -- 換算しない
-             REPLACE(TO_CHAR(ship_to_quantity,'999,999,990.000'),' ')
-       END                           ship_to_sum                 -- 入庫実績数量
-      ,ship_to_quantity       ship_to_quantity            -- 入庫実績数量(非表示)
-      ,created_by_l           created_by_l                -- 作成者
-      ,creation_date_l        creation_date_l             -- 作成日
-      ,last_updated_by_l      last_updated_by_l           -- 最終更新者
-      ,last_update_date_l     last_update_date_l          -- 最終更新日
-      ,last_update_login_l    last_update_login_l         -- 最終更新ログイン
-FROM(
-SELECT ximril.mov_hdr_id         mov_hdr_id                  -- 移動ヘッダID
-      ,ximril.mov_line_id        mov_line_id                 -- 移動明細ID
-      ,ximril.line_number        line_number                 -- 明細番号
-      ,ximril.item_id            item_id                     -- OPM品目ID
-      ,ximril.item_code          item_code                   -- 品目
-      ,xim2v.item_short_name     item_short_name             -- 品名略称
-      ,ximril.instruct_qty       instruct_qty                -- 指示数量
+SELECT ximril.mov_hdr_id         mov_hdr_id                      -- 移動ヘッダID
+      ,ximril.mov_line_id        mov_line_id                     -- 移動明細ID
+      ,ximril.line_number        line_number                     -- 明細番号
+      ,ximril.item_id            item_id                         -- OPM品目ID
+      ,ximril.item_code          item_code                       -- 品目
+      ,xim2v.item_short_name     item_short_name                 -- 品名略称
       ,CASE
          WHEN xim2v.conv_unit IS NOT NULL                        -- 入出庫換算単位がNULLでない
           AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
-          AND :4 = '1' THEN                                      -- 製品識別区分が1:製品
-             -- 換算するので、ケース入数に値をセット
-             TO_NUMBER(xim2v.num_of_cases)
+          AND :0 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算する
+             REPLACE(TO_CHAR(ximril.instruct_qty/TO_NUMBER(xim2v.num_of_cases),'999,999,990.000'),' ')
          ELSE
-             -- 換算しないので、1
-             1
-       END                           num_of_cases            -- ケース入数
-      ,xim2v.conv_unit           conv_unit                   -- 入出庫換算単位
-      ,xim2v.item_um             item_um                     -- 品目単位
-      ,ximril.uom_code           uom_code                    -- 単位
-      ,ximril.shipped_quantity   shipped_quantity            -- 出庫実績数量
-      ,ximril.ship_to_quantity   ship_to_quantity            -- 入庫実績数量
+             -- 換算しない
+             REPLACE(TO_CHAR(ximril.instruct_qty,'999,999,990.000'),' ')
+       END                       instruct_sum                    -- 指示総数
+      ,ximril.instruct_qty       instruct_qty                    -- 指示総数(非表示)
+      ,CASE
+         WHEN xim2v.conv_unit IS NOT NULL                        -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :1 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算単位
+             xim2v.conv_unit
+         ELSE
+             -- 品目単位
+             xim2v.item_um
+       END                    conv_unit                          -- 単位
+      ,ximril.uom_code               uom_code                    -- 単位(非表示)
+      ,CASE
+         WHEN xim2v.conv_unit IS NOT NULL                        -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :2 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算する
+             REPLACE(TO_CHAR(ximril.shipped_quantity/TO_NUMBER(xim2v.num_of_cases),'999,999,990.000'),' ')
+         ELSE
+             -- 換算しない
+             REPLACE(TO_CHAR(ximril.shipped_quantity,'999,999,990.000'),' ')
+       END                           shipped_sum                 -- 出庫実績数量
+      ,ximril.shipped_quantity       shipped_quantity            -- 出庫実績数量(非表示)
+      ,CASE
+         WHEN xim2v.conv_unit IS NOT NULL                        -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :3 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算する
+             REPLACE(TO_CHAR(ximril.ship_to_quantity/TO_NUMBER(xim2v.num_of_cases),'999,999,990.000'),' ')
+         ELSE
+             -- 換算しない
+             REPLACE(TO_CHAR(ximril.ship_to_quantity,'999,999,990.000'),' ')
+       END                       ship_to_sum                 -- 入庫実績数量
+      ,ximril.ship_to_quantity   ship_to_quantity            -- 入庫実績数量(非表示)
       ,ximril.created_by         created_by_l                -- 作成者
       ,ximril.creation_date      creation_date_l             -- 作成日
       ,ximril.last_updated_by    last_updated_by_l           -- 最終更新者
@@ -101,11 +73,10 @@ WHERE xim2v.inactive_ind <> '1'
 AND   xim2v.obsolete_class <> '1'
 AND   (xim2v.start_date_active <= NVL(ximrih.actual_ship_date,ximrih.schedule_ship_date) 
 AND   NVL(xim2v.end_date_active,NVL(ximrih.actual_ship_date,ximrih.schedule_ship_date)) >= NVL(ximrih.actual_ship_date,ximrih.schedule_ship_date))
+AND   ximril.mov_hdr_id = :4
 AND   ximril.delete_flg   = 'N'
 AND   ximrih.mov_hdr_id   = ximril.mov_hdr_id
 AND   ximril.item_id      = xim2v.item_id
-AND   ximril.mov_hdr_id = :5
-)
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

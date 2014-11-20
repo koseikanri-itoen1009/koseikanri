@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.7
+ * Version                : 1.9
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/07/02   1.6   Oracle 伊藤ひとみ  システムテスト不具合対応#343(荒茶製造情報取得関数修正)
  *  2008/07/10   1.7   Oracle 二瓶 大輔   システムテスト不具合対応#315(在庫単価取得関数修正)
  *  2008/07/14   1.8   Oracle 伊藤ひとみ  結合不具合 指摘2対応  品質検査依頼情報作成で更新の場合、検査予定日・結果を更新しない。
+ *  2008/08/25   1.9   Oracle 伊藤ひとみ  内部変更要求#189対応(品質検査依頼情報作成修正)更新・削除で検査依頼NoがNULLの場合、処理を行わない。
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -105,6 +106,9 @@ AS
   api_expt               EXCEPTION;     -- API例外
   skip_expt              EXCEPTION;     -- スキップ例外
   deadlock_detected      EXCEPTION;     -- デッドロックエラー
+-- 2008/08/25 H.Itou Add Start 内部変更要求#189
+  no_action_expt         EXCEPTION;     -- 処理不要例外
+-- 2008/08/25 H.Itou Add End
 --
   PRAGMA EXCEPTION_INIT(deadlock_detected, -54);
 --
@@ -2637,12 +2641,14 @@ AS
         RAISE global_api_expt;
       END IF;
 --
-    -- 処理区分が2:更新、3:削除の場合
-    ELSE
-      -- 11.検査依頼No
-      IF (it_qt_inspect_req_no IS NULL) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2008/08/25 H.Itou Del Start 変更要求#189
+--    -- 処理区分が2:更新、3:削除の場合
+--    ELSE
+--      -- 11.検査依頼No
+--      IF (it_qt_inspect_req_no IS NULL) THEN
+--        RAISE global_api_expt;
+--      END IF;
+-- 2008/08/25 H.Itou Del End
     END IF;
 --
   EXCEPTION
@@ -3979,6 +3985,14 @@ AS
     -- リターンコードセット
     ov_retcode := gv_status_normal;
 --
+-- 2008/08/25 H.Itou Add Start 変更要求#189
+    -- 処理区分が2:更新、3:削除で、検査依頼NoがNULLの場合、処理を行わずに正常終了
+    IF  (iv_disposal_div IN (gv_disposal_div_upd, gv_disposal_div_del)
+    AND (NVL(it_qt_inspect_req_no, 0) = 0)) THEN
+      RAISE no_action_expt;
+    END IF;
+-- 2008/08/25 H.Itou Add End
+--
     -- =============================
     -- A-1.入力パラメータチェック
     -- =============================
@@ -4238,6 +4252,17 @@ AS
       ov_retcode           := gv_status_error;
       ov_errmsg            := lv_errmsg;
       ov_errbuf            := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+-- 2008/08/25 H.Itou Add Start 変更要求#189
+    -- 処理区分が2:更新、3:削除で、検査依頼NoがNULLの場合、処理を行わずに正常終了
+    WHEN no_action_expt THEN
+      -- =============================
+      -- A-12.OUTパラメータ設定
+      -- =============================
+      ot_qt_inspect_req_no := NULL;
+      ov_retcode           := gv_status_normal;
+      ov_errmsg            := NULL;
+      ov_errbuf            := NULL;
+-- 2008/08/25 H.Itou Add End
 --
 --###############################  固定例外処理部 START   ###################################
 --
