@@ -61,6 +61,7 @@ AS
  *  2009-12-21    1.22  K.Hosoi          E_本稼動_00563対応
  *  2010-02-01    1.23  T.Maruyama       E_本稼動_01018 電話番号１～３が6バイトを超える場合は
  *                                                      6バイトで切捨てする
+ *  2010-02-17    1.24  T.Maruyama       E_本稼動_01603
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4673,7 +4674,10 @@ AS
     -- ファイルオープン確認戻り値格納
     lb_fopn_retcd             BOOLEAN;
     -- 備考編集用
-    lv_remarks                VARCHAR2(240);
+    /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+    --lv_remarks                VARCHAR2(240);
+    lv_remarks                VARCHAR2(1000);
+    /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
     -- 発注依頼明細ID
     ln_rqstn_line_id          NUMBER;
 --
@@ -5421,10 +5425,16 @@ AS
 --                          || l_get_ipro_po_data_rec.extension_code_type 
 --                          || cv_zenspace 
 --                          || l_get_ipro_po_data_rec.extension_code_meter;
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.extension_code_type 
+--                          || cv_zenspace 
+--                          || l_get_ipro_po_data_rec.extension_code_meter,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
                           || l_get_ipro_po_data_rec.extension_code_type 
                           || cv_zenspace 
-                          || l_get_ipro_po_data_rec.extension_code_meter,cv_remarks_byte);
+                          || l_get_ipro_po_data_rec.extension_code_meter,1,cv_remarks_byte);
+           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
 --        
@@ -5433,14 +5443,21 @@ AS
           IF(lv_remarks IS NOT NULL) THEN
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
 --            lv_remarks := lv_remarks || cv_zenspace;
-            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+            --lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            lv_remarks := substrb(lv_remarks || cv_zenspace,1,cv_remarks_byte);
+            /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
           END IF;
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
 --          lv_remarks := lv_remarks 
 --                          || l_get_ipro_po_data_rec.remarks1;
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks1,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks1,cv_remarks_byte);
+                          || l_get_ipro_po_data_rec.remarks1,1,cv_remarks_byte);
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
 --        
@@ -5449,14 +5466,21 @@ AS
           IF(lv_remarks IS NOT NULL) THEN
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
 --            lv_remarks := lv_remarks || cv_zenspace;
-            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+--            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            lv_remarks := substrb(lv_remarks || cv_zenspace,1,cv_remarks_byte);
+            /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
           END IF;
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */          
 --          lv_remarks := lv_remarks 
 --                          || l_get_ipro_po_data_rec.remarks2;
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks2,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks2,cv_remarks_byte);
+                          || l_get_ipro_po_data_rec.remarks2,1,cv_remarks_byte);
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
 --        
@@ -5465,18 +5489,30 @@ AS
           IF(lv_remarks IS NOT NULL) THEN
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
 --            lv_remarks := lv_remarks || cv_zenspace;
-            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+--            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            lv_remarks := substrb(lv_remarks || cv_zenspace,1,cv_remarks_byte);
+            /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
           END IF;
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */ 
 --          lv_remarks := lv_remarks 
 --                          || l_get_ipro_po_data_rec.remarks3;
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks3,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks3,cv_remarks_byte);
+                          || l_get_ipro_po_data_rec.remarks3,1,cv_remarks_byte);
+          /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */ 
         END IF;
---        
-        l_get_data_rec.remarks                 := lv_remarks;
+--      
+        /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
+        --l_get_data_rec.remarks                 := lv_remarks;
+        l_get_data_rec.remarks                 := SUBSTRB(xxcso_util_common_pkg.conv_ng_char_vdms(
+                                                            lv_remarks
+                                                          ), 1, cv_remarks_byte);
+        /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
         -- 作成日時時分秒
         l_get_data_rec.creation_date           := TO_CHAR(ld_sysdate, 'yyyymmddhh24miss');
         -- 更新日時時分秒
