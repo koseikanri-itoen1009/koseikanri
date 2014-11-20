@@ -35,6 +35,7 @@ AS
  *  2008/02/03    1.0   SCS Okuyama      新規作成
  *  2009/02/27    1.1   Yutaka.Kuboshima 顧客ステータス更新処理を変更
  *  2009/05/27    1.2   Yutaka.Kuboshima 障害T1_0816,T1_0863の対応
+ *  2009/08/31    1.3   Yutaka.Kuboshima 障害0001229の対応
  *
  *****************************************************************************************/
 --
@@ -188,6 +189,10 @@ AS
   CURSOR  XXCMM003A15C_cur
   IS
     SELECT
+-- 2009/08/31 Ver1.3 add start by Yutaka.Kuboshima
+--    ヒント句の追加
+      /*+ FIRST_ROWS LEADING(fidt) USE_NL(hzca,hzpt,xcac)*/
+-- 2009/08/31 Ver1.3 add end by Yutaka.Kuboshima
       hzca.cust_account_id        AS  cust_id,                -- 顧客ID
       hzca.party_id               AS  party_id,               -- パーティID
       fidt.cust_code              AS  cust_code,              -- 顧客コード
@@ -265,16 +270,18 @@ AS
             FROM
               xxcok_selling_trns_info       xsti                  -- 売上実績振替情報
             WHERE
-                  EXISTS(
-                    SELECT
-                      'X'
-                    FROM	
-                      xxcok_selling_to_info     xsto              -- 売上振替先情報
-                    WHERE
-                          xsto.start_month            <=  TO_CHAR(xsti.registration_date, cv_month_fmt)
-                      AND xsto.selling_to_cust_code   =   xsti.cust_code
-                  )
-              AND xsti.registration_date  BETWEEN gd_para_proc_date_f AND gd_para_proc_date_t
+-- 2009/08/31 Ver1.3 delete start by Yutaka.Kuboshima
+--                  EXISTS(
+--                    SELECT
+--                      'X'
+--                    FROM
+--                      xxcok_selling_to_info     xsto              -- 売上振替先情報
+--                    WHERE
+--                          xsto.start_month            <=  TO_CHAR(xsti.registration_date, cv_month_fmt)
+--                      AND xsto.selling_to_cust_code   =   xsti.cust_code
+--                  )
+-- 2009/08/31 Ver1.3 delete end by Yutaka.Kuboshima
+                 xsti.registration_date  BETWEEN gd_para_proc_date_f AND gd_para_proc_date_t
           )   xfid
         GROUP BY
           xfid.cust_code
