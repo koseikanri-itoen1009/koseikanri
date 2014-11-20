@@ -8,7 +8,7 @@ AS
  * Description      : 移動伝票
  * MD.050/070       : 移動実績 T_MD050_BPO_510
  *                  : 移動伝票 T_MD070_BPO_51A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/05/29    1.3   Yuko Kawano        結合テスト障害対応
  *  2008/06/24    1.4   Yasuhisa Yamamoto  変更要求対応#92
  *  2008/07/18    1.5   Yasuhisa Yamamoto  内部変更要求対応
+ *  2008/07/29    1.6   Marushita          禁則文字「'」「"」「<」「>」「＆」対応
  *
  *****************************************************************************************/
 --
@@ -202,7 +203,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
