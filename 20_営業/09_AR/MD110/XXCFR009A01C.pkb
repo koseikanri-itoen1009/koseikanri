@@ -7,7 +7,7 @@ AS
  * Description      : 営業員別払日別入金予定表
  * MD.050           : MD050_CFR_009_A01_営業員別払日別入金予定表
  * MD.070           : MD050_CFR_009_A01_営業員別払日別入金予定表
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/19    1.1  SCS T.KANEDA     [障害COK_008] 税差額取得不具合対応
  *  2009/03/05    1.2  SCS M.OKAWA      共通関数リリースに伴うSVF起動処理変更対応
  *                                      中間テーブルデータ削除処理コメントアウト削除対応
+ *  2009/04/14    1.3  SCS M.OKAWA      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *
  *****************************************************************************************/
 --
@@ -956,7 +957,10 @@ AS
 --
     -- *** ローカル変数 ***
     lv_no_data_msg     VARCHAR2(5000);  -- 帳票０件メッセージ
-    lv_svf_file_name   VARCHAR2(30);
+-- Modify 2009.04.14 Ver1.3 Start
+--    lv_svf_file_name   VARCHAR2(30);
+    lv_svf_file_name   VARCHAR2(100);
+-- Modify 2009.04.14 Ver1.3 END
 -- Modify 2009.03.05 Ver1.2 Start
     lv_file_id         VARCHAR2(30)  := NULL;
     lv_conc_name       VARCHAR2(30)  := NULL;
