@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.4
+ * Version          : Issue3.5
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/06/11    1.8   H.Yoshikawa      障害対応(T1_1366) 政策群変更時、群コードも変更するよう修正
  *  2009/07/07    1.9   H.Yoshikawa      障害対応(0000364) 標準原価_コンポーネント区分不足対応
  *                                       障害対応(0000365) 新規適用時の旧値(定価・営業原価・政策群)設定対応
+ *  2009/07/15    1.10  H.Yoshikawa      障害対応(0000463) 保管棚管理の設定値に『管理なし』を設定
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,9 @@ AS
 -- Ver1.6  2009/04/03 Add Start Disc品目.ロット管理(LOT_CONTROL_CODE)
   cn_lot_control_code_no       CONSTANT NUMBER        := 1;                    -- 「1」(管理なし)
 -- Ver1.6  2009/04/03 Add End
+-- Ver1.10 2009/07/15 Add  保管棚管理(LOCATION_CONTROL_CODE)追加
+  cn_location_control_code_no  CONSTANT NUMBER        := 1;                    -- 「1」(管理なし)
+-- End1.10
   --
   -- 品目ステータス
   cn_itm_status_num_tmp        CONSTANT NUMBER        := xxcmm_004common_pkg.cn_itm_status_num_tmp;
@@ -3307,6 +3311,9 @@ AS
 -- Ver1.7  2009/04/03 Add Start ロット管理(LOT_CONTROL_CODE)追加
            ,lot_control_code                 -- ロット管理
 -- Ver1.7  2009/04/03 Add End
+-- Ver1.10 2009/07/15 Add  保管棚管理(LOCATION_CONTROL_CODE)追加
+           ,location_control_code            -- 保管棚管理
+-- End1.10
            ,process_flag                     -- プロセスフラグ
            ,transaction_type )               -- 処理タイプ
           VALUES(
@@ -3326,6 +3333,9 @@ AS
 -- Ver1.7  2009/04/03 Add Start ロット管理(LOT_CONTROL_CODE)追加
            ,cn_lot_control_code_no
 -- Ver1.7  2009/04/03 Add End
+-- Ver1.10 2009/07/15 Add  保管棚管理(LOCATION_CONTROL_CODE)追加
+           ,cn_location_control_code_no
+-- End1.10
            ,cn_process_flag
            ,lv_transaction_type );
            --
