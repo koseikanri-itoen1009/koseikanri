@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/04/14    1.3   SCS M.Ohtsuki    [障害T1_0500]年月チェック条件の不具合対応
  *  2009/08/19    1.4   SCS T.Tsukino    [障害0001111]警告終了のエラーメッセージログ出力の変更対応
  *  2010/01/18    1.5   SCS T.Nakano     [E_本稼動_01039]データ区分チェック追加対応
+ *  2010/02/15    1.6   SCS S.Karikomi   [E_本稼動_01534]項目妥当性チェックの変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -970,7 +971,11 @@ AS
             ,per_periods_of_service  pps                                                            -- 従業員サービスマスタ
     WHERE    ppf.person_id = pps.person_id                                                          -- 従業員ID
       AND    pps.date_start <= gd_process_date                                                      -- 入社年月日
-      AND    NVL(pps.actual_termination_date,gd_process_date) >= gd_process_date                    -- 退職年月日
+--//+UPD START 2010/02/15 E_本稼動_01534 S.Karikomi
+--      AND    NVL(pps.actual_termination_date,gd_process_date) >= gd_process_date                    -- 退職年月日
+      AND    (pps.actual_termination_date IS NULL
+              OR TO_CHAR(pps.actual_termination_date,'YYYYMM') >= ir_data_rec.year_month)           -- 退職年月日
+--//+UPD END 2010/02/15 E_本稼動_01534 S.Karikomi
       AND    ppf.employee_number = ir_data_rec.employee_cd;                                         -- 従業員コード
 --
     IF (ln_emp_cnt = 0) THEN                                                                        -- データ0件の場合
@@ -1082,7 +1087,9 @@ AS
               ,hz_parties           hpa                                                             -- パーティマスタ
       WHERE    hca.account_number       =  ir_data_rec.customer_cd                                  -- 顧客コード
         AND    hca.cust_account_id      =  xca.customer_id                                          -- 顧客ID
-        AND    xca.start_tran_date     <=  gd_process_date                                          -- 初回取引日
+--//+DEL START 2010/02/15 E_本稼動_01534 S.Karikomi
+--        AND    xca.start_tran_date     <=  gd_process_date                                          -- 初回取引日
+--//+DEL END 2010/02/15 E_本稼動_01534 S.Karikomi
         AND    (xca.stop_approval_date >=  ADD_MONTHS(TO_DATE(ir_data_rec.year_month,'RRRRMM'),1)   -- 中止決済日
                OR xca.stop_approval_date IS NULL)
         AND    hca.party_id             = hpa.party_id                                              -- パーティID
@@ -1096,7 +1103,7 @@ AS
                     AND   NVL(flv.end_date_active,gd_process_date)    >= gd_process_date            -- 終了日
                     AND   hpa.duns_number_c = flv.lookup_code
                   )
-        AND     ROWNUM = 1;
+        AND     ROWNUM = 1;	
 --
     EXCEPTION                                                                                       -- 業態(小分類)が取得できない場合
       WHEN NO_DATA_FOUND THEN
