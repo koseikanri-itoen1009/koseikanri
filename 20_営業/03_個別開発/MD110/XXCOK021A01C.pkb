@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/09/30    1.5   S.Moriyama       [障害0001392]E_T3_00592対応：請求数量、請求単価に0以外が設定されている場合に
  *                                                                    請求金額の必須チェックを行うよう修正
  *                                                                    勘定科目支払時に支払数量が1以外の場合エラーとする
+ *  2009/12/18    1.6   K.Yamaguchi      [E_本稼動_00539] 妥当性チェック追加
  *
  *****************************************************************************************/
 --
@@ -88,6 +89,10 @@ AS
   cv_err_msg_10464           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10464';   --請求金額条件必須メッセージー
   cv_err_msg_10465           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10465';   --請求、支払数量チェックエラー
 -- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD END
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+  cv_err_msg_10466           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10466';   --品目または勘定科目必須
+  cv_err_msg_10467           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10467';   --勘定科目支払時、勘定科目・補助科目必須
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
   cv_err_msg_00041           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00041';   --BLOBデータ変換エラー
   cv_err_msg_00039           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00039';   --空ファイルエラー
@@ -108,6 +113,9 @@ AS
   --プロファイル
   cv_dept_code_p             CONSTANT VARCHAR2(100) := 'XXCOK1_AFF2_DEPT_ACT';   --業務管理部の部門コード
   cv_org_id_p                CONSTANT VARCHAR2(100) := 'ORG_ID';                 --営業単位ID
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+  cv_organization_code       CONSTANT VARCHAR2(100) := 'XXCOK1_ORG_CODE_SALES';  --在庫組織
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
   --トークン
   cv_token_file_id           CONSTANT VARCHAR2(10)  := 'FILE_ID';         --トークン名(FILE_ID)
   cv_token_format            CONSTANT VARCHAR2(10)  := 'FORMAT';          --トークン名(FORMAT)
@@ -170,6 +178,9 @@ AS
   gn_org_id         NUMBER;                                   --プロファイル(営業単位)
   gd_prdate         DATE;                                     --業務日付
   gv_chk_code       VARCHAR2(1)   DEFAULT cv_status_normal;   --妥当性チェックの処理結果ステータス
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+  gv_organization_code  mtl_parameters.organization_code%TYPE DEFAULT NULL;  --在庫組織
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
   -- =============================================================================
   -- グローバル例外
   -- =============================================================================
@@ -725,6 +736,12 @@ AS
     ln_demand_unit_price    NUMBER(8,2);                               --請求単価(税抜)
     ln_payment_unit_price   NUMBER(8,2);                               --支払単価(税抜)
     ln_count                NUMBER;                                    --COUNT
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+    ln_demand_qty           NUMBER;
+    ln_demand_amt           NUMBER;
+    ln_payment_qty          NUMBER;
+    ln_payment_amt          NUMBER;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -756,45 +773,89 @@ AS
                     , in_new_line => 0                 --改行
                     );
       ov_retcode := cv_status_continue;
--- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD START
-    ELSIF ( ( iv_demand_qty <> 0
-              OR iv_demand_unit_price <> 0
-            )
-           AND iv_demand_amt IS NULL
-          ) THEN
-      -- *** 項目がNULLの場合、例外処理 ***
-      lv_msg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcok_appl_name
-                , iv_name         => cv_err_msg_10464
-                , iv_token_name1  => cv_token_row_num
-                , iv_token_value1 => TO_CHAR( in_loop_cnt )
-                );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.OUTPUT   --出力区分
-                    , iv_message  => lv_msg            --メッセージ
-                    , in_new_line => 0                 --改行
-                    );
-      ov_retcode := cv_status_continue;
-    ELSIF ( iv_acct_code IS NOT NULL
-           AND ( ( iv_payment_qty != 1 AND iv_payment_qty IS NOT NULL )
-              OR iv_demand_qty != 1
-               )
-          ) THEN
-      -- *** 勘定科目支払時に請求数量もしくは支払数量が1以外の場合、例外処理 ***
-      lv_msg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcok_appl_name
-                , iv_name         => cv_err_msg_10465
-                , iv_token_name1  => cv_token_row_num
-                , iv_token_value1 => TO_CHAR( in_loop_cnt )
-                );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.OUTPUT   --出力区分
-                    , iv_message  => lv_msg            --メッセージ
-                    , in_new_line => 0                 --改行
-                    );
-      ov_retcode := cv_status_continue;
--- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD END
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi DELETE START
+---- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD START
+--    ELSIF ( ( iv_demand_qty <> 0
+--              OR iv_demand_unit_price <> 0
+--            )
+--           AND iv_demand_amt IS NULL
+--          ) THEN
+--      -- *** 項目がNULLの場合、例外処理 ***
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcok_appl_name
+--                , iv_name         => cv_err_msg_10464
+--                , iv_token_name1  => cv_token_row_num
+--                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+--                );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.OUTPUT   --出力区分
+--                    , iv_message  => lv_msg            --メッセージ
+--                    , in_new_line => 0                 --改行
+--                    );
+--      ov_retcode := cv_status_continue;
+--    ELSIF ( iv_acct_code IS NOT NULL
+--           AND ( ( iv_payment_qty != 1 AND iv_payment_qty IS NOT NULL )
+--              OR iv_demand_qty != 1
+--               )
+--          ) THEN
+--      -- *** 勘定科目支払時に請求数量もしくは支払数量が1以外の場合、例外処理 ***
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcok_appl_name
+--                , iv_name         => cv_err_msg_10465
+--                , iv_token_name1  => cv_token_row_num
+--                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+--                );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.OUTPUT   --出力区分
+--                    , iv_message  => lv_msg            --メッセージ
+--                    , in_new_line => 0                 --改行
+--                    );
+--      ov_retcode := cv_status_continue;
+---- 2009/09/30 Ver.1.5 [障害E_T3_00592] SCS S.Moriyama ADD END
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi DELETE END
     END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+    --==================================================
+    -- 条件必須
+    --==================================================
+    -- 品目コードまたは勘定科目どちらか必須
+    IF(    (     ( iv_item_code     IS     NULL )
+             AND ( iv_acct_code     IS     NULL )
+             AND ( iv_sub_acct_code IS     NULL )
+           )
+        OR (     ( iv_item_code     IS NOT NULL )
+             AND ( iv_acct_code     IS NOT NULL OR iv_sub_acct_code IS NOT NULL )
+           )
+    ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10466
+                , iv_token_name1  => cv_token_row_num
+                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    ELSIF(     ( iv_item_code IS NULL )
+           AND ( iv_acct_code IS NULL OR iv_sub_acct_code IS NULL )
+    ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10467
+                , iv_token_name1  => cv_token_row_num
+                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
     -- =============================================================================
     -- 2.①請求数量のデータ型チェック(半角数字チェック)
     -- =============================================================================
@@ -820,7 +881,10 @@ AS
     END IF;
 */
     BEGIN
-      ln_chk_number := TO_NUMBER( iv_demand_qty );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+--      ln_chk_number := TO_NUMBER( iv_demand_qty );
+      ln_demand_qty := TO_NUMBER( iv_demand_qty );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -864,7 +928,10 @@ AS
     END IF;
 */
     BEGIN
-      ln_chk_number := TO_NUMBER( iv_demand_amt );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+--      ln_chk_number := TO_NUMBER( iv_demand_amt );
+      ln_demand_amt := TO_NUMBER( iv_demand_amt );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -909,7 +976,10 @@ AS
       END IF;
 */
       BEGIN
-        ln_chk_number := TO_NUMBER( iv_payment_qty );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+--        ln_chk_number := TO_NUMBER( iv_payment_qty );
+        ln_payment_qty := TO_NUMBER( iv_payment_qty );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
 --
       EXCEPTION
         WHEN OTHERS THEN
@@ -958,7 +1028,10 @@ AS
       END IF;
 */
       BEGIN
-        ln_chk_number := TO_NUMBER( iv_payment_amt );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+--        ln_chk_number := TO_NUMBER( iv_payment_amt );
+        ln_payment_amt := TO_NUMBER( iv_payment_amt );
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
 --
       EXCEPTION
         WHEN OTHERS THEN
@@ -1264,35 +1337,66 @@ AS
                       );
         ov_retcode := cv_status_continue;
       END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+      -- =============================================================================
+      -- 顧客ステータスを取得し、「90(中止決裁済)」の場合エラー
+      -- =============================================================================
+      SELECT hp.duns_number_c
+      INTO   lv_cust_status
+      FROM   hz_cust_accounts hca
+           , hz_parties hp
+      WHERE  hca.party_id            = hp.party_id
+      AND    hca.account_number      = iv_base_code
+      AND    hca.customer_class_code = cv_base_code
+      AND    ROWNUM                  = cn_1;
+      IF ( lv_cust_status = cv_cust_status_90 ) THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_message_10388
+                  , iv_token_name1  => cv_token_kyoten_code
+                  , iv_token_value1 => iv_base_code
+                  , iv_token_name2  => cv_token_row_num
+                  , iv_token_value2 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+      END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
     END IF;
-    -- =============================================================================
-    -- 顧客ステータスを取得し、「90(中止決裁済)」の場合エラー
-    -- =============================================================================
-    SELECT hp.duns_number_c
-    INTO   lv_cust_status
-    FROM   hz_cust_accounts hca
-         , hz_parties hp
-    WHERE  hca.party_id            = hp.party_id
-    AND    hca.account_number      = iv_base_code
-    AND    hca.customer_class_code = cv_base_code
-    AND    ROWNUM                  = cn_1;
---
-    IF ( lv_cust_status = cv_cust_status_90 ) THEN
-      lv_msg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcok_appl_name
-                , iv_name         => cv_message_10388
-                , iv_token_name1  => cv_token_kyoten_code
-                , iv_token_value1 => iv_base_code
-                , iv_token_name2  => cv_token_row_num
-                , iv_token_value2 => TO_CHAR( in_loop_cnt )
-                );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.OUTPUT   --出力区分
-                    , iv_message  => lv_msg            --メッセージ
-                    , in_new_line => 0                 --改行
-                    );
-      ov_retcode := cv_status_continue;
-    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi DELETE START
+--    -- =============================================================================
+--    -- 顧客ステータスを取得し、「90(中止決裁済)」の場合エラー
+--    -- =============================================================================
+--    SELECT hp.duns_number_c
+--    INTO   lv_cust_status
+--    FROM   hz_cust_accounts hca
+--         , hz_parties hp
+--    WHERE  hca.party_id            = hp.party_id
+--    AND    hca.account_number      = iv_base_code
+--    AND    hca.customer_class_code = cv_base_code
+--    AND    ROWNUM                  = cn_1;
+----
+--    IF ( lv_cust_status = cv_cust_status_90 ) THEN
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcok_appl_name
+--                , iv_name         => cv_message_10388
+--                , iv_token_name1  => cv_token_kyoten_code
+--                , iv_token_value1 => iv_base_code
+--                , iv_token_name2  => cv_token_row_num
+--                , iv_token_value2 => TO_CHAR( in_loop_cnt )
+--                );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.OUTPUT   --出力区分
+--                    , iv_message  => lv_msg            --メッセージ
+--                    , in_new_line => 0                 --改行
+--                    );
+--      ov_retcode := cv_status_continue;
+--    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi DELETE END
     -- =============================================================================
     -- 6.顧客コードが顧客マスタに存在することをチェック
     -- =============================================================================
@@ -1320,39 +1424,75 @@ AS
                     , in_new_line => 0                 --改行
                     );
       ov_retcode := cv_status_continue;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+    ELSE
+      -- =============================================================================
+      -- 顧客ステータスを取得し、「80(更正債権)」または「90(中止決裁済)」の場合エラー
+      -- =============================================================================
+      SELECT hp.duns_number_c
+      INTO   lv_cust_status
+      FROM   hz_cust_accounts hca
+           , hz_parties hp
+           , xxcmm_cust_accounts xca
+      WHERE  hca.cust_account_id   = xca.customer_id
+      AND    hca.party_id          = hp.party_id
+      AND    hca.account_number    = iv_cust_code
+      AND    xca.business_low_type = cv_sales_wholesale
+      AND    ROWNUM                = cn_1;
+      IF (   ( lv_cust_status = cv_cust_status_80 )
+          OR ( lv_cust_status = cv_cust_status_90 )
+          ) THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_message_10389
+                  , iv_token_name1  => cv_token_customer_code
+                  , iv_token_value1 => iv_cust_code
+                  , iv_token_name2  => cv_token_row_num
+                  , iv_token_value2 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+      END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
     END IF;
-    -- =============================================================================
-    -- 顧客ステータスを取得し、「80(更正債権)」または「90(中止決裁済)」の場合エラー
-    -- =============================================================================
-    SELECT hp.duns_number_c
-    INTO   lv_cust_status
-    FROM   hz_cust_accounts hca
-         , hz_parties hp
-         , xxcmm_cust_accounts xca
-    WHERE  hca.cust_account_id   = xca.customer_id
-    AND    hca.party_id          = hp.party_id
-    AND    hca.account_number    = iv_cust_code
-    AND    xca.business_low_type = cv_sales_wholesale
-    AND    ROWNUM                = cn_1;
---
-    IF (   ( lv_cust_status = cv_cust_status_80 )
-        OR ( lv_cust_status = cv_cust_status_90 )
-        ) THEN
-      lv_msg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcok_appl_name
-                , iv_name         => cv_message_10389
-                , iv_token_name1  => cv_token_customer_code
-                , iv_token_value1 => iv_cust_code
-                , iv_token_name2  => cv_token_row_num
-                , iv_token_value2 => TO_CHAR( in_loop_cnt )
-                );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.OUTPUT   --出力区分
-                    , iv_message  => lv_msg            --メッセージ
-                    , in_new_line => 0                 --改行
-                    );
-      ov_retcode := cv_status_continue;
-    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi DELETE START
+--    -- =============================================================================
+--    -- 顧客ステータスを取得し、「80(更正債権)」または「90(中止決裁済)」の場合エラー
+--    -- =============================================================================
+--    SELECT hp.duns_number_c
+--    INTO   lv_cust_status
+--    FROM   hz_cust_accounts hca
+--         , hz_parties hp
+--         , xxcmm_cust_accounts xca
+--    WHERE  hca.cust_account_id   = xca.customer_id
+--    AND    hca.party_id          = hp.party_id
+--    AND    hca.account_number    = iv_cust_code
+--    AND    xca.business_low_type = cv_sales_wholesale
+--    AND    ROWNUM                = cn_1;
+----
+--    IF (   ( lv_cust_status = cv_cust_status_80 )
+--        OR ( lv_cust_status = cv_cust_status_90 )
+--        ) THEN
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcok_appl_name
+--                , iv_name         => cv_message_10389
+--                , iv_token_name1  => cv_token_customer_code
+--                , iv_token_value1 => iv_cust_code
+--                , iv_token_name2  => cv_token_row_num
+--                , iv_token_value2 => TO_CHAR( in_loop_cnt )
+--                );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.OUTPUT   --出力区分
+--                    , iv_message  => lv_msg            --メッセージ
+--                    , in_new_line => 0                 --改行
+--                    );
+--      ov_retcode := cv_status_continue;
+--    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi DELETE END
     -- =============================================================================
     -- 7.問屋帳合先コードが顧客マスタに存在することをチェック
     -- =============================================================================
@@ -1386,7 +1526,14 @@ AS
       SELECT COUNT('X') AS cnt
       INTO   ln_count
       FROM   mtl_system_items_b mti
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+           , mtl_parameters     mp
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
       WHERE  mti.segment1 = iv_item_code
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+      AND    mti.organization_id  = mp.organization_id
+      AND    mp.organization_code = gv_organization_code
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
       AND    ROWNUM       = cn_1;
 --
       IF ( ln_count = cn_0 ) THEN
@@ -1516,6 +1663,43 @@ AS
                     );
       ov_retcode := cv_status_continue;
     END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+    IF (     ( ln_demand_qty <> 0 OR ln_demand_unit_price <> 0 )
+         AND ( ln_demand_amt IS NULL )
+    ) THEN
+      -- *** 項目がNULLの場合、例外処理 ***
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10464
+                , iv_token_name1  => cv_token_row_num
+                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    ELSIF ( iv_acct_code IS NOT NULL
+           AND ( ( ln_payment_qty != 1 AND ln_payment_qty IS NOT NULL )
+              OR ln_demand_qty != 1
+               )
+    ) THEN
+      -- *** 勘定科目支払時に請求数量もしくは支払数量が1以外の場合、例外処理 ***
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10465
+                , iv_token_name1  => cv_token_row_num
+                , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
     -- =============================================================================
     -- 問屋請求書テーブルデータチェック(A-5)
     -- 問屋請求書ヘッダーテーブル、問屋請求書明細テーブルの既存データチェックを行う
@@ -1525,7 +1709,10 @@ AS
     FROM   xxcok_wholesale_bill_head xwbh
          , xxcok_wholesale_bill_line xwbl
     WHERE  xwbh.cust_code                = iv_cust_code
-    AND    xwbh.expect_payment_date      = TO_DATE( iv_expect_payment_date, cv_date_format1 )
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR START
+--    AND    xwbh.expect_payment_date      = TO_DATE( iv_expect_payment_date, cv_date_format1 )
+    AND    xwbh.expect_payment_date      = ld_expect_payment_date
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi REPAIR END
     AND    xwbl.bill_no                  = iv_bill_no
     AND    xwbl.status IN( cv_status_a,  cv_status_i,  cv_status_p )
     AND    xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id
@@ -2116,6 +2303,16 @@ AS
       lv_profile_code := cv_org_id_p;
       RAISE get_profile_expt;
     END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
+    --==================================================
+    -- 在庫組織
+    --==================================================
+    gv_organization_code  := FND_PROFILE.VALUE( cv_organization_code );
+    IF ( gv_organization_code IS NULL ) THEN
+      lv_profile_code := cv_organization_code;
+      RAISE get_profile_expt;
+    END IF;
+-- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
     -- =============================================================================
     -- 3.ユーザの所属部門を取得
     -- =============================================================================
