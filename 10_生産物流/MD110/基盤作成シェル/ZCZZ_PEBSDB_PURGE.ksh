@@ -9,7 +9,9 @@
 ##        作成者  ：   Oracle 堀井           2008/03/31 1.0.1                 ##
 ##        更新履歴：   Oracle 堀井           2008/03/31 1.0.1                 ##
 ##                       初版                                                 ##
-##                                                                            ##
+##        更新履歴：   Oracle 吉野           2008/09/02 1.0.2                 ##
+##                      購買オープン・インタフェースで処理されたデータのパージ##
+##                      を追加                                                ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
 ##      8 : 異常                                                              ##
@@ -635,6 +637,93 @@ L_jyoutaikakunin
 
 L_rogushuturyoku "廃止された一般 ファイル マネージャ データパージ 終了"
 
+### 購買オープン・インタフェースで処理されたデータのパージ ###
+L_rogushuturyoku "購買オープン・インタフェースで処理されたデータのパージ 開始"
+
+L_app_syokuseki_tansyukumei="PO"                           #職責のアプリケーション短縮名
+L_syokusekimei="Purchasing Super User"                     #職責の名称
+L_yuzamei="SYSADMIN"                                       #ユーザ名
+L_konkarento_app_tansyukumei="PO"                          #プログラムアプリケーション短縮名
+L_konkarentomei="POXPOIPR"                                 #プログラムアプリケーション名
+
+L_hikisu01='""'                                            #Document Type
+L_hikisu02='""'                                            #Document SubType
+L_hikisu03='Yes'                                           #Purge Accepted Data
+L_hikisu04='No'                                            #Purge Rejected Data
+L_hikisu05='""'                                            #Start Date
+L_hikisu06='""'                                            #End Date
+L_hikisu07='""'                                            #Batch id
+
+
+echo "L_app_syokuseki_tansyukumei="${L_app_syokuseki_tansyukumei}   >> ${L_rogumei}
+echo "L_syokusekimei="${L_syokusekimei}                             >> ${L_rogumei}
+echo "L_yuzamei="${L_yuzamei}                                       >> ${L_rogumei}
+echo "L_konkarento_app_tansyukumei="${L_konkarento_app_tansyukumei} >> ${L_rogumei}
+echo "L_konkarentomei="${L_konkarentomei}                           >> ${L_rogumei}
+echo "L_hikisu01="${L_hikisu01}                                     >> ${L_rogumei}
+echo "L_hikisu02="${L_hikisu02}                                     >> ${L_rogumei}
+echo "L_hikisu03="${L_hikisu03}                                     >> ${L_rogumei}
+echo "L_hikisu04="${L_hikisu04}                                     >> ${L_rogumei}
+echo "L_hikisu05="${L_hikisu05}                                     >> ${L_rogumei}
+echo "L_hikisu06="${L_hikisu06}                                     >> ${L_rogumei}
+echo "L_hikisu07="${L_hikisu07}                                     >> ${L_rogumei}
+
+#コンカレント実行
+echo ""
+L_rogushuturyoku "コンカレント実行"
+${FND_TOP}/bin/CONCSUB apps/apps \
+                       "${L_app_syokuseki_tansyukumei}" \
+                       "${L_syokusekimei}" \
+                       "${L_yuzamei}" \
+                       WAIT=Y \
+                       CONCURRENT \
+                       "${L_konkarento_app_tansyukumei}" \
+                       "${L_konkarentomei}" \
+                       "${L_hikisu01}" \
+                       "${L_hikisu02}" \
+                       "${L_hikisu03}" \
+                       "${L_hikisu04}" \
+                       "${L_hikisu05}" \
+                       "${L_hikisu06}" \
+                       "${L_hikisu07}" \
+                       > ${TE_ZCZZHYOUJUNSHUTURYOKU} 2> ${TE_ZCZZHYOUJUNERA}
+
+#コンカレント実行判定
+if [ $? -ne 0 ]
+then
+   echo ${TE_ZCZZ01113} | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
+   /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+   L_shuryo ${TE_ZCZZIJOUSHURYO}
+fi
+
+#要求ID取得
+L_rogushuturyoku "要求ID取得"
+L_yokyu_id=`awk 'NR==1 {print $3}' ${TE_ZCZZHYOUJUNSHUTURYOKU}`
+L_rogushuturyoku "要求ID="${L_yokyu_id}
+L_era_messeige=${TE_ZCZZ01114}
+
+#実行ステータス確認
+L_rogushuturyoku "実行ステータス確認 開始"
+
+${ORACLE_HOME}/bin/sqlplus -s apps/apps << EOF > ${TE_ZCZZHYOUJUNSHUTURYOKU} 2> ${TE_ZCZZHYOUJUNERA}
+WHENEVER OSERROR EXIT FAILURE
+WHENEVER SQLERROR EXIT FAILURE
+
+SELECT REQUEST_ID, PHASE_CODE, STATUS_CODE FROM FND_CONCURRENT_REQUESTS WHERE REQUEST_ID='${L_yokyu_id}';
+exit
+EOF
+
+if [ $? -ne 0 ]
+then
+   echo ${L_era_messeige} | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
+   /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+   /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+   L_shuryo ${TE_ZCZZIJOUSHURYO}
+fi
+
+L_jyoutaikakunin
+
+L_rogushuturyoku "購買オープン・インタフェースで処理されたデータのパージ 終了"
 
 ### 処理終了出力 ###
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
