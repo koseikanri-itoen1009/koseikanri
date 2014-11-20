@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.66
+ * Version          : 1.67
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -165,6 +165,7 @@ AS
  *  2010/03/12    1.64 SCS    北寒寺正夫 本稼働障害  #1622 移動の実績訂正の際に実績計上済区分をYからNに更新するように修正
  *  2010/04/16    1.65 SCS    伊藤ひとみ E_本稼動_02302    指示なし実績のとき、入力拠点に報告部署をセットする。
  *  2011/06/09    1.66 SCS    H.Sasaki   E_本稼動_05234,07582    出荷先、品目チェックを追加
+ *  2011/07/04    1.67 SCS    仁木重人   E_本稼動_06868    顧客発注番号の半角文字チェックを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -326,7 +327,10 @@ AS
   -- 出荷日と着荷日の日付逆転エラーメッセージ                                 -- 2008/08/13 内部変更#177 Add
   gv_msg_93a_155                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13155';  -- 2008/08/13 内部変更#177 Add
   -- 顧客発注番号エラーメッセージ                                             -- 2008/10/30 統合指摘#390 Add
-  gv_msg_93a_156                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13156';  -- 2008/10/30 統合指摘#390 Add
+-- 2011/07/04 E_本稼動_06868 V1.67 Mod START
+--  gv_msg_93a_156                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13156';  -- 2008/10/30 統合指摘#390 Add
+  gv_msg_93a_185                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13185';
+-- 2011/07/04 E_本稼動_06868 V1.67 Mod END
   -- 出庫倉庫・入庫倉庫同一エラーメッセージ                                   -- 2008/12/16 本番障害#758 Add
   gv_msg_93a_157                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13157';  -- 2008/12/16 本番障害#758 Add
   -- 妥当チェックエラーメッセージ(ロットステータス未設定警告)                 -- 2009/02/05 本番障害#1095 ADD
@@ -6831,7 +6835,6 @@ AS
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
         IF (lt_cust_po_number IS NOT NULL) THEN
-          lv_dterr_flg := gv_date_chk_0;   -- フラグ初期化
 --
 -- 2009/10/07 H.Itou Del Start 本番障害#1345
 --          BEGIN
@@ -6880,6 +6883,40 @@ AS
 --          END IF;
 -- 2009/10/07 H.Itou Del End
 --
+-- 2011/07/04 E_本稼動_06868 V1.67 Add START
+          -- 顧客発注番号の半角文字チェック
+          IF ( xxccp_common_pkg.chk_single_byte( lt_cust_po_number ) <> TRUE ) THEN
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_msg_kbn                                  -- アプリケーション短縮名：'XXWSH'
+                          ,gv_msg_93a_185                              -- 顧客発注番号エラーメッセージ
+                          ,gv_param1_token                             -- トークン1
+                          ,gr_interface_info_rec(i).delivery_no        -- IF_H.配送No
+                          ,gv_param2_token                             -- トークン2
+                          ,gr_interface_info_rec(i).order_source_ref   -- IF_H.受注ソース参照
+                          ,gv_param3_token                             -- トークン3
+                          ,gr_interface_info_rec(i).cust_po_number     -- IF_H.顧客発注番号
+                                                             )
+                                                             ,1
+                                                             ,5000);
+--
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
+            set_deliveryno_unit_errflg(
+                lt_delivery_no                           -- 配送No
+               ,gr_interface_info_rec(i).eos_data_type   -- EOSデータ種別
+               ,gv_err_class                             -- エラー種別：エラー
+               ,lv_msg_buff                              -- エラー・メッセージ(出力用)
+               ,lv_errbuf                                -- エラー・メッセージ           --# 固定 #
+               ,lv_retcode                               -- リターン・コード             --# 固定 #
+               ,lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          END IF;
+-- 2011/07/04 E_本稼動_06868 V1.67 Add END
         END IF;
 --
       END IF;
