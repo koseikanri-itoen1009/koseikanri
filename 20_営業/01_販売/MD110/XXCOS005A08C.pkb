@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.21
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,9 @@ AS
  *  2010/04/15    1.19  M.Sano           [E_本稼動_02317] 売上拠点の判定条件修正
  *  2010/04/23    1.20  S.Karikomi       [E_本稼動_01719] 担当営業員取得関数による最上位者従業員取得の追加
  *  2010/12/03    1.21  H.Sekine         [E_本稼動_04801] 見本入力の対応、特殊商品コード(子コード)の対応。
+ *  2011/01/19    1.22  H.Sekine         [E_本稼動_04801] センターコードの最大桁数について5から10に変更
+ *  2011/01/25    1.23  H.Sekine         [E_本稼動_06397] CSVファイルの行No.について数値型チェックを行なうように変更
+ *                                                        受注明細OIFの明細行にCSVファイルの行No.をセットするように変更                                                        
  *
  *****************************************************************************************/
 --
@@ -483,7 +486,10 @@ AS
 -- ************** 2010/12/03 1.21 H.Sekine ADD START  ************** --
   cn_tokushu_item_code              CONSTANT  NUMBER        := 27;                                   --特殊商品コード
 -- ************** 2010/12/03 1.21 H.Sekine ADD END    ************** --
-  cn_central_code_dlength           CONSTANT  NUMBER        := 5;                                    --センターコード
+-- ************** 2011/01/19 1.22 H.Sekine MOD START  ************** --
+--  cn_central_code_dlength           CONSTANT  NUMBER        := 5;                                    --センターコード
+  cn_central_code_dlength           CONSTANT  NUMBER        := 10;                                   --センターコード
+-- ************** 2011/01/19 1.22 H.Sekine MOD END    ************** --
   cn_jan_code_dlength               CONSTANT  NUMBER        := 13;                                   --JANコード
   cn_total_time_dlength             CONSTANT  NUMBER        := 2;                                    --締め時間
   cn_order_date_dlength             CONSTANT  NUMBER        := 8;                                    --発注日
@@ -2704,9 +2710,15 @@ AS
       iv_item_name    => gr_order_work_data(cn_item_header)(cn_line_number),   -- 1.項目名称(日本語名)         -- 必須
       iv_item_value   => gr_order_work_data(in_cnt)(cn_line_number),           -- 2.項目の値                   -- 任意
       in_item_len     => cn_line_number_dlength,                               -- 3.項目の長さ                 -- 必須
-      in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
+/* 2011/01/25 1.23 H.Sekine Mod Start */
+--      in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
+      in_item_decimal => cn_priod,                                             -- 4.項目の長さ(小数点以下)     -- 条件付必須
+/* 2011/01/25 1.23 H.Sekine Mod End   */
       iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                         -- 5.必須フラグ(上記定数を設定) -- 必須
-      iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                        -- 6.項目属性(上記定数を設定)   -- 必須
+/* 2011/01/25 1.23 H.Sekine Mod Start */
+--      iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                        -- 6.項目属性(上記定数を設定)   -- 必須
+      iv_item_attr    => xxccp_common_pkg2.gv_attr_num,                        -- 6.項目属性(上記定数を設定)   -- 必須
+/* 2011/01/25 1.23 H.Sekine Mod End   */
       ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
       ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
       ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
@@ -4732,6 +4744,9 @@ AS
     gr_order_line_oif_data(gn_line_cnt).order_source_id            := in_order_source_id;        --受注ソースID(インポートソースID)
     gr_order_line_oif_data(gn_line_cnt).orig_sys_document_ref      := gv_seq_no;                 --受注ソース参照(シーケンスNo
     gr_order_line_oif_data(gn_line_cnt).orig_sys_line_ref          := iv_orig_sys_line_ref;      --受注ソース明細参照(行No.)
+/* 2011/01/25 1.23 H.Sekine Add Start */
+    gr_order_line_oif_data(gn_line_cnt).line_number                := TO_NUMBER(iv_orig_sys_line_ref); --受注明細行番号
+/* 2011/01/25 1.23 H.Sekine Add End   */
     gr_order_line_oif_data(gn_line_cnt).org_id                     := in_org_id;                 --組織ID(営業単位(※必要))
     gr_order_line_oif_data(gn_line_cnt).line_type                  := iv_line_type;              --明細タイプ(明細タイプ(通常出荷)
     gr_order_line_oif_data(gn_line_cnt).context                    := iv_line_type;              --明細タイプ(明細タイプ(通常出荷)
