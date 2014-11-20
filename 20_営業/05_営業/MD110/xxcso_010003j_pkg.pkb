@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.6
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                                      chk_single_byte_kana
  *  2009/05/01    1.4   T.Mori           [ST障害T1_0897]スキーマ名設定
  *  2009/06/05    1.5   N.Yanagitaira    [ST障害T1_1307]chk_single_byte_kana修正
+ *  2009/09/09    1.6   Daisuke.Abe      統合テスト障害対応(0001323)
  *****************************************************************************************/
 --
   -- ===============================
@@ -871,7 +872,10 @@ AS
                    END
                  ) AS base_code
         INTO     lv_base_code
-        FROM     xxcso_employees_v xev
+        /* 2009.09.09 D.Abe 0001323対応 START */
+        --FROM     xxcso_employees_v xev
+        FROM     xxcso_employees_v2 xev
+        /* 2009.09.09 D.Abe 0001323対応 END */
                 ,fnd_lookup_values_vl flvv
         WHERE    flvv.lookup_type      = cv_lookup_type
           AND    flvv.attribute2       = 'Y'
@@ -901,7 +905,10 @@ AS
       BEGIN
         SELECT   xev.employee_number
         INTO     lv_employee_number
-        FROM     xxcso_employees_v xev
+        /* 2009.09.09 D.Abe 0001323対応 START */
+        --FROM     xxcso_employees_v xev
+        FROM     xxcso_employees_v2 xev
+        /* 2009.09.09 D.Abe 0001323対応 END */
         WHERE    xev.employee_number   = lv_sales_employee_number
           AND    (
                    (

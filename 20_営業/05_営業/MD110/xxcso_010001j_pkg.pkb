@@ -6,7 +6,7 @@ AS
  * Function Name    : xxcso_010001j_pkg(BODY)
  * Description      : 権限判定関数(XXCSOユーティリティ）
  * MD.050/070       : 
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/13    1.0   R.Oikawa          新規作成
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2009-09-09    1.2   Daisuke.Abe      統合テスト障害対応(0001323)
  *
  *****************************************************************************************/
 --
@@ -125,7 +126,10 @@ AS
                     xev.work_base_code_old
                END
         INTO   lv_base_code
-        FROM   xxcso_employees_v xev
+        /* 2009.09.09 D.Abe 0001323対応 START */
+        --FROM   xxcso_employees_v xev
+        FROM   xxcso_employees_v2 xev
+        /* 2009.09.09 D.Abe 0001323対応 END */
               ,fnd_lookup_values_vl flvv
         WHERE  flvv.lookup_type      = cv_lookup_type
           AND  flvv.attribute2       = gv_y
@@ -148,7 +152,10 @@ AS
         BEGIN
            SELECT xev.employee_number
            INTO   lv_employee_number
-           FROM   xxcso_employees_v xev
+           /* 2009.09.09 D.Abe 0001323対応 START */
+           --FROM   xxcso_employees_v xev
+           FROM   xxcso_employees_v2 xev
+           /* 2009.09.09 D.Abe 0001323対応 END */
            WHERE  xev.employee_number   = lv_sales_person_cd
              AND  (
                    (
