@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,8 @@
 * 2008-12-25 1.7  二瓶　大輔     本番障害#771対応
 * 2009-01-22 1.8  伊藤ひとみ     本番障害#1000対応
 * 2009-01-26 1.9  伊藤ひとみ     本番障害#936対応
+* 2009-02-17 1.10 二瓶　大輔     本番障害#863対応
+*                                本番障害#1034対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -25,6 +27,7 @@ import com.sun.java.util.collections.HashMap;
 import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
 import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
 import itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl;
+import itoen.oracle.apps.xxpo.util.XxpoConstants;
 import itoen.oracle.apps.xxwsh.util.XxwshConstants;
 import itoen.oracle.apps.xxwsh.util.XxwshUtility;
 
@@ -46,7 +49,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.9
+ * @version 1.10
  ***************************************************************************
  */
  
@@ -80,7 +83,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
   {
 
     // ******************************************* //
-    // * ページレイアウトリージョンPVO 空行取得       * //
+    // * ページレイアウトリージョンPVO 空行取得  * //
     // ******************************************* //
     OAViewObject PVO = getXxwshPageLayoutPVO1();
     OARow pvoRow     = null;
@@ -108,12 +111,12 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     itemControl(XxcmnConstants.STRING_N, params);
 
     // **************************************** //
-    // * 検索条件表示リージョンデータ取得処理      * //
+    // * 検索条件表示リージョンデータ取得処理 * //
     // *****************************************//
     getSearchData(params);
     
     // *********************************************** //
-    // * 手持数量引当可能数一覧リージョンVO 検索処理       * //
+    // * 手持数量引当可能数一覧リージョンVO 検索処理 * //
     // *********************************************** //
     // 検索条件表示リージョンを取得
     OAViewObject hvo = getXxwshSearchVO1();
@@ -211,7 +214,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
   {
     
     // *********************************************** //
-    // * 手持数量引当可能数一覧リージョンVO 検索処理       * //
+    // * 手持数量引当可能数一覧リージョンVO 検索処理 * //
     // *********************************************** //
     // 検索条件表示リージョンを取得
     OAViewObject hvo      = getXxwshSearchVO1();
@@ -797,8 +800,10 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     //計算処理を行います。
     calcProcess();
 
-    //テーブルのロック・排他制御を行います。
-    getLockAndChkExclusive();
+// 2009-02-17 D.Nihei Del Start 本番障害#1034対応
+//    //テーブルのロック・排他制御を行います。
+//    getLockAndChkExclusive();
+// 2009-02-17 D.Nihei Del End
 
     //引当可能数が0より大きいレコードの引当可能数が画面表示時と変更がないかチェックします。
     chkCanEncQty();
@@ -906,9 +911,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     //呼出画面区分が移動の場合
     if (XxwshConstants.CALL_PIC_KBN_MOVE_ORDER.equals(callPictureKbn))
     {
-      // ***************************************  //
-      // *   移動依頼/指示ヘッダ(アドオン)ロック    * //
-      // *************************************** //
+      // ***************************************** //
+      // *   移動依頼/指示ヘッダ(アドオン)ロック * //
+      // ***************************************** //
       HashMap movHeaderRet = XxwshUtility.getXxinvMovHeadersLock(
                                getOADBTransaction(),
                                headerId);                                // ヘッダID
@@ -923,9 +928,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
           XxwshConstants.XXWSH12908);
       }
 
-      // ************************************* //
-      // *   移動依頼/指示明細(アドオン)ロック   * //
-      // ************************************* //
+      // *************************************** //
+      // *   移動依頼/指示明細(アドオン)ロック * //
+      // *************************************** //
       HashMap movLineRet = XxwshUtility.getXxinvMovLinesLock(
                              getOADBTransaction(),
                              headerId);                              // ヘッダID
@@ -962,7 +967,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       }
 
       // ******************************** //
-      // *   受注明細アドオンロック   * //
+      // *   受注明細アドオンロック     * //
       // ******************************** //
       HashMap orderLineRet = XxwshUtility.getXxwshOrderLinesAllLock(
                                getOADBTransaction(),
@@ -1002,7 +1007,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     }
 
     // ******************************** //
-    // *  ヘッダ排他チェック             * //
+    // *  ヘッダ排他チェック          * //
     // ******************************** //
     // ロック時に取得した最終更新日と比較
     if (!headerUpdateDateDb.equals(headerUpdateDate))
@@ -1010,7 +1015,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       //ロック解除
       XxcmnUtility.rollBack(getOADBTransaction());
       // ******************** // 
-      // *  再表示           * //
+      // *  再表示          * //
       // ******************** //  
       HashMap params = new HashMap();
       params.put("LineId", lineId.toString());
@@ -1047,7 +1052,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     }
 
     // ******************************** //
-    // *   明細排他チェック             * //
+    // *   明細排他チェック           * //
     // ******************************** //
     // ロック時に取得した最終更新日と比較
     if (!lineUpdateDateDb.equals(lineUpdateDate))
@@ -1055,7 +1060,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       //ロック解除
       XxcmnUtility.rollBack(getOADBTransaction());
       // ******************** // 
-      // *  再表示           * //
+      // *  再表示          * //
       // ******************** //  
       HashMap params = new HashMap();
       params.put("LineId", lineId.toString());
@@ -1155,9 +1160,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       if (!actualQuantityBk.equals(actualQuantity)
         || (actualQuantity.doubleValue() > 0))
       {
-        // *********************** // 
-        // * 引当可能数算出API実行  *//
-        // *********************** //
+        // ************************* // 
+        // * 引当可能数算出API実行 * //
+        // ************************* //
         nowCanEncQty = XxwshUtility.getCanEncQty(
                          getOADBTransaction(),
                          inputInventoryLocationId, // 入力保管倉庫ID
@@ -1208,7 +1213,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       // ロック解除
       XxcmnUtility.rollBack(getOADBTransaction());
       // ******************** // 
-      // *  再表示           * //
+      // *  再表示          * //
       // ******************** // 
       HashMap params = new HashMap();
       params.put("LineId",           lineId);
@@ -1296,9 +1301,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String loadEfficiencyCapacity     = null; // 容積積載効率
     String mixedShipMethod            = null; // 混載配送区分
     String smallAmountClass           = null; // 小口区分
-    // ******************************************* // 
+    // ************************************************* // 
     // *  画面で対象となっている明細の重量と容積を取得 * //
-    // ******************************************* // 
+    // ************************************************* // 
     HashMap paramsRet = XxwshUtility.calcTotalValue(
                           getOADBTransaction(),
                           itemCode,
@@ -1439,9 +1444,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-12-10 H.Itou Mod End
     }
 
-    // ********************************************************** //
+    // ******************************************************************* //
     // *  画面で対象となっている明細と同じヘッダの数量、重量、容積を取得 * //
-    // ********************************************************** //
+    // ******************************************************************* //
     HashMap lineParams = null;
     // 呼出画面区分が移動依頼/指示入力画面起動の場合
     if(XxwshConstants.CALL_PIC_KBN_MOVE_ORDER.equals(callPictureKbn))
@@ -1625,9 +1630,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                            getOADBTransaction(),
                            maxShipMethods,
                            scheduleShipDate);      
-      // ******************************* //
+      // ************************************ //
       // *  最大配送区分での積載効率チェック* //
-      // ******************************* //
+      // ************************************ //
       // 重量容積区分が重量の場合
       if (XxwshConstants.WGHT_CAPA_CLASS_WEIGHT.equals(weightCapacityClass))
       {
@@ -1721,9 +1726,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 
       }
 
-      // ************************************* //
-      // *  ヘッダにセットするための積載効率を算出* //
-      // ************************************* //
+      // ******************************************* //
+      // * ヘッダにセットするための積載効率を算出  * //
+      // ******************************************* //
 
       // ヘッダの小口区分、配送区分を取得
       String shipMethodMeaning = (String)lrow.getAttribute("ShipMethodMeaning"); // 配送区分
@@ -1845,9 +1850,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String itemClass                 = (String)hrow.getAttribute("ItemClass");               // 品目区分
     Number itemId                    = (Number)hrow.getAttribute("ItemId");                  // 品目ID
     String itemShortName             = (String)hrow.getAttribute("ItemShortName");           // 品目略称
-// 2009-01-22 H.Itou ADD START 本番#1000対応
-    String requestNo                 = (String)hrow.getAttribute("RequestNo");                // 依頼No
-// 2009-01-22 H.Itou ADD END
+// 2009-01-22 H.Itou Add Start 本番#1000対応
+    String requestNo                 = (String)hrow.getAttribute("RequestNo");               // 依頼No
+// 2009-01-22 H.Itou Add End
     // 検索条件表示リージョン格納用変数
     String warningClass              = null;                                                 // 警告区分
     Date   warningDate               = null;                                                 // 警告日付
@@ -1864,9 +1869,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     Date scheduleShipDate            = (Date)lrow.getAttribute("ScheduleShipDate");             // 出庫予定日
     Number inventoryLocationId       = (Number)lrow.getAttribute("InputInventoryLocationId");   // 保管倉庫ID
     String locationName              = (String)lrow.getAttribute("InputInventoryLocationName"); // 出庫元保管場所
-// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+// 2008-10-22 D.Nihei Add Start 統合テスト指摘194対応
     String deliverToName             = (String)lrow.getAttribute("DeliverToName");              // 入庫先保管場所
-// 2008-10-22 D.Nihei ADD END
+// 2008-10-22 D.Nihei Add End
 
    // 手持在庫数・引当可能数一覧リージョン取得
     OAViewObject vo                  = getXxwshStockCanEncQtyVO1();
@@ -1874,14 +1879,14 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row                        = null;
     double canEncQty                 = 0;                                                    // 画面表示時引当可能数
 // 2008-12-10 H.Itou Add Start
-    BigDecimal canEncQtyBigD         = new BigDecimal(0);                                   // 画面表示時引当可能数
+    BigDecimal canEncQtyBigD         = new BigDecimal(0);                                    // 画面表示時引当可能数
 // 2008-12-10 H.Itou Add End
     Number lotId                     = null;                                                 // ロットID
     double actualQuantity            = 0;                                                    // 引当数量(換算後)
     double actualQuantityBk          = 0;                                                    // 画面表示時引当数量(換算後)
 // 2008-12-10 H.Itou Add Start
-    BigDecimal actualQuantityBigD        = new BigDecimal(0);                                   // 引当数量(換算後)
-    BigDecimal actualQuantityBkBigD      = new BigDecimal(0);                                   // 画面表示時引当数量(換算後)
+    BigDecimal actualQuantityBigD    = new BigDecimal(0);                                    // 引当数量(換算後)
+    BigDecimal actualQuantityBkBigD  = new BigDecimal(0);                                    // 画面表示時引当数量(換算後)
 // 2008-12-10 H.Itou Add End
     String showLotNo                 = null;                                                 // 表示用ロットNo
     String productionDate            = null;                                                 // 製造年月日
@@ -1898,9 +1903,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String[]  itemShortNameRow  = new String[vo.getRowCount()]; // 品目略称
     String[]  deliverToRow      = new String[vo.getRowCount()]; // 出庫先
     String[]  locationNameRow   = new String[vo.getRowCount()]; // 出庫元保管場所
-// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+// 2008-10-22 D.Nihei Add Start 統合テスト指摘194対応
     String[]  deliverToNameRow  = new String[vo.getRowCount()]; // 入庫先保管場所
-// 2008-10-22 D.Nihei ADD END
+// 2008-10-22 D.Nihei Add End
 
     // チェックで複数回使用する変数を宣言
     HashMap data              = null;                         // 戻り値格納用
@@ -1908,7 +1913,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     Date   revDate            = null;                         // 逆転日付
     Date   standardDate       = null;                         // 基準日
     Number shipToCanEncQty    = null;                         // 入庫先引当可能数
-// 2009-01-26 H.Itou ADD START 本番障害＃936対応
+// 2009-01-26 H.Itou Add Start 本番障害＃936対応
     String getFreshRetCode    = null;                         // 鮮度条件合格製造日リターンコード
 
     // 以下のすべてを満たす場合、鮮度チェックを行うため、鮮度条件合格製造日を取得する。
@@ -1931,7 +1936,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       getFreshRetCode = (String)retHash.get("retCode");       // 鮮度条件合格製造日リターンコード
       standardDate    = (Date)retHash.get("manufactureDate"); // 鮮度条件合格製造日
     }
-// 2009-01-26 H.Itou ADD END
+// 2009-01-26 H.Itou Add End
 
     // 手持在庫数・引当可能数一覧リージョンの一行目をセット
     vo.first();
@@ -1942,19 +1947,19 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       row = (OARow)vo.getCurrentRow();
 
       // 手持在庫数・引当可能数一覧リージョンの現在のデータを取得
-      canEncQty        = ((Number)row.getAttribute("CanEncQty")).doubleValue();        // 画面表示時引当可能数
+      canEncQty            = ((Number)row.getAttribute("CanEncQty")).doubleValue();                       // 画面表示時引当可能数
 // 2008-12-10 H.Itou Mod Start
-      canEncQtyBigD        = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("CanEncQty")); // 画面表示時引当可能数
+      canEncQtyBigD        = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("CanEncQty"));         // 画面表示時引当可能数
 // 2008-12-10 H.Itou Mod End
-      lotId            = (Number)row.getAttribute("LotId");                            // ロットID
+      lotId                = (Number)row.getAttribute("LotId");                                           // ロットID
 // 2008-12-10 H.Itou Mod Start
-      actualQuantity   = ((Number)row.getAttribute("ActualQuantity")).doubleValue();   // 引当数量
-      actualQuantityBk = ((Number)row.getAttribute("ActualQuantityBk")).doubleValue(); // 画面表示時引当数量
-      actualQuantityBigD   = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("ActualQuantity"));   // 引当数量
-      actualQuantityBkBigD = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("ActualQuantityBk")); // 画面表示時引当数量
+      actualQuantity       = ((Number)row.getAttribute("ActualQuantity")).doubleValue();                  // 引当数量
+      actualQuantityBk     = ((Number)row.getAttribute("ActualQuantityBk")).doubleValue();                // 画面表示時引当数量
+      actualQuantityBigD   = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("ActualQuantity"));    // 引当数量
+      actualQuantityBkBigD = XxcmnUtility.bigDecimalValue((Number)row.getAttribute("ActualQuantityBk"));  // 画面表示時引当数量
 // 2008-12-10 H.Itou Mod End
-      showLotNo        = (String)row.getAttribute("ShowLotNo");                        // 表示用ロットNo
-      productionDate   = (String)row.getAttribute("ProductionDate");                   // 製造年月日
+      showLotNo            = (String)row.getAttribute("ShowLotNo");                                       // 表示用ロットNo
+      productionDate       = (String)row.getAttribute("ProductionDate");                                  // 製造年月日
 
       // 警告情報格納用配列に初期値をセット
       lotRevErrFlgRow[vo.getCurrentRowIndex()]   = XxcmnConstants.STRING_N; // ロット逆転防止チェックエラーフラグ
@@ -1968,24 +1973,23 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       deliverToRow[vo.getCurrentRowIndex()]      = deliverTo;               // 出庫先
       itemShortNameRow[vo.getCurrentRowIndex()]  = itemShortName;           // 品目名
       locationNameRow[vo.getCurrentRowIndex()]   = locationName;            // 出庫元
-// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+// 2008-10-22 D.Nihei Add Start 統合テスト指摘194対応
       deliverToNameRow[vo.getCurrentRowIndex()]  = deliverToName;           // 入庫先
-// 2008-10-22 D.Nihei ADD END
+// 2008-10-22 D.Nihei Add End
       // 引当数量が変更されている場合もしくは0より大きい場合にチェックを行う
-      if (actualQuantityBk != actualQuantity
-        || (actualQuantity > 0))
+      if ((actualQuantityBk != actualQuantity) || (actualQuantity > 0))
       {
 
         // ロット管理品で引当数量が0より大きく製造年月日が設定されている場合のみロット逆転防止チェック、鮮度条件チェックを行う
-        if (XxwshConstants.LOT_CTL_Y.equals(lotCtl.toString())
-          && (actualQuantity > 0)
-          && !XxcmnUtility.isBlankOrNull(productionDate))
+        if ((XxwshConstants.LOT_CTL_Y.equals(lotCtl.toString()))
+         && (actualQuantity > 0)
+         && (!XxcmnUtility.isBlankOrNull(productionDate)))
         {
           // 呼出画面区分が出荷で品目区分が製品の場合もしくは商品区分がリーフで品目区分が半製品の場合
-          if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn)
-            && (XxwshConstants.ITEM_TYPE_PROD.equals(itemClass)
-            || (XxwshConstants.PROD_CLASS_CODE_LEAF.equals(prodClass)
-              && XxwshConstants.ITEM_TYPE_HALF.equals(itemClass))))
+          if ((XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn))
+           && (   (XxwshConstants.ITEM_TYPE_PROD.equals(itemClass))
+               || (   XxwshConstants.PROD_CLASS_CODE_LEAF.equals(prodClass)
+                   && XxwshConstants.ITEM_TYPE_HALF.equals(itemClass))))
           {
             // ロット逆転防止チェックを実行
             data = XxwshUtility.doCheckLotReversalMov(
@@ -1995,12 +1999,12 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                      showLotNo,
                      deliverToId,
                      scheduleArrivalDate,
-// 2009-01-22 H.Itou MOD START 本番#1000対応
+// 2009-01-22 H.Itou Mod Start 本番#1000対応
 //                     scheduleShipDate);
                      scheduleShipDate,
                      requestNo
                      );
-// 2009-01-22 H.Itou MOD END
+// 2009-01-22 H.Itou Mod End
 
             result  = (Number)data.get("result");  // 処理結果
             revDate = (Date)data.get("revDate");   // 逆転日付
@@ -2022,18 +2026,14 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                 warningDate  = revDate;                            // 警告日付
                   
               // 警告日付が逆転日付より小さい日付の場合
-              } else if (
-                XxcmnUtility.chkCompareDate(
-                  1,
-                  revDate,
-                  warningDate))
+              } else if (XxcmnUtility.chkCompareDate(1, revDate, warningDate))
               {
                 // 警告日付と警告区分に値をセットします。
                 warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
                 warningDate  = revDate;                            // 警告日付
               }
             }
-// 2009-01-26 H.Itou MOD START 本番障害＃936対応
+// 2009-01-26 H.Itou Mod Start 本番障害＃936対応
 //            // 鮮度条件チェックを実行
 //            data = XxwshUtility.doCheckFreshCondition(
 //                     getOADBTransaction(),
@@ -2051,8 +2051,8 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
             // ・鮮度条件合格製造日リターンコードが0(リターンコード1は賞味期間が0の場合なので、鮮度条件チェックを行わない。)
             // ・製造日が鮮度条件合格製造日より古い
             if (XxcmnConstants.API_RETURN_NORMAL.equals(getFreshRetCode)
-              && XxcmnUtility.chkCompareDate(1, standardDate, new Date(productionDate.replaceAll("/", "-"))))
-// 2009-01-26 H.Itou MOD END
+             && XxcmnUtility.chkCompareDate(1, standardDate, new Date(productionDate.replaceAll("/", "-"))))
+// 2009-01-26 H.Itou Mod End
             {
               // 鮮度条件チェックエラーフラグをYに設定
               freshErrFlgRow[vo.getCurrentRowIndex()]      = XxcmnConstants.STRING_Y;
@@ -2066,11 +2066,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                 warningDate  = standardDate;                         // 警告日付
                   
               // 警告日付が鮮度条件合格製造日より小さい日付の場合
-              } else if (
-                XxcmnUtility.chkCompareDate(
-                  1,
-                  standardDate,
-                  warningDate))
+              } else if (XxcmnUtility.chkCompareDate(1, standardDate, warningDate))
               {
                 // 警告日付と警告区分に値をセットします。
                 warningClass = XxwshConstants.WARNING_CLASS_FRESH;   // 警告区分
@@ -2078,9 +2074,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
               }
             }            
           // 呼出画面区分が移動で商品区分がドリンクで品目区分が製品の場合
-          } else if (XxwshConstants.CALL_PIC_KBN_MOVE_ORDER.equals(callPictureKbn)
-            && XxwshConstants.PROD_CLASS_CODE_DRINK.equals(prodClass)
-            && XxwshConstants.ITEM_TYPE_PROD.equals(itemClass))
+          } else if (   XxwshConstants.CALL_PIC_KBN_MOVE_ORDER.equals(callPictureKbn)
+                     && XxwshConstants.PROD_CLASS_CODE_DRINK.equals(prodClass)
+                     && XxwshConstants.ITEM_TYPE_PROD.equals(itemClass))
           {
             // ロット逆転防止チェックを実行
             data = XxwshUtility.doCheckLotReversalMov(
@@ -2090,12 +2086,12 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                      showLotNo,
                      deliverToId,
                      scheduleArrivalDate,
-// 2009-01-22 H.Itou MOD START 本番#1000対応
+// 2009-01-22 H.Itou Mod Start 本番#1000対応
 //                     scheduleShipDate);
                      scheduleShipDate,
                      requestNo
                      );
-// 2009-01-22 H.Itou MOD END
+// 2009-01-22 H.Itou Mod End
 
             result  = (Number)data.get("result");  // 処理結果
             revDate = (Date)data.get("revDate");   // 逆転日付
@@ -2117,10 +2113,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                 warningDate  = revDate;                            // 警告日付
                   
               // 警告日付が逆転日付より小さい日付の場合
-              } else if (XxcmnUtility.chkCompareDate(
-                          1,
-                          revDate,
-                          warningDate))
+              } else if (XxcmnUtility.chkCompareDate(1, revDate, warningDate))
               {
                 // 警告日付と警告区分に値をセットします。
                 warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
@@ -2176,8 +2169,8 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
         if (temp2.compareTo(actualQuantityBigD) == -1)
 // 2008-12-10 H.Itou Mod End
         {
-            // 引当可能数超過チェックエラーフラグをYに設定
-            exceedErrFlgRow[vo.getCurrentRowIndex()]  = XxcmnConstants.STRING_Y;
+          // 引当可能数超過チェックエラーフラグをYに設定
+          exceedErrFlgRow[vo.getCurrentRowIndex()]  = XxcmnConstants.STRING_Y;
         }
       } // 引当数量が変更されている場合もしくは0より大きい場合にチェックを行う
       // 次のレコードへ
@@ -2200,9 +2193,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     msg.put("deliverTo",        (String[])deliverToRow);      // 出庫先
     msg.put("itemShortName",    (String[])itemShortNameRow);  // 品目名
     msg.put("locationName",     (String[])locationNameRow);   // 出庫元
-// 2008-10-22 D.Nihei ADD START 統合テスト指摘194対応
+// 2008-10-22 D.Nihei Add Start 統合テスト指摘194対応
     msg.put("deliverToName",    (String[])deliverToNameRow);   // 入庫先
-// 2008-10-22 D.Nihei ADD END
+// 2008-10-22 D.Nihei Add End
 
     return msg;
   }
@@ -2248,7 +2241,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String smallQuantity             = (String)hrow.getAttribute("SmallQuantity");            // 小口個数
     String labelQuantity             = (String)hrow.getAttribute("LabelQuantity");            // ラベル枚数
     String exeKbn                    = (String)hrow.getAttribute("ExeKbn");                   // 起動区分
-    String packageLiftFlag           = (String)hrow.getAttribute("PackageLiftFlag");            // 一括解除ボタン押下フラグ
+    String packageLiftFlag           = (String)hrow.getAttribute("PackageLiftFlag");          // 一括解除ボタン押下フラグ
 
     // 明細情報リージョンを取得
     OAViewObject lvo                 = getXxwshLineVO();
@@ -2278,9 +2271,13 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap data                     = new HashMap();                                       // 処理用配列
     HashMap lparam                   = new HashMap();                                       // 明細配列
     HashMap hparam                   = new HashMap();                                       // ヘッダ配列
-// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
-    boolean updNotifStatusFlag      = false;                                               // 通知ステータス更新フラグ
-// 2008-10-24 D.Nihei ADD END
+// 2008-10-24 D.Nihei Add Start TE080_BPO_600 No22
+    boolean updNotifStatusFlag      = false;                                                // 通知ステータス更新フラグ
+// 2008-10-24 D.Nihei Add End
+// 2009-02-17 D.Nihei Add Start 本番障害#1034対応
+    //テーブルのロック・排他制御を行います。
+    getLockAndChkExclusive();
+// 2009-02-17 D.Nihei Add End
     // ********************************** // 
     // * 移動ロット詳細登録・更新・削除処理   *//
     // ********************************** //
@@ -2322,23 +2319,23 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
           movLotDtlId);
 
       // 引当数量が0以外で移動ロット詳細IDが設定されていない場合
-      } else if ((actualQuantity.doubleValue() != 0)
-        && XxcmnUtility.isBlankOrNull(movLotDtlId))
+      } else if (   (actualQuantity.doubleValue() != 0)
+                 && (XxcmnUtility.isBlankOrNull(movLotDtlId)))
       {
         // 移動ロット詳細登録処理を実行
         XxwshUtility.insXxinvMovLotDetails(
           getOADBTransaction(),
           data);
       // 引当数量が0以外で移動ロット詳細IDが設定されている場合
-      } else if ((actualQuantity.doubleValue() != 0)
-        && !XxcmnUtility.isBlankOrNull(movLotDtlId))
+      } else if (   (actualQuantity.doubleValue() != 0)
+                 && (!XxcmnUtility.isBlankOrNull(movLotDtlId)))
       {
         // 移動ロット詳細更新処理を実行
         XxwshUtility.updActualQuantity(
           getOADBTransaction(),
           data);
       }
-// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+// 2008-10-24 D.Nihei Add Start TE080_BPO_600 No22
       // DB引当数量と引当数量を比較し変更がある場合
       Number actualQtyBk = (Number)row.getAttribute("ActualQuantityBk");
       Number actualQty   = (Number)row.getAttribute("ActualQuantity");
@@ -2347,7 +2344,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
         // 通知ステータス更新フラグをONにする
         updNotifStatusFlag = true;
       }
-// 2008-10-24 D.Nihei ADD END
+// 2008-10-24 D.Nihei Add End
       
       // 次のレコードへ
       vo.next();
@@ -2482,7 +2479,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
           headerId);
       }
     }
-// 2008-10-24 D.Nihei MOD START TE080_BPO_600 No22
+// 2008-10-24 D.Nihei Mod Start TE080_BPO_600 No22
 //    // 指示数量更新フラグが更新対象(1)の場合もしくは一括解除ボタン押下フラグが'1'で
 //    // 引当数量が0の場合
 //    if (XxwshConstants.INSTRUCT_QTY_UPD_FLAG_INCLUDE.equals(instructQtyUpdFlag)
@@ -2490,14 +2487,37 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 //        && sumReservedQuantityItem.doubleValue() == 0 ))
     // 指示数量更新フラグが更新対象(1)の場合
     if (XxwshConstants.INSTRUCT_QTY_UPD_FLAG_INCLUDE.equals(instructQtyUpdFlag))
-// 2008-10-24 D.Nihei MOD END
+// 2008-10-24 D.Nihei Mod End
     {
-      // 配車解除関数を起動
-      XxwshUtility.doCancelCareersSchedule(
-        getOADBTransaction(),
-        callPictureKbn,
-        requestNo);
-// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+// 2009-02-17 D.Nihei Mod Start 本番障害#863対応
+//      // 配車解除関数を起動
+//      XxwshUtility.doCancelCareersSchedule(
+//        getOADBTransaction(),
+//        callPictureKbn,
+//        requestNo);
+      /******************
+       * 配車解除処理
+       ******************/
+      String retCode = XxwshUtility.careerCancelOrUpd(
+                         getOADBTransaction(),
+                         callPictureKbn,
+                         requestNo);
+      // パラメータチェックエラーの場合
+      if (XxcmnConstants.API_PARAM_ERROR.equals(retCode)) 
+      {
+        // 予期せぬエラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123
+                              );
+            
+      // 配車処理失敗の場合
+      } else if (XxcmnConstants.API_CANCEL_CARRER_ERROR.equals(retCode)) 
+      {
+        XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
+
+      }
+// 2009-02-17 D.Nihei Mod End
+// 2008-10-24 D.Nihei Add Start TE080_BPO_600 No22
     // 通知ステータス更新フラグがONの場合
     } else if (updNotifStatusFlag) 
     {
@@ -2506,7 +2526,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
         getOADBTransaction(),
         callPictureKbn,
         requestNo);
-// 2008-10-24 D.Nihei ADD END
+// 2008-10-24 D.Nihei Add End
     }
     // コミット処理
     XxwshUtility.commit(getOADBTransaction());
@@ -2745,6 +2765,5 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (XxwshReserveLotVOImpl)findViewObject("XxwshReserveLotVO1");
   }
-
 
 }
