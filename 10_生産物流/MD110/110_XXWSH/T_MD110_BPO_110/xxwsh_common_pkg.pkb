@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.10
+ * Version                : 1.12
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -43,6 +43,9 @@ AS
  *                                      有償支給の'出荷実績計上済'ステータスを'08'に修正
  *  2008/06/04   1.9   Oracle 山本恭久  [重量容積小口個数更新関数]440不具合ログ#61対応
  *  2008/06/26   1.10  Oracle 北寒寺正夫 エラー時のメッセージにSQLERRMを追加
+ *  2008/06/27   1.11  Oracle 椎名昭圭  [引当解除関数]業務種別移動の場合、
+ *                                      明細に紐付く複数ロットに対応
+ *  2008/06/30   1.12  Oracle 椎名昭圭  [最大配送区分算出関数]最大配送区分抽出時の条件修正
  *
  *****************************************************************************************/
 --
@@ -178,6 +181,9 @@ AS
   -- 保管場所名
   TYPE description_tbl IS
     TABLE OF mtl_item_locations.description%TYPE INDEX BY PLS_INTEGER;
+  -- ロット詳細ID
+  TYPE mov_lot_dtl_id_tbl IS
+    TABLE OF xxinv_mov_lot_details.mov_lot_dtl_id%TYPE INDEX BY PLS_INTEGER;
   -- ロットID
   TYPE lot_id_tbl IS
     TABLE OF xxinv_mov_lot_details.lot_id%TYPE INDEX BY PLS_INTEGER;
@@ -229,6 +235,7 @@ AS
   gt_schedule_arrival_date_tbl    schedule_arrival_date_tbl; -- 入庫予定日
   gt_item_short_name_tbl          item_short_name_tbl;       -- 摘要
   gt_description_tbl              description_tbl;           -- 保管場所
+  gt_mov_lot_dtl_id_tbl           mov_lot_dtl_id_tbl;        -- ロット詳細ID
   gt_lot_id_tbl                   lot_id_tbl;                -- ロットID
   gt_item_id_tbl                  item_id_tbl;               -- OPM品目ID
   gt_actual_quantity_tbl          actual_quantity_tbl;       -- 実績数量
@@ -364,7 +371,7 @@ AS
                        WHEN ((iv_prod_class             =  cv_leaf) AND
                               (iv_weight_capacity_class =  cv_capacity)) THEN
                          xdlv2.leaf_loading_capacity
-                     END) IS NOT NULL
+                     END) > 0
              -- コード区分１
              AND     xdlv2.code_class1                  =  iv_code_class1
              -- 入出庫場所コード１
@@ -460,7 +467,7 @@ AS
                            WHEN ((iv_prod_class             =  cv_leaf) AND
                                   (iv_weight_capacity_class =  cv_capacity)) THEN
                              xdlv2.leaf_loading_capacity
-                         END) IS NOT NULL
+                         END) > 0
                  -- コード区分１
                  AND     xdlv2.code_class1                  =  iv_code_class1
                  -- 入出庫場所コード１
@@ -3485,7 +3492,8 @@ AS
     ln_prog_appl_id               NUMBER;           -- プログラム・アプリケーションID
     ln_conc_program_id            NUMBER;           -- プログラムID
     ld_sysdate                    DATE;             -- システム現在日付
-    ln_dummy                      NUMBER;           -- ロック用ダミー変数
+    TYPE dummy_tble IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
+    ln_dummy                      dummy_tble;       -- ロック用ダミー変数
 --
     -- *** ローカル・カーソル ***
 --
@@ -3556,7 +3564,7 @@ AS
         BEGIN
           -- ロック処理を行います
           SELECT xmld.mov_lot_dtl_id
-          INTO   ln_dummy
+          BULK COLLECT INTO ln_dummy
           FROM   xxinv_mov_lot_details          xmld        -- 移動ロット詳細(アドオン)
           WHERE  xmld.mov_line_id               =  gt_order_line_id_tbl(i)
           AND    xmld.document_type_code        =  cv_ship_req_type
@@ -3649,7 +3657,7 @@ AS
         BEGIN
           -- ロック処理を行います
           SELECT xmld.mov_lot_dtl_id
-          INTO   ln_dummy
+          BULK COLLECT INTO ln_dummy
           FROM   xxinv_mov_lot_details          xmld              -- 移動ロット詳細(アドオン)
           WHERE  xmld.mov_line_id               =  gt_order_line_id_tbl(i)
           AND    xmld.document_type_code        =  cv_supply_instr_type
@@ -3752,57 +3760,63 @@ AS
 --
         BEGIN
           -- 検索処理を行います
-          SELECT xmld.lot_id,                                     -- ロットID
-                 xmld.item_id,                                    -- OPM品目ID
-                 xmld.actual_quantity,                            -- 実績数量
-                 xmld.lot_no                                      -- ロットNo
-          INTO   gt_lot_id_tbl(i),
-                 gt_item_id_tbl(i),
-                 gt_actual_quantity_tbl(i),
-                 gt_lot_no_tbl(i)
+          SELECT xmld.mov_lot_dtl_id,                             -- ロット詳細ID
+                  xmld.lot_id,                                     -- ロットID
+                  xmld.item_id,                                    -- OPM品目ID
+                  xmld.actual_quantity,                            -- 実績数量
+                  xmld.lot_no                                      -- ロットNo
+          BULK COLLECT INTO gt_mov_lot_dtl_id_tbl,
+                  gt_lot_id_tbl,
+                  gt_item_id_tbl,
+                  gt_actual_quantity_tbl,
+                  gt_lot_no_tbl
           FROM   xxinv_mov_lot_details          xmld              -- 移動ロット詳細(アドオン)
           WHERE  xmld.mov_line_id               =  gt_mov_line_id_tbl(i)
           AND    xmld.document_type_code        =  cv_move_type
           AND    xmld.record_type_code          =  cv_instr_rec_type
           FOR UPDATE OF xmld.mov_lot_dtl_id NOWAIT;
 --
-          -- 共通関数(引当可能数算出API)の呼び出し
-          ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_qty(gt_ship_to_locat_id_tbl(i),
-                                                             gt_item_id_tbl(i),
-                                                             gt_lot_id_tbl(i),
-                                                             gt_schedule_arrival_date_tbl(i));
+          <<gt_mov_lot_dtl_id_tbl_loop>>
+          FOR j IN gt_mov_lot_dtl_id_tbl.FIRST .. gt_mov_lot_dtl_id_tbl.LAST LOOP
+            -- 共通関数(引当可能数算出API)の呼び出し
+            ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_qty(gt_ship_to_locat_id_tbl(j),
+                                                               gt_item_id_tbl(j),
+                                                               gt_lot_id_tbl(j),
+                                                               gt_schedule_arrival_date_tbl(j));
 --
-          IF ((ln_can_enc_qty - gt_actual_quantity_tbl(i)) < 0) THEN
-            -- 供給数の減数チェックワーニング
-            ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxcmn,
-                                                  cv_msg_supply_chk_warn,
-                                                  'LOCATION',
-                                                  gt_description_tbl(i),
-                                                  'ITEM',
-                                                  gt_item_short_name_tbl(i),
-                                                  'LOT',
-                                                  gt_lot_no_tbl(i));
-            ROLLBACK TO advance_sp;
-            RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
-          END IF;
+            IF ((ln_can_enc_qty - gt_actual_quantity_tbl(i)) < 0) THEN
+              -- 供給数の減数チェックワーニング
+              ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxcmn,
+                                                    cv_msg_supply_chk_warn,
+                                                    'LOCATION',
+                                                    gt_description_tbl(i),
+                                                    'ITEM',
+                                                    gt_item_short_name_tbl(i),
+                                                    'LOT',
+                                                    gt_lot_no_tbl(i));
+              ROLLBACK TO advance_sp;
+              RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
+            END IF;
 --
-          -- 削除処理を行います
-          DELETE
-          FROM   xxinv_mov_lot_details          xmld              -- 移動ロット詳細(アドオン)
-          WHERE  xmld.mov_line_id               =  gt_mov_line_id_tbl(i);
+            -- 削除処理を行います
+            DELETE
+            FROM   xxinv_mov_lot_details          xmld              -- 移動ロット詳細(アドオン)
+            WHERE  xmld.mov_lot_dtl_id            =  gt_mov_lot_dtl_id_tbl(j);
+--
+          END LOOP gt_mov_lot_dtl_id_tbl_loop;
 --
         EXCEPTION
           WHEN lock_expt THEN
             -- ロック処理エラー
             ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_lock_err);
-            ROLLBACK TO advance_sp;                   -- エラーの場合はセーブポイントにロールバック
+            ROLLBACK TO advance_sp;                 -- エラーの場合はセーブポイントにロールバック
             RETURN cv_enc_cancel_err;                 -- 引当解除失敗
 --
-          WHEN OTHERS THEN
-            -- 移動ロット詳細(アドオン)削除失敗
-            ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_xmld_del_err);
-            ROLLBACK TO advance_sp;                   -- エラーの場合はセーブポイントにロールバック
-            RETURN cv_enc_cancel_err;                 -- 引当解除失敗
+            WHEN OTHERS THEN
+              -- 移動ロット詳細(アドオン)削除失敗
+              ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_xmld_del_err);
+              ROLLBACK TO advance_sp;                 -- エラーの場合はセーブポイントにロールバック
+              RETURN cv_enc_cancel_err;                 -- 引当解除失敗
 --
         END;
 --
