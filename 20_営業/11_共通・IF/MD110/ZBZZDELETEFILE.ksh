@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZDELETEFILE                                            ##
 ## Description      : I/Fファイル削除機能                                       ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.1                                                       ##
+## Version          : 1.2                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -21,6 +21,8 @@
 ##  2009/01/08    1.0   Masayuki.Sano    新規作成                               ##
 ##  2009/05/07    1.1   Masayuki.Sano    障害番号T1_0917対応                    ##
 ##                                       ・異常終了(7⇒8)へ修正                 ##
+##  2009/05/18    1.2   Masayuki.Sano    障害番号T1_1006対応                    ##
+##                                       ・ワイルドカード使用可対応             ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -52,8 +54,12 @@ fi
 #(パスを取得)
 L_del_file_path="${2}/${1}"
 #(削除)
-rm -f "${L_del_file_path}"
+#2009/05/18 UPDATE BY Masayuki.Sano Ver.1.2 Start
+#rm -f "${L_del_file_path}"
+#L_ret_code=${?}
+rm -f ${L_del_file_path}
 L_ret_code=${?}
+#2009/05/18 UPDATE BY Masayuki.Sano Ver.1.2 End
 if [ ${L_ret_code} -ne 0 ]
 then
   exit ${C_return_error}

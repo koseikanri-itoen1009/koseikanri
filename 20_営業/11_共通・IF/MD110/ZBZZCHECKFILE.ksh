@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZCHECKFILE                                             ##
 ## Description      : I/Fファイル存在チェック機能                               ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.1                                                       ##
+## Version          : 1.2                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -21,6 +21,8 @@
 ##  2009/01/08    1.0   Masayuki.Sano    新規作成                               ##
 ##  2009/05/07    1.1   Masayuki.Sano    障害番号T1_0917対応                    ##
 ##                                       ・異常終了(7⇒8)へ修正                 ##
+##  2009/05/18    1.2   Masayuki.Sano    障害番号T1_1006対応                    ##
+##                                       ・ワイルドカード使用可対応             ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -33,10 +35,10 @@
 C_appl_name="XXCCP"                    #アプリケーション短縮名
 C_program_id="ZBZZCHECKFILE"           #プログラムID
 C_return_norm=0                        #正常終了
-#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.1 Start
+#2009/05/07 UPDATE BY Masayuki.Sano Ver.1.1 Start
 #C_return_error=7                       #異常終了
 C_return_error=8                       #異常終了
-#2009/04/06 UPDATE BY Masayuki.Sano Ver.1.1 End
+#2009/05/07 UPDATE BY Masayuki.Sano Ver.1.1 End
 
 ################################################################################
 ##                                   Main                                     ##
@@ -50,7 +52,10 @@ fi
 
 #2.指定したファイルの存在チェック
 L_check_file_path="${2}/${1}"    #チェック対象のファイルパス
-if [ -f "${L_check_file_path}" ]
+#2009/05/18 UPDATE BY Masayuki.Sano Ver.1.2 Start
+#if [ -f "${L_check_file_path}" ]
+if [ -f ${L_check_file_path} ]
+#2009/05/18 UPDATE BY Masayuki.Sano Ver.1.2 End
 then
   exit ${C_return_error}
 fi

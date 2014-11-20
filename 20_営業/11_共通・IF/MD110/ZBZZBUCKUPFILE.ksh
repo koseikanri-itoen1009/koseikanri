@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZBUCKUPFILE                                            ##
 ## Description      : I/Fファイルバックアップ機能                               ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.1                                                       ##
+## Version          : 1.2                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -23,6 +23,8 @@
 ##  2009/01/08    1.0   Masayuki.Sano    新規作成                               ##
 ##  2009/05/07    1.1   Masayuki.Sano    障害番号T1_0917対応                    ##
 ##                                       ・異常終了(7⇒8)へ修正                 ##
+##  2009/05/18    1.2   Masayuki.Sano    障害番号T1_1006対応                    ##
+##                                       ・ワイルドカード使用可対応             ##
 ##                                                                              ##
 ##################################################################################
                                                                                   
@@ -63,39 +65,65 @@ then
   exit ${C_return_error}
 fi
 
-#3.ベース名、拡張子、処理日時を取得
-L_base=$(echo "${1}" | sed -e 's/\.[^\.]*$//')        #入力ファイルのベース名
-L_exte=$(echo "${1}" | sed -e 's/^'"${L_base}"'\.//') #入力ファイルの拡張子
-L_date=$(date "${C_date_format}")                     #処理日時
+#2009/05/18 UPDATE BY Masayuki.Sano Ver.1.2 Start
+##3.ベース名、拡張子、処理日時を取得
+#L_base=$(echo "${1}" | sed -e 's/\.[^\.]*$//')        #入力ファイルのベース名
+#L_exte=$(echo "${1}" | sed -e 's/^'"${L_base}"'\.//') #入力ファイルの拡張子
+#L_date=$(date "${C_date_format}")                     #処理日時
+#
+##4.指定したファイルをバックアップ元からバックアップ先へコピー
+##(パス情報を取得)
+#L_in_file_path="${2}/${1}"                            #バックアップ元ファイルパス
+#L_ou_file_path="${3}/${L_base}_${L_date}.${L_exte}"   #バックアップ先ファイルパス
+##(コピー)
+#cp -pf "${L_in_file_path}" "${L_ou_file_path}"
+#L_ret_code=${?}
+#if [ ${L_ret_code} -ne 0 ]
+#then
+#  exit ${C_return_error}
+#fi
+cd "${2}"
+for L_if_file in $(ls -1r ${1})
+do
+  #3ベース名・拡張子・処理日時を取得
+  L_base=$(echo "${L_if_file}" | sed -e 's/\.[^\.]*$//')        #入力ファイルのベース名
+  L_exte=$(echo "${L_if_file}" | sed -e 's/^'"${L_base}"'\.//') #入力ファイルの拡張子
+  L_date=$(date "${C_date_format}")                     #処理日時
 
-#4.指定したファイルをバックアップ元からバックアップ先へコピー
-#(パス情報を取得)
-L_in_file_path="${2}/${1}"                            #バックアップ元ファイルパス
-L_ou_file_path="${3}/${L_base}_${L_date}.${L_exte}"   #バックアップ先ファイルパス
-#(コピー)
-cp -pf "${L_in_file_path}" "${L_ou_file_path}"
+  #4.指定したファイルをバックアップ先へコピー
+  cp -f "${2}/${L_if_file}" "${3}/${L_base}_${L_date}.${L_exte}"
+  L_ret_code=${?}
+  if [ ${L_ret_code} -ne 0 ]
+  then
+    exit ${C_return_error}
+  fi
+#2009/05/18 UPDATE BY Masayuki.Sano Ver.1.2 End
+
+  #5.バックアップ数が世代数を超えている分だけファイルを削除
+  #(初期設定)
+  let L_cnt=0
+  #(処理)
+  for L_file in $(ls -1r "${3}" | egrep -x "${L_base}_[0-9]{14}\.${L_exte}")
+  do
+    let L_cnt=${L_cnt}+1
+    if [ ${4} -lt ${L_cnt} ]
+    then
+      rm -f "${3}/${L_file}"
+      L_ret_code=${?}
+      if [ ${L_ret_code} -ne 0 ]
+      then
+        exit ${C_return_error}
+      fi
+    fi
+  done
+#2009/05/18 ADD BY Masayuki.Sano Ver.1.2 Start
+done
 L_ret_code=${?}
+#対象ファイルが存在しない等により異常終了した場合、異常終了
 if [ ${L_ret_code} -ne 0 ]
 then
   exit ${C_return_error}
 fi
-
-#5.バックアップ数が世代数を超えている分だけファイルを削除
-#(初期設定)
-let L_cnt=0
-#(処理)
-for L_file in $(ls -1r "${3}" | egrep -x "${L_base}_[0-9]{14}\.${L_exte}")
-do
-  let L_cnt=${L_cnt}+1
-  if [ ${4} -lt ${L_cnt} ]
-  then
-    rm -f "${3}/${L_file}"
-    L_ret_code=${?}
-    if [ ${L_ret_code} -ne 0 ]
-    then
-      exit ${C_return_error}
-    fi
-  fi
-done
+#2009/05/18 ADD BY Masayuki.Sano Ver.1.2 End
 
 exit ${C_return_norm}
