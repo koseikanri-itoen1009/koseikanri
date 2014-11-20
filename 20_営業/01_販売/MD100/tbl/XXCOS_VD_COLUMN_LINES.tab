@@ -12,12 +12,15 @@
  *  2009/01/30    1.0   SCS S.Miyakoshi 新規作成
  *  2009/04/13    1.1   SCS N.Maeda     [ST障害No.T1_0496対応]
  *                                      補充数の桁数をNUMBER(2)⇒NUMBERに修正
+ *  2009/12/07    1.2   SCS K.Kanada    [E_本稼動_00225対応]
+ *                                      行No.(HHT)の桁数をNUMBER(2)⇒NUMBERに修正
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_VD_COLUMN_LINES
 (
   ORDER_NO_HHT                    NUMBER(10)    NOT NULL,                  --受注No.(HHT)
-  LINE_NO_HHT                     NUMBER(2)     NOT NULL,                  --行No.(HHT)
+--  LINE_NO_HHT                     NUMBER(2)     NOT NULL,                  --行No.(HHT)
+  LINE_NO_HHT                     NUMBER        NOT NULL,                  --行No.(HHT)
   DIGESTION_LN_NUMBER             NUMBER(2)     NOT NULL,                  --枝番
   ORDER_NO_EBS                    NUMBER(9),                               --受注No.(EBS)
   LINE_NUMBER_EBS                 NUMBER(3),                               --明細番号(EBS)
