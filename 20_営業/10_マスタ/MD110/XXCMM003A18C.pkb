@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/29    1.5   Yutaka.Kuboshima 障害T1_1263の対応
  *  2009/06/09    1.6   Yutaka.Kuboshima 障害T1_1364の対応
  *  2009/09/30    1.7   Yutaka.Kuboshima 障害0001350の対応
+ *  2009/11/28    1.8   Hiroshi.Oshida   障害 本稼動_00151の対応
  *
  *****************************************************************************************/
 --
@@ -877,7 +878,11 @@ AS
                hz_cust_acct_relate                hcara                                     --関連顧客マスタ
         WHERE  hcara.related_cust_account_id = cust_data_rec.cust_account_id
         AND    hcara.cust_account_id         = ln_bill_cust_id
-        AND    hca.cust_account_id           = hcara.cust_account_id;
+        AND    hca.cust_account_id           = hcara.cust_account_id
+-- 2009/11/28 Ver1.8 障害 本稼動_00151 add start by Hiroshi.Oshida
+        AND    hcara.status                  = cv_a_flag;
+-- 2009/11/28 Ver1.8 障害 本稼動_00151 add end by Hiroshi.Oshida
+        
       EXCEPTION
         --*** 対象レコードなしエラー ***
         WHEN NO_DATA_FOUND THEN
@@ -899,7 +904,11 @@ AS
                  hz_cust_acct_relate                hcara                                     --関連顧客マスタ
           WHERE  hcara.related_cust_account_id = ln_pay_cust_account_id
           AND    hca.cust_account_id           = hcara.cust_account_id
-          AND    hcara.attribute1              = cv_auto_ex_flag;
+          AND    hcara.attribute1              = cv_auto_ex_flag
+-- 2009/11/28 Ver1.8 障害 本稼動_00151 add start by Hiroshi.Oshida
+          AND    hcara.status                  = cv_a_flag;
+-- 2009/11/28 Ver1.8 障害 本稼動_00151 add end by Hiroshi.Oshida
+          
         EXCEPTION
           --*** 対象レコードなしエラー ***
           WHEN NO_DATA_FOUND THEN
