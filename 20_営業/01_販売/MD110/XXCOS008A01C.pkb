@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  insert_ship_line_data       出荷依頼I/F明細データ作成(A-9)
  *  insert_ship_header_data     出荷依頼I/Fヘッダデータ作成(A-10)
  *  update_order_line           受注明細更新(A-11)
+ *  start_production_system     生産システム起動(A-12)
  *  submain                     メイン処理プロシージャ
  *  main                        コンカレント実行ファイル登録プロシージャ
  *
@@ -36,6 +37,7 @@ AS
  *  2009/02/23    1.3   K.Atsushiba      パラメータのログファイル出力対応
  *  2009/04/06    1.4   T.Kitajima       [T1_0175]出荷依頼No採番ルール変更[9]→[97]
  *  2009/04/16    1.5   T.Kitajima       [T1_0609]出荷依頼No採番ルール変更[97]→[98]
+ *  2009/05/15    1.6   S.Tomita         [T1_1004]生産物流SへのUO切替/戻し、[顧客発注からの自動作成]機能呼出対応
  *
  *****************************************************************************************/
 --
@@ -188,7 +190,7 @@ AS
   -- 有効フラグ
   cv_enabled_flag               CONSTANT VARCHAR2(1) := 'Y';              -- 有効
   --
-  cn_customer_div_cust          CONSTANT  VARCHAR2(4)   := '10';          --顧客
+  cn_customer_div_cust          CONSTANT  VARCHAR2(4)   := '10';          -- 顧客
   cv_cust_site_use_code         CONSTANT  VARCHAR2(10)  := 'SHIP_TO';     --顧客使用目的：出荷先
   -- 明細ステータス
   cv_flow_status_cancelled      CONSTANT VARCHAR2(10) := 'CANCELLED';     -- 取消
@@ -276,8 +278,8 @@ AS
     AND   ottal.name                              = flv_tran.attribute2                       -- 取引名称
     AND   oola.subinventory                       = msi.secondary_inventory_name              -- 保管場所
     AND   msi.attribute13                         = gv_hokan_direct_class                     -- 保管場所区分
-    AND   xca.delivery_base_code                  = NVL(iv_base_code, xca.delivery_base_code)  -- 納品拠点コード
-    AND   ooha.order_number                       = NVL(iv_order_number, ooha.order_number)    -- 受注ヘッダ番号
+    AND   xca.delivery_base_code                  = NVL(iv_base_code, xca.delivery_base_code) -- 納品拠点コード
+    AND   ooha.order_number                       = NVL(iv_order_number, ooha.order_number)   -- 受注ヘッダ番号
     AND   oola.packing_instructions               IS NULL                                     -- 出荷依頼
     AND   xca.customer_id                         = hca.cust_account_id                       -- 顧客ID
     AND   oola.org_id                             = gt_org_id                                 -- 営業単位
@@ -529,23 +531,23 @@ AS
     -- ===============================
     --  コンカレント・ログ出力
     -- ===============================
-    -- 空行出力 
-    FND_FILE.PUT_LINE( 
-       which  => FND_FILE.LOG 
-      ,buff   => NULL 
+    -- 空行出力
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => NULL
+    );
+    --
+    -- メッセージ出力
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => lv_out_msg
     ); 
--- 
-    -- メッセージ出力 
-    FND_FILE.PUT_LINE( 
-       which  => FND_FILE.LOG 
-      ,buff   => lv_out_msg 
-    ); 
--- 
-    -- 空行出力 
-    FND_FILE.PUT_LINE( 
-       which  => FND_FILE.LOG 
-      ,buff   => NULL 
-    ); 
+    --
+    -- 空行出力
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => NULL
+    );
     --
     -- ===============================
     --  MO:営業単位取得
@@ -674,7 +676,7 @@ AS
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
       ov_retcode := cv_status_error;                                            --# 任意 #
-
+--
     WHEN notfound_hokan_direct_expt THEN
       --*** 直送倉庫保管場所分類取得エラー ***
       -- メッセージ作成
@@ -2671,7 +2673,6 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-
     -- ===============================
     -- 明細更新データ作成
     -- ===============================
@@ -2825,6 +2826,302 @@ AS
 --
   END update_order_line;
 --
+--****************************** 2009/05/15 1.6 S.Tomita ADD START ******************************--
+  /**********************************************************************************
+   * Procedure Name   : start_production_system
+   * Description      : 生産システム起動
+   ***********************************************************************************/
+  PROCEDURE start_production_system(
+    iv_base_code  IN         VARCHAR2,     --   拠点コード
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'start_production_system'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_resp_prod          CONSTANT VARCHAR2(50) := 'XXCOS1_RESPONSIBILITY_PRODUCTION';  -- プロファイル：生産への切替用職責
+    cv_xxwsh_short_name   CONSTANT VARCHAR2(10) := 'XXWSH';                             -- 生産システム短縮名
+    cv_xxcos_short_name   CONSTANT VARCHAR2(10) := 'XXCOS';                             -- 販売チーム短縮名
+    cv_cus_order_pkg      CONSTANT VARCHAR2(50) := 'XXWSH400002C';                      -- 顧客発注からの出荷依頼自動作成
+    cv_msg_get_login      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11638';                  -- ログイン情報取得エラー
+    cv_msg_get_resp       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11639';                  -- プロファイル(切替用職責)取得エラー
+    cv_msg_get_login_prod CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11640';                  -- 切替先ログイン情報取得エラー
+    cv_msg_start_err_cus  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11641';                  -- コンカレント起動(顧客発注)エラー
+    cv_msg_get_input_base CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11642';                  -- 入力拠点取得エラー
+    cv_msg_standby_err    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11643';                  -- コンカレント終了待機エラー
+    cv_msg_request_id     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11644';                  -- コンカレント要求ID
+    cv_con_status_normal  CONSTANT VARCHAR2(10) := 'NORMAL';                            -- ステータス（正常）
+--****************************** 2009/05/15 1.6 S.Tomita ADD START ******************************--
+    cv_con_status_warning CONSTANT VARCHAR2(10) := 'WARNING';                           -- ステータス（警告）
+--****************************** 2009/05/15 1.6 S.Tomita ADD END   ******************************--
+    cv_user_id            CONSTANT VARCHAR2(10) := 'USER_ID';                           -- ユーザID
+    cv_tkn_code           CONSTANT VARCHAR2(10) := 'CODE';                              -- メッセージ用トークン
+    cb_sub_request        CONSTANT BOOLEAN      := FALSE;                               -- Sub_request
+    cn_interval           CONSTANT NUMBER       := 15;                                  -- Interval
+    cn_max_wait           CONSTANT NUMBER       := 0;                                   -- Max_wait
+--
+    -- *** ローカル変数 ***
+    ln_login_user_id      NUMBER;                -- ログインユーザID
+    ln_login_resp_id      NUMBER;                -- ログイン職責ID
+    ln_login_resp_appl_id NUMBER;                -- ログイン職責アプリケーションID
+    lv_resp_prod          VARCHAR2(100);         -- 生産への切替用職責名
+    ln_prod_user_id       NUMBER;                -- 切替用ユーザID
+    ln_prod_resp_id       NUMBER;                -- 切替用職責ID
+    ln_prod_resp_appl_id  NUMBER;                -- 切替用職責アプリケーションID
+    ln_request_id         NUMBER DEFAULT 0;      -- 要求ID
+    lb_wait_result        BOOLEAN;               -- コンカレント待機成否
+    lv_phase              VARCHAR2(50);
+    lv_status             VARCHAR2(50);
+    lv_dev_phase          VARCHAR2(50);
+    lv_dev_status         VARCHAR2(50);
+    lv_message            VARCHAR2(5000);
+    lv_request_id_message VARCHAR2(5000);
+    lt_input_base_code    xxcmn_cust_accounts_v.party_number%TYPE;                      -- 入力拠点
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ===============================
+    -- 初期処理
+    -- ===============================
+    -- *** ログイン情報の取得 ***
+    BEGIN
+--
+      SELECT
+         fnd_global.user_id      AS USER_ID        -- ログインユーザID
+        ,fnd_global.resp_id      AS RESP_ID        -- ログイン職責ID
+        ,fnd_global.resp_appl_id AS RESP_APPL_ID   -- ログイン職責アプリケーションID
+      INTO
+         ln_login_user_id
+        ,ln_login_resp_id
+        ,ln_login_resp_appl_id
+      FROM
+         DUAL
+      ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application => cv_xxcos_short_name,    -- XXCOS
+                       iv_name        => cv_msg_get_login        -- ログイン情報取得エラー
+                     );
+        RAISE global_api_expt;
+    END;
+--
+    -- *** プロファイル：生産への切替用職責名称の取得 ***
+    lv_resp_prod := FND_PROFILE.VALUE( cv_resp_prod );
+--
+    -- プロファイル取得エラーの場合
+    IF ( lv_resp_prod IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => cv_xxcos_short_name,      -- XXCOS
+                     iv_name        => cv_msg_get_resp           -- プロファイル(切替用職責)取得エラー
+                   );
+      RAISE global_api_expt;
+    END IF;
+--
+    -- *** 切替先ログイン情報の取得 ***
+    BEGIN
+--
+      SELECT
+          responsibility_id AS RESPONSIBILITY_ID   -- 切替用職責ID
+         ,application_id    AS APPLICATION_ID      -- 切替用職責アプリケーションID
+      INTO
+          ln_prod_resp_id
+         ,ln_prod_resp_appl_id
+      FROM
+          fnd_responsibility_vl
+      WHERE
+          responsibility_name = lv_resp_prod       -- 切替用職責名称
+      AND ROWNUM              = 1
+      ;
+--
+      -- 切替用ユーザIDの取得
+      ln_prod_user_id := ln_login_user_id;         -- ログインユーザID
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application => cv_xxcos_short_name,    -- XXCOS
+                       iv_name        => cv_msg_get_login_prod   -- 切替先ログイン情報取得エラー
+                     );
+        RAISE global_api_expt;
+    END;
+--
+    -- *** 入力拠点の取得 ***
+    IF ( iv_base_code IS NOT NULL ) THEN
+      -- 入力パラメータ.拠点コードを入力拠点に設定
+      lt_input_base_code := iv_base_code;
+      --
+    ELSE
+      -- ログインユーザの所属拠点コードを入力拠点に設定
+      BEGIN
+      --
+        SELECT
+            xcav.party_number AS input_base_code
+        INTO
+            lt_input_base_code
+        FROM
+            fnd_user              fu
+           ,per_all_people_f      papf
+           ,per_all_assignments_f paaf
+           ,xxcmn_locations_v     xlv
+           ,xxcmn_cust_accounts_v xcav 
+        WHERE 
+            fu.user_id        = fnd_profile.value( cv_user_id ) 
+        AND fu.employee_id    = papf.person_id
+        AND nvl( papf.effective_start_date, TRUNC( gd_business_date ) ) <= TRUNC( gd_business_date )
+        AND nvl( papf.effective_end_date,   TRUNC( gd_business_date ) ) >= TRUNC( gd_business_date )
+        AND papf.person_id    = paaf.person_id
+        AND nvl( paaf.effective_start_date, TRUNC( gd_business_date ) ) <= TRUNC( gd_business_date )
+        AND nvl( paaf.effective_end_date,   TRUNC( gd_business_date ) ) >= TRUNC( gd_business_date )
+        AND paaf.location_id  = xlv.location_id
+        AND xlv.location_code = xcav.party_number
+        ;
+      --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application => cv_xxcos_short_name,    -- XXCOS
+                         iv_name        => cv_msg_get_input_base   -- 入力拠点取得エラー
+                       );
+          RAISE global_api_expt;
+      END;
+--
+    END IF;
+--
+    -- ===============================
+    -- ログイン切替(生産OUへ)
+    -- ===============================
+    FND_GLOBAL.APPS_INITIALIZE(
+      ln_prod_user_id,          -- ユーザID
+      ln_prod_resp_id,          -- 職責ID
+      ln_prod_resp_appl_id      -- アプリケーションID
+    );
+--
+    --コンカレント起動のためコミット
+    COMMIT;
+    -- ===============================
+    -- コンカレント起動
+    -- ===============================
+    ln_request_id := fnd_request.submit_request(
+                       application => cv_xxwsh_short_name,       -- XXWSH
+                       program     => cv_cus_order_pkg,          -- XXWSH400002C
+                       description => NULL,
+                       start_time  => NULL,
+                       sub_request => cb_sub_request,            -- FALSE
+                       argument1   => lt_input_base_code,        -- 引数：入力拠点
+                       argument2   => NULL                       -- 引数：管轄拠点
+                     );
+--
+    -- 要求ID出力
+    lv_request_id_message := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_xxcos_short_name,      -- XXCOS
+                               iv_name         => cv_msg_request_id,        -- コンカレント要求ID
+                               iv_token_name1  => cv_tkn_code,              -- CODE
+                               iv_token_value1 => TO_CHAR( ln_request_id )  -- 要求ID
+                             );
+--
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => lv_request_id_message
+    ); 
+--
+    IF ( ln_request_id = 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => cv_xxcos_short_name,      -- XXCOS
+                     iv_name        => cv_msg_start_err_cus      -- コンカレント起動(顧客発注)エラー
+                   );
+      RAISE global_api_expt;
+    END IF;
+--
+    --コンカレント起動のためコミット
+    COMMIT;
+--
+    --コンカレントの終了待機
+    lb_wait_result := fnd_concurrent.wait_for_request(
+                        request_id => ln_request_id,
+                        interval   => cn_interval,
+                        max_wait   => cn_max_wait,
+                        phase      => lv_phase,
+                        status     => lv_status,
+                        dev_phase  => lv_dev_phase,
+                        dev_status => lv_dev_status,
+                        message    => lv_message
+                      );
+--
+    -- ===============================
+    -- ログイン切替(営業OUへ)
+    -- ===============================
+    FND_GLOBAL.APPS_INITIALIZE(
+      ln_login_user_id,         -- ユーザID
+      ln_login_resp_id,         -- 職責ID
+      ln_login_resp_appl_id     -- アプリケーションID
+    );
+--
+    --コンカレントの終了ステータス
+    IF ( ( lb_wait_result = FALSE )
+      OR ( lv_dev_status NOT IN ( cv_con_status_normal, cv_con_status_warning ) ) )
+    THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => cv_xxcos_short_name,    -- XXCOS
+                     iv_name        => cv_msg_standby_err      -- コンカレント起動(顧客発注)エラー
+                   );
+      RAISE global_api_expt;
+    END IF;
+    --警告終了時
+    IF ( lv_dev_status = cv_con_status_warning ) THEN
+      ov_retcode := cv_status_warn;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END start_production_system;
+--****************************** 2009/05/15 1.6 S.Tomita ADD END   ******************************--
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -2859,6 +3156,9 @@ AS
     -- *** ローカル変数 ***
     lv_retcode_a3           VARCHAR2(1);    -- A-3のリターンコード格納
     lv_retcode_a5           VARCHAR2(1);    -- A-5のリターンコード格納
+--****************************** 2009/05/15 1.6 S.Tomita ADD START ******************************--
+    lv_retcode_a12          VARCHAR2(1);    -- A-12のリターンコード格納
+--****************************** 2009/05/15 1.6 S.Tomita ADD END   ******************************--
 --
     -- *** ローカル例外 ***
     no_data_found_expt      EXCEPTION;      -- 抽出データ無し
@@ -2915,6 +3215,9 @@ AS
 --
     lv_retcode_a3 := cv_status_normal;
     lv_retcode_a5 := cv_status_normal;
+--****************************** 2009/05/15 1.6 S.Tomita ADD START ******************************--
+    lv_retcode_a12 := cv_status_normal;
+--****************************** 2009/05/15 1.6 S.Tomita ADD END   ******************************--
     --
     <<make_ship_data>>
     FOR ln_idx IN gt_order_extra_tbl.FIRST..gt_order_extra_tbl.LAST LOOP
@@ -3065,13 +3368,43 @@ AS
         RAISE global_process_expt;
       END IF;
     END IF;
-    --
+--
+--****************************** 2009/05/15 1.6 S.Tomita ADD START ******************************--
+    -- 出荷依頼I/F登録データがある場合
+    IF ( ( gn_header_normal_cnt > 0 ) OR ( gn_line_normal_cnt > 0 ) ) THEN
+--
+      -- ===============================
+      -- 生産システム起動(A-12)
+      -- ===============================
+      start_production_system(
+         iv_base_code       => iv_base_code        -- 拠点コード
+        ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ
+        ,ov_retcode         => lv_retcode          -- リターン・コード
+        ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ
+      );
+--
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      ELSIF ( lv_retcode = cv_status_warn ) THEN
+        lv_retcode_a12 := cv_status_warn;
+      END IF;
+    END IF;
+--****************************** 2009/05/15 1.6 S.Tomita ADD END   ******************************--
+--
+--****************************** 2009/05/15 1.6 S.Tomita MOD START ******************************--
     -- submainのリターンコード判定
+--    IF ( cv_status_warn IN ( lv_retcode_a3
+--                            ,lv_retcode_a5 ) )
+--    THEN
+--      ov_retcode := cv_status_warn;
+--    END IF;
     IF ( cv_status_warn IN ( lv_retcode_a3
-                            ,lv_retcode_a5 ) )
+                            ,lv_retcode_a5
+                            ,lv_retcode_a12 ) )
     THEN
       ov_retcode := cv_status_warn;
     END IF;
+--****************************** 2009/05/15 1.6 S.Tomita MOD END   ******************************--
 --
   EXCEPTION
     WHEN no_data_found_expt THEN
