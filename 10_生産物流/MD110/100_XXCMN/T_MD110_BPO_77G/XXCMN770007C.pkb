@@ -7,7 +7,7 @@ AS
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/11/11    1.11  N.Yoshida        I_S_511対応、移行データ検証不具合対応
  *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#212対応
+ *  2008/12/04    1.14  T.Mitaya         本番#379対応
  *
  *****************************************************************************************/
 --
@@ -565,7 +566,10 @@ AS
              ) cmpnt_kin 
            , SUM(NVL(CASE  -- 投入品で資材以外
                      WHEN xrpm.line_type =   gc_tou  
-                     AND  mcb2.segment1 <>   gc_sizai  
+-- 2008/12/04 v1.14 UPDATE START
+--                     AND  mcb2.segment1 <>   gc_sizai  
+                     AND  mcb4.segment1 <>   gc_sizai  
+-- 2008/12/04 v1.14 UPDATE END
                      THEN ROUND((itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))
                                         * DECODE(iimb.attribute15
 -- 2008/11/19 v1.12 UPDATE START
@@ -610,6 +614,10 @@ AS
            ,gme_batch_header         gbh1     -- 
            ,gmd_routings_b           grb1     -- 
            ,xxcmn_rcv_pay_mst        xrpm
+-- 2008/12/04 v1.14 ADD START
+           ,gmi_item_categories      gic4
+           ,mtl_categories_b         mcb4
+-- 2008/12/04 v1.14 ADD END
       WHERE  itp.doc_type          = 'PROD'
       AND    itp.completed_ind     = 1
       AND    gmd1.attribute11     >= gr_param.proc_from_date_ch
@@ -650,6 +658,11 @@ AS
       AND    iimb2.item_id         = ximb2.item_id
       AND    itp.doc_type           = xrpm.doc_type
       AND    itp.line_type          = xrpm.line_type
+-- 2008/12/04 v1.14 ADD START
+      AND    itp.item_id = gic4.item_id
+      AND    gic4.category_id = mcb4.category_id
+      AND    gic4.category_set_id = cn_item_class_id
+-- 2008/12/04 v1.14 ADD END
       --AND    gmd1.line_type         = xrpm.line_type
       AND    gmd1.line_type         = gc_kan
       AND    ( ( ( gmd1.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )
@@ -1538,7 +1551,9 @@ AS
 --
       --出来高金額
       ln_dekikin :=  gt_main_data(ln_loop_index).tou_kin
-                   + gt_main_data(ln_loop_index).uti_kin
+-- 2008/12/04 v1.14 DELETE START
+--                   + gt_main_data(ln_loop_index).uti_kin
+-- 2008/12/04 v1.14 DELETE END
                    - gt_main_data(ln_loop_index).cmpnt_huku;
       prc_set_xml('D', 'piece_amount', ln_dekikin);
 --
