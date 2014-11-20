@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.37
+ * Version                : 1.38
  *
  * Program List
  *  ---------------------    ---- ----- --------------------------------------------------
@@ -22,7 +22,8 @@ AS
  *  cancel_reserve            F    NUM   引当解除関数
  *  cancel_careers_schedule   F    NUM   配車解除関数
  *  update_mixed_no           F    VAR   混載元No更新関数(出荷依頼画面専用)
- *  convert_mixed_ship_method F    VAR   混載配送区分変換関数                -- 2008/10/15 H.Itou Add 統合テスト指摘298
+ *  convert_mixed_ship_method F    VAR   混載配送区分変換関数
+ *  chk_sourcing_rules        F    VAR   物流構成存在チェック関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -89,6 +90,7 @@ AS
  *  2008/12/16   1.35  Oracle 二瓶大輔  本番#568対応(配車解除関数変数定義修正)
  *  2008/12/16   1.36  SCS    菅原大輔  本番#744対応(パレット重量計算不正)
  *  2008/12/25   1.37  SCS    北寒寺正夫本番#790対応(重量容積小口個数更新関数(小口個数NULL対応)
+ *  2009/01/08   1.38  SCS    伊藤ひとみ[物流構成存在チェック関数]本番#894対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -233,5 +235,17 @@ AS
     it_ship_method_code IN  xxwsh_ship_method_v.ship_method_code%TYPE -- 配送区分コード
   ) RETURN xxwsh_ship_method_v.ship_method_code%TYPE;                 -- 配送区分コード（混載なし）
 -- 2008/10/15 H.Itou Add End
+--
+-- 2009/01/08 H.Itou Add Start 本番障害#894
+  -- 物流構成存在チェック関数
+  FUNCTION chk_sourcing_rules(
+    it_item_code          IN  xxcmn_sourcing_rules.item_code%TYPE          -- 1.品目コード
+   ,it_base_code          IN  xxcmn_sourcing_rules.base_code%TYPE          -- 2.管轄拠点
+   ,it_ship_to_code       IN  xxcmn_sourcing_rules.ship_to_code%TYPE       -- 3.配送先
+   ,it_delivery_whse_code IN  xxcmn_sourcing_rules.delivery_whse_code%TYPE -- 4.出庫倉庫
+   ,id_standard_date      IN  DATE                                         -- 5.基準日(適用日基準日)
+  ) RETURN VARCHAR2;
+-- 2009/01/08 H.Itou Add End
+--
 END xxwsh_common_pkg;
 /

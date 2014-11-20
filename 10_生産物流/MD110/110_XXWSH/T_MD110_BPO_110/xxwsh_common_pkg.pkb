@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.37
+ * Version                : 1.38
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -89,6 +89,7 @@ AS
  *  2008/12/16   1.35  SCS    二瓶大輔  本番#568対応(配車解除関数変数定義修正)
  *  2008/12/16   1.36  SCS    菅原大輔  本番#744対応(パレット重量計算不正)
  *  2008/12/25   1.37  SCS    北寒寺正夫本番#790対応(重量容積小口個数更新関数(小口個数NULL対応)
+ *  2009/01/08   1.38  SCS    伊藤ひとみ[物流構成存在チェック関数]本番#894対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7490,5 +7491,121 @@ END;
 --
   END convert_mixed_ship_method;
 -- 2008/10/15 H.Itou Add End
+--
+-- 2009/01/08 H.Itou Add Start 本番障害#894
+  /**********************************************************************************
+   * Function Name    : chk_sourcing_rules
+   * Description      : 物流構成存在チェック関数
+   ***********************************************************************************/
+  FUNCTION chk_sourcing_rules(
+    it_item_code          IN  xxcmn_sourcing_rules.item_code%TYPE          -- 1.品目コード
+   ,it_base_code          IN  xxcmn_sourcing_rules.base_code%TYPE          -- 2.管轄拠点
+   ,it_ship_to_code       IN  xxcmn_sourcing_rules.ship_to_code%TYPE       -- 3.配送先
+   ,it_delivery_whse_code IN  xxcmn_sourcing_rules.delivery_whse_code%TYPE -- 4.出庫倉庫
+   ,id_standard_date      IN  DATE                                         -- 5.基準日(適用日基準日)
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_sourcing_rules'; --プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_all_item   CONSTANT VARCHAR2(7)  := 'ZZZZZZZ'; -- 全品目
+--
+    -- *** ローカル変数 ***
+    lt_delivery_whse_code  xxcmn_sourcing_rules.delivery_whse_code%TYPE;
+--
+    -- *** ローカル・カーソル ***
+    -- 配送先でチェック
+    CURSOR cur_chk_ship_to_code(lt_item_code  xxcmn_sourcing_rules.item_code%TYPE)
+    IS
+      SELECT xsr.delivery_whse_code  delivery_whse_code -- 出庫倉庫
+      FROM   xxcmn_sourcing_rules  xsr                  -- 物流構成アドオンマスタ
+      WHERE  xsr.item_code          = lt_item_code      -- 品目コード
+      AND    xsr.ship_to_code       = it_ship_to_code   -- 配送先
+      AND    xsr.start_date_active <= id_standard_date  -- 適用開始日
+      AND    xsr.end_date_active   >= id_standard_date  -- 適用終了日
+    ;
+--
+    -- 管轄拠点でチェック
+    CURSOR cur_chk_base_code(lt_item_code  xxcmn_sourcing_rules.item_code%TYPE)
+    IS
+      SELECT xsr.delivery_whse_code  delivery_whse_code -- 出庫倉庫
+      FROM   xxcmn_sourcing_rules  xsr                  -- 物流構成アドオンマスタ
+      WHERE  xsr.item_code          = lt_item_code      -- 品目コード
+      AND    xsr.base_code          = it_base_code      -- 管轄拠点
+      AND    xsr.start_date_active <= id_standard_date  -- 適用開始日
+      AND    xsr.end_date_active   >= id_standard_date  -- 適用終了日
+    ;
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+    -----------------------------------------------
+    -- 1.品目/配送先をキーに出庫倉庫を取得       --
+    -----------------------------------------------
+    OPEN  cur_chk_ship_to_code(it_item_code);
+    FETCH cur_chk_ship_to_code INTO lt_delivery_whse_code;
+    CLOSE cur_chk_ship_to_code;
+--
+    -----------------------------------------------
+    -- 2.品目/管轄拠点をキーに出庫倉庫を取得     --
+    -----------------------------------------------
+    -- 上記1にて取得できなかった場合
+    IF (lt_delivery_whse_code IS NULL) THEN
+      OPEN  cur_chk_base_code(it_item_code);
+      FETCH cur_chk_base_code INTO lt_delivery_whse_code;
+      CLOSE cur_chk_base_code;
+    END IF;
+--
+    -----------------------------------------------
+    -- 3.全品目/配送先をキーに出庫倉庫を取得     --
+    -----------------------------------------------
+    -- 上記2にて取得できなかった場合
+    IF (lt_delivery_whse_code IS NULL) THEN
+      OPEN  cur_chk_ship_to_code(cv_all_item);
+      FETCH cur_chk_ship_to_code INTO lt_delivery_whse_code;
+      CLOSE cur_chk_ship_to_code;
+    END IF;
+--
+    -----------------------------------------------
+    -- 4.全品目/管轄拠点をキーに出庫倉庫を取得   --
+    -----------------------------------------------
+    -- 上記3にて取得できなかった場合
+    IF (lt_delivery_whse_code IS NULL) THEN
+      OPEN  cur_chk_base_code(cv_all_item);
+      FETCH cur_chk_base_code INTO lt_delivery_whse_code;
+      CLOSE cur_chk_base_code;
+    END IF;
+--
+    -- 取得した出庫倉庫が同じ場合、正常
+    IF (lt_delivery_whse_code = it_delivery_whse_code) THEN
+      RETURN gv_status_normal;
+--
+    -- 取得した出庫倉庫が違う場合、エラー
+    ELSE
+      RETURN gv_status_error;
+    END IF;
+--
+  EXCEPTION
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END chk_sourcing_rules;
+-- 2009/01/08 H.Itou Add End
 END xxwsh_common_pkg;
 /
