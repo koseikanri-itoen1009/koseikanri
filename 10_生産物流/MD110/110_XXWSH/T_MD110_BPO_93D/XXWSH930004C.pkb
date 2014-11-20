@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,7 +34,7 @@ AS
  *  2008/07/08    1.4   Oracle弓場哲士   禁則文字対応
  *  2008/07/09    1.5   Oracle椎名昭圭   変更要求対応#92
  *  2008/07/28    1.6   Oracle椎名昭圭   ST不具合#197、内部課題#32、内部変更要求#180対応
- *
+ *  2008/10/09    1.7   Oracle福田直樹   統合テスト障害#338対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1811,12 +1811,14 @@ AS
     CURSOR cu_main
     IS
       SELECT xmrih.ship_to_locat_code     AS arvl_code            -- 入庫倉庫コード
-            ,xil.description              AS arvl_name            -- 入庫倉庫名称
+            --,xil.description              AS arvl_name            -- 入庫倉庫名称 2008/10/09 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20) AS arvl_name           -- 入庫倉庫名称   2008/10/09 統合テスト障害#338 Add
 -- mod start ver1.1
 --            ,xil.segment1                 AS location_code        -- 出庫倉庫コード
             ,xmrih.shipped_locat_code     AS location_code        -- 出庫倉庫コード
 --            ,xil.description              AS location_name        -- 出庫倉庫名称
-            ,xil2.description             AS location_name        -- 出庫倉庫名称
+            --,xil2.description             AS location_name        -- 出庫倉庫名称 2008/10/09 統合テスト障害#338 Del
+            ,SUBSTRB(xil2.description,1,20) AS location_name      -- 出庫倉庫名称   2008/10/09 統合テスト障害#338 Add
 -- mod end ver1.1
             ,xmrih.schedule_ship_date     AS ship_date            -- 出庫日
             ,xmrih.schedule_arrival_date  AS arvl_date            -- 入庫日
@@ -1964,12 +1966,14 @@ AS
 -- 2008/07/09 A.Shiina v1.5 ADD End
       UNION
       SELECT xmrih.ship_to_locat_code           AS arvl_code            -- 入庫倉庫コード
-            ,xil.description                    AS arvl_name            -- 入庫倉庫名称
+            --,xil.description                    AS arvl_name            -- 入庫倉庫名称 2008/10/09 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20)      AS arvl_name            -- 入庫倉庫名称   2008/10/09 統合テスト障害#338 Add
 -- mod start ver1.1
 --            ,xil.segment1                       AS location_code        -- 出庫倉庫コード
             ,xmrih.shipped_locat_code           AS location_code        -- 出庫倉庫コード
 --            ,xil.description              AS location_name        -- 出庫倉庫名称
-            ,xil2.description             AS location_name        -- 出庫倉庫名称
+            --,xil2.description             AS location_name        -- 出庫倉庫名称     2008/10/09 統合テスト障害#338 Del
+            ,SUBSTRB(xil2.description,1,20)     AS location_name        -- 出庫倉庫名称 2008/10/09 統合テスト障害#338 Add
 -- mod end ver1.1
             ,NVL( xmrih.actual_ship_date
                  ,xmrih.schedule_ship_date )    AS ship_date            -- 出庫日
@@ -2127,12 +2131,14 @@ AS
 --      SELECT xshi.party_site_code             AS arvl_code        -- 入庫倉庫コード
       SELECT xshi.ship_to_location            AS arvl_code        -- 入庫倉庫コード
 -- mod end ver1.1
-            ,xil.description                  AS arvl_name        -- 入庫倉庫名称
+            --,xil.description                  AS arvl_name        -- 入庫倉庫名称 2008/10/09 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20)    AS arvl_name        -- 入庫倉庫名称   2008/10/09 統合テスト障害#338 Add
 -- mod start ver1.1
 --            ,xil.segment1                     AS location_code    -- 出庫倉庫コード
             ,xshi.location_code               AS location_code    -- 出庫倉庫コード
---            ,xil.description                  AS location_name    -- 出庫倉庫名称
-            ,xil2.description                 AS location_name    -- 出庫倉庫名称
+--            ,xil.description                  AS location_name    -- 出庫倉庫名称 
+            --,xil2.description                 AS location_name    -- 出庫倉庫名称 2008/10/09 統合テスト障害#338 Del
+            ,SUBSTRB(xil2.description,1,20)   AS location_name    -- 出庫倉庫名称   2008/10/09 統合テスト障害#338 Add
 -- mod end ver1.1
             ,xshi.shipped_date                AS ship_date        -- 出庫日
             ,xshi.arrival_date                AS arvl_date        -- 入庫日
@@ -2430,7 +2436,8 @@ AS
         --------------------------------------------------
         gt_arvl_code_tbl(lv_data_count)          := lr_temp_tab.arvl_code;        -- 入庫倉庫コード
         gt_arvl_name_tbl(lv_data_count)          := lr_temp_tab.arvl_name;        -- 入庫倉庫名称
-        gt_location_code_tbl(lv_data_count)      := lr_temp_tab.arvl_name;        -- 出庫倉庫コード
+        --gt_location_code_tbl(lv_data_count)      := lr_temp_tab.arvl_name;        -- 出庫倉庫コード 2008/10/09 統合テスト障害#338 Del
+        gt_location_code_tbl(lv_data_count)      := lr_temp_tab.location_code;    -- 出庫倉庫コード   2008/10/09 統合テスト障害#338 Add
         gt_location_name_tbl(lv_data_count)      := lr_temp_tab.location_name;    -- 出庫倉庫名称
         gt_ship_date_tbl(lv_data_count)          := lr_temp_tab.ship_date;        -- 出庫日
         gt_arvl_date_tbl(lv_data_count)          := lr_temp_tab.arvl_date;        -- 入庫日

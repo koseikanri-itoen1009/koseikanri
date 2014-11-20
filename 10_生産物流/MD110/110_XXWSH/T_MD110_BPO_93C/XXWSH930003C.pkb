@@ -34,9 +34,9 @@ AS
  *  2008/06/30    1.3   Oohashi  Takao   不具合ログ対応
  *  2008/07/02    1.4   Kawano   Yuko    ST不具合対応#352
  *  2008/07/07    1.5   Akiyoshi Shiina  変更要求対応#92
- *  2008/07/08    1.6   Satoshi Yunba    禁則文字対応
- *  2008/07/24    1.7   Akiyoshi Shiina  ST不具合#197、内部課題#32、内部変更要求#180対応
- *
+ *  2008/07/08    1.5   Satoshi  Yunba   禁則文字対応
+ *  2008/07/24    1.6   Akiyoshi Shiina  ST不具合#197、内部課題#32、内部変更要求#180対応
+ *  2008/10/10    1.7   Naoki    Fukuda  統合テスト障害#338対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2255,7 +2255,8 @@ AS
 -- mod start ver1.1
 --      SELECT xil.segment1                 AS location_code      -- 出庫倉庫コード
       SELECT xoha.deliver_from            AS location_code      -- 出庫倉庫コード
-            ,xil.description              AS location_name      -- 出庫倉庫名称
+            --,xil.description              AS location_name      -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20) AS location_name      -- 出庫倉庫名称  2008/10/10 統合テスト障害#338 Add
             ,xoha.schedule_ship_date      AS ship_date          -- 出庫日
             ,xoha.schedule_arrival_date   AS arvl_date          -- 入庫日
             ,xoha.head_sales_branch       AS head_sales_branch  -- 検索条件：管轄拠点
@@ -2406,7 +2407,8 @@ AS
 -- mod start ver1.1
       SELECT xoha.deliver_from                  AS location_code    -- 出庫倉庫コード
 --      SELECT xil.segment1                       AS location_code    -- 出庫倉庫コード
-            ,xil.description                    AS location_name    -- 出庫倉庫名称
+            --,xil.description                    AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20)      AS location_name    -- 出庫倉庫名称   2008/10/10 統合テスト障害#338 Add
             ,NVL( xoha.shipped_date
                  ,xoha.schedule_ship_date    )  AS ship_date        -- 出庫日
             ,NVL( xoha.arrival_date
@@ -2562,7 +2564,8 @@ AS
     CURSOR cu_reserv
     IS
       SELECT xil.segment1                     AS location_code    -- 出庫倉庫コード
-            ,xil.description                  AS location_name    -- 出庫倉庫名称
+            --,xil.description                  AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20)    AS location_name    -- 出庫倉庫名称   2008/10/10 統合テスト障害#338 Add
             ,xshi.shipped_date                AS ship_date        -- 出庫日
             ,xshi.arrival_date                AS arvl_date        -- 入庫日
 -- mod start ver1.1
@@ -2903,7 +2906,8 @@ AS
     CURSOR cu_main
     IS
       SELECT xil.segment1                 AS location_code    -- 出庫倉庫コード
-            ,xil.description              AS location_name    -- 出庫倉庫名称
+            --,xil.description              AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20) AS location_name    -- 出庫倉庫名称  2008/10/10 統合テスト障害#338 Add
             ,xmrih.schedule_ship_date     AS ship_date        -- 出庫日
             ,xmrih.schedule_arrival_date  AS arvl_date        -- 入庫日
 -- mod start ver1.1
@@ -3047,7 +3051,8 @@ AS
 -- 2008/07/07 A.Shiina v1.5 ADD End
       UNION
       SELECT xil.segment1                       AS location_code    -- 出庫倉庫コード
-            ,xil.description                    AS location_name    -- 出庫倉庫名称
+            --,xil.description                    AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20)      AS location_name    -- 出庫倉庫名称   2008/10/10 統合テスト障害#338 Add
             ,NVL( xmrih.actual_ship_date
                  ,xmrih.schedule_ship_date )    AS ship_date        -- 出庫日
             ,NVL( xmrih.actual_arrival_date
@@ -3198,7 +3203,8 @@ AS
     CURSOR cu_reserv
     IS
       SELECT xil.segment1                     AS location_code    -- 出庫倉庫コード
-            ,xil.description                  AS location_name    -- 出庫倉庫名称
+            --,xil.description                  AS location_name    -- 出庫倉庫名称 2008/10/10 統合テスト障害#338 Del
+            ,SUBSTRB(xil.description,1,20)    AS location_name    -- 出庫倉庫名称   2008/10/10 統合テスト障害#338 Add
             ,xshi.shipped_date                AS ship_date        -- 出庫日
             ,xshi.arrival_date                AS arvl_date        -- 入庫日
 -- mod start ver1.1
