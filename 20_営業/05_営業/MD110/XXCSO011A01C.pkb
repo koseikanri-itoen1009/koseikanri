@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,9 +40,10 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009-01-21    1.0   Noriyuki.Yabuki  新規作成
- *  2008-03-05    1.1   Noriyuki.Yabuki  結合障害対応(不具合ID.46)
+ *  2009-01-21    1.0   N.Yabuki         新規作成
+ *  2009-03-05    1.1   N.Yabuki         結合障害対応(不具合ID.46)
  *                                       ・カテゴリ区分がNULL(営業TM以外)の場合、後続処理をスキップする処理を追加
+ *  2009-04-02    1.2   N.Yabuki         【ST障害対応177】顧客ステータスチェックに「25：SP承認済」を追加
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1953,6 +1954,9 @@ AS
     cv_cust_sts_approved   CONSTANT VARCHAR2(2) := '30';  -- 顧客ステータス「承認済」
     cv_cust_sts_customer   CONSTANT VARCHAR2(2) := '40';  -- 顧客ステータス「顧客」
     cv_cust_sts_abeyance   CONSTANT VARCHAR2(2) := '50';  -- 顧客ステータス「休止」
+    /*20090402_yabuki_ST177 START*/
+    cv_cust_sts_sp_aprvd   CONSTANT VARCHAR2(2) := '25';  -- 顧客ステータス「SP承認済」
+    /*20090402_yabuki_ST177 END*/
     --
     -- *** ローカル変数 ***
     lv_customer_status    xxcso_cust_accounts_v.customer_status%TYPE;  -- 顧客ステータス
@@ -2007,8 +2011,12 @@ AS
         --
     END;
     --
-    -- 取得した顧客ステータスが「承認済」「顧客」「休止」以外の場合
-    IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance ) ) THEN
+    /*20090402_yabuki_ST177 START*/
+    -- 取得した顧客ステータスが「承認済」「顧客」「休止」「SP承認済」以外の場合
+    IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance, cv_cust_sts_sp_aprvd ) ) THEN
+--    -- 取得した顧客ステータスが「承認済」「顧客」「休止」以外の場合
+--    IF ( lv_customer_status NOT IN ( cv_cust_sts_approved, cv_cust_sts_customer, cv_cust_sts_abeyance ) ) THEN
+    /*20090402_yabuki_ST177 END*/
       lv_errbuf := xxccp_common_pkg.get_msg(
                        iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
                      , iv_name         => cv_tkn_number_34            -- メッセージコード
@@ -4982,3 +4990,4 @@ AS
   END main_for_approval;
 --
 END XXCSO011A01C;
+/
