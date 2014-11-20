@@ -9,7 +9,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_001_A04_売上計画格納【共通】
  *                    
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  2009-02-27    1.1   Maruyama.Mio     【障害対応037】第6営業日過ぎエラーメッセージ不具合対応
  *  2009-02-27    1.1   Maruyama.Mio     【障害対応038】エラー時成功件数カウント不具合対応
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2010-02-22    1.3   Kazuyo.Hosoi     【E_本稼動_01679】営業日日付取得関数用パラメータを
+ *                                       プロファイル値に持つように設定
  *
  *****************************************************************************************/
 -- 
@@ -188,6 +190,9 @@ AS
   cv_debug_msg13         CONSTANT VARCHAR2(200) := 'ロールバックしました。';
   cv_debug_msg14         CONSTANT VARCHAR2(200) := '<< 売上計画データチェック処理 >>';
   cv_debug_msg15         CONSTANT VARCHAR2(200) := '全件正常にチェック処理が終了しました。';
+  /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+  cv_debug_msg16         CONSTANT VARCHAR2(200) := '売上計画アップロード締営業日 = ';
+  /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -325,6 +330,9 @@ AS
   PROCEDURE init(
      ov_xls_ver_rt   OUT NOCOPY VARCHAR2   -- 売上計画編集【ルートセールス】エクセルプログラムバージョン番号
     ,ov_xls_ver_hnb  OUT NOCOPY VARCHAR2   -- 売上計画編集【本部営業】エクセルプログラムバージョン番号
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    ,ov_sls_pln_upld_cls_dy  OUT NOCOPY VARCHAR2   -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     ,ov_errbuf       OUT NOCOPY VARCHAR2   -- エラー・メッセージ            -- # 固定 #
     ,ov_retcode      OUT NOCOPY VARCHAR2   -- リターン・コード              -- # 固定 #
     ,ov_errmsg       OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -354,6 +362,10 @@ AS
     cv_excel_ver_slspln_route    CONSTANT VARCHAR2(30)   := 'XXCSO1_EXCEL_VER_SLSPLN_ROUTE';
     -- XXCSO: 売上計画【本部営業】エクセルプログラムバージョン番号
     cv_excel_ver_slspln_honbu    CONSTANT VARCHAR2(30)   := 'XXCSO1_EXCEL_VER_SLSPLN_HONBU';
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    -- XXCSO:売上計画アップロード締営業日
+    cv_sls_pln_upld_cls_dy         CONSTANT VARCHAR2(30)   := 'XXCSO1_SLS_PLN_UPLD_CLS_DY';
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
 --
     -- *** ローカル変数 ***
     -- 起動パラメータ戻り値格納用
@@ -361,6 +373,9 @@ AS
     -- プロファイル値取得戻り値格納用
     lv_xls_ver_rt                VARCHAR2(2000);    -- 売上計画編集【ルートセールス】エクセルプログラムバージョン番号
     lv_xls_ver_hnb               VARCHAR2(2000);    -- 売上計画編集【本部営業】エクセルプログラムバージョン番号
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    lv_sls_pln_upld_cls_dy       VARCHAR2(2000);    -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
     -- プロファイル値取得失敗時 トークン値格納用
     lv_tkn_value                 VARCHAR2(1000);    -- プロファイル名格納用変数
 --
@@ -436,12 +451,22 @@ AS
        cv_excel_ver_slspln_honbu
       ,lv_xls_ver_hnb
     ); -- 売上計画編集【本部営業】エクセルプログラムバージョン番号
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    FND_PROFILE.GET(
+       cv_sls_pln_upld_cls_dy
+      ,lv_sls_pln_upld_cls_dy
+    ); -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
 --
     -- プロファイル値取得に失敗した場合
     IF (lv_xls_ver_rt IS NULL) THEN
       lv_tkn_value := cv_excel_ver_slspln_route;
     ELSIF (lv_xls_ver_hnb IS NULL) THEN
       lv_tkn_value := cv_excel_ver_slspln_honbu;
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    ELSIF (lv_sls_pln_upld_cls_dy IS NULL) THEN
+      lv_tkn_value := cv_sls_pln_upld_cls_dy;
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     END IF;
     -- エラーメッセージ取得
     IF (lv_tkn_value) IS NOT NULL THEN
@@ -458,13 +483,20 @@ AS
     -- 取得したプロファイル値をOUTパラメータに設定
     ov_xls_ver_rt  := lv_xls_ver_rt;    -- 売上計画編集【ルートセールス】エクセルプログラムバージョン番号
     ov_xls_ver_hnb := lv_xls_ver_hnb;   -- 売上計画編集【本部営業】エクセルプログラムバージョン番号
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    ov_sls_pln_upld_cls_dy := lv_sls_pln_upld_cls_dy;   -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
 --
       -- ログ出力
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => cv_debug_msg1 || CHR(10) ||
                  cv_debug_msg2 || lv_xls_ver_rt  || CHR(10) ||
-                 cv_debug_msg3 || lv_xls_ver_hnb || CHR(10)
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+--                 cv_debug_msg3 || lv_xls_ver_hnb || CHR(10)
+                 cv_debug_msg3 || lv_xls_ver_hnb || CHR(10) ||
+                 cv_debug_msg16 || lv_sls_pln_upld_cls_dy   || CHR(10)
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     );
 --
     -- 4)ファイルアップロード名称抽出
@@ -1820,6 +1852,9 @@ AS
 --
   PROCEDURE chk_mst_is_exists(
      iv_user_base_code  IN  VARCHAR2         -- ログインユーザーの拠点コード
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    ,in_sls_pln_upld_cls_dy IN  NUMBER       -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     ,ov_errbuf          OUT NOCOPY VARCHAR2  -- エラー・メッセージ            -- # 固定 #
     ,ov_retcode         OUT NOCOPY VARCHAR2  -- リターン・コード              -- # 固定 #
     ,ov_errmsg          OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -1892,7 +1927,10 @@ AS
 --###########################  固定部 END   ############################
 --
     i := g_rec_count;  -- A-5内使用配列添え字にサブメインチェック用ループカウンタを格納
-    ld_standard_work_day := xxccp_common_pkg2.get_working_day((last_day(add_months(gd_now_date,-1))),5);
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+--    ld_standard_work_day := xxccp_common_pkg2.get_working_day((last_day(add_months(gd_now_date,-1))),5);
+    ld_standard_work_day := xxccp_common_pkg2.get_working_day((last_day(add_months(gd_now_date,-1))),in_sls_pln_upld_cls_dy);
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     -- 第5営業日取得
 --
     -- 1)拠点コードがログインユーザーの拠点コードと一致するかチェック
@@ -2835,6 +2873,9 @@ AS
 --
   PROCEDURE inupdl_prsn_month_data(
      iv_base_value        IN  VARCHAR2                    -- 当該行データ
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    ,in_sls_pln_upld_cls_dy IN  NUMBER                  -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     ,ov_errbuf            OUT NOCOPY VARCHAR2             -- エラー・メッセージ            -- # 固定 #
     ,ov_retcode           OUT NOCOPY VARCHAR2             -- リターン・コード              -- # 固定 #
     ,ov_errmsg            OUT NOCOPY VARCHAR2             -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -2936,8 +2977,11 @@ AS
     --  営業日判定
     -- =============
 --
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
     -- 第5営業日取得
-    ld_standard_work_day := xxccp_common_pkg2.get_working_day((last_day(add_months(gd_now_date,-1))),5);
+--    ld_standard_work_day := xxccp_common_pkg2.get_working_day((last_day(add_months(gd_now_date,-1))),5);
+    ld_standard_work_day := xxccp_common_pkg2.get_working_day((last_day(add_months(gd_now_date,-1))),in_sls_pln_upld_cls_dy);
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
 --
     -- 現在日付が第5営業日を過ぎているかチェック
     IF (lb_nw_month = TRUE) THEN
@@ -3950,6 +3994,9 @@ AS
     l_col_data_tab       g_col_data_ttype;       -- 分割後項目データを格納する配列
     lv_xls_ver_rt        VARCHAR2(100);          -- 売上計画編集【ルートセールス】エクセルプログラムバージョン番号
     lv_xls_ver_hnb       VARCHAR2(100);          -- 売上計画編集【本部営業】エクセルプログラムバージョン番号
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+    lv_sls_pln_upld_cls_dy  VARCHAR2(100);       -- 売上計画アップロード締営業日
+    /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
     lv_user_base_code    VARCHAR2(100);          -- ログインユーザーの拠点コード
     lv_base_value        VARCHAR2(5000);         -- 当該行データ
     ln_dpt_mnth_pln_cnt  NUMBER;                 -- 抽出件数
@@ -3976,6 +4023,9 @@ AS
     init(
        ov_xls_ver_rt  => lv_xls_ver_rt   -- 売上計画編集【ルートセールス】エクセルプログラムバージョン番号
       ,ov_xls_ver_hnb => lv_xls_ver_hnb  -- 売上計画編集【本部営業】エクセルプログラムバージョン番号
+      /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+      ,ov_sls_pln_upld_cls_dy => lv_sls_pln_upld_cls_dy    -- 売上計画アップロード締営業日
+      /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
       ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            -- # 固定 #
       ,ov_retcode => lv_retcode          -- リターン・コード              -- # 固定 #
       ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -4058,6 +4108,10 @@ AS
             -- =============================
             chk_mst_is_exists(
               iv_user_base_code  => lv_user_base_code  -- ログインユーザーの拠点コード
+              /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+              ,in_sls_pln_upld_cls_dy => TO_NUMBER(lv_sls_pln_upld_cls_dy)
+                                                    -- 売上計画アップロード締営業日
+              /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
               ,ov_errbuf         => lv_errbuf          -- エラー・メッセージ            -- # 固定 #
               ,ov_retcode        => lv_sub_retcode     -- リターン・コード              -- # 固定 #
               ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -4172,6 +4226,10 @@ AS
             -- ===========================================
             inupdl_prsn_month_data(
                iv_base_value    => lv_base_value    -- 当該行データ
+              /* 2010.02.22 K.Hosoi E_本稼動_01679対応 START */
+              ,in_sls_pln_upld_cls_dy => TO_NUMBER(lv_sls_pln_upld_cls_dy)
+                                                    -- 売上計画アップロード締営業日
+              /* 2010.02.22 K.Hosoi E_本稼動_01679対応 END */
               ,ov_errbuf        => lv_errbuf        -- エラー・メッセージ            -- # 固定 #
               ,ov_retcode       => lv_sub_retcode   -- リターン・コード              -- # 固定 #
               ,ov_errmsg        => lv_errmsg        -- ユーザー・エラー・メッセージ  -- # 固定 #
