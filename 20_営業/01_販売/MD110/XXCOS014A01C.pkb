@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/09/15    1.15  M.Sano           [0001211] レビュー指摘対応
  *  2009/10/02    1.16  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
  *  2009/10/14    1.17  M.Sano           [0001376] 納品書用データ作成済フラグの更新を明細単位へ変更
+ *  2009/12/09    1.18  K.Nakamura       [本稼動_00171] 伝票計の計算を伝票単位へ変更
  *
  *****************************************************************************************/
 --
@@ -1618,6 +1619,9 @@ AS
     cv_edi_item_code_div01    CONSTANT VARCHAR2(01) := '1' ;                  --顧客
     cv_edi_item_code_div02    CONSTANT VARCHAR2(01) := '2' ;                  --JAN
     cv_init_cust_po_number    CONSTANT VARCHAR2(04) := 'INIT';                --固定値INIT
+/* 2009/12/09 Ver1.18 Add Start */
+    cv_dummy                  CONSTANT VARCHAR2(05) := 'DUMMY';               --固定値DUMMY
+/* 2009/12/09 Ver1.18 Add End   */
     -- *** ローカル変数 ***
     lt_header_id          oe_order_headers_all.header_id%TYPE;                --ヘッダID
 /* 2009/10/02 Ver1.16 Mod Start */
@@ -1627,8 +1631,16 @@ AS
     lt_line_id            oe_order_lines_all.line_id%TYPE;                    --受注明細ID
 /* 2009/10/14 Ver1.17 Add End   */
     lt_tkn                fnd_new_messages.message_text%TYPE;                 --メッセージ用文字列
-    lv_break_key_old                   VARCHAR2(100);                         --旧ブレイクキー
-    lv_break_key_new                   VARCHAR2(100);                         --新ブレイクキー
+/* 2009/12/09 Ver1.18 Mod Start */
+--    lv_break_key_old                   VARCHAR2(100);                         --旧ブレイクキー
+--    lv_break_key_new                   VARCHAR2(100);                         --新ブレイクキー
+    lv_break_key_old1                  VARCHAR2(100);                         --旧ブレイクキー1
+    lv_break_key_old2                  VARCHAR2(100);                         --旧ブレイクキー2
+    lv_break_key_old3                  VARCHAR2(100);                         --旧ブレイクキー3
+    lv_break_key_new1                  VARCHAR2(100);                         --新ブレイクキー1
+    lv_break_key_new2                  VARCHAR2(100);                         --新ブレイクキー2
+    lv_break_key_new3                  VARCHAR2(100);                         --新ブレイクキー3
+/* 2009/12/09 Ver1.18 Mod End   */
     lt_cust_po_number     oe_order_headers_all.cust_po_number%TYPE;           --受注ヘッダ（顧客発注）
     lt_line_number        oe_order_lines_all.line_number%TYPE;                --受注明細　（明細番号）
 /* 2009/08/12 Ver1.14 Del Start */
@@ -3383,10 +3395,14 @@ AS
        AND   oola.flow_status_code         != cv_cancel                                                       --ステータス
 --******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
        ORDER BY ivoh.cust_po_number                                                                           --受注ヘッダ（顧客発注）
+/* 2009/12/09 Ver1.18 Mod Start */
 /* 2009/10/02 Ver1.16 Mod Start */
-               ,ivoh.header_id
+--               ,ivoh.header_id
 /* 2009/10/02 Ver1.16 Mod End   */
+               ,customer_code                                                                                 --顧客コード
+               ,shop_delivery_date                                                                            --店舗納品日
                ,oola.line_number                                                                              --受注明細  （明細番号）
+/* 2009/12/09 Ver1.18 Mod End   */
 /* 2009/10/14 Ver1.17 Mod Start */
 --       FOR UPDATE OF ooha_lock.header_id NOWAIT                                                               --ロック
        FOR UPDATE OF oola.line_id NOWAIT                                                               --ロック
@@ -4011,16 +4027,31 @@ AS
       --データレコード作成処理《伝票単位の編集》
       --==============================================================
     --
+/* 2009/12/09 Ver1.18 Mod Start */
 /* 2009/10/02 Ver1.16 Mod Start */
 --      lv_break_key_new  :=  lt_cust_po_number;                                --ブレイクキー初期値設定：新
-      lv_break_key_new  :=  TO_CHAR(lt_header_id);                            --ブレイクキー初期値設定：新
+--      lv_break_key_new  :=  TO_CHAR(lt_header_id);                            --ブレイクキー初期値設定：新
+      lv_break_key_new1  :=  l_data_tab('INVOICE_NUMBER');                      --ブレイクキー初期値設定：新1
+      lv_break_key_new2  :=  l_data_tab('CUSTOMER_CODE');                       --ブレイクキー初期値設定：新2
+      lv_break_key_new3  :=  NVL( l_data_tab('SHOP_DELIVERY_DATE'), cv_dummy ); --ブレイクキー初期値設定：新3
 /* 2009/10/02 Ver1.16 Mod End   */
+/* 2009/12/09 Ver1.18 Mod End   */
     --
       IF ( cur_data_record%ROWCOUNT = 1 ) THEN
-        lv_break_key_old  :=  cv_init_cust_po_number;                         --ブレイクキー初期値設定：旧
+/* 2009/12/09 Ver1.18 Mod Start */
+--        lv_break_key_old  :=  cv_init_cust_po_number;                         --ブレイクキー初期値設定：旧
+        lv_break_key_old1  :=  cv_init_cust_po_number;                         --ブレイクキー初期値設定：旧
+        lv_break_key_old2  :=  cv_init_cust_po_number;                         --ブレイクキー初期値設定：旧
+        lv_break_key_old3  :=  cv_init_cust_po_number;                         --ブレイクキー初期値設定：旧
+/* 2009/12/09 Ver1.18 Mod End   */
       END IF;
     --
-      IF ( lv_break_key_old != lv_break_key_new ) THEN
+/* 2009/12/09 Ver1.18 Mod Start */
+--      IF ( lv_break_key_old != lv_break_key_new ) THEN
+      IF ( lv_break_key_old1 != lv_break_key_new1 )
+        OR ( lv_break_key_old2 != lv_break_key_new2 )
+        OR ( lv_break_key_old3 != lv_break_key_new3 ) THEN
+/* 2009/12/09 Ver1.18 Mod End   */
     --合計数量の更新
         FOR i IN 1..lt_tbl.COUNT LOOP
           lt_tbl(i)('INVOICE_INDV_ORDER_QTY')       := lt_invoice_indv_order_qty;           --発注数量（バラ）
@@ -4091,10 +4122,15 @@ AS
         lt_tbl := lt_tbl_init;
     --親テーブルインデックスの初期化
         ln_cnt := 0;
+/* 2009/12/09 Ver1.18 Mod Start */
 -- 2009/05/28 M.Sano Ver.1.11 add start
     --ブレイクキーの取得
-        lv_break_key_old := lv_break_key_new;
+--        lv_break_key_old := lv_break_key_new;
+        lv_break_key_old1 := lv_break_key_new1;
+        lv_break_key_old2 := lv_break_key_new2;
+        lv_break_key_old3 := lv_break_key_new3;
 -- 2009/05/28 M.Sano Ver.1.11 add start
+/* 2009/12/09 Ver1.18 Mod End   */
 /* 2009/10/14 Ver1.17 Add Start */
     --受注明細IDテーブルの初期化
         l_order_line_id_tab.DELETE;

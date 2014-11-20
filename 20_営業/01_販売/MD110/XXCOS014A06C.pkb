@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/08/27    1.13  N.Maeda          [0000443] PT対応
  *                                       [0001306] 伝票計集約条件、売上区分チェック条件修正
  *  2009/10/06    1.14  N.Maeda          [0001464] 受注明細分割による影響対応
+ *  2009/12/09    1.15  K.Nakamura       [本稼動_00171] 伝票計の計算を伝票単位へ変更
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -1522,11 +1523,24 @@ AS
     -- *** ローカル定数 ***
 --
     cv_init_cust_po_number             CONSTANT VARCHAR2(04) := 'INIT';           --固定値INIT
+--******************************************* 2009/12/09 1.15 K.Nakamura ADD START **********************************
+    cv_dummy                           CONSTANT VARCHAR2(05) := 'DUMMY';          --固定値DUMMY
+--******************************************* 2009/12/09 1.15 K.Nakamura ADD END   **********************************
     -- *** ローカル変数 ***
     lt_header_id                       oe_order_headers_all.header_id%TYPE;       --ヘッダID
     lt_tkn                             fnd_new_messages.message_text%TYPE;        --メッセージ用文字列
-    lv_break_key_old                   VARCHAR2(100);                             --旧ブレイクキー
-    lv_break_key_new                   VARCHAR2(100);                             --新ブレイクキー
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD START **********************************
+--    lv_break_key_old                  VARCHAR2(100);                             --旧ブレイクキー
+--    lv_break_key_new                  VARCHAR2(100);                             --新ブレイクキー
+    lv_break_key_old1                  VARCHAR2(100);                             --旧ブレイクキー
+    lv_break_key_old2                  VARCHAR2(100);                             --旧ブレイクキー
+    lv_break_key_old3                  VARCHAR2(100);                             --旧ブレイクキー
+    lv_break_key_old4                  VARCHAR2(100);                             --旧ブレイクキー
+    lv_break_key_new1                  VARCHAR2(100);                             --新ブレイクキー
+    lv_break_key_new2                  VARCHAR2(100);                             --新ブレイクキー
+    lv_break_key_new3                  VARCHAR2(100);                             --新ブレイクキー
+    lv_break_key_new4                  VARCHAR2(100);                             --新ブレイクキー
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD END   **********************************
     lt_cust_po_number                  oe_order_headers_all.cust_po_number%TYPE;  --受注ヘッダ（顧客発注）
     lt_line_number                     oe_order_lines_all.line_number%TYPE;       --受注明細（明細番号）
     lt_bargain_class                   fnd_lookup_values.attribute8%TYPE;         --定番特売区分
@@ -4836,10 +4850,17 @@ AS
 -- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
 -- 2009/04/27 K.Kiriu Ver.1.10 mod end
       )                                                                                 tbl01
+-- ************ 2009/12/09 K.Nakamura 1.15 MOD START ************** --
 -- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
-      ORDER BY tbl01.invoice_number,tbl01.header_id ,tbl01.line_no
+--      ORDER BY tbl01.invoice_number,tbl01.header_id ,tbl01.line_no
 --      ORDER BY tbl01.invoice_number,tbl01.line_no
+      ORDER BY tbl01.invoice_number
+              ,tbl01.edi_chain_code
+              ,tbl01.shop_code
+              ,tbl01.shop_delivery_date
+              ,tbl01.line_no
 -- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
+-- ************ 2009/12/09 K.Nakamura 1.15 MOD END **************** --
       ;
 --
     -- *** ローカル・レコード ***
@@ -5500,16 +5521,34 @@ out_line(buff => '1');
       --データレコード作成処理《伝票単位の編集》
       --==============================================================
 --
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD START **********************************
 --******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
-      lv_break_key_new    :=  lt_header_id;                                --ブレイクキー初期値設定：新
+--      lv_break_key_new    :=  lt_header_id;                                --ブレイクキー初期値設定：新
 --      lv_break_key_new    :=  lt_cust_po_number;                                --ブレイクキー初期値設定：新
+      lv_break_key_new1    :=  l_data_tab('INVOICE_NUMBER');                      --ブレイクキー初期値設定：新1
+      lv_break_key_new2    :=  l_data_tab('EDI_CHAIN_CODE');                      --ブレイクキー初期値設定：新2
+      lv_break_key_new3    :=  l_data_tab('SHOP_CODE');                           --ブレイクキー初期値設定：新3
+      lv_break_key_new4    :=  NVL( l_data_tab('SHOP_DELIVERY_DATE'), cv_dummy ); --ブレイクキー初期値設定：新4
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD END ************************************
 --
       IF ( cur_data_record%ROWCOUNT = 1 ) THEN
-        lv_break_key_old  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD START **********************************
+--        lv_break_key_old  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
+        lv_break_key_old1  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
+        lv_break_key_old2  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
+        lv_break_key_old3  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
+        lv_break_key_old4  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD END ************************************
       END IF;
-out_line(buff => 'lv_break_key_old:' || lv_break_key_old || '   lv_break_key_new:' || lv_break_key_new);
-      IF ( lv_break_key_old != lv_break_key_new ) THEN
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD START **********************************
+--out_line(buff => 'lv_break_key_old:' || lv_break_key_old || '   lv_break_key_new:' || lv_break_key_new);
+--      IF ( lv_break_key_old != lv_break_key_new ) THEN
+      IF ( lv_break_key_old1 != lv_break_key_new1 )
+        OR ( lv_break_key_old2 != lv_break_key_new2 )
+        OR ( lv_break_key_old3 != lv_break_key_new3 )
+        OR ( lv_break_key_old4 != lv_break_key_new4 ) THEN
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD END ************************************
     --合計数量の更新
         FOR i IN 1..lt_tbl.COUNT LOOP
 out_line(buff => 'i:' || i);
@@ -5548,10 +5587,18 @@ out_line(buff => 'i:' || i);
             RAISE global_api_expt;
 -- 2009/02/20 T.Nakamura Ver.1.7 mod end
           END IF;
-          lv_break_key_old  :=  lv_break_key_new;                             --ブレイクキー設定
+--******************************************* 2009/12/09 1.15 K.Nakamura DEL START **********************************
+--          lv_break_key_old  :=  lv_break_key_new;                             --ブレイクキー設定
+--******************************************* 2009/12/09 1.15 K.Nakamura DEL END ************************************
         END LOOP;
     --前回伝票番号のセット（ブレイクキー設定）
-        lv_break_key_old    := lv_break_key_new;
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD START **********************************
+--        lv_break_key_old    := lv_break_key_new;
+        lv_break_key_old1    := lv_break_key_new1;
+        lv_break_key_old2    := lv_break_key_new2;
+        lv_break_key_old3    := lv_break_key_new3;
+        lv_break_key_old4    := lv_break_key_new4;
+--******************************************* 2009/12/09 1.15 K.Nakamura MOD END ************************************
     --合計数量の初期化
         lt_invoice_indv_order_qty      := 0;
         lt_invoice_case_order_qty      := 0;
