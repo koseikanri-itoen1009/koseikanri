@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A10R(body)
  * Description      : 引取計画実績対比表
  * MD.050           : MD050_COP_004_A10_引取計画実績対比表
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2013/12/10    1.0   S.Niki           新規作成
  *  2014/03/10    1.1   K.Nakamura       E_本稼動_10958対応
+ *  2014/09/09    1.2   K.Nakatsu        E_本稼動_10939対応
  *
  *****************************************************************************************/
 --
@@ -199,6 +200,9 @@ AS
   cv_vrq_file                 CONSTANT VARCHAR2(100)  := 'XXCOP004A10S.vrq';   -- クエリー様式ファイル名
   cv_output_mode              CONSTANT VARCHAR2(1)    := '1';                  -- 出力区分(PDF)
   cv_extension_pdf            CONSTANT VARCHAR2(100)  := '.pdf';               -- 拡張子(PDF)
+-- ********** Ver.1.2 K.Nakatsu ADD Start ************ --
+  cv_slip_type_10             CONSTANT VARCHAR2(2)    := '10';                 -- 伝票区分 10:工場入庫
+-- ********** Ver.1.2 K.Nakatsu ADD End  ************ --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -936,6 +940,9 @@ AS
 -- ********** Ver.1.1 K.Nakamura ADD End ************ --
       AND    xsi.store_check_flag    = cv_store_check_y       -- 入庫確認済
       AND    xsi.summary_data_flag   = cv_summary_data_y      -- サマリーデータ
+-- ********** Ver.1.2 K.Nakatsu ADD Start ************ --
+      AND    xsi.slip_type           = cv_slip_type_10        -- 伝票区分 10:工場入庫
+-- ********** Ver.1.2 K.Nakatsu ADD End   ************ --
       AND    xsi.slip_date          >= TO_DATE(gv_target_month, cv_format_yyyymm)           -- 入力パラメータ.対象年月
       AND    xsi.slip_date          <= LAST_DAY(TO_DATE(gv_target_month, cv_format_yyyymm)) -- 入力パラメータ.対象年月
       AND    xsi.base_code           = iv_base_code                                         -- 入力パラメータ.拠点
