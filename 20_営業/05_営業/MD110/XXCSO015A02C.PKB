@@ -8,7 +8,7 @@ AS
  *                    CSVƒtƒ@ƒCƒ‹‚ğì¬‚µ‚Ü‚·B
  * MD.050           : MD050_©”Ì‹@-EBSƒCƒ“ƒ^ƒtƒF[ƒXFiOUTjì‹ÆˆË—Š^”­’î•ñ(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009-05-19    1.7   K.Satomura       ‚r‚sáŠQ‘Î‰(T1_1048‘Î‰)
  *  2009-05-21    1.8   M.Maruyama       ‚r‚sáŠQ‘Î‰(T1_1093‘Î‰)
  *  2009-05-22    1.9   K.Satomura       ‚r‚sáŠQ‘Î‰(T1_1142‘Î‰)
+ *  2009-05-22    1.10  K.Satomura       ‚r‚sáŠQ‘Î‰(T1_1152‘Î‰)
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -1074,7 +1075,10 @@ AS
               ,casv.state
               ,casv.city
               ,casv.address1
-              ,casv.address2
+              /* 2009.05.22 K.Satomura T1_1152‘Î‰ START */
+              --,casv.address2
+              ,NVL(casv.address2, cv_adddrss_chr)
+              /* 2009.05.22 K.Satomura T1_1152‘Î‰ END */
         INTO   lv_sale_base_code
               ,lv_reqst_base_code
               ,lv_new_organization_name
@@ -1170,7 +1174,10 @@ AS
               ,casv.state
               ,casv.city
               ,casv.address1
-              ,casv.address2
+              /* 2009.05.22 K.Satomura T1_1152‘Î‰ START */
+              --,casv.address2
+              ,NVL(casv.address2, cv_adddrss_chr)
+              /* 2009.05.22 K.Satomura T1_1152‘Î‰ END */
               /* 2009.04.10 K.Satomura T1_0408‘Î‰ START */
               ,casv.account_number
               /* 2009.04.10 K.Satomura T1_0408‘Î‰ END */
@@ -1270,7 +1277,10 @@ AS
                 ,casv.state
                 ,casv.city
                 ,casv.address1
-                ,casv.address2
+                /* 2009.05.22 K.Satomura T1_1152‘Î‰ START */
+                --,casv.address2
+                ,NVL(casv.address2, cv_adddrss_chr)
+                /* 2009.05.22 K.Satomura T1_1152‘Î‰ END */
                 ,casv.account_number
           INTO   lv_new_organization_name
                 ,lv_new_full_name
@@ -1498,7 +1508,10 @@ AS
               ,casv.state
               ,casv.city
               ,casv.address1
-              ,casv.address2
+              /* 2009.05.22 K.Satomura T1_1152‘Î‰ START */
+              --,casv.address2
+              ,NVL(casv.address2, cv_adddrss_chr)
+              /* 2009.05.22 K.Satomura T1_1152‘Î‰ END */
               ,casv.account_number
         INTO   lv_cur_organization_name
               ,lv_cur_full_name
@@ -1953,7 +1966,10 @@ AS
     -- -- Œ»İ’uæZŠ‚S
     --io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
     -- Œ»İ’uæZŠ‚S
-    io_get_data_rec.cur_est_site_adress4   := NVL(lv_cur_est_site_adress4,cv_adddrss_chr);
+    /* 2009.05.22 K.Satomura T1_1152‘Î‰ START */
+    --io_get_data_rec.cur_est_site_adress4   := NVL(lv_cur_est_site_adress4,cv_adddrss_chr);
+    io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
+    /* 2009.05.22 K.Satomura T1_1152‘Î‰ END */
     -- -- Vİ’uæ–¼
     --io_get_data_rec.new_organization_name  := lv_new_organization_name;
     -- Vİ’uæ–¼
@@ -1980,7 +1996,10 @@ AS
     -- -- Vİ’uæZŠ‚S
     --io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
     -- Vİ’uæZŠ‚S
-    io_get_data_rec.new_est_site_adress4   := NVL(lv_new_est_site_adress4,cv_adddrss_chr);
+    /* 2009.05.22 K.Satomura T1_1152‘Î‰ START */
+    --io_get_data_rec.new_est_site_adress4   := NVL(lv_new_est_site_adress4,cv_adddrss_chr);
+    io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
+    /* 2009.05.22 K.Satomura T1_1152‘Î‰ END */
     /* 2009.05.21 M.Maruyama T1_1093‘Î‰ END */
     -- ŒÚ‹qƒR[ƒh‚PiVİ’uæ)
     io_get_data_rec.new_customer_code1     := lv_new_customer_code1;
