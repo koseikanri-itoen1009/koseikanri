@@ -357,65 +357,65 @@ AS
 --      FROM    xxcoi_inv_reception_daily   xird                                      -- ŒŸİŒÉó•¥•\i“új
 --      WHERE   xird.request_id     =   cn_request_id;
 --
-SELECT    sub.base_code                         base_code
-         ,sub.subinventory_code                 subinventory_code
-         ,sub.inventory_item_id                 inventory_item_id
-         ,sub.practice_date                     practice_date
-         ,SUM(xird.sales_shipped)               sales_shipped
-         ,SUM(xird.sales_shipped_b)             sales_shipped_b                       -- ”„ãoŒÉU–ß
-         ,SUM(xird.return_goods)                return_goods                          -- •Ô•i
-         ,SUM(xird.return_goods_b)              return_goods_b                        -- •Ô•iU–ß
-         ,SUM(xird.warehouse_ship)              warehouse_ship                        -- ‘qŒÉ‚Ö•ÔŒÉ
-         ,SUM(xird.truck_ship)                  truck_ship                            -- ‰c‹ÆÔ‚ÖoŒÉ
-         ,SUM(xird.others_ship)                 others_ship                           -- “üoŒÉQ‚»‚Ì‘¼oŒÉ
-         ,SUM(xird.warehouse_stock)             warehouse_stock                       -- ‘qŒÉ‚æ‚è“üŒÉ
-         ,SUM(xird.truck_stock)                 truck_stock                           -- ‰c‹ÆÔ‚æ‚è“üŒÉ
-         ,SUM(xird.others_stock)                others_stock                          -- “üoŒÉQ‚»‚Ì‘¼“üŒÉ
-         ,SUM(xird.change_stock)                change_stock                          -- ‘q‘Ö“üŒÉ
-         ,SUM(xird.change_ship)                 change_ship                           -- ‘q‘ÖoŒÉ
-         ,SUM(xird.goods_transfer_old)          goods_transfer_old                    -- ¤•iU‘Öi‹Œ¤•ij
-         ,SUM(xird.goods_transfer_new)          goods_transfer_new                    -- ¤•iU‘ÖiV¤•ij
-         ,SUM(xird.sample_quantity)             sample_quantity                       -- Œ©–{oŒÉ
-         ,SUM(xird.sample_quantity_b)           sample_quantity_b                     -- Œ©–{oŒÉU–ß
-         ,SUM(xird.customer_sample_ship)        customer_sample_ship                  -- ŒÚ‹qŒ©–{oŒÉ
-         ,SUM(xird.customer_sample_ship_b)      customer_sample_ship_b                -- ŒÚ‹qŒ©–{oŒÉU–ß
-         ,SUM(xird.customer_support_ss)         customer_support_ss                   -- ŒÚ‹q‹¦^Œ©–{oŒÉ
-         ,SUM(xird.customer_support_ss_b)       customer_support_ss_b                 -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
-         ,SUM(xird.vd_supplement_stock)         vd_supplement_stock                   -- Á‰»VD•â[“üŒÉ
-         ,SUM(xird.vd_supplement_ship)          vd_supplement_ship                    -- Á‰»VD•â[oŒÉ
-         ,SUM(xird.inventory_change_in)         inventory_change_in                   -- Šî€İŒÉ•ÏX“üŒÉ
-         ,SUM(xird.inventory_change_out)        inventory_change_out                  -- Šî€İŒÉ•ÏXoŒÉ
-         ,SUM(xird.factory_return)              factory_return                        -- Hê•Ô•i
-         ,SUM(xird.factory_return_b)            factory_return_b                      -- Hê•Ô•iU–ß
-         ,SUM(xird.factory_change)              factory_change                        -- Hê‘q‘Ö
-         ,SUM(xird.factory_change_b)            factory_change_b                      -- Hê‘q‘ÖU–ß
-         ,SUM(xird.removed_goods)               removed_goods                         -- ”p‹p
-         ,SUM(xird.removed_goods_b)             removed_goods_b                       -- ”p‹pU–ß
-         ,SUM(xird.factory_stock)               factory_stock                         -- Hê“üŒÉ
-         ,SUM(xird.factory_stock_b)             factory_stock_b                       -- Hê“üŒÉU–ß
-         ,SUM(xird.ccm_sample_ship)             ccm_sample_ship                       -- ŒÚ‹qLé“`”ïA©Ğ¤•i
-         ,SUM(xird.ccm_sample_ship_b)           ccm_sample_ship_b                     -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
-         ,SUM(xird.wear_decrease)               wear_decrease                         -- ’I‰µŒ¸–Õ‘
-         ,SUM(xird.wear_increase)               wear_increase                         -- ’I‰µŒ¸–ÕŒ¸
-         ,SUM(xird.selfbase_ship)               selfbase_ship                         -- •ÛŠÇêŠˆÚ“®Q©‹’“_oŒÉ
-         ,SUM(xird.selfbase_stock)              selfbase_stock                        -- •ÛŠÇêŠˆÚ“®Q©‹’“_“üŒÉ
-FROM      xxcoi_inv_reception_daily   xird
-         ,(SELECT    vw_xird.base_code
-                    ,vw_xird.subinventory_code
-                    ,vw_xird.inventory_item_id
-                    ,SUBSTRB(TO_CHAR(vw_xird.practice_date, cv_date), 1, 6) practice_date
-           FROM      xxcoi_inv_reception_daily   vw_xird
-           WHERE     vw_xird.request_id = cn_request_id
-          )                           sub
-WHERE     xird.base_code          = sub.base_code
-AND       xird.subinventory_code  = sub.subinventory_code
-AND       xird.inventory_item_id  = sub.inventory_item_id
-AND       xird.practice_date  BETWEEN TRUNC(TO_DATE(sub.practice_date, cv_month))
-                              AND     LAST_DAY(TO_DATE(sub.practice_date, cv_month))
-GROUP BY  sub.base_code
-         ,sub.subinventory_code
-         ,sub.inventory_item_id
-         ,sub.practice_date;
+      SELECT    sub.base_code                         base_code
+               ,sub.subinventory_code                 subinventory_code
+               ,sub.inventory_item_id                 inventory_item_id
+               ,sub.practice_date                     practice_date
+               ,SUM(xird.sales_shipped)               sales_shipped
+               ,SUM(xird.sales_shipped_b)             sales_shipped_b                       -- ”„ãoŒÉU–ß
+               ,SUM(xird.return_goods)                return_goods                          -- •Ô•i
+               ,SUM(xird.return_goods_b)              return_goods_b                        -- •Ô•iU–ß
+               ,SUM(xird.warehouse_ship)              warehouse_ship                        -- ‘qŒÉ‚Ö•ÔŒÉ
+               ,SUM(xird.truck_ship)                  truck_ship                            -- ‰c‹ÆÔ‚ÖoŒÉ
+               ,SUM(xird.others_ship)                 others_ship                           -- “üoŒÉQ‚»‚Ì‘¼oŒÉ
+               ,SUM(xird.warehouse_stock)             warehouse_stock                       -- ‘qŒÉ‚æ‚è“üŒÉ
+               ,SUM(xird.truck_stock)                 truck_stock                           -- ‰c‹ÆÔ‚æ‚è“üŒÉ
+               ,SUM(xird.others_stock)                others_stock                          -- “üoŒÉQ‚»‚Ì‘¼“üŒÉ
+               ,SUM(xird.change_stock)                change_stock                          -- ‘q‘Ö“üŒÉ
+               ,SUM(xird.change_ship)                 change_ship                           -- ‘q‘ÖoŒÉ
+               ,SUM(xird.goods_transfer_old)          goods_transfer_old                    -- ¤•iU‘Öi‹Œ¤•ij
+               ,SUM(xird.goods_transfer_new)          goods_transfer_new                    -- ¤•iU‘ÖiV¤•ij
+               ,SUM(xird.sample_quantity)             sample_quantity                       -- Œ©–{oŒÉ
+               ,SUM(xird.sample_quantity_b)           sample_quantity_b                     -- Œ©–{oŒÉU–ß
+               ,SUM(xird.customer_sample_ship)        customer_sample_ship                  -- ŒÚ‹qŒ©–{oŒÉ
+               ,SUM(xird.customer_sample_ship_b)      customer_sample_ship_b                -- ŒÚ‹qŒ©–{oŒÉU–ß
+               ,SUM(xird.customer_support_ss)         customer_support_ss                   -- ŒÚ‹q‹¦^Œ©–{oŒÉ
+               ,SUM(xird.customer_support_ss_b)       customer_support_ss_b                 -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+               ,SUM(xird.vd_supplement_stock)         vd_supplement_stock                   -- Á‰»VD•â[“üŒÉ
+               ,SUM(xird.vd_supplement_ship)          vd_supplement_ship                    -- Á‰»VD•â[oŒÉ
+               ,SUM(xird.inventory_change_in)         inventory_change_in                   -- Šî€İŒÉ•ÏX“üŒÉ
+               ,SUM(xird.inventory_change_out)        inventory_change_out                  -- Šî€İŒÉ•ÏXoŒÉ
+               ,SUM(xird.factory_return)              factory_return                        -- Hê•Ô•i
+               ,SUM(xird.factory_return_b)            factory_return_b                      -- Hê•Ô•iU–ß
+               ,SUM(xird.factory_change)              factory_change                        -- Hê‘q‘Ö
+               ,SUM(xird.factory_change_b)            factory_change_b                      -- Hê‘q‘ÖU–ß
+               ,SUM(xird.removed_goods)               removed_goods                         -- ”p‹p
+               ,SUM(xird.removed_goods_b)             removed_goods_b                       -- ”p‹pU–ß
+               ,SUM(xird.factory_stock)               factory_stock                         -- Hê“üŒÉ
+               ,SUM(xird.factory_stock_b)             factory_stock_b                       -- Hê“üŒÉU–ß
+               ,SUM(xird.ccm_sample_ship)             ccm_sample_ship                       -- ŒÚ‹qLé“`”ïA©Ğ¤•i
+               ,SUM(xird.ccm_sample_ship_b)           ccm_sample_ship_b                     -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
+               ,SUM(xird.wear_decrease)               wear_decrease                         -- ’I‰µŒ¸–Õ‘
+               ,SUM(xird.wear_increase)               wear_increase                         -- ’I‰µŒ¸–ÕŒ¸
+               ,SUM(xird.selfbase_ship)               selfbase_ship                         -- •ÛŠÇêŠˆÚ“®Q©‹’“_oŒÉ
+               ,SUM(xird.selfbase_stock)              selfbase_stock                        -- •ÛŠÇêŠˆÚ“®Q©‹’“_“üŒÉ
+      FROM      xxcoi_inv_reception_daily   xird
+               ,(SELECT    vw_xird.base_code
+                          ,vw_xird.subinventory_code
+                          ,vw_xird.inventory_item_id
+                          ,SUBSTRB(TO_CHAR(vw_xird.practice_date, cv_date), 1, 6) practice_date
+                 FROM      xxcoi_inv_reception_daily   vw_xird
+                 WHERE     vw_xird.request_id = cn_request_id
+                )                           sub
+      WHERE     xird.base_code          = sub.base_code
+      AND       xird.subinventory_code  = sub.subinventory_code
+      AND       xird.inventory_item_id  = sub.inventory_item_id
+      AND       xird.practice_date  BETWEEN TRUNC(TO_DATE(sub.practice_date, cv_month))
+                                    AND     LAST_DAY(TO_DATE(sub.practice_date, cv_month))
+      GROUP BY  sub.base_code
+               ,sub.subinventory_code
+               ,sub.inventory_item_id
+               ,sub.practice_date;
 -- == 2009/05/27 V1.4 Modified END   ===============================================================
     --
     -- —İŒvî•ñæ“¾ƒŒƒR[ƒhŒ^
