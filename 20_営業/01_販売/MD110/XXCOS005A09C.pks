@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS005A09C
+CREATE OR REPLACE PACKAGE APPS.XXCOS005A09C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A09C (spec)
  * Description      : CSVデータアップロード（顧客品目）
  * MD.050           : CSVデータアップロード（顧客品目） MD050_COS_005_A09
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/2/17     1.4   T.Miyashita      get_msgのパッケージ名修正
  *  2009/2/20     1.5   T.Miyashita      パラメータのログファイル出力対応
  *  2009/03/25    1.6   S.Kayahara       最終行にスラッシュ追加
+ *  2009/07/01    1.7   T.Tominaga       [0000137]Interval,Max_waitをFND_PROFILEより取得
  *
  *****************************************************************************************/
 --

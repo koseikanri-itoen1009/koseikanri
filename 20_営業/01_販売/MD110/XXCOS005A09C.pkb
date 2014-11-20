@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS005A09C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS005A09C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A09C (body)
  * Description      : CSVファイルのデータアップロード
  * MD.050           : CSVファイルのデータアップロード MD050_COS_005_A09
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                       COS_007対応 保管場所がNULLの場合、マスタ存在チェックをしないように修正。
  *  2009/2/17     1.4   T.Miyashita      get_msgのパッケージ名修正
  *  2009/2/20     1.5   T.Miyashita      パラメータのログファイル出力対応
+ *  2009/07/01    1.7   T.Tominaga       [0000137]Interval,Max_waitをFND_PROFILEより取得
  *
  *****************************************************************************************/
 --
@@ -129,6 +130,12 @@ AS
                                           := 'XXCOS1_CUSTOMER_ITEM_PERIOD';     --顧客品目保存期間
   ct_hon_uom_code                CONSTANT  fnd_profile_options.profile_option_name%TYPE
                                           := 'XXCOS1_HON_UOM_CODE';             -- 本単位コード
+--****************************** 2009/07/01 1.7 T.Tominaga ADD START ******************************
+  ct_prof_interval               CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                          := 'XXCOS1_INTERVAL';                 --待機間隔
+  ct_prof_max_wait               CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                          := 'XXCOS1_MAX_WAIT';                 --最大待機時間
+--****************************** 2009/07/01 1.7 T.Tominaga ADD END   ******************************
   --クイックコードタイプ
   ct_lookup_type_cus_class       CONSTANT fnd_lookup_values.lookup_type%TYPE
                                           := 'XXCOS1_CUS_CLASS_MST_005_A09';    --顧客区分特定マスタ
@@ -183,8 +190,10 @@ AS
   cn_min_2                       CONSTANT NUMBER       := 2;
   cv_character_3                 CONSTANT VARCHAR2(1)  := '3';
 --
-  cn_interval                    CONSTANT NUMBER       := 15;                   -- Interval
-  cn_max_wait                    CONSTANT NUMBER       := 0;                    -- Max_wait
+--****************************** 2009/07/01 1.7 T.Tominaga DEL START ******************************
+--  cn_interval                    CONSTANT NUMBER       := 15;                   -- Interval
+--  cn_max_wait                    CONSTANT NUMBER       := 0;                    -- Max_wait
+--****************************** 2009/07/01 1.7 T.Tominaga DEL END   ******************************
 --
   cv_format                      CONSTANT VARCHAR2(10) := 'FM00000';            -- 出力
 --
@@ -293,6 +302,12 @@ AS
                                           := 'APP-XXCOS1-12884'; --在庫組織コード
   ct_msg_get_hon_uom             CONSTANT fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-11323'; --・XXCOS:本単位コード(メッセージ文字列)
+--****************************** 2009/07/01 1.7 T.Tominaga ADD START ******************************
+  ct_msg_get_interval            CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11325'; --XXCOS:待機間隔
+  ct_msg_get_max_wait            CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11326'; --XXCOS:最大待機時間
+--****************************** 2009/07/01 1.7 T.Tominaga ADD END   ******************************
   --
   --トークン
   cv_tkn_profile                 CONSTANT VARCHAR2(512) := 'PROFILE';            --・プロファイル名
@@ -356,6 +371,10 @@ AS
   gt_file_name                    xxccp_mrp_file_ul_interface.file_name%TYPE;         --ファイル名
   gt_created_by                   xxccp_mrp_file_ul_interface.created_by%TYPE;        --作成者
   gt_creation_date                xxccp_mrp_file_ul_interface.creation_date%TYPE;     --作成日
+--****************************** 2009/07/01 1.7 T.Tominaga ADD START ******************************
+  gn_interval                     NUMBER;                                             --待機間隔
+  gn_max_wait                     NUMBER;                                             --最大待機時間
+--****************************** 2009/07/01 1.7 T.Tominaga ADD END   ******************************
 --
   -- 顧客品目データ BLOB型
   g_trans_cust_item_tab           xxccp_common_pkg2.g_file_data_tbl;
@@ -1187,6 +1206,37 @@ AS
                      );
       RAISE global_get_profile_expt;
     END IF;
+--****************************** 2009/07/01 1.7 T.Tominaga ADD START ******************************
+    ------------------------------------
+    -- 11.待機間隔の取得
+    ------------------------------------
+    -- XXCOS:待機間隔の取得
+    gn_interval := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_interval ) );
+--
+    -- 待機間隔の取得ができない場合のエラー編集
+    IF ( gn_interval IS NULL ) THEN
+      lv_key_info := xxccp_common_pkg.get_msg(
+                       iv_application => ct_xxcos_appl_short_name,
+                       iv_name        => ct_msg_get_interval
+                     );
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    ------------------------------------
+    -- 12.最大待機時間の取得
+    ------------------------------------
+    -- XXCOS:最大待機時間の取得
+    gn_max_wait := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_max_wait ) );
+--
+    -- 最大待機時間の取得ができない場合のエラー編集
+    IF ( gn_max_wait IS NULL ) THEN
+      lv_key_info := xxccp_common_pkg.get_msg(
+                       iv_application => ct_xxcos_appl_short_name,
+                       iv_name        => ct_msg_get_max_wait
+                     );
+      RAISE global_get_profile_expt;
+    END IF;
+--****************************** 2009/07/01 1.7 T.Tominaga ADD END   ******************************
 --
   EXCEPTION
     -- *** 業務日付取得例外ハンドラ ***
@@ -2689,8 +2739,12 @@ AS
     --コンカレントの終了待機
     lb_wait_result := fnd_concurrent.wait_for_request(
                         request_id   => ln_request_id,
-                        interval     => cn_interval,
-                        max_wait     => cn_max_wait,
+--****************************** 2009/07/01 1.7 T.Tominaga MOD START ******************************
+--                        interval     => cn_interval,
+--                        max_wait     => cn_max_wait,
+                        interval     => gn_interval,
+                        max_wait     => gn_max_wait,
+--****************************** 2009/07/01 1.7 T.Tominaga MOD START ******************************
                         phase        => lv_phase,
                         status       => lv_status,
                         dev_phase    => lv_dev_phase,
@@ -2823,8 +2877,12 @@ AS
     --コンカレントの終了待機
     lb_wait_result := fnd_concurrent.wait_for_request(
                         request_id   => ln_request_id,
-                        interval     => cn_interval,
-                        max_wait     => cn_max_wait,
+--****************************** 2009/07/01 1.7 T.Tominaga MOD START ******************************
+--                        interval     => cn_interval,
+--                        max_wait     => cn_max_wait,
+                        interval     => gn_interval,
+                        max_wait     => gn_max_wait,
+--****************************** 2009/07/01 1.7 T.Tominaga MOD END   ******************************
                         phase        => lv_phase,
                         status       => lv_status,
                         dev_phase    => lv_dev_phase,
