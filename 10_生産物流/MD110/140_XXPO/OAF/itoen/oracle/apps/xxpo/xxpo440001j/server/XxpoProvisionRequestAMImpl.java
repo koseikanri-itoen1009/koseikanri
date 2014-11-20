@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 *                              T_TE080_BPO_440 No14
 * 2008-10-27 1.10 二瓶大輔     T_TE080_BPO_600 No22
 * 2009-01-05 1.11 二瓶大輔     本番障害#861対応
+* 2009-01-20 1.12 吉元強樹     本番障害#739,985対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -525,7 +526,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // i番目の行を取得
       row = (OARow)rows[i];
-      // 価格設定処理チェック
+      // 有償金額確定処理チェック
       chkAmountFix(vo, row, exceptions);
     }
     // エラーがあった場合エラーをスローします。
@@ -533,6 +534,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     {
       OAException.raiseBundledOAException(exceptions);
     }
+
     for (int i = 0; i < rows.length; i++)
     {
       // i番目の行を取得
@@ -540,7 +542,17 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       // 排他チェック
       chkLockAndExclusive(vo, row);
       Number orderHeaderId = (Number)row.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
-      // 価格確定処理を実行します。
+
+// 2009-01-20 v1.12 T.Yoshimoto Add Start 本番#985
+      Date updateArrivalDate = getUpdateArrivalDate(row);
+
+      XxpoUtility.updArrivalDate(
+        getOADBTransaction(),
+        orderHeaderId,
+        updateArrivalDate);
+// 2009-01-20 v1.12 T.Yoshimoto Add End 本番#985
+
+      // 有償金額確定処理を実行します。
       XxpoUtility.updateFixClass(
         getOADBTransaction(),
         orderHeaderId,
@@ -3510,6 +3522,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     ) throws OAException
   {
     // 在庫会計期間クローズチェックを行います。
+// 2009-01-20 v1.12 T.Yoshimoto Mod Start 本番#985
+/*
     Date shippedDate = (Date)row.getAttribute("ShippedDate"); // 出庫日
     if (XxpoUtility.chkStockClose(getOADBTransaction(),
                                   shippedDate))
@@ -3523,6 +3537,21 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                             XxcmnConstants.APPL_XXPO, 
                             XxpoConstants.XXPO10119));
     }
+*/
+    Date arrivalDate = getUpdateArrivalDate(row); // 入庫日
+    if (XxpoUtility.chkStockClose(getOADBTransaction(),
+                                  arrivalDate))
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vo.getName(),
+                            row.getKey(),
+                            "ArrivalDate",
+                            arrivalDate,
+                            XxcmnConstants.APPL_XXPO, 
+                            XxpoConstants.XXPO10119));
+    }
+// 2009-01-20 v1.12 T.Yoshimoto Mod End 本番#985
 
     // ステータスチェックを行います。
     String transStatus = (String)row.getAttribute("TransStatus"); // ステータス
@@ -4990,6 +5019,58 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       }
     }
   } // doWarnAboutChanges
+
+// 2009-01-20 v1.12 T.Yoshimoto Add Start
+  /***************************************************************************
+   * 入庫実績日(更新用)取得を行うメソッドです。
+   * @param row - 処理対象行
+   * @return Date - 入庫実績日(更新用)
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public Date getUpdateArrivalDate(
+    OARow row
+    ) throws OAException
+  {
+
+    
+    Date scheduleArrivalDate  = null; // 入庫予定日を格納
+    Date shippedDate          = null; // 出庫実績日を格納
+    Date updateArrivalDate       = null; // 入庫実績日(更新用)を格納
+    Number orderHeaderId         = (Number)row.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
+      
+    // 入庫実績日が設定されているかを確認(SELECTする)
+    Date chkArrivalDate = XxpoUtility.chkArrivalDate(
+                            getOADBTransaction(),
+                            orderHeaderId);
+        
+    // 入庫実績日が無い場合
+    if (XxcmnUtility.isBlankOrNull(chkArrivalDate))
+    {
+      // 入庫予定日を取得
+      scheduleArrivalDate = (Date)row.getAttribute("ArrivalDate"); 
+      // 出庫実績日を取得
+      shippedDate         = (Date)row.getAttribute("ShippedDate");
+        
+      // 出庫実績日 > 入庫予定日
+      if (XxcmnUtility.chkCompareDate(1, shippedDate, scheduleArrivalDate))
+      {
+        // 入庫実績日へ出庫実績日を設定
+        return shippedDate;
+
+      // 入庫予定日 > 出庫実績日
+      }else if (XxcmnUtility.chkCompareDate(1, scheduleArrivalDate, shippedDate))
+      {
+        // 入庫実績日へ入庫予定日を設定
+        return scheduleArrivalDate;
+
+      }
+    }
+
+    return chkArrivalDate;
+    
+  } // getUpdateArrivalDate
+// 2009-01-20 v1.12 T.Yoshimoto Add End
 
   /**
    * 

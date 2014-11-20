@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.21
+* バージョン : 1.22
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -29,6 +29,7 @@
 * 2008-12-24 1.19 二瓶大輔     本番障害#743対応
 * 2008-12-26 1.20 伊藤ひとみ   本番障害#809対応
 * 2009-01-16 1.21 吉元強樹     本番障害#1006対応
+* 2009-01-20 1.22 吉元強樹     本番障害#739,985対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -4502,6 +4503,9 @@ public class XxpoUtility
     sb.append("BEGIN "                                                    );
     sb.append("  UPDATE xxwsh_order_headers_all xoha "); // 受注ヘッダアドオン
     sb.append("  SET    xoha.amount_fix_class  = :1  "); // 有償金額確定区分
+// 2009-01-20 v1.22 T.Yoshimoto Add Start 本番#739
+    sb.append("        ,xoha.performance_management_dept = xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID, NULL) " );
+// 2009-01-20 v1.22 T.Yoshimoto Add Start 本番#739
     sb.append("        ,xoha.last_updated_by   = FND_GLOBAL.USER_ID  ");  // 最終更新者
     sb.append("        ,xoha.last_update_date  = SYSDATE             ");  // 最終更新日
     sb.append("        ,xoha.last_update_login = FND_GLOBAL.LOGIN_ID ");  // 最終更新ログイン
@@ -10738,4 +10742,162 @@ public class XxpoUtility
     return retHash;
   } // doRVCTP2.
 // 2009-01-16 v1.21 T.Yoshimoto Add End
+
+// 2009-01-20 v1.22 T.Yoshimoto Add Start
+  /***************************************************************************
+   * 受注ヘッダアドオン.入庫実績日を確認します
+   * @param trans - トランザクション
+   * @param orderHeaderId - 受注ヘッダアドオンID
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public static Date chkArrivalDate(
+    OADBTransaction trans, 
+    Number orderHeaderId
+    ) throws OAException
+  {
+    String apiName = "chkArrivalDate";
+    Date plSqlRet;
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                               );
+    sb.append("   SELECT xoha.arrival_date "                         ); // 入庫実績日
+    sb.append("   INTO   :1 "                                        ); 
+    sb.append("   FROM   xxwsh_order_headers_all xoha "              ); // 受注ヘッダアドオン
+    sb.append("   WHERE  xoha.latest_external_flag = 'Y' "           ); // 最新フラグ
+    sb.append("   AND    xoha.order_header_id = :2; "                ); // 受注ヘッダアドオンID
+    sb.append("END; "                                                );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(orderHeaderId));  // 受注ヘッダアドオンID
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.DATE); // ロットカウント数
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      if (XxcmnUtility.isBlankOrNull(cstmt.getDate(1))) 
+      {
+        return null;
+      }
+      
+      plSqlRet = new Date(cstmt.getDate(1));
+
+      return plSqlRet;
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      XxpoUtility.rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_AM_XXPO320001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxpoUtility.rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_AM_XXPO320001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // chkArrivalDate 
+
+  /*****************************************************************************
+   * 受注ヘッダアドオンの入庫実績日を更新します。
+   * @param trans         - トランザクション
+   * @param orderHeaderId - 受注ヘッダアドオンID
+   * @param arrivalDate - 入庫実績日
+   * @throws OAException  - OA例外
+   ****************************************************************************/
+  public static void updArrivalDate(
+    OADBTransaction trans,
+    Number orderHeaderId,
+    Date arrivalDate
+    ) throws OAException
+  {
+    String apiName = "updArrivalDate";
+  
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                                );
+    sb.append("  UPDATE xxwsh_order_headers_all xoha "                );  // 受注ヘッダアドオン
+    sb.append("  SET    xoha.arrival_date = :1 "                      );  // 入庫実績日
+    sb.append("        ,xoha.last_updated_by   = FND_GLOBAL.USER_ID  ");  // 最終更新者
+    sb.append("        ,xoha.last_update_date  = SYSDATE             ");  // 最終更新日
+    sb.append("        ,xoha.last_update_login = FND_GLOBAL.LOGIN_ID ");  // 最終更新ログイン
+    sb.append("  WHERE  xoha.order_header_id   = :2; "                );  // 受注ヘッダアドオンID
+    sb.append("END; ");
+    
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = trans.createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setDate(1, XxcmnUtility.dateValue(arrivalDate));  // 入庫実績日
+      cstmt.setInt(2,  XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+
+      //PL/SQL実行
+      cstmt.execute();
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // PL/SQLクローズ
+        cstmt.close();
+
+      // close中に例外が発生した場合 
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // updArrivalDate 
+// 2009-01-20 v1.22 T.Yoshimoto Add End
 }
