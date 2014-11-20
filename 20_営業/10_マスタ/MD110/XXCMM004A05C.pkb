@@ -49,6 +49,7 @@ AS
  *  2009/03/17    1.6   N.Nishimura      本社商品区分によって重量容積区分、容積、重量を設定するよう変更
  *                                      「適用済フラグ」の初期値を「N」から「Y」に変更
  *                                       OPM品目マスタの「マスタ受信日時」にSYSDATEをセットする
+ *                                       OPM品目マスタの「試験有無区分」をセットする
  *
  *****************************************************************************************/
 --
@@ -140,10 +141,6 @@ AS
   cv_msg_xxcmm_00419     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00419';                              -- 親品目必須エラー
   cv_msg_xxcmm_00420     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00420';                              -- 商品製品区分DFF未設定エラー
   --
--- Ver.1.6 20090316 Add start
-  cv_msg_xxcmm_00428     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00428';                              -- 重量容積区分エラー（容積）
-  cv_msg_xxcmm_00429     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00429';                              -- 重量容積区分エラー（重量）
--- Ver.1.6 20090316 Add end
 -- Ver.1.5 20090224 Add START
   cv_msg_xxcmm_00435     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00435';                              -- 取得失敗エラー
 -- Ver.1.5 20090224 Add END
@@ -324,7 +321,11 @@ AS
   cv_weight              CONSTANT VARCHAR2(1)   := '1';                                             -- 重量
   cv_volume              CONSTANT VARCHAR2(1)   := '2';                                             -- 容積
 --↑Add End
---
+---2009/03/17 Add start
+  -- 試験有無区分
+  cv_exam_class_0        CONSTANT NUMBER        := '0';                                             -- 「無」
+  cv_exam_class_1        CONSTANT NUMBER        := '1';                                             -- 「有」
+--Add End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -355,7 +356,6 @@ AS
       ,sp_supplier_code         xxcmm_system_items_b.sp_supplier_code%TYPE                          -- 専門店仕入先
       ,case_number              VARCHAR2(240)                                                       -- ケース入数
       ,net                      VARCHAR2(240)                                                       -- NET
-      ,weight_volume_class      VARCHAR2(240)                                                       -- 重量容積区分 2009/03/16追加
       ,weight_volume            VARCHAR2(240)                                                       -- 重量／体積
       ,jan_code                 VARCHAR2(240)                                                       -- JANコード
       ,item_um                  ic_item_mst_b.item_um%TYPE                                          -- 基準単位
@@ -958,7 +958,7 @@ AS
              ,xsib.sp_supplier_code
              ,iimb.attribute11   AS case_number
              ,iimb.attribute12   AS net
-             ,iimb.attribute10   AS weight_volume_class  --2009/03/13 追加
+             --,iimb.attribute10   AS weight_volume_class  --2009/03/13 追加
              ,( CASE iimb.attribute10
                      WHEN cv_weight THEN iimb.attribute25
                      WHEN cv_volume THEN iimb.attribute16
@@ -1110,9 +1110,6 @@ AS
         l_set_parent_item_rec.net := TO_NUMBER(i_wk_item_rec.net);                                  -- NET
       END IF;
 --20090212 Add END
---↓2009/03/13 Add Start
-      l_set_parent_item_rec.weight_volume_class      := i_wk_item_rec.weight_volume_class;          -- 重量容積区分(DFF)
---↑Add End
       l_set_parent_item_rec.weight_volume            := i_wk_item_rec.weight_volume;                -- 重量／体積(DFF)
       l_set_parent_item_rec.jan_code                 := i_wk_item_rec.jan_code;                     -- JANコード
       l_set_parent_item_rec.item_um                  := i_wk_item_rec.item_um;                      -- 基準単位
@@ -1263,7 +1260,16 @@ AS
 --    l_opm_item_rec.attribute10              := NULL;                                                -- 重量容積区分
 --
 --↓2009/03/13 Add Start
-    l_opm_item_rec.attribute10              := l_set_parent_item_rec.weight_volume_class;             -- 重量容積区分
+--    l_opm_item_rec.attribute10              := l_set_parent_item_rec.weight_volume_class;             -- 重量容積区分
+--↑Add End
+--↓2009/03/13 Add Start
+      -- 本社商品区分が「1:リーフ」の場合、重量容積区分は「2:容積」
+      --               「2:ドリンク」の場合、重量容積区分は「1:重量」
+      IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf ) THEN
+        l_opm_item_rec.attribute10          := cv_volume;                                           -- 重量容積区分(DFF)
+      ELSIF ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink ) THEN
+        l_opm_item_rec.attribute10          := cv_weight;                                           -- 重量容積区分(DFF)
+      END IF;
 --↑Add End
     l_opm_item_rec.attribute11              := l_set_parent_item_rec.case_number;                   -- ケース入数(子品目の場合、親値継承項目)
     l_opm_item_rec.attribute12              := l_set_parent_item_rec.net;                           -- NET(子品目の場合、親値継承項目)
@@ -1273,8 +1279,8 @@ AS
 --    l_opm_item_rec.attribute16              := NULL;                                                -- 容積
 --
 --↓2009/03/13 Add Start
-    IF ( l_set_parent_item_rec.weight_volume_class = cv_volume ) THEN
-      l_opm_item_rec.attribute16              := l_set_parent_item_rec.weight_volume;
+    IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf ) THEN
+      l_opm_item_rec.attribute16              := i_wk_item_rec.weight_volume;
     ELSE
       l_opm_item_rec.attribute16              := NULL;
     END IF;                                                                                           -- 容積
@@ -1286,11 +1292,19 @@ AS
     l_opm_item_rec.attribute21              := l_set_parent_item_rec.jan_code;                      -- JANコード(子品目の場合、親値継承項目)
     l_opm_item_rec.attribute22              := l_set_parent_item_rec.itf_code;                      -- ITFコード(子品目の場合、親値継承項目)
 --    l_opm_item_rec.attribute23              := NULL;                                                -- 試験有無区分
+--↓2009/03/17 Add Start
+    IF ( ( i_wk_item_rec.item_product_class = cn_item_prod_prod ) 
+      AND ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink) ) THEN
+      l_opm_item_rec.attribute23              := cv_exam_class_1;                                   -- 試験有無区分
+    ELSE
+      l_opm_item_rec.attribute23              := cv_exam_class_0;                                   -- 試験有無区分
+    END IF;
+-- Add End
 --    l_opm_item_rec.attribute24              := NULL;                                                -- 入出庫換算単位
 --    l_opm_item_rec.attribute25              := l_set_parent_item_rec.weight_volume;                 -- 重量(子品目の場合、親値継承項目)
 --↓2009/03/13 Add Start
-    IF ( l_set_parent_item_rec.weight_volume_class = cv_weight ) THEN
-      l_opm_item_rec.attribute25              := l_set_parent_item_rec.weight_volume;
+    IF ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink ) THEN
+      l_opm_item_rec.attribute25              := i_wk_item_rec.weight_volume;
     ELSE
       l_opm_item_rec.attribute25              := NULL;
     END IF;                                                                                           -- 重量(子品目の場合、親値継承項目)
@@ -1307,7 +1321,7 @@ AS
 --    l_opm_item_rec.item_abccode             := NULL;                                                -- ABCランク
 --    l_opm_item_rec.ont_pricing_qty_source   := NULL;                                                -- 価格設定ソース
 --    l_opm_item_rec.alloc_category_id        := NULL;                                                -- 割当カテゴリID
---    l_opm_item_rec.customs_category_id      := NULL;                                                -- カスタム・カテゴリID
+--    Z.customs_category_id      := NULL;                                                -- カスタム・カテゴリID
 --    l_opm_item_rec.frt_category_id          := NULL;                                                -- 運送カテゴリID
 --    l_opm_item_rec.gl_category_id           := NULL;                                                -- GLカテゴリID
 --    l_opm_item_rec.inv_category_id          := NULL;                                                -- 在庫カテゴリID
@@ -1866,38 +1880,37 @@ AS
     l_validate_item_tab(11) := i_wk_item_rec.item_product_class;      -- 商品製品区分
     l_validate_item_tab(12) := i_wk_item_rec.rate_class;              -- 率区分
     l_validate_item_tab(13) := i_wk_item_rec.net;                     -- NET
-    l_validate_item_tab(14) := i_wk_item_rec.weight_volume_class;     -- 重量容積区分  2009/03/13追加
-    l_validate_item_tab(15) := i_wk_item_rec.weight_volume;           -- 重量／体積
-    l_validate_item_tab(16) := i_wk_item_rec.jan_code;                -- JANコード
-    l_validate_item_tab(17) := i_wk_item_rec.nets;                    -- 内容量
-    l_validate_item_tab(18) := i_wk_item_rec.nets_uom_code;           -- 内容量単位
-    l_validate_item_tab(19) := i_wk_item_rec.inc_num;                 -- 内訳入数
-    l_validate_item_tab(20) := i_wk_item_rec.case_jan_code;           -- ケースJANコード
-    l_validate_item_tab(21) := i_wk_item_rec.hon_product_class;       -- 本社商品区分
-    l_validate_item_tab(22) := i_wk_item_rec.baracha_div;             -- バラ茶区分
-    l_validate_item_tab(23) := i_wk_item_rec.itf_code;                -- ITFコード
-    l_validate_item_tab(24) := i_wk_item_rec.product_class;           -- 商品分類
-    l_validate_item_tab(25) := i_wk_item_rec.palette_max_cs_qty;      -- 配数
-    l_validate_item_tab(26) := i_wk_item_rec.palette_max_step_qty;    -- 段数
-    l_validate_item_tab(27) := i_wk_item_rec.bowl_inc_num;            -- ボール入数
-    l_validate_item_tab(28) := i_wk_item_rec.sale_start_date;         -- 発売開始日
-    l_validate_item_tab(29) := i_wk_item_rec.vessel_group;            -- 容器群
-    l_validate_item_tab(30) := i_wk_item_rec.new_item_div;            -- 新商品区分
-    l_validate_item_tab(31) := i_wk_item_rec.acnt_group;              -- 経理群
-    l_validate_item_tab(32) := i_wk_item_rec.acnt_vessel_group;       -- 経理容器群
-    l_validate_item_tab(33) := i_wk_item_rec.brand_group;             -- ブランド群
-    l_validate_item_tab(34) := i_wk_item_rec.policy_group;            -- 政策群
-    l_validate_item_tab(35) := i_wk_item_rec.list_price;              -- 定価
-    l_validate_item_tab(36) := i_wk_item_rec.standard_price_1;        -- 原料(標準原価)
-    l_validate_item_tab(37) := i_wk_item_rec.standard_price_2;        -- 再製費(標準原価)
-    l_validate_item_tab(38) := i_wk_item_rec.standard_price_3;        -- 資材費(標準原価)
-    l_validate_item_tab(39) := i_wk_item_rec.standard_price_4;        -- 包装費(標準原価)
-    l_validate_item_tab(40) := i_wk_item_rec.standard_price_5;        -- 外注管理費(標準原価)
-    l_validate_item_tab(41) := i_wk_item_rec.standard_price_6;        -- 保管費(標準原価)
-    l_validate_item_tab(42) := i_wk_item_rec.standard_price_7;        -- その他経費(標準原価)
-    l_validate_item_tab(43) := i_wk_item_rec.business_price;          -- 営業原価
-    l_validate_item_tab(44) := i_wk_item_rec.renewal_item_code;       -- リニューアル元商品コード
-    l_validate_item_tab(45) := i_wk_item_rec.sp_supplier_code;        -- 専門店仕入先コード
+    l_validate_item_tab(14) := i_wk_item_rec.weight_volume;           -- 重量／体積
+    l_validate_item_tab(15) := i_wk_item_rec.jan_code;                -- JANコード
+    l_validate_item_tab(16) := i_wk_item_rec.nets;                    -- 内容量
+    l_validate_item_tab(17) := i_wk_item_rec.nets_uom_code;           -- 内容量単位
+    l_validate_item_tab(18) := i_wk_item_rec.inc_num;                 -- 内訳入数
+    l_validate_item_tab(19) := i_wk_item_rec.case_jan_code;           -- ケースJANコード
+    l_validate_item_tab(20) := i_wk_item_rec.hon_product_class;       -- 本社商品区分
+    l_validate_item_tab(21) := i_wk_item_rec.baracha_div;             -- バラ茶区分
+    l_validate_item_tab(22) := i_wk_item_rec.itf_code;                -- ITFコード
+    l_validate_item_tab(23) := i_wk_item_rec.product_class;           -- 商品分類
+    l_validate_item_tab(24) := i_wk_item_rec.palette_max_cs_qty;      -- 配数
+    l_validate_item_tab(25) := i_wk_item_rec.palette_max_step_qty;    -- 段数
+    l_validate_item_tab(26) := i_wk_item_rec.bowl_inc_num;            -- ボール入数
+    l_validate_item_tab(27) := i_wk_item_rec.sale_start_date;         -- 発売開始日
+    l_validate_item_tab(28) := i_wk_item_rec.vessel_group;            -- 容器群
+    l_validate_item_tab(29) := i_wk_item_rec.new_item_div;            -- 新商品区分
+    l_validate_item_tab(30) := i_wk_item_rec.acnt_group;              -- 経理群
+    l_validate_item_tab(31) := i_wk_item_rec.acnt_vessel_group;       -- 経理容器群
+    l_validate_item_tab(32) := i_wk_item_rec.brand_group;             -- ブランド群
+    l_validate_item_tab(33) := i_wk_item_rec.policy_group;            -- 政策群
+    l_validate_item_tab(34) := i_wk_item_rec.list_price;              -- 定価
+    l_validate_item_tab(35) := i_wk_item_rec.standard_price_1;        -- 原料(標準原価)
+    l_validate_item_tab(36) := i_wk_item_rec.standard_price_2;        -- 再製費(標準原価)
+    l_validate_item_tab(37) := i_wk_item_rec.standard_price_3;        -- 資材費(標準原価)
+    l_validate_item_tab(38) := i_wk_item_rec.standard_price_4;        -- 包装費(標準原価)
+    l_validate_item_tab(39) := i_wk_item_rec.standard_price_5;        -- 外注管理費(標準原価)
+    l_validate_item_tab(40) := i_wk_item_rec.standard_price_6;        -- 保管費(標準原価)
+    l_validate_item_tab(41) := i_wk_item_rec.standard_price_7;        -- その他経費(標準原価)
+    l_validate_item_tab(42) := i_wk_item_rec.business_price;          -- 営業原価
+    l_validate_item_tab(43) := i_wk_item_rec.renewal_item_code;       -- リニューアル元商品コード
+    l_validate_item_tab(44) := i_wk_item_rec.sp_supplier_code;        -- 専門店仕入先コード
     --
     -- カウンタの初期化
     ln_check_cnt := 0;
@@ -2096,17 +2109,6 @@ AS
             lv_required_item := lv_required_item || cv_msg_comma_double || cv_rate_class;
           END IF;
         END IF;
-        --
-      -- 2009/03/16 Add start
-        -- 重量容積区分
-        IF ( i_wk_item_rec.weight_volume_class IS NULL ) THEN
-          IF ( lv_required_item IS NULL ) THEN
-            lv_required_item := cv_weight_volume_class;
-          ELSE
-            lv_required_item := lv_required_item || cv_msg_comma_double || cv_weight_volume_class;
-          END IF;
-        END IF;
-      -- 2009/03/16 Add end
         --
         -- 重量／体積
         IF ( i_wk_item_rec.weight_volume IS NULL ) THEN
@@ -3028,56 +3030,10 @@ AS
       END IF;
     END IF;
     --
---↓ 2009/03/16 Add Start
     --==============================================================
-    -- A-4.30 重量容積区分チェック
+    -- A-4.30 処理件数加算
     --==============================================================
-    lv_step := 'A-4.30.1';
-    IF ( i_wk_item_rec.weight_volume_class IS NOT NULL ) THEN
-      IF ( ( i_wk_item_rec.hon_product_class = cn_hon_prod_leaf )
-        AND ( i_wk_item_rec.weight_volume_class = cv_weight ) ) THEN
-          -- 商品製品区分：1(リーフ)かつ重量容積区分：1(重量)の場合エラー
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
-                        ,iv_name         => cv_msg_xxcmm_00428                          -- メッセージコード
-                       );
-          -- メッセージ出力
-          xxcmm_004common_pkg.put_message(
-            iv_message_buff => lv_errmsg
-           ,ov_errbuf       => lv_errbuf
-           ,ov_retcode      => lv_retcode
-           ,ov_errmsg       => lv_errmsg
-          );
-          ov_retcode := cv_status_error;
-      ELSIF ( ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink )
-        AND ( i_wk_item_rec.weight_volume_class = cv_volume ) ) THEN
-          lv_step := 'A-4.30.2';
-          -- 商品製品区分：2(ドリンク)かつ重量容積区分：2(容積)の場合エラー
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
-                        ,iv_name         => cv_msg_xxcmm_00429                          -- メッセージコード
-                       );
-          -- メッセージ出力
-          xxcmm_004common_pkg.put_message(
-            iv_message_buff => lv_errmsg
-           ,ov_errbuf       => lv_errbuf
-           ,ov_retcode      => lv_retcode
-           ,ov_errmsg       => lv_errmsg
-          );
-          ov_retcode := cv_status_error;
-      END IF;
-      --
-      -- 処理結果チェック
-      IF ( ov_retcode <> cv_status_normal ) THEN
-        lv_check_flag := cv_status_error;
-      END IF;
-    END IF;
--- Add End
-    --
-    --==============================================================
-    -- A-4.31 処理件数加算
-    --==============================================================
-    lv_step := 'A-4.31';
+    lv_step := 'A-4.30';
     IF ( lv_check_flag = cv_status_normal )THEN
       ov_retcode := cv_status_normal;
     ELSIF ( lv_check_flag = cv_status_error ) THEN
@@ -3174,7 +3130,6 @@ AS
                 ,TRIM(xwibr.item_product_class)      AS item_product_class      -- 商品製品区分
                 ,TRIM(xwibr.rate_class)              AS rate_class              -- 率区分
                 ,TRIM(xwibr.net)                     AS net                     -- NET
-                ,TRIM(xwibr.weight_volume_class)     AS weight_volume_class     -- 重量容積区分 2009/03/13追加
                 ,TRIM(xwibr.weight_volume)           AS weight_volume           -- 重量／体積
                 ,TRIM(xwibr.jan_code)                AS jan_code                -- JANコード
                 ,TRIM(xwibr.nets)                    AS nets                    -- 内容量
@@ -3577,7 +3532,6 @@ AS
          ,item_product_class            -- 商品製品区分
          ,rate_class                    -- 率区分
          ,net                           -- NET
-         ,weight_volume_class           -- 重量容積区分  2009/03/13追加
          ,weight_volume                 -- 重量／体積
          ,jan_code                      -- JANコード
          ,nets                          -- 内容量
@@ -3634,38 +3588,37 @@ AS
          ,l_wk_item_tab(11)             -- 商品製品区分
          ,l_wk_item_tab(12)             -- 率区分
          ,l_wk_item_tab(13)             -- NET
-         ,l_wk_item_tab(14)             -- 重量容積区分  2009/03/13追加
-         ,l_wk_item_tab(15)             -- 重量／体積
-         ,l_wk_item_tab(16)             -- JANコード
-         ,l_wk_item_tab(17)             -- 内容量
-         ,l_wk_item_tab(18)             -- 内容量単位
-         ,l_wk_item_tab(19)             -- 内訳入数
-         ,l_wk_item_tab(20)             -- ケースJANコード
-         ,l_wk_item_tab(21)             -- 本社商品区分
-         ,l_wk_item_tab(22)             -- バラ茶区分
-         ,l_wk_item_tab(23)             -- ITFコード
-         ,l_wk_item_tab(24)             -- 商品分類
-         ,l_wk_item_tab(25)             -- 配数
-         ,l_wk_item_tab(26)             -- 段数
-         ,l_wk_item_tab(27)             -- ボール入数
-         ,l_wk_item_tab(28)             -- 発売開始日
-         ,l_wk_item_tab(29)             -- 容器群
-         ,l_wk_item_tab(30)             -- 新商品区分
-         ,l_wk_item_tab(31)             -- 経理群
-         ,l_wk_item_tab(32)             -- 経理容器群
-         ,l_wk_item_tab(33)             -- ブランド群
-         ,l_wk_item_tab(34)             -- 政策群
-         ,l_wk_item_tab(35)             -- 定価
-         ,l_wk_item_tab(36)             -- 原料(標準原価)
-         ,l_wk_item_tab(37)             -- 再製費(標準原価)
-         ,l_wk_item_tab(38)             -- 資材費(標準原価)
-         ,l_wk_item_tab(39)             -- 包装費(標準原価)
-         ,l_wk_item_tab(40)             -- 外注管理費(標準原価)
-         ,l_wk_item_tab(41)             -- 保管費(標準原価)
-         ,l_wk_item_tab(42)             -- その他経費(標準原価)
-         ,l_wk_item_tab(43)             -- 営業原価
-         ,l_wk_item_tab(44)             -- リニューアル元商品コード
-         ,l_wk_item_tab(45)             -- 専門店仕入先コード
+         ,l_wk_item_tab(14)             -- 重量／体積
+         ,l_wk_item_tab(15)             -- JANコード
+         ,l_wk_item_tab(16)             -- 内容量
+         ,l_wk_item_tab(17)             -- 内容量単位
+         ,l_wk_item_tab(18)             -- 内訳入数
+         ,l_wk_item_tab(19)             -- ケースJANコード
+         ,l_wk_item_tab(20)             -- 本社商品区分
+         ,l_wk_item_tab(21)             -- バラ茶区分
+         ,l_wk_item_tab(22)             -- ITFコード
+         ,l_wk_item_tab(23)             -- 商品分類
+         ,l_wk_item_tab(24)             -- 配数
+         ,l_wk_item_tab(25)             -- 段数
+         ,l_wk_item_tab(26)             -- ボール入数
+         ,l_wk_item_tab(27)             -- 発売開始日
+         ,l_wk_item_tab(28)             -- 容器群
+         ,l_wk_item_tab(29)             -- 新商品区分
+         ,l_wk_item_tab(30)             -- 経理群
+         ,l_wk_item_tab(31)             -- 経理容器群
+         ,l_wk_item_tab(32)             -- ブランド群
+         ,l_wk_item_tab(33)             -- 政策群
+         ,l_wk_item_tab(34)             -- 定価
+         ,l_wk_item_tab(35)             -- 原料(標準原価)
+         ,l_wk_item_tab(36)             -- 再製費(標準原価)
+         ,l_wk_item_tab(37)             -- 資材費(標準原価)
+         ,l_wk_item_tab(38)             -- 包装費(標準原価)
+         ,l_wk_item_tab(39)             -- 外注管理費(標準原価)
+         ,l_wk_item_tab(40)             -- 保管費(標準原価)
+         ,l_wk_item_tab(41)             -- その他経費(標準原価)
+         ,l_wk_item_tab(42)             -- 営業原価
+         ,l_wk_item_tab(43)             -- リニューアル元商品コード
+         ,l_wk_item_tab(44)             -- 専門店仕入先コード
          ,cn_created_by                 -- 作成者
          ,cd_creation_date              -- 作成日
          ,cn_last_updated_by            -- 最終更新者
