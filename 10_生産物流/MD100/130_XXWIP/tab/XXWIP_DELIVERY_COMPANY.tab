@@ -14,6 +14,8 @@ CREATE TABLE xxwip.xxwip_delivery_company (
    small_weight              NUMBER(5,1)    NOT NULL ,
    pay_picking_amount        NUMBER(7,2)    NOT NULL ,
    bill_picking_amount       NUMBER(7,2)    NOT NULL ,
+   pay_change_flg            VARCHAR2(1)    DEFAULT '0' NOT NULL ,
+   bill_change_flg           VARCHAR2(1)    DEFAULT '0' NOT NULL ,
    created_by                NUMBER(15)     NOT NULL ,
    creation_date             DATE           NOT NULL ,
    last_updated_by           NUMBER(15)     NOT NULL ,
@@ -43,6 +45,8 @@ COMMENT ON COLUMN xxwip.xxwip_delivery_company.billing_standard           IS '請
 COMMENT ON COLUMN xxwip.xxwip_delivery_company.small_weight               IS '小口重量';
 COMMENT ON COLUMN xxwip.xxwip_delivery_company.pay_picking_amount         IS '支払ピッキング単価';
 COMMENT ON COLUMN xxwip.xxwip_delivery_company.bill_picking_amount        IS '請求ピッキング単価';
+COMMENT ON COLUMN xxwip.xxwip_delivery_company.pay_change_flg             IS '支払変更フラグ';
+COMMENT ON COLUMN xxwip.xxwip_delivery_company.bill_change_flg            IS '請求変更フラグ';
 COMMENT ON COLUMN xxwip.xxwip_delivery_company.created_by                 IS '作成者';
 COMMENT ON COLUMN xxwip.xxwip_delivery_company.creation_date              IS '作成日';
 COMMENT ON COLUMN xxwip.xxwip_delivery_company.last_updated_by            IS '最終更新者';

@@ -11,6 +11,7 @@ CREATE TABLE xxwip.xxwip_delivery_charges
   end_date_active           DATE,
   shipping_expenses         NUMBER(9,0),
   leaf_consolid_add         NUMBER(9,0),
+  change_flg                VARCHAR2(1)   DEFAULT '0' NOT NULL,
   created_by                NUMBER(15,0)  NOT NULL,
   creation_date             DATE          NOT NULL,
   last_updated_by           NUMBER(15,0)  NOT NULL,
@@ -37,6 +38,7 @@ COMMENT ON COLUMN xxwip.xxwip_delivery_charges.start_date_active         IS '“K—
 COMMENT ON COLUMN xxwip.xxwip_delivery_charges.end_date_active           IS '“K—pI—¹“ú';
 COMMENT ON COLUMN xxwip.xxwip_delivery_charges.shipping_expenses         IS '‰^‘—”ï';
 COMMENT ON COLUMN xxwip.xxwip_delivery_charges.leaf_consolid_add         IS 'ƒŠ[ƒt¬ÚŠ„‘';
+COMMENT ON COLUMN xxwip.xxwip_delivery_charges.change_flg                IS '•ÏXƒtƒ‰ƒO';
 COMMENT ON COLUMN xxwip.xxwip_delivery_charges.created_by                IS 'ì¬Ò';
 COMMENT ON COLUMN xxwip.xxwip_delivery_charges.creation_date             IS 'ì¬“ú';
 COMMENT ON COLUMN xxwip.xxwip_delivery_charges.last_updated_by           IS 'ÅIXVÒ';
