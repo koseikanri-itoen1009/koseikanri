@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  get_profile                  A2プロファイル値取得
  *  get_new_cust_data            顧客マスタデータ最新取得(配送先番号で取得)
  *  get_new_cust_data            顧客マスタデータ最新取得(顧客番号で取得)
+ *  get_new_cust_site_data       顧客サイトマスタデータ最新取得
  *  get_order_info               A3受注アドオン情報取得
  *  get_same_request_number      A4同一依頼No検索処理
  *  get_revised order_info       A5訂正前受注ヘッダアドオン情報取得
@@ -58,6 +59,7 @@ AS
  *  2009/01/15    1.12  SCS    伊藤 ひとみ 本番#981
  *  2009/04/08    1.13  SCS    伊藤 ひとみ 本番#1356
  *  2009/04/14    1.14  SCS    伊藤 ひとみ 本番#1406
+ *  2009/04/21    1.15  SCS    伊藤 ひとみ 本番#1356(再対応) 出荷先_指示IDと管轄拠点も最新に洗替する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -826,6 +828,11 @@ AS
       IS TABLE OF xxwsh_order_headers_all.customer_code%TYPE
       INDEX BY BINARY_INTEGER; -- 顧客
 -- 2009/04/08 H.Itou ADD END
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+  TYPE head_sales_branch_type
+      IS TABLE OF xxwsh_order_headers_all.head_sales_branch%TYPE
+      INDEX BY BINARY_INTEGER; -- 管轄拠点
+-- 2009/04/21 H.Itou ADD END
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1169,14 +1176,17 @@ AS
    * Description      : 顧客マスタデータ最新取得(配送先番号で取得)
    ***********************************************************************************/
   PROCEDURE get_new_cust_data(
-    it_ship_to_no      IN         xxcmn_cust_acct_sites_v.ship_to_no   %TYPE,   -- IN. 配送先番号
-    ot_party_id        OUT NOCOPY xxcmn_cust_accounts_v.party_id       %TYPE,   -- OUT.パーティーID
-    ot_cust_account_id OUT NOCOPY xxcmn_cust_accounts_v.cust_account_id%TYPE,   -- OUT.顧客ID
-    ot_party_number    OUT NOCOPY xxcmn_cust_accounts_v.party_number   %TYPE,   -- OUT.顧客番号
-    ot_party_site_id   OUT NOCOPY xxcmn_cust_acct_sites_v.party_site_id%TYPE,   -- OUT.パーティーサイトID
-    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
-    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
-    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+    it_party_site_number IN         xxcmn_cust_acct_sites_v.party_site_number%TYPE,   -- IN. 配送先番号
+    ot_party_id          OUT NOCOPY xxcmn_cust_accounts_v.party_id           %TYPE,   -- OUT.パーティーID
+    ot_cust_account_id   OUT NOCOPY xxcmn_cust_accounts_v.cust_account_id    %TYPE,   -- OUT.顧客ID
+    ot_party_number      OUT NOCOPY xxcmn_cust_accounts_v.party_number       %TYPE,   -- OUT.顧客番号
+    ot_party_site_id     OUT NOCOPY xxcmn_cust_acct_sites_v.party_site_id    %TYPE,   -- OUT.パーティーサイトID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+    ot_base_code         OUT NOCOPY xxcmn_cust_acct_sites_v.base_code        %TYPE,   -- OUT.拠点コード
+-- 2009/04/21 H.Itou ADD END
+    ov_errbuf            OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode           OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg            OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -1212,14 +1222,20 @@ AS
            ,xcav.cust_account_id      cust_account_id -- 02.顧客ID
            ,xcav.party_number         party_number    -- 03.顧客番号
            ,xcasv.party_site_id       party_site_id   -- 04.パーティーサイトID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+           ,xcasv.base_code           base_code       -- 05.拠点コード
+-- 2009/04/21 H.Itou ADD END
     INTO    ot_party_id                               -- 01.party_id
            ,ot_cust_account_id                        -- 02.cust_account_id
            ,ot_party_number                           -- 03.party_number
            ,ot_party_site_id                          -- 04.party_site_id
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+           ,ot_base_code                              -- 05.base_code
+-- 2009/04/21 H.Itou ADD END
     FROM   xxcmn_cust_accounts_v      xcav            -- 顧客情報VIEW
           ,xxcmn_cust_acct_sites_v    xcasv           -- 顧客サイト情報VIEW
     WHERE  xcav.party_id            = xcasv.party_id  -- 結合条件
-    AND    xcasv.ship_to_no         = it_ship_to_no   -- 配送先番号
+    AND    xcasv.party_site_number  = it_party_site_number   -- 配送先番号
     AND    xcav.customer_class_code IN ('1','10')     -- 顧客区分
     AND    xcav.cust_enable_flag    = '0'             -- 中止客申請フラグ
     ;
@@ -1323,6 +1339,76 @@ AS
 --
   END get_new_cust_data;
 -- 2009/04/08 H.Itou ADD END
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+  /***********************************************************************************
+   * Procedure Name   : get_new_cust_site_data
+   * Description      : 顧客サイトマスタデータ最新取得
+   ***********************************************************************************/
+  PROCEDURE get_new_cust_site_data(
+    it_party_site_number IN         xxcmn_cust_acct_sites_v.party_site_number%TYPE,   -- IN. 配送先番号
+    ot_party_site_id     OUT NOCOPY xxcmn_cust_acct_sites_v.party_site_id    %TYPE,   -- OUT.パーティーサイトID
+    ov_errbuf            OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode           OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg            OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_new_cust_site_data'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := gv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    SELECT  xcasv.party_site_id        party_site_id   -- 01.パーティーサイトID
+    INTO    ot_party_site_id                           -- 01.party_site_id
+    FROM    xxcmn_cust_acct_sites_v    xcasv           -- 顧客サイト情報VIEW
+    WHERE   xcasv.party_site_number  = it_party_site_number  -- 配送先番号
+    ;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_new_cust_site_data;
+-- 2009/04/21 H.Itou ADD END
   /***********************************************************************************
    * Procedure Name   : get_order_info
    * Description      : A3受注アドオン情報取得
@@ -1364,10 +1450,18 @@ AS
     lt_cust_account_id       xxcmn_cust_accounts_v.cust_account_id%TYPE;       -- 顧客ID(cust_account_id)
     lt_customer_code         xxcmn_cust_accounts_v.party_number   %TYPE;       -- 顧客
     lt_result_deliver_to_id  xxcmn_cust_acct_sites_v.party_site_id%TYPE;       -- 出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+    lt_head_sales_branch     xxcmn_cust_acct_sites_v.base_code    %TYPE;       -- 管轄拠点
+    lt_deliver_to_id         xxcmn_cust_acct_sites_v.party_site_id%TYPE;       -- 出荷先ID
+-- 2009/04/21 H.Itou ADD END
 --
     lr_new_customer_id           hi_customer_id_type;         -- 最新顧客ID
     lr_new_result_deliver_to_id  result_deliver_to_id_type;   -- 最新出荷先_実績ID
     lr_new_customer_code         customer_code_type;          -- 最新顧客
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+    lr_new_head_sales_branch     head_sales_branch_type;      -- 管轄拠点
+    lr_new_deliver_to_id         result_deliver_to_id_type;   -- 最新出荷先ID
+-- 2009/04/21 H.Itou ADD END
     lr_request_no                ol_request_no_type;          -- 依頼No
 -- 2009/04/08 H.Itou ADD END
 --
@@ -1824,6 +1918,10 @@ AS
         lt_cust_account_id      := NULL;   -- 顧客ID(cust_account_id)
         lt_customer_code        := NULL;   -- 顧客
         lt_result_deliver_to_id := NULL;   -- 出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+        lt_head_sales_branch    := NULL;   -- 管轄拠点
+        lt_deliver_to_id        := NULL;   -- 出荷先ID
+-- 2009/04/21 H.Itou ADD END
 --
         -- 支給の場合
         IF (or_order_info_tbl(i).shipping_shikyu_class = gv_ship_class_2) THEN
@@ -1838,33 +1936,78 @@ AS
             ov_retcode         => lv_retcode,   -- リターン・コード             --# 固定 #
             ov_errmsg          => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
            );
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+          -- エラー終了
+          IF (lv_retcode <> gv_status_normal) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          -- 支給では以下の項目はNULLなので、最新取得なしなので、DBの値(NULL)をセット
+          lt_result_deliver_to_id := or_order_info_tbl(i).result_deliver_to_id; -- 最新出荷先_実績ID
+          lt_deliver_to_id        := or_order_info_tbl(i).deliver_to_id;        -- 最新出荷先_指示ID
+          lt_head_sales_branch    := or_order_info_tbl(i).head_sales_branch;    -- 管轄拠点
+-- 2009/04/21 H.Itou ADD END
 --
         -- 出荷・倉替返品の場合
         ELSE
 --
-          -- 出荷先コードで最新顧客データ取得
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+          -- 指示ありの場合
+          IF (or_order_info_tbl(i).deliver_to IS NOT NULL) THEN
+            -- 出荷先_指示コードで出荷先_指示IDを取得
+            get_new_cust_site_data(
+              it_party_site_number => or_order_info_tbl(i).deliver_to,        -- IN. 出荷先_指示
+              ot_party_site_id     => lt_deliver_to_id,                       -- OUT.出荷先_指示ID
+              ov_errbuf            => lv_errbuf,    -- エラー・メッセージ           --# 固定 #
+              ov_retcode           => lv_retcode,   -- リターン・コード             --# 固定 #
+              ov_errmsg            => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+             );
+--
+            -- エラー終了
+            IF (lv_retcode <> gv_status_normal) THEN
+              RAISE global_api_expt;
+            END IF;
+          END IF;
+--
+-- 2009/04/21 H.Itou ADD END
+          -- 出荷先_実績コードで最新顧客、出荷先_実績ID、管轄拠点を取得
           get_new_cust_data(
-            it_ship_to_no      => or_order_info_tbl(i).result_deliver_to, -- IN. 出荷先_実績
-            ot_party_id        => lt_customer_id,                         -- OUT.顧客ID(party_id)
-            ot_cust_account_id => lt_cust_account_id,                     -- OUT.顧客ID(cust_account_id)
-            ot_party_number    => lt_customer_code,                       -- OUT.顧客
-            ot_party_site_id   => lt_result_deliver_to_id,                -- OUT.出荷先_実績ID
-            ov_errbuf          => lv_errbuf,    -- エラー・メッセージ           --# 固定 #
-            ov_retcode         => lv_retcode,   -- リターン・コード             --# 固定 #
-            ov_errmsg          => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+            it_party_site_number => or_order_info_tbl(i).result_deliver_to, -- IN. 出荷先_実績
+            ot_party_id          => lt_customer_id,                         -- OUT.顧客ID(party_id)
+            ot_cust_account_id   => lt_cust_account_id,                     -- OUT.顧客ID(cust_account_id)
+            ot_party_number      => lt_customer_code,                       -- OUT.顧客
+            ot_party_site_id     => lt_result_deliver_to_id,                -- OUT.出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+            ot_base_code         => lt_head_sales_branch,                   -- OUT.管轄拠点
+-- 2009/04/21 H.Itou ADD END
+            ov_errbuf            => lv_errbuf,    -- エラー・メッセージ           --# 固定 #
+            ov_retcode           => lv_retcode,   -- リターン・コード             --# 固定 #
+            ov_errmsg            => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
            );
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+          -- エラー終了
+          IF (lv_retcode <> gv_status_normal) THEN
+            RAISE global_api_expt;
+          END IF;
+-- 2009/04/21 H.Itou ADD END
 --
         END IF;
 --
-        -- エラー終了
-        IF (lv_retcode <> gv_status_normal) THEN
-          RAISE check_sub_main_expt;
-        END IF;
+-- 2009/04/21 H.Itou DEL START 本番障害#1356(再対応)
+--        -- エラー終了
+--        IF (lv_retcode <> gv_status_normal) THEN
+--          RAISE check_sub_main_expt;
+--        END IF;
+-- 2009/04/21 H.Itou DEL END
 --
         -- 更新用にデータを保持
         lr_new_customer_id         (lr_request_no.COUNT + 1) := lt_customer_id;                  -- 最新顧客ID
         lr_new_result_deliver_to_id(lr_request_no.COUNT + 1) := lt_result_deliver_to_id;         -- 最新出荷先_実績ID
         lr_new_customer_code       (lr_request_no.COUNT + 1) := lt_customer_code;                -- 最新顧客
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+        lr_new_head_sales_branch   (lr_request_no.COUNT + 1) := lt_head_sales_branch;            -- 最新管轄拠点
+        lr_new_deliver_to_id       (lr_request_no.COUNT + 1) := lt_deliver_to_id;                -- 最新出荷先_指示ID
+-- 2009/04/21 H.Itou ADD END
         lr_request_no              (lr_request_no.COUNT + 1) := or_order_info_tbl(i).request_no; -- 依頼No
 --
       END IF;
@@ -1874,6 +2017,10 @@ AS
       or_order_info_tbl(i).cust_account_id      := lt_cust_account_id;      -- 顧客ID(cust_account_id)
       or_order_info_tbl(i).customer_code        := lt_customer_code;        -- 顧客
       or_order_info_tbl(i).result_deliver_to_id := lt_result_deliver_to_id; -- 出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+      or_order_info_tbl(i).head_sales_branch    := lt_head_sales_branch;    -- 最新管轄拠点
+      or_order_info_tbl(i).deliver_to_id        := lt_deliver_to_id;        -- 最新出荷先_指示ID
+-- 2009/04/21 H.Itou ADD END
     END LOOP change_new_cust_loop;
 --
     -- 受注ヘッダの顧客を最新に更新
@@ -1882,6 +2029,10 @@ AS
       SET    xoha.customer_id            = lr_new_customer_id(i)           -- 顧客ID(party_id)
             ,xoha.customer_code          = lr_new_customer_code(i)         -- 顧客
             ,xoha.result_deliver_to_id   = lr_new_result_deliver_to_id(i)  -- 出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+            ,xoha.head_sales_branch      = lr_new_head_sales_branch(i)     -- 管轄拠点
+            ,xoha.deliver_to_id          = lr_new_deliver_to_id(i)         -- 出荷先_指示ID
+-- 2009/04/21 H.Itou ADD END
             ,xoha.last_updated_by        = gn_user_id                      -- 最終更新者
             ,xoha.last_update_date       = SYSDATE                         -- 最終更新日
             ,xoha.last_update_login      = gn_login_id                     -- 最終更新ログイン
@@ -2160,6 +2311,10 @@ AS
     lt_customer_code         xxcmn_cust_accounts_v.party_number   %TYPE;       -- 顧客
     lt_result_deliver_to_id  xxcmn_cust_acct_sites_v.party_site_id%TYPE;       -- 出荷先_実績ID
 -- 2009/04/08 H.Itou ADD END
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+    lt_head_sales_branch     xxcmn_cust_acct_sites_v.base_code    %TYPE;       -- 管轄拠点
+    lt_deliver_to_id         xxcmn_cust_acct_sites_v.party_site_id%TYPE;       -- 出荷先ID
+-- 2009/04/21 H.Itou ADD END
 --
     -- *** ローカル・カーソル ***
 --
@@ -2363,27 +2518,68 @@ AS
             ov_errmsg          => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
            );
 --
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+          -- エラー終了
+          IF (lv_retcode <> gv_status_normal) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          -- 支給では以下の項目はNULLなので、最新取得なしなので、DBの値(NULL)をセット
+          lt_result_deliver_to_id := or_order_info_tbl(i).result_deliver_to_id; -- 最新出荷先_実績ID
+          lt_deliver_to_id        := or_order_info_tbl(i).deliver_to_id;        -- 最新出荷先_指示ID
+          lt_head_sales_branch    := or_order_info_tbl(i).head_sales_branch;    -- 管轄拠点
+-- 2009/04/21 H.Itou ADD END
         -- 出荷・倉替返品の場合
         ELSE
 --
-          -- 出荷先コードで最新顧客データ取得
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+          -- 指示ありの場合
+          IF (or_order_info_tbl(i).deliver_to IS NOT NULL) THEN
+            -- 出荷先_指示コードで出荷先_指示IDを取得
+            get_new_cust_site_data(
+              it_party_site_number => or_order_info_tbl(i).deliver_to,        -- IN. 出荷先_指示
+              ot_party_site_id     => lt_deliver_to_id,                       -- OUT.出荷先_指示ID
+              ov_errbuf            => lv_errbuf,    -- エラー・メッセージ           --# 固定 #
+              ov_retcode           => lv_retcode,   -- リターン・コード             --# 固定 #
+              ov_errmsg            => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+             );
+--
+            -- エラー終了
+            IF (lv_retcode <> gv_status_normal) THEN
+              RAISE global_api_expt;
+            END IF;
+          END IF;
+--
+-- 2009/04/21 H.Itou ADD END
+          -- 出荷先_実績コードで最新顧客、出荷先_実績ID、管轄拠点を取得
           get_new_cust_data(
-            it_ship_to_no      => or_order_info_tbl(i).result_deliver_to, -- IN. 出荷先_実績
-            ot_party_id        => lt_customer_id,                         -- OUT.顧客ID(party_id)
-            ot_cust_account_id => lt_cust_account_id,                     -- OUT.顧客ID(cust_account_id)
-            ot_party_number    => lt_customer_code,                       -- OUT.顧客
-            ot_party_site_id   => lt_result_deliver_to_id,                -- OUT.出荷先_実績ID
-            ov_errbuf          => lv_errbuf,    -- エラー・メッセージ           --# 固定 #
-            ov_retcode         => lv_retcode,   -- リターン・コード             --# 固定 #
-            ov_errmsg          => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+            it_party_site_number => or_order_info_tbl(i).result_deliver_to, -- IN. 出荷先_実績
+            ot_party_id          => lt_customer_id,                         -- OUT.顧客ID(party_id)
+            ot_cust_account_id   => lt_cust_account_id,                     -- OUT.顧客ID(cust_account_id)
+            ot_party_number      => lt_customer_code,                       -- OUT.顧客
+            ot_party_site_id     => lt_result_deliver_to_id,                -- OUT.出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+            ot_base_code         => lt_head_sales_branch,                   -- OUT.管轄拠点
+-- 2009/04/21 H.Itou ADD END
+            ov_errbuf            => lv_errbuf,    -- エラー・メッセージ           --# 固定 #
+            ov_retcode           => lv_retcode,   -- リターン・コード             --# 固定 #
+            ov_errmsg            => lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
            );
 --
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+          -- エラー終了
+          IF (lv_retcode <> gv_status_normal) THEN
+            RAISE global_api_expt;
+          END IF;
+-- 2009/04/21 H.Itou ADD END
         END IF;
 --
-        -- エラー終了
-        IF (lv_retcode <> gv_status_normal) THEN
-          RAISE check_sub_main_expt;
-        END IF;
+-- 2009/04/21 H.Itou DEL START 本番障害#1356(再対応)
+--        -- エラー終了
+--        IF (lv_retcode <> gv_status_normal) THEN
+--          RAISE global_api_expt;
+--        END IF;
+-- 2009/04/21 H.Itou DEL END
       END IF;
 --
       -- 最新情報に洗い替え
@@ -2391,6 +2587,10 @@ AS
       or_order_info_tbl(i).cust_account_id      := lt_cust_account_id;      -- 顧客ID(cust_account_id)
       or_order_info_tbl(i).customer_code        := lt_customer_code;        -- 顧客
       or_order_info_tbl(i).result_deliver_to_id := lt_result_deliver_to_id; -- 出荷先_実績ID
+-- 2009/04/21 H.Itou ADD START 本番障害#1356(再対応)
+      or_order_info_tbl(i).head_sales_branch    := lt_head_sales_branch;    -- 最新管轄拠点
+      or_order_info_tbl(i).deliver_to_id        := lt_deliver_to_id;        -- 最新出荷先_指示ID
+-- 2009/04/21 H.Itou ADD END
     END LOOP change_new_cust_loop;
 -- 2009/04/08 H.Itou ADD END
   EXCEPTION
