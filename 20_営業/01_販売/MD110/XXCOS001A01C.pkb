@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       [T1_0256]保管場所取得方法修正対応
  *  2009/04/06    1.6   T.Kitajima       [T1_0329]TASK登録エラー対応
  *  2009/04/09    1.7   N.Maeda          [T1_0465]顧客名称、拠点名称の桁数制御追加
+ *  2009/04/10    1.8   T.Kitajima       [T1_0248]百貨店条件変更
  *
  *****************************************************************************************/
 --
@@ -1548,6 +1549,10 @@ AS
     cv_month     CONSTANT VARCHAR2(5) := 'MONTH';
     cv_ar_class  CONSTANT VARCHAR2(2) := '02';
     cv_open      CONSTANT VARCHAR2(4) := 'OPEN';
+--***************************** 2009/04/10 1.8 T.Kitajima ADD START  *****************************--
+    ct_hht_2     CONSTANT xxcmm_cust_accounts.dept_hht_div%TYPE          := '2';    -- 百貨店用HHT区分
+    ct_disp_0    CONSTANT xxcos_dlv_headers.department_screen_class%TYPE := '0';    -- 百貨店画面種別
+--***************************** 2009/04/10 1.8 T.Kitajima ADD START  *****************************--
 --
     -- *** ローカル型   ***
     -- 納品明細データ一時格納用変数
@@ -1953,7 +1958,15 @@ AS
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
         -- 一般拠点の場合
 --      IF ( lt_hht_class = cv_general ) THEN
-        IF ( lt_hht_class IS NULL ) THEN
+--***************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
+--        IF ( lt_hht_class IS NULL ) THEN
+        IF ( lt_hht_class IS NULL ) 
+          OR ( ( lt_hht_class = ct_hht_2 )
+               AND
+               (lt_department_class = ct_disp_0 )
+             )
+          THEN
+--***************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
   /*-----2009/02/03-----END---------------------------------------------------------------------------------*/
           -- 売上拠点コード妥当性チェック
           IF ( ( lt_sale_base != lt_base_code ) OR ( lt_base_code IS NULL ) ) THEN
@@ -2191,7 +2204,15 @@ AS
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
       --== 百貨店の場合、預け先コードのセット・百貨店画面種別の妥当性チェックを行います。 ==--
 --    IF ( lt_hht_class = cv_depart ) THEN
-      IF ( lt_hht_class IS NOT NULL ) THEN
+--***************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
+--      IF ( lt_hht_class IS NOT NULL ) THEN
+      IF ( lt_hht_class IS NULL ) 
+        OR ( ( lt_hht_class = ct_hht_2 )
+             AND
+             (lt_department_class = ct_disp_0 )
+           )
+        THEN
+--***************************** 2009/04/10 1.8 T.Kitajima MOD START  *****************************--
   /*-----2009/02/03-----END---------------------------------------------------------------------------------*/
 --
 --****************************** 2009/04/03 1.5 T.Kitajima DEL START ******************************--
