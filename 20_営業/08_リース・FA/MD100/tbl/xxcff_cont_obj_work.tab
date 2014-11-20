@@ -1,0 +1,98 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_cont_obj_work
+ * Description     : リース物件ワーク
+ * MD.070          : 
+ * Version         : 1.1
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/01/30    1.0  SCS 奥河美樹  初回作成
+ *  2009/02/06    1.1  SCS 奥河美樹  物件コード9桁→10桁へ変更
+************************************************************************/
+CREATE TABLE xxcff.xxcff_cont_obj_work (
+     seqno                          NUMBER(5)     NOT NULL
+    ,contract_number                VARCHAR2(15)  NOT NULL
+    ,contract_line_num              VARCHAR2(5)   NOT NULL
+    ,lease_company                  VARCHAR2(2)   NOT NULL
+    ,object_code                    VARCHAR2(10)  NOT NULL
+    ,po_number                      NUMBER(10)
+    ,registration_number            VARCHAR2(20)
+    ,age_type                       VARCHAR2(50)
+    ,model                          VARCHAR2(14)
+    ,serial_number                  VARCHAR2(14)
+    ,quantity                       NUMBER(12)
+    ,manufacturer_name              VARCHAR2(50)
+    ,department_code                VARCHAR2(5)
+    ,owner_company                  VARCHAR2(4)
+    ,chassis_number                 VARCHAR2(20)
+    ,file_id                        NUMBER(15)    NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcff_cont_obj_work_pk PRIMARY KEY (seqno)
+  USING INDEX TABLESPACE xxidx2
+  ,CONSTRAINT xxcff_cont_obj_work_u01 UNIQUE (contract_number,contract_line_num,lease_company)
+  USING INDEX TABLESPACE xxidx2)
+ TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 64K)
+/
+COMMENT ON TABLE xxcff.xxcff_cont_obj_work IS 'リース物件ワーク'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.seqno                                      IS '通番'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.contract_number                            IS '契約番号'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.contract_line_num                          IS '契約枝番'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.lease_company                              IS 'リース会社'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.object_code                                IS '物件コード'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.po_number                                  IS '発注番号'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.registration_number                        IS '登録番号'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.age_type                                   IS '年式'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.model                                      IS '機種'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.serial_number                              IS '機番'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.quantity                                   IS '数量'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.manufacturer_name                          IS 'メーカー名'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.department_code                            IS '管理部門コード'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.owner_company                              IS '本社／工場'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.chassis_number                             IS '車台番号'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.file_id                                    IS 'ファイルID'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.created_by                                 IS '作成者'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.creation_date                              IS '作成日'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.last_updated_by                            IS '最終更新者'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.last_update_date                           IS '最終更新日'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.last_update_login                          IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.request_id                                 IS '要求ID'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.program_id                                 IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcff.xxcff_cont_obj_work.program_update_date                        IS 'プログラム更新日'
+/
