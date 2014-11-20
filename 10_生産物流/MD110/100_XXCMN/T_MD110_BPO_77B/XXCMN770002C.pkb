@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2008/12/19    1.31  A.Shiina         本番障害799対応
  *  2008/12/25    1.32  A.Shiina         本番障害674対応
  *  2009/03/05    1.33  Y.Yamamoto       本番障害1274対応
+ *  2009/04/08    1.34  A.Shiina         本番障害1387対応
  *
  *****************************************************************************************/
 --
@@ -18057,12 +18058,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -18074,6 +18079,19 @@ AS
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF;
+-- 2009/04/08 v1.34 ADD END
           -- -----------------------------------------------------
           -- 月末データタグ出力
           -- -----------------------------------------------------
@@ -18298,12 +18316,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -18315,6 +18337,19 @@ AS
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF;
+-- 2009/04/08 v1.34 ADD END
           -- -----------------------------------------------------
           -- 月末データタグ出力
           -- -----------------------------------------------------
@@ -18526,12 +18561,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -18543,6 +18582,19 @@ AS
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF;
+-- 2009/04/08 v1.34 ADD END
           -- -----------------------------------------------------
           -- 月末データタグ出力
           -- -----------------------------------------------------
@@ -18746,12 +18798,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -18763,6 +18819,19 @@ AS
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF;
+-- 2009/04/08 v1.34 ADD END
           -- -----------------------------------------------------
           -- 月末データタグ出力
           -- -----------------------------------------------------
@@ -18958,12 +19027,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -18975,6 +19048,19 @@ AS
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF;
+-- 2009/04/08 v1.34 ADD END
           -- -----------------------------------------------------
           -- 月末データタグ出力
           -- -----------------------------------------------------
@@ -19178,12 +19264,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -19195,6 +19285,19 @@ AS
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF;
+-- 2009/04/08 v1.34 ADD END
           -- -----------------------------------------------------
           -- 月末データタグ出力
           -- -----------------------------------------------------
@@ -19457,12 +19560,16 @@ AS
           -- 金額
           prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
           IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
             lb_zero := FALSE;
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
           -- 数量・金額を集計（品目単位）
           IF (lb_payout = FALSE) THEN
             -- 受入
@@ -19473,6 +19580,20 @@ AS
             ln_qty_out := ln_qty_out + ln_quantity;
             ln_amt_out := ln_amt_out + ln_amount;
           END IF;
+-- 2009/04/08 v1.34 ADD START
+          IF (
+               (ln_qty_in <> 0)
+               OR
+               (ln_amt_in <> 0)
+               OR
+               (ln_qty_out <> 0)
+               OR
+               (ln_amt_out <> 0)
+             ) THEN
+            lb_zero := FALSE;
+          END IF ;
+--
+-- 2009/04/08 v1.34 ADD END
         END IF ;
 --
         -- キーブレイク用変数退避
@@ -19685,12 +19806,16 @@ AS
     -- 金額
     prc_set_xml('Z', lv_col_name || '_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
+-- 2009/04/08 v1.34 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
     IF ((ln_quantity <> 0) OR (ln_amount <> 0)) THEN
       lb_zero := FALSE;
     END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2009/04/08 v1.34 DELETE END
     -- 数量・金額を集計（品目単位）
     IF (lb_payout = FALSE) THEN
       -- 受入
@@ -19702,6 +19827,19 @@ AS
       ln_amt_out := ln_amt_out + ln_amount;
     END IF;
 --
+-- 2009/04/08 v1.34 ADD START
+    IF (
+          (ln_qty_in <> 0)
+          OR
+          (ln_amt_in <> 0)
+          OR
+          (ln_qty_out <> 0)
+          OR
+          (ln_amt_out <> 0)
+        ) THEN
+      lb_zero := FALSE;
+    END IF;
+-- 2009/04/08 v1.34 ADD END
     -- -----------------------------------------------------
     -- 月末データタグ出力
     -- -----------------------------------------------------
