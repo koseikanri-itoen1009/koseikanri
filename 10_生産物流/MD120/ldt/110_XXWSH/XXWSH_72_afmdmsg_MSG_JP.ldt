@@ -1561,9 +1561,9 @@ BEGIN FND_NEW_MESSAGES "XXWSH" "APP-XXWSH-13121"
 商品区分： &PARAM1\n\
 品目区分： &PARAM2\n\
 品目： &PARAM3\n\
-製造日： &PARAM5\n\
-賞味期限： &PARAM6\n\
-固有記号： &PARAM4"
+製造日： &PARAM4\n\
+賞味期限： &PARAM5\n\
+固有記号： &PARAM6"
   DESCRIPTION = "妥当チェックエラーメッセージ（品質警告）"
   TYPE = "ERROR"
   MAX_LENGTH = "*NULL*"
