@@ -8,7 +8,7 @@ AS
  *                    作成します。
  * MD.050           : MD050_CSO_020_A04_自販機（什器）発注依頼データ連携機能
  *
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *                                       ・購買依頼I/FテーブルのバッチＩＤに取引ＩＤを設定
  *                                       ・購買依頼インポート処理の第一パラメータに取引ＩＤ
  *                                         を設定
+ *  2010-01-08    1.6   Kazuyo.Hosoi     E_本稼動_01017対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1891,6 +1892,9 @@ AS
             ,iot_mst_regist_info_rec.sale_base_code             -- 売上拠点コード
       FROM   xxcso_sp_decision_custs xsd -- ＳＰ専決顧客テーブル
             ,hz_cust_accounts        hca -- 顧客マスタ
+            /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+            ,hz_cust_acct_sites      hcas -- 顧客サイトマスタ
+            /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
             ,hz_parties              hpa -- パーティマスタ
             ,hz_party_sites          hps -- パーティサイトマスタ
             ,hz_locations            hlo -- 顧客事業所マスタ
@@ -1900,6 +1904,10 @@ AS
       AND   xsd.customer_id                = hca.cust_account_id
       AND   hca.party_id                   = hpa.party_id
       AND   hpa.party_id                   = hps.party_id
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+      AND   hca.cust_account_id            = hcas.cust_account_id
+      AND   hcas.party_site_id             = hps.party_site_id
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
       AND   hps.location_id                = hlo.location_id
       AND   xca.customer_id                = hca.cust_account_id
       ;

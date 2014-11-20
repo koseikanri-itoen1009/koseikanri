@@ -9,7 +9,7 @@ AS
  *                    画面にて変更された既存顧客情報を顧客マスタに反映します。
  * MD.050           : MD050_CSO_020_A03_各種マスタ反映処理機能
  *
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009-05-21    1.3   Kazuo.Satomura   システムテスト障害対応(T1_1092)
  *  2009-06-30    1.4   Kazuo.Satomura   統合テスト障害対応(0000209)
  *  2009-07-09    1.5   Kazuo.Satomura   統合テスト障害対応(0000341)
+ *  2010-01-08    1.6   Kazuyo.Hosoi     E_本稼動_01017対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -939,8 +940,17 @@ AS
         INTO   lt_location_id
               ,lt_object_version_number
         FROM   hz_locations   hlo -- 顧客事業所マスタ
+              /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+              ,hz_cust_accounts   hca  -- 顧客マスタ
+              ,hz_cust_acct_sites hcas -- 顧客サイトマスタ
+              /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
               ,hz_party_sites hps -- パーティサイトマスタ
-        WHERE  hps.party_id    = it_party_id
+        /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+        --WHERE  hps.party_id    = it_party_id
+        WHERE  hca.party_id        = it_party_id
+        AND    hca.cust_account_id = hcas.cust_account_id
+        AND    hcas.party_site_id  = hps.party_site_id
+        /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
         AND    hps.location_id = hlo.location_id
         ;
         --
@@ -1531,6 +1541,9 @@ AS
     /* 2009.05.21 K.Satomura T1_1092対応 START */
     cv_tkn_value_use_bill_upd  CONSTANT VARCHAR2(40) := '顧客使用目的マスタ更新（請求先）';
     /* 2009.05.21 K.Satomura T1_1092対応 END */
+    /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+    cv_active                  CONSTANT VARCHAR2(1)  := 'A'; -- 顧客使用目的マスタ ステータス
+    /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
     --
     -- *** ローカル変数 ***
     -- 顧客使用目的用ＡＰＩ変数
@@ -1567,6 +1580,9 @@ AS
       WHERE  hcs.cust_acct_site_id = it_cust_acct_site_id
       /* 2009.05.21 K.Satomura T1_1092対応 END */
       AND    hcs.site_use_code     = cv_ship_to_site_code
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+      AND    hcs.status            = cv_active
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
       ;
       --
     END IF;
@@ -1634,6 +1650,9 @@ AS
       WHERE  hcs.cust_acct_site_id = it_cust_acct_site_id
       /* 2009.05.21 K.Satomura T1_1092対応 END */
       AND    hcs.site_use_code     = cv_bill_to_site_code
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+      AND    hcs.status            = cv_active
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
       ;
       --
     END IF;
@@ -1786,6 +1805,9 @@ AS
         FROM   hz_cust_site_uses  hcs -- 顧客使用目的マスタビュー
         WHERE  hcs.cust_acct_site_id = it_cust_acct_site_id
         AND    hcs.site_use_code     = cv_bill_to_site_code
+        /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+        AND    hcs.status            = cv_active
+        /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
         ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -1824,6 +1846,11 @@ AS
       lt_cust_site_use_rec.tax_rounding_rule := cv_tax_rouding_rule;
       --
       /* 2009.07.09 K.Satomura 統合テスト障害対応(0000341) END */
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+      lt_cust_site_use_rec.site_use_code     := cv_bill_to_site_code; -- 使用目的
+      lt_cust_site_use_rec.created_by_module := NULL;
+      --
+      /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
       hz_cust_account_site_v2pub.update_cust_site_use(
          p_init_msg_list         => fnd_api.g_true
         ,p_cust_site_use_rec     => lt_cust_site_use_rec

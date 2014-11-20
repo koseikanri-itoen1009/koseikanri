@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_016_A03_情報系-EBSインターフェース：
  *                    (OUT)見積情報データ
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-02-25    1.1   K.Sai            レビュー結果反映 
  *  2009-04-16    1.2   K.Satomura       システムテスト障害対応(T1_0172,T1_0508)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
+ *  2010-01-08    1.4   Kazuyo.Hosoi     E_本稼動_01017対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1203,6 +1204,9 @@ AS
     cv_duns_num_c_50  CONSTANT VARCHAR2(2)   := '50';       -- 休止
     cv_site_use_code  CONSTANT VARCHAR2(10)  := 'BILL_TO';  -- 請求先
     cv_prcss_nm       CONSTANT VARCHAR2(100) := '顧客マスタ・顧客アドオンマスタ';
+    /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+    cv_active         CONSTANT VARCHAR2(1)   := 'A';        -- 顧客使用目的マスタ ステータス
+    /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
     -- *** ローカル変数 ***
     --取得データ格納用
     lt_name           ra_terms_vl.name%TYPE;    -- 支払条件
@@ -1236,6 +1240,9 @@ AS
         AND hcas.cust_acct_site_id         =  hcsu.cust_acct_site_id
         AND hcsu.site_use_code             =  cv_site_use_code
         AND hcsu.payment_term_id           =  rtv.term_id
+        /* 2010.01.08 K.Hosoi E_本稼動_01017対応 START */
+        AND hcsu.status                    =  cv_active
+        /* 2010.01.08 K.Hosoi E_本稼動_01017対応 END */
         AND rtv.start_date_active          <= ld_process_date
         AND NVL(rtv.end_date_active,ld_process_date)
               >=  ld_process_date
