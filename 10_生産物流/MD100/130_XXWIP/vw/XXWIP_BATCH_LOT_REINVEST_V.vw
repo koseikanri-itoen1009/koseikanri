@@ -45,6 +45,9 @@ CREATE OR REPLACE VIEW apps.xxwip_batch_lot_reinvest_v
 , last_update_date
 , last_update_login
 , xmd_last_update_date
+-- 2008/06/11 D.Nihei ADD START 
+, whse_inside_outside_div         -- 内外倉庫区分
+-- 2008/06/11 D.Nihei ADD END 
 )
 AS
   SELECT
@@ -100,6 +103,10 @@ AS
   , ilm.last_update_date
   , ilm.last_update_login
   , enable_lot.xmd_last_update_date
+-- 2008/06/11 D.Nihei ADD START 
+  , NVL(xilv.whse_inside_outside_div, '2')
+                                    whse_inside_outside_div         -- 内外倉庫区分
+-- 2008/06/11 D.Nihei ADD END 
   FROM
     xxcmn_lookup_values_v           xlvv_l03      -- 伝票区分
   , xxcmn_lookup_values_v           xlvv_l05      -- 仕入形態
@@ -177,10 +184,16 @@ AS
               , lot.lot_id                                                                                  lot_id
               , xilv.segment1                                                                               storehouse_code
               , xilv.inventory_location_id                                                                  inventory_location_id
-              , xxcmn_common_pkg.get_stock_qty( xilv.inventory_location_id, gmd.item_id, lot.nise_lot_id )  enabled_qty
+-- 2008/06/11 D.Nihei MOD START 
+--              , xxcmn_common_pkg.get_stock_qty( xilv.inventory_location_id, gmd.item_id, lot.nise_lot_id )  enabled_qty
+              , xxcmn_common_pkg.get_can_enc_qty( xilv.inventory_location_id, gmd.item_id, lot.lot_id, TO_DATE(gmdh.attribute22, 'YYYY/MM/DD')-1 )   enabled_qty
+-- 2008/06/11 D.Nihei MOD END 
               FROM
                 xxcmn_item_locations_v          xilv   -- 保管倉庫
               , gme_material_details            gmd    -- 生産原料詳細
+-- 2008/06/11 D.Nihei ADD START 
+              , gme_material_details            gmdh   -- 生産原料詳細(完成品用)
+-- 2008/06/11 D.Nihei ADD END 
               , (
                   SELECT  -- 資材以外
                     ilm.item_id                     item_id
@@ -232,6 +245,10 @@ AS
                 AND gmd.attribute5          = 'Y'                           -- 打込
                 AND gmd.attribute24         IS NULL                         -- 未取消
                 AND gmd.item_id             = lot.item_id
+-- 2008/06/11 D.Nihei ADD START 
+                AND gmdh.line_type          = 1                            -- 完成品
+                AND gmdh.batch_id           = gmd.batch_id
+-- 2008/06/11 D.Nihei ADD END 
             ) stock
           WHERE
                 stock.enabled_qty > 0
