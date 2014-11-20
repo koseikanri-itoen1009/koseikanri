@@ -7,7 +7,7 @@ AS
  * Description      : éxï•êÊÇÃå⁄ãqÇÊÇËñ‚çáÇπÇ™Ç†Ç¡ÇΩèÍçáÅA
  *                    éÊà¯èåèï ÇÃã‡äzÇ™àÛéöÇ≥ÇÍÇΩéxï•àƒì‡èëÇàÛç¸ÇµÇ‹Ç∑ÅB
  * MD.050           : éxï•àƒì‡èëàÛç¸Åiñæç◊Åj MD050_COK_015_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/05/11    1.3   K.Yamaguchi      [è·äQT1_0841] éxï•äzÅiê≈çûÅjÇÃéÊìæï˚ñ@ÇïœçX
  *                                       [è·äQT1_0866] ñ{êUÅiàƒì‡èëÇ†ÇËÅjÇÃèÍçáÇÃíäèoèåèÇïœçX
  *  2009/05/25    1.4   M.Hiruta         [è·äQT1_1168] éxï•àƒì‡èë(ñæç◊)ÇÃî≠çsì˙ÇÉVÉXÉeÉÄì˙ïtÇ©ÇÁã∆ñ±èàóùì˙ïtÇ÷ïœçX
+ *  2009/09/10    1.5   S.Moriyama       [è·äQ0000060] èZèäÇÃåÖêîïœçXëŒâû
  *
  *****************************************************************************************/
   --==================================================
@@ -584,17 +585,32 @@ AS
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
 -- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
-         , pvsa.zip                                             AS payment_zip_code
-         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
-         , pvsa.address_line2                                   AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , pvsa.zip                                             AS payment_zip_code
+--         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
+--         , pvsa.address_line2                                   AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+         , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
+         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca2.contact_area_code                               AS contact_base
          , hca2.contact_code                                    AS contact_base_code
-         , hca2.contact_name                                    AS contact_base_name
-         , hca2.contact_address1                                AS contact_addr_1
-         , hca2.contact_address2                                AS contact_addr_2
-         , hca2.contact_phone_num                               AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca2.contact_name                                    AS contact_base_name
+--         , hca2.contact_address1                                AS contact_addr_1
+--         , hca2.contact_address2                                AS contact_addr_2
+--         , hca2.contact_phone_num                               AS contact_phone_no
+         , SUBSTR( hca2.contact_name , 1 , 20 )                 AS contact_base_name
+         , SUBSTR( hca2.contact_address1 , 1 , 20 )             AS contact_addr_1
+         , SUBSTR( hca2.contact_address1 , 21, 20 )             AS contact_addr_2
+         , SUBSTRB( hca2.contact_phone_num , 1 ,15 )            AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , NULL                                                 AS selling_amt_sum
          , NULL                                                 AS bm_index_1
          , NULL                                                 AS bm_amt_1
@@ -610,10 +626,16 @@ AS
          , MAX( xcbs.calc_target_period_to )                    AS term_to
          , MAX( xbb.expect_payment_date )                       AS payment_date
          , xcbs.delivery_cust_code                              AS cust_code
-         , hca1.cust_name                                       AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca1.cust_name                                       AS cust_name
+         , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS selling_base
          , xcbs.base_code                                       AS selling_base_code
-         , hca3.base_name                                       AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca3.base_name                                       AS selling_base_name
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , xcbs.calc_type                                       AS calc_type
          , flv2.calc_type_sort                                  AS calc_type_sort
          , flv1.container_type_code                             AS container_type_code
@@ -662,10 +684,15 @@ AS
        , ( SELECT hca.account_number             AS contact_code
                 , hp.party_name                  AS contact_name
                 , hl.address3                    AS contact_area_code
-                ,    hl.state
-                  || hl.city 
-                  || hl.address1                 AS contact_address1
-                , hl.address2                    AS contact_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--                ,    hl.state
+--                  || hl.city 
+--                  || hl.address1                 AS contact_address1
+--                , hl.address2                    AS contact_address2
+                ,    hl.city 
+                  || hl.address1
+                  || hl.address2                 AS contact_address1
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
                 , hl.address_lines_phonetic      AS contact_phone_num
            FROM hz_cust_accounts            hca       -- å⁄ãqÉ}ÉXÉ^
               , hz_cust_acct_sites_all      hcasa     -- å⁄ãqèäç›ínÉ}ÉXÉ^
@@ -742,15 +769,22 @@ AS
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
     GROUP BY xbb.supplier_code
            , pvsa.zip
-           , pvsa.state || pvsa.city || pvsa.address_line1
-           , pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 15 )
-           , SUBSTR( pv.vendor_name, 16     )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--           , pvsa.state || pvsa.city || pvsa.address_line1
+--           , pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 15 )
+--           , SUBSTR( pv.vendor_name, 16     )
+           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pv.vendor_name,  1, 20 )
+           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
            , hca2.contact_area_code
            , hca2.contact_code
            , hca2.contact_name
            , hca2.contact_address1
-           , hca2.contact_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL START
+--           , hca2.contact_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL END
            , hca2.contact_phone_num
            , xcbs.delivery_cust_code
            , hca1.cust_name
@@ -824,17 +858,32 @@ AS
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
 -- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
-         , pvsa.zip                                             AS payment_zip_code
-         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
-         , pvsa.address_line2                                   AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , pvsa.zip                                             AS payment_zip_code
+--         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
+--         , pvsa.address_line2                                   AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+         , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
+         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca2.contact_area_code                               AS contact_base
          , hca2.contact_code                                    AS contact_base_code
-         , hca2.contact_name                                    AS contact_base_name
-         , hca2.contact_address1                                AS contact_addr_1
-         , hca2.contact_address2                                AS contact_addr_2
-         , hca2.contact_phone_num                               AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca2.contact_name                                    AS contact_base_name
+--         , hca2.contact_address1                                AS contact_addr_1
+--         , hca2.contact_address2                                AS contact_addr_2
+--         , hca2.contact_phone_num                               AS contact_phone_no
+         , SUBSTR( hca2.contact_name , 1 , 20 )                 AS contact_base_name
+         , SUBSTR( hca2.contact_address1 , 1 , 20 )             AS contact_addr_1
+         , SUBSTR( hca2.contact_address1 , 21, 20 )             AS contact_addr_2
+         , SUBSTRB( hca2.contact_phone_num , 1 ,15 )            AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , NULL                                                 AS selling_amt_sum
          , NULL                                                 AS bm_index_1
          , NULL                                                 AS bm_amt_1
@@ -850,10 +899,16 @@ AS
          , MAX( xcbs.calc_target_period_to )                    AS term_to
          , MAX( xbb.expect_payment_date )                       AS payment_date
          , xcbs.delivery_cust_code                              AS cust_code
-         , hca1.cust_name                                       AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca1.cust_name                                       AS cust_name
+         , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS selling_base
          , xcbs.base_code                                       AS selling_base_code
-         , hca3.base_name                                       AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca3.base_name                                       AS selling_base_name
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , xcbs.calc_type                                       AS calc_type
          , flv2.calc_type_sort                                  AS calc_type_sort
          , flv1.container_type_code                             AS container_type_code
@@ -902,10 +957,15 @@ AS
        , ( SELECT hca.account_number             AS contact_code
                 , hp.party_name                  AS contact_name
                 , hl.address3                    AS contact_area_code
-                ,    hl.state
-                  || hl.city
-                  || hl.address1                 AS contact_address1
-                , hl.address2                    AS contact_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--                ,    hl.state
+--                  || hl.city 
+--                  || hl.address1                 AS contact_address1
+--                , hl.address2                    AS contact_address2
+                ,    hl.city 
+                  || hl.address1
+                  || hl.address2                 AS contact_address1
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
                 , hl.address_lines_phonetic      AS contact_phone_num
            FROM hz_cust_accounts            hca       -- å⁄ãqÉ}ÉXÉ^
               , hz_cust_acct_sites_all      hcasa     -- å⁄ãqèäç›ínÉ}ÉXÉ^
@@ -973,15 +1033,22 @@ AS
 -- 2009/05/11 Ver.1.3 [è·äQT1_0866] SCS K.Yamaguchi REPAIR END
     GROUP BY xbb.supplier_code
            , pvsa.zip
-           , pvsa.state || pvsa.city || pvsa.address_line1
-           , pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 15 )
-           , SUBSTR( pv.vendor_name, 16     )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--           , pvsa.state || pvsa.city || pvsa.address_line1
+--           , pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 15 )
+--           , SUBSTR( pv.vendor_name, 16     )
+           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pv.vendor_name,  1, 20 )
+           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
            , hca2.contact_area_code
            , hca2.contact_code
            , hca2.contact_name
            , hca2.contact_address1
-           , hca2.contact_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL START
+--           , hca2.contact_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL END
            , hca2.contact_phone_num
            , xcbs.delivery_cust_code
            , hca1.cust_name
@@ -1055,17 +1122,32 @@ AS
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
 -- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
-         , pvsa.zip                                             AS payment_zip_code
-         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
-         , pvsa.address_line2                                   AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , pvsa.zip                                             AS payment_zip_code
+--         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
+--         , pvsa.address_line2                                   AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+         , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
+         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS contact_base
          , hca3.base_code                                       AS contact_base_code
-         , hca3.base_name                                       AS contact_base_name
-         , hca3.base_address1                                   AS contact_addr_1
-         , hca3.base_address2                                   AS contact_addr_2
-         , hca3.base_phone_num                                  AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca3.base_name                                       AS contact_base_name
+--         , hca3.base_address1                                   AS contact_addr_1
+--         , hca3.base_address2                                   AS contact_addr_2
+--         , hca3.base_phone_num                                  AS contact_phone_no
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS contact_base_name
+         , SUBSTR( hca3.base_address1 , 1 , 20 )                AS contact_addr_1
+         , SUBSTR( hca3.base_address1 , 21, 20 )                AS contact_addr_2
+         , SUBSTRB( hca3.base_phone_num , 1 ,15 )               AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , NULL                                                 AS selling_amt_sum
          , NULL                                                 AS bm_index_1
          , NULL                                                 AS bm_amt_1
@@ -1081,10 +1163,16 @@ AS
          , MAX( xcbs.calc_target_period_to )                    AS term_to
          , MAX( xbb.expect_payment_date )                       AS payment_date
          , xcbs.delivery_cust_code                              AS cust_code
-         , hca1.cust_name                                       AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca1.cust_name                                       AS cust_name
+         , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS selling_base
          , xcbs.base_code                                       AS selling_base_code
-         , hca3.base_name                                       AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca3.base_name                                       AS selling_base_name
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , xcbs.calc_type                                       AS calc_type
          , flv2.calc_type_sort                                  AS calc_type_sort
          , flv1.container_type_code                             AS container_type_code
@@ -1133,10 +1221,15 @@ AS
        , ( SELECT hca.account_number             AS base_code
                 , hp.party_name                  AS base_name
                 , hl.address3                    AS base_area_code
-                ,    hl.state
-                  || hl.city
-                  || hl.address1                 AS base_address1
-                , hl.address2                    AS base_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--                ,    hl.state
+--                  || hl.city
+--                  || hl.address1                 AS base_address1
+--                , hl.address2                    AS base_address2
+                ,    hl.city
+                  || hl.address1
+                  || hl.address2                 AS base_address1
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
                 , hl.address_lines_phonetic      AS base_phone_num
            FROM hz_cust_accounts            hca       -- å⁄ãqÉ}ÉXÉ^
               , hz_cust_acct_sites_all      hcasa     -- å⁄ãqèäç›ínÉ}ÉXÉ^
@@ -1187,15 +1280,22 @@ AS
       AND xbb.payment_amt_tax          > 0
     GROUP BY xbb.supplier_code
            , pvsa.zip
-           , pvsa.state || pvsa.city || pvsa.address_line1
-           , pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 15 )
-           , SUBSTR( pv.vendor_name, 16     )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL START
+--           , pvsa.state || pvsa.city || pvsa.address_line1
+--           , pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 15 )
+--           , SUBSTR( pv.vendor_name, 16     )
+           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pv.vendor_name,  1, 20 )
+           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
            , hca3.base_code
            , hca3.base_name
            , hca3.base_area_code
            , hca3.base_address1
-           , hca3.base_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL START
+--           , hca3.base_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL END
            , hca3.base_phone_num
            , xcbs.delivery_cust_code
            , hca1.cust_name
@@ -1269,17 +1369,32 @@ AS
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
 -- End   2009/05/25 Ver_1.4 T1_1168 M.Hiruta
-         , pvsa.zip                                             AS payment_zip_code
-         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
-         , pvsa.address_line2                                   AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , pvsa.zip                                             AS payment_zip_code
+--         , pvsa.state || pvsa.city || pvsa.address_line1        AS payment_addr_1
+--         , pvsa.address_line2                                   AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
+         , SUBSTRB( pvsa.zip , 1 , 8 )                          AS payment_zip_code
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+         , SUBSTR( pvsa.city  || pvsa.address_line1
+                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+         , SUBSTR( pv.vendor_name,  1 , 20 )                    AS payment_name_1
+         , SUBSTR( pv.vendor_name, 21 , 20 )                    AS payment_name_2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS contact_base
          , hca3.base_code                                       AS contact_base_code
-         , hca3.base_name                                       AS contact_base_name
-         , hca3.base_address1                                   AS contact_addr_1
-         , hca3.base_address2                                   AS contact_addr_2
-         , hca3.base_phone_num                                  AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca3.base_name                                       AS contact_base_name
+--         , hca3.base_address1                                   AS contact_addr_1
+--         , hca3.base_address2                                   AS contact_addr_2
+--         , hca3.base_phone_num                                  AS contact_phone_no
+         , SUBSTR( hca3.base_name , 1 ,20 )                     AS contact_base_name
+         , SUBSTR( hca3.base_address1 ,  1 , 20 )               AS contact_addr_1
+         , SUBSTR( hca3.base_address1 , 21 , 20 )               AS contact_addr_2
+         , SUBSTRB( hca3.base_phone_num , 1 , 15 )              AS contact_phone_no
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , NULL                                                 AS selling_amt_sum
          , NULL                                                 AS bm_index_1
          , NULL                                                 AS bm_amt_1
@@ -1295,10 +1410,16 @@ AS
          , MAX( xcbs.calc_target_period_to )                    AS term_to
          , MAX( xbb.expect_payment_date )                       AS payment_date
          , xcbs.delivery_cust_code                              AS cust_code
-         , hca1.cust_name                                       AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca1.cust_name                                       AS cust_name
+         , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS selling_base
          , xcbs.base_code                                       AS selling_base_code
-         , hca3.base_name                                       AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--         , hca3.base_name                                       AS selling_base_name
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
          , xcbs.calc_type                                       AS calc_type
          , flv2.calc_type_sort                                  AS calc_type_sort
          , flv1.container_type_code                             AS container_type_code
@@ -1347,10 +1468,15 @@ AS
        , ( SELECT hca.account_number             AS base_code
                 , hp.party_name                  AS base_name
                 , hl.address3                    AS base_area_code
-                ,    hl.state 
-                  || hl.city
-                  || hl.address1                 AS base_address1
-                , hl.address2                    AS base_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD START
+--                ,    hl.state 
+--                  || hl.city
+--                  || hl.address1                 AS base_address1
+--                , hl.address2                    AS base_address2
+                ,    hl.city
+                  || hl.address1
+                  || hl.address2                 AS base_address1
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPD END
                 , hl.address_lines_phonetic      AS base_phone_num
            FROM hz_cust_accounts            hca       -- å⁄ãqÉ}ÉXÉ^
               , hz_cust_acct_sites_all      hcasa     -- å⁄ãqèäç›ínÉ}ÉXÉ^
@@ -1399,15 +1525,22 @@ AS
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
     GROUP BY xbb.supplier_code
            , pvsa.zip
-           , pvsa.state || pvsa.city || pvsa.address_line1
-           , pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 15 )
-           , SUBSTR( pv.vendor_name, 16     )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPS START
+--           , pvsa.state || pvsa.city || pvsa.address_line1
+--           , pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 15 )
+--           , SUBSTR( pv.vendor_name, 16     )
+           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pv.vendor_name,  1, 20 )
+           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama UPS END
            , hca3.base_code
            , hca3.base_name
            , hca3.base_area_code
            , hca3.base_address1
-           , hca3.base_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL START
+--           , hca3.base_address2
+-- 2009/09/10 Ver.1.5 [è·äQ0000060] SCS S.Moriyama DEL END
            , hca3.base_phone_num
            , xcbs.delivery_cust_code
            , hca1.cust_name
