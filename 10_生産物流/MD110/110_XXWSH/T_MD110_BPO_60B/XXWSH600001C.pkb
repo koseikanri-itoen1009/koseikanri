@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/02/27    1.20 SCS    M.Hokkanji 本番障害#1228対応
  *  2009/04/17    1.21 SCS    H.Itou     本番障害#1398対応
  *  2009/04/20    1.22 SCS    H.Itou     本番障害#1398再対応
+ *  2009/07/23    1.23 SCS    H.Itou     本番障害#1336対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2258,7 +2259,10 @@ debug_log(FND_FILE.LOG,'B4_1.1基準レコード設定');
                                                                                       -- 配送元ID
           lr_intensive_tmp.transaction_type_name := mixed_info_tab(ln_work_cnt).order_type_id;
                                                                                       -- 出庫形態
-          lr_intensive_tmp.max_shipping_method_code := mixed_info_tab(ln_work_cnt).shipping_method_code;
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 受注ヘッダの配送区分は最大配送区分ではないので、最大配送区分をセットする。
+--          lr_intensive_tmp.max_shipping_method_code := mixed_info_tab(ln_work_cnt).shipping_method_code;
+          lr_intensive_tmp.max_shipping_method_code := mixed_info_tab(ln_work_cnt).max_shipping_method_code;
+-- 2009/07/23 H.Itou Mod End
                                                                                       -- 最大配送区分
           lr_intensive_tmp.weight_capacity_class := mixed_info_tab(ln_work_cnt).weight_capacity_class;
                                                                                       -- 重量容積区分
@@ -2344,7 +2348,10 @@ debug_log(FND_FILE.LOG,'B4_1.32 配送先異なる');
               lr_intensive_tmp_2.deliver_from             := mixed_info_tab(ln_work_cnt).deliver_from;          -- 配送元
               lr_intensive_tmp_2.deliver_from_id          := mixed_info_tab(ln_work_cnt).deliver_from_id;       -- 配送元ID
               lr_intensive_tmp_2.transaction_type_name    := mixed_info_tab(ln_work_cnt).order_type_id;         -- 出庫形態
-              lr_intensive_tmp_2.max_shipping_method_code := mixed_info_tab(ln_work_cnt).shipping_method_code;  -- 最大配送区分
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 受注ヘッダの配送区分は最大配送区分ではないので、最大配送区分をセットする。
+--              lr_intensive_tmp_2.max_shipping_method_code := mixed_info_tab(ln_work_cnt).shipping_method_code;  -- 最大配送区分
+              lr_intensive_tmp_2.max_shipping_method_code := mixed_info_tab(ln_work_cnt).max_shipping_method_code;  -- 最大配送区分
+-- 2009/07/23 H.Itou Mod End
               lr_intensive_tmp_2.weight_capacity_class    := mixed_info_tab(ln_work_cnt).weight_capacity_class; -- 重量容積区分
               lr_intensive_tmp_2.max_weight               := mixed_info_tab(ln_work_cnt).based_weight;          -- 基本重量
               lr_intensive_tmp_2.max_capacity             := mixed_info_tab(ln_work_cnt).based_capacity;        -- 基本容積
@@ -5717,6 +5724,10 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
 -- 2009/01/05 H.Itou Add Start 本番障害#879
       , pre_saved_flg             xxwsh_carriers_sort_tmp.pre_saved_flg%TYPE      -- 拠点混載登録済フラグ
 -- 2009/01/05 H.Itou Add End
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+      , ship_method_search_from   xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE -- 配送区分検索用入出庫場所１
+      , ship_method_search_to     xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
       );
 --
     -- 自動配車集約中間テーブル用PLSQL表型
@@ -5783,6 +5794,12 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
 -- 2009/01/05 H.Itou Mod Start 本番障害#879
     first_pre_saved_flg             xxwsh_carriers_sort_tmp.pre_saved_flg%TYPE; -- 拠点混載登録済フラグ
 -- 2009/01/05 H.Itou Mod End
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+    first_ship_method_search_from   xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE;
+                                                                                -- 配送区分検索用入出庫場所１
+    first_ship_method_search_to     xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE;
+                                                                                -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
 --
     ln_intensive_weight       NUMBER DEFAULT 0;                                 -- 混載合計重量
     ln_intensive_capacity     NUMBER DEFAULT 0;                                 -- 混載合計容積
@@ -5845,6 +5862,10 @@ debug_cnt number default 0;
 -- 2009/01/05 H.Itou Add Start 本番障害#879
             , xcst.pre_saved_flg            pre_saved_flg             -- 拠点混載登録済フラグ
 -- 2009/01/05 H.Itou Add End
+-- 2009/07/23 H.Itou Add Start 本番障害#1336
+            , NULL                          ship_method_search_from   -- 配送区分検索用入出庫場所１
+            , NULL                          ship_method_search_to     -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Add End
       FROM    xxwsh_intensive_carriers_tmp xict  -- 自動配車集約中間テーブル
 -- 2009/01/05 H.Itou Add Start 本番障害#879
             , xxwsh_carriers_sort_tmp      xcst  -- 自動配車ソート用中間テーブル
@@ -5881,6 +5902,9 @@ debug_cnt number default 0;
       , ov_errbuf                     OUT NOCOPY VARCHAR2  -- エラー・メッセージ --# 固定 #
       , ov_retcode                    OUT NOCOPY VARCHAR2  -- リターン・コード   --# 固定 #
       , ov_errmsg                     OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2009/07/23 H.Itou Add Start 本番障害#1336
+      , iv_weight_capa_class          IN xxwsh_intensive_carriers_tmp.weight_capacity_class%TYPE DEFAULT NULL -- 重量容積区分
+-- 2009/07/23 H.Itou Add End
     )
     IS
       -- ===============================
@@ -5972,14 +5996,20 @@ debug_log(FND_FILE.LOG,'ルート判定:NO_DATA_FOUND');
             INTO lv_ship_method
             FROM xxcmn_delivery_lt2_v xdl                                   -- 配送L/T情報VIEW2
            WHERE xdl.code_class1 = iv_code_class1                           -- コード区分１
-             AND (xdl.entering_despatching_code1 = iv_entering_despatching_code1 -- 入出庫場所１
-              OR  xdl.entering_despatching_code1 = gv_all_z4)               -- 2008/07/14 Add
-             AND xdl.code_class2 = iv_code_class2                           -- コード区分２
-             AND (xdl.entering_despatching_code2 = iv_entering_despatching_code2 -- 入出庫場所２
-              OR  xdl.entering_despatching_code2 = DECODE(iv_code_class2,
-                                                          gv_cdkbn_ship_to,
-                                                          gv_all_z9,
-                                                          gv_all_z4))       -- 2008/07/14 Add
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 配送区分検索用入出庫場所が引数で渡されるので、そのコードのみで検索する。
+--             AND (xdl.entering_despatching_code1 = iv_entering_despatching_code1 -- 入出庫場所１
+--              OR  xdl.entering_despatching_code1 = gv_all_z4)               -- 2008/07/14 Add
+--             AND xdl.code_class2 = iv_code_class2                           -- コード区分２
+--             AND (xdl.entering_despatching_code2 = iv_entering_despatching_code2 -- 入出庫場所２
+--              OR  xdl.entering_despatching_code2 = DECODE(iv_code_class2,
+--                                                          gv_cdkbn_ship_to,
+--                                                          gv_all_z9,
+--                                                          gv_all_z4))       -- 2008/07/14 Add
+--
+             AND  xdl.entering_despatching_code1 = iv_entering_despatching_code1 -- 入出庫場所１(個別かALL値)
+             AND  xdl.code_class2                = iv_code_class2                -- コード区分２
+             AND  xdl.entering_despatching_code2 = iv_entering_despatching_code2 -- 入出庫場所２(個別かALL値)
+-- 2009/07/23 H.Itou Mod End
              AND xdl.ship_method = iv_ship_method                           -- 配送区分
              AND xdl.lt_start_date_active <= gd_date_from                   -- 配送LT適用開始日
              AND (xdl.lt_end_date_active IS NULL
@@ -5987,6 +6017,22 @@ debug_log(FND_FILE.LOG,'ルート判定:NO_DATA_FOUND');
              AND xdl.sm_start_date_active <= gd_date_from                   -- 出荷方法適用開始日
              AND (xdl.sm_end_date_active IS NULL
                   OR xdl.sm_end_date_active >= gd_date_from)                -- 出荷方法適用終了日
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 重量容積が0以下なら配送区分がないとみなすので、重量容積＞0を追加
+             AND(CASE
+                   -- ドリンク積載重量
+                   WHEN ((gv_prod_class        = gv_prod_cls_drink)
+                   AND   (iv_weight_capa_class = gv_weight))   THEN xdl.drink_deadweight
+                   -- リーフ積載重量
+                   WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+                   AND   (iv_weight_capa_class = gv_weight))   THEN xdl.leaf_deadweight
+                   -- ドリンク積載容積
+                   WHEN ((gv_prod_class        = gv_prod_cls_drink)
+                   AND   (iv_weight_capa_class = gv_capacity)) THEN xdl.drink_loading_capacity
+                   -- リーフ積載容積
+                   WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+                   AND   (iv_weight_capa_class = gv_capacity)) THEN xdl.leaf_loading_capacity
+                 END) > 0
+-- 2009/07/23 H.Itou Add End
              AND ROWNUM = 1
            ;
         EXCEPTION
@@ -6084,424 +6130,462 @@ debug_cnt number default 0;
                   , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
         ORDER BY xdl.ship_method DESC
 */
-      -- 2008/07/14 Mod ↓
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 配送区分検索用入出庫場所が引数で渡されるので、そのコードのみで検索する。 
+--      -- 2008/07/14 Mod ↓
+--      CURSOR ship_method_class_cur IS
+--        SELECT  union_sel.ship_method                     -- 出荷方法
+--              , union_sel.drink_deadweight                -- ドリンク積載重量
+--              , union_sel.leaf_deadweight                 -- リーフ積載重量
+--              , union_sel.drink_loading_capacity          -- ドリンク積載容積
+--              , union_sel.leaf_loading_capacity           -- リーフ積載容積
+--        FROM (
+--          SELECT  '1' as sel_flg                      -- 検索順
+--                , xdl.ship_method                     -- 出荷方法
+--                , xdl.drink_deadweight                -- ドリンク積載重量
+--                , xdl.leaf_deadweight                 -- リーフ積載重量
+--                , xdl.drink_loading_capacity          -- ドリンク積載容積
+--                , xdl.leaf_loading_capacity           -- リーフ積載容積
+--            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--             AND xdl.code_class1 = iv_code_class1                                 -- コード区分１
+--             AND xdl.entering_despatching_code1 = iv_entering_despatching_code1   -- 入出庫場所１
+--             AND xdl.code_class2 = iv_code_class2                                 -- コード区分２
+--             AND xdl.entering_despatching_code2 = iv_entering_despatching_code2   -- 入出庫場所２
+--             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
+--             AND (xdl.lt_end_date_active IS NULL
+--                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
+--             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
+--             AND (xdl.sm_end_date_active IS NULL
+--                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_deadweight                     -- ドリンク積載重量
+----                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--             AND (CASE
+--                    -- ドリンク積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.drink_deadweight
+--                    -- リーフ積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.leaf_deadweight
+--                    -- ドリンク積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.drink_loading_capacity
+--                    -- リーフ積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.leaf_loading_capacity
+--                  END) > 0
+----2008/10/16 H.Itou Mod End
+--          UNION
+--          SELECT  '2' as sel_flg                      -- 検索順
+--                , xdl.ship_method                     -- 出荷方法
+--                , xdl.drink_deadweight                -- ドリンク積載重量
+--                , xdl.leaf_deadweight                 -- リーフ積載重量
+--                , xdl.drink_loading_capacity          -- ドリンク積載容積
+--                , xdl.leaf_loading_capacity           -- リーフ積載容積
+--            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--             AND xdl.code_class1 = iv_code_class1                                 -- コード区分１
+--             AND xdl.entering_despatching_code1 = gv_all_z4   -- 入出庫場所１
+--             AND xdl.code_class2 = iv_code_class2                                 -- コード区分２
+--             AND xdl.entering_despatching_code2 = iv_entering_despatching_code2   -- 入出庫場所２
+--             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
+--             AND (xdl.lt_end_date_active IS NULL
+--                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
+--             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
+--             AND (xdl.sm_end_date_active IS NULL
+--                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_deadweight                     -- ドリンク積載重量
+----                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--             AND (CASE
+--                    -- ドリンク積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.drink_deadweight
+--                    -- リーフ積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.leaf_deadweight
+--                    -- ドリンク積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.drink_loading_capacity
+--                    -- リーフ積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.leaf_loading_capacity
+--                  END) > 0
+----2008/10/16 H.Itou Mod End
+--          UNION
+--          SELECT  '3' as sel_flg                      -- 検索順
+--                , xdl.ship_method                     -- 出荷方法
+--                , xdl.drink_deadweight                -- ドリンク積載重量
+--                , xdl.leaf_deadweight                 -- リーフ積載重量
+--                , xdl.drink_loading_capacity          -- ドリンク積載容積
+--                , xdl.leaf_loading_capacity           -- リーフ積載容積
+--            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--             AND xdl.code_class1 = iv_code_class1                                 -- コード区分１
+--             AND xdl.entering_despatching_code1 = iv_entering_despatching_code1   -- 入出庫場所１
+--             AND xdl.code_class2 = iv_code_class2                                 -- コード区分２
+--             AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
+--                                                         gv_cdkbn_ship_to,
+--                                                         gv_all_z9,
+--                                                         gv_all_z4)     -- 入出庫場所２
+--             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
+--             AND (xdl.lt_end_date_active IS NULL
+--                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
+--             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
+--             AND (xdl.sm_end_date_active IS NULL
+--                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_deadweight                     -- ドリンク積載重量
+----                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--             AND (CASE
+--                    -- ドリンク積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.drink_deadweight
+--                    -- リーフ積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.leaf_deadweight
+--                    -- ドリンク積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.drink_loading_capacity
+--                    -- リーフ積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.leaf_loading_capacity
+--                  END) > 0
+----2008/10/16 H.Itou Mod End
+--          UNION
+--          SELECT  '4' as sel_flg                      -- 検索順
+--                , xdl.ship_method                     -- 出荷方法
+--                , xdl.drink_deadweight                -- ドリンク積載重量
+--                , xdl.leaf_deadweight                 -- リーフ積載重量
+--                , xdl.drink_loading_capacity          -- ドリンク積載容積
+--                , xdl.leaf_loading_capacity           -- リーフ積載容積
+--            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--             AND xdl.code_class1 = iv_code_class1               -- コード区分１
+--             AND xdl.entering_despatching_code1 = gv_all_z4     -- 入出庫場所１
+--             AND xdl.code_class2 = iv_code_class2               -- コード区分２
+--             AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
+--                                                         gv_cdkbn_ship_to,
+--                                                         gv_all_z9,
+--                                                         gv_all_z4)     -- 入出庫場所２
+--             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
+--             AND (xdl.lt_end_date_active IS NULL
+--                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
+--             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
+--             AND (xdl.sm_end_date_active IS NULL
+--                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_deadweight                     -- ドリンク積載重量
+----                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----             AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                    , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--             AND (CASE
+--                    -- ドリンク積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.drink_deadweight
+--                    -- リーフ積載重量
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_weight)) THEN
+--                      xdl.leaf_deadweight
+--                    -- ドリンク積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.drink_loading_capacity
+--                    -- リーフ積載容積
+--                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                    AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                      xdl.leaf_loading_capacity
+--                  END) > 0
+----2008/10/16 H.Itou Mod End
+--        ) union_sel
+--       ,(
+--          SELECT  MIN(union_sel.sel_flg) as min_flg
+--                , union_sel.ship_method                     -- 出荷方法
+--          FROM (
+--            SELECT  '1' as sel_flg                      -- 検索順
+--                  , xdl.ship_method                     -- 出荷方法
+--              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--               AND xdl.code_class1 = iv_code_class1                                -- コード区分１
+--               AND xdl.entering_despatching_code1 = iv_entering_despatching_code1  -- 入出庫場所１
+--               AND xdl.code_class2 = iv_code_class2                                -- コード区分２
+--               AND xdl.entering_despatching_code2 = iv_entering_despatching_code2  -- 入出庫場所２
+--               AND xdl.lt_start_date_active <= gd_date_from      -- 配送LT適用開始日
+--               AND (xdl.lt_end_date_active IS NULL
+--                    OR xdl.lt_end_date_active   >= gd_date_from) -- 配送LT適用終了日
+--               AND xdl.sm_start_date_active <= gd_date_from      -- 出荷方法適用開始日
+--               AND (xdl.sm_end_date_active IS NULL
+--                    OR xdl.sm_end_date_active >= gd_date_from)   -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_deadweight                     -- ドリンク積載重量
+----                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--               AND (CASE
+--                      -- ドリンク積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.drink_deadweight
+--                      -- リーフ積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.leaf_deadweight
+--                      -- ドリンク積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.drink_loading_capacity
+--                      -- リーフ積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.leaf_loading_capacity
+--                    END) > 0
+----2008/10/16 H.Itou Mod End
+--            UNION
+--            SELECT  '2' as sel_flg                      -- 検索順
+--                  , xdl.ship_method                     -- 出荷方法
+--              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--               AND xdl.code_class1 = iv_code_class1              -- コード区分１
+--               AND xdl.entering_despatching_code1 = gv_all_z4    -- 入出庫場所１
+--               AND xdl.code_class2 = iv_code_class2              -- コード区分２
+--               AND xdl.entering_despatching_code2 = iv_entering_despatching_code2  -- 入出庫場所２
+--               AND xdl.lt_start_date_active <= gd_date_from      -- 配送LT適用開始日
+--               AND (xdl.lt_end_date_active IS NULL
+--                    OR xdl.lt_end_date_active   >= gd_date_from) -- 配送LT適用終了日
+--               AND xdl.sm_start_date_active <= gd_date_from      -- 出荷方法適用開始日
+--               AND (xdl.sm_end_date_active IS NULL
+--                    OR xdl.sm_end_date_active >= gd_date_from)   -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_deadweight                     -- ドリンク積載重量
+----                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--               AND (CASE
+--                      -- ドリンク積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.drink_deadweight
+--                      -- リーフ積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.leaf_deadweight
+--                      -- ドリンク積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.drink_loading_capacity
+--                      -- リーフ積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.leaf_loading_capacity
+--                    END) > 0
+----2008/10/16 H.Itou Mod End
+--            UNION
+--            SELECT  '3' as sel_flg                      -- 検索順
+--                  , xdl.ship_method                     -- 出荷方法
+--              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--               AND xdl.code_class1 = iv_code_class1               -- コード区分１
+--               AND xdl.entering_despatching_code1 = iv_entering_despatching_code1  -- 入出庫場所１
+--               AND xdl.code_class2 = iv_code_class2               -- コード区分２
+--               AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
+--                                                           gv_cdkbn_ship_to,
+--                                                           gv_all_z9,
+--                                                           gv_all_z4)     -- 入出庫場所２
+--               AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
+--               AND (xdl.lt_end_date_active IS NULL
+--                    OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
+--               AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
+--               AND (xdl.sm_end_date_active IS NULL
+--                    OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_deadweight                     -- ドリンク積載重量
+----                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--               AND (CASE
+--                      -- ドリンク積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.drink_deadweight
+--                      -- リーフ積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.leaf_deadweight
+--                      -- ドリンク積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.drink_loading_capacity
+--                      -- リーフ積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.leaf_loading_capacity
+--                    END) > 0
+----2008/10/16 H.Itou Mod End
+--            UNION
+--            SELECT  '4' as sel_flg                      -- 検索順
+--                  , xdl.ship_method                     -- 出荷方法
+--              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
+--                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
+--             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
+--               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
+--               AND xdl.code_class1 = iv_code_class1             -- コード区分１
+--               AND xdl.entering_despatching_code1 = gv_all_z4   -- 入出庫場所１
+--               AND xdl.code_class2 = iv_code_class2             -- コード区分２
+--               AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
+--                                                           gv_cdkbn_ship_to,
+--                                                           gv_all_z9,
+--                                                           gv_all_z4)   -- 入出庫場所２
+--               AND xdl.lt_start_date_active <= gd_date_from     -- 配送LT適用開始日
+--               AND (xdl.lt_end_date_active IS NULL
+--                    OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
+--               AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
+--               AND (xdl.sm_end_date_active IS NULL
+--                    OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
+---- Ver1.5 M.Hokkanji Start
+----               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+---- Ver1.5 M.Hokkanji End
+---- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_deadweight                     -- ドリンク積載重量
+----                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
+----               AND DECODE(gv_prod_class, gv_prod_cls_drink
+----                      , xdl.drink_loading_capacity               -- ドリンク積載容積
+----                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
+--               AND (CASE
+--                      -- ドリンク積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.drink_deadweight
+--                      -- リーフ積載重量
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_weight)) THEN
+--                        xdl.leaf_deadweight
+--                      -- ドリンク積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.drink_loading_capacity
+--                      -- リーフ積載容積
+--                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+--                      AND   (iv_weight_capa_class = gv_capacity)) THEN
+--                        xdl.leaf_loading_capacity
+--                    END) > 0
+----2008/10/16 H.Itou Mod End
+--          ) union_sel
+--          group by union_sel.ship_method
+--        ) union_flg
+--        WHERE union_sel.sel_flg = union_flg.min_flg
+--        AND   union_sel.ship_method = union_flg.ship_method
+--        ORDER BY union_sel.ship_method DESC
+--       ;
+--      -- 2008/07/14 Mod ↑
       CURSOR ship_method_class_cur IS
-        SELECT  union_sel.ship_method                     -- 出荷方法
-              , union_sel.drink_deadweight                -- ドリンク積載重量
-              , union_sel.leaf_deadweight                 -- リーフ積載重量
-              , union_sel.drink_loading_capacity          -- ドリンク積載容積
-              , union_sel.leaf_loading_capacity           -- リーフ積載容積
-        FROM (
-          SELECT  '1' as sel_flg                      -- 検索順
-                , xdl.ship_method                     -- 出荷方法
-                , xdl.drink_deadweight                -- ドリンク積載重量
-                , xdl.leaf_deadweight                 -- リーフ積載重量
-                , xdl.drink_loading_capacity          -- ドリンク積載容積
-                , xdl.leaf_loading_capacity           -- リーフ積載容積
-            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-             AND xdl.code_class1 = iv_code_class1                                 -- コード区分１
-             AND xdl.entering_despatching_code1 = iv_entering_despatching_code1   -- 入出庫場所１
-             AND xdl.code_class2 = iv_code_class2                                 -- コード区分２
-             AND xdl.entering_despatching_code2 = iv_entering_despatching_code2   -- 入出庫場所２
-             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
-             AND (xdl.lt_end_date_active IS NULL
-                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
-             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
-             AND (xdl.sm_end_date_active IS NULL
-                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_deadweight                     -- ドリンク積載重量
---                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_loading_capacity               -- ドリンク積載容積
---                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-             AND (CASE
-                    -- ドリンク積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.drink_deadweight
-                    -- リーフ積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.leaf_deadweight
-                    -- ドリンク積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.drink_loading_capacity
-                    -- リーフ積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.leaf_loading_capacity
-                  END) > 0
---2008/10/16 H.Itou Mod End
-          UNION
-          SELECT  '2' as sel_flg                      -- 検索順
-                , xdl.ship_method                     -- 出荷方法
-                , xdl.drink_deadweight                -- ドリンク積載重量
-                , xdl.leaf_deadweight                 -- リーフ積載重量
-                , xdl.drink_loading_capacity          -- ドリンク積載容積
-                , xdl.leaf_loading_capacity           -- リーフ積載容積
-            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-             AND xdl.code_class1 = iv_code_class1                                 -- コード区分１
-             AND xdl.entering_despatching_code1 = gv_all_z4   -- 入出庫場所１
-             AND xdl.code_class2 = iv_code_class2                                 -- コード区分２
-             AND xdl.entering_despatching_code2 = iv_entering_despatching_code2   -- 入出庫場所２
-             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
-             AND (xdl.lt_end_date_active IS NULL
-                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
-             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
-             AND (xdl.sm_end_date_active IS NULL
-                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_deadweight                     -- ドリンク積載重量
---                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_loading_capacity               -- ドリンク積載容積
---                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-             AND (CASE
-                    -- ドリンク積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.drink_deadweight
-                    -- リーフ積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.leaf_deadweight
-                    -- ドリンク積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.drink_loading_capacity
-                    -- リーフ積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.leaf_loading_capacity
-                  END) > 0
---2008/10/16 H.Itou Mod End
-          UNION
-          SELECT  '3' as sel_flg                      -- 検索順
-                , xdl.ship_method                     -- 出荷方法
-                , xdl.drink_deadweight                -- ドリンク積載重量
-                , xdl.leaf_deadweight                 -- リーフ積載重量
-                , xdl.drink_loading_capacity          -- ドリンク積載容積
-                , xdl.leaf_loading_capacity           -- リーフ積載容積
-            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-             AND xdl.code_class1 = iv_code_class1                                 -- コード区分１
-             AND xdl.entering_despatching_code1 = iv_entering_despatching_code1   -- 入出庫場所１
-             AND xdl.code_class2 = iv_code_class2                                 -- コード区分２
-             AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
-                                                         gv_cdkbn_ship_to,
-                                                         gv_all_z9,
-                                                         gv_all_z4)     -- 入出庫場所２
-             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
-             AND (xdl.lt_end_date_active IS NULL
-                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
-             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
-             AND (xdl.sm_end_date_active IS NULL
-                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_deadweight                     -- ドリンク積載重量
---                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_loading_capacity               -- ドリンク積載容積
---                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-             AND (CASE
-                    -- ドリンク積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.drink_deadweight
-                    -- リーフ積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.leaf_deadweight
-                    -- ドリンク積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.drink_loading_capacity
-                    -- リーフ積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.leaf_loading_capacity
-                  END) > 0
---2008/10/16 H.Itou Mod End
-          UNION
-          SELECT  '4' as sel_flg                      -- 検索順
-                , xdl.ship_method                     -- 出荷方法
-                , xdl.drink_deadweight                -- ドリンク積載重量
-                , xdl.leaf_deadweight                 -- リーフ積載重量
-                , xdl.drink_loading_capacity          -- ドリンク積載容積
-                , xdl.leaf_loading_capacity           -- リーフ積載容積
-            FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-           WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-             AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-             AND xdl.code_class1 = iv_code_class1               -- コード区分１
-             AND xdl.entering_despatching_code1 = gv_all_z4     -- 入出庫場所１
-             AND xdl.code_class2 = iv_code_class2               -- コード区分２
-             AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
-                                                         gv_cdkbn_ship_to,
-                                                         gv_all_z9,
-                                                         gv_all_z4)     -- 入出庫場所２
-             AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
-             AND (xdl.lt_end_date_active IS NULL
-                  OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
-             AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
-             AND (xdl.sm_end_date_active IS NULL
-                  OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_deadweight                     -- ドリンク積載重量
---                    , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---             AND DECODE(gv_prod_class, gv_prod_cls_drink
---                    , xdl.drink_loading_capacity               -- ドリンク積載容積
---                    , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-             AND (CASE
-                    -- ドリンク積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.drink_deadweight
-                    -- リーフ積載重量
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_weight)) THEN
-                      xdl.leaf_deadweight
-                    -- ドリンク積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.drink_loading_capacity
-                    -- リーフ積載容積
-                    WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                    AND   (iv_weight_capa_class = gv_capacity)) THEN
-                      xdl.leaf_loading_capacity
-                  END) > 0
---2008/10/16 H.Itou Mod End
-        ) union_sel
-       ,(
-          SELECT  MIN(union_sel.sel_flg) as min_flg
-                , union_sel.ship_method                     -- 出荷方法
-          FROM (
-            SELECT  '1' as sel_flg                      -- 検索順
-                  , xdl.ship_method                     -- 出荷方法
-              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-               AND xdl.code_class1 = iv_code_class1                                -- コード区分１
-               AND xdl.entering_despatching_code1 = iv_entering_despatching_code1  -- 入出庫場所１
-               AND xdl.code_class2 = iv_code_class2                                -- コード区分２
-               AND xdl.entering_despatching_code2 = iv_entering_despatching_code2  -- 入出庫場所２
-               AND xdl.lt_start_date_active <= gd_date_from      -- 配送LT適用開始日
-               AND (xdl.lt_end_date_active IS NULL
-                    OR xdl.lt_end_date_active   >= gd_date_from) -- 配送LT適用終了日
-               AND xdl.sm_start_date_active <= gd_date_from      -- 出荷方法適用開始日
-               AND (xdl.sm_end_date_active IS NULL
-                    OR xdl.sm_end_date_active >= gd_date_from)   -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_deadweight                     -- ドリンク積載重量
---                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_loading_capacity               -- ドリンク積載容積
---                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-               AND (CASE
-                      -- ドリンク積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.drink_deadweight
-                      -- リーフ積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.leaf_deadweight
-                      -- ドリンク積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.drink_loading_capacity
-                      -- リーフ積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.leaf_loading_capacity
-                    END) > 0
---2008/10/16 H.Itou Mod End
-            UNION
-            SELECT  '2' as sel_flg                      -- 検索順
-                  , xdl.ship_method                     -- 出荷方法
-              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-               AND xdl.code_class1 = iv_code_class1              -- コード区分１
-               AND xdl.entering_despatching_code1 = gv_all_z4    -- 入出庫場所１
-               AND xdl.code_class2 = iv_code_class2              -- コード区分２
-               AND xdl.entering_despatching_code2 = iv_entering_despatching_code2  -- 入出庫場所２
-               AND xdl.lt_start_date_active <= gd_date_from      -- 配送LT適用開始日
-               AND (xdl.lt_end_date_active IS NULL
-                    OR xdl.lt_end_date_active   >= gd_date_from) -- 配送LT適用終了日
-               AND xdl.sm_start_date_active <= gd_date_from      -- 出荷方法適用開始日
-               AND (xdl.sm_end_date_active IS NULL
-                    OR xdl.sm_end_date_active >= gd_date_from)   -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_deadweight                     -- ドリンク積載重量
---                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_loading_capacity               -- ドリンク積載容積
---                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-               AND (CASE
-                      -- ドリンク積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.drink_deadweight
-                      -- リーフ積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.leaf_deadweight
-                      -- ドリンク積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.drink_loading_capacity
-                      -- リーフ積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.leaf_loading_capacity
-                    END) > 0
---2008/10/16 H.Itou Mod End
-            UNION
-            SELECT  '3' as sel_flg                      -- 検索順
-                  , xdl.ship_method                     -- 出荷方法
-              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-               AND xdl.code_class1 = iv_code_class1               -- コード区分１
-               AND xdl.entering_despatching_code1 = iv_entering_despatching_code1  -- 入出庫場所１
-               AND xdl.code_class2 = iv_code_class2               -- コード区分２
-               AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
-                                                           gv_cdkbn_ship_to,
-                                                           gv_all_z9,
-                                                           gv_all_z4)     -- 入出庫場所２
-               AND xdl.lt_start_date_active <= gd_date_from       -- 配送LT適用開始日
-               AND (xdl.lt_end_date_active IS NULL
-                    OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
-               AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
-               AND (xdl.sm_end_date_active IS NULL
-                    OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_deadweight                     -- ドリンク積載重量
---                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_loading_capacity               -- ドリンク積載容積
---                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-               AND (CASE
-                      -- ドリンク積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.drink_deadweight
-                      -- リーフ積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.leaf_deadweight
-                      -- ドリンク積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.drink_loading_capacity
-                      -- リーフ積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.leaf_loading_capacity
-                    END) > 0
---2008/10/16 H.Itou Mod End
-            UNION
-            SELECT  '4' as sel_flg                      -- 検索順
-                  , xdl.ship_method                     -- 出荷方法
-              FROM  xxcmn_delivery_lt2_v xdl                -- 配送L/T情報VIEW2
-                  , xxwsh_ship_method2_v xsmv               -- 配送区分情報View2
-             WHERE xdl.ship_method = xsmv.ship_method_code  -- 配送区分
-               AND xsmv.mixed_class = cv_not_mixed          -- 混載区分
-               AND xdl.code_class1 = iv_code_class1             -- コード区分１
-               AND xdl.entering_despatching_code1 = gv_all_z4   -- 入出庫場所１
-               AND xdl.code_class2 = iv_code_class2             -- コード区分２
-               AND xdl.entering_despatching_code2 = DECODE(iv_code_class2,
-                                                           gv_cdkbn_ship_to,
-                                                           gv_all_z9,
-                                                           gv_all_z4)   -- 入出庫場所２
-               AND xdl.lt_start_date_active <= gd_date_from     -- 配送LT適用開始日
-               AND (xdl.lt_end_date_active IS NULL
-                    OR xdl.lt_end_date_active   >= gd_date_from)  -- 配送LT適用終了日
-               AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
-               AND (xdl.sm_end_date_active IS NULL
-                    OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
--- Ver1.5 M.Hokkanji Start
---               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
--- Ver1.5 M.Hokkanji End
--- 2008/10/16 H.Itou Mod Start 統合テスト指摘369 0より大きいものを対象とする。
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_deadweight                     -- ドリンク積載重量
---                      , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
---               AND DECODE(gv_prod_class, gv_prod_cls_drink
---                      , xdl.drink_loading_capacity               -- ドリンク積載容積
---                      , xdl.leaf_loading_capacity) IS NOT NULL   -- リーフ積載容積
-               AND (CASE
-                      -- ドリンク積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.drink_deadweight
-                      -- リーフ積載重量
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_weight)) THEN
-                        xdl.leaf_deadweight
-                      -- ドリンク積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_drink)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.drink_loading_capacity
-                      -- リーフ積載容積
-                      WHEN ((gv_prod_class        = gv_prod_cls_leaf)
-                      AND   (iv_weight_capa_class = gv_capacity)) THEN
-                        xdl.leaf_loading_capacity
-                    END) > 0
---2008/10/16 H.Itou Mod End
-          ) union_sel
-          group by union_sel.ship_method
-        ) union_flg
-        WHERE union_sel.sel_flg = union_flg.min_flg
-        AND   union_sel.ship_method = union_flg.ship_method
-        ORDER BY union_sel.ship_method DESC
-       ;
-      -- 2008/07/14 Mod ↑
+      SELECT xdl.ship_method             ship_method                          -- 出荷方法
+            ,xdl.drink_deadweight        drink_deadweight                     -- ドリンク積載重量
+            ,xdl.leaf_deadweight         leaf_deadweight                      -- リーフ積載重量
+            ,xdl.drink_loading_capacity  drink_loading_capacity               -- ドリンク積載容積
+            ,xdl.leaf_loading_capacity   leaf_loading_capacity                -- リーフ積載容積
+      FROM   xxcmn_delivery_lt2_v        xdl                                  -- 配送L/T情報VIEW2
+            ,xxwsh_ship_method2_v        xsmv                                 -- 配送区分情報VIEW2
+      WHERE  xdl.ship_method                = xsmv.ship_method_code           -- 配送区分
+      AND    xsmv.mixed_class               = cv_not_mixed                    -- 混載配送区分でない
+      AND    xdl.code_class1                = iv_code_class1                  -- コード区分１
+      AND    xdl.entering_despatching_code1 = iv_entering_despatching_code1   -- 入出庫場所１(個別かALL値)
+      AND    xdl.code_class2                = iv_code_class2                  -- コード区分２
+      AND    xdl.entering_despatching_code2 = iv_entering_despatching_code2   -- 入出庫場所２(個別かALL値)
+      AND    xdl.lt_start_date_active      <= gd_date_from                    -- 配送LT適用開始日
+      AND  ((xdl.lt_end_date_active        IS NULL)
+        OR  (xdl.lt_end_date_active        >= gd_date_from))                  -- 配送LT適用終了日
+      AND    xdl.sm_start_date_active      <= gd_date_from                    -- 出荷方法適用開始日
+      AND  ((xdl.sm_end_date_active        IS NULL)
+        OR  (xdl.sm_end_date_active        >= gd_date_from))                  -- 出荷方法適用終了日
+      AND   (CASE
+               -- ドリンク積載重量
+               WHEN ((gv_prod_class        = gv_prod_cls_drink)
+               AND   (iv_weight_capa_class = gv_weight))   THEN xdl.drink_deadweight
+               -- リーフ積載重量
+               WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+               AND   (iv_weight_capa_class = gv_weight))   THEN xdl.leaf_deadweight
+               -- ドリンク積載容積
+               WHEN ((gv_prod_class        = gv_prod_cls_drink)
+               AND   (iv_weight_capa_class = gv_capacity)) THEN xdl.drink_loading_capacity
+               -- リーフ積載容積
+               WHEN ((gv_prod_class        = gv_prod_cls_leaf)
+               AND   (iv_weight_capa_class = gv_capacity)) THEN xdl.leaf_loading_capacity
+             END) > 0
+      ORDER BY xdl.ship_method DESC
+      ;
+-- 2009/07/23 H.Itou Mod End
 --
-       -- ローカルレコード
-       lr_ship_method_class ship_method_class_cur%ROWTYPE;
+      -- ローカルレコード
+      lr_ship_method_class ship_method_class_cur%ROWTYPE;
 --
     BEGIN
 --
@@ -6643,9 +6727,15 @@ debug_log(FND_FILE.LOG,'7-2検索回数：'|| ln_order_num_cnt);
         -- 次の配送区分を取得
         get_ship_method_class(
                 iv_code_class1                => gv_cdkbn_storage     -- コード区分１：倉庫
-              , iv_entering_despatching_code1 => first_deliver_from   -- 配送元
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--              , iv_entering_despatching_code1 => first_deliver_from   -- 配送元
+              , iv_entering_despatching_code1 => first_ship_method_search_from       -- 配送区分検索用入出庫場所１
+-- 2009/07/23 H.Itou Mod End
               , iv_code_class2                => lv_cdkbn_2     -- コード区分２：倉庫 or 配送先
-              , iv_entering_despatching_code2 => first_deliver_to           -- 配送先
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--              , iv_entering_despatching_code2 => first_deliver_to           -- 配送先
+              , iv_entering_despatching_code2 => first_ship_method_search_to         -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
 -- Ver1.5 M.Hokkanji Start
               , iv_weight_capa_class          => first_weight_capacity_class -- 重量容積区分
 --              , iv_weight_capa_class          => first_intensive_sum_weight -- 重量容積区分
@@ -7025,16 +7115,25 @@ debug_log(FND_FILE.LOG,'9-4-a最適配送区分設定');
 debug_log(FND_FILE.LOG,'9-4-b最適配送区分存在チェック');
         get_consolidated_flag(
             iv_code_class1                => gv_cdkbn_storage         -- コード区分１
-          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+          , iv_entering_despatching_code1 => lt_intensive_tab(ln_child_no).ship_method_search_from  -- 配送区分検索用入出庫場所１
+-- 2009/07/23 H.Itou Mod End
           , iv_code_class2                => lv_cdkbn_2_con           -- コード区分２
-          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
-                                                                      -- 入出庫場所２
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
+--                                                                      -- 入出庫場所２
+          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).ship_method_search_to    -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
           , iv_ship_method                => lv_ship_optimization     -- 配送区分
           , ov_consolidate_flag           => lv_consolid_flag_ships
                                                                       -- 混載可否フラグ:配送区分
           , ov_errbuf                     => lv_errbuf
           , ov_retcode                    => lv_retcode
           , ov_errmsg                     => lv_errmsg
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 重量容積が0以下なら配送区分がないとみなすので、引数に重量容積区分を追加
+          , iv_weight_capa_class          => lt_intensive_tab(ln_child_no).weight_capacity_class
+-- 2009/07/23 H.Itou Add End
         );
         IF (lv_retcode = gv_status_error) THEN
 debug_log(FND_FILE.LOG,'9-4-b最適配送区分存在チェック関数エラー');
@@ -7098,16 +7197,22 @@ debug_log(FND_FILE.LOG,'小口区分lv_small_amt_cnt:' || lv_small_amt_cnt);
         AND (lv_small_amt_cnt = 0 )) THEN
 debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)');
 debug_log(FND_FILE.LOG,'コード区分１:' || gv_cdkbn_storage);
-debug_log(FND_FILE.LOG,'入出庫場所１:' || first_deliver_from);
+debug_log(FND_FILE.LOG,'配送区分検索用入出庫場所１:' || first_ship_method_search_from);
 debug_log(FND_FILE.LOG,'コード区分２:' || lv_cdkbn_2_opt);
-debug_log(FND_FILE.LOG,'入出庫場所２:' || first_deliver_to);
-debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
+debug_log(FND_FILE.LOG,'配送区分検索用入出庫場所２:' || first_ship_method_search_to);
+debug_log(FND_FILE.LOG,'配送区分:' || lv_ship_optimization );
         get_consolidated_flag(
             iv_code_class1                => gv_cdkbn_storage         -- コード区分１
-          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+          , iv_entering_despatching_code1 => first_ship_method_search_from  -- 配送区分検索用入出庫場所１
+-- 2009/07/23 H.Itou Mod End
           , iv_code_class2                => lv_cdkbn_2_opt           -- コード区分２
-          , iv_entering_despatching_code2 => first_deliver_to
-                                                                      -- 入出庫場所２
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--          , iv_entering_despatching_code2 => first_deliver_to
+--                                                                      -- 入出庫場所２
+          , iv_entering_despatching_code2 => first_ship_method_search_to    -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
 -- 2008/11/19 H.Itou Mod Start 統合テスト指摘666 出荷方法アドオンマスタに混載配送区分のデータは登録しないので、配送区分でチェック実施。
 --          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
           , iv_ship_method                => lv_ship_optimization     -- 配送区分
@@ -7117,6 +7222,9 @@ debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
           , ov_errbuf                     => lv_errbuf
           , ov_retcode                    => lv_retcode
           , ov_errmsg                     => lv_errmsg
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 重量容積が0以下なら配送区分がないとみなすので、引数に重量容積区分を追加
+          , iv_weight_capa_class          => first_weight_capacity_class
+-- 2009/07/23 H.Itou Add End
         );
         IF (lv_retcode = gv_status_error) THEN
 debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)関数エラー');
@@ -7138,7 +7246,7 @@ debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)関数エラー');
                         ,gv_tkn_to           -- トークン'保管場所2'
                         ,first_deliver_to
                         ,gv_tkn_ship_method  -- トークン'配送区分'
-                        ,lv_mixed_ship_method
+                        ,lv_ship_optimization
                         ,gv_tkn_source_no    -- トークン'集約元No'
                         ,first_intensive_source_no
                        ) ,1 ,5000);
@@ -7146,16 +7254,22 @@ debug_log(FND_FILE.LOG,'9-4-g混載配送区分ルートチェック(基準元)関数エラー');
         END IF;
 debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)');
 debug_log(FND_FILE.LOG,'コード区分１:' || gv_cdkbn_storage);
-debug_log(FND_FILE.LOG,'入出庫場所１:' || first_deliver_from);
+debug_log(FND_FILE.LOG,'配送区分検索用入出庫場所１:' || lt_intensive_tab(ln_child_no).ship_method_search_from);
 debug_log(FND_FILE.LOG,'コード区分２:' || lv_cdkbn_2_con);
-debug_log(FND_FILE.LOG,'入出庫場所２:' || first_deliver_to);
-debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
+debug_log(FND_FILE.LOG,'配送区分検索用入出庫場所２:' || lt_intensive_tab(ln_child_no).ship_method_search_to);
+debug_log(FND_FILE.LOG,'配送区分:' || lv_ship_optimization );
         get_consolidated_flag(
             iv_code_class1                => gv_cdkbn_storage         -- コード区分１
-          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--          , iv_entering_despatching_code1 => first_deliver_from       -- 入出庫場所１
+          , iv_entering_despatching_code1 => lt_intensive_tab(ln_child_no).ship_method_search_from -- 配送区分検索用入出庫場所１
+-- 2009/07/23 H.Itou Mod End
           , iv_code_class2                => lv_cdkbn_2_con           -- コード区分２
-          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
-                                                                      -- 入出庫場所２
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).deliver_to
+--                                                                      -- 入出庫場所２
+          , iv_entering_despatching_code2 => lt_intensive_tab(ln_child_no).ship_method_search_to   -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
 -- 2008/11/19 H.Itou Mod Start 統合テスト指摘666 出荷方法アドオンマスタに混載配送区分のデータは登録しないので、配送区分でチェック実施。
 --          , iv_ship_method                => lv_mixed_ship_method     -- 配送区分
           , iv_ship_method                => lv_ship_optimization     -- 配送区分
@@ -7165,6 +7279,9 @@ debug_log(FND_FILE.LOG,'配送区分:' || lv_mixed_ship_method );
           , ov_errbuf                     => lv_errbuf
           , ov_retcode                    => lv_retcode
           , ov_errmsg                     => lv_errmsg
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 重量容積が0以下なら配送区分がないとみなすので、引数に重量容積区分を追加
+          , iv_weight_capa_class          => lt_intensive_tab(ln_child_no).weight_capacity_class
+-- 2009/07/23 H.Itou Add End
         );
         IF (lv_retcode = gv_status_error) THEN
 debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)関数エラー');
@@ -7186,7 +7303,7 @@ debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)関数エラー');
                         ,gv_tkn_to           -- トークン'保管場所2'
                         ,lt_intensive_tab(ln_child_no).deliver_to
                         ,gv_tkn_ship_method  -- トークン'配送区分'
-                        ,lv_mixed_ship_method
+                        ,lv_ship_optimization
                         ,gv_tkn_source_no    -- トークン'集約元No'
                         ,first_intensive_source_no
                        ) ,1 ,5000);
@@ -7402,6 +7519,65 @@ debug_log(FND_FILE.LOG,'【集約中間情報抽出処理(B-9)】');
     -- 集約データが存在する
     IF (lt_intensive_tab.COUNT > 0) THEN
 --
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所取得する。
+      --===============================
+      -- 配送区分検索用入出庫場所取得
+      --===============================
+debug_log(FND_FILE.LOG,'--------- 配送区分検索用入出庫場所取得 ---------');
+      <<set_ship_method_search_loop>>
+      FOR ln_cnt IN 1..lt_intensive_tab.COUNT LOOP
+        IF (lt_intensive_tab(ln_cnt).transaction_type = gv_ship_type_ship) THEN -- 出荷依頼
+          lv_cdkbn_2_con  :=  gv_cdkbn_ship_to; -- 配送先
+        ELSE
+          lv_cdkbn_2_con  :=  gv_cdkbn_storage; -- 倉庫
+        END IF;
+        -- 配送区分検索用入出庫場所取得
+        xxwsh_common910_pkg.get_ship_method_search_code(
+          it_code_class1                => gv_cdkbn_storage                                 -- 01.コード区分１
+         ,it_entering_despatching_code1 => lt_intensive_tab(ln_cnt).deliver_from            -- 02.入出庫場所１
+         ,it_code_class2                => lv_cdkbn_2_con                                   -- 03.コード区分２
+         ,it_entering_despatching_code2 => lt_intensive_tab(ln_cnt).deliver_to              -- 04.入出庫場所２
+         ,it_prod_class                 => gv_prod_class                                    -- 05.商品区分
+         ,it_weight_capacity_class      => lt_intensive_tab(ln_cnt).weight_capacity_class   -- 06.重量容積区分
+         ,id_standard_date              => gd_date_from                                     -- 07.基準日
+         ,iv_where_zero_flg             => '1'                                              -- 08.[1]:重量容積>0を条件に追加する
+         ,ov_retcode                    => lv_retcode                                       -- 09.リターンコード
+         ,ov_errmsg                     => lv_errmsg                                        -- 10.エラーメッセージ
+         ,ot_entering_despatching_code1 => lt_intensive_tab(ln_cnt).ship_method_search_from -- 11.配送区分検索用入出庫場所１(入出庫場所１かALL値)
+         ,ot_entering_despatching_code2 => lt_intensive_tab(ln_cnt).ship_method_search_to   -- 12.配送区分検索用入出庫場所２(入出庫場所２かALL値)
+        );
+--
+        IF (lv_retcode = gv_status_error) THEN
+          gv_err_key  :=  gv_cdkbn_storage                      || gv_msg_comma ||
+                          lt_intensive_tab(ln_cnt).deliver_from || gv_msg_comma ||
+                          lv_cdkbn_2                            || gv_msg_comma ||
+                          lt_intensive_tab(ln_cnt).deliver_to   || gv_msg_comma ||
+                          lt_intensive_tab(ln_cnt).weight_capacity_class
+                          ;
+          -- エラーメッセージ取得
+          lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+                          gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+                        , gv_msg_xxwsh_11810  -- メッセージ：APP-XXWSH-11810 共通関数エラー
+                        , gv_fnc_name         -- トークン：FNC_NAME
+                        , 'xxwsh_common910_pkg.get_ship_method_search_code' -- 関数名
+                        , gv_tkn_key              -- トークン：KEY
+                        , gv_err_key              -- 関数実行キー
+                       ),1,5000);
+          RAISE global_api_expt;
+        END IF;
+debug_log(FND_FILE.LOG,'集約No:'                     || lt_intensive_tab(ln_cnt).intensive_no            || ','    ||
+                       'コード区分１:'               || gv_cdkbn_storage                                 || ','    ||
+                       '配送元:'                     || lt_intensive_tab(ln_cnt).deliver_from            || ','    ||
+                       'コード区分２:'               || lv_cdkbn_2_con                                   || ','    ||
+                       '配送先:'                     || lt_intensive_tab(ln_cnt).deliver_to              || ','    ||
+                       '商品区分:'                   || gv_prod_class                                    || ','    ||
+                       '重量容積区分:'               || lt_intensive_tab(ln_cnt).weight_capacity_class   || '→→' ||
+                       '配送区分検索用入出庫場所１:' || lt_intensive_tab(ln_cnt).ship_method_search_from || ','    ||
+                       '配送区分検索用入出庫場所２:' || lt_intensive_tab(ln_cnt).ship_method_search_to
+          );
+      END LOOP set_ship_method_search_loop;
+debug_log(FND_FILE.LOG,'------------------------------------------------');
+-- 2009/07/23 H.Itou Add End
 debug_log(FND_FILE.LOG,'集約START');
 --
       <<optimization_loop>>
@@ -7486,6 +7662,10 @@ debug_log(FND_FILE.LOG,'最大積載容積:'|| lt_intensive_tab(ln_parent_no).max_capa
 -- 2009/01/05 H.Itou Mod Start 本番障害#879
             first_pre_saved_flg := lt_intensive_tab(ln_parent_no).pre_saved_flg;  -- 拠点混載登録済フラグ
 -- 2009/01/05 H.Itou Mod End
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所取得する。
+            first_ship_method_search_from := lt_intensive_tab(ln_parent_no).ship_method_search_from;  -- 配送区分検索用入出庫場所１
+            first_ship_method_search_to   := lt_intensive_tab(ln_parent_no).ship_method_search_to;    -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Add End
 --
             -- 比較用変数にキー項目を格納
             lt_prev_ship_date       := lt_intensive_tab(ln_parent_no).schedule_ship_date;    -- 出庫日
@@ -7699,26 +7879,35 @@ debug_log(FND_FILE.LOG,'3-5-2-1混載可否判定処理：配送区分');
                     lv_cdkbn_2  :=  gv_cdkbn_storage; -- 倉庫
                   END IF;
 --
-                  -- ※次レコードの配送区分に基準明細の配送区分が含まれているかチェック
-debug_log(FND_FILE.LOG,'3-5-2-2※次レコードの配送区分に基準明細の配送区分が含まれているかチェック');
+                  -- ※基準明細の配送区分があるかチェック
+debug_log(FND_FILE.LOG,'3-5-2-2※基準明細の配送区分があるかチェック');
 debug_log(FND_FILE.LOG,'cdkbn_1(from)= '||gv_cdkbn_storage);
-debug_log(FND_FILE.LOG,'despatching_code1(from)= '||first_deliver_from);
+debug_log(FND_FILE.LOG,'despatching_code1(from)= '||lt_intensive_tab(ln_loop_cnt).ship_method_search_from);
 debug_log(FND_FILE.LOG,'cdkbn_2(to)= '||lv_cdkbn_2);
-debug_log(FND_FILE.LOG,'despatching_code2(to)= '||lt_intensive_tab(ln_loop_cnt).deliver_to);
+debug_log(FND_FILE.LOG,'despatching_code2(to)= '||lt_intensive_tab(ln_loop_cnt).ship_method_search_to);
 debug_log(FND_FILE.LOG,'lt_ship_method_cls= '||lt_ship_method_cls);
                   get_consolidated_flag(
                         iv_code_class1                => gv_cdkbn_storage      -- コード区分１
 --20080714 mod                      , iv_entering_despatching_code1 => first_deliver_to   -- 入出庫場所１
-                      , iv_entering_despatching_code1 => first_deliver_from               -- 入出庫場所１
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--                      , iv_entering_despatching_code1 => first_deliver_from               -- 入出庫場所１
+                      , iv_entering_despatching_code1 => lt_intensive_tab(ln_loop_cnt).ship_method_search_from  -- 配送区分検索用入出庫場所１
+-- 2009/07/23 H.Itou Mod End
                       , iv_code_class2                => lv_cdkbn_2         -- コード区分２
-                      , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to
-                                                                            -- 入出庫場所２
+-- 2009/07/23 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可なので、配送区分検索用入出庫場所で検索する。
+--                      , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to
+--                                                                            -- 入出庫場所２
+                      , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).ship_method_search_to    -- 配送区分検索用入出庫場所２
+-- 2009/07/23 H.Itou Mod End
                       , iv_ship_method                => lt_ship_method_cls -- 配送区分
                       , ov_consolidate_flag           => lv_consolid_flag_ships
                                                                             -- 混載可否フラグ:配送区分
                       , ov_errbuf                     => lv_errbuf
                       , ov_retcode                    => lv_retcode
                       , ov_errmsg                     => lv_errmsg
+-- 2009/07/23 H.Itou Add Start 本番障害#1336 重量容積が0以下なら配送区分がないとみなすので、引数に重量容積区分を追加
+                      , iv_weight_capa_class          => lt_intensive_tab(ln_loop_cnt).weight_capacity_class
+-- 2009/07/23 H.Itou Add End
                   );
                   IF (lv_retcode = gv_status_error) THEN
                     gv_err_key  :=  lv_cdkbn_1
