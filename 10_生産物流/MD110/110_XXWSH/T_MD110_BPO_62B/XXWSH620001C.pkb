@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.12
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,7 +43,8 @@ AS
  *  2009/01/21    1.10  Hisanobu Sakuma    本番障害#1065
  *  2009/01/27    1.11  Hisanobu Sakuma    本番障害#1066
  *  2009/03/06    1.12  Yuki Kazama        本番障害#785
- *  2009/03/06    1.13  D.Sugahara         本番障害#1482 パフォーマンス対応
+ *  2009/05/18    1.13  D.Sugahara         本番障害#1482 パフォーマンス対応
+ *  2009/05/21    1.14  H.Itou             本番障害#1476,1398
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -230,9 +231,11 @@ AS
     ,prod_date         ilm.attribute1%TYPE                   -- 製造日
     ,best_before_date  ilm.attribute3%TYPE                   -- 賞味期限
     ,native_sign       ilm.attribute2%TYPE                   -- 固有記号
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1476 不足なし→不足あり(ロットNoなしレコード)の順に抽出するため、ロットNoを復活
 -- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
---    ,lot_no            xmld.lot_no%TYPE                      -- ロットNo
+    ,lot_no            xmld.lot_no%TYPE                      -- ロットNo
 -- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
+-- 2009/05/21 v1.14 H.Itou Mod End
     ,lot_status        xlvv.meaning%TYPE                     -- 品質
 -- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
     ,req_sum_qty       NUMBER                                -- 依頼数
@@ -1608,9 +1611,11 @@ AS
     || '  ,NULL                         AS  prod_date '               -- 製造日
     || '  ,NULL                         AS  best_before_date '        -- 賞味期限
     || '  ,NULL                         AS  native_sign '             -- 固有記号
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1476 不足なし→不足あり(ロットNoなしレコード)の順に抽出するため、ロットNoを復活
 -- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
---    || '  ,NULL                         AS  lot_no '                  -- ロットNo
+    || '  ,NULL                         AS  lot_no '                  -- ロットNo
 -- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
+-- 2009/05/21 v1.14 H.Itou Mod End
     || '  ,NULL                         AS  lot_status '              -- 品質
 -- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
     || '  ,CASE '
@@ -1693,7 +1698,12 @@ AS
          -- 06:顧客情報(管轄拠点)
     || ' AND  xoha.head_sales_branch = xcav.party_number '
          -- 07:顧客サイト情報(出荷先)
-    || ' AND  xoha.deliver_to_id     = xcasv.party_site_id '
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1398 IDは古い可能性があるため、コードで結合
+--    || ' AND  xoha.deliver_to_id        = xcasv.party_site_id '
+    || ' AND  xoha.deliver_to             = xcasv.party_site_number ' -- 出荷先
+    || ' AND  xcasv.party_site_status     = ''A'' '                   -- 有効な出荷先
+    || ' AND  xcasv.cust_acct_site_status = ''A'' '                   -- 有効な出荷先
+-- 2009/05/21 v1.14 H.Itou Mod End
          ----------------------------------------------------------------------------------
          -- 明細情報
          ----------------------------------------------------------------------------------
@@ -1798,9 +1808,11 @@ AS
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
     || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1476 不足なし→不足あり(ロットNoなしレコード)の順に抽出するため、ロットNoを復活
 -- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
---    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
 -- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
+-- 2009/05/21 v1.14 H.Itou Mod End
     || '  ,xlvv3.meaning                AS  lot_status '         -- 品質
 -- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
     || '  ,CASE '
@@ -1879,7 +1891,12 @@ AS
          -- 06:顧客情報(管轄拠点)
     || ' AND  xoha.head_sales_branch = xcav.party_number '
          -- 07:顧客サイト情報(出荷先)
-    || ' AND  xoha.deliver_to_id     = xcasv.party_site_id '
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1398 IDは古い可能性があるため、コードで結合
+--    || ' AND  xoha.deliver_to_id     = xcasv.party_site_id '
+    || ' AND  xoha.deliver_to             = xcasv.party_site_number ' -- 出荷先
+    || ' AND  xcasv.party_site_status     = ''A'' '                   -- 有効な出荷先
+    || ' AND  xcasv.cust_acct_site_status = ''A'' '                   -- 有効な出荷先
+-- 2009/05/21 v1.14 H.Itou Mod End
          ----------------------------------------------------------------------------------
          -- 明細情報
          ----------------------------------------------------------------------------------
@@ -1992,9 +2009,11 @@ AS
     || '  ,NULL                         AS  prod_date '          -- 製造日
     || '  ,NULL                         AS  best_before_date '   -- 賞味期限
     || '  ,NULL                         AS  native_sign '        -- 固有記号
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1476 不足なし→不足あり(ロットNoなしレコード)の順に抽出するため、ロットNoを復活
 -- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
---    || '  ,NULL                         AS  lot_no '             -- ロットNo
+    || '  ,NULL                         AS  lot_no '             -- ロットNo
 -- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
+-- 2009/05/21 v1.14 H.Itou Mod End
     || '  ,NULL                         AS  lot_status '         -- 品質
 -- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
     || '  ,CASE '
@@ -2156,9 +2175,11 @@ AS
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
     || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1476 不足なし→不足あり(ロットNoなしレコード)の順に抽出するため、ロットNoを復活
 -- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
---    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
 -- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
+-- 2009/05/21 v1.14 H.Itou Mod End
     || '  ,xlvv2.meaning                AS  lot_status '         -- 品質
 -- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
     || '  ,CASE '
@@ -2299,9 +2320,11 @@ AS
 -- 2009/01/27 v1.11 ADD END
     || '  ,time_from      ASC '     -- 09:時間指定From
     || '  ,req_move_no    ASC '     -- 10:依頼No/移動No
+-- 2009/05/21 v1.14 H.Itou Mod Start 本番障害#1476 不足なし→不足あり(ロットNoなしレコード)の順に抽出するため、ロットNoを復活
 -- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
---    || '  ,lot_no         ASC '     -- 11:ロットNo
+    || '  ,lot_no         ASC '     -- 11:ロットNo
 -- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
+-- 2009/05/21 v1.14 H.Itou Mod End   本番障害#1476
     ;
 --
     -- ======================================
