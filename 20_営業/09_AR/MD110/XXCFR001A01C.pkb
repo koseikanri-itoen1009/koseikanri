@@ -7,7 +7,7 @@ AS
  * Description      : AR部門入力の顧客情報更新
  * MD.050           : MD050_CFR_001_A01_AR部門入力の顧客情報更新
  * MD.070           : MD050_CFR_001_A01_AR部門入力の顧客情報更新
- * Version          : 1.00
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/05    1.00 SCS 中村 博      初回作成
  *  2009/07/23    1.1  SCS T.KANEDA     T3時障害0000838対応
+ *  2010/01/26    1.2  SCS M.HIROSE     [E_本稼動_01336] 期中の顧客階層変更対応
  *
  *****************************************************************************************/
 --
@@ -135,6 +136,11 @@ AS
 --
   cv_ship_to                CONSTANT VARCHAR2(100) := 'SHIP_TO'; -- 出荷先
   cv_cust_class_code_ar_mng CONSTANT VARCHAR2(10) := '14';       -- 顧客区分＝「14」（売掛金管理先顧客）
+-- Modify 2010.01.26 Ver1.2 Start
+  cv_credit_memo_type       CONSTANT ra_cust_trx_types_all.type%TYPE := 'CM';   -- クレジットメモ
+  cv_nml_invoice_type       CONSTANT ra_cust_trx_types_all.type%TYPE := 'INV';  -- 取引
+  cv_status_a               CONSTANT hz_cust_site_uses_all.status%TYPE := 'A';  -- 有効
+-- Modify 2010.01.26 Ver1.2 End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -162,6 +168,12 @@ AS
   TYPE g_trx_date_ttype            IS TABLE OF ra_interface_lines_all.trx_date%type
                                                INDEX BY PLS_INTEGER;
 -- Modify 2009.07.23 Ver1.1 End
+-- Modify 2010.01.26 Ver1.2 Start
+  TYPE g_trx_type_ttype            IS TABLE OF ra_cust_trx_types_all.type%TYPE
+                                               INDEX BY PLS_INTEGER;      -- 請求書タイプ
+  TYPE g_ref_line_id_ttype         IS TABLE OF ra_interface_lines_all.reference_line_id%TYPE
+                                               INDEX BY PLS_INTEGER;      -- 取消取引内部ID
+-- Modify 2010.01.26 Ver1.2 End
   gt_ril_rowid                          g_rowid_ttype;
   gt_ril_bill_customer_id               g_bill_customer_id_ttype;
   gt_ril_bill_address_id                g_bill_address_id_ttype;
@@ -175,6 +187,10 @@ AS
   gt_ril_receipt_method_id              g_receipt_method_id_ttype;
   gt_ril_trx_date                       g_trx_date_ttype;
 -- Modify 2009.07.23 Ver1.1 End
+-- Modify 2010.01.26 Ver1.2 Start
+  gt_trx_type                           g_trx_type_ttype;     -- 請求書タイプ 
+  gt_ref_line_id                        g_ref_line_id_ttype;  -- 取消取引明細内部ID
+-- Modify 2010.01.26 Ver1.2 End
 --
   TYPE c_out_flag_ttype     IS TABLE OF VARCHAR2(1);
   TYPE c_hold_status_ttype  IS TABLE OF VARCHAR2(10);
@@ -411,6 +427,10 @@ AS
              rila.trx_date                       trx_date,                       -- 取引日
 -- Modify 2009.07.23 Ver1.1 End
              hca.customer_class_code             customer_class_code,            -- 顧客区分
+-- Modify 2010.01.26 Ver1.2 Start
+             NVL(rctt.type, cv_nml_invoice_type) trx_type,                       -- 請求書タイプ
+             rila.reference_line_id              ref_line_id,                    -- 取消取引明細内部ID
+-- Modify 2010.01.26 Ver1.2 End
              DECODE ( rctt.attribute1,
                       gt_out_flag(1), gt_hold_status(1),
                       gt_out_flag(2), gt_hold_status(2),
@@ -474,6 +494,10 @@ AS
           gt_ril_trx_date,
 -- Modify 2009.07.23 Ver1.1 End
           gt_hca_customer_class_code,
+-- Modify 2010.01.26 Ver1.2 Start
+          gt_trx_type,
+          gt_ref_line_id,
+-- Modify 2010.01.26 Ver1.2 End
           gt_ril_header_attribute7;
 --
     -- 処理件数のセット
@@ -556,6 +580,10 @@ AS
 --
     ln_bill_customer_id   hz_cust_accounts.cust_account_id%type;            -- 請求先顧客ＩＤ
     ln_bill_address_id    hz_cust_acct_sites_all.cust_acct_site_id%type;    -- 請求先顧客所在地ＩＤ
+-- Modify 2010.01.26 Ver1.2 Start
+    ln_ship_customer_id   hz_cust_accounts.cust_account_id%type;            -- 出荷先顧客ＩＤ
+    ln_ship_address_id    hz_cust_acct_sites_all.cust_acct_site_id%type;    -- 出荷先顧客所在地ＩＤ
+-- Modify 2010.01.26 Ver1.2 End
 -- Modify 2009.07.23 Ver1.1 Start
     -- *** ローカル・カーソル ***
     CURSOR get_receipt_method_cur(in_bill_customer_id IN NUMBER
@@ -593,11 +621,68 @@ AS
       FOR ln_loop_cnt IN gt_ril_rowid.FIRST..gt_ril_rowid.LAST LOOP
 --
 --        -- 初期値の設定
+-- Modify 2010.01.26 Ver1.2 Start
+          ln_bill_customer_id := NULL;  -- 顧客内部ID
+          ln_bill_address_id  := NULL;  -- 顧客所在地ID
+          ln_ship_customer_id := NULL;  -- 顧客内部ID(出荷先)
+          ln_ship_address_id  := NULL;  -- 顧客所在地ID(出荷先)
+-- Modify 2010.01.26 Ver1.2 End
 --        gt_ril_ship_customer_id(ln_loop_cnt) := NULL;
 --        gt_ril_ship_address_id(ln_loop_cnt)  := NULL;
 --
+-- Modify 2010.01.26 Ver1.2 Start
+        -- 請求書タイプ＝「CM」(クレジットメモ)のときは、取り消し対象債権の顧客を取得する。
+        IF ( gt_trx_type(ln_loop_cnt) = cv_credit_memo_type ) THEN
+--
+          -- 顧客コードを読み替える
+          BEGIN
+            SELECT /*+ LEADING(rctl rct)
+                       INDEX( rctl RA_CUSTOMER_TRX_LINES_U1 )
+                       USE_NL( rctl rct rcas_b rcas_s )
+                   */
+                   rcas_b.cust_account_id   AS b_cust_account_id,    -- 顧客内部ID(請求先)
+                   rcas_b.cust_acct_site_id AS b_cust_acct_site_id,  -- 顧客所在地ID(請求先)
+                   rcas_s.cust_account_id   AS s_cust_account_id,    -- 顧客内部ID(出荷先)
+                   rcas_s.cust_acct_site_id AS s_cust_acct_site_id   -- 顧客所在地ID(出荷先)
+              INTO ln_bill_customer_id,  -- 顧客内部ID(請求先)
+                   ln_bill_address_id,   -- 顧客所在地ID(請求先)
+                   ln_ship_customer_id,  -- 顧客内部ID(出荷先)
+                   ln_ship_address_id    -- 顧客所在地ID(出荷先)
+              FROM ra_customer_trx        rct,     -- 取引ヘッダ
+                   ra_customer_trx_lines  rctl,    -- 取引明細
+                   hz_cust_acct_sites     rcas_b,  -- 顧客所在地(請求先)
+                   hz_cust_acct_sites     rcas_s   -- 顧客所在地(出荷先)
+             WHERE rct.bill_to_customer_id   = rcas_b.cust_account_id       -- 顧客内部ID(請求先)
+               AND rct.ship_to_customer_id   = rcas_s.cust_account_id(+)    -- 顧客内部ID(出荷先)
+               AND rct.customer_trx_id       = rctl.customer_trx_id         -- 取引内部ID
+               AND rctl.customer_trx_line_id = gt_ref_line_id(ln_loop_cnt)  -- 取引明細内部ID
+            ;
+--
+            -- 請求先顧客に取得した内容を設定する。
+            gt_ril_bill_customer_id(ln_loop_cnt) := ln_bill_customer_id;  -- 顧客内部ID(請求先)
+            gt_ril_bill_address_id(ln_loop_cnt)  := ln_bill_address_id;   -- 顧客所在地ID(請求先)
+            -- 出荷先顧客に取得した内容を設定する。
+            gt_ril_ship_customer_id(ln_loop_cnt) := ln_ship_customer_id;  -- 顧客内部ID(出荷先)
+            gt_ril_ship_address_id(ln_loop_cnt)  := ln_ship_address_id;   -- 顧客所在地ID(出荷先)
+--
+          EXCEPTION
+            WHEN OTHERS THEN
+              -- データが取得できない場合、請求先の読替はしない（元のまま）。
+              ln_bill_customer_id := NULL;
+              ln_bill_address_id  := NULL;
+              ln_ship_customer_id := NULL;
+              ln_ship_address_id  := NULL;
+          END;
+        END IF;
+--
+-- Modify 2010.01.26 Ver1.2 End
         -- 顧客区分＝「14」（売掛金管理先顧客）でない場合、読み替え処理を行う
-        IF ( gt_hca_customer_class_code(ln_loop_cnt) <> cv_cust_class_code_ar_mng ) THEN
+-- Modify 2010.01.26 Ver1.2 Start
+--        IF ( gt_hca_customer_class_code(ln_loop_cnt) <> cv_cust_class_code_ar_mng ) THEN
+        IF ( ( gt_hca_customer_class_code(ln_loop_cnt) <> cv_cust_class_code_ar_mng )
+         AND ( ln_bill_customer_id                     IS NULL                      )  -- まだ読み替えが実施されていない時
+        ) THEN
+-- Modify 2010.01.26 Ver1.2 End
 --
           -- 出荷先顧客に請求先顧客を設定する
           gt_ril_ship_customer_id(ln_loop_cnt) := gt_ril_bill_customer_id(ln_loop_cnt);
@@ -623,11 +708,29 @@ AS
               AND hca2.cust_account_id         = hcasa2.cust_account_id  
               AND hca.cust_account_id          = gt_ril_ship_customer_id(ln_loop_cnt)
               AND hcasa.cust_acct_site_id      = gt_ril_ship_address_id(ln_loop_cnt)
+-- Modify 2010.01.26 Ver1.2 Start
+              AND hcsua.status                 = cv_status_a
+              AND hcsua2.status                = cv_status_a
+-- Modify 2010.01.26 Ver1.2 End
             ;
 --
             gt_ril_bill_customer_id(ln_loop_cnt) := ln_bill_customer_id;
             gt_ril_bill_address_id(ln_loop_cnt)  := ln_bill_address_id;
-
+-- Modify 2010.01.26 Ver1.2 Start
+          EXCEPTION
+            WHEN OTHERS THEN
+              -- データが取得できない場合、請求先の読替はしない（元のまま）。
+              ln_bill_customer_id := NULL;
+              ln_bill_address_id  := NULL;
+          END;
+        END IF;
+--
+        -- 顧客コードの読み替えが実行された時は、支払方法の最新値を取得するかを検討する。
+        IF ( ln_bill_customer_id IS NOT NULL ) THEN
+--
+          BEGIN
+--
+-- Modify 2010.01.26 Ver1.2 End
 -- Modify 2009.07.23 Ver1.1 Start
             -- 納品先顧客に設定されている（ＯＩＦ上に支払方法が設定されている）場合のみ対象とする
             IF (gt_ril_receipt_method_id(ln_loop_cnt) IS NOT NULL) THEN
