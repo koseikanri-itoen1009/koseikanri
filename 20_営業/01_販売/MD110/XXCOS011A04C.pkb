@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/07/15    1.5  N.Maeda          [T1_1357]レビュー指摘対応
  *  2009/08/17    1.6  N.Maeda          [0000439]PT対応
  *  2009/08/24    1.6  N.Maeda          [0000439]レビュー指摘対応
+ *  2009/09/25    1.7  N.Maeda          [0001156]顧客品目からの品目導出条件追加
  *
  *****************************************************************************************/
 --
@@ -1640,6 +1641,22 @@ AS
                        ,mtl_parameters           mp     --在庫組織
                 WHERE  mcix.customer_item_id        = mci.customer_item_id        --結合(顧客品目相 = 顧客品目)
                 AND    mp.master_organization_id    = mcix.master_organization_id --結合(在庫組織   = 顧客品目相)
+-- ************* 2009/09/25 1.7 N.Maeda ADD START ************
+                AND    mcix.preference_number       = (
+                         SELECT MIN(mcix_min.preference_number)
+                         FROM    mtl_customer_item_xrefs  mcix_min
+                                ,mtl_customer_items       mci_min
+                                ,mtl_parameters           mp_min
+                         WHERE  mcix_min.inventory_item_id      = mcix.inventory_item_id
+                         AND    mcix_min.master_organization_id = mcix.master_organization_id
+                         AND    mci_min.customer_id             = mci.customer_id
+                         AND    mp_min.organization_id          = mp.organization_id
+                         AND    mcix_min.customer_item_id       = mci_min.customer_item_id        --結合(顧客品目相 = 顧客品目)
+                         AND    mp_min.master_organization_id   = mcix_min.master_organization_id --結合(在庫組織   = 顧客品目相)
+                         AND    mcix_min.inactive_flag          = cv_n
+                         AND    mci_min.inactive_flag           = cv_n
+                         )
+-- ************* 2009/09/25 1.7 N.Maeda ADD  END  ************
               ) mcis
 --********************  2009/03/10    1.2  T.Kitajima ADD  End  ********************
              ,mtl_system_items_b       msib   --Disc品目
@@ -1683,6 +1700,9 @@ AS
       AND    msib.primary_unit_of_measure = mcis.attribute1(+)             --結合(D品目 = 顧客品目相)
 --********************  2009/04/06    1.3  T.Kitajima ADD  End  ********************
 --********************  2009/03/10    1.2  T.Kitajima MOD  End  ********************
+-- ************* 2009/09/25 1.7 N.Maeda ADD START ************
+      AND    mcis.organization_id         = xesh.organization_id
+-- ************* 2009/09/25 1.7 N.Maeda ADD  END  ************
       AND    ( cd_process_date BETWEEN ximb.start_date_active AND  ximb.end_date_active )  --O品目A適用日FROM-TO
       AND    iimb.item_id                 = ximb.item_id                 --結合(O品目 = O品目A)
       AND    msib.segment1                = iimb.item_no                 --結合(D品目 = O品目)

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A11C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定情報データ作成 (MD050_COS_014_A11)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/03/16    1.0   K.Kiriu          新規作成
  *  2009/07/01    1.1   K.Kiriu          [T1_1359]数量換算対応
  *  2009/08/18    1.2   K.Kiriu          [0000445]PT対応
+ *  2009/09/28    1.3   K.Satomura       [0001156]
  *
  *****************************************************************************************/
 --
@@ -1397,6 +1398,18 @@ AS
                 AND     mcix.customer_item_id        = mci.customer_item_id        --結合(顧客品目相 = 顧客品目)
                 AND     mcix.inactive_flag           = cv_n                        --有効
                 AND     mp.master_organization_id    = mcix.master_organization_id --結合(在庫組織   = 顧客品目相)
+/* 2009/09/28 Ver1.3 Add Start */
+                AND     mcix.preference_number       =
+                        (
+                          SELECT MIN(cix.preference_number)
+                          FROM   mtl_customer_items      cit
+                                ,mtl_customer_item_xrefs cix
+                          WHERE  cit.customer_id      = gt_chain_cust_acct_id
+                          AND    cit.inactive_flag    = cv_n
+                          AND    cit.customer_item_id = cix.customer_item_id
+                          AND    cix.inactive_flag    = cv_n
+                        )
+/* 2009/09/28 Ver1.3 Add End   */
               )                        mcis   --顧客品目情報
              ,( SELECT  msib.inventory_item_id       inventory_item_id
                        ,msib.organization_id         organization_id

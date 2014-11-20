@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS010A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS010A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/07/24    1.8   N.Maeda          [0000644](伝票計)原価金額積上処理追加
  *  2009/08/06    1.8   M.Sano           [0000644]レビュー指摘対応
  *  2009/09/02    1.9   M.Sano           [0001067]PT追加対応
+ *  2009/10/02    1.10  M.Sano           [0001156]顧客品目抽出条件追加
  *
  *****************************************************************************************/
 --
@@ -243,9 +244,12 @@ AS
 -- 2009/06/29 M.Sano Ver.1.6 add Start
   cv_info_class_01       CONSTANT VARCHAR2(10)  := '01';                        -- 情報区分:01
   cv_info_class_02       CONSTANT VARCHAR2(10)  := '02';                        -- 情報区分:02
-  cn_check_record_yes      CONSTANT NUMBER      := 1;                           -- 対象レコードのチェック：有
-  cn_check_record_no       CONSTANT NUMBER      := 0;                           -- 対象レコードのチェック：無
+  cn_check_record_yes    CONSTANT NUMBER        := 1;                           -- 対象レコードのチェック：有
+  cn_check_record_no     CONSTANT NUMBER        := 0;                           -- 対象レコードのチェック：無
 -- 2009/06/29 M.Sano Ver.1.6 mod End
+-- 2009/10/02 Ver1.10 M.Sano Add Start
+  cv_inactive_flag_no    CONSTANT VARCHAR2(1)   := 'N';                         -- 顧客品目･相互参照.有効フラグ：有効
+-- 2009/10/02 Ver1.10 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3374,6 +3378,17 @@ AS
       AND     cust_xref.inventory_item_id         = disc_item.inventory_item_id
       AND     params.organization_id              = gn_organization_id               -- 在庫組織ID
       AND     cust_xref.master_organization_id    = params.master_organization_id    -- マスタ組織ID
+-- 2009/10/02 M.Sano Ver.1.10 add Start
+      AND     cust_xref.inactive_flag             = cv_inactive_flag_no              -- 有効フラグ：N
+      AND     cust_xref.preference_number         = (
+                SELECT MIN(cust_xref_ck.preference_number)
+                FROM   mtl_customer_item_xrefs  cust_xref_ck
+                WHERE  cust_xref_ck.customer_item_id       = cust_xref.customer_item_id
+                AND    cust_xref_ck.master_organization_id = cust_xref.master_organization_id
+                AND    cust_xref_ck.inactive_flag          = cv_inactive_flag_no
+              )                                                                      -- 最小のランク
+      AND     cust_item.inactive_flag             = cv_inactive_flag_no              -- 有効フラグ：N
+-- 2009/10/02 M.Sano Ver.1.10 add End
       AND     cust_item.customer_item_number      = iv_product_code2                 -- 商品コード２
       AND     cust_item.item_definition_level     = cv_cust_item_def_level           -- 定義レベル
       AND     disc_item.segment1                  = opm_item.item_no                 -- 品目コード

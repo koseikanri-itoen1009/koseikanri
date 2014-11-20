@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/08/17   1.7    M.Sano           [障害0001044] 「単価マスタIF出力」処理の性能改善
  *  2009/08/25   1.8    K.Kiriu          [障害0001163] 「単価マスタIF出力」処理の性能改善
  *                                       [障害0000451] 単価の桁あふれ対応
+ *  2009/10/15   1.9    N.Maeda          [障害0001524] 出力金額取得方法修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -142,11 +143,13 @@ AS
   cv_lookup_type_gyotai   CONSTANT VARCHAR2(30) := 'XXCOS1_GYOTAI_SHO_MST_003_A02'; --参照タイプ　業態小分類
   cv_lookup_type_no_inv   CONSTANT VARCHAR2(30) := 'XXCOS1_NO_INV_ITEM_CODE'; --参照タイプ　非在庫品目
   cv_lookup_type_sals_cls CONSTANT VARCHAR2(30) := 'XXCOS1_SALE_CLASS';   -- 参照タイプ　売上区分
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-  cv_amount_up            CONSTANT VARCHAR2(5)  := 'UP';                  -- 消費税_端数(切上)
-  cv_amount_down          CONSTANT VARCHAR(5)   := 'DOWN';                -- 消費税_端数(切捨て)
-  cv_amount_nearest       CONSTANT VARCHAR(10)  := 'NEAREST';             -- 消費税_端数(四捨五入)
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+-- ***************** 2009/10/15 1.9 N.Maeda DEL START ***************** --
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--  cv_amount_up            CONSTANT VARCHAR2(5)  := 'UP';                  -- 消費税_端数(切上)
+--  cv_amount_down          CONSTANT VARCHAR(5)   := 'DOWN';                -- 消費税_端数(切捨て)
+--  cv_amount_nearest       CONSTANT VARCHAR(10)  := 'NEAREST';             -- 消費税_端数(四捨五入)
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+-- ***************** 2009/10/15 1.9 N.Maeda DEL  END  ***************** --
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
   cv_msg_comma            CONSTANT VARCHAR2(20) := ', ';                  -- カンマ
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
@@ -412,8 +415,10 @@ AS
   -- ===============================
     main_rec main_cur%ROWTYPE;
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
-  TYPE gt_ship_account IS TABLE OF xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE
-                          INDEX BY xxcos_cust_hierarchy_v.ship_account_number%TYPE; -- 税金-端数処理保持テーブル型
+-- ***************** 2009/10/15 1.9 N.Maeda DEL START ***************** --
+--  TYPE gt_ship_account IS TABLE OF xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE
+--                          INDEX BY xxcos_cust_hierarchy_v.ship_account_number%TYPE; -- 税金-端数処理保持テーブル型
+-- ***************** 2009/10/15 1.9 N.Maeda DEL  END  ***************** --
 /* 2009/08/25 Ver1.8 Add Start */
   TYPE gt_upd_header   IS TABLE OF xxcos_sales_exp_headers.sales_exp_header_id%TYPE
                           INDEX BY BINARY_INTEGER;                                  -- 更新用ヘッダID保持テーブル型
@@ -423,7 +428,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル表
   -- ===============================
-  gt_ship_account_tbl gt_ship_account;                                              -- 税金-端数処理保持テーブル
+-- ***************** 2009/10/15 1.9 N.Maeda DEL START ***************** --
+--  gt_ship_account_tbl gt_ship_account;                                              -- 税金-端数処理保持テーブル
+-- ***************** 2009/10/15 1.9 N.Maeda DEL  END  ***************** --
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
 /* 2009/08/25 Ver1.8 Add Start */
   gt_upd_header_tab   gt_upd_header;                                                -- 更新用ヘッダID保持テーブル型
@@ -1530,12 +1537,14 @@ AS
     lv_message_code          VARCHAR2(20);
     ln_update_pattrun        NUMBER;
     lv_sales_exp_line_id     xxcos_sales_exp_lines.sales_exp_line_id%TYPE; --処理用ダミー変数
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-    ln_unit_price            NUMBER;
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
---****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
-    lv_tax_round_rule        xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE; --税金-端数処理ルール
---****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+-- ***************** 2009/10/15 1.9 N.Maeda DEL START ***************** --
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--    ln_unit_price            NUMBER;
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+----****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+--    lv_tax_round_rule        xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE; --税金-端数処理ルール
+----****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+-- ***************** 2009/10/15 1.9 N.Maeda DEL  END  ***************** --
 /* 2009/08/25 Ver1.8 Add Start */
     ln_skip_seq              PLS_INTEGER := 0;  --スキップデータテーブルの添字
     ln_unit_price_length     NUMBER;            --単価の整数部の長さ取得変数
@@ -1572,7 +1581,7 @@ AS
         ln_unit_price_length    := NULL;        --単価の整数部の長さ取得変数の初期化
         ln_unit_price_org       := NULL;        --メッセージ用編集前単価の初期化
 /* 2009/08/25 Ver1.8 Add End   */
-
+--
         IF (main_rec.sales_exp_header_id <> gv_bf_sales_exp_header_id) THEN
           IF (gn_warn_tran_count > 0) THEN
             ROLLBACK;
@@ -1589,72 +1598,79 @@ AS
           gn_warn_tran_count := 0;
           gn_tran_count      := 0;
         END IF;
-
+--
         --ブレイク判定キー入れ替え
         gv_bf_sales_exp_header_id := main_rec.sales_exp_header_id;
-
-
+--
+--
         --件数カウンタ
         gn_target_cnt := gn_target_cnt + 1;
         gn_tran_count := gn_tran_count + 1;
-
+--
+-- ***************** 2009/10/15 1.9 N.Maeda DEL START ***************** --
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
-        -- ===============================
-        -- 税金-端数処理情報の取得
-        -- ===============================
-        IF (gt_ship_account_tbl.EXISTS(main_rec.ship_to_customer_code)) THEN
-          lv_tax_round_rule := gt_ship_account_tbl(main_rec.ship_to_customer_code);
-        ELSE
-          BEGIN
-            SELECT xchv.bill_tax_round_rule
-            INTO   lv_tax_round_rule
-            FROM   xxcos_cust_hierarchy_v xchv -- 顧客階層ビュー
-            WHERE  xchv.ship_account_number = main_rec.ship_to_customer_code;
-          EXCEPTION
-            WHEN OTHERS THEN
-              RAISE get_tax_rule_exp;
-          END;
-          --
-          IF lv_tax_round_rule IS NULL THEN
-            RAISE get_tax_rule_exp;
-          ELSE
-            gt_ship_account_tbl(main_rec.ship_to_customer_code) := lv_tax_round_rule;
-          END IF;
-        END IF;
+--        -- ===============================
+--        -- 税金-端数処理情報の取得
+--        -- ===============================
+--        IF (gt_ship_account_tbl.EXISTS(main_rec.ship_to_customer_code)) THEN
+--          lv_tax_round_rule := gt_ship_account_tbl(main_rec.ship_to_customer_code);
+--        ELSE
+--          BEGIN
+--            SELECT xchv.bill_tax_round_rule
+--            INTO   lv_tax_round_rule
+--            FROM   xxcos_cust_hierarchy_v xchv -- 顧客階層ビュー
+--            WHERE  xchv.ship_account_number = main_rec.ship_to_customer_code;
+--          EXCEPTION
+--            WHEN OTHERS THEN
+--              RAISE get_tax_rule_exp;
+--          END;
+--          --
+--          IF lv_tax_round_rule IS NULL THEN
+--            RAISE get_tax_rule_exp;
+--          ELSE
+--            gt_ship_account_tbl(main_rec.ship_to_customer_code) := lv_tax_round_rule;
+--          END IF;
+--        END IF;
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+-- ***************** 2009/10/15 1.9 N.Maeda DEL  END  ***************** --
         -- ===============================
         --単価の導出
         -- ===============================
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-        --変数の代入
-        ln_unit_price := main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100));
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-        IF main_rec.standard_unit_price_excluded = main_rec.standard_unit_price THEN
---****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
---****************************** 2009/05/28 1.3  S.Kayahara MOD START ******************************--
-   --       gn_unit_price := trunc(main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100)),0);
-          -- 切上げ
---          IF main_rec.tax_round_rule    = cv_amount_up THEN
-          IF lv_tax_round_rule    = cv_amount_up THEN
-            -- 小数点が存在する場合
-            IF (ln_unit_price - TRUNC(ln_unit_price) <> 0 ) THEN
-              gn_unit_price := TRUNC(ln_unit_price,2) + 0.01;
-            ELSE gn_unit_price := ln_unit_price;
-            END IF;
-          -- 切捨て
---          ELSIF main_rec.tax_round_rule = cv_amount_down THEN
-          ELSIF lv_tax_round_rule = cv_amount_down THEN
-            gn_unit_price := TRUNC(ln_unit_price,2);
-          -- 四捨五入
---          ELSIF main_rec.tax_round_rule = cv_amount_nearest THEN
-          ELSIF lv_tax_round_rule = cv_amount_nearest THEN
-            gn_unit_price := ROUND(ln_unit_price,2);
-          END IF;
---****************************** 2009/05/28 1.3  S.Kayahara MOD END ******************************--
---****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
-        ELSE
-          gn_unit_price := main_rec.standard_unit_price;
-        END IF;
+-- ***************** 2009/10/15 1.9 N.Maeda MOD START ***************** --
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--        --変数の代入
+--        ln_unit_price := main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100));
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--        IF main_rec.standard_unit_price_excluded = main_rec.standard_unit_price THEN
+----****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/05/28 1.3  S.Kayahara MOD START ******************************--
+--   --       gn_unit_price := trunc(main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100)),0);
+--          -- 切上げ
+----          IF main_rec.tax_round_rule    = cv_amount_up THEN
+--          IF lv_tax_round_rule    = cv_amount_up THEN
+--            -- 小数点が存在する場合
+--            IF (ln_unit_price - TRUNC(ln_unit_price) <> 0 ) THEN
+--              gn_unit_price := TRUNC(ln_unit_price,2) + 0.01;
+--            ELSE gn_unit_price := ln_unit_price;
+--            END IF;
+--          -- 切捨て
+----          ELSIF main_rec.tax_round_rule = cv_amount_down THEN
+--          ELSIF lv_tax_round_rule = cv_amount_down THEN
+--            gn_unit_price := TRUNC(ln_unit_price,2);
+--          -- 四捨五入
+----          ELSIF main_rec.tax_round_rule = cv_amount_nearest THEN
+--          ELSIF lv_tax_round_rule = cv_amount_nearest THEN
+--            gn_unit_price := ROUND(ln_unit_price,2);
+--          END IF;
+----****************************** 2009/05/28 1.3  S.Kayahara MOD END ******************************--
+----****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
+--        ELSE
+--          gn_unit_price := main_rec.standard_unit_price;
+--        END IF;
+--
+        gn_unit_price := main_rec.standard_unit_price;
+--
+-- ***************** 2009/10/15 1.9 N.Maeda MOD  END  ***************** --
 /* 2009/08/25 Ver1.8 Add Start */
 --
         --単価の整数部の長さを取得

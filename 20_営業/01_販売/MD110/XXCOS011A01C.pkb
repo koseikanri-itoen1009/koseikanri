@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI納品返品情報ワークテーブルに取込まれたEDI返品確定データを
  *                    EDIヘッダ情報テーブル、EDI明細情報テーブルにそれぞれ登録します。
  * MD.050           : 返品確定データ取込（MD050_COS_011_A01）
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *                                      [000437]PT考慮の追加
  *  2009/08/05    1.5   N.Maeda         [000437]レビュー指摘追加
  *  2009/08/06    1.5   M.Sano          [0000644]レビュー指摘対応
+ *  2009/09/28    1.6   K.Satomura      [0001156,0001289]
  *
  *****************************************************************************************/
 --
@@ -149,6 +150,10 @@ AS
   cn_1                      CONSTANT   NUMBER := 1;
   cn_m1                     CONSTANT   NUMBER := -1;
   cv_y                      CONSTANT   VARCHAR2(1)   := 'Y';
+-- ******************** 2009/09/28 1.6 K.Satomura MOD START *********************** --
+  cv_n                      CONSTANT   VARCHAR2(1)   := 'N';
+-- ******************** 2009/09/28 1.6 K.Satomura MOD END   *********************** --
+
   cv_0                      CONSTANT   VARCHAR2(1)   := '0';
   cv_1                      CONSTANT   VARCHAR2(1)   := '1';
   cv_2                      CONSTANT   VARCHAR2(1)   := '2';
@@ -181,6 +186,11 @@ AS
 --****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
   cv_msg_count              CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12176'; -- 処理件数メッセージ
 --****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/09/28 1.6 K.Satomura ADD START ******************************--
+  cv_msg_item_err_type      CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-11959';  -- EDI品目エラータイプ
+  cv_msg_lookup_value       CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-00046';  -- クイックコード
+  cv_msg_mst_notfound       CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-10002';  -- マスタチェックエラーメッセージ
+--****************************** 2009/09/28 1.6 K.Satomura ADD END   ******************************--
   --* -------------------------------------------------------------------------------------------
   --トークン
   cv_msg_in_param           CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12168';  -- 実行区分
@@ -214,6 +224,9 @@ AS
   cv_tkn_cnt4               CONSTANT   VARCHAR2(50) :=  'COUNT4';            -- カウント4
   cv_tkn_cnt5               CONSTANT   VARCHAR2(50) :=  'COUNT5';            -- カウント5
 --****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/09/28 1.6 K.Satomura ADD START ******************************--
+  cv_tkn_column_name        CONSTANT   VARCHAR2(50) :=  'COLMUN';            -- 列名
+--****************************** 2009/09/28 1.6 K.Satomura ADD END   ******************************--
   --* -------------------------------------------------------------------------------------------
   --メッセージ用文字列
   cv_msg_str_profile_name   CONSTANT   VARCHAR2(20)  := 'APP-XXCOS1-12155';  -- プロファイル名
@@ -285,6 +298,10 @@ AS
 -- ************** 2009/07/22 N.Maeda ADD START ****************** --
   gd_edi_del_consider_date   DATE;             -- EDI情報削除期間考慮日付作成
 -- ************** 2009/07/22 N.Maeda ADD  END  ****************** --
+-- ************** 2009/09/28 1.6 K.Satomura ADD START ****************** --
+  gt_dummy_item_number     mtl_system_items_b.segment1%TYPE;
+  gt_dummy_unit_of_measure mtl_system_items_b.primary_unit_of_measure%TYPE;
+-- ************** 2009/09/28 1.6 K.Satomura ADD END   ****************** --
   --
   --* -------------------------------------------------------------------------------------------
   -- ===============================
@@ -1586,6 +1603,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- ******************** 2009/09/28 1.6 K.Satomura ADD START *********************** --
+    lv_tok_item_err_type VARCHAR2(100); -- メッセージトークン１
+    lv_tok_lookup_value  VARCHAR2(100); -- メッセージトークン２
+-- ******************** 2009/09/28 1.6 K.Satomura ADD END   *********************** --
 --
     -- *** ローカル・カーソル ***
 --
@@ -1759,6 +1780,52 @@ AS
     END IF;
     --
     --* -------------------------------------------------------------------------------------------
+-- ******************** 2009/09/28 1.6 K.Satomura ADD START *********************** --
+    --==================================
+    -- 2-6. ダミー品目コードの取得
+    --==================================
+    BEGIN
+      SELECT msi.segment1                dummy_item_code         -- ダミー品目コード
+            ,msi.primary_unit_of_measure primary_unit_of_measure -- 基準単位
+      INTO   gt_dummy_item_number
+            ,gt_dummy_unit_of_measure
+      FROM   fnd_lookup_values_vl flv -- 参照タイプコード
+            ,mtl_system_items_b msi -- 品目マスタ
+      WHERE  flv.lookup_type        = cv_lookup_type
+      AND    flv.enabled_flag       = cv_y
+      AND    flv.attribute1         = cv_1
+      AND    TRUNC(cd_process_date) BETWEEN flv.start_date_active
+                                        AND NVL(flv.end_date_active, TRUNC(cd_process_date))
+      AND    flv.lookup_code        = msi.segment1   -- 参照タイプコード.コード=品目マスタ.品目コード
+      AND    msi.organization_id    = gv_prf_orga_id -- 在庫組織ID
+      ;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- マスタチェックエラーを出力
+        lv_tok_item_err_type := xxccp_common_pkg.get_msg(
+                                   iv_application => cv_application
+                                  ,iv_name        => cv_msg_item_err_type
+                                );
+        --
+        lv_tok_lookup_value  := xxccp_common_pkg.get_msg(
+                                   iv_application => cv_application
+                                  ,iv_name        => cv_msg_lookup_value
+                                );
+        lv_errmsg            := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_application
+                                  ,iv_name         => cv_msg_mst_notfound
+                                  ,iv_token_name1  => cv_tkn_column_name
+                                  ,iv_token_value1 => lv_tok_item_err_type
+                                  ,iv_token_name2  => cv_tkn_table_name
+                                  ,iv_token_value2 => lv_tok_lookup_value
+                                );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+        --
+    END;
+-- ******************** 2009/09/28 1.6 K.Satomura ADD END   *********************** --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -3486,7 +3553,11 @@ AS
 --                    OR   ( flvv.start_date_active <= cd_process_date ))
 --                    AND (( flvv.end_date_active   IS NULL )
 --                    OR   ( flvv.end_date_active   >= cd_process_date ));  -- 業務日付がFROM-TO内
-                NULL;
+-- ******************** 2009/09/28 1.6 K.Satomura MOD START *********************** --
+            --NULL;
+            gt_req_mtl_sys_items(in_line_cnt).segment1        := gt_dummy_item_number;
+            gt_req_mtl_sys_items(in_line_cnt).unit_of_measure := gt_dummy_unit_of_measure;
+-- ******************** 2009/09/28 1.6 K.Satomura MOD END   *********************** --
 --****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
             END;
         END;
@@ -3529,6 +3600,21 @@ AS
                                  -- 顧客品目相互参照.品目ID = 品目マスタ.品目ID
             AND  mtl_item.inventory_item_id  = mcix.inventory_item_id
             AND  mtl_item.organization_id    = mtl_parm.organization_id
+-- ******************** 2009/09/28 1.6 K.Satomura MOD START *********************** --
+            AND  mtci.inactive_flag          = cv_n
+            AND  mcix.inactive_flag          = cv_n
+            AND  mcix.preference_number      = 
+                 (
+                   SELECT MIN(cix.preference_number)
+                   FROM   mtl_customer_items      cit
+                         ,mtl_customer_item_xrefs cix
+                   WHERE  cit.customer_id          = cust.cust_account_id
+                   AND    cit.customer_item_number = mtci.customer_item_number
+                   AND    cit.customer_item_id     = cix.customer_item_id
+                   AND    cit.inactive_flag        = cv_n
+                   AND    cix.inactive_flag        = cv_n
+                 )
+-- ******************** 2009/09/28 1.6 K.Satomura MOD END   *********************** --
             ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
@@ -3572,7 +3658,11 @@ AS
 --                        iv_token_value1  =>  gt_req_edi_lines_data(in_line_cnt).product_code2,
 --                        iv_token_value2  =>  gv_tkn_mtl_cust_items
 --                        );
-            NULL;
+-- ******************** 2009/09/28 1.6 K.Satomura MOD START *********************** --
+            --NULL;
+            gt_req_mtl_sys_items(in_line_cnt).segment1        := gt_dummy_item_number;
+            gt_req_mtl_sys_items(in_line_cnt).unit_of_measure := gt_dummy_unit_of_measure;
+-- ******************** 2009/09/28 1.6 K.Satomura MOD END   *********************** --
 --****************************** 2009/06/29 1.5 T.Tominaga MOD END   ******************************
         END;
       END IF;

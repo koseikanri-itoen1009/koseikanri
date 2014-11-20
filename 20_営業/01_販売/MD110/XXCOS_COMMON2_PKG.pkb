@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2009/03/31    1.3  T.Kitajima       [T1_0113]makeup_data_recordのNUMBER,DATE編集変更
  *  2009/04/16    1.4  T.Kitajima       [T1_0543]conv_edi_item_code ケースJAN、JANコードNULL対応
  *  2009/06/23    1.5  K.Kiriu          [T1_1359]EDI帳票向け数量換算関数の追加
+ *  2009/10/02    1.6  M.Sano           [0001156]顧客品目抽出条件追加
+ *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -509,7 +511,7 @@ AS
     -- ===============================
     -- ローカル定数
     -- ===============================
-    cv_prg_name                               CONSTANT VARCHAR2(100) := 'conv_ebs_item_code';  --プログラム
+    cv_prg_name                               CONSTANT VARCHAR2(100) := 'conv_edi_item_code';  --プログラム
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -590,9 +592,26 @@ AS
             mtl_customer_items       mci,                                       --顧客品目
             mtl_customer_item_xrefs  mcix,                                      --顧客品目相互参照
             mtl_system_items_b       msib                                       --DISC品目
-          WHERE mci.customer_id          = ln_customer_id                       --単位コード(発注単位)
-            AND mci.attribute1           = NVL(iv_uom_code, mci.attribute1 )    --顧客品目ID
+          WHERE mci.customer_id          = ln_customer_id                       --顧客ID
+            AND mci.attribute1           = NVL(iv_uom_code, mci.attribute1 )    --単位コード(発注単位)
+/* 2009/10/02 Ver1.6 Add Start */
+            AND mci.inactive_flag        = gv_char_n                            --有効フラグ
+/* 2009/10/02 Ver1.6 Add  End  */
             AND mci.customer_item_id     = mcix.customer_item_id                --顧客品目ID
+/* 2009/10/02 Ver1.6 Add Start */
+            AND mcix.inactive_flag       = gv_char_n                            --有効フラグ
+            AND mcix.preference_number   = (
+                  SELECT MIN(mcix_ck.preference_number) min_preference_number
+                  FROM   mtl_customer_item_xrefs        mcix_ck
+                        ,mtl_customer_items             mci_ck
+                  WHERE  mcix_ck.inventory_item_id = mcix.inventory_item_id
+                  AND    mcix_ck.inactive_flag     = gv_char_n
+                  AND    mci_ck.customer_item_id   = mcix_ck.customer_item_id
+                  AND    mci_ck.customer_id        = mci.customer_id
+                  AND    mci_ck.attribute1         = mci.attribute1
+                  AND    mci_ck.inactive_flag      = gv_char_n
+                )                                                               --ランク
+/* 2009/10/02 Ver1.6 Add  End  */
             AND msib.inventory_item_id   = mcix.inventory_item_id               --品目ID
             AND msib.organization_id     = iv_organization_id                   --組織ID
             AND msib.segment1            = iv_item_code                         --品目コード
@@ -607,8 +626,14 @@ AS
                              iv_name               => ct_msg_cust_item_code,
                              iv_token_name1        => cv_tkn_edi_chain_code,
                              iv_token_value1       => iv_edi_chain_code,
-                             iv_token_name2        => cv_tkn_uom_code,
-                             iv_token_value2       => iv_uom_code
+/* 2009/10/02 Ver1.6 Mod Start */
+--                             iv_token_name2        => cv_tkn_uom_code,
+--                             iv_token_value2       => iv_uom_code
+                             iv_token_name2        => cv_tkn_item_code,
+                             iv_token_value2       => iv_item_code,
+                             iv_token_name3        => cv_tkn_uom_code,
+                             iv_token_value3       => iv_uom_code
+/* 2009/10/02 Ver1.6 Mod  End  */
                            );
             RAISE lv_err_expt;
         END;
@@ -639,7 +664,12 @@ AS
                              iv_application        => ct_xxcos_appl_short_name,
                              iv_name               => ct_msg_jan_code,
                              iv_token_name1        => cv_tkn_edi_chain_code,
-                             iv_token_value1       => iv_edi_chain_code
+/* 2009/10/02 Ver1.6 Mod Start */
+--                             iv_token_value1       => iv_edi_chain_code
+                             iv_token_value1       => iv_edi_chain_code,
+                             iv_token_name2        => cv_tkn_item_code,
+                             iv_token_value2       => iv_item_code
+/* 2009/10/02 Ver1.6 Mod  End  */
                            );
             RAISE lv_err_expt;
         END;
