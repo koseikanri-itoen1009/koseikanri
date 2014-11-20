@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.25
+ * Version                : 1.26
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2008/11/04   1.23  ORACLE伊藤ひとみ [ロット逆転防止チェック] T_S_573対応
  *  2008/11/12   1.24  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘597対応
  *  2008/11/12   1.25  ORACLE伊藤ひとみ [積載効率チェック(合計値算出)] 統合テスト指摘311対応
+ *  2008/12/07   1.26  ORACLE北寒寺正夫 [出荷可否チェック]本番障害#318対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1198,6 +1199,10 @@ AS
     cv_code_class_whse       CONSTANT VARCHAR2(10) := '4';  -- 配送先
     cv_code_class_ship       CONSTANT VARCHAR2(10) := '9';  -- 出荷
     cv_code_class_supply     CONSTANT VARCHAR2(10) := '11'; -- 支給
+-- Ver1.26 M.Hokkanji Start
+    cv_log_level            CONSTANT VARCHAR2(1)   := '6';                   -- ログレベル
+    cv_colon                CONSTANT VARCHAR2(1)   := ':';                   -- コロン
+-- Ver1.26 M.Hokkanji End
 -- 2008/08/04 Add H.Itou End
 -- 2008/08/04 H.Itou Del Start
 --    -- 動的SQL文
@@ -1970,6 +1975,21 @@ AS
       -- 対象データなし
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                             cv_xxwsh_wt_cap_set_err);
+-- Ver1.26 M.Hokkanji Start
+      FND_LOG.STRING(cv_log_level, gv_pkg_name
+                    || cv_colon
+                    || cv_prg_name,
+                       '合計重量：' || TO_CHAR(in_sum_weight)
+                    || '、合計容積：' || TO_CHAR(in_sum_capacity)
+                    || '、コード区分1：' || iv_code_class1
+                    || '、入出庫場所コード１：' || iv_entering_despatching_code1
+                    || '、コード区分２：' || iv_code_class2
+                    || '、入出庫場所コード２：' || iv_entering_despatching_code2
+                    || '、出荷方法：' || iv_ship_method
+                    || '、商品区分：' || iv_prod_class
+                    || '、自動配車対象区分：' || iv_auto_process_type
+                    || '、依頼No：' || TO_CHAR(id_standard_date,'YYYY/MM/DD'));
+-- Ver1.26 M.Hokkanji End
       lv_err_cd := cv_xxwsh_wt_cap_set_err;
       -- カーソルクローズ
       CLOSE lc_ref;
@@ -3882,11 +3902,15 @@ AS
     cn_status_success              CONSTANT NUMBER        := 0;
     cn_status_error                CONSTANT NUMBER        := 1;
     cn_status_ship_stop            CONSTANT NUMBER        := 2;
+-- Ver1.26 M.Hokkanji Start
+    cv_log_level            CONSTANT VARCHAR2(1)   := '6';                   -- ログレベル
+    cv_colon                CONSTANT VARCHAR2(1)   := ':';                   -- コロン
+-- Ver1.26 M.Hokkanji End
     --
 --
     -- *** ローカル変数 ***
     -- エラー変数
-    lv_err_cd                      VARCHAR2(30);
+    lv_err_cd                      VARCHAR2(2000);
     ln_sum_plan_qty                NUMBER;             -- 計画合計数量
     ln_sum_ship_qty                NUMBER;             -- 出荷合計数量
     ln_min_start_date              DATE;               -- 最大開始日
@@ -3894,6 +3918,9 @@ AS
     --
     ln_forecast_cnt                NUMBER DEFAULT 0;   -- 取得フォーキャスト件数
     ln_item_cnt                    NUMBER DEFAULT 0;   -- OPM品目マスタ件数
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn                     VARCHAR2(3);        -- エラー区分
+-- Ver1.26 M.Hokkanji End
 --
     -- *** ローカル・カーソル ***
 --
@@ -3919,10 +3946,16 @@ AS
     -- ******************************************************
     -- *  入力パラメータチェック(G-1)                       *
     -- ******************************************************
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '000';
+-- Ver1.26 M.Hokkanji End
     --
     -- チェック方法区分
     IF ( iv_check_class IS NULL )
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '001';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_param_set_err,
                                               cv_tkn_in_parm,
@@ -3933,6 +3966,9 @@ AS
     -- 品目ID
     ELSIF ( in_item_id IS NULL )
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '002';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_param_set_err,
                                               cv_tkn_in_parm,
@@ -3943,6 +3979,9 @@ AS
     -- 数量
     ELSIF ( in_amount IS NULL )
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '003';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_param_set_err,
                                               cv_tkn_in_parm,
@@ -3953,6 +3992,9 @@ AS
     -- 対象日
     ELSIF ( id_date IS NULL )
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '004';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_param_set_err,
                                               cv_tkn_in_parm,
@@ -3967,6 +4009,9 @@ AS
                                  cv_check_class_3,
                                  cv_check_class_4 ))
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '005';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_check_class_err);
         lv_err_cd := cv_xxwsh_in_check_class_err;
@@ -3975,6 +4020,9 @@ AS
     -- 入力パラメータ「チェック方法区分」が「3」以外のとき入力パラメータ「拠点コード」が未設定
     ELSIF (( iv_check_class <> cv_check_class_3 ) AND ( iv_base_cd IS NULL ))
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '006';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_param_set_err,
                                               cv_tkn_in_parm,
@@ -3985,6 +4033,9 @@ AS
     -- 入力パラメータ「チェック方法区分」が「2」以外のとき入力パラメータ「出荷元ID」が未設定
     ELSIF (( iv_check_class <> cv_check_class_2 ) AND ( in_deliver_from_id IS NULL ))
       THEN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '007';
+-- Ver1.26 M.Hokkanji End
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh,
                                               cv_xxwsh_in_param_set_err,
                                               cv_tkn_in_parm,
@@ -3993,6 +4044,9 @@ AS
         RAISE global_api_expt;
     END IF;
 --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '008';
+-- Ver1.26 M.Hokkanji End
     -- ******************************************************
     -- *  チェック方法振り分け                              *
     -- ******************************************************
@@ -4002,6 +4056,9 @@ AS
       -- ******************************************************
       WHEN ( iv_check_class = cv_check_class_1 ) THEN
         --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '009';
+-- Ver1.26 M.Hokkanji End
         -- フォーキャスト抽出(引取計画の指定月の月間)
         BEGIN
           SELECT SUM( mfdt.original_forecast_quantity ),
@@ -4027,6 +4084,9 @@ AS
           WHEN OTHERS THEN
             RAISE global_api_expt;
         END;
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '008';
+-- Ver1.26 M.Hokkanji End
         --
 -- 2008/07/08_1.10_UPDATA_Start
 --        IF ( ln_forecast_cnt = 0 ) THEN
@@ -4085,6 +4145,9 @@ AS
 --            AND  ((iv_request_no IS NULL) OR (xoha.request_no <> iv_request_no))  -- 依頼No
 --            AND  NVL( xola.delete_flag, cv_no ) <> cv_yes;                -- 削除フラグ('Y'以外)
 --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '009';
+-- Ver1.26 M.Hokkanji End
           SELECT NVL(SUM(subsql.quantity),0)  + in_amount
           INTO   ln_sum_ship_qty
           FROM  (-- ステータスが入力中～締済の場合
@@ -4142,12 +4205,18 @@ AS
           WHEN OTHERS THEN
             RAISE global_api_expt;
         END;
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '010';
+-- Ver1.26 M.Hokkanji End
       -- ******************************************************
       -- *  チェックケース② 出荷数制限(商品部)チェック(G-3)  *
       -- ******************************************************
       WHEN ( iv_check_class = cv_check_class_2 ) THEN
         -- フォーキャスト抽出(引取計画の指定月の月間)
         BEGIN
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '011';
+-- Ver1.26 M.Hokkanji End
           SELECT SUM( mfdt.original_forecast_quantity ),
                  MIN( mfdt.forecast_date ),
                  MAX( mfdt.rate_end_date )
@@ -4173,6 +4242,9 @@ AS
             RAISE global_api_expt;
         END;
         --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '012';
+-- Ver1.26 M.Hokkanji End
         --
         -- 出荷依頼の抽出
         BEGIN
@@ -4274,6 +4346,9 @@ AS
           WHEN OTHERS THEN
             RAISE global_api_expt;
         END;
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '013';
+-- Ver1.26 M.Hokkanji End
         --
       -- ******************************************************
       -- *  チェックケース③ 出荷数制限(物流部)チェック(G-4)  *
@@ -4333,6 +4408,9 @@ AS
               RAISE global_api_expt;
           END;
           --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '014';
+-- Ver1.26 M.Hokkanji End
           --
           -- 出荷依頼の抽出
           BEGIN
@@ -4437,6 +4515,9 @@ AS
               RAISE global_api_expt;
           END;
         END IF;
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '015';
+-- Ver1.26 M.Hokkanji End
        --
       -- ******************************************************
       -- *  チェックケース④ 計画商品引取計画チェック(G-5)    *
@@ -4485,6 +4566,9 @@ AS
           RAISE global_api_expt;
         END IF;
         --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '016';
+-- Ver1.26 M.Hokkanji End
         --
         -- 出荷依頼の抽出
         BEGIN
@@ -4593,6 +4677,9 @@ AS
         --
     END CASE;
 --
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '017';
+-- Ver1.26 M.Hokkanji End
     -- ******************************************************
     -- *  OUTパラメータセット(G-6)                          *
     -- ******************************************************
@@ -4614,6 +4701,9 @@ AS
       -- 出荷停止エラー
         on_result      := cn_status_ship_stop;
     END IF;
+-- Ver1.26 M.Hokkanji Start
+    lv_err_kbn := '018';
+-- Ver1.26 M.Hokkanji End
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
@@ -4627,16 +4717,61 @@ AS
       ov_errmsg      := lv_errmsg;
       ov_errmsg_code := lv_err_cd;
       ov_retcode     := gv_status_error;
+-- Ver1.27 M.Hokkanji Start
+-- ログメッセージ埋め込み
+      FND_LOG.STRING(cv_log_level, gv_pkg_name
+                    || cv_colon
+                    || cv_prg_name,
+                       'チェック方法：' || iv_check_class
+                    || '、拠点コード：' || in_item_id
+                    || '、INV品目コード：' || TO_CHAR(in_item_id)
+                    || '、数量：' || TO_CHAR(in_amount)
+                    || '、対象日付：' || TO_CHAR(id_date,'YYYY/MM/DD')
+                    || '、出庫元ID：' || TO_CHAR(in_deliver_from_id)
+                    || '、依頼No：' || iv_request_no
+                    || '、エラー区分：' || lv_err_kbn
+                    || '、エラー：' || SQLERRM);
+-- Ver1.27 M.Hokkanji End
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errmsg      := SQLERRM;
       ov_errmsg_code := SQLCODE;
       ov_retcode     := gv_status_error;
+-- Ver1.27 M.Hokkanji Start
+-- ログメッセージ埋め込み
+      FND_LOG.STRING(cv_log_level, gv_pkg_name
+                    || cv_colon
+                    || cv_prg_name,
+                       'チェック方法：' || iv_check_class
+                    || '、拠点コード：' || in_item_id
+                    || '、INV品目コード：' || TO_CHAR(in_item_id)
+                    || '、数量：' || TO_CHAR(in_amount)
+                    || '、対象日付：' || TO_CHAR(id_date,'YYYY/MM/DD')
+                    || '、出庫元ID：' || TO_CHAR(in_deliver_from_id)
+                    || '、依頼No：' || iv_request_no
+                    || '、エラー区分：' || lv_err_kbn
+                    || '、エラー：' || SQLERRM);
+-- Ver1.27 M.Hokkanji End
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       ov_errmsg      := SQLERRM;
       ov_errmsg_code := SQLCODE;
       ov_retcode     := gv_status_error;
+-- Ver1.27 M.Hokkanji Start
+-- ログメッセージ埋め込み
+      FND_LOG.STRING(cv_log_level, gv_pkg_name
+                    || cv_colon
+                    || cv_prg_name,
+                       'チェック方法：' || iv_check_class
+                    || '、拠点コード：' || in_item_id
+                    || '、INV品目コード：' || TO_CHAR(in_item_id)
+                    || '、数量：' || TO_CHAR(in_amount)
+                    || '、対象日付：' || TO_CHAR(id_date,'YYYY/MM/DD')
+                    || '、出庫元ID：' || TO_CHAR(in_deliver_from_id)
+                    || '、依頼No：' || iv_request_no
+                    || '、エラー区分：' || lv_err_kbn
+                    || '、エラー：' || SQLERRM);
+-- Ver1.27 M.Hokkanji End
 --
 --#####################################  固定部 END   ##########################################
 --
