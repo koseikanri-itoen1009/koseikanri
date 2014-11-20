@@ -20,7 +20,13 @@ CREATE OR REPLACE VIEW APPS.XXSKY_倉庫品目_基本_V
 )
 AS
 SELECT  XFIL.item_location_code         --元倉庫コード
-       ,XILV1.description               --元倉庫名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,XILV1.description               --元倉庫名
+       ,(SELECT XILV1.description
+         FROM xxsky_item_locations_v XILV1  --OPM保管場所情報VIEW(元倉庫名用)
+         WHERE XFIL.item_location_id = XILV1.inventory_location_id
+        ) XILV1_description
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XPCV.prod_class_code            --商品区分
        ,XPCV.prod_class_name            --商品区分名
        ,XICV.item_class_code            --品目区分
@@ -30,38 +36,71 @@ SELECT  XFIL.item_location_code         --元倉庫コード
        ,XIMV.item_name                  --品目名
        ,XIMV.item_short_name            --品目略称
        ,XFIL.frq_item_location_code     --代表倉庫コード
-       ,XILV2.description               --代表倉庫名
-       ,FU_CB.user_name                 --作成者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,XILV2.description               --代表倉庫名
+       ,(SELECT XILV2.description
+         FROM xxsky_item_locations_v XILV2  --OPM保管場所情報VIEW(代表倉庫名用)
+         WHERE XFIL.frq_item_location_id = XILV2.inventory_location_id
+        ) XILV2_description
+       --,FU_CB.user_name                 --作成者
+       ,(SELECT FU_CB.user_name
+         FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
+         WHERE XFIL.created_by = FU_CB.user_id
+        ) FU_CB_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XFIL.creation_date, 'YYYY/MM/DD HH24:MI:SS')
                                         --作成日
-       ,FU_LU.user_name                 --最終更新者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LU.user_name                 --最終更新者
+       ,(SELECT FU_LU.user_name
+         FROM fnd_user FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE XFIL.last_updated_by = FU_LU.user_id
+        ) FU_LU_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XFIL.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                         --最終更新日
-       ,FU_LL.user_name                 --最終更新ログイン
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LL.user_name                 --最終更新ログイン
+       ,(SELECT FU_LL.user_name
+         FROM fnd_user    FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL  --ログインマスタ(last_update_login名称取得用)
+         WHERE XFIL.last_update_login    = FL_LL.login_id
+         AND   FL_LL.user_id         = FU_LL.user_id
+        ) FU_LL_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
   FROM  xxwsh_frq_item_locations XFIL   --倉庫品目アドオンマスタ
-       ,xxsky_item_locations_v   XILV1  --OPM保管場所情報VIEW(元倉庫名用)
-       ,xxsky_item_locations_v   XILV2  --OPM保管場所情報VIEW(代表倉庫名用)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,xxsky_item_locations_v   XILV1  --OPM保管場所情報VIEW(元倉庫名用)
+       --,xxsky_item_locations_v   XILV2  --OPM保管場所情報VIEW(代表倉庫名用)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
        ,xxsky_prod_class_v       XPCV   --SKYLINK用 商品区分取得VIEW
        ,xxsky_item_class_v       XICV   --SKYLINK用 品目区分取得VIEW
        ,xxsky_crowd_code_v       XCCV   --SKYLINK用 郡コード取得VIEW
        ,xxsky_item_mst_v         XIMV   --OPM品目情報VIEW
-       ,fnd_user                 FU_CB  --ユーザーマスタ(CREATED_BY名称取得用)
-       ,fnd_user                 FU_LU  --ユーザーマスタ(LAST_UPDATE_BY名称取得用)
-       ,fnd_user                 FU_LL  --ユーザーマスタ(LAST_UPDATE_LOGIN名称取得用)
-       ,fnd_logins               FL_LL  --ログインマスタ(LAST_UPDATE_LOGIN名称取得用)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,fnd_user                 FU_CB  --ユーザーマスタ(CREATED_BY名称取得用)
+       --,fnd_user                 FU_LU  --ユーザーマスタ(LAST_UPDATE_BY名称取得用)
+       --,fnd_user                 FU_LL  --ユーザーマスタ(LAST_UPDATE_LOGIN名称取得用)
+       --,fnd_logins               FL_LL  --ログインマスタ(LAST_UPDATE_LOGIN名称取得用)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  XFIL.item_id              = XPCV.item_id(+)
-   AND  XFIL.item_id              = XICV.item_id(+)
-   AND  XFIL.item_id              = XCCV.item_id(+)
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+   --AND  XFIL.item_id              = XICV.item_id(+)
+   --AND  XFIL.item_id              = XCCV.item_id(+)
+   AND  XPCV.item_id              = XICV.item_id
+   AND  XPCV.item_id              = XCCV.item_id
+   AND  XICV.item_id              = XCCV.item_id
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
    AND  XFIL.item_id              = XIMV.item_id(+)
-   AND  XFIL.item_location_id     = XILV1.inventory_location_id(+)
-   AND  XFIL.frq_item_location_id = XILV2.inventory_location_id(+)
-   AND  XFIL.created_by           = FU_CB.user_id(+)
-   AND  XFIL.last_updated_by      = FU_LU.user_id(+)
-   AND  XFIL.last_update_login    = FL_LL.login_id(+)
-   AND  FL_LL.user_id             = FU_LL.user_id(+)
-
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  XFIL.item_location_id     = XILV1.inventory_location_id(+)
+   --AND  XFIL.frq_item_location_id = XILV2.inventory_location_id(+)
+   --AND  XFIL.created_by           = FU_CB.user_id(+)
+   --AND  XFIL.last_updated_by      = FU_LU.user_id(+)
+   --AND  XFIL.last_update_login    = FL_LL.login_id(+)
+   --AND  FL_LL.user_id             = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
 /
-
 COMMENT ON TABLE APPS.XXSKY_倉庫品目_基本_V IS 'SKYLINK用倉庫品目（基本）VIEW'
 /
 COMMENT ON COLUMN APPS.XXSKY_倉庫品目_基本_V.元倉庫コード                   IS '元倉庫コード'

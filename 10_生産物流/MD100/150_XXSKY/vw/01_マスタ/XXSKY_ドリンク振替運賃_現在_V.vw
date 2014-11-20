@@ -19,47 +19,94 @@ CREATE OR REPLACE VIEW APPS.XXSKY_ドリンク振替運賃_現在_V
 AS
 SELECT  
         XDTDC.godds_classification          --商品分類
-       ,FLV01.meaning                       --商品分類名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV01.meaning                       --商品分類名
+       ,(SELECT FLV01.meaning
+         FROM fnd_lookup_values FLV01  --クイックコード(商品分類名)
+         WHERE FLV01.language   = 'JA'                        --言語
+         AND  FLV01.lookup_type = 'XXCMN_D02'                 --クイックコードタイプ
+         AND  FLV01.lookup_code = XDTDC.godds_classification  --クイックコード
+        ) FLV01_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XDTDC.dellivary_classe              --配送区分
-       ,FLV02.meaning                       --配送区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV02.meaning                       --配送区分名
+       ,(SELECT FLV02.meaning
+         FROM fnd_lookup_values FLV02  --クイックコード(配送区分名)
+         WHERE FLV02.language   = 'JA'
+         AND  FLV02.lookup_type = 'XXCMN_SHIP_METHOD'
+         AND  FLV02.lookup_code = XDTDC.dellivary_classe
+        ) FLV02_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XDTDC.foothold_macrotaxonomy        --拠点大分類
-       ,FLV03.meaning                       --拠点大分類名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV03.meaning                       --拠点大分類名
+       ,(SELECT FLV03.meaning
+         FROM fnd_lookup_values FLV03  --クイックコード(配送区分名)
+         WHERE FLV03.language   = 'JA'
+         AND  FLV03.lookup_type = 'XXWIP_BASE_MAJOR_DIVISION'
+         AND  FLV03.lookup_code = XDTDC.foothold_macrotaxonomy
+        ) FLV03_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XDTDC.start_date_active             --適用開始日
        ,XDTDC.end_date_active               --適用終了日
        ,XDTDC.setting_amount                --設定単価
        ,XDTDC.penalty_amount                --ペナルティ単価
-       ,FU_CB.user_name                     --作成者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_CB.user_name                     --作成者
+       ,(SELECT FU_CB.user_name
+         FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
+         WHERE XDTDC.created_by = FU_CB.user_id
+        ) FU_CB_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XDTDC.creation_date, 'YYYY/MM/DD HH24:MI:SS')
                                             --作成日
-       ,FU_LU.user_name                     --最終更新者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LU.user_name                     --最終更新者
+       ,(SELECT FU_LU.user_name
+         FROM fnd_user FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE XDTDC.last_updated_by   = FU_LU.user_id
+        ) FU_LU_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XDTDC.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                             --最終更新日
-       ,FU_LL.user_name                     --最終更新ログイン
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LL.user_name                     --最終更新ログイン
+       ,(SELECT FU_LL.user_name
+         FROM fnd_user    FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL  --ログインマスタ(last_update_login名称取得用)
+         WHERE XDTDC.last_update_login = FL_LL.login_id
+         AND   FL_LL.user_id           = FU_LL.user_id
+        ) FU_LL_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
   FROM  xxwip_drink_trans_deli_chrgs XDTDC  --ドリンク振替運賃アドオンマスタ
-       ,fnd_user                     FU_CB  --ユーザーマスタ(created_by名称取得用)
-       ,fnd_user                     FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
-       ,fnd_user                     FU_LL  --ユーザーマスタ(last_update_login名称取得用)
-       ,fnd_logins                   FL_LL  --ログインマスタ(last_update_login名称取得用)
-       ,fnd_lookup_values            FLV01  --クイックコード(商品分類名)
-       ,fnd_lookup_values            FLV02  --クイックコード(配送区分名)
-       ,fnd_lookup_values            FLV03  --クイックコード(拠点大分類名)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,fnd_user                     FU_CB  --ユーザーマスタ(created_by名称取得用)
+       --,fnd_user                     FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+       --,fnd_user                     FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+       --,fnd_logins                   FL_LL  --ログインマスタ(last_update_login名称取得用)
+       --,fnd_lookup_values            FLV01  --クイックコード(商品分類名)
+       --,fnd_lookup_values            FLV02  --クイックコード(配送区分名)
+       --,fnd_lookup_values            FLV03  --クイックコード(拠点大分類名)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  XDTDC.start_date_active <= TRUNC(SYSDATE)
    AND  XDTDC.end_date_active   >= TRUNC(SYSDATE)
-   AND  XDTDC.created_by        = FU_CB.user_id(+)
-   AND  XDTDC.last_updated_by   = FU_LU.user_id(+)
-   AND  XDTDC.last_update_login = FL_LL.login_id(+)
-   AND  FL_LL.user_id           = FU_LL.user_id(+)
-   AND  FLV01.language(+)    = 'JA'                        --言語
-   AND  FLV01.lookup_type(+) = 'XXCMN_D02'                 --クイックコードタイプ
-   AND  FLV01.lookup_code(+) = XDTDC.godds_classification  --クイックコード
-   AND  FLV02.language(+)    = 'JA'
-   AND  FLV02.lookup_type(+) = 'XXCMN_SHIP_METHOD'
-   AND  FLV02.lookup_code(+) = XDTDC.dellivary_classe
-   AND  FLV03.language(+)    = 'JA'
-   AND  FLV03.lookup_type(+) = 'XXWIP_BASE_MAJOR_DIVISION'
-   AND  FLV03.lookup_code(+) = XDTDC.foothold_macrotaxonomy
-/
-
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  XDTDC.created_by        = FU_CB.user_id(+)
+   --AND  XDTDC.last_updated_by   = FU_LU.user_id(+)
+   --AND  XDTDC.last_update_login = FL_LL.login_id(+)
+   --AND  FL_LL.user_id           = FU_LL.user_id(+)
+   --AND  FLV01.language(+)    = 'JA'                        --言語
+   --AND  FLV01.lookup_type(+) = 'XXCMN_D02'                 --クイックコードタイプ
+   --AND  FLV01.lookup_code(+) = XDTDC.godds_classification  --クイックコード
+   --AND  FLV02.language(+)    = 'JA'
+   --AND  FLV02.lookup_type(+) = 'XXCMN_SHIP_METHOD'
+   --AND  FLV02.lookup_code(+) = XDTDC.dellivary_classe
+   --AND  FLV03.language(+)    = 'JA'
+   --AND  FLV03.lookup_type(+) = 'XXWIP_BASE_MAJOR_DIVISION'
+   --AND  FLV03.lookup_code(+) = XDTDC.foothold_macrotaxonomy
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
+/  
 COMMENT ON TABLE APPS.XXSKY_ドリンク振替運賃_現在_V IS 'SKYLINK用ドリンク振替運賃（現在）VIEW'
 /
 COMMENT ON COLUMN APPS.XXSKY_ドリンク振替運賃_現在_V.商品分類                       IS '商品分類'

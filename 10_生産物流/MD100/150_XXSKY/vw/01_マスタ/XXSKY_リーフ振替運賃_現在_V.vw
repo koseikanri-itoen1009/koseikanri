@@ -54,24 +54,48 @@ SELECT
        ,XLTDC.setting_amount9             --設定金額9
        ,XLTDC.upper_limit_number10        --個数上限10
        ,XLTDC.setting_amount10            --設定金額10
-       ,FU_CB.user_name                   --作成者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_CB.user_name                   --作成者
+       ,(SELECT FU_CB.user_name
+         FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
+         WHERE XLTDC.created_by = FU_CB.user_id
+        ) FU_CB_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XLTDC.creation_date, 'YYYY/MM/DD HH24:MI:SS')
                                           --作成日
-       ,FU_LU.user_name                   --最終更新者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LU.user_name                   --最終更新者
+       ,(SELECT FU_LU.user_name
+         FROM fnd_user FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE XLTDC.last_updated_by = FU_LU.user_id
+        ) FU_LU_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XLTDC.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                           --最終更新日
-       ,FU_LL.user_name                   --最終更新ログイン
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LL.user_name                   --最終更新ログイン
+       ,(SELECT FU_LL.user_name
+         FROM fnd_user    FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL  --ログインマスタ(last_update_login名称取得用)
+         WHERE XLTDC.last_update_login = FL_LL.login_id
+         AND   FL_LL.user_id          = FU_LL.user_id
+        ) FU_LL_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
   FROM  xxwip_leaf_trans_deli_chrgs XLTDC --リーフ振替運賃アドオンマスタ
-       ,fnd_user                    FU_CB --ユーザーマスタ(created_by名称取得用)
-       ,fnd_user                    FU_LU --ユーザーマスタ(last_updated_by名称取得用)
-       ,fnd_user                    FU_LL --ユーザーマスタ(last_update_login名称取得用)
-       ,fnd_logins                  FL_LL --ログインマスタ(last_update_login名称取得用)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,fnd_user                    FU_CB --ユーザーマスタ(created_by名称取得用)
+       --,fnd_user                    FU_LU --ユーザーマスタ(last_updated_by名称取得用)
+       --,fnd_user                    FU_LL --ユーザーマスタ(last_update_login名称取得用)
+       --,fnd_logins                  FL_LL --ログインマスタ(last_update_login名称取得用)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  XLTDC.start_date_active <= TRUNC(SYSDATE)
    AND  XLTDC.end_date_active   >= TRUNC(SYSDATE)
-   AND  XLTDC.created_by        = FU_CB.user_id(+)
-   AND  XLTDC.last_updated_by   = FU_LU.user_id(+)
-   AND  XLTDC.last_update_login = FL_LL.login_id(+)
-   AND  FL_LL.user_id           = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  XLTDC.created_by        = FU_CB.user_id(+)
+   --AND  XLTDC.last_updated_by   = FU_LU.user_id(+)
+   --AND  XLTDC.last_update_login = FL_LL.login_id(+)
+   --AND  FL_LL.user_id           = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
 /
 COMMENT ON TABLE APPS.XXSKY_リーフ振替運賃_現在_V IS 'SKYLINK用リーフ振替運賃（現在）VIEW'
 /

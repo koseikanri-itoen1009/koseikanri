@@ -126,7 +126,14 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
                                       new_buss_cost               --新・営業原価
        ,IIMB.attribute9               buss_cost_s_date            --営業原価適用開始日
        ,IIMB.attribute26              sales_target_class          --売上対象区分
-       ,FLV01.meaning                 sales_target_class_name     --売上対象区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV01.meaning                 sales_target_class_name     --売上対象区分名
+       ,(SELECT FLV01.meaning
+         FROM fnd_lookup_values FLV01                               --クイックコード(売上対象区分名)
+         WHERE FLV01.language    = 'JA'                               --言語
+           AND FLV01.lookup_type = 'XXCMN_SALES_TARGET_CLASS'         --クイックコードタイプ
+           AND FLV01.lookup_code = IIMB.attribute26                   --クイックコード
+        ) sales_target_class_name
        ,IIMB.attribute13              sale_s_date                 --発売（製造）開始日
        ,IIMB.attribute21              jan_code                    --JANコード
        ,IIMB.attribute22              itf_code                    --ITFコード
@@ -135,24 +142,66 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
        ,NVL( TO_NUMBER( IIMB.attribute12 ), 0 )
                                       net                         --NET
        ,IIMB.attribute10              weight_capacity_class       --重量容積区分
-       ,FLV02.meaning                 weight_capacity_class_name  --重量容積区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV02.meaning                 weight_capacity_class_name  --重量容積区分名
+       ,(SELECT FLV02.meaning
+         FROM fnd_lookup_values FLV02                               --クイックコード(重量容積区分名)
+         WHERE FLV02.language    = 'JA'                               --言語
+           AND FLV02.lookup_type = 'XXCMN_WEIGHT_CAPACITY_CLASS'      --クイックコードタイプ
+           AND FLV02.lookup_code = IIMB.attribute10                   --クイックコード
+        ) weight_capacity_class_name
        ,NVL( TO_NUMBER( IIMB.attribute25 ), 0 )
                                       weight                      --重量
        ,NVL( TO_NUMBER( IIMB.attribute16 ), 0 )
                                       capacity                    --容積
        ,IIMB.attribute28              destination_div             --仕向区分
-       ,FLV03.meaning                 destination_div_name        --仕向区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV03.meaning                 destination_div_name        --仕向区分名
+       ,(SELECT FLV03.meaning
+         FROM fnd_lookup_values FLV03                               --クイックコード(仕向区分名)
+         WHERE FLV03.language    = 'JA'                                  --言語
+           AND FLV03.lookup_type = 'XXCMN_DESTINATION_DIV'            --クイックコードタイプ
+           AND FLV03.lookup_code = IIMB.attribute28                   --クイックコード
+        ) destination_div_name
        ,IIMB.attribute18              shipping_class              --出荷区分
-       ,FLV04.meaning                 shipping_class_name         --出荷区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV04.meaning                 shipping_class_name         --出荷区分名
+       ,(SELECT FLV04.meaning
+         FROM fnd_lookup_values FLV04                               --クイックコード(出荷区分名)
+         WHERE FLV04.language    = 'JA'                                  --言語
+           AND FLV04.lookup_type = 'XXCMN_SHIPPING_CLASS'             --クイックコードタイプ
+           AND FLV04.lookup_code = IIMB.attribute18                   --クイックコード
+        ) shipping_class_name
        ,IIMB.attribute15              cost_management             --原価管理区分
-       ,FLV05.meaning                 cost_management_name        --原価管理区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV05.meaning                 cost_management_name        --原価管理区分名
+       ,(SELECT FLV05.meaning
+         FROM fnd_lookup_values FLV05                               --クイックコード(原価管理区分名)
+         WHERE FLV05.language    = 'JA'                                  --言語
+           AND FLV05.lookup_type ='XXCMN_COST_MANAGEMENT'             --クイックコードタイプ
+           AND FLV05.lookup_code = IIMB.attribute15                   --クイックコード
+        ) cost_management_name
        ,IIMB.attribute20              vendor_price_deri_day       --仕入単価導出日タイプ
-       ,FLV06.meaning                 vendor_price_deri_day_name  --仕入単価導出日タイプ名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV06.meaning                 vendor_price_deri_day_name  --仕入単価導出日タイプ名
+       ,(SELECT FLV06.meaning
+         FROM fnd_lookup_values FLV06                               --クイックコード(仕入単価導出日タイプ名)
+         WHERE FLV06.language    = 'JA'                                  --言語
+           AND FLV06.lookup_type = 'XXCMN_VENDOR_PRICE_DERI_DAY_TY'   --クイックコードタイプ
+           AND FLV06.lookup_code = IIMB.attribute20                   --クイックコード
+        ) vendor_price_deri_day_name
        ,NVL( TO_NUMBER( IIMB.attribute17 ), 0 )
                                       representative_amount       --代表入数
        ,IIMB.attribute24              inout_conversion_uom        --入出庫換算単位
        ,IIMB.attribute23              need_test                   --試験有無区分
-       ,FLV07.meaning                 need_test_name              --試験有無区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV07.meaning                 need_test_name              --試験有無区分名
+       ,(SELECT FLV07.meaning
+         FROM fnd_lookup_values FLV07                               --クイックコード(試験有無区分名)
+         WHERE FLV07.language    = 'JA'                                  --言語
+           AND FLV07.lookup_type = 'XXCMN_NEED_TEST'                  --クイックコードタイプ
+           AND FLV07.lookup_code = IIMB.attribute23                   --クイックコード
+        ) need_test_name
        ,NVL( TO_NUMBER( IIMB.attribute14 ), 0 )
                                       inspection_lt               --検査L/T
        ,NVL( TO_NUMBER( IIMB.attribute27 ), 0 )
@@ -170,68 +219,162 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
                                       obsolete_class_name         --廃止区分名
        ,XIMB.obsolete_date            obsolete_date               --廃止日（製造中止日）
        ,XIMB.model_type               model_type                  --型種別
-       ,FLV08.meaning                 model_type_name             --型種別名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV08.meaning                 model_type_name             --型種別名
+       ,(SELECT FLV08.meaning
+         FROM fnd_lookup_values FLV08                               --クイックコード(型種別名)
+         WHERE FLV08.language    = 'JA'                                  --言語
+           AND FLV08.lookup_type = 'XXCMN_D01'                        --クイックコードタイプ
+           AND FLV08.lookup_code = XIMB.model_type                    --クイックコード
+        ) model_type_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.product_class            product_class               --商品分類
-       ,FLV09.meaning                 product_class_name          --商品分類名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV09.meaning                 product_class_name          --商品分類名
+       ,(SELECT FLV09.meaning
+         FROM fnd_lookup_values FLV09                               --クイックコード(商品分類名)
+         WHERE FLV09.language    = 'JA'                                  --言語
+           AND FLV09.lookup_type = 'XXCMN_D02'                        --クイックコードタイプ
+           AND FLV09.lookup_code = XIMB.product_class                 --クイックコード
+        ) product_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.product_type             product_type                --商品種別
-       ,FLV10.meaning                 product_type_name           --商品種別名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV10.meaning                 product_type_name           --商品種別名
+       ,(SELECT FLV10.meaning
+         FROM fnd_lookup_values FLV10                               --クイックコード(商品種別名)
+         WHERE FLV10.language    = 'JA'                                  --言語
+           AND FLV10.lookup_type = 'XXCMN_D03'                        --クイックコードタイプ
+           AND FLV10.lookup_code = XIMB.product_type                  --クイックコード
+        ) product_type_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.expiration_day           expiration_day              --賞味期間
        ,XIMB.delivery_lead_time       delivery_lead_time          --納入期間
        ,XIMB.whse_county_code         whse_county_code            --工場群コード
        ,XIMB.standard_yield           standard_yield              --標準保留
        ,XIMB.shipping_end_date        shipping_end_date           --出荷停止日
        ,XIMB.rate_class               rate_class                  --率区分
-       ,FLV11.meaning                 rate_class_name             --率区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV11.meaning                 rate_class_name             --率区分名
+       ,(SELECT FLV11.meaning
+         FROM fnd_lookup_values FLV11                               --クイックコード(率区分名)
+         WHERE FLV11.language    = 'JA'                                  --言語
+           AND FLV11.lookup_type = 'XXCMN_RATE'                       --クイックコードタイプ
+           AND FLV11.lookup_code = XIMB.rate_class                    --クイックコード
+        ) rate_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.shelf_life               shelf_life                  --消費期間
        ,XIMB.shelf_life_class         shelf_life_class            --賞味期間区分
-       ,FLV12.meaning                 shelf_life_class_name       --賞味期間区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV12.meaning                 shelf_life_class_name       --賞味期間区分名
+       ,(SELECT FLV12.meaning
+         FROM fnd_lookup_values FLV12                               --クイックコード(賞味期間区分名)
+         WHERE FLV12.language    = 'JA'                                  --言語
+           AND FLV12.lookup_type = 'XXCMN_SHELF_LIFE_CLASS'           --クイックコードタイプ
+           AND FLV12.lookup_code = XIMB.shelf_life_class              --クイックコード
+        ) shelf_life_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.bottle_class             bottle_class                --容器区分
-       ,FLV13.meaning                 bottle_class_name           --容器区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV13.meaning                 bottle_class_name           --容器区分名
+       ,(SELECT FLV13.meaning
+         FROM fnd_lookup_values FLV13                               --クイックコード(容器区分名)
+         WHERE FLV13.language    = 'JA'                                  --言語
+           AND FLV13.lookup_type = 'XXCMN_BOTTLE_CLASS'               --クイックコードタイプ
+           AND FLV13.lookup_code = XIMB.bottle_class                  --クイックコード
+        ) bottle_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.uom_class                uom_class                   --単位区分
-       ,FLV14.meaning                 uom_class_name              --単位区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV14.meaning                 uom_class_name              --単位区分名
+       ,(SELECT FLV14.meaning
+         FROM fnd_lookup_values FLV14                               --クイックコード(単位区分名)
+         WHERE FLV14.language    = 'JA'                                  --言語
+           AND FLV14.lookup_type = 'XXCMN_UOM_CLASS'                  --クイックコードタイプ
+           AND FLV14.lookup_code = XIMB.uom_class                     --クイックコード
+        ) uom_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.inventory_chk_class      inventory_chk_class         --棚卸区分
-       ,FLV15.meaning                 inventory_chk_class_name    --棚卸区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV15.meaning                 inventory_chk_class_name    --棚卸区分名
+       ,(SELECT FLV15.meaning
+         FROM fnd_lookup_values FLV15                               --クイックコード(棚卸区分名)
+         WHERE FLV15.language    = 'JA'                                  --言語
+           AND FLV15.lookup_type = 'XXCMN_INVENTORY_CHK_CLASS'        --クイックコードタイプ
+           AND FLV15.lookup_code = XIMB.inventory_chk_class           --クイックコード
+        ) inventory_chk_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.trace_class              trace_class                 --トレース区分
-       ,FLV16.meaning                 trace_class_name            --トレース区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV16.meaning                 trace_class_name            --トレース区分名
+       ,(SELECT FLV16.meaning
+         FROM fnd_lookup_values FLV16                               --クイックコード(トレース区分名)
+         WHERE FLV16.language    = 'JA'                                  --言語
+           AND FLV16.lookup_type = 'XXCMN_TRACE_CLASS'                --クイックコードタイプ
+           AND FLV16.lookup_code = XIMB.trace_class                   --クイックコード
+        ) trace_class_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.shipping_cs_unit_qty     shipping_cs_unit_qty        --出荷入数
        ,XIMB.palette_max_cs_qty       palette_max_cs_qty          --配数
        ,XIMB.palette_max_step_qty     palette_max_step_qty        --パレット当り最大段数
        ,XIMB.palette_step_qty         palette_step_qty            --パレット段
        ,XIMB.cs_weigth_or_capacity    cs_weigth_or_capacity       --ケース重量容積
        ,XIMB.raw_material_consumption raw_material_consumption    --原料使用量
-       ,FU_CB.user_name               created_by_name             --CREATED_BYのユーザー名(ログイン時の入力コード)
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_CB.user_name               created_by_name             --CREATED_BYのユーザー名(ログイン時の入力コード)
+       ,(SELECT FU_CB.user_name
+         FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
+         WHERE XIMB.created_by = FU_CB.user_id
+        ) created_by_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XIMB.creation_date, 'YYYY/MM/DD HH24:MI:SS')
                                       creation_date               --作成日時
-       ,FU_LU.user_name               last_updated_by_name        --LAST_UPDATED_BYのユーザー名(ログイン時の入力コード)
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LU.user_name               last_updated_by_name        --LAST_UPDATED_BYのユーザー名(ログイン時の入力コード)
+       ,(SELECT FU_LU.user_name
+         FROM fnd_user FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE XIMB.last_updated_by = FU_LU.user_id
+        ) last_updated_by_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XIMB.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                       last_update_date            --更新日時
-       ,FU_LL.user_name               last_update_login_name      --LAST_UPDATE_LOGINのユーザー名(ログイン時の入力コード)
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LL.user_name               last_update_login_name      --LAST_UPDATE_LOGINのユーザー名(ログイン時の入力コード)
+       ,(SELECT FU_LL.user_name
+         FROM fnd_user    FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL  --ログインマスタ(last_update_login名称取得用)
+         WHERE XIMB.last_update_login = FL_LL.login_id
+         AND   FL_LL.user_id          = FU_LL.user_id
+        ) last_update_login_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
   FROM  ic_item_mst_b         IIMB                                --OPM品目マスタ
        ,xxcmn_item_mst_b      XIMB                                --品目マスタアドオン
        ,ic_item_mst_b         IIMB2                               --OPM品目マスタ     (倉庫品目取得用)
        ,xxcmn_item_mst_b      XIMB2                               --品目マスタアドオン(倉庫品目取得用)
        ,ic_item_mst_b         IIMB3                               --OPM品目マスタ     (親品目取得用)
        ,xxcmn_item_mst_b      XIMB3                               --品目マスタアドオン(親品目取得用)
-       ,fnd_lookup_values     FLV01                               --クイックコード(売上対象区分名)
-       ,fnd_lookup_values     FLV02                               --クイックコード(重量容積区分名)
-       ,fnd_lookup_values     FLV03                               --クイックコード(仕向区分名)
-       ,fnd_lookup_values     FLV04                               --クイックコード(出荷区分名)
-       ,fnd_lookup_values     FLV05                               --クイックコード(原価管理区分名)
-       ,fnd_lookup_values     FLV06                               --クイックコード(仕入単価導出日タイプ名)
-       ,fnd_lookup_values     FLV07                               --クイックコード(試験有無区分名)
-       ,fnd_lookup_values     FLV08                               --クイックコード(型種別名)
-       ,fnd_lookup_values     FLV09                               --クイックコード(商品分類名)
-       ,fnd_lookup_values     FLV10                               --クイックコード(商品種別名)
-       ,fnd_lookup_values     FLV11                               --クイックコード(率区分名)
-       ,fnd_lookup_values     FLV12                               --クイックコード(賞味期間区分名)
-       ,fnd_lookup_values     FLV13                               --クイックコード(容器区分名)
-       ,fnd_lookup_values     FLV14                               --クイックコード(単位区分名)
-       ,fnd_lookup_values     FLV15                               --クイックコード(棚卸区分名)
-       ,fnd_lookup_values     FLV16                               --クイックコード(トレース区分名)
-       ,fnd_user              FU_CB                               --ユーザーマスタ(CREATED_BY名称取得用)
-       ,fnd_user              FU_LU                               --ユーザーマスタ(LAST_UPDATE_BY名称取得用)
-       ,fnd_user              FU_LL                               --ユーザーマスタ(LAST_UPDATE_LOGIN名称取得用)
-       ,fnd_logins            FL_LL                               --ログインマスタ(LAST_UPDATE_LOGIN名称取得用)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,fnd_lookup_values     FLV01                               --クイックコード(売上対象区分名)
+       --,fnd_lookup_values     FLV02                               --クイックコード(重量容積区分名)
+       --,fnd_lookup_values     FLV03                               --クイックコード(仕向区分名)
+       --,fnd_lookup_values     FLV04                               --クイックコード(出荷区分名)
+       --,fnd_lookup_values     FLV05                               --クイックコード(原価管理区分名)
+       --,fnd_lookup_values     FLV06                               --クイックコード(仕入単価導出日タイプ名)
+       --,fnd_lookup_values     FLV07                               --クイックコード(試験有無区分名)
+       --,fnd_lookup_values     FLV08                               --クイックコード(型種別名)
+       --,fnd_lookup_values     FLV09                               --クイックコード(商品分類名)
+       --,fnd_lookup_values     FLV10                               --クイックコード(商品種別名)
+       --,fnd_lookup_values     FLV11                               --クイックコード(率区分名)
+       --,fnd_lookup_values     FLV12                               --クイックコード(賞味期間区分名)
+       --,fnd_lookup_values     FLV13                               --クイックコード(容器区分名)
+       --,fnd_lookup_values     FLV14                               --クイックコード(単位区分名)
+       --,fnd_lookup_values     FLV15                               --クイックコード(棚卸区分名)
+       --,fnd_lookup_values     FLV16                               --クイックコード(トレース区分名)
+       --,fnd_user              FU_CB                               --ユーザーマスタ(CREATED_BY名称取得用)
+       --,fnd_user              FU_LU                               --ユーザーマスタ(LAST_UPDATE_BY名称取得用)
+       --,fnd_user              FU_LL                               --ユーザーマスタ(LAST_UPDATE_LOGIN名称取得用)
+       --,fnd_logins            FL_LL                               --ログインマスタ(LAST_UPDATE_LOGIN名称取得用)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  IIMB.item_id = XIMB.item_id
    AND  IIMB.whse_item_id = IIMB2.item_id(+)                      --倉庫品目
    AND  IIMB.whse_item_id = XIMB2.item_id(+)                      --倉庫品目
@@ -242,74 +385,76 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
    AND  XIMB3.start_date_active <= TRUNC(SYSDATE)                 --適用開始日
    AND  XIMB3.end_date_active   >= TRUNC(SYSDATE)                 --適用終了日
    --クイックコード：売上対象区分名取得
-   AND  FLV01.language(+) = 'JA'                                  --言語
-   AND  FLV01.lookup_type(+) = 'XXCMN_SALES_TARGET_CLASS'         --クイックコードタイプ
-   AND  FLV01.lookup_code(+) = IIMB.attribute26                   --クイックコード
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  FLV01.language(+) = 'JA'                                  --言語
+   --AND  FLV01.lookup_type(+) = 'XXCMN_SALES_TARGET_CLASS'         --クイックコードタイプ
+   --AND  FLV01.lookup_code(+) = IIMB.attribute26                   --クイックコード
    --クイックコード：重量容積区分名取得
-   AND  FLV02.language(+) = 'JA'                                  --言語
-   AND  FLV02.lookup_type(+) = 'XXCMN_WEIGHT_CAPACITY_CLASS'      --クイックコードタイプ
-   AND  FLV02.lookup_code(+) = IIMB.attribute10                   --クイックコード
+   --AND  FLV02.language(+) = 'JA'                                  --言語
+   --AND  FLV02.lookup_type(+) = 'XXCMN_WEIGHT_CAPACITY_CLASS'      --クイックコードタイプ
+   --AND  FLV02.lookup_code(+) = IIMB.attribute10                   --クイックコード
    --クイックコード：仕向区分名取得
-   AND  FLV03.language(+) = 'JA'                                  --言語
-   AND  FLV03.lookup_type(+) = 'XXCMN_DESTINATION_DIV'            --クイックコードタイプ
-   AND  FLV03.lookup_code(+) = IIMB.attribute28                   --クイックコード
+   --AND  FLV03.language(+) = 'JA'                                  --言語
+   --AND  FLV03.lookup_type(+) = 'XXCMN_DESTINATION_DIV'            --クイックコードタイプ
+   --AND  FLV03.lookup_code(+) = IIMB.attribute28                   --クイックコード
    --クイックコード：出荷区分名取得
-   AND  FLV04.language(+) = 'JA'                                  --言語
-   AND  FLV04.lookup_type(+) = 'XXCMN_SHIPPING_CLASS'             --クイックコードタイプ
-   AND  FLV04.lookup_code(+) = IIMB.attribute18                   --クイックコード
+   --AND  FLV04.language(+) = 'JA'                                  --言語
+   --AND  FLV04.lookup_type(+) = 'XXCMN_SHIPPING_CLASS'             --クイックコードタイプ
+   --AND  FLV04.lookup_code(+) = IIMB.attribute18                   --クイックコード
    --クイックコード：原価管理区分名取得
-   AND  FLV05.language(+) = 'JA'                                  --言語
-   AND  FLV05.lookup_type(+) ='XXCMN_COST_MANAGEMENT'             --クイックコードタイプ
-   AND  FLV05.lookup_code(+) = IIMB.attribute15                   --クイックコード
+   --AND  FLV05.language(+) = 'JA'                                  --言語
+   --AND  FLV05.lookup_type(+) ='XXCMN_COST_MANAGEMENT'             --クイックコードタイプ
+   --AND  FLV05.lookup_code(+) = IIMB.attribute15                   --クイックコード
    --クイックコード：仕入単価導出日タイプ名取得
-   AND  FLV06.language(+) = 'JA'                                  --言語
-   AND  FLV06.lookup_type(+) = 'XXCMN_VENDOR_PRICE_DERI_DAY_TY'   --クイックコードタイプ
-   AND  FLV06.lookup_code(+) = IIMB.attribute20                   --クイックコード
+   --AND  FLV06.language(+) = 'JA'                                  --言語
+   --AND  FLV06.lookup_type(+) = 'XXCMN_VENDOR_PRICE_DERI_DAY_TY'   --クイックコードタイプ
+   --AND  FLV06.lookup_code(+) = IIMB.attribute20                   --クイックコード
    --クイックコード：試験有無区分名取得
-   AND  FLV07.language(+) = 'JA'                                  --言語
-   AND  FLV07.lookup_type(+) = 'XXCMN_NEED_TEST'                  --クイックコードタイプ
-   AND  FLV07.lookup_code(+) = IIMB.attribute23                   --クイックコード
+   --AND  FLV07.language(+) = 'JA'                                  --言語
+   --AND  FLV07.lookup_type(+) = 'XXCMN_NEED_TEST'                  --クイックコードタイプ
+   --AND  FLV07.lookup_code(+) = IIMB.attribute23                   --クイックコード
    --クイックコード：型種別名取得
-   AND  FLV08.language(+) = 'JA'                                  --言語
-   AND  FLV08.lookup_type(+) = 'XXCMN_D01'                        --クイックコードタイプ
-   AND  FLV08.lookup_code(+) = XIMB.model_type                    --クイックコード
+   --AND  FLV08.language(+) = 'JA'                                  --言語
+   --AND  FLV08.lookup_type(+) = 'XXCMN_D01'                        --クイックコードタイプ
+   --AND  FLV08.lookup_code(+) = XIMB.model_type                    --クイックコード
    --クイックコード：商品分類名取得
-   AND  FLV09.language(+) = 'JA'                                  --言語
-   AND  FLV09.lookup_type(+) = 'XXCMN_D02'                        --クイックコードタイプ
-   AND  FLV09.lookup_code(+) = XIMB.product_class                 --クイックコード
+   --AND  FLV09.language(+) = 'JA'                                  --言語
+   --AND  FLV09.lookup_type(+) = 'XXCMN_D02'                        --クイックコードタイプ
+   --AND  FLV09.lookup_code(+) = XIMB.product_class                 --クイックコード
    --クイックコード：商品種別名取得
-   AND  FLV10.language(+) = 'JA'                                  --言語
-   AND  FLV10.lookup_type(+) = 'XXCMN_D03'                        --クイックコードタイプ
-   AND  FLV10.lookup_code(+) = XIMB.product_type                  --クイックコード
+   --AND  FLV10.language(+) = 'JA'                                  --言語
+   --AND  FLV10.lookup_type(+) = 'XXCMN_D03'                        --クイックコードタイプ
+   --AND  FLV10.lookup_code(+) = XIMB.product_type                  --クイックコード
    --クイックコード：率区分名取得
-   AND  FLV11.language(+) = 'JA'                                  --言語
-   AND  FLV11.lookup_type(+) = 'XXCMN_RATE'                       --クイックコードタイプ
-   AND  FLV11.lookup_code(+) = XIMB.rate_class                    --クイックコード
+   --AND  FLV11.language(+) = 'JA'                                  --言語
+   --AND  FLV11.lookup_type(+) = 'XXCMN_RATE'                       --クイックコードタイプ
+   --AND  FLV11.lookup_code(+) = XIMB.rate_class                    --クイックコード
    --クイックコード：賞味期間区分名取得
-   AND  FLV12.language(+) = 'JA'                                  --言語
-   AND  FLV12.lookup_type(+) = 'XXCMN_SHELF_LIFE_CLASS'           --クイックコードタイプ
-   AND  FLV12.lookup_code(+) = XIMB.shelf_life_class              --クイックコード
+   --AND  FLV12.language(+) = 'JA'                                  --言語
+   --AND  FLV12.lookup_type(+) = 'XXCMN_SHELF_LIFE_CLASS'           --クイックコードタイプ
+   --AND  FLV12.lookup_code(+) = XIMB.shelf_life_class              --クイックコード
    --クイックコード：容器区分名取得
-   AND  FLV13.language(+) = 'JA'                                  --言語
-   AND  FLV13.lookup_type(+) = 'XXCMN_BOTTLE_CLASS'               --クイックコードタイプ
-   AND  FLV13.lookup_code(+) = XIMB.bottle_class                  --クイックコード
+   --AND  FLV13.language(+) = 'JA'                                  --言語
+   --AND  FLV13.lookup_type(+) = 'XXCMN_BOTTLE_CLASS'               --クイックコードタイプ
+   --AND  FLV13.lookup_code(+) = XIMB.bottle_class                  --クイックコード
    --クイックコード：単位区分名取得
-   AND  FLV14.language(+) = 'JA'                                  --言語
-   AND  FLV14.lookup_type(+) = 'XXCMN_UOM_CLASS'                  --クイックコードタイプ
-   AND  FLV14.lookup_code(+) = XIMB.uom_class                     --クイックコード
+   --AND  FLV14.language(+) = 'JA'                                  --言語
+   --AND  FLV14.lookup_type(+) = 'XXCMN_UOM_CLASS'                  --クイックコードタイプ
+   --AND  FLV14.lookup_code(+) = XIMB.uom_class                     --クイックコード
    --クイックコード：棚卸区分名取得
-   AND  FLV15.language(+) = 'JA'                                  --言語
-   AND  FLV15.lookup_type(+) = 'XXCMN_INVENTORY_CHK_CLASS'        --クイックコードタイプ
-   AND  FLV15.lookup_code(+) = XIMB.inventory_chk_class           --クイックコード
+   --AND  FLV15.language(+) = 'JA'                                  --言語
+   --AND  FLV15.lookup_type(+) = 'XXCMN_INVENTORY_CHK_CLASS'        --クイックコードタイプ
+   --AND  FLV15.lookup_code(+) = XIMB.inventory_chk_class           --クイックコード
    --クイックコード：トレース区分名取得
-   AND  FLV16.language(+) = 'JA'                                  --言語
-   AND  FLV16.lookup_type(+) = 'XXCMN_TRACE_CLASS'                --クイックコードタイプ
-   AND  FLV16.lookup_code(+) = XIMB.trace_class                   --クイックコード
+   --AND  FLV16.language(+) = 'JA'                                  --言語
+   --AND  FLV16.lookup_type(+) = 'XXCMN_TRACE_CLASS'                --クイックコードタイプ
+   --AND  FLV16.lookup_code(+) = XIMB.trace_class                   --クイックコード
    --WHOカラム取得
-   AND  XIMB.created_by = FU_CB.user_id(+)
-   AND  XIMB.last_updated_by = FU_LU.user_id(+)
-   AND  XIMB.last_update_login = FL_LL.login_id(+)
-   AND  FL_LL.user_id = FU_LL.user_id(+)
+   --AND  XIMB.created_by = FU_CB.user_id(+)
+   --AND  XIMB.last_updated_by = FU_LU.user_id(+)
+   --AND  XIMB.last_update_login = FL_LL.login_id(+)
+   --AND  FL_LL.user_id = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
 /
 COMMENT ON TABLE APPS.XXSKY_品目マスタ_基本_V IS 'SKYLINK用品目マスタ（基本）VIEW'
 /

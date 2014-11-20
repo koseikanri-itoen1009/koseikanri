@@ -40,37 +40,73 @@ SELECT
        ,XVSA.phone                       --電話番号
        ,XVSA.fax                         --FAX番号
        ,PVSA.attribute1                  --相手先在庫入庫先
-       ,XILV01.description               --相手先在庫入庫先名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,XILV01.description               --相手先在庫入庫先名
+       ,(SELECT XILV01.description
+         FROM xxsky_item_locations_v XILV01   --OPM保管場所情報VIEW(相手先在庫入庫先名)
+         WHERE PVSA.attribute1 = XILV01.segment1
+        ) XILV01_description
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,PVSA.attribute2                  --発注納入先
-       ,XILV02.description               --発注納入先名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,XILV02.description               --発注納入先名
+       ,(SELECT XILV02.description
+         FROM xxsky_item_locations_v XILV02   --OPM保管場所情報VIEW(発注納入先名)
+         WHERE PVSA.attribute2 = XILV02.segment1
+        ) XILV02_description
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,PVSA.attribute4                  --備考
-       ,FU_CB.user_name                  --作成者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_CB.user_name                  --作成者
+       ,(SELECT FU_CB.user_name
+         FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
+         WHERE XVSA.created_by = FU_CB.user_id
+        ) FU_CB_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XVSA.creation_date, 'YYYY/MM/DD HH24:MI:SS' )
                                          --作成日
-       ,FU_LU.user_name                  --最終更新者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LU.user_name                  --最終更新者
+       ,(SELECT FU_LU.user_name
+         FROM fnd_user FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE XVSA.last_updated_by = FU_LU.user_id
+        ) FU_LU_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( XVSA.last_update_date, 'YYYY/MM/DD HH24:MI:SS' )
                                          --最終更新日
-       ,FU_LL.user_name                  --最終更新ログイン
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LL.user_name                  --最終更新ログイン
+       ,(SELECT FU_LL.user_name
+         FROM fnd_user    FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL  --ログインマスタ(last_update_login名称取得用)
+         WHERE XVSA.last_update_login = FL_LL.login_id
+         AND   FL_LL.user_id          = FU_LL.user_id
+        ) FU_LL_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
   FROM  xxcmn_vendor_sites_all  XVSA     --仕入先サイトアドオン
        ,po_vendor_sites_all     PVSA     --仕入先サイト
        ,xxsky_vendors_v         XVV      --仕入先情報VIEW
-       ,xxsky_item_locations_v  XILV01   --OPM保管場所情報VIEW(相手先在庫入庫先名)
-       ,xxsky_item_locations_v  XILV02   --OPM保管場所情報VIEW(発注納入先名)
-       ,fnd_user                FU_CB    --ユーザーマスタ(created_by名称取得用)
-       ,fnd_user                FU_LU    --ユーザーマスタ(last_updated_by名称取得用)
-       ,fnd_user                FU_LL    --ユーザーマスタ(last_update_login名称取得用)
-       ,fnd_logins              FL_LL    --ログインマスタ(last_update_login名称取得用)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,xxsky_item_locations_v  XILV01   --OPM保管場所情報VIEW(相手先在庫入庫先名)
+       --,xxsky_item_locations_v  XILV02   --OPM保管場所情報VIEW(発注納入先名)
+       --,fnd_user                FU_CB    --ユーザーマスタ(created_by名称取得用)
+       --,fnd_user                FU_LU    --ユーザーマスタ(last_updated_by名称取得用)
+       --,fnd_user                FU_LL    --ユーザーマスタ(last_update_login名称取得用)
+       --,fnd_logins              FL_LL    --ログインマスタ(last_update_login名称取得用)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  XVSA.vendor_id         = PVSA.vendor_id
    AND  XVSA.vendor_site_id    = PVSA.vendor_site_id
    AND  PVSA.org_id            = FND_PROFILE.VALUE('ORG_ID')
    AND  PVSA.inactive_date     IS NULL
    AND  XVSA.vendor_id         = XVV.vendor_id(+)
-   AND  PVSA.attribute1        = XILV01.segment1(+)
-   AND  PVSA.attribute2        = XILV02.segment1(+)
-   AND  XVSA.created_by        = FU_CB.user_id(+)
-   AND  XVSA.last_updated_by   = FU_LU.user_id(+)
-   AND  XVSA.last_update_login = FL_LL.login_id(+)
-   AND  FL_LL.user_id          = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  PVSA.attribute1        = XILV01.segment1(+)
+   --AND  PVSA.attribute2        = XILV02.segment1(+)
+   --AND  XVSA.created_by        = FU_CB.user_id(+)
+   --AND  XVSA.last_updated_by   = FU_LU.user_id(+)
+   --AND  XVSA.last_update_login = FL_LL.login_id(+)
+   --AND  FL_LL.user_id          = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
 /
 COMMENT ON TABLE APPS.XXSKY_仕入先サイト_基本_V IS 'SKYLINK用仕入先サイト（基本）VIEW'
 /

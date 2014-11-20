@@ -78,79 +78,160 @@ SELECT  XPCV.prod_class_code          --商品区分
        ,NVL(TO_NUMBER(ILM.attribute7), 0)
                                       --在庫単価
        ,ILM.attribute8                --取引先
-       ,XVV.vendor_name               --取引先名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,XVV.vendor_name               --取引先名
+       ,(SELECT XVV.vendor_name
+         FROM xxsky_vendors_v XVV     --仕入先VIEW
+         WHERE  ILM.attribute8 = XVV.segment1
+        ) XVV_vendor_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,ILM.attribute9                --仕入形態
-       ,FLV01.meaning                 --仕入形態名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV01.meaning                 --仕入形態名
+       ,(SELECT FLV01.meaning
+         FROM fnd_lookup_values FLV01   --クイックコード(仕入形態名)
+         WHERE FLV01.language    = 'JA'
+         AND   FLV01.lookup_type = 'XXCMN_L05'
+         AND   FLV01.lookup_code = ILM.attribute9
+        ) FLV01_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,ILM.attribute10               --茶期区分
-       ,FLV02.meaning                 --茶期区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV02.meaning                 --茶期区分名
+       ,(SELECT FLV02.meaning
+         FROM fnd_lookup_values FLV02   --クイックコード(茶期区分名)
+         WHERE  FLV02.language    = 'JA'
+         AND    FLV02.lookup_type = 'XXCMN_L06'
+         AND    FLV02.lookup_code = ILM.attribute10
+        ) FLV02_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,ILM.attribute11               --年度
        ,ILM.attribute12               --産地
-       ,FLV03.meaning                 --産地名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV03.meaning                 --産地名
+       ,(SELECT FLV03.meaning
+         FROM fnd_lookup_values FLV03   --クイックコード(産地名)
+         WHERE FLV03.language    = 'JA'
+         AND   FLV03.lookup_type = 'XXCMN_L07'
+         AND   FLV03.lookup_code = ILM.attribute12
+        ) FLV03_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_NUMBER( ILM.attribute13 )  --タイプ
        ,ILM.attribute14               --ランク１
        ,ILM.attribute15               --ランク２
        ,ILM.attribute19               --ランク３
        ,ILM.attribute16               --生産伝票区分
-       ,FLV04.meaning                 --生産伝票区分名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV04.meaning                 --生産伝票区分名
+       ,(SELECT FLV04.meaning
+         FROM fnd_lookup_values FLV04   --クイックコード(生産伝票区分名)
+         WHERE FLV04.language    = 'JA'
+         AND   FLV04.lookup_type = 'XXCMN_L03'
+         AND   FLV04.lookup_code = ILM.attribute16
+        ) FLV04_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,ILM.attribute17               --ラインNo
        ,ILM.attribute18               --摘要
        ,ILM.attribute20               --原料製造工場
        ,ILM.attribute21               --原料製造元ロット番号
        ,ILM.attribute22               --検査依頼No
        ,ILM.attribute23               --ロットステータス
-       ,FLV05.meaning                 --ロットステータス名
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV05.meaning                 --ロットステータス名
+       ,(SELECT FLV05.meaning
+         FROM fnd_lookup_values FLV05   --クイックコード(ロットステータス名)
+         WHERE FLV05.language    = 'JA'
+         AND   FLV05.lookup_type = 'XXCMN_LOT_STATUS'
+         AND   FLV05.lookup_code = ILM.attribute23
+        ) FLV05_meaning
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,ILM.attribute24               --作成区分
-       ,FLV06.meaning                 --作成区分名
-       ,FU_CB.user_name               --作成者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FLV06.meaning                 --作成区分名
+       ,(SELECT FLV06.meaning
+         FROM fnd_lookup_values FLV06   --クイックコード(作成区分名)
+         WHERE FLV06.language    = 'JA'
+         AND   FLV06.lookup_type = 'XXCMN_DERIVE_DIV'
+         AND   FLV06.lookup_code = ILM.attribute24
+        ) FLV06_meaning
+       --,FU_CB.user_name               --作成者
+       ,(SELECT FU_CB.user_name
+         FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
+         WHERE ILM.created_by = FU_CB.user_id
+        ) FU_CB_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( ILM.creation_date, 'YYYY/MM/DD HH24:MI:SS' )
                                       --作成日
-       ,FU_LU.user_name               --最終更新者
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LU.user_name               --最終更新者
+       ,(SELECT FU_LU.user_name
+         FROM fnd_user FU_LU  --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE ILM.last_updated_by = FU_LU.user_id
+        ) FU_LU_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,TO_CHAR( ILM.last_update_date, 'YYYY/MM/DD HH24:MI:SS' )
                                       --最終更新日
-       ,FU_LL.user_name               --最終更新ログイン
+-- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
+       --,FU_LL.user_name               --最終更新ログイン
+       ,(SELECT FU_LL.user_name
+         FROM fnd_user    FU_LL  --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL  --ログインマスタ(last_update_login名称取得用)
+         WHERE ILM.last_update_login = FL_LL.login_id
+         AND   FL_LL.user_id         = FU_LL.user_id
+        ) FU_LL_user_name
+-- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
   FROM  ic_lots_mst           ILM     --ロットマスタ
        ,xxsky_prod_class_v    XPCV    --SKYLINK用 商品区分取得VIEW
        ,xxsky_item_class_v    XICV    --SKYLINK用 品目区分取得VIEW
        ,xxsky_crowd_code_v    XCCV    --SKYLINK用 郡コード取得VIEW
        ,xxsky_item_mst_v      XIMV    --OPM品目情報VIEW
-       ,xxsky_vendors_v       XVV     --仕入先VIEW
-       ,fnd_lookup_values     FLV01   --クイックコード(仕入形態名)
-       ,fnd_lookup_values     FLV02   --クイックコード(茶期区分名)
-       ,fnd_lookup_values     FLV03   --クイックコード(産地名)
-       ,fnd_lookup_values     FLV04   --クイックコード(生産伝票区分名)
-       ,fnd_lookup_values     FLV05   --クイックコード(ロットステータス名)
-       ,fnd_lookup_values     FLV06   --クイックコード(作成区分名)
-       ,fnd_user              FU_CB   --ユーザーマスタ(CREATED_BY名称取得用)
-       ,fnd_user              FU_LU   --ユーザーマスタ(LAST_UPDATE_BY名称取得用)
-       ,fnd_user              FU_LL   --ユーザーマスタ(LAST_UPDATE_LOGIN名称取得用)
-       ,fnd_logins            FL_LL   --ログインマスタ(LAST_UPDATE_LOGIN名称取得用)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+       --,xxsky_vendors_v       XVV     --仕入先VIEW
+       --,fnd_lookup_values     FLV01   --クイックコード(仕入形態名)
+       --,fnd_lookup_values     FLV02   --クイックコード(茶期区分名)
+       --,fnd_lookup_values     FLV03   --クイックコード(産地名)
+       --,fnd_lookup_values     FLV04   --クイックコード(生産伝票区分名)
+       --,fnd_lookup_values     FLV05   --クイックコード(ロットステータス名)
+       --,fnd_lookup_values     FLV06   --クイックコード(作成区分名)
+       --,fnd_user              FU_CB   --ユーザーマスタ(CREATED_BY名称取得用)
+       --,fnd_user              FU_LU   --ユーザーマスタ(LAST_UPDATE_BY名称取得用)
+       --,fnd_user              FU_LL   --ユーザーマスタ(LAST_UPDATE_LOGIN名称取得用)
+       --,fnd_logins            FL_LL   --ログインマスタ(LAST_UPDATE_LOGIN名称取得用)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  ILM.item_id          = XPCV.item_id(+)
-   AND  ILM.item_id          = XICV.item_id(+)
-   AND  ILM.item_id          = XCCV.item_id(+)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  ILM.item_id          = XICV.item_id(+)
+   --AND  ILM.item_id          = XCCV.item_id(+)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
+   AND  XPCV.item_id         = XICV.item_id
+   AND  XPCV.item_id         = XCCV.item_id
+   AND  XICV.item_id         = XCCV.item_id
    AND  ILM.item_id          = XIMV.item_id(+)
-   AND  ILM.attribute8       = XVV.segment1(+)
-   AND  FLV01.language(+)    = 'JA'
-   AND  FLV01.lookup_type(+) = 'XXCMN_L05'
-   AND  FLV01.lookup_code(+) = ILM.attribute9
-   AND  FLV02.language(+)    = 'JA'
-   AND  FLV02.lookup_type(+) = 'XXCMN_L06'
-   AND  FLV02.lookup_code(+) = ILM.attribute10
-   AND  FLV03.language(+)    = 'JA'
-   AND  FLV03.lookup_type(+) = 'XXCMN_L07'
-   AND  FLV03.lookup_code(+) = ILM.attribute12
-   AND  FLV04.language(+)    = 'JA'
-   AND  FLV04.lookup_type(+) = 'XXCMN_L03'
-   AND  FLV04.lookup_code(+) = ILM.attribute16
-   AND  FLV05.language(+)    = 'JA'
-   AND  FLV05.lookup_type(+) = 'XXCMN_LOT_STATUS'
-   AND  FLV05.lookup_code(+) = ILM.attribute23
-   AND  FLV06.language(+)    = 'JA'
-   AND  FLV06.lookup_type(+) = 'XXCMN_DERIVE_DIV'
-   AND  FLV06.lookup_code(+) = ILM.attribute24
-   AND  ILM.created_by           = FU_CB.user_id(+)
-   AND  ILM.last_updated_by      = FU_LU.user_id(+)
-   AND  ILM.last_update_login    = FL_LL.login_id(+)
-   AND  FL_LL.user_id            = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
+   --AND  ILM.attribute8       = XVV.segment1(+)
+   --AND  FLV01.language(+)    = 'JA'
+   --AND  FLV01.lookup_type(+) = 'XXCMN_L05'
+   --AND  FLV01.lookup_code(+) = ILM.attribute9
+   --AND  FLV02.language(+)    = 'JA'
+   --AND  FLV02.lookup_type(+) = 'XXCMN_L06'
+   --AND  FLV02.lookup_code(+) = ILM.attribute10
+   --AND  FLV03.language(+)    = 'JA'
+   --AND  FLV03.lookup_type(+) = 'XXCMN_L07'
+   --AND  FLV03.lookup_code(+) = ILM.attribute12
+   --AND  FLV04.language(+)    = 'JA'
+   --AND  FLV04.lookup_type(+) = 'XXCMN_L03'
+   --AND  FLV04.lookup_code(+) = ILM.attribute16
+   --AND  FLV05.language(+)    = 'JA'
+   --AND  FLV05.lookup_type(+) = 'XXCMN_LOT_STATUS'
+   --AND  FLV05.lookup_code(+) = ILM.attribute23
+   --AND  FLV06.language(+)    = 'JA'
+   --AND  FLV06.lookup_type(+) = 'XXCMN_DERIVE_DIV'
+   --AND  FLV06.lookup_code(+) = ILM.attribute24
+   --AND  ILM.created_by           = FU_CB.user_id(+)
+   --AND  ILM.last_updated_by      = FU_LU.user_id(+)
+   --AND  ILM.last_update_login    = FL_LL.login_id(+)
+   --AND  FL_LL.user_id            = FU_LL.user_id(+)
+-- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
 /
 COMMENT ON TABLE APPS.XXSKY_ロットマスタ_基本_V IS 'SKYLINK用ロットマスタ（基本）VIEW'
 /
