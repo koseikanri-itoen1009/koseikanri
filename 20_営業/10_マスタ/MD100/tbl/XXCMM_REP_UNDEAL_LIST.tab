@@ -1,9 +1,15 @@
 CREATE TABLE xxcmm.xxcmm_rep_undeal_list (
   request_id              NUMBER(15,0) NOT NULL,
   p_customer_status_name  VARCHAR2(30),
-  p_base_cd_name          VARCHAR2(30),
+-- 2009/08/16 è·äQ0001096 modify start
+--  p_base_cd_name          VARCHAR2(30),
+  p_base_cd_name          VARCHAR2(40),
+-- 2009/08/16 è·äQ0001096 modify end
   base_code               VARCHAR2(4)  NOT NULL,
-  base_cd_name            VARCHAR2(30),
+-- 2009/08/16 è·äQ0001096 modify start
+--  base_cd_name            VARCHAR2(30),
+  base_cd_name            VARCHAR2(40),
+-- 2009/08/16 è·äQ0001096 modify end
   customer_code           VARCHAR2(9)  NOT NULL,
   customer_name           VARCHAR2(360),
   customer_status         VARCHAR2(2),
