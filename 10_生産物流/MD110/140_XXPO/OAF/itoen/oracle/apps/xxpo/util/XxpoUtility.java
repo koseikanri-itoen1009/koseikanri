@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-10 1.0  伊藤ひとみ   新規作成
 * 2008-06-11 1.1  吉元強樹     ST不具合ログ#72を対応
+* 2008-06-17 1.2  二瓶大輔     ST不具合ログ#126を対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -29,7 +30,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.0
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -8849,7 +8850,7 @@ public class XxpoUtility
       cstmt.setString(1, reqNo);   // 依頼No/移動番号
 
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(2, Types.INTEGER); // リターン・コード
+      cstmt.registerOutParameter(2, Types.VARCHAR); // リターン・コード
       cstmt.registerOutParameter(3, Types.NUMERIC); // バッチID
       cstmt.registerOutParameter(4, Types.VARCHAR); // エラー・メッセージ・コード
       cstmt.registerOutParameter(5, Types.VARCHAR); // ユーザー・エラー・メッセージ
@@ -10060,12 +10061,14 @@ public class XxpoUtility
     sb.append("        ,xvv.vendor_short_name  vendor_name   "); // 仕入先名
     sb.append("        ,xcav.party_id          customer_id   "); // 顧客ID(パーティーID)
     sb.append("        ,xcav.party_number      customer_code "); // 顧客コード(組織番号)
+    sb.append("        ,xvv.spare2             price_list    "); // 取引先価格表ID
     sb.append("  INTO   :1 ");
     sb.append("        ,:2 ");
     sb.append("        ,:3 ");
     sb.append("        ,:4 ");
     sb.append("        ,:5 ");
     sb.append("        ,:6 ");
+    sb.append("        ,:7 ");
     sb.append("  FROM   fnd_user              fu   ");  // ユーザーマスタ
     sb.append("        ,per_all_people_f      papf ");  // 従業員マスタ
     sb.append("        ,xxcmn_vendors_v       xvv  ");  // 仕入先情報V
@@ -10097,6 +10100,7 @@ public class XxpoUtility
       cstmt.registerOutParameter(i++, Types.VARCHAR); // 仕入先名
       cstmt.registerOutParameter(i++, Types.INTEGER); // 顧客ID
       cstmt.registerOutParameter(i++, Types.VARCHAR); // 顧客コード
+      cstmt.registerOutParameter(i++, Types.VARCHAR); // 取引先価格表ID
       
       //PL/SQL実行
       cstmt.execute();
@@ -10108,6 +10112,7 @@ public class XxpoUtility
       retHashMap.put("VendorName",   cstmt.getObject(4)); // 仕入先名
       retHashMap.put("CustomerId",   cstmt.getObject(5)); // 顧客ID
       retHashMap.put("CustomerCode", cstmt.getObject(6)); // 顧客コード
+      retHashMap.put("PriceList",    cstmt.getObject(7)); // 取引先価格表ID
 
     // PL/SQL実行時例外の場合
     } catch(SQLException s)

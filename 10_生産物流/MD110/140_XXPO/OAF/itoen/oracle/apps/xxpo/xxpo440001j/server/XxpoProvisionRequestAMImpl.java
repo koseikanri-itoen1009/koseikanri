@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-03 1.0  二瓶大輔     新規作成
 * 2008-06-06 1.0  二瓶大輔     内部変更要求#137対応
+* 2008-06-17 1.1  二瓶大輔     ST不具合#126対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -656,6 +657,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         row.setAttribute("VendorName",   userInfo.get("VendorName"));
         row.setAttribute("CustomerId",   userInfo.get("CustomerId"));
         row.setAttribute("CustomerCode", userInfo.get("CustomerCode"));
+        row.setAttribute("PriceList",    userInfo.get("PriceList"));
 
       }
 
