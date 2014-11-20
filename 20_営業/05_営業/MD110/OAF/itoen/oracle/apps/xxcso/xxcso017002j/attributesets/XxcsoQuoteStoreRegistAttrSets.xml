@@ -53,7 +53,7 @@
    <attributeSet docName="SalesDiscountPriceColHdr" prompt="売上値引"/>
    <attributeSet docName="UsuallNetPriceColHdr" prompt="通常NET価格"/>
    <attributeSet docName="ThisTimeNetPriceColHdr" prompt="今回NET価格"/>
-   <attributeSet docName="AmountOfMarginColHdr" prompt="マージン額"/>
+   <attributeSet docName="AmountOfMarginColHdr" prompt="マージン額／本"/>
    <attributeSet docName="MarginRateColHdr" prompt="マージン率"/>
    <attributeSet docName="QuoteStartDateColHdr" prompt="期間（開始）"/>
    <attributeSet docName="QuoteEndDateColHdr" prompt="期間（終了）"/>
