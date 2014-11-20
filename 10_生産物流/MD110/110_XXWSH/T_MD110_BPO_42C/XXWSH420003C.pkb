@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/15   1.0  Oracle 北寒寺正夫   新規作成
+ *  2008/12/25   1.1  SCS  菅原大輔     本番障害#845対応(子処理起動順変更、ディレイ追加) 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -261,8 +262,10 @@ AS
         ||       ' WHERE xola.order_header_id = xoha.order_header_id'
         ||       ' AND   NVL(xola.delete_flag,'''|| gv_no || ''') = ''' || gv_no || ''''
         ||       ' AND   ximv.item_no  = xola.shipping_item_code )'
-        ||       ' GROUP BY xoha.deliver_from '
-        ||       ' ORDER BY COUNT(xoha.order_header_id) DESC ';
+--2008/12/25 D.Sugahara #845 Mod Start 件数の多いものを先頭に集めるのをやめる（負荷分散）
+        ||       ' GROUP BY xoha.deliver_from ';
+--        ||       ' ORDER BY COUNT(xoha.order_header_id) DESC ';  
+--2008/12/25 D.Sugahara #845 Mod End
 --
     FND_FILE.PUT_LINE(FND_FILE.LOG,lv_select2);
     OPEN fwd_cur FOR lv_select2;
@@ -516,6 +519,9 @@ AS
            gn_error_cnt := 1;
            RAISE global_process_expt;
        END IF;
+--2008/12/25 D.Sugahara #845 Mod Start コンカレント発行間隔ディレイ（負荷分散）
+      DBMS_LOCK.SLEEP(2);  --2秒間隔をあける
+--2008/12/25 D.Sugahara #845 Mod End
 --
     END LOOP demand_inf_loop; -- 出庫元ループ終わり
 --
