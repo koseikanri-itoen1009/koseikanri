@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,9 @@ AS
  *                                       データパージ不具合対応
  *  2009/07/09    1.5   M.Sano           【SCS障害No.0000063対応】
  *                                       情報区分によるデータ作成対象の制御
+ *  2009/10/01    1.6   S.Miyakoshi      【SCS障害No.0001378対応】
+ *                                       帳票ワークテーブルの桁あふれ対応
+ *                                       クイックコード取得時のパフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -229,6 +232,11 @@ AS
 /* 2009/07/09 Ver1.5 Add Start */
   ct_info_class_01          CONSTANT  VARCHAR2(2)   := '01';          --情報区分：「01」
 /* 2009/07/09 Ver1.5 Add End */
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 ADD START ************************ --
+  --言語コード
+  ct_lang            CONSTANT fnd_lookup_values.language%TYPE
+                                            := USERENV( 'LANG' );
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 ADD  END  ************************ --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -452,7 +460,10 @@ AS
     --==================================
     -- 4.XXCOS:会社名
     --==================================
-    gv_company_name           := FND_PROFILE.VALUE( ct_prof_company_name );
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--    gv_company_name           := FND_PROFILE.VALUE( ct_prof_company_name );
+    gv_company_name           := SUBSTRB( FND_PROFILE.VALUE( ct_prof_company_name ), 1, 30 );
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
 --
     -- プロファイルが取得できない場合はエラー
     IF ( gv_company_name IS NULL ) THEN
@@ -623,44 +634,70 @@ AS
       AND EXISTS(
             SELECT
               cv_exists_flag_yes            exists_flag
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--            FROM
+--              fnd_application               fa,
+--              fnd_lookup_types              flt,
+--              fnd_lookup_values             flv
+--            WHERE
+--              fa.application_id             = flt.application_id
+--            AND flt.lookup_type             = flv.lookup_type
+--            AND fa.application_short_name   = ct_xxcos_appl_short_name
+--            AND flv.lookup_type             = ct_qct_order_type
+--            AND flv.lookup_code             LIKE ct_qcc_order_type
+--            AND flv.meaning                 = ottt.name
+--            AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+--            AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+--            AND flv.enabled_flag            = ct_enabled_flag_yes
+--            AND flv.language                = USERENV( 'LANG' )
+--            AND ROWNUM                      = 1
             FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
               fnd_lookup_values             flv
             WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_order_type
+                flv.lookup_type             = ct_qct_order_type
             AND flv.lookup_code             LIKE ct_qcc_order_type
             AND flv.meaning                 = ottt.name
             AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
             AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
             AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
+            AND flv.language                = ct_lang
             AND ROWNUM                      = 1
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
           )
       AND ottt.language                     = USERENV( 'LANG' )
       AND ooha.order_source_id              = oos.order_source_id
       AND EXISTS(
             SELECT
               cv_exists_flag_yes            exists_flag
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--            FROM
+--              fnd_application               fa,
+--              fnd_lookup_types              flt,
+--              fnd_lookup_values             flv
+--            WHERE
+--              fa.application_id             = flt.application_id
+--            AND flt.lookup_type             = flv.lookup_type
+--            AND fa.application_short_name   = ct_xxcos_appl_short_name
+--            AND flv.lookup_type             = ct_qct_order_source
+--            AND flv.lookup_code             LIKE ct_qcc_order_source
+--            AND flv.meaning                 = oos.name
+--            AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+--            AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+--            AND flv.enabled_flag            = ct_enabled_flag_yes
+--            AND flv.language                = USERENV( 'LANG' )
+--            AND ROWNUM                      = 1
             FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
               fnd_lookup_values             flv
             WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_order_source
+                flv.lookup_type             = ct_qct_order_source
             AND flv.lookup_code             LIKE ct_qcc_order_source
             AND flv.meaning                 = oos.name
             AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
             AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
             AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
+            AND flv.language                = ct_lang
             AND ROWNUM                      = 1
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
           )
       AND ooha.flow_status_code             = ct_hdr_status_booked
       AND oola.flow_status_code             NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
@@ -672,22 +709,35 @@ AS
       AND EXISTS(
             SELECT
               cv_exists_flag_yes            exists_flag
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--            FROM
+--              fnd_application               fa,
+--              fnd_lookup_types              flt,
+--              fnd_lookup_values             flv
+--            WHERE
+--              fa.application_id             = flt.application_id
+--            AND flt.lookup_type             = flv.lookup_type
+--            AND fa.application_short_name   = ct_xxcos_appl_short_name
+--            AND flv.lookup_type             = ct_qct_hokanbasyo_type
+--            AND flv.lookup_code             LIKE ct_qcc_hokanbasyo_type
+--            AND flv.meaning                 = msi.attribute13
+--            AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
+--            AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
+--            AND flv.enabled_flag            = ct_enabled_flag_yes
+--            AND flv.language                = USERENV( 'LANG' )
+--            AND ROWNUM                      = 1
             FROM
-              fnd_application               fa,
-              fnd_lookup_types              flt,
               fnd_lookup_values             flv
             WHERE
-              fa.application_id             = flt.application_id
-            AND flt.lookup_type             = flv.lookup_type
-            AND fa.application_short_name   = ct_xxcos_appl_short_name
-            AND flv.lookup_type             = ct_qct_hokanbasyo_type
+                flv.lookup_type             = ct_qct_hokanbasyo_type
             AND flv.lookup_code             LIKE ct_qcc_hokanbasyo_type
             AND flv.meaning                 = msi.attribute13
             AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
             AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
             AND flv.enabled_flag            = ct_enabled_flag_yes
-            AND flv.language                = USERENV( 'LANG' )
+            AND flv.language                = ct_lang
             AND ROWNUM                      = 1
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
           )
       AND oola.sold_to_org_id               = hca.cust_account_id
       AND hca.cust_account_id               = xca.customer_id
@@ -720,25 +770,33 @@ AS
 /* 2009/07/09 Ver1.5 Add End */
       AND msib.segment1 NOT IN (
             SELECT  look_val.lookup_code
-            FROM    fnd_lookup_values     look_val,
-                    fnd_lookup_types_tl   types_tl,
-                    fnd_lookup_types      types,
-                    fnd_application_tl    appl,
-                    fnd_application       app
-            WHERE   appl.application_id   = types.application_id
-            AND     app.application_id    = appl.application_id
-            AND     types_tl.lookup_type  = look_val.lookup_type
-            AND     types.lookup_type     = types_tl.lookup_type
-            AND     types.security_group_id   = types_tl.security_group_id
-            AND     types.view_application_id = types_tl.view_application_id
-            AND     types_tl.language = USERENV( 'LANG' )
-            AND     look_val.language = USERENV( 'LANG' )
-            AND     appl.language     = USERENV( 'LANG' )
-            AND     app.application_short_name = ct_xxcos_appl_short_name
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--            FROM    fnd_lookup_values     look_val,
+--                    fnd_lookup_types_tl   types_tl,
+--                    fnd_lookup_types      types,
+--                    fnd_application_tl    appl,
+--                    fnd_application       app
+--            WHERE   appl.application_id   = types.application_id
+--            AND     app.application_id    = appl.application_id
+--            AND     types_tl.lookup_type  = look_val.lookup_type
+--            AND     types.lookup_type     = types_tl.lookup_type
+--            AND     types.security_group_id   = types_tl.security_group_id
+--            AND     types.view_application_id = types_tl.view_application_id
+--            AND     types_tl.language = USERENV( 'LANG' )
+--            AND     look_val.language = USERENV( 'LANG' )
+--            AND     appl.language     = USERENV( 'LANG' )
+--            AND     app.application_short_name = ct_xxcos_appl_short_name
+--            AND     gd_process_date      >= look_val.start_date_active
+--            AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+--            AND     look_val.enabled_flag = ct_enabled_flag_yes
+--            AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
+            FROM    fnd_lookup_values     look_val
+            WHERE   look_val.language = ct_lang
             AND     gd_process_date      >= look_val.start_date_active
             AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
             AND     look_val.enabled_flag = ct_enabled_flag_yes
             AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
       ;
 --
       --====================================================
@@ -752,21 +810,33 @@ AS
         SELECT
           flv.lookup_code               lookup_code,
           flv.description               description
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--        FROM
+--          fnd_application               fa,
+--          fnd_lookup_types              flt,
+--          fnd_lookup_values             flv
+--        WHERE
+--          fa.application_id             = flt.application_id
+--        AND flt.lookup_type             = flv.lookup_type
+--        AND fa.application_short_name   = ct_xxwsh_appl_short_name
+--        AND flt.lookup_type             = ct_qct_arrival_time
+--        AND flv.lookup_code             = iv_request_time
+--        AND id_ordered_date             >= flv.start_date_active
+--        AND id_ordered_date             <= NVL( flv.end_date_active, gd_max_date )
+--        AND flv.language                = USERENV( 'LANG' )
+--        AND flv.enabled_flag            = ct_enabled_flag_yes
+--        AND ROWNUM                      = 1
         FROM
-          fnd_application               fa,
-          fnd_lookup_types              flt,
           fnd_lookup_values             flv
         WHERE
-          fa.application_id             = flt.application_id
-        AND flt.lookup_type             = flv.lookup_type
-        AND fa.application_short_name   = ct_xxwsh_appl_short_name
-        AND flt.lookup_type             = ct_qct_arrival_time
+            flv.lookup_type             = ct_qct_arrival_time
         AND flv.lookup_code             = iv_request_time
         AND id_ordered_date             >= flv.start_date_active
         AND id_ordered_date             <= NVL( flv.end_date_active, gd_max_date )
-        AND flv.language                = USERENV( 'LANG' )
+        AND flv.language                = ct_lang
         AND flv.enabled_flag            = ct_enabled_flag_yes
         AND ROWNUM                      = 1
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
         ;
     -- *** ローカル・レコード ***
     l_data_rec                          data_cur%ROWTYPE;
@@ -813,7 +883,10 @@ AS
       g_rpt_data_tab(ln_idx).base_address                 := l_data_rec.delivery_base_address;
       g_rpt_data_tab(ln_idx).base_telephone_no            := l_data_rec.delivery_base_telephone_no;
       g_rpt_data_tab(ln_idx).base_fax_no                  := l_data_rec.delivery_base_fax_no;
-      g_rpt_data_tab(ln_idx).entry_number                 := l_data_rec.order_number;
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--      g_rpt_data_tab(ln_idx).entry_number                 := l_data_rec.order_number;
+      g_rpt_data_tab(ln_idx).entry_number                 := SUBSTRB( l_data_rec.order_number, 1, 12 );
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
       g_rpt_data_tab(ln_idx).delivery_requested_date      := l_data_rec.ordered_date;
       g_rpt_data_tab(ln_idx).shipped_date                 := l_data_rec.schedule_ship_date;
       g_rpt_data_tab(ln_idx).arrival_date                 := l_data_rec.request_date;
@@ -846,7 +919,10 @@ AS
                                                                5
                                                              ) || cv_hyphen || TRIM( l_xatt_rec.description );
       END IF;
-      g_rpt_data_tab(ln_idx).delivery_code                := l_data_rec.delivery_to_code;
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--      g_rpt_data_tab(ln_idx).delivery_code                := l_data_rec.delivery_to_code;
+      g_rpt_data_tab(ln_idx).delivery_code                := SUBSTRB( l_data_rec.delivery_to_code, 1, 9 );
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
       g_rpt_data_tab(ln_idx).deliver_to_name              := SUBSTRB( l_data_rec.delivery_to_name, 1, 60 );
       g_rpt_data_tab(ln_idx).delivery_address             := SUBSTRB(
                                                                l_data_rec.delivery_to_state ||
@@ -858,8 +934,12 @@ AS
       g_rpt_data_tab(ln_idx).telephone_no                 := SUBSTRB( l_data_rec.delivery_to_tel, 1, 15 );
       g_rpt_data_tab(ln_idx).description                  := SUBSTRB( l_data_rec.shipping_instructions, 1, 80 );
       g_rpt_data_tab(ln_idx).order_line_number            := l_data_rec.line_number;
-      g_rpt_data_tab(ln_idx).item_code                    := l_data_rec.item_code;
-      g_rpt_data_tab(ln_idx).item_name                    := l_data_rec.description;
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD START ************************ --
+--      g_rpt_data_tab(ln_idx).item_code                    := l_data_rec.item_code;
+--      g_rpt_data_tab(ln_idx).item_name                    := l_data_rec.description;
+      g_rpt_data_tab(ln_idx).item_code                    := SUBSTRB( l_data_rec.item_code, 1, 7 );
+      g_rpt_data_tab(ln_idx).item_name                    := SUBSTRB( l_data_rec.description, 1, 40 );
+-- ************************ 2009/10/01 S.Miyakoshi Var1.6 MOD  END  ************************ --
       g_rpt_data_tab(ln_idx).content                      := l_data_rec.conversion_rate;
       g_rpt_data_tab(ln_idx).shipment_quantity            := l_data_rec.ordered_quantity;
       g_rpt_data_tab(ln_idx).shipment_uom                 := l_data_rec.order_quantity_uom;

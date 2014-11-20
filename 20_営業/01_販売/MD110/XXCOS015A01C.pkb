@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.9
+ * Version          : 2.11
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -68,6 +68,10 @@ AS
  *  2009/06/05    2.7   S.Kayahara       [T1_1330]売上金額の編集処理(edit_sales_amount)削除
  *  2009/06/09    2.8   N.Maeda          [T1_1133]MC顧客対応
  *  2009/07/03    2.9   T.Miyata         [0000234]販売実績読み込み0件時は情報連携区分更新処理を行わない
+ *  2009/09/18    2.10  N.Maeda          [0001351]PT対応
+ *  2009/09/25    2.10  N.Maeda          [0001351]レビュー指摘対応
+ *  2009/09/28    2.10  N.Maeda          [0001351]レビュー指摘対応
+ *  2009/09/28    2.11  N.Maeda          [0001299]販売実績ヘッダ更新時エラー時出力内容修正
  *
  *****************************************************************************************/
 --
@@ -160,6 +164,9 @@ AS
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD START ******************************--
   cv_msg_count                CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13321';    -- 件数メッセージ
 --****************************** 2009/04/23 2.3 6 T.Kitajima ADD  END  ******************************--
+-- ************** 2009/09/28 2.11 N.Maeda ADD START **************** --
+  cv_msg_details              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13322';    -- メッセージ用文字列:「詳細」
+-- ************** 2009/09/28 2.11 N.Maeda ADD  END  **************** --
   -- メッセージトークン
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_table                CONSTANT VARCHAR2(20) := 'TABLE';               -- テーブル名
@@ -274,7 +281,18 @@ AS
   -- 販売実績データ抽出
   CURSOR get_sales_actual_cur
   IS
-    SELECT  xseh.inspect_date                   xseh_inspect_date              -- 検収日
+-- **************** 2009/09/18 2.10 N.Maeda MOD START **************** --
+-- **************** 2009/09/28 2.10 N.Maeda MOD START **************** --
+    SELECT /*+
+           LEADING(xseh)
+           USE_NL(xseh xsel)
+           USE_NL(xseh hca xchv)
+           INDEX(xseh xxcos_sales_exp_headers_n04)
+           */
+-- **************** 2009/09/28 2.10 N.Maeda MOD  END  **************** --
+            xseh.inspect_date                   xseh_inspect_date              -- 検収日
+--    SELECT  xseh.inspect_date                   xseh_inspect_date              -- 検収日
+-- **************** 2009/09/18 2.10 N.Maeda MOD  END **************** --
            ,xseh.dlv_invoice_number             xseh_dlv_invoice_number        -- 納品伝票番号
            ,xsel.dlv_invoice_line_number        xsel_dlv_invoice_line_number   -- 納品明細番号
            ,xseh.ship_to_customer_code          xseh_ship_to_customer_code     -- 顧客【納品先】
@@ -333,7 +351,24 @@ AS
     AND    hca.account_number           = xseh.ship_to_customer_code           -- 顧客コード
 --****************************** 2009/06/08 2.8 N.Maeda MOD START ******************************--
     UNION ALL
-    SELECT xseh.inspect_date                   xseh_inspect_date              -- 検収日
+-- **************** 2009/09/18 2.10 N.Maeda MOD START **************** --
+-- **************** 2009/09/25 2.10 N.Maeda MOD START **************** --
+-- **************** 2009/09/28 2.10 N.Maeda MOD START **************** --
+    SELECT /*+
+           LEADING(xseh)
+           USE_NL(xseh xsel)
+           USE_NL(xseh hca hpt)
+           USE_NL(hca_r)
+           USE_NL(bill_hcasa)
+           USE_NL(bill_hcsua)
+           USE_NL(bill_hcara)
+           INDEX(xseh xxcos_sales_exp_headers_n04)
+           */
+-- **************** 2009/09/28 2.10 N.Maeda MOD  END  **************** --
+-- **************** 2009/09/25 2.10 N.Maeda MOD  END  **************** --
+            xseh.inspect_date                   xseh_inspect_date              -- 検収日
+--    SELECT xseh.inspect_date                   xseh_inspect_date              -- 検収日
+-- **************** 2009/09/18 2.10 N.Maeda MOD  END **************** --
            ,xseh.dlv_invoice_number             xseh_dlv_invoice_number        -- 納品伝票番号
            ,xsel.dlv_invoice_line_number        xsel_dlv_invoice_line_number   -- 納品明細番号
            ,xseh.ship_to_customer_code          xseh_ship_to_customer_code     -- 顧客【納品先】
@@ -400,7 +435,17 @@ AS
     AND    hca.account_number     = xseh.ship_to_customer_code     -- 出荷先顧客コード
 --    AND    uses_hcasa.cust_acct_site_id(+) = bill_hcsua.cust_acct_site_id
 --    AND    uses_hca.cust_account_id(+)    = uses_hcasa.cust_account_id
-    AND    NOT EXISTS( SELECT  'Y'
+-- **************** 2009/09/25 2.10 N.Maeda MOD START **************** --
+    AND    NOT EXISTS( SELECT
+                       /*+ USE_NL(xchv)
+                         INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u2)
+                         INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u2)
+                         INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u2)
+                         INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u2)
+                       */
+                       'Y'
+--    AND    NOT EXISTS( SELECT  'Y'
+-- **************** 2009/09/25 2.10 N.Maeda MOD  END  **************** --
                        FROM    xxcos_cust_hierarchy_v  xchv
                        WHERE   xchv.ship_account_number   = xseh.ship_to_customer_code)
     ORDER BY  xseh_dlv_invoice_number                                          -- 納品伝票番号
@@ -2119,6 +2164,9 @@ AS
     lv_item_name              VARCHAR2(255);      -- 項目名
     lv_table_name             VARCHAR2(255);      -- テーブル名
     ln_dlv_invoice_number     NUMBER;
+-- ************** 2009/09/28 2.11 N.Maeda ADD START **************** --
+    lv_update_err_info        VARCHAR2(5000);     -- 更新エラー詳細
+-- ************** 2009/09/28 2.11 N.Maeda ADD  END  **************** --
 --
     -- *** ローカル例外 ***
     update_expt               EXCEPTION;          -- 更新エラー
@@ -2163,6 +2211,19 @@ AS
         WHERE  xseh.rowid                   = g_sales_h_tbl(ln_idx);          -- ROWID
     EXCEPTION
       WHEN OTHERS THEN
+-- ************** 2009/09/28 2.11 N.Maeda ADD START **************** --
+        xxcos_common_pkg.makeup_key_info(
+          iv_item_name1  => xxccp_common_pkg.get_msg(
+                              iv_application => cv_xxcos_short_name,
+                              iv_name        => cv_msg_details
+                              ),              -- 文字列「詳細」
+          iv_data_value1 => SQLERRM,          -- エラー詳細
+          ov_key_info    => lv_update_err_info,      -- 
+          ov_errbuf      => lv_errbuf,        -- エラー・メッセージエラー       #固定#
+          ov_retcode     => lv_retcode,       -- リターン・コード               #固定#
+          ov_errmsg      => lv_errmsg         -- ユーザー・エラー・メッセージ   #固定#
+          );
+-- ************** 2009/09/28 2.11 N.Maeda ADD  END  **************** --
         -- 更新に失敗した場合
         RAISE update_expt;
       -- ロックエラー
@@ -2184,7 +2245,10 @@ AS
         ,iv_token_value2  => cv_blank
       );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+-- ************** 2009/09/28 2.11 N.Maeda MOD START **************** --
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg||lv_update_err_info,1,5000);
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+-- ************** 2009/09/28 2.11 N.Maeda MOD  END  **************** --
       ov_retcode := cv_status_error;                                            --# 任意 #
     --*** ロックエラー ***
     WHEN record_lock_expt THEN

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A03R (body)
  * Description      : 消化計算チェックリスト
  * MD.050           : 消化計算チェックリスト MD050_COS_004_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/04    1.1   K.Kin            [COS_011]文字列バッファが小さすぎます不具合対応
  *  2009/02/26    1.2   K.Kin            削除処理のコメント削除
  *  2009/06/19    1.3   K.Kiriu          [T1_1437]データパージ不具合対応
+ *  2009/09/30    1.4   S.Miyakoshi      [0001378]帳票ワークテーブルの桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -601,16 +602,27 @@ AS
       g_rpt_data_tab(ln_idx).shop_sale_amount             := l_data_rec.ar_sales_amount;       --店舗別売上金額
       g_rpt_data_tab(ln_idx).digest_sale_amount           := l_data_rec.check_sales_amount;    --チェック用売上金額
       IF  ( l_data_rec.uncalculate_class = 0 ) THEN
-            g_rpt_data_tab(ln_idx).account_rate           := TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
-                                                          || cv_pr_tax;
+-- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD START ************************ --
+--            g_rpt_data_tab(ln_idx).account_rate           := TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
+--                                                          || cv_pr_tax;
+            g_rpt_data_tab(ln_idx).account_rate           := SUBSTRB( TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
+                                                          || cv_pr_tax, 1, 8 );
+-- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD  END  ************************ --
       ELSE
             g_rpt_data_tab(ln_idx).account_rate           := gv_no_add;                         --消化計算掛率
       END IF;
-      g_rpt_data_tab(ln_idx).setting_account_rate         := TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
-                                                          || cv_pr_tax;
+-- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD START ************************ --
+--      g_rpt_data_tab(ln_idx).setting_account_rate         := TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
+--                                                          || cv_pr_tax;
+      g_rpt_data_tab(ln_idx).setting_account_rate         := SUBSTRB( TO_CHAR( l_data_rec.master_rate, cv_fmt_tax )
+                                                          || cv_pr_tax, 1, 8 );                --マスタ掛率
+-- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD  END  ************************ --
       g_rpt_data_tab(ln_idx).uncalculate_class            := l_data_rec.uncalculate_class;     --未計算区分
       IF  ( l_data_rec.uncalculate_class <> 0 ) THEN
-            g_rpt_data_tab(ln_idx).confirmation_message   := l_data_rec.confirmation_message;  --確認メッセージ
+-- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD START ************************ --
+--            g_rpt_data_tab(ln_idx).confirmation_message   := l_data_rec.confirmation_message;  --確認メッセージ
+            g_rpt_data_tab(ln_idx).confirmation_message   := SUBSTRB( l_data_rec.confirmation_message, 1, 40 );  --確認メッセージ
+-- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD  END  ************************ --
       END IF;
       g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
       g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;

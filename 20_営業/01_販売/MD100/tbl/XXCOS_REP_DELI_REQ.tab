@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_DELI_REQ
  * Description : 出荷依頼書帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,9 @@
  *  2009/01/30    1.0   SCS K.Kakishita 新規作成
  *  2009/05/20    1.1   SCS M.Sano      [T1_0970]商品コード表示不正対応
  *                                      (商品コードをNUMBER(7,0)⇒VARCHAR2(7)に変更)
+ *  2009/10/01    1.2   SCS S.Miyakoshi  [0001378]桁あふれ対応 ORDER_LINE_NUMBER(NUMBER(3,0)→NUMBER)
+ *                                                             CONTENT(NUMBER(4,0)→NUMBER)
+ *                                                             SHIPMENT_QUANTITY(NUMBER(7,0)→NUMBER)
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
@@ -36,11 +39,11 @@ CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
     DELIVERY_ADDRESS               VARCHAR2(60),                     --配送先住所
     TELEPHONE_NO                   VARCHAR2(15),                     --電話番号
     DESCRIPTION                    VARCHAR2(80),                     --摘要
-    ORDER_LINE_NUMBER              NUMBER(3,0),                      --受注明細番号
+    ORDER_LINE_NUMBER              NUMBER,                           --受注明細番号
     ITEM_CODE                      VARCHAR2(7),                      --商品コード
     ITEM_NAME                      VARCHAR2(40),                     --品名
-    CONTENT                        NUMBER(4,0),                      --入数
-    SHIPMENT_QUANTITY              NUMBER(7,0),                      --出荷数量
+    CONTENT                        NUMBER,                           --入数
+    SHIPMENT_QUANTITY              NUMBER,                           --出荷数量
     SHIPMENT_UOM                   VARCHAR2(3),                      --出荷単位
     REMARKS_COLUMN                 VARCHAR2(20),                     --備考
     CREATED_BY                     NUMBER(15,0)   NOT NULL,          --作成者

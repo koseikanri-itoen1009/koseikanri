@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/08/11    1.5   N.Maeda          [0000865]PT対応
  *  2009/08/13    1.5   N.Maeda          [0000865]レビュー指摘対応
  *  2009/09/02    1.6   M.Sano           [0001227]PT対応
+ *  2009/10/02    1.7   S.Miyakoshi      [0001378対応]帳票ワークテーブルの桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -1388,7 +1389,11 @@ AS
       ln_idx := ln_idx + 1;
       g_report_data_tab(ln_idx).record_id              := lt_record_id;                --レコードID
       g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;        --拠点コード
-      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --拠点名称
+-- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD START ************************ --
+--      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --拠点名称
+      g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 );
+                                                                                       --拠点名称
+-- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD  END  ************************ --
       g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;            --納品日開始
       g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;              --納品日終了
       g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --営業担当者コード
