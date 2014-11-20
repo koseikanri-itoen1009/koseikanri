@@ -32,6 +32,88 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xoha.performance_management_dept   req_dept_code         -- ˆË—Š•”ƒR[ƒh
       ,xoha.instruction_dept              inst_dept_code        -- ŽwŽ¦•”ƒR[ƒh
       ,xoha.deliver_from                  ship_whse_code        -- oŒÉ‘qŒÉƒR[ƒh
+      ,xilv.description                   ship_whse_name        -- oŒÉ‘qŒÉ–¼
+      ,xoha.shikyu_inst_rcv_class         rcv_class             -- Žó—Ì
+      ,xoha.amount_fix_class              fix_class             -- Šm’è
+      ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                          xoha_last_update_date -- ÅIXV“ú(Žó’ƒwƒbƒ_ƒAƒhƒIƒ“)
+      ,(SELECT TO_CHAR(MAX(xola.last_update_date) , 'YYYY/MM/DD HH24:MI:SS') last_update_date
+        FROM   xxwsh_order_lines_all   xola
+        WHERE xola.order_header_id = xoha.order_header_id
+       )                                  xola_last_update_date -- ÅIXV“ú(Žó’–¾×ƒAƒhƒIƒ“)
+      ,DECODE(xoha.req_status, 
+         '99', 'RequestNoDisp',
+               'RequestNo')               req_no_switcher       -- ˆË—ŠNoƒŠƒ“ƒN‰Â•s‰Â 
+      ,xottv.auto_create_po_class         auto_create_po_class  -- Ž©“®”­’ì¬‹æ•ª
+      ,xoha.freight_charge_class          freight_charge_class  -- ‰^’À‹æ•ª
+      ,xvv.spare2                         list_header_id_vendor --Žæˆøæ‰¿Ši•\ID
+      ,xlvvs.lookup_code                  exe_type              -- ‹N“®ƒ^ƒCƒv
+      ,xoha.base_request_no               base_request_no       -- Œ³ˆË—ŠNo
+      ,xilv.purchase_code                 purchase_code         -- Žd“üæƒR[ƒh
+FROM   xxwsh_order_headers_all        xoha  -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
+      ,xxcmn_lookup_values_v          xlvv1 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(ƒXƒe[ƒ^ƒX—p)
+      ,xxcmn_lookup_values_v          xlvv2 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(’Ê’mƒXƒe[ƒ^ƒX—p)
+      ,xxwsh_oe_transaction_types_v  xottv -- Žó’ƒ^ƒCƒvî•ñVIEW
+      ,xxcmn_vendors2_v               xvv   -- Žd“üæî•ñVIEW2
+      ,xxcmn_vendor_sites2_v          xvsv  -- Žd“üæƒTƒCƒgî•ñVIEW2
+      ,xxcmn_item_locations2_v        xilv  -- OPM•ÛŠÇêŠî•ñVIEW
+      ,xxpo_security_supply_v         xssv  -- ƒZƒLƒ…ƒŠƒeƒBview
+      ,xxcmn_lookup_values_v          xlvvs -- ƒNƒCƒbƒNƒR[ƒhî•ñview(ƒZƒLƒ…ƒŠƒeƒBview—p)
+WHERE  
+/* Œ‹‡ðŒ */
+       xottv.transaction_type_id = xoha.order_type_id
+AND    xoha.req_status           = xlvv1.lookup_code
+AND    xoha.notif_status         = xlvv2.lookup_code
+AND    xoha.vendor_id            = xvv.vendor_id
+AND    xoha.vendor_site_id       = xvsv.vendor_site_id
+AND    xoha.deliver_from_id      = xilv.inventory_location_id
+AND    xlvvs.attribute3          = xssv.security_class 
+AND    NVL(xssv.vendor_code,xoha.vendor_code)           = xoha.vendor_code      -- Žæˆøæ
+AND    NVL(xssv.vendor_site_code,xoha.vendor_site_code) = xoha.vendor_site_code -- ŽæˆøæƒTƒCƒg
+AND    NVL(xssv.segment1,xoha.deliver_from)             = xoha.deliver_from     -- oŒÉ‘qŒÉ
+/* ’ŠoðŒ */
+AND    xoha.shipped_date           IS NOT NULL  -- o‰×ŽÀÑ“ú‚É’l‚ ‚è
+and    xoha.req_status             IN ('07','08')
+AND    xoha.latest_external_flag    = 'Y'   -- ÅV
+AND    xoha.prod_class              = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') -- ¤•i‹æ•ª
+AND    xlvv1.lookup_type            = 'XXPO_TRANSACTION_STATUS' -- Žx‹‹ˆË—ŠƒXƒe[ƒ^ƒX
+AND    xlvv2.lookup_type            = 'XXWSH_NOTIF_STATUS'      -- ’Ê’mƒXƒe[ƒ^ƒX
+AND    xottv.shipping_shikyu_class  = '2'  -- Žx‹‹ˆË—Š
+AND    xottv.ship_sikyu_rcv_pay_ctg = '05' -- —Lžo‰×
+AND    xottv.used_disp_flg          = 'Y'  -- ‰æ–ÊŽg—p
+AND    xssv.user_id                 = FND_GLOBAL.USER_ID    -- ƒƒOƒCƒ“ƒ†[ƒUID
+AND    xlvvs.lookup_type            = 'XXPO_START_UP_TYPE'  -- ŽQÆƒ^ƒCƒv
+-- –{”Ô#00059 S
+--AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
+--                                                       AND     NVL(xottv.end_date_active, TO_DATE('99991231', 'YYYYMMDD'))
+-- –{”Ô#00059 E
+AND    xoha.shipped_date BETWEEN xvv.start_date_active 
+                         AND     xvv.end_date_active
+AND    xoha.shipped_date BETWEEN xvsv.start_date_active 
+                         AND     xvsv.end_date_active
+AND    xoha.shipped_date BETWEEN xilv.date_from 
+                         AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
+UNION ALL
+SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
+      ,xoha.request_no                    request_no            -- ˆË—ŠNo
+      ,xottv.transaction_type_name        order_type_name       -- ”­¶‹æ•ª–¼(Žó’ƒ^ƒCƒv–¼)
+      ,xottv.transaction_type_id          order_type_id         -- ”­¶‹æ•ªID(Žó’ƒ^ƒCƒvID)
+      ,xoha.req_status                    trans_status          -- ƒXƒe[ƒ^ƒX(ƒR[ƒh)
+      ,xlvv1.meaning                      trans_status_name     -- ƒXƒe[ƒ^ƒX(–¼Ì)
+      ,xoha.notif_status                  notif_status          -- ’Ê’mƒXƒe[ƒ^ƒX(ƒR[ƒh)
+      ,xlvv2.meaning                      notif_status_name     -- ’Ê’mƒXƒe[ƒ^ƒX(–¼Ì)
+      ,NVL(xoha.shipped_date, xoha.schedule_ship_date)
+                                          shipped_date          -- oŒÉ“ú
+      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date) 
+                                          arrival_date          -- “üŒÉ“ú
+      ,xoha.vendor_code                   vendor_code           -- ŽæˆøæƒR[ƒh
+      ,xvv.vendor_short_name              vendor_name           -- Žæˆøæ–¼
+      ,xoha.vendor_site_code              ship_to_code          -- ”z‘—æƒR[ƒh
+      ,xvsv.vendor_site_short_name        ship_to_name          -- ”z‘—æ–¼
+      ,xoha.delivery_no                   ship_to_no            -- ”z‘—No
+      ,xoha.performance_management_dept   req_dept_code         -- ˆË—Š•”ƒR[ƒh
+      ,xoha.instruction_dept              inst_dept_code        -- ŽwŽ¦•”ƒR[ƒh
+      ,xoha.deliver_from                  ship_whse_code        -- oŒÉ‘qŒÉƒR[ƒh
 -- 2008-07-15 H.Itou Mod Start
 --      ,xilv.short_name                    ship_whse_name        -- oŒÉ‘qŒÉ–¼
       ,xilv.description                   ship_whse_name        -- oŒÉ‘qŒÉ–¼
@@ -90,6 +172,10 @@ AND    NVL(xssv.vendor_code,xoha.vendor_code)           = xoha.vendor_code      
 AND    NVL(xssv.vendor_site_code,xoha.vendor_site_code) = xoha.vendor_site_code -- ŽæˆøæƒTƒCƒg
 AND    NVL(xssv.segment1,xoha.deliver_from)             = xoha.deliver_from     -- oŒÉ‘qŒÉ
 /* ’ŠoðŒ */
+-- –{”Ô#00059 S
+AND    xoha.shipped_date            IS NULL  -- o‰×ŽÀÑ“ú‚É’l‚È‚µ
+AND    xoha.req_status              NOT IN ('08')
+-- –{”Ô#00059 E
 AND    xoha.latest_external_flag    = 'Y'  -- ÅV
 AND    xoha.prod_class              = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') -- ¤•i‹æ•ª
 AND    xlvv1.lookup_type            = 'XXPO_TRANSACTION_STATUS' -- Žx‹‹ˆË—ŠƒXƒe[ƒ^ƒX
@@ -99,14 +185,21 @@ AND    xottv.ship_sikyu_rcv_pay_ctg = '05' -- —Lžo‰×
 AND    xottv.used_disp_flg          = 'Y'  -- ‰æ–ÊŽg—p
 AND    xssv.user_id                 = FND_GLOBAL.USER_ID    -- ƒƒOƒCƒ“ƒ†[ƒUID
 AND    xlvvs.lookup_type            = 'XXPO_START_UP_TYPE'  -- ŽQÆƒ^ƒCƒv
-AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
-                                                       AND     NVL(xottv.end_date_active, TO_DATE('99991231', 'YYYYMMDD'))
-AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvv.start_date_active 
-                                                       AND     xvv.end_date_active
-AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvsv.start_date_active 
-                                                       AND     xvsv.end_date_active
-AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from 
-                                                       AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
+-- –{”Ô#00059 S
+--AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
+--                                                       AND     NVL(xottv.end_date_active, TO_DATE('99991231', 'YYYYMMDD'))
+--AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvv.start_date_active 
+--                                                       AND     xvv.end_date_active
+--AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvsv.start_date_active 
+--                                                       AND     xvsv.end_date_active
+--AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from 
+--                                                       AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
+AND    xoha.schedule_ship_date BETWEEN xvv.start_date_active 
+                               AND     xvv.end_date_active
+AND    xoha.schedule_ship_date BETWEEN xvsv.start_date_active 
+                               AND     xvsv.end_date_active
+AND    xoha.schedule_ship_date BETWEEN xilv.date_from 
+                               AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
