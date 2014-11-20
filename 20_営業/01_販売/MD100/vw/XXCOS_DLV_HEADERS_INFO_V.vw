@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : 納品伝票ヘッダ情報ビュー
- * Version         : 1.9
+ * Version         : 1.10
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -21,6 +21,8 @@
  *  2009/11/27    1.7   M.Sano           [E_本稼動_00130]重複データ対応
  *  2009/12/16    1.8   K.Kiriu          [E_本稼動_00244]売上値引のみのデータ(ヘッダのみ作成)対応
  *  2011/03/22    1.9   M.Hirose         [E_本稼動_06590]オーダーNoの追加
+ *  2011/04/18    1.10  M.Hirose         [E_本稼動_07075]営業担当員ビューの削除
+ *                                                       ヒント句修正
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 (
@@ -85,9 +87,15 @@ CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 )
 AS
 SELECT
-/* 2009/08/03 Ver1.4 Add Start */
-       /*+ LEADING(xdh) */
-/* 2009/08/03 Ver1.4 Add End   */
+/* 2011/04/18 Ver1.10 Mod Start */
+--/* 2009/08/03 Ver1.4 Add Start */
+--       /*+ LEADING(xdh) */
+--/* 2009/08/03 Ver1.4 Add End   */
+       /*+
+          LEADING(xdh cust custadd hp papf papf_dlv csc ic dsc pd)
+          USE_NL (xdh cust custadd hp papf papf_dlv csc ic dsc pd)
+       */
+/* 2011/04/18 Ver1.10 Mod End */
 /* 2009/11/27 Ver1.7 Mod Start */
        DISTINCT
 /* 2009/11/27 Ver1.7 Mod End   */
@@ -111,7 +119,10 @@ SELECT
        csc.meaning card_sale_name,                                 --カード売区分表示用
        xdh.dlv_time dlv_time,                                      --時間
        xdh.customer_number customer_number,                        --顧客コード
-       xsv.party_name customer_name ,                              --顧客名称
+/* 2011/04/18 Ver1.10 Mod Start */
+--       xsv.party_name customer_name ,                              --顧客名称
+       hp.party_name customer_name ,                               --顧客名称
+/* 2011/04/18 Ver1.10 Mod End   */
        xdh.input_class input_class,                                --入力区分
        ic.meaning input_name,                                      --入力区分表示用
        xdh.consumption_tax_class consumption_tax_class,            --消費税区分
@@ -186,7 +197,10 @@ SELECT
 FROM
        xxcos_dlv_headers    xdh,                                  --納品ヘッダテーブル
        xxcmm_cust_accounts  custadd,                              --顧客アドオン
-       xxcos_salesreps_v    xsv,                                  --担当者営業員ビュー(顧客関連)
+/* 2011/04/18 Ver1.10 Mod Start */
+--       xxcos_salesreps_v    xsv,                                  --担当者営業員ビュー(顧客関連)
+       hz_cust_accounts     cust,                                 --顧客マスタ
+/* 2011/04/18 Ver1.10 Mod End   */
        hz_parties           hp,                                   --party
        per_all_people_f     papf,                                 --従業員マスタ
 /* 2009/04/09 Ver1.1 Add Start */
@@ -323,9 +337,14 @@ FROM
 /* 2009/09/03 Ver1.6 Mod End   */
        ) pd
 /* 2009/06/03 Ver1.2 Add End   */
-WHERE  xdh.customer_number = xsv.account_number
-AND    xsv.cust_account_id = custadd.customer_id 
-AND    hp.party_id         = xsv.party_id
+/* 2011/04/18 Ver1.10 Mod Start */
+--WHERE  xdh.customer_number = xsv.account_number
+--AND    xsv.cust_account_id = custadd.customer_id 
+--AND    hp.party_id         = xsv.party_id
+WHERE  xdh.customer_number  = cust.account_number
+AND    cust.cust_account_id = custadd.customer_id 
+AND    hp.party_id          = cust.party_id
+/* 2011/04/18 Ver1.10 Mod End   */
 /* 2009/04/09 Ver1.1 Del Start */
 --AND    xdh.dlv_by_code     = xsv.employee_number   --2009/01/09追加
 /* 2009/04/09 Ver1.1 Del End   */
@@ -386,13 +405,15 @@ AND    hp.party_id         = xsv.party_id
 --AND    pd.process_date     >= NVL(ic.start_date_active, pd.process_date)
 --AND    pd.process_date     <= NVL(ic.end_date_active, pd.process_date)
 --/* 2009/07/06 Ver1.3 Mod End   */
-AND    (
-         xdh.dlv_date BETWEEN  NVL( xsv.effective_start_date, TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
-                      AND      NVL( xsv.effective_end_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
-       OR
-         ADD_MONTHS( xdh.dlv_date, -1 ) BETWEEN  NVL( xsv.effective_start_date, TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
-                                        AND      NVL( xsv.effective_end_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
-       )
+/* 2011/04/18 Ver1.10 Del Start */
+--AND    (
+--         xdh.dlv_date BETWEEN  NVL( xsv.effective_start_date, TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+--                      AND      NVL( xsv.effective_end_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+--       OR
+--         ADD_MONTHS( xdh.dlv_date, -1 ) BETWEEN  NVL( xsv.effective_start_date, TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+--                                        AND      NVL( xsv.effective_end_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+--       )
+/* 2011/04/18 Ver1.10 Del End   */
 AND    csc.lookup_type      = 'XXCOS1_CARD_SALE_CLASS'
 AND    csc.lookup_code      = xdh.card_sale_class
 AND    csc.attribute1       = 'Y'
