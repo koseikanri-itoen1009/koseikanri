@@ -58,6 +58,8 @@ AS
  *                                       障害T1_1323 品名コードの１桁目が５、６の場合、「ロット」を０に設定する(プロファイルから)
  *  2009/06/11    1.11  N.Nishimura      障害T1_1366 品目カテゴリ割当(バラ茶区分、マーケ用群コード、群コード)追加
  *  2009/07/07    1.12  H.Yoshikawa      障害0000364 未設定標準原価0円登録、08～10の登録を追加
+ *  2009/07/24    1.13  Y.Kuboshima      障害0000842 OPM品目アドオンマスタの適用開始日にセットする値を変更
+ *                                                   (業務日付 -> プロファイル:XXCMM:適用開始日初期値)
  *
  *****************************************************************************************/
 --
@@ -231,6 +233,11 @@ AS
 -- Ver.1.5 20090224 Add START
   cv_process_date        CONSTANT VARCHAR2(30)  := '業務日付';                                      -- 業務日付
 -- Ver.1.5 20090224 Add END
+--
+-- Ver1.13 2009/07/24 Add Start
+  cv_prof_apply_date     CONSTANT VARCHAR2(30)  := 'XXCMM1_004_INI_OPM_APPLY_DATE';                 -- XXCMM:適用開始日初期値
+  cv_apply_date_def      CONSTANT VARCHAR2(60)  := 'XXCMM:適用開始日初期値';                        -- XXCMM:適用開始日初期値
+-- Ver1.13 End
 --
   -- LOOKUP
   cv_lookup_cost_cmpt    CONSTANT VARCHAR2(30)  := 'XXCMM1_COST_CMPT';                              -- OPM標準原価取得するコンポーネント
@@ -490,6 +497,9 @@ AS
   gn_baracha_div            NUMBER;                                                                 -- XXCMM:バラ茶区分初期値
   gv_mark_pg                VARCHAR2(4);                                                            -- XXCMM:マーケ用群コード
 --Ver1.11 End
+--Ver1.13 2009/07/26 Add Start
+  gd_opm_apply_date         DATE;                                                                   -- XXCMM:適用開始日初期値
+--Ver1.13 End
   --
   -- ===============================
   -- ユーザー定義例外
@@ -1596,8 +1606,11 @@ AS
         ln_item_id                                          -- 品目ID
 -- Ver1.7  2009/04/10  Mod  障害T1_0437 対応
 --       ,gd_process_date                                     -- 適用開始日
-       ,TRUNC( SYSDATE )                                    -- 適用開始日
+-- Ver1.13 2009/07/24 Mod Start
+--       ,TRUNC( SYSDATE )                                    -- 適用開始日
+       ,gd_opm_apply_date                                   -- 適用開始日
 -- End
+-- Ver1.13 End
        ,TO_DATE(cv_max_date, cv_date_fmt_std)               -- 適用終了日
      --2009/03/16  適用済フラグの初期値を「Y」に変更したためコメントアウト
      --,cv_no                                               -- 適用済フラグ
@@ -4483,6 +4496,16 @@ AS
       RAISE get_profile_expt;
     END IF;
 --Ver1.11  2009/06/11 End
+    --
+-- Ver1.13 2009/07/24 Add Start
+    -- XXCMM:適用開始日初期値
+    gd_opm_apply_date := TO_DATE(FND_PROFILE.VALUE(cv_prof_apply_date),cv_date_fmt_std);
+    -- 取得エラー時
+    IF ( gd_opm_apply_date IS NULL ) THEN
+      lv_tkn_value := cv_apply_date_def;
+      RAISE get_profile_expt;
+    END IF;
+-- Ver1.13 End
     --
     --==============================================================
     -- A-1.4 ファイルアップロード名称取得
