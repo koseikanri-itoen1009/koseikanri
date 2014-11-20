@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS003A05C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS003A05C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A05C(body)
  * Description      : 単価マスタIF出力（ファイル作成）
  * MD.050           : 単価マスタIF出力（ファイル作成） MD050_COS_003_A05
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/02/24   1.2    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/04/15   1.3    N.Maeda          [ST障害No.T1_0067対応] ファイル出力時のCHAR型VARCHAR型以外への｢"｣付加の削除
  *  2009/04/22   1.4    N.Maeda          [ST障害No.T1_0754対応]ファイル出力時の｢"｣付加修正
+ *  2009/08/31   1.5    M.Sano           [SCS障害No.0000428対応]PT対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -134,6 +135,9 @@ AS
   CURSOR main_cur
   IS
     SELECT 
+-- 2009/08/31 Ver.1.5 Add Start
+           /*+ index(xupw xxcos_unit_price_mst_work_n01) */
+-- 2009/08/31 Ver.1.5 Add End
            xupw.customer_number          customer_number            --顧客コード
          , xupw.item_code                item_code                  --品名コード
          , xupw.nml_prev_unit_price      nml_prev_unit_price        --通常　前回　単価　
