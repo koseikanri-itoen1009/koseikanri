@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/08/25   1.8    K.Kiriu          [障害0001163] 「単価マスタIF出力」処理の性能改善
  *                                       [障害0000451] 単価の桁あふれ対応
  *  2009/10/15   1.9    N.Maeda          [障害0001524] 出力金額取得方法修正
+ *  2009/12/13   1.10   K.Atsushiba      [E_本稼動_00290] 納品VD顧客の単価が連携されない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -156,6 +157,12 @@ AS
 /* 2009/08/25 Ver1.8 Add Start */
   cv_fmt_date             CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';          -- 日付フォーマット
 /* 2009/08/25 Ver1.8 Add End   */
+/* 2009/12/13 Ver1.10 Add Start */
+  cv_lookup_cd_delivery_vd CONSTANT VARCHAR2(20) := 'XXCOS_003_A02_04';    -- 納品VD
+  cv_tkn_lookup_code       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00078';    -- クイックコード.コード
+  cv_tkn_lookup_type1      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00077';    -- クイックコード.タイプ
+  cv_tkn_sales_cls_vd      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10709';    -- ベンダ売上
+/* 2009/12/13 Ver1.10 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -200,6 +207,13 @@ AS
   gv_edit_unit_price_flag     VARCHAR2(1);              --単価編集フラグ
   gv_empty_line_flag          VARCHAR2(1) DEFAULT 'N';  --終了時の空白行制御フラグ
 /* 2009/08/25 Ver1.8 Add End   */
+/* 2009/12/13 Ver1.10 Add Start */
+  gv_delivery_vd              VARCHAR2(2);
+  gv_vd_sales_cls             VARCHAR2(2);
+  gv_msg_lookup_code      fnd_new_messages.message_text%TYPE;   --参照タイプ
+  gv_msg_lookup_type      fnd_new_messages.message_text%TYPE;   --参照タイプ
+  gv_msg_sales_cls_vd     fnd_new_messages.message_text%TYPE;   --特売
+/* 2009/12/13 Ver1.10 Add Start */
 --
 --カーソル
   CURSOR main_cur
@@ -218,7 +232,13 @@ AS
            ,xsel.standard_qty                 standard_qty                      --基準数量
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
-           ,xsel.sales_class                  sales_class                       --売上区分
+/* 2009/12/13 Ver1.10 Mod Start */
+           ,CASE xseh.cust_gyotai_sho
+               WHEN gv_delivery_vd THEN DECODE(xsel.sales_class ,gv_vd_sales_cls,gv_sales_cls_nml,xsel.sales_class)
+               ELSE xsel.sales_class
+            END                               sales_class
+--           ,xsel.sales_class                  sales_class                       --売上区分
+/* 2009/12/13 Ver1.10 Mod End */
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 ----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
 ------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
@@ -250,7 +270,13 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     AND     xseh.dlv_invoice_class = cv_invoice_class_dliv
     AND     xseh.sales_exp_header_id =  xsel.sales_exp_header_id
-    AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
+/* 2009/12/13 Ver1.10 Mod Start */
+    AND    ( ( xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls))
+              OR
+             ( xseh.cust_gyotai_sho    = gv_delivery_vd ) AND ( xsel.sales_class = gv_vd_sales_cls ))
+--    AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
+/* 2009/12/13 Ver1.10 Mod End */
+    
 /* 2009/08/25 Ver1.8 Mod Start */
 --    AND     xsel.unit_price_mst_flag = cv_flag_off
     AND     xsel.unit_price_mst_flag IN ( cv_flag_off, cv_flag_w )
@@ -263,6 +289,9 @@ AS
 --****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_gyotai
+/* 2009/12/13 Ver1.10 Add Start */
+             AND    flvl.lookup_code         != cv_lookup_cd_delivery_vd
+/* 2009/12/13 Ver1.10 Add End */
 --****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
 --             AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
 --****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
@@ -311,7 +340,12 @@ AS
            ,xsel.standard_qty                 standard_qty                      --基準数量
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
-           ,xsel.sales_class                  sales_class                       --売上区分
+/* 2009/12/13 Ver1.10 Mod Start */
+           ,CASE xseh.cust_gyotai_sho
+               WHEN gv_delivery_vd THEN DECODE(xsel.sales_class ,gv_vd_sales_cls,gv_sales_cls_nml,xsel.sales_class)
+               ELSE xsel.sales_class
+            END                              sales_class
+--           ,xsel.sales_class                  sales_class                       --売上区分
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 ----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
 ------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
@@ -361,6 +395,9 @@ AS
 --****************************** 2009/08/17 1.7  M.Sano MOD End   ***********************************--
                                         FROM   fnd_lookup_values       flvl
                                         WHERE  flvl.lookup_type       = cv_lookup_type_gyotai
+/* 2009/12/13 Ver1.10 Add Start */
+                                        AND    flvl.lookup_code       != cv_lookup_cd_delivery_vd
+/* 2009/12/13 Ver1.10 Add End */
 --****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
 --                                        AND    flvl.security_group_id = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type
 --                                                                                                ,flvl.view_application_id)
@@ -389,7 +426,12 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     AND     inl1.digestion_ln_number = xseh.digestion_ln_number
     AND     xseh.sales_exp_header_id = xsel.sales_exp_header_id
-    AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
+/* 2009/12/13 Ver1.10 Mod Start */
+    AND    ( ( xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls))
+              OR
+             ( xseh.cust_gyotai_sho    = gv_delivery_vd ) AND ( xsel.sales_class = gv_vd_sales_cls ))
+--    AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
+/* 2009/12/13 Ver1.10 Mod End */
 --****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
 --    AND     NOT EXISTS(SELECT NULL
     AND     NOT EXISTS(SELECT /*+ use_nl(flvl) */
@@ -550,6 +592,14 @@ AS
                                                            ,iv_name         => cv_tkn_exp_header_id
                                                            );
 /* 2009/08/25 Ver1.8 Add End   */
+/* 2009/12/13 Ver1.10 Add Start */
+    gv_msg_lookup_code      := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_tkn_lookup_code);
+    gv_msg_lookup_type      := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_tkn_lookup_type1);
+    gv_msg_sales_cls_vd     := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_tkn_sales_cls_vd);
+/* 2009/12/13 Ver1.10 Add Start */
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
     --==============================================================
     -- 使用言語を取得
@@ -617,6 +667,72 @@ AS
                                             );
         RAISE;
     END;
+/* 2009/12/13 Ver1.10 Add Start */
+    -- 納品VDの業態小分類コード取得
+    BEGIN
+      SELECT flv.meaning
+      INTO   gv_delivery_vd
+      FROM   fnd_lookup_values  flv
+      WHERE  flv.lookup_type  = cv_lookup_type_gyotai
+      AND    flv.lookup_code  = cv_lookup_cd_delivery_vd
+      AND    flv.enabled_flag = cv_flag_on
+      AND    TRUNC(SYSDATE)   BETWEEN flv.start_date_active
+                              AND NVL(flv.end_date_active,TRUNC(SYSDATE))
+      AND    flv.language     = gv_language;
+    EXCEPTION
+      WHEN OTHERS THEN
+        xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                      -- エラー・メッセージ
+                                        ,ov_retcode     => lv_retcode                     -- リターン・コード
+                                        ,ov_errmsg      => lv_errmsg                      --ユーザー・エラー・メッセージ
+                                        ,ov_key_info    => gv_key_info                    --キー情報
+                                        ,iv_item_name1  => gv_msg_lookup_type         --項目名称1
+                                        ,iv_data_value1 => cv_lookup_type_gyotai        --データの値1
+                                        ,iv_item_name2  => gv_msg_lookup_code             --項目名称2gv_msg_tkn_meaning
+                                        ,iv_data_value2 => cv_lookup_cd_delivery_vd       --データの値2
+                                        );
+        ov_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                            , cv_msg_select_err
+                                            , cv_tkn_table_name
+                                            , gv_msg_tkn_fnd_lookup_v
+                                            , cv_tkn_key_data
+                                            , gv_key_info
+                                            );
+        RAISE;
+    END;
+    --
+    -- ベンダー売上の売上区分取得
+    BEGIN
+      SELECT flv.lookup_code lookup_code
+      INTO   gv_vd_sales_cls
+      FROM   fnd_lookup_values flv
+      WHERE  flv.lookup_type         = cv_lookup_type_sals_cls
+      AND    flv.meaning             = gv_msg_sales_cls_vd
+      AND    flv.language            = gv_language
+      AND    TRUNC(SYSDATE)           BETWEEN flv.start_date_active
+                                      AND NVL(flv.end_date_active,TRUNC(SYSDATE))
+      AND    flv.enabled_flag        = cv_flag_on
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                      -- エラー・メッセージ
+                                        ,ov_retcode     => lv_retcode                     -- リターン・コード
+                                        ,ov_errmsg      => lv_errmsg                      --ユーザー・エラー・メッセージ
+                                        ,ov_key_info    => gv_key_info                    --キー情報
+                                        ,iv_item_name1  => gv_msg_lookup_type         --項目名称1
+                                        ,iv_data_value1 => cv_lookup_type_sals_cls        --データの値1
+                                        ,iv_item_name2  => gv_msg_tkn_meaning             --項目名称2
+                                        ,iv_data_value2 => gv_msg_sales_cls_vd        --データの値2
+                                        );
+        ov_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                            , cv_msg_select_err
+                                            , cv_tkn_table_name
+                                            , gv_msg_tkn_fnd_lookup_v
+                                            , cv_tkn_key_data
+                                            , gv_key_info
+                                            );
+        RAISE;
+    END;
+/* 2009/12/13 Ver1.10 Add End */
 --
 --
   EXCEPTION
