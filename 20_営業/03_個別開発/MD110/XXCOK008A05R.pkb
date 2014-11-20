@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A05R(body)
  * Description      : 要求の発行画面から、売上振替割合チェックリストを帳票に出力します。
  * MD.050           : 売上振替割合チェックリスト MD050_COK_008_A05
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/10/23    1.0   T.Abe            新規作成
  *  2009/02/02    1.1   T.Abe            [障害COK_003] 取得条件に営業単位IDを追加
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
+ *  2009/08/26    1.3   M.Hiruta         [障害0001154] 従業員マスタの有効日をデータ抽出条件に追加
  *
  *****************************************************************************************/
 --
@@ -53,10 +54,14 @@ AS
   cv_xxcok_appl             CONSTANT VARCHAR2(10)  := 'XXCOK';
   cv_xxccp_appl             CONSTANT VARCHAR2(10)  := 'XXCCP';
   -- プロファイル
-  cv_prof_org_code_sales    CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';    -- 在庫組織コード_営業組織
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
+--  cv_prof_org_code_sales    CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';    -- 在庫組織コード_営業組織
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
   cv_prof_org_id            CONSTANT VARCHAR2(25)  := 'ORG_ID';                   -- 営業単位ID
   -- メッセージ
-  cv_msg_xxcok_00013        CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00013';         -- 在庫組織ID取得エラー
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
+--  cv_msg_xxcok_00013        CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00013';         -- 在庫組織ID取得エラー
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
   cv_msg_xxcok_00028        CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00028';         -- 業務処理日付取得エラー
   cv_msg_xxcok_00001        CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00001';         -- 対象データなしメッセージ
   cv_msg_xxcok_00040        CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00040';         -- SVF起動APIエラー'
@@ -74,7 +79,9 @@ AS
   -- トークン
   cv_token_request_id       CONSTANT VARCHAR2(50)  := 'REQUEST_ID';               -- 要求ID
   cv_token_profile          CONSTANT VARCHAR2(50)  := 'PROFILE';                  -- プロファイル
-  cv_token_org_code         CONSTANT VARCHAR2(50)  := 'ORG_CODE';                 -- ORG_CODE
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
+--  cv_token_org_code         CONSTANT VARCHAR2(50)  := 'ORG_CODE';                 -- ORG_CODE
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
   cv_token_count            CONSTANT VARCHAR2(50)  := 'COUNT';                    -- 件数
   cv_token_from_location    CONSTANT VARCHAR2(50)  := 'FROM_LOCATION';            -- 売上振替元拠点コード
   cv_token_from_customer    CONSTANT VARCHAR2(50)  := 'FROM_CUSTOMER';            -- 売上振替元顧客コード
@@ -103,8 +110,10 @@ AS
   gn_error_cnt              NUMBER        DEFAULT 0;            -- エラー件数
   gn_warn_cnt               NUMBER        DEFAULT 0;            -- スキップ件数
   -- 変数
-  gv_org_code               VARCHAR2(50)  DEFAULT NULL;         -- プロファイル値(在庫組織コード_営業組織)
-  gn_org_id                 NUMBER        DEFAULT NULL;         -- 在庫組織ID
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
+--  gv_org_code               VARCHAR2(50)  DEFAULT NULL;         -- プロファイル値(在庫組織コード_営業組織)
+--  gn_org_id                 NUMBER        DEFAULT NULL;         -- 在庫組織ID
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
   gn_org_id_sales           NUMBER        DEFAULT NULL;         -- 営業単位ID
   gd_process_date           DATE          DEFAULT NULL;         -- 業務処理日付
   gv_no_data_msg            VARCHAR2(30)  DEFAULT NULL;         -- 対象データなしメッセージ
@@ -157,11 +166,21 @@ AS
     AND   xsri.selling_from_cust_code                               = mhca.account_number
     AND   mhca.party_id                                             = mhp.party_id
     AND   mhca.party_id                                             = mhop.party_id
-    AND   TRUNC( mhop.effective_start_date )                       <= gd_process_date
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
+--    AND   TRUNC( mhop.effective_start_date )                       <= gd_process_date
+    AND   TRUNC( NVL( mhop.effective_start_date, SYSDATE ) )       <= TRUNC( SYSDATE )
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
     AND   mhop.organization_profile_id                              = mera.organization_profile_id
-    AND   TRUNC( NVL( mhop.effective_end_date, gd_process_date ) ) >= gd_process_date
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
+--    AND   TRUNC( NVL( mhop.effective_end_date, gd_process_date ) ) >= gd_process_date
+    AND   TRUNC( NVL( mhop.effective_end_date, SYSDATE ) )         >= TRUNC( SYSDATE )
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
     AND   TRUNC( NVL( mera.resource_s_date, gd_process_date ) )    <= gd_process_date
     AND   TRUNC( NVL( mera.resource_e_date, gd_process_date ) )    >= gd_process_date
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta ADD
+    AND   TRUNC( NVL( mpapf.effective_start_date, gd_process_date ) ) <= gd_process_date
+    AND   TRUNC( NVL( mpapf.effective_end_date,   gd_process_date ) ) >= gd_process_date
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta ADD
     AND   mjrre.source_number                                       = mera.resource_no
     AND   mhca.cust_account_id                                      = hcas.cust_account_id
     AND   hcas.party_site_id                                        = hps.party_site_id
@@ -170,11 +189,21 @@ AS
     AND   xsri.selling_to_cust_code                                 = shca.account_number
     AND   shca.party_id                                             = shp.party_id
     AND   shca.party_id                                             = shop.party_id
-    AND   TRUNC( shop.effective_start_date )                       <= gd_process_date
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
+--    AND   TRUNC( shop.effective_start_date )                       <= gd_process_date
+    AND   TRUNC( shop.effective_start_date )                       <= TRUNC( SYSDATE )
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
     AND   shop.organization_profile_id                              = sera.organization_profile_id
-    AND   TRUNC( NVL( shop.effective_end_date, gd_process_date ) ) >= gd_process_date
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
+--    AND   TRUNC( NVL( shop.effective_end_date, gd_process_date ) ) >= gd_process_date
+    AND   TRUNC( NVL( shop.effective_end_date, SYSDATE ) )         >= TRUNC( SYSDATE )
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
     AND   TRUNC( NVL( sera.resource_s_date, gd_process_date ) )    <= gd_process_date
     AND   TRUNC( NVL( sera.resource_e_date, gd_process_date ) )    >= gd_process_date
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta ADD
+    AND   TRUNC( NVL( spapf.effective_start_date, gd_process_date ) ) <= gd_process_date
+    AND   TRUNC( NVL( spapf.effective_end_date,   gd_process_date ) ) >= gd_process_date
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta ADD
     AND   sjrre.source_number                                       = sera.resource_no
     AND   xsri.selling_from_base_code                               = mkhca.account_number
     AND   mkhca.party_id                                            = mkhp.party_id
@@ -346,7 +375,10 @@ AS
       , iv_output_mode   => cv_output_mode            -- 出力区分
       , iv_frm_file      => cv_frm_file               -- フォーム様式ファイル名
       , iv_vrq_file      => cv_vrq_file               -- クエリー様式ファイル名
-      , iv_org_id        => TO_CHAR( gn_org_id )      -- ORG_ID
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
+--      , iv_org_id        => TO_CHAR( gn_org_id )      -- ORG_ID
+      , iv_org_id        => NULL                      -- ORG_ID
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta REPAIR
       , iv_user_name     => fnd_global.user_name      -- ログイン・ユーザ名
       , iv_resp_name     => fnd_global.resp_name      -- ログイン・ユーザ職責名
       , iv_doc_name      => NULL                      -- 文書名
@@ -698,24 +730,26 @@ AS
                    ,iv_message  => lv_outmsg
                    ,in_new_line => cn_1
                   );
-    --==============================
-    -- プロファイル(在庫組織コード_営業組織)を取得する
-    --==============================
-    gv_org_code := FND_PROFILE.VALUE( cv_prof_org_code_sales );
-    IF( gv_org_code IS NULL ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcok_appl
-                     ,iv_name         => cv_msg_xxcok_00003
-                     ,iv_token_name1  => cv_token_profile
-                     ,iv_token_value1 => cv_prof_org_code_sales
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.LOG   -- 出力区分
-                     ,iv_message  => lv_errmsg      -- メッセージ
-                     ,in_new_line => cn_0           -- 改行
-                    );
-      RAISE init_fail_expt;
-    END IF;
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
+--    --==============================
+--    -- プロファイル(在庫組織コード_営業組織)を取得する
+--    --==============================
+--    gv_org_code := FND_PROFILE.VALUE( cv_prof_org_code_sales );
+--    IF( gv_org_code IS NULL ) THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl
+--                     ,iv_name         => cv_msg_xxcok_00003
+--                     ,iv_token_name1  => cv_token_profile
+--                     ,iv_token_value1 => cv_prof_org_code_sales
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.LOG   -- 出力区分
+--                     ,iv_message  => lv_errmsg      -- メッセージ
+--                     ,in_new_line => cn_0           -- 改行
+--                    );
+--      RAISE init_fail_expt;
+--    END IF;
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
     --==============================
     -- プロファイル(営業単位ID)を取得する
     --==============================
@@ -734,24 +768,26 @@ AS
                     );
       RAISE init_fail_expt;
     END IF;
-    --===============================================
-    -- 在庫組織IDを取得する
-    --===============================================
-    gn_org_id := xxcoi_common_pkg.get_organization_id( gv_org_code );
-    IF ( gn_org_id IS NULL ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcok_appl
-                    , iv_name         => cv_msg_xxcok_00013
-                    , iv_token_name1  => cv_token_org_code
-                    , iv_token_value1 => gv_org_code
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.LOG   -- 出力区分
-                    , iv_message  => lv_errmsg      -- メッセージ
-                    , in_new_line => cn_0           -- 改行
-                    );
-      RAISE init_fail_expt;
-    END IF;
+-- Start 2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
+--    --===============================================
+--    -- 在庫組織IDを取得する
+--    --===============================================
+--    gn_org_id := xxcoi_common_pkg.get_organization_id( gv_org_code );
+--    IF ( gn_org_id IS NULL ) THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl
+--                    , iv_name         => cv_msg_xxcok_00013
+--                    , iv_token_name1  => cv_token_org_code
+--                    , iv_token_value1 => gv_org_code
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.LOG   -- 出力区分
+--                    , iv_message  => lv_errmsg      -- メッセージ
+--                    , in_new_line => cn_0           -- 改行
+--                    );
+--      RAISE init_fail_expt;
+--    END IF;
+-- End   2009/08/26 Ver.1.3 0001154 M.Hiruta DELETE
     --==============================
     -- 業務処理日付を取得する
     --==============================
