@@ -11,8 +11,61 @@
    FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
+WITH
+  xsdwo1 AS
+  (
+  SELECT xsdwo.sends_dept_code1  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code1  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code2  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code2  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code3  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code3  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code4  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code4  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code5  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code5  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code6  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code6  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code7  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code7  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code8  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code8  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code9  base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code9  IS NOT NULL
+  UNION
+  SELECT xsdwo.sends_dept_code10 base_code
+  FROM   xxcso_sp_decision_wf_orgs  xsdwo
+  WHERE  xsdwo.base_code         = (SELECT xtsdr.app_base_code FROM xxcso_tmp_sp_dec_request xtsdr)
+  AND    xsdwo.sends_dept_code10 IS NOT NULL
+  )
 SELECT  '1'  range_type
-       ,flvv.lookup_type approval_type_code
+       ,flvv2.lookup_type approval_type_code
        ,xev.employee_number
        ,xev.full_name
        ,xxcso_util_common_pkg.get_emp_parameter(
@@ -32,38 +85,58 @@ SELECT  '1'  range_type
         ) work_base_short_name
        ,xev.full_name  return_full_name
        ,xev.user_id    user_id
-FROM    xxcso_tmp_sp_dec_request   xtsdr
-       ,xxcso_sp_decision_wf_orgs  xsdwo
-       ,xxcso_employees_v2         xev
-       ,fnd_lookup_values_vl       flvv
-WHERE   xsdwo.base_code                                                                = xtsdr.app_base_code
-AND     xsdwo.effective_st_date                                                       <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND     NVL(xsdwo.effective_ed_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND     xxcso_util_common_pkg.get_emp_parameter(
+FROM    xsdwo1
+       ,fnd_lookup_values_vl flvv1
+       ,fnd_lookup_values_vl flvv2
+       ,xxcso_employees_v2   xev
+WHERE   flvv1.lookup_type                      = 'XXCSO1_SP_DECISION_LEVEL'
+AND     flvv1.enabled_flag                     = 'Y'
+AND     NVL(flvv1.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv1.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     flvv2.lookup_type                      = flvv1.attribute1
+AND     flvv2.enabled_flag                     = 'Y'
+AND     NVL(flvv2.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv2.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     TO_DATE(xev.issue_date, 'YYYYMMDD')   <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xev.work_base_code_new                 = xsdwo1.base_code
+AND     xev.approval_type_code_new             = flvv2.lookup_code
+UNION ALL
+SELECT  '1'  range_type
+       ,flvv2.lookup_type approval_type_code
+       ,xev.employee_number
+       ,xev.full_name
+       ,xxcso_util_common_pkg.get_emp_parameter(
           xev.work_base_code_new
          ,xev.work_base_code_old
          ,xev.issue_date
          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-        ) IN (  xsdwo.sends_dept_code1
-               ,xsdwo.sends_dept_code2
-               ,xsdwo.sends_dept_code3
-               ,xsdwo.sends_dept_code4
-               ,xsdwo.sends_dept_code5
-               ,xsdwo.sends_dept_code6
-               ,xsdwo.sends_dept_code7
-               ,xsdwo.sends_dept_code8
-               ,xsdwo.sends_dept_code9
-               ,xsdwo.sends_dept_code10
-             )
-AND     flvv.lookup_code = xxcso_util_common_pkg.get_emp_parameter(
-                             xev.approval_type_code_new
-                            ,xev.approval_type_code_old
-                            ,xev.issue_date
-                            ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-                           )
-AND     flvv.enabled_flag = 'Y'
-AND     NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        ) work_base_code
+       ,(SELECT  xabv.base_short_name
+         FROM    xxcso_aff_base_v2 xabv
+         WHERE   xabv.base_code = xxcso_util_common_pkg.get_emp_parameter(
+                                    xev.work_base_code_new
+                                   ,xev.work_base_code_old
+                                   ,xev.issue_date
+                                   ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                                  )
+        ) work_base_short_name
+       ,xev.full_name  return_full_name
+       ,xev.user_id    user_id
+FROM    xsdwo1
+       ,fnd_lookup_values_vl flvv1
+       ,fnd_lookup_values_vl flvv2
+       ,xxcso_employees_v2   xev
+WHERE   flvv1.lookup_type                      = 'XXCSO1_SP_DECISION_LEVEL'
+AND     flvv1.enabled_flag                     = 'Y'
+AND     NVL(flvv1.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv1.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     flvv2.lookup_type                      = flvv1.attribute1
+AND     flvv2.enabled_flag                     = 'Y'
+AND     NVL(flvv2.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv2.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     TO_DATE(xev.issue_date, 'YYYYMMDD')    > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xev.work_base_code_old                 = xsdwo1.base_code
+AND     xev.approval_type_code_old             = flvv2.lookup_code
 UNION ALL
 SELECT  '1'               range_type
        ,flvv.attribute1   approval_type_code
@@ -74,13 +147,13 @@ SELECT  '1'               range_type
        ,NULL              return_full_name
        ,-1                user_id
 FROM    fnd_lookup_values_vl  flvv
-WHERE   flvv.lookup_type                            = 'XXCSO1_SP_DECISION_LEVEL'
-AND     flvv.enabled_flag                           = 'Y'
+WHERE   flvv.lookup_type                       = 'XXCSO1_SP_DECISION_LEVEL'
+AND     flvv.enabled_flag                      = 'Y'
 AND     NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
 UNION ALL
 SELECT  '2'  range_type
-       ,flvv.lookup_type approval_type_code
+       ,flvv2.lookup_type approval_type_code
        ,xev.employee_number
        ,xev.full_name
        ,xxcso_util_common_pkg.get_emp_parameter(
@@ -100,17 +173,54 @@ SELECT  '2'  range_type
         ) work_base_short_name
        ,xev.full_name  return_full_name
        ,xev.user_id    user_id
-FROM    xxcso_employees_v2         xev
-       ,fnd_lookup_values_vl       flvv
-WHERE   flvv.lookup_code = xxcso_util_common_pkg.get_emp_parameter(
-                             xev.approval_type_code_new
-                            ,xev.approval_type_code_old
-                            ,xev.issue_date
-                            ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-                           )
-AND     flvv.enabled_flag = 'Y'
-AND     NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+FROM    fnd_lookup_values_vl flvv1
+       ,fnd_lookup_values_vl flvv2
+       ,xxcso_employees_v2   xev
+WHERE   flvv1.lookup_type                      = 'XXCSO1_SP_DECISION_LEVEL'
+AND     flvv1.enabled_flag                     = 'Y'
+AND     NVL(flvv1.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv1.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))  >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     flvv2.lookup_type                      = flvv1.attribute1
+AND     flvv2.enabled_flag                     = 'Y'
+AND     NVL(flvv2.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv2.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate))  >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     TO_DATE(xev.issue_date, 'YYYYMMDD')   <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xev.approval_type_code_new             = flvv2.lookup_code
+UNION ALL
+SELECT  '2'  range_type
+       ,flvv2.lookup_type approval_type_code
+       ,xev.employee_number
+       ,xev.full_name
+       ,xxcso_util_common_pkg.get_emp_parameter(
+          xev.work_base_code_new
+         ,xev.work_base_code_old
+         ,xev.issue_date
+         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        ) work_base_code
+       ,(SELECT  xabv.base_short_name
+         FROM    xxcso_aff_base_v2 xabv
+         WHERE   xabv.base_code = xxcso_util_common_pkg.get_emp_parameter(
+                                    xev.work_base_code_new
+                                   ,xev.work_base_code_old
+                                   ,xev.issue_date
+                                   ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                                  )
+        ) work_base_short_name
+       ,xev.full_name  return_full_name
+       ,xev.user_id    user_id
+FROM    fnd_lookup_values_vl flvv1
+       ,fnd_lookup_values_vl flvv2
+       ,xxcso_employees_v2   xev
+WHERE   flvv1.lookup_type                      = 'XXCSO1_SP_DECISION_LEVEL'
+AND     flvv1.enabled_flag                     = 'Y'
+AND     NVL(flvv1.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv1.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     flvv2.lookup_type                      = flvv1.attribute1
+AND     flvv2.enabled_flag                     = 'Y'
+AND     NVL(flvv2.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv2.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     TO_DATE(xev.issue_date, 'YYYYMMDD')    > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xev.approval_type_code_old             = flvv2.lookup_code
 UNION ALL
 SELECT  '2'               range_type
        ,flvv.attribute1   approval_type_code
@@ -124,7 +234,7 @@ FROM    fnd_lookup_values_vl  flvv
 WHERE   flvv.lookup_type                            = 'XXCSO1_SP_DECISION_LEVEL'
 AND     flvv.enabled_flag                           = 'Y'
 AND     NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
-AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
