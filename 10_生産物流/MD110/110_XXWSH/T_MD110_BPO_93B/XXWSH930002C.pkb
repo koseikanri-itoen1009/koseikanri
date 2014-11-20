@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.2
+ * Version          : 1.3
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -22,15 +22,15 @@ AS
  * ------------------------------------ -------------------------------------------------
  *  Name                                Description
  * ------------------------------------ -------------------------------------------------
- *  set_deliveryno_unit_errflg          指定配送No単位にflag=1をセットする プロシージャ
- *  set_header_unit_reserveflg          ヘッダ単位(配送No、依頼No・移動番号)にflag=1をセットする プロシージャ
+ *  set_deliveryno_unit_errflg          指定配送No、EOSデータ種別単位にflag=1をセットする プロシージャ
+ *  set_header_unit_reserveflg          ヘッダ単位(配送No、依頼No・移動番号、EOSデータ種別)にflag=1をセットする プロシージャ
  *  set_movreqno_unit_reserveflg        指定移動/依頼No単位にflag=1をセットする プロシージャ
  *  master_data_get                     マスタ(view)データ取得 プロシージャ
  *  upd_line_items_set                  重量容積小口個数設定 プロシージャ
  *  ord_results_quantity_set            受注実績数量の設定 プロシージャ
  *  mov_results_quantity_set            出荷依頼実績数量の設定 プロシージャ
  *  get_freight_charge_type             運賃形態取得 プロシージャ
- *  carriers_schedule_ins               配車配送計画アドオン作成 プロシージャ
+ *  carriers_schedule_inup              配車配送計画アドオン作成 プロシージャ
  *  chk_param                           パラメータチェック プロシージャ (A-0)
  *  get_profile                         プロファイル値取得 プロシージャ (A-1)
  *  purge_processing                    パージ処理 プロシージャ (A-2)
@@ -73,6 +73,7 @@ AS
  *  2008/02/07    1.0  Oracle 齋藤 俊治  初回作成
  *  2008/05/19    1.1  Oracle 宮田 隆史  指摘事項Seq262，263，
  *  2008/06/05    1.2  Oracle 宮田 隆史  結合テスト実施に伴う改修
+ *  2008/06/13    1.3  Oracle 宮田 隆史  結合テスト実施に伴う改修
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -216,6 +217,14 @@ AS
   gv_msg_93a_146                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13146';
   -- 運賃形態取得警告メッセージ
   gv_msg_93a_147                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13147';
+  -- 配送No-運賃区分組合せエラーメッセージ
+  gv_msg_93a_148                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13148';
+  -- ロット管理品の必須項目未設定エラー
+  gv_msg_93a_149                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13149';
+  -- ロットマスタ取得エラー
+  gv_msg_93a_150                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13150';
+  -- ロットマスタ取得複数件エラー
+  gv_msg_93a_151                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13151';
   -- 重量容積小口個数更新関数エラーメッセージ
   gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   -- ＰＧでのコンカレント呼び出しエラー
@@ -532,6 +541,8 @@ AS
     line_number                 xxwsh_shipping_lines_if.line_number%TYPE,
     -- IF_L.受注品目
     orderd_item_code            xxwsh_shipping_lines_if.orderd_item_code%TYPE,
+    -- IF_L.数量
+    orderd_quantity             xxwsh_shipping_lines_if.orderd_quantity%TYPE,
     -- IF_L.出荷実績数量
     shiped_quantity             xxwsh_shipping_lines_if.shiped_quantity%TYPE,
     -- IF_L.入庫実績数量
@@ -965,10 +976,11 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : set_deliveryno_unit_errflg
-   * Description      : 指定配送No単位にflag=1をセットする プロシージャ
+   * Description      : 指定配送No、EOSデータ種別単位にflag=1をセットする プロシージャ
    ***********************************************************************************/
   PROCEDURE set_deliveryno_unit_errflg(
     iv_delivery_no          IN  xxwsh_shipping_headers_if.delivery_no%TYPE,  -- 配送No
+    iv_eos_data_type        IN  xxwsh_shipping_headers_if.eos_data_type%TYPE,  -- EOFデータ種別
     in_level                IN  VARCHAR2,            -- エラー種別
     iv_message              IN  VARCHAR2,            -- エラーメッセージ
     ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
@@ -993,6 +1005,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_delivery_no_null   CONSTANT VARCHAR2(1) := 'X'; -- 配送No＝NULL時の変換文字
 --
     -- *** ローカル変数 ***
 --
@@ -1016,7 +1029,9 @@ AS
     <<deliveryno_unit_errflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
 --
-      IF (iv_delivery_no = gr_interface_info_rec(j).delivery_no) THEN
+      IF ((NVL(iv_delivery_no,cv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,cv_delivery_no_null)) AND
+          (iv_eos_data_type = gr_interface_info_rec(j).eos_data_type))
+      THEN
 --
         IF (in_level = 1) THEN
           gr_interface_info_rec(j).err_flg := gv_flg_on;
@@ -1058,11 +1073,12 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : set_header_unit_reserveflg
-   * Description      : ヘッダ単位(配送No、依頼No・移動番号)にflag=1をセットする プロシージャ
+   * Description      : ヘッダ単位(配送No、依頼No・移動番号、EOSデータ種別)にflag=1をセットする プロシージャ
    ***********************************************************************************/
   PROCEDURE set_header_unit_reserveflg(
     iv_delivery_no          IN  xxwsh_shipping_headers_if.delivery_no%TYPE,  -- 配送No
     iv_movreqno             IN  VARCHAR2,            -- 移動番号、依頼No
+    iv_eos_data_type        IN  xxwsh_shipping_headers_if.eos_data_type%TYPE,  -- EOSデータ種別
     in_level                IN  VARCHAR2,            -- エラー種別
     iv_message              IN  VARCHAR2,            -- エラーメッセージ
     ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
@@ -1087,6 +1103,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_delivery_no_null   CONSTANT VARCHAR2(1) := 'X'; -- 配送No＝NULL時の変換文字
 --
     -- *** ローカル変数 ***
 --
@@ -1110,8 +1127,9 @@ AS
     <<header_unit_reserveflg_set>>
     FOR j IN 1..gr_interface_info_rec.COUNT LOOP
 --
-      IF ((iv_delivery_no = gr_interface_info_rec(j).delivery_no)    AND
-          (iv_movreqno = gr_interface_info_rec(j).order_source_ref))
+      IF ((NVL(iv_delivery_no,cv_delivery_no_null) = NVL(gr_interface_info_rec(j).delivery_no,cv_delivery_no_null)) AND
+          (iv_movreqno = gr_interface_info_rec(j).order_source_ref)  AND
+          (iv_eos_data_type = gr_interface_info_rec(j).eos_data_type))
       THEN
 --
         IF (in_level = gv_err_class) THEN                     -- エラー処理
@@ -1860,6 +1878,48 @@ AS
 --
     END IF;
 --
+    -- ロット管理外の場合、数量または内訳数量の状態によりどちらかを実績数量項目へ設定する
+--
+    -- ロット管理区分 = 0:ロット管理外
+    IF (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_0) THEN
+--
+      -- EOSデータ種別 = 200:有償出荷報告 or 210：拠点出荷確定報告 or 215：庭先出荷確定報告 or 220：移動出庫確定報告
+      IF ((gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200)  OR
+          (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_210)  OR
+          (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_215)  OR
+          (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220)) THEN
+--
+        IF NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) = 0 THEN
+--
+          -- 数量を出荷実績数量へ設定
+          gr_interface_info_rec(in_idx).shiped_quantity := NVL(gr_interface_info_rec(in_idx).orderd_quantity,0);
+--
+        ELSE
+--
+          -- 内訳数量を出荷実績数量へ設定
+          gr_interface_info_rec(in_idx).shiped_quantity := gr_interface_info_rec(in_idx).detailed_quantity;
+--
+        END IF;
+--
+      -- EOSデータ種別 = 230：移動入庫確定報告
+      ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
+--
+        IF NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) = 0 THEN
+--
+          -- 数量を入庫実績数量へ設定
+          gr_interface_info_rec(in_idx).ship_to_quantity := NVL(gr_interface_info_rec(in_idx).orderd_quantity,0);
+--
+        ELSE
+--
+          -- 内訳数量を入庫実績数量へ設定
+          gr_interface_info_rec(in_idx).ship_to_quantity := gr_interface_info_rec(in_idx).detailed_quantity;
+--
+        END IF;
+--
+      END IF;
+--
+    END IF;
+--
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -2051,6 +2111,7 @@ AS
       AND   xola.order_line_id        = xmld.mov_line_id      -- 受注明細ID
       AND   xmld.item_id              = in_item_id            -- OPM品目ID
       AND   xoha.latest_external_flag = gv_yesno_y            -- 最新フラグ
+      AND   xmld.record_type_code     = gv_record_type_20     -- レコードタイプ = 出庫実績(20)
       AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))  -- 削除フラグ
       GROUP BY
                 xola.order_line_id
@@ -2114,7 +2175,8 @@ AS
       UPDATE
         xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
       SET
-         xola.shipped_quantity        = lt_sum_actual_quantity(i)               -- 出庫実績数量
+         xola.quantity                = NVL(xola.quantity,lt_sum_actual_quantity(i)) -- 数量
+        ,xola.shipped_quantity        = lt_sum_actual_quantity(i)               -- 出庫実績数量
         ,xola.last_updated_by         = gt_user_id                              -- 最終更新者
         ,xola.last_update_date        = gt_sysdate                              -- 最終更新日
         ,xola.last_update_login       = gt_login_id                             -- 最終更新ログイン
@@ -2188,13 +2250,12 @@ AS
     CURSOR mov_results_quantity_cur
       (
       in_mov_hdr_id        xxinv_mov_req_instr_headers.mov_hdr_id%TYPE,      -- 移動ヘッダID
-      in_item_id           xxinv_mov_lot_details.item_id%TYPE                -- OPM品目ID
+      in_item_id           xxinv_mov_lot_details.item_id%TYPE,                -- OPM品目ID
+      in_record_type       xxinv_mov_lot_details.record_type_code%TYPE       -- レコードタイプ
       )
     IS
       SELECT xmrql.mov_line_id
             ,xmld.item_id
-      ----      ,xmld.document_type_code
-      ----      ,xmld.record_type_code
             ,SUM(NVL(xmld.actual_quantity,0))
       FROM  xxinv_mov_req_instr_headers xmrif,
             xxinv_mov_req_instr_lines   xmrql,
@@ -2203,15 +2264,12 @@ AS
       AND   xmrif.mov_hdr_id        = xmrql.mov_hdr_id   -- 移動ヘッダID
       AND   xmrql.mov_line_id       = xmld.mov_line_id    -- 移動明細ID
       AND   xmld.item_id            = in_item_id -- OPM品目ID
-      ----AND   xmld.document_type_code = in_document_type    -- 文書タイプ
-      ----AND   xmld.record_type_code   = gv_record_type_20   -- レコードタイプ = 20:出庫実績
+      AND   xmld.record_type_code   = in_record_type      -- レコードタイプ
       AND   xmrif.status           <> gv_mov_status_99    -- ステータス<>取消以外
       AND   ((xmrql.delete_flg = gv_yesno_n) OR (xmrql.delete_flg IS NULL))
       GROUP BY
                 xmrql.mov_line_id
                 ,xmld.item_id
-      ----          ,xmld.document_type_code
-      ----          ,xmld.record_type_code
       ;
     -- *** ローカル・レコード ***
 --
@@ -2262,6 +2320,7 @@ AS
         (
           lt_mov_hdr_id
           ,gr_interface_info_rec(in_idx).item_id
+          ,gv_record_type_20                      -- レコードタイプ = 出庫実績(20)
         );
 --
       --フェッチ
@@ -2305,6 +2364,7 @@ AS
         (
           lt_mov_hdr_id
           ,gr_interface_info_rec(in_idx).item_id
+          ,gv_record_type_30                      -- レコードタイプ = 入庫実績(30)
         );
 --
       --フェッチ
@@ -2848,7 +2908,7 @@ AS
     lv_warn_flg         VARCHAR2(1);        -- 警告識別フラグ
 --
     -- *** ローカル・カーソル ***
-    -- 同一配送No-受注ソース参照単位で要求IDが最新の情報以外は削除
+    -- 同一配送No-受注ソース参照-EOSデータ種別単位で要求IDが最新の情報以外は削除
     CURSOR not_latest_request_id_cur
     IS
     SELECT  xshi_a.header_id                            --IF_H.ヘッダID
@@ -2857,14 +2917,17 @@ AS
            ,xxwsh_shipping_lines_if   xsli_a            --IF_L
            ,(SELECT xshi.delivery_no                    --IF_H.配送No
                    ,xshi.order_source_ref               --IF_H.受注ソース参照
+                   ,xshi.eos_data_type                  --IF_H.EOSデータ種別
                    ,MAX(xshi.request_id) max_request_id --IF_H.要求ID
               FROM  xxwsh_shipping_headers_if  xshi     --IF_H
               GROUP BY xshi.delivery_no                 --IF_H.配送No
                       ,xshi.order_source_ref            --IF_H.受注ソース参照
+                      ,xshi.eos_data_type               --IF_H.EOSデータ種別
             ) xshi_b
     WHERE   xshi_a.header_id = xsli_a.header_id
     AND     xshi_a.delivery_no = xshi_b.delivery_no
     AND     xshi_a.order_source_ref = xshi_b.order_source_ref
+    AND     xshi_a.eos_data_type = xshi_b.eos_data_type
     AND     xshi_a.request_id <> xshi_b.max_request_id
     ORDER BY xshi_a.header_id
     FOR UPDATE OF xshi_a.header_id NOWAIT
@@ -3078,6 +3141,7 @@ AS
       wk_sql := wk_sql || '          ,xsli.line_id               AS line_id               ';  -- IF_L.明細ID
       wk_sql := wk_sql || '          ,xsli.line_number           AS line_number           ';  -- IF_L.明細番号
       wk_sql := wk_sql || '          ,xsli.orderd_item_code      AS orderd_item_code      ';  -- IF_L.受注品目
+      wk_sql := wk_sql || '          ,xsli.orderd_quantity       AS orderd_quantity       ';  -- IF_L.数量
       wk_sql := wk_sql || '          ,xsli.shiped_quantity       AS shiped_quantity       ';  -- IF_L.出荷実績数量
       wk_sql := wk_sql || '          ,xsli.ship_to_quantity      AS ship_to_quantity      ';  -- IF_L.入庫実績数量
       wk_sql := wk_sql || '          ,xsli.lot_no                AS lot_no                ';  -- IF_L.ロットNo
@@ -3142,6 +3206,7 @@ AS
       wk_sql := wk_sql || '  ORDER BY ';
       wk_sql := wk_sql || '           delivery_no ';        -- IF H.配送No
       wk_sql := wk_sql || '          ,order_source_ref ';   -- IF_H.受注ソース参照
+      wk_sql := wk_sql || '          ,eos_data_type ';      -- IF_H.EOSデータ種別
       wk_sql := wk_sql || '          ,header_id ';          -- IF_L.ヘッダID
       wk_sql := wk_sql || '          ,orderd_item_code ';   -- IF_L.受注品目
       wk_sql := wk_sql || '          ,lot_no ';             -- IF_L.ロットNo
@@ -3266,129 +3331,129 @@ AS
   END get_warehouse_results_info;
 --
 --*HHT*******************************************************************************************
---*HHT*      /**********************************************************************************
---*HHT*       * Procedure Name   : out_warehouse_number_check
---*HHT*       * Description      : 外部倉庫発番チェック プロシージャ (A-4)
---*HHT*       ***********************************************************************************/
---*HHT*       PROCEDURE out_warehouse_number_check(
---*HHT*         ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
---*HHT*         ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
---*HHT*         ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
---*HHT*       )
---*HHT*       IS
---*HHT*         -- ===============================
---*HHT*         -- 固定ローカル定数
---*HHT*         -- ===============================
---*HHT*         cv_prg_name   CONSTANT VARCHAR2(100) := 'out_warehouse_number_check'; -- プログラム名
---*HHT*     --
---*HHT*     --#####################  固定ローカル変数宣言部 START   ########################
---*HHT*     --
---*HHT*         lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
---*HHT*         lv_retcode VARCHAR2(1);     -- リターン・コード
---*HHT*         lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---*HHT*     --
---*HHT*     --###########################  固定部 END   ####################################
---*HHT*     --
---*HHT*         -- ===============================
---*HHT*         -- ユーザー宣言部
---*HHT*         -- ===============================
---*HHT*         -- *** ローカル定数 ***
---*HHT*     --
---*HHT*         -- *** ローカル変数 ***
---*HHT*         ln_count NUMBER;
---*HHT*     --
---*HHT*         -- *** ローカル・カーソル ***
---*HHT*     --
---*HHT*         -- *** ローカル・レコード ***
---*HHT*     --
---*HHT*       BEGIN
---*HHT*     --
---*HHT*     --##################  固定ステータス初期化部 START   ###################
---*HHT*     --
---*HHT*         ov_retcode := gv_status_normal;
---*HHT*     --
---*HHT*     --###########################  固定部 END   ############################
---*HHT*     --
---*HHT*         -- ***************************************
---*HHT*         -- ***        実処理の記述             ***
---*HHT*         -- ***       共通関数の呼び出し        ***
---*HHT*         -- ***************************************
---*HHT*         <<out_warehouse_number_check>>
---*HHT*         FOR i IN 1..gr_interface_info_rec.COUNT LOOP
---*HHT*     --
---*HHT*           -- 業務種別判定
---*HHT*           -- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
---*HHT*           -- 適用開始日・終了日を出荷日にて判定
---*HHT*           IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR
---*HHT*               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR
---*HHT*               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR
---*HHT*               (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))
---*HHT*           THEN
---*HHT*     --
---*HHT*             -- OPM保管場所マスタ／保管倉庫コードよりチェック
---*HHT*             SELECT COUNT(xilv2.inventory_location_id) cnt
---*HHT*             INTO   ln_count
---*HHT*             FROM   xxcmn_item_locations2_v xilv2
---*HHT*             WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
---*HHT*             AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
---*HHT*             AND    ((xilv2.date_to IS NULL)
---*HHT*              OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
---*HHT*             AND    xilv2.disable_date IS NULL   -- 無効日
---*HHT*             ;
---*HHT*     --
---*HHT*           END IF;
---*HHT*     --
---*HHT*           -- EOSデータ種別 = 230:移動入庫確定報告
---*HHT*           -- 適用開始日・終了日を着荷日にて判定
---*HHT*           IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
---*HHT*     --
---*HHT*             -- OPM保管場所マスタ／保管倉庫コードよりチェック
---*HHT*             SELECT COUNT(xilv2.inventory_location_id) cnt
---*HHT*             INTO   ln_count
---*HHT*             FROM   xxcmn_item_locations2_v xilv2
---*HHT*             WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
---*HHT*             AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
---*HHT*             AND    ((xilv2.date_to IS NULL)
---*HHT*              OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
---*HHT*             AND    xilv2.disable_date IS NULL   -- 無効日
---*HHT*             ;
---*HHT*     --
---*HHT*           END IF;
---*HHT*     --
---*HHT*           -- 存在する場合は、外部倉庫発番となる
---*HHT*           IF (ln_count > 0) THEN
---*HHT*     --
---*HHT*             gr_interface_info_rec(i).out_warehouse_flg := gv_flg_on;
---*HHT*     --
---*HHT*           END IF;
---*HHT*     --
---*HHT*         END LOOP out_warehouse_number_check;
---*HHT*     --
---*HHT*         --==============================================================
---*HHT*         --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
---*HHT*         --==============================================================
---*HHT*     --
---*HHT*       EXCEPTION
---*HHT*     --
---*HHT*     --#################################  固定例外処理部 START   ####################################
---*HHT*     --
---*HHT*         -- *** 共通関数例外ハンドラ ***
---*HHT*         WHEN global_api_expt THEN
---*HHT*           ov_errmsg  := lv_errmsg;
---*HHT*           ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
---*HHT*           ov_retcode := gv_status_error;
---*HHT*         -- *** 共通関数OTHERS例外ハンドラ ***
---*HHT*         WHEN global_api_others_expt THEN
---*HHT*           ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
---*HHT*           ov_retcode := gv_status_error;
---*HHT*         -- *** OTHERS例外ハンドラ ***
---*HHT*         WHEN OTHERS THEN
---*HHT*           ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
---*HHT*           ov_retcode := gv_status_error;
---*HHT*     --
---*HHT*    --#####################################  固定部 END   ##########################################
---*HHT*    --
---*HHT*      END out_warehouse_number_check;
+--*HHT* /**********************************************************************************
+--*HHT*  * Procedure Name   : out_warehouse_number_check
+--*HHT*  * Description      : 外部倉庫発番チェック プロシージャ (A-4)
+--*HHT*  ***********************************************************************************/
+--*HHT*  PROCEDURE out_warehouse_number_check(
+--*HHT*    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--*HHT*    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+--*HHT*    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+--*HHT*  )
+--*HHT*  IS
+--*HHT*    -- ===============================
+--*HHT*    -- 固定ローカル定数
+--*HHT*    -- ===============================
+--*HHT*    cv_prg_name   CONSTANT VARCHAR2(100) := 'out_warehouse_number_check'; -- プログラム名
+--*HHT*--
+--*HHT*--#####################  固定ローカル変数宣言部 START   ########################
+--*HHT*--
+--*HHT*    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--*HHT*    lv_retcode VARCHAR2(1);     -- リターン・コード
+--*HHT*    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--*HHT*--
+--*HHT*--###########################  固定部 END   ####################################
+--*HHT*--
+--*HHT*    -- ===============================
+--*HHT*    -- ユーザー宣言部
+--*HHT*    -- ===============================
+--*HHT*    -- *** ローカル定数 ***
+--*HHT*--
+--*HHT*    -- *** ローカル変数 ***
+--*HHT*    ln_count NUMBER;
+--*HHT*--
+--*HHT*    -- *** ローカル・カーソル ***
+--*HHT*--
+--*HHT*    -- *** ローカル・レコード ***
+--*HHT*--
+--*HHT*  BEGIN
+--*HHT*--
+--*HHT*--##################  固定ステータス初期化部 START   ###################
+--*HHT*--
+--*HHT*    ov_retcode := gv_status_normal;
+--*HHT*--
+--*HHT*--###########################  固定部 END   ############################
+--*HHT*--
+--*HHT*    -- ***************************************
+--*HHT*    -- ***        実処理の記述             ***
+--*HHT*    -- ***       共通関数の呼び出し        ***
+--*HHT*    -- ***************************************
+--*HHT*    <<out_warehouse_number_check>>
+--*HHT*    FOR i IN 1..gr_interface_info_rec.COUNT LOOP
+--*HHT*--
+--*HHT*      -- 業務種別判定
+--*HHT*      -- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
+--*HHT*      -- 適用開始日・終了日を出荷日にて判定
+--*HHT*      IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR
+--*HHT*          (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR
+--*HHT*          (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR
+--*HHT*          (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))
+--*HHT*      THEN
+--*HHT*--
+--*HHT*        -- OPM保管場所マスタ／保管倉庫コードよりチェック
+--*HHT*        SELECT COUNT(xilv2.inventory_location_id) cnt
+--*HHT*        INTO   ln_count
+--*HHT*        FROM   xxcmn_item_locations2_v xilv2
+--*HHT*        WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+--*HHT*        AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
+--*HHT*        AND    ((xilv2.date_to IS NULL)
+--*HHT*         OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
+--*HHT*        AND    xilv2.disable_date IS NULL   -- 無効日
+--*HHT*        ;
+--*HHT*--
+--*HHT*      END IF;
+--*HHT*--
+--*HHT*      -- EOSデータ種別 = 230:移動入庫確定報告
+--*HHT*      -- 適用開始日・終了日を着荷日にて判定
+--*HHT*      IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
+--*HHT*--
+--*HHT*        -- OPM保管場所マスタ／保管倉庫コードよりチェック
+--*HHT*        SELECT COUNT(xilv2.inventory_location_id) cnt
+--*HHT*        INTO   ln_count
+--*HHT*        FROM   xxcmn_item_locations2_v xilv2
+--*HHT*        WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+--*HHT*        AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
+--*HHT*        AND    ((xilv2.date_to IS NULL)
+--*HHT*         OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
+--*HHT*        AND    xilv2.disable_date IS NULL   -- 無効日
+--*HHT*        ;
+--*HHT*--
+--*HHT*      END IF;
+--*HHT*--
+--*HHT*      -- 存在する場合は、外部倉庫発番となる
+--*HHT*      IF (ln_count > 0) THEN
+--*HHT*--
+--*HHT*        gr_interface_info_rec(i).out_warehouse_flg := gv_flg_on;
+--*HHT*--
+--*HHT*      END IF;
+--*HHT*--
+--*HHT*    END LOOP out_warehouse_number_check;
+--*HHT*--
+--*HHT*    --==============================================================
+--*HHT*    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+--*HHT*    --==============================================================
+--*HHT*--
+--*HHT*  EXCEPTION
+--*HHT*--
+--*HHT*--#################################  固定例外処理部 START   ####################################
+--*HHT*--
+--*HHT*    -- *** 共通関数例外ハンドラ ***
+--*HHT*    WHEN global_api_expt THEN
+--*HHT*      ov_errmsg  := lv_errmsg;
+--*HHT*      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+--*HHT*      ov_retcode := gv_status_error;
+--*HHT*    -- *** 共通関数OTHERS例外ハンドラ ***
+--*HHT*    WHEN global_api_others_expt THEN
+--*HHT*      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--*HHT*      ov_retcode := gv_status_error;
+--*HHT*    -- *** OTHERS例外ハンドラ ***
+--*HHT*    WHEN OTHERS THEN
+--*HHT*      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--*HHT*      ov_retcode := gv_status_error;
+--*HHT*--
+--*HHT*--#####################################  固定部 END   ##########################################
+--*HHT*--
+--*HHT*  END out_warehouse_number_check;
 --*HHT**********************************************************************************************************
 --
  /**********************************************************************************
@@ -3430,8 +3495,16 @@ AS
     lv_msg_buff             VARCHAR2(5000);
     lv_dterr_flg            VARCHAR2(1) := '0';
     lv_date_msg             VARCHAR2(15);
-    lv_error_flg            VARCHAR2(1);                                     --エラーflag
+    lv_error_flg            VARCHAR2(1);                          --エラーflag
     ln_err_flg              NUMBER := 0;
+--
+    lt_product_date         ic_lots_mst.attribute1%TYPE;          --IF_L.製造年月日
+    lt_expiration_day       ic_lots_mst.attribute3%TYPE;          --IF_L.賞味期限
+    lt_original_sign        ic_lots_mst.attribute2%TYPE;          --IF_L.固有記号
+    lt_lot_no               ic_lots_mst.lot_no%TYPE;              --IF_L.ロットNo
+    lt_search_date          DATE;                                 --IF_H.出荷日or着荷日
+--
+    ln_count                NUMBER;                               -- ロットマスタデータ件数格納 
 --
     -- *** ローカル・カーソル ***
 --
@@ -3464,11 +3537,295 @@ AS
       lt_shipping_method_code := gr_interface_info_rec(i).shipping_method_code;  --IF_H.配送区分
       lt_shipped_date         := gr_interface_info_rec(i).shipped_date;          --IF_H.出荷日
       lt_arrival_date         := gr_interface_info_rec(i).arrival_date;          --IF_H.着荷日
-      lt_freight_charge_class := gr_interface_info_rec(i).freight_charge_class;  --IF_H.運賃区分
+      lt_freight_charge_class := NVL(gr_interface_info_rec(i).freight_charge_class,gv_include_exclude_0);  --IF_H.運賃区分
       lv_error_flg            := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
+      lt_order_source_ref     := gr_interface_info_rec(i).order_source_ref;      --受注ソース参照(依頼/移動No)
+--
+      IF (lv_error_flg = '0') THEN
+--
+        ln_err_flg := 0;
+--
+        -- 以下組み合わせ以外をエラーとする
+        -- ・配送No＝NULL、運賃区分＝対象外(0)
+        -- ・配送No≠NULL、運賃区分＝対象  (1)
+        IF NOT ((lt_delivery_no IS NULL)     AND (lt_freight_charge_class = gv_include_exclude_0)  OR
+                (lt_delivery_no IS NOT NULL) AND (lt_freight_charge_class = gv_include_exclude_1)) THEN
+--
+          lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                         gv_msg_kbn                                 -- 'XXWSH'
+                        ,gv_msg_93a_148                             -- 配送No-運賃区分組合せエラーメッセージ
+                        ,gv_param1_token
+                        ,lt_delivery_no                             -- IF_H.配送No
+                        ,gv_param2_token
+                        ,gr_interface_info_rec(i).order_source_ref  -- IF_H.受注ソース参照(依頼/移動No)
+                        ,gv_param3_token
+                        ,lt_freight_charge_class                    -- IF_H.運賃区分
+                                                           )
+                                                           ,1
+                                                           ,5000);
+--
+          --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+          set_header_unit_reserveflg(
+            lt_delivery_no,         -- 配送No
+            lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
+            gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+            gv_err_class,           -- エラー種別：エラー
+            lv_msg_buff,            -- エラー・メッセージ(出力用)
+            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+            lv_retcode,             -- リターン・コード             --# 固定 #
+            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+          -- エラーフラグ
+          ln_err_flg := 1;
+          -- 処理ステータス：警告
+          ov_retcode := gv_status_warn;
+--
+        END IF;
+--
+      END IF;
+--
+      --ロット管理品の必須チェック
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
+        ln_err_flg := 0;
+--
+        -- チェック対象はロット管理品
+        IF (gr_interface_info_rec(i).lot_ctl = gv_lotkr_kbn_cd_1) THEN   --ロット:有(ロット管理品)
+--
+        -- 以下のパターンで必須項目に値がない場合、エラーとする
+        -- ・品目区分＝製品：IF_L.製造日 且つ IF_L.賞味期限 且つ IF_L.固有記号 が必須
+        -- ・品目区分≠製品：IF_L.ロットNo が必須
+          IF (((gr_interface_info_rec(i).item_kbn_cd = gv_item_kbn_cd_5)         AND   --品目区分＝製品
+              ((gr_interface_info_rec(i).designated_production_date IS NULL)     OR    --製造日
+               (gr_interface_info_rec(i).use_by_date IS NULL)                    OR    --賞味期限
+               (gr_interface_info_rec(i).original_character IS NULL)))                 --固有記号
+             OR
+              ((gr_interface_info_rec(i).item_kbn_cd <> gv_item_kbn_cd_5)        AND   --品目区分≠製品
+               (gr_interface_info_rec(i).lot_no IS NULL)))                             --ロットNo
+          THEN
+--
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_msg_kbn                                 -- 'XXWSH'
+                          ,gv_msg_93a_149                             -- ロット管理品の必須項目未設定エラー
+                          ,gv_param1_token
+                          ,lt_delivery_no                             -- IF_H.配送No
+                          ,gv_param2_token
+                          ,gr_interface_info_rec(i).order_source_ref  -- IF_H.受注ソース参照(依頼/移動No)
+                                                             )
+                                                             ,1
+                                                             ,5000);
+--
+            --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+            set_header_unit_reserveflg(
+              lt_delivery_no,         -- 配送No
+              lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
+              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          END IF;
+--
+        END IF;
+--
+      END IF;
+--
+      --ロットマスタより情報取得
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
+        ln_err_flg := 0;
+--
+        -- 対象はロット管理品
+        IF (gr_interface_info_rec(i).lot_ctl = gv_lotkr_kbn_cd_1) THEN   --ロット:有(ロット管理品)
+--
+          -- 検索に使用する日付を設定
+          IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR  -- 有償出荷報告
+              (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR  -- 拠点出荷確定報告
+              (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR  -- 庭先出荷確定報告
+              (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))    -- 移動出庫確定報告
+          THEN
+--
+            -- IF_H.出荷日を設定
+            lt_search_date := gr_interface_info_rec(i).shipped_date;
+--
+          ELSIF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN  -- 移動入庫確定報告
+--
+            -- IF_H.着荷日を設定
+            lt_search_date := gr_interface_info_rec(i).arrival_date;
+--
+          END IF;
+--
+          -- 条件に該当する件数を取得
+          -- 品目区分＝製品　：製造年月日、賞味期限、固有記号がKEY
+          -- 品目区分≠製品　：ロットNoがKEY
+          SELECT COUNT(ilm.lot_id) cnt
+          INTO   ln_count
+          FROM   ic_lots_mst ilm,
+                 xxcmn_item_mst2_v ximv
+          WHERE  ximv.item_id   = ilm.item_id                                -- 品目id
+          AND    ximv.item_no   = gr_interface_info_rec(i).orderd_item_code  -- 受注品目
+          AND    ximv.lot_ctl   = gv_lotkr_kbn_cd_1                          -- ロット管理品
+          AND    ((gr_interface_info_rec(i).designated_production_date IS NULL)   -- 製造年月日
+                  OR
+                  ((gr_interface_info_rec(i).designated_production_date IS NOT NULL)
+                   AND (ilm.attribute1 = TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD'))))
+          AND    ((gr_interface_info_rec(i).use_by_date IS NULL)                  -- 賞味期限
+                  OR
+                  ((gr_interface_info_rec(i).use_by_date IS NOT NULL)
+                  AND (ilm.attribute3 = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'))))
+          AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号   
+          AND    ilm.lot_no     = NVL(gr_interface_info_rec(i).lot_no,ilm.lot_no)                 -- ロットNo
+          AND    ximv.inactive_ind      <> gn_view_disable             -- 無効フラグ
+          AND    ximv.obsolete_class    <> gv_view_disable             -- 廃止区分
+          AND    ximv.start_date_active <= TRUNC(lt_search_date)       -- 出荷/着荷日
+          AND    ximv.end_date_active   >= TRUNC(lt_search_date)       -- 出荷/着荷日
+          ;
+--
+          IF (ln_count = 0) THEN
+--
+            -- データが取得できなかった場合
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_msg_kbn                                           -- 'XXWSH'
+                            ,gv_msg_93a_150                                       -- ロットマスタ取得エラー
+                            ,gv_param1_token
+                            ,lt_delivery_no                                       -- IF_H.配送No
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(i).order_source_ref            -- IF_H.受注ソース参照(依頼/移動No)
+                            ,gv_param3_token
+                            ,gr_interface_info_rec(i).orderd_item_code            -- IF_L.受注品目
+                            ,gv_param4_token
+                            ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  -- IF_L.製造日
+                            ,gv_param5_token
+                            ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 -- IF_L.賞味期限
+                            ,gv_param6_token
+                            ,gr_interface_info_rec(i).original_character          -- IF_L.固有記号
+                            ,gv_param7_token
+                            ,gr_interface_info_rec(i).lot_no                      -- IF_L.ロットNo
+                                                               )
+                                                               ,1
+                                                               ,5000);
+--
+            --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+            set_header_unit_reserveflg(
+              lt_delivery_no,         -- 配送No
+              lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
+              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          ELSIF(ln_count > 1) THEN
+--
+            -- 複数件取得した場合
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_msg_kbn                                           -- 'XXWSH'
+                            ,gv_msg_93a_151                                       -- ロットマスタ取得複数件エラー
+                            ,gv_param1_token
+                            ,lt_delivery_no                                       -- IF_H.配送No
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(i).order_source_ref            -- IF_H.受注ソース参照(依頼/移動No)
+                            ,gv_param3_token
+                            ,gr_interface_info_rec(i).orderd_item_code            -- IF_L.受注品目
+                            ,gv_param4_token
+                            ,TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD')  -- IF_L.製造日
+                            ,gv_param5_token
+                            ,TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD')                 -- IF_L.賞味期限
+                            ,gv_param6_token
+                            ,gr_interface_info_rec(i).original_character          -- IF_L.固有記号
+                            ,gv_param7_token
+                            ,gr_interface_info_rec(i).lot_no                      -- IF_L.ロットNo
+                                                               )
+                                                               ,1
+                                                               ,5000);
+--
+            --配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+            set_header_unit_reserveflg(
+              lt_delivery_no,         -- 配送No
+              lt_order_source_ref,    -- 受注ソース参照(依頼/移動No)
+              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          ELSE
+--
+            -- 1件だった場合、ロットマスタの登録情報を取得
+            SELECT ilm.attribute1  product_date    -- 製造年月日
+                  ,ilm.attribute3  expiration_day  -- 賞味期限
+                  ,ilm.attribute2  original_sign   -- 固有記号
+                  ,ilm.lot_no      lot_no          -- ロットNo 
+            INTO   lt_product_date
+                  ,lt_expiration_day
+                  ,lt_original_sign
+                  ,lt_lot_no
+            FROM   ic_lots_mst ilm,
+                   xxcmn_item_mst2_v ximv
+            WHERE  ximv.item_id   = ilm.item_id                                -- 品目id
+            AND    ximv.item_no   = gr_interface_info_rec(i).orderd_item_code  -- 受注品目
+            AND    ximv.lot_ctl   = gv_lotkr_kbn_cd_1                          -- ロット管理品
+            AND    ((gr_interface_info_rec(i).designated_production_date IS NULL)   -- 製造年月日
+                    OR
+                    ((gr_interface_info_rec(i).designated_production_date IS NOT NULL)
+                     AND (ilm.attribute1 = TO_CHAR(gr_interface_info_rec(i).designated_production_date,'YYYY/MM/DD'))))
+            AND    ((gr_interface_info_rec(i).use_by_date IS NULL)                  -- 賞味期限
+                    OR
+                    ((gr_interface_info_rec(i).use_by_date IS NOT NULL)
+                    AND (ilm.attribute3 = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'))))
+            AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号   
+            AND    ilm.lot_no     = NVL(gr_interface_info_rec(i).lot_no,ilm.lot_no)                 -- ロットNo
+            AND    ximv.inactive_ind      <> gn_view_disable             -- 無効フラグ
+            AND    ximv.obsolete_class    <> gv_view_disable             -- 廃止区分
+            AND    ximv.start_date_active <= TRUNC(lt_search_date)       -- 出荷/着荷日
+            AND    ximv.end_date_active   >= TRUNC(lt_search_date)       -- 出荷/着荷日
+            ;
+--
+            IF (gr_interface_info_rec(i).item_kbn_cd = gv_item_kbn_cd_5) THEN
+--
+              -- 品目区分＝製品の場合、ロットNoを取得
+              gr_interface_info_rec(i).lot_no := lt_lot_no ;  -- ロットNo
+--
+            ELSE
+--
+              -- 品目区分≠製品の場合、製造日／賞味期限／固有記号を取得
+              gr_interface_info_rec(i).designated_production_date := FND_DATE.STRING_TO_DATE(lt_product_date,'YYYY/MM/DD') ;    -- 製造日
+              gr_interface_info_rec(i).use_by_date                := FND_DATE.STRING_TO_DATE(lt_expiration_day,'YYYY/MM/DD') ;  -- 賞味期限
+              gr_interface_info_rec(i).original_character         := lt_original_sign ;            -- 固有記号
+--
+            END IF;
+--
+          END IF;
+--
+        END IF;
+--
+      END IF;
 --
       --出荷日／着荷日の未来日付チェック
-      IF (lv_error_flg = '0') THEN
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
         ln_err_flg := 0;
 --
@@ -3514,9 +3871,10 @@ AS
                                                            ,1
                                                            ,5000);
 --
-          --配送NO単位にエラーflagセット
+          --配送NO-EOSデータ種別単位にエラーflagセット
           set_deliveryno_unit_errflg(
             lt_delivery_no,         -- 配送No
+            gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
             gv_err_class,           -- エラー種別：エラー
             lv_msg_buff,            -- エラー・メッセージ(出力用)
             lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -3576,9 +3934,10 @@ AS
                                                                  ,1
                                                                  ,5000);
 --
-                --配送NO単位にエラーflagセット
+                --配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -3689,7 +4048,7 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- 同一配送No-受注ソース参照単位で、複数の受注品目-ロットNoが存在する場合、エラーとし警告ログ出力します。
+    -- 同一配送No-受注ソース参照-EOSデータ種別単位で、複数の受注品目-ロットNoが存在する場合、エラーとし警告ログ出力します。
     <<deliveryno_src_manyitem>>
     FOR i IN 1..gr_interface_info_rec.COUNT LOOP
 --
@@ -3698,7 +4057,7 @@ AS
       lt_freight_charge_class  := gr_interface_info_rec(i).freight_charge_class;  -- IF_H.運賃区分
       lt_orderd_item_code      := gr_interface_info_rec(i).orderd_item_code;      -- IF_L.受注品目
       lt_lot_no                := gr_interface_info_rec(i).lot_no;                -- IF_L.ロットNo
-      lt_eos_data_type         := gr_interface_info_rec(i).eos_data_type;         -- EOSデータ種別
+      lt_eos_data_type         := gr_interface_info_rec(i).eos_data_type;         -- IF_H.EOSデータ種別
       lt_weight_capacity_class := gr_interface_info_rec(i).weight_capacity_class; -- 重量容積区分
       lv_error_flg             := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
 --
@@ -3712,7 +4071,8 @@ AS
           IF (i >= 2) THEN
 --
             IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
-                (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref)) -- IF_H.受注ソース参照
+                (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND -- IF_H.受注ソース参照
+                (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type))       -- IF_H.EOSデータ種別
             THEN
 --
               IF ((lt_orderd_item_code = gr_interface_info_rec(i-1).orderd_item_code) AND -- IF_L.受注品目
@@ -3732,9 +4092,10 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送NO単位にエラーflagセット
+                -- 配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  lt_eos_data_type,       -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -3757,7 +4118,7 @@ AS
 --
       END IF;
 --
-      -- 同一配送No-受注ソース参照単位で、抽出項目：受注品目に紐づくOPM品目マスタ.重量容積区分の重量と
+      -- 同一配送No-受注ソース参照-EOSデータ種別単位で、抽出項目：受注品目に紐づくOPM品目マスタ.重量容積区分の重量と
       -- 容積が混在していればエラーとします。
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
@@ -3767,7 +4128,8 @@ AS
           IF (i >= 2) THEN
 --
             IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND        -- IF_H.配送No
-                (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref)) -- IF_H.受注ソース参照
+                (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND -- IF_H.受注ソース参照
+                (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type))       -- IF_H.EOSデータ種別
             THEN
               -- 重量容積区分
               IF (lt_weight_capacity_class <> gr_interface_info_rec(i-1).weight_capacity_class) THEN
@@ -3785,9 +4147,10 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送NO単位にエラーflagセット
+                -- 配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  lt_eos_data_type,       -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -3810,12 +4173,13 @@ AS
 --
       END IF;
 --
-      -- 同一配送No-受注ソース参照単位で、抽出項目：商品区分が混在していればエラーとします。
+      -- 同一配送No-受注ソース参照-EOSデータ種別単位で、抽出項目：商品区分が混在していればエラーとします。
 --
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
         lt_delivery_no          := gr_interface_info_rec(i).delivery_no;      -- IF_H.配送No
         lt_order_source_ref     := gr_interface_info_rec(i).order_source_ref; -- IF_H.受注ソース参照
+        lt_eos_data_type        := gr_interface_info_rec(i).eos_data_type;    -- IF_H.EOSデータ種別
         lt_freight_charge_class := gr_interface_info_rec(i).freight_charge_class;  -- IF_H.運賃区分
         lt_orderd_item_code     := gr_interface_info_rec(i).orderd_item_code; -- IF_L.受注品目
         lt_prod_kbn_cd          := gr_interface_info_rec(i).prod_kbn_cd;      -- 商品区分
@@ -3826,7 +4190,8 @@ AS
           IF (i >= 2) THEN
 --
             IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND -- IF_H.配送No
-                (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref)) -- IF_H.受注ソース参照
+                (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND -- IF_H.受注ソース参照
+                (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type)) -- IF_H.EOSデータ種別
 --
             THEN
 --
@@ -3845,9 +4210,10 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送NO単位にエラーflagセット
+                -- 配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  lt_eos_data_type,       -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -3881,6 +4247,7 @@ AS
 --
           lt_delivery_no        := gr_interface_info_rec(i).delivery_no;      --IF_H.配送No
           lt_order_source_ref   := gr_interface_info_rec(i).order_source_ref; --IF_H.受注ソース参照
+          lt_eos_data_type      := gr_interface_info_rec(i).eos_data_type;    --IF_H.EOSデータ種別
           lt_freight_charge_class := gr_interface_info_rec(i).freight_charge_class;  -- IF_H.運賃区分
           lt_orderd_item_code   := gr_interface_info_rec(i).orderd_item_code; --IF_L.受注品目
           lt_prod_kbn_cd        := gr_interface_info_rec(i).prod_kbn_cd;      --商品区分
@@ -3892,7 +4259,8 @@ AS
             IF (i >= 2) THEN
 --
               IF ((lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) AND    --IF_H.配送No
-                  (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref)) --IF_H.受注ソース参照
+                  (lt_order_source_ref = gr_interface_info_rec(i-1).order_source_ref) AND --IF_H.受注ソース参照
+                  (lt_eos_data_type = gr_interface_info_rec(i-1).eos_data_type)) --IF_H.EOSデータ種別
               THEN
 --
                 IF (((lt_item_kbn_cd = gv_item_kbn_cd_5) AND
@@ -3914,9 +4282,10 @@ AS
                                 ,1
                                 ,5000);
 --
-                  --配送NO単位にエラーflagセット
+                  --配送NO-EOSデータ種別単位にエラーflagセット
                   set_deliveryno_unit_errflg(
                     lt_delivery_no,         -- 配送No
+                    lt_eos_data_type,       -- EOSデータ種別
                     gv_err_class,           -- エラー種別：エラー
                     lv_msg_buff,            -- エラー・メッセージ(出力用)
                     lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -3942,48 +4311,49 @@ AS
       END IF;
 --
 --*HHT*********************************************************************************************
---*HHT*            -- 出庫元が引当可能倉庫でなければエラーにする
---*HHT*            IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
---*HHT*      --
---*HHT*              IF ((lt_eos_data_type = gv_eos_data_cd_210)  OR
---*HHT*                  (lt_eos_data_type = gv_eos_data_cd_215)) THEN    -- 出荷のみチェックする
---*HHT*      --
---*HHT*                IF (gr_interface_info_rec(i).allow_pickup_flag = '0') OR         -- 引当不可
---*HHT*                   (gr_interface_info_rec(i).allow_pickup_flag IS NULL) THEN
---*HHT*      --
---*HHT*                  lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
---*HHT*                                 gv_msg_kbn                                     -- 'XXWSH'
---*HHT*                                ,gv_msg_93a_144          -- 出庫元引当不可エラーメッセージ
---*HHT*                                ,gv_param1_token
---*HHT*                                ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
---*HHT*                                ,gv_param2_token
---*HHT*                                ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
---*HHT*                                ,gv_param3_token
---*HHT*                                ,gr_interface_info_rec(i).shipped_locat         -- IF_H.出庫元
---*HHT*                                )
---*HHT*                                ,1
---*HHT*                                ,5000);
---*HHT*      --
---*HHT*                  -- 配送NO単位にエラーflagセット
---*HHT*                  set_deliveryno_unit_errflg(
---*HHT*                    lt_delivery_no,         -- 配送No
---*HHT*                    gv_err_class,           -- エラー種別：エラー
---*HHT*                    lv_msg_buff,            -- エラー・メッセージ(出力用)
---*HHT*                    lv_errbuf,              -- エラー・メッセージ           --# 固定 #
---*HHT*                    lv_retcode,             -- リターン・コード             --# 固定 #
---*HHT*                    lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
---*HHT*                  );
---*HHT*      --
---*HHT*                  -- エラーフラグ
---*HHT*                  ln_err_flg := 1;
---*HHT*                  -- 処理ステータス：警告
---*HHT*                  ov_retcode := gv_status_warn;
---*HHT*      --
---*HHT*                END IF;
---*HHT*      --
---*HHT*              END IF;
---*HHT*      --
---*HHT*            END IF;
+--*HHT*      -- 出庫元が引当可能倉庫でなければエラーにする
+--*HHT*      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--*HHT*--
+--*HHT*        IF ((lt_eos_data_type = gv_eos_data_cd_210)  OR
+--*HHT*            (lt_eos_data_type = gv_eos_data_cd_215)) THEN    -- 出荷のみチェックする
+--*HHT*--
+--*HHT*          IF (gr_interface_info_rec(i).allow_pickup_flag = '0') OR         -- 引当不可
+--*HHT*             (gr_interface_info_rec(i).allow_pickup_flag IS NULL) THEN
+--*HHT*--
+--*HHT*            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+--*HHT*                           gv_msg_kbn                                     -- 'XXWSH'
+--*HHT*                          ,gv_msg_93a_144          -- 出庫元引当不可エラーメッセージ
+--*HHT*                          ,gv_param1_token
+--*HHT*                          ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
+--*HHT*                          ,gv_param2_token
+--*HHT*                          ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
+--*HHT*                          ,gv_param3_token
+--*HHT*                          ,gr_interface_info_rec(i).shipped_locat         -- IF_H.出庫元
+--*HHT*                          )
+--*HHT*                          ,1
+--*HHT*                          ,5000);
+--*HHT*--
+--*HHT*            -- 配送NO-EOSデータ種別単位にエラーflagセット
+--*HHT*            set_deliveryno_unit_errflg(
+--*HHT*              lt_delivery_no,         -- 配送No
+--*HHT*              lt_eos_data_type,       -- EOSデータ種別
+--*HHT*              gv_err_class,           -- エラー種別：エラー
+--*HHT*              lv_msg_buff,            -- エラー・メッセージ(出力用)
+--*HHT*              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+--*HHT*              lv_retcode,             -- リターン・コード             --# 固定 #
+--*HHT*              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+--*HHT*            );
+--*HHT*--
+--*HHT*            -- エラーフラグ
+--*HHT*            ln_err_flg := 1;
+--*HHT*            -- 処理ステータス：警告
+--*HHT*            ov_retcode := gv_status_warn;
+--*HHT*--
+--*HHT*          END IF;
+--*HHT*--
+--*HHT*        END IF;
+--*HHT*--
+--*HHT*      END IF;
 --*HHT*********************************************************************************************
 --
     END LOOP deliveryno_src_manyitem;
@@ -4080,44 +4450,45 @@ AS
 --*HHT*
 --
 --*HHT****************************************************************************************************
---*HHT*            IF (lv_error_flg = '0') THEN
---*HHT*      --
---*HHT*              ln_err_flg := 0;
---*HHT*      --
---*HHT*              -- 支給かつ外部倉庫発番の場合エラーとします。
---*HHT*              IF ((lt_eos_data_type = gv_eos_data_cd_200) AND
---*HHT*                  (gr_interface_info_rec(i).out_warehouse_flg = gv_flg_on))
---*HHT*              THEN
---*HHT*      --
---*HHT*                lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
---*HHT*                               gv_msg_kbn          -- 'XXWSH'
---*HHT*                              ,gv_msg_93a_008  -- 業務種別ステータスチェックエラーメッセージ
---*HHT*                              ,gv_param1_token
---*HHT*                              ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
---*HHT*                              ,gv_param2_token
---*HHT*                              ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
---*HHT*                              )
---*HHT*                              ,1
---*HHT*                              ,5000);
---*HHT*      --
---*HHT*                -- 配送NO単位にエラーflagセット
---*HHT*                set_deliveryno_unit_errflg(
---*HHT*                  lt_delivery_no,         -- 配送No
---*HHT*                  gv_err_class,           -- エラー種別：エラー
---*HHT*                  lv_msg_buff,            -- エラー・メッセージ(出力用)
---*HHT*                  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
---*HHT*                  lv_retcode,             -- リターン・コード             --# 固定 #
---*HHT*                  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
---*HHT*                );
---*HHT*      --
---*HHT*                -- エラーフラグ
---*HHT*                ln_err_flg := 1;
---*HHT*                -- 処理ステータス：警告
---*HHT*                ov_retcode := gv_status_warn;
---*HHT*      --
---*HHT*              END IF;
---*HHT*      --
---*HHT*            END IF;
+--*HHT*      IF (lv_error_flg = '0') THEN
+--*HHT*--
+--*HHT*        ln_err_flg := 0;
+--*HHT*--
+--*HHT*        -- 支給かつ外部倉庫発番の場合エラーとします。
+--*HHT*        IF ((lt_eos_data_type = gv_eos_data_cd_200) AND
+--*HHT*            (gr_interface_info_rec(i).out_warehouse_flg = gv_flg_on))
+--*HHT*        THEN
+--*HHT*--
+--*HHT*          lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+--*HHT*                         gv_msg_kbn          -- 'XXWSH'
+--*HHT*                        ,gv_msg_93a_008  -- 業務種別ステータスチェックエラーメッセージ
+--*HHT*                        ,gv_param1_token
+--*HHT*                        ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
+--*HHT*                        ,gv_param2_token
+--*HHT*                        ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
+--*HHT*                        )
+--*HHT*                        ,1
+--*HHT*                        ,5000);
+--*HHT*--
+--*HHT*          -- 配送NO-EOSデータ種別単位にエラーflagセット
+--*HHT*          set_deliveryno_unit_errflg(
+--*HHT*            lt_delivery_no,         -- 配送No
+--*HHT*            lt_eos_data_type,       -- EOSデータ種別
+--*HHT*            gv_err_class,           -- エラー種別：エラー
+--*HHT*            lv_msg_buff,            -- エラー・メッセージ(出力用)
+--*HHT*            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+--*HHT*            lv_retcode,             -- リターン・コード             --# 固定 #
+--*HHT*            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+--*HHT*          );
+--*HHT*--
+--*HHT*          -- エラーフラグ
+--*HHT*          ln_err_flg := 1;
+--*HHT*          -- 処理ステータス：警告
+--*HHT*          ov_retcode := gv_status_warn;
+--*HHT*--
+--*HHT*        END IF;
+--*HHT*--
+--*HHT*      END IF;
 --*HHT*****************************************************************************************************
 --
       -- 移動出庫または移動入庫の場合、マスタチェック、配送No-移動Noの組み合わせのチェック
@@ -4187,9 +4558,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4260,9 +4632,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4333,9 +4706,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4414,9 +4788,10 @@ AS
                            ,1
                            ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4476,9 +4851,10 @@ AS
                             ,1
                             ,5000);
 --
-              -- 配送NO単位にエラーflagセット
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
               set_deliveryno_unit_errflg(
                 lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
                 gv_err_class,           -- エラー種別：エラー
                 lv_msg_buff,            -- エラー・メッセージ(出力用)
                 lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4539,9 +4915,10 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送NO単位にエラーflagセット
+                -- 配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  lt_eos_data_type,       -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4616,9 +4993,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4692,9 +5070,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4752,9 +5131,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4812,9 +5192,10 @@ AS
                           ,1
                           ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_deliveryno_unit_errflg(
               lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
               gv_err_class,           -- エラー種別：エラー
               lv_msg_buff,            -- エラー・メッセージ(出力用)
               lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4874,9 +5255,10 @@ AS
                             ,1
                             ,5000);
 --
-              -- 配送NO単位にエラーflagセット
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
               set_deliveryno_unit_errflg(
                 lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
                 gv_err_class,           -- エラー種別：エラー
                 lv_msg_buff,            -- エラー・メッセージ(出力用)
                 lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4936,9 +5318,10 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送NO単位にエラーflagセット
+                -- 配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  lt_eos_data_type,       -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -4995,9 +5378,10 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送NO単位にエラーflagセット
+                -- 配送NO-EOSデータ種別単位にエラーflagセット
                 set_deliveryno_unit_errflg(
                   lt_delivery_no,         -- 配送No
+                  lt_eos_data_type,       -- EOSデータ種別
                   gv_err_class,           -- エラー種別：エラー
                   lv_msg_buff,            -- エラー・メッセージ(出力用)
                   lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -5054,9 +5438,10 @@ AS
                             ,1
                             ,5000);
 --
-              -- 配送NO単位にエラーflagセット
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
               set_deliveryno_unit_errflg(
                 lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
                 gv_err_class,           -- エラー種別：エラー
                 lv_msg_buff,            -- エラー・メッセージ(出力用)
                 lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -5106,9 +5491,10 @@ AS
                             ,1
                             ,5000);
 --
-              -- 配送NO単位にエラーflagセット
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
               set_deliveryno_unit_errflg(
                 lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
                 gv_err_class,           -- エラー種別：エラー
                 lv_msg_buff,            -- エラー・メッセージ(出力用)
                 lv_errbuf,              -- エラー・メッセージ           --# 固定 #
@@ -5290,6 +5676,7 @@ AS
       AND    ximv.end_date_active   >= TRUNC(id_date)   -- 出荷/着荷日
       ;
 --
+/*
 --  3.4.専用
     CURSOR cur_lots_product_check2
       (
@@ -5318,6 +5705,7 @@ AS
       AND    ximv.start_date_active <= TRUNC(id_date)   -- 出荷/着荷日
       AND    ximv.end_date_active   >= TRUNC(id_date)   -- 出荷/着荷日
       ;
+*/
 --
     CURSOR cur_lots_status_check
       (
@@ -5501,10 +5889,11 @@ AS
                              ,1
                              ,5000);
 --
-              -- 配送No/移動No単位で妥当チェックエラーflagをセット
+              -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
               set_header_unit_reserveflg(
                 lt_delivery_no,       -- 配送No
                 lt_order_source_ref,  -- 移動No/依頼No
+                lt_eos_data_type,     -- EOSデータ種別
                 gv_reserved_class,    -- エラー種別：保留
                 lv_msg_buff,          -- エラー・メッセージ(出力用)
                 lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -5690,10 +6079,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -5749,10 +6139,11 @@ AS
                             ,1
                             ,5000);
 --
-              -- 配送No/移動No単位で妥当チェックエラーflagをセット
+              -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
               set_header_unit_reserveflg(
                 lt_delivery_no,       -- 配送No
                 lt_order_source_ref,  -- 移動No/依頼No
+                lt_eos_data_type,     -- EOSデータ種別
                 gv_reserved_class,    -- エラー種別：保留
                 lv_msg_buff,          -- エラー・メッセージ(出力用)
                 lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -5794,10 +6185,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -5841,10 +6233,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -5888,10 +6281,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -5984,10 +6378,11 @@ AS
                                 ,1
                                 ,5000);
 --
-                  -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                  -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                   set_header_unit_reserveflg(
                     lt_delivery_no,       -- 配送No
                     lt_order_source_ref,  -- 移動No/依頼No
+                    lt_eos_data_type,     -- EOSデータ種別
                     gv_reserved_class,    -- エラー種別：保留
                     lv_msg_buff,          -- エラー・メッセージ(出力用)
                     lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6038,10 +6433,11 @@ AS
                                 ,1
                                 ,5000);
 --
-                  -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                  -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                   set_header_unit_reserveflg(
                     lt_delivery_no,       -- 配送No
                     lt_order_source_ref,  -- 移動No/依頼No
+                    lt_eos_data_type,     -- EOSデータ種別
                     gv_reserved_class,    -- エラー種別：保留
                     lv_msg_buff,          -- エラー・メッセージ(出力用)
                     lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6226,10 +6622,11 @@ AS
                                       ,1
                                       ,5000);
 --
-                        -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                        -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
+                          lt_eos_data_type,     -- EOSデータ種別
                           gv_reserved_class,    -- エラー種別：保留
                           lv_msg_buff,          -- エラー・メッセージ(出力用)
                           lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6270,10 +6667,11 @@ AS
                                     ,1
                                     ,5000);
 --
-                      -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                       set_header_unit_reserveflg(
                         lt_delivery_no,       -- 配送No
                         lt_order_source_ref,  -- 移動No/依頼No
+                        lt_eos_data_type,     -- EOSデータ種別
                         gv_reserved_class,    -- エラー種別：保留
                         lv_msg_buff,          -- エラー・メッセージ(出力用)
                         lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6321,10 +6719,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6414,10 +6813,11 @@ AS
                                   ,1
                                   ,5000);
 --
-                    -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                    -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                     set_header_unit_reserveflg(
                       lt_delivery_no,       -- 配送No
                       lt_order_source_ref,  -- 移動No/依頼No
+                      lt_eos_data_type,     -- EOSデータ種別
                       gv_reserved_class,    -- エラー種別：保留
                       lv_msg_buff,          -- エラー・メッセージ(出力用)
                       lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6465,10 +6865,11 @@ AS
                                   ,1
                                   ,5000);
 --
-                    -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                    -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                     set_header_unit_reserveflg(
                       lt_delivery_no,       -- 配送No
                       lt_order_source_ref,  -- 移動No/依頼No
+                      lt_eos_data_type,     -- EOSデータ種別
                       gv_reserved_class,    -- エラー種別：保留
                       lv_msg_buff,          -- エラー・メッセージ(出力用)
                       lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6646,10 +7047,11 @@ AS
                                         ,1
                                         ,5000);
 --
-                          -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                          -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                           set_header_unit_reserveflg(
                             lt_delivery_no,       -- 配送No
                             lt_order_source_ref,  -- 移動No/依頼No
+                            lt_eos_data_type,     -- EOSデータ種別
                             gv_reserved_class,    -- エラー種別：保留
                             lv_msg_buff,          -- エラー・メッセージ(出力用)
                             lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6691,10 +7093,11 @@ AS
                                       ,1
                                       ,5000);
 --
-                        -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                        -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
+                          lt_eos_data_type,     -- EOSデータ種別
                           gv_reserved_class,    -- エラー種別：保留
                           lv_msg_buff,          -- エラー・メッセージ(出力用)
                           lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6877,10 +7280,11 @@ AS
                                       ,1
                                       ,5000);
 --
-                        -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                        -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                         set_header_unit_reserveflg(
                           lt_delivery_no,       -- 配送No
                           lt_order_source_ref,  -- 移動No/依頼No
+                          lt_eos_data_type,     -- EOSデータ種別
                           gv_reserved_class,    -- エラー種別：保留
                           lv_msg_buff,          -- エラー・メッセージ(出力用)
                           lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6922,10 +7326,11 @@ AS
                                     ,1
                                     ,5000);
 --
-                      -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                       set_header_unit_reserveflg(
                         lt_delivery_no,       -- 配送No
                         lt_order_source_ref,  -- 移動No/依頼No
+                        lt_eos_data_type,     -- EOSデータ種別
                         gv_reserved_class,    -- エラー種別：保留
                         lv_msg_buff,          -- エラー・メッセージ(出力用)
                         lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -6965,10 +7370,11 @@ AS
                                     ,1
                                     ,5000);
 --
-                      -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                      -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                       set_header_unit_reserveflg(
                         lt_delivery_no,       -- 配送No
                         lt_order_source_ref,  -- 移動No/依頼No
+                        lt_eos_data_type,     -- EOSデータ種別
                         gv_reserved_class,    -- エラー種別：保留
                         lv_msg_buff,          -- エラー・メッセージ(出力用)
                         lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -7032,10 +7438,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -7120,10 +7527,11 @@ AS
                                 ,1
                                 ,5000);
 --
-                  -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                  -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                   set_header_unit_reserveflg(
                     lt_delivery_no,       -- 配送No
                     lt_order_source_ref,  -- 移動No/依頼No
+                    lt_eos_data_type,     -- EOSデータ種別
                     gv_reserved_class,    -- エラー種別：保留
                     lv_msg_buff,          -- エラー・メッセージ(出力用)
                     lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -7180,10 +7588,11 @@ AS
                               ,1
                               ,5000);
 --
-                -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                 set_header_unit_reserveflg(
                   lt_delivery_no,       -- 配送No
                   lt_order_source_ref,  -- 移動No/依頼No
+                  lt_eos_data_type,     -- EOSデータ種別
                   gv_reserved_class,    -- エラー種別：保留
                   lv_msg_buff,          -- エラー・メッセージ(出力用)
                   lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -7264,10 +7673,11 @@ AS
                                   ,1
                                   ,5000);
 --
-                    -- 配送No/移動No単位で妥当チェックエラーflagをセット
+                    -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
                     set_header_unit_reserveflg(
                       lt_delivery_no,       -- 配送No
                       lt_order_source_ref,  -- 移動No/依頼No
+                      lt_eos_data_type,     -- EOSデータ種別
                       gv_reserved_class,    -- エラー種別：保留
                       lv_msg_buff,          -- エラー・メッセージ(出力用)
                       lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -7321,10 +7731,11 @@ AS
                             ,1
                             ,5000);
 --
-              -- 配送No/移動No単位で妥当チェックエラーflagをセット
+              -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
               set_header_unit_reserveflg(
                 lt_delivery_no,       -- 配送No
                 lt_order_source_ref,  -- 移動No/依頼No
+                lt_eos_data_type,     -- EOSデータ種別
                 gv_reserved_class,    -- エラー種別：保留
                 lv_msg_buff,          -- エラー・メッセージ(出力用)
                 lv_errbuf,            -- エラー・メッセージ           --# 固定 #
@@ -7762,6 +8173,7 @@ AS
        ,schedule_ship_date                          -- 出荷予定日
        ,schedule_arrival_date                       -- 着荷予定日
        ,collected_pallet_qty                        -- パレット回収枚数
+       ,confirm_request_class                       -- 物流担当確認依頼区分
        ,freight_charge_class                        -- 運賃区分
        ,deliver_from_id                             -- 出荷元ID
        ,deliver_from                                -- 出荷元保管場所
@@ -7824,6 +8236,7 @@ AS
        ,gr_order_h_rec.schedule_ship_date           -- 出荷予定日
        ,gr_order_h_rec.schedule_arrival_date        -- 着荷予定日
        ,gr_order_h_rec.collected_pallet_qty         -- パレット回収枚数
+       ,gv_include_exclude_0                        -- 物流担当確認依頼区分
        ,gr_order_h_rec.freight_charge_class         -- 運賃区分
        ,gr_order_h_rec.deliver_from_id              -- 出荷元ID
        ,gr_order_h_rec.deliver_from                 -- 出荷元保管場所
@@ -8925,6 +9338,7 @@ AS
       ,request_no                                  -- 依頼No
       ,shipping_inventory_item_id                  -- 出荷品目ID
       ,shipping_item_code                          -- 出荷品目
+      ,quantity                                    -- 数量
       ,uom_code                                    -- 単位
       ,request_item_id                             -- 依頼品目ID
       ,request_item_code                           -- 依頼品目
@@ -8950,6 +9364,7 @@ AS
       ,gr_order_l_rec.request_no                   --依頼no
       ,gr_order_l_rec.shipping_inventory_item_id   --出荷品目ID
       ,gr_order_l_rec.shipping_item_code           --出荷品目
+      ,gr_order_l_rec.shipped_quantity             --出庫実績数量
       ,gr_order_l_rec.uom_code                     --単位
       ,gr_order_l_rec.request_item_id              --依頼品目ID
       ,gr_order_l_rec.request_item_code            --依頼品目
@@ -9597,6 +10012,7 @@ AS
        ,actual_arrival_date                                 -- 入庫実績日
        ,item_class                                          -- 商品区分
        ,product_flg                                         -- 製品識別区分
+       ,no_instr_actual_class                               -- 指示なし実績区分
        ,comp_actual_flg                                     -- 実績計上済フラグ
        ,correct_actual_flg                                  -- 実績訂正フラグ
        ,prev_notif_status                                   -- 前回通知ステータス
@@ -9650,6 +10066,7 @@ AS
        ,gr_mov_req_instr_h_rec.actual_arrival_date          -- 入庫実績日
        ,gr_mov_req_instr_h_rec.item_class                   -- 商品区分
        ,gr_mov_req_instr_h_rec.product_flg                  -- 製品識別区分
+       ,gv_yesno_y                                          -- 指示なし実績区分
        ,gv_yesno_n                                          -- 実績計上済フラグ
        ,gr_mov_req_instr_h_rec.correct_actual_flg           -- 実績訂正フラグ
        ,gr_mov_req_instr_h_rec.prev_notif_status            -- 前回通知ステータス
@@ -9907,8 +10324,8 @@ AS
     UPDATE xxinv_mov_req_instr_headers xmrih
     SET xmrih.status                      = gr_mov_req_instr_h_rec.status
        ,xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
-       ,xmrih.out_pallet_qty              = NVL(xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
-       ,xmrih.in_pallet_qty               = NVL(xmrih.in_pallet_qty ,gr_mov_req_instr_h_rec.in_pallet_qty)  
+       ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
+       ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
        ,xmrih.actual_career_id            = gr_mov_req_instr_h_rec.actual_career_id
        ,xmrih.actual_freight_carrier_code = gr_mov_req_instr_h_rec.actual_freight_carrier_code
        ,xmrih.actual_shipping_method_code = gr_mov_req_instr_h_rec.actual_shipping_method_code
@@ -10134,8 +10551,8 @@ AS
 --
     UPDATE xxinv_mov_req_instr_headers xmrih
     SET xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
-       ,xmrih.out_pallet_qty              = gr_mov_req_instr_h_rec.out_pallet_qty
-       ,xmrih.in_pallet_qty               = gr_mov_req_instr_h_rec.in_pallet_qty
+       ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
+       ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
        ,xmrih.based_weight                = gr_mov_req_instr_h_rec.based_weight
        ,xmrih.based_capacity              = gr_mov_req_instr_h_rec.based_capacity
        ,xmrih.correct_actual_flg          = gr_mov_req_instr_h_rec.correct_actual_flg
@@ -10984,10 +11401,10 @@ AS
   END get_freight_charge_type;
 --
  /**********************************************************************************
-  * Procedure Name   : carriers_schedule_ins
+  * Procedure Name   : carriers_schedule_inup
   * Description      : 配車配送計画アドオン作成 プロシージャ
   ***********************************************************************************/
-  PROCEDURE carriers_schedule_ins(
+  PROCEDURE carriers_schedule_inup(
     in_idx        IN  NUMBER,              --   データindex
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -10997,7 +11414,7 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'carriers_schedule_ins'; -- プログラム名
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'carriers_schedule_inup'; -- プログラム名
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -11066,8 +11483,9 @@ AS
         ln_carriers_schedule_cnt := 0;
     END;
 --
-    -- 配車配送計画(アドオン)データが無い場合、作成する
     IF ln_carriers_schedule_cnt < 1 THEN
+    -- 配車配送計画(アドオン)データが無い場合、作成する
+--
       -- 作成するための各項目値セット
       -- 処理種別(配車)
       -- EOSデータ種別より判定する
@@ -11255,6 +11673,35 @@ AS
         ,gt_sysdate                         -- プログラム更新日
       );
 --
+    ELSE
+    -- 配車配送計画(アドオン)データが有る場合、更新する
+--
+      -- 運送業者_実績ID
+      -- IFの運送業者IDを設定する
+      ln_result_freight_carrier_id := gr_interface_info_rec(in_idx).result_freight_carrier_id;
+--
+      -- 運送業者_実績
+      -- IFの運送業者を設定する
+      lv_result_freight_carrier_code := gr_interface_info_rec(in_idx).freight_carrier_code;
+--
+      -- 配送区分_実績
+      -- IFの配送区分を設定する
+      lv_result_shipping_method_code := gr_interface_info_rec(in_idx).shipping_method_code;
+--
+      -- 配車配送計画アドオンに登録する
+      UPDATE xxwsh_carriers_schedule
+      SET result_freight_carrier_id   = ln_result_freight_carrier_id
+         ,result_freight_carrier_code = lv_result_freight_carrier_code
+         ,result_shipping_method_code = lv_result_shipping_method_code
+         ,last_updated_by             = gt_user_id
+         ,last_update_date            = gt_sysdate
+         ,last_update_login           = gt_login_id
+         ,request_id                  = gt_conc_request_id
+         ,program_application_id      = gt_prog_appl_id
+         ,program_id                  = gt_conc_program_id
+         ,program_update_date         = gt_sysdate
+      WHERE   delivery_no = gr_interface_info_rec(in_idx).delivery_no;
+--
     END IF;
 --
   EXCEPTION
@@ -11277,7 +11724,7 @@ AS
 --
 --#####################################  固定部 END   ##########################################
 --
-  END carriers_schedule_ins;
+  END carriers_schedule_inup;
 --
  /**********************************************************************************
   * Procedure Name   : mov_table_outpout
@@ -11684,7 +12131,7 @@ AS
           IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
 --
             -- 配車配送計画アドオン作成
-            carriers_schedule_ins(
+            carriers_schedule_inup(
               in_idx,                   -- データindex
               lv_errbuf,                -- エラー・メッセージ           --# 固定 #
               lv_retcode,               -- リターン・コード             --# 固定 #
@@ -11761,7 +12208,7 @@ AS
           IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
 --
             -- 配車配送計画アドオン作成
-            carriers_schedule_ins(
+            carriers_schedule_inup(
               in_idx,                   -- データindex
               lv_errbuf,                -- エラー・メッセージ           --# 固定 #
               lv_retcode,               -- リターン・コード             --# 固定 #
@@ -11790,18 +12237,20 @@ AS
     -------------------------------------------------------------------------
     -- 明細単位の処理
     -- 最終データ又は
-    -- 前回の配送Noと前回の受注ソース参照が異なる場合(ヘッダブレイク)又は
-    -- 前回の配送Noと前回の受注ソース参照が同一で品目が相違する場合
+    -- 前回の配送Noと前回の受注ソース参照と前回のEOSデータ種別が異なる場合(ヘッダブレイク)又は
+    -- 前回の配送Noと前回の受注ソース参照と前回のEOSデータ種別が同一で品目が相違する場合
     --------------------------------------------------------------------------
     IF (in_idx = gn_target_cnt) THEN
         lb_break_flg := TRUE;
     ELSE
 --
       IF ((gr_interface_info_rec(in_idx).delivery_no <> gr_interface_info_rec(in_idx + 1).delivery_no) OR
-          (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref))
+          (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref) OR
+          (gr_interface_info_rec(in_idx).eos_data_type <> gr_interface_info_rec(in_idx + 1).eos_data_type))
       OR
          ((gr_interface_info_rec(in_idx).delivery_no = gr_interface_info_rec(in_idx + 1).delivery_no) AND
           (gr_interface_info_rec(in_idx).order_source_ref = gr_interface_info_rec(in_idx + 1).order_source_ref) AND
+          (gr_interface_info_rec(in_idx).eos_data_type = gr_interface_info_rec(in_idx + 1).eos_data_type) AND
           (gr_interface_info_rec(in_idx).orderd_item_code <> gr_interface_info_rec(in_idx + 1).orderd_item_code))
       THEN
 --
@@ -11847,7 +12296,7 @@ AS
     END IF;
     -------------------------------------------------------------------------
     -- ヘッダ単位の処理
-    -- 前回の配送Noと前回の受注ソース参照が異なる場合(ヘッダブレイク)且つ 初回1件目以外の場合
+    -- 前回の配送Noと前回の受注ソース参照と前回のEOSデータ種別が異なる場合(ヘッダブレイク)且つ 初回1件目以外の場合
     --------------------------------------------------------------------------
     IF (in_idx = gn_target_cnt) THEN
         lb_break_flg := TRUE;
@@ -11855,7 +12304,8 @@ AS
     ELSE
 --
       IF ((gr_interface_info_rec(in_idx).delivery_no <> gr_interface_info_rec(in_idx + 1).delivery_no) OR
-          (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref))
+          (gr_interface_info_rec(in_idx).order_source_ref <> gr_interface_info_rec(in_idx + 1).order_source_ref) OR
+          (gr_interface_info_rec(in_idx).eos_data_type <> gr_interface_info_rec(in_idx + 1).eos_data_type))
       THEN
         lb_break_flg := TRUE;
 --
@@ -11864,19 +12314,26 @@ AS
     END IF;
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
-      -- 重量容積小口個数更新関数を実施
-      -- ===============================
-      -- 重量容積小口個数設定 プロシージャ
-      -- ===============================
-      upd_line_items_set(
-        in_idx,                   -- データindex
-        lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-        lv_retcode,               -- リターン・コード             --# 固定 #
-        lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
-      );
 --
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
+      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --エラーflag：0(正常)
+          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
+      THEN
+--
+        -- 重量容積小口個数更新関数を実施
+        -- ===============================
+        -- 重量容積小口個数設定 プロシージャ
+        -- ===============================
+        upd_line_items_set(
+          in_idx,                   -- データindex
+          lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+          lv_retcode,               -- リターン・コード             --# 固定 #
+          lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
       END IF;
 --
     END IF;
@@ -12249,7 +12706,7 @@ AS
           IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
 --
             -- 配車配送計画アドオン作成
-            carriers_schedule_ins(
+            carriers_schedule_inup(
               in_idx,                   -- データindex
               lv_errbuf,                -- エラー・メッセージ           --# 固定 #
               lv_retcode,               -- リターン・コード             --# 固定 #
@@ -12327,7 +12784,7 @@ AS
           IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
 --
             -- 配車配送計画アドオン作成
-            carriers_schedule_ins(
+            carriers_schedule_inup(
               in_idx,                   -- データindex
               lv_errbuf,                -- エラー・メッセージ           --# 固定 #
               lv_retcode,               -- リターン・コード             --# 固定 #
@@ -12429,19 +12886,26 @@ AS
     END IF;
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
-      -- 重量容積小口個数更新関数を実施
-      -- ===============================
-      -- 重量容積小口個数設定 プロシージャ
-      -- ===============================
-      upd_line_items_set(
-        in_idx,                   -- データindex
-        lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-        lv_retcode,               -- リターン・コード             --# 固定 #
-        lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
-        );
 --
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
+      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --エラーflag：0(正常)
+          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
+      THEN
+--
+        -- 重量容積小口個数更新関数を実施
+        -- ===============================
+        -- 重量容積小口個数設定 プロシージャ
+        -- ===============================
+        upd_line_items_set(
+          in_idx,                   -- データindex
+          lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+          lv_retcode,               -- リターン・コード             --# 固定 #
+          lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
       END IF;
 --
     END IF;
@@ -12745,10 +13209,11 @@ AS
                                ,1
                                ,5000);
 --
-            -- 配送No/依頼No単位にエラーflagセット
+            -- 配送No/依頼No-EOSデータ種別単位にエラーflagセット
             set_header_unit_reserveflg(
               lt_delivery_no,                     -- 配送No
               lt_order_source_ref,                -- 移動No/依頼No
+              gr_interface_info_rec(i).eos_data_type, -- EOSデータ種別
               gv_logonly_class,                   -- エラー種別：ログのみ出力
               lv_msg_buff,                        -- エラー・メッセージ(出力用)
               lv_errbuf,                          -- エラー・メッセージ           --# 固定 #
@@ -12781,10 +13246,11 @@ AS
                                ,1
                                ,5000);
 --
-            -- 配送NO単位にエラーflagセット
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
             set_header_unit_reserveflg(
               lt_delivery_no,                     -- 配送No
               lt_order_source_ref,                -- 移動No/依頼No
+              gr_interface_info_rec(i).eos_data_type, -- EOSデータ種別
               gv_logonly_class,                   -- エラー種別：ログのみ出力
               lv_msg_buff,                        -- エラー・メッセージ(出力用)
               lv_errbuf,                          -- エラー・メッセージ           --# 固定 #
@@ -12947,10 +13413,11 @@ AS
                           ,5000);
 --
             -- ステータスを保留
-            --配送No/依頼No単位にエラーflagセット
+            --配送No/依頼No-EOSデータ種別単位にエラーflagセット
             set_header_unit_reserveflg(
                                        lt_delivery_no,       -- 配送No
                                        lt_order_source_ref,  -- 移動No/依頼No
+                                       gr_interface_info_rec(i).eos_data_type, -- EOSデータ種別
                                        gv_logonly_class,     -- エラー種別：ログのみ出力
                                        lv_msg_buff,        -- エラー・メッセージ(出力用)
                                        lv_errbuf,          -- エラー・メッセージ           --# 固定 #
@@ -13820,20 +14287,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    --*HHT**************************************************************************
-    --*HHT* -- ===============================
-    --*HHT* -- 外部倉庫発番チェック プロシージャ (A-4)
-    --*HHT* -- ===============================
-    --*HHT* out_warehouse_number_check(
-    --*HHT* lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-    --*HHT* lv_retcode,             -- リターン・コード             --# 固定 #
-    --*HHT* lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-    --*HHT* );
-    --*HHT*--
-    --*HHT* IF (lv_retcode = gv_status_error) THEN
-    --*HHT* RAISE global_process_expt;
-    --*HHT* END IF;
-    --*HHT**************************************************************************
+--*HHT**************************************************************************
+--*HHT*-- ===============================
+--*HHT*-- 外部倉庫発番チェック プロシージャ (A-4)
+--*HHT*-- ===============================
+--*HHT*out_warehouse_number_check(
+--*HHT*  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+--*HHT*  lv_retcode,             -- リターン・コード             --# 固定 #
+--*HHT*  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+--*HHT*);
+--*HHT**************************************************************************
+--
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
 --
     -- ===============================
     -- エラーチェック_配送No単位 プロシージャ (A-5-1)
@@ -14308,7 +14775,7 @@ AS
                                            TO_CHAR(gn_target_cnt));
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
-    IF (retcode = gv_status_error) THEN
+    IF (lv_retcode = gv_status_error) THEN
       -- 受注ヘッダ
       gn_ord_h_upd_n_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績計上)
       gn_ord_h_ins_cnt          := 0;              -- 受注ヘッダ登録作成件数(外部倉庫発番)
@@ -14414,6 +14881,7 @@ AS
 --*HHT*                        TO_CHAR(gn_ord_l_ins_cnt));
 --*HHT*--
 --*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--*HHT*--
 --*HHT********************************************************************************************
 --
     -- 受注明細登録作成件数(実績修正) 出力
@@ -14574,9 +15042,9 @@ AS
 --*HHT*                        gv_mov_mov_ins_cnt_nm,   -- ロット詳細新規作成件数(移動依頼_外部倉庫発番)
 --*HHT*                        gv_tkn_cnt,              -- トークン'CNT'
 --*HHT*                        TO_CHAR(gn_mov_mov_ins_cnt));
+--*HHT*--
+--*HHT*    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --*HHT********************************************************************************************
---
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
     -- ロット詳細新規作成件数(移動依頼_訂正ロットあり) 出力
     gv_out_msg := xxcmn_common_pkg.get_msg(
