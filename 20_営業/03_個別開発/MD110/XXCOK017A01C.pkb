@@ -7,7 +7,7 @@ AS
  * Description      : 「本振用FBデータ作成」にて支払対象となった
  *                     自販機販売手数料に関する仕訳を作成し、GLモジュールへ連携
  * MD.050           : GLインターフェイス（GL I/F） MD050_COK_017_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/05/13    1.2   M.Hiruta         [障害T1_0867] GLへ連携するデータの顧客コードにダミーを設定しないよう変更
  *  2009/05/25    1.3   M.Hiruta         [障害T1_1166] GLへ連携するデータの顧客コードの取得処理において
  *                                                     正確な顧客コードを取得できるよう変更
+ *  2009/09/09    1.4   K.Yamaguchi      [障害0001327] 仕訳有効日付に実際の支払日を設定
  *
  *****************************************************************************************/
 --
@@ -211,35 +212,64 @@ AS
   -- GL連携データ
   CURSOR gl_interface_cur
   IS
-    SELECT xbb.base_code                          AS base_code             -- 拠点コード
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR START
+--    SELECT xbb.base_code                          AS base_code             -- 拠点コード
+    SELECT /*+
+             LEADING( xbb, pv, pvsa )
+             INDEX( xbb  XXCOK_BACKMARGIN_BALANCE_N10 )
+           */
+           xbb.base_code                          AS base_code             -- 拠点コード
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR END
           ,xbb.supplier_code                      AS supplier_code         -- 仕入先コード
           ,xbb.supplier_site_code                 AS supplier_site_code    -- 仕入先サイトコード
           ,xbb.cust_code                          AS cust_code             -- 顧客コード
-          ,SUM( NVL( xbb.backmargin, 0 ) )        AS backmargin            -- 販売手数料
-          ,SUM( NVL( xbb.backmargin_tax, 0 ) )    AS backmargin_tax        -- 販売手数料消費税額
-          ,SUM( NVL( xbb.electric_amt, 0 ) )      AS electric_amt          -- 電気料
-          ,SUM( NVL( xbb.electric_amt_tax, 0 ) )  AS electric_amt_tax      -- 電気料消費税額
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR START
+--          ,SUM( NVL( xbb.backmargin, 0 ) )        AS backmargin            -- 販売手数料
+--          ,SUM( NVL( xbb.backmargin_tax, 0 ) )    AS backmargin_tax        -- 販売手数料消費税額
+--          ,SUM( NVL( xbb.electric_amt, 0 ) )      AS electric_amt          -- 電気料
+--          ,SUM( NVL( xbb.electric_amt_tax, 0 ) )  AS electric_amt_tax      -- 電気料消費税額
+          ,NVL( SUM( xbb.backmargin       ), 0 )  AS backmargin            -- 販売手数料
+          ,NVL( SUM( xbb.backmargin_tax   ), 0 )  AS backmargin_tax        -- 販売手数料消費税額
+          ,NVL( SUM( xbb.electric_amt     ), 0 )  AS electric_amt          -- 電気料
+          ,NVL( SUM( xbb.electric_amt_tax ), 0 )  AS electric_amt_tax      -- 電気料消費税額
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR END
           ,xbb.tax_code                           AS tax_code              -- 税金コード
-          ,MAX( xbb.expect_payment_date )         AS expect_payment_date   -- 支払予定日
-          ,SUM( NVL( xbb.backmargin, 0 )
-             +  NVL( xbb.backmargin_tax, 0 )
-             +  NVL( xbb.electric_amt, 0 )
-             +  NVL( xbb.electric_amt_tax, 0 ) )  AS amt_sum               -- 振込額
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR START
+--          ,MAX( xbb.expect_payment_date )         AS expect_payment_date   -- 支払予定日
+          ,MAX( xbb.publication_date )            AS expect_payment_date   -- 支払日
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR END
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR START
+--          ,SUM( NVL( xbb.backmargin, 0 )
+--             +  NVL( xbb.backmargin_tax, 0 )
+--             +  NVL( xbb.electric_amt, 0 )
+--             +  NVL( xbb.electric_amt_tax, 0 ) )  AS amt_sum               -- 振込額
+          ,NVL( SUM( xbb.payment_amt_tax ), 0 )   AS amt_sum               -- 振込額
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR END
           ,pvsa.bank_charge_bearer                AS bank_charge_bearer    -- 銀行手数料負担者
           ,pvsa.payment_currency_code             AS payment_currency_code -- 支払通貨
     FROM xxcok_backmargin_balance xbb    -- 販手残高テーブル
-        ,hz_cust_accounts         hca    -- 顧客マスタ
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi DELETE START
+--        ,hz_cust_accounts         hca    -- 顧客マスタ
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi DELETE END
         ,po_vendors               pv     -- 仕入先マスタ
         ,po_vendor_sites_all      pvsa   -- 仕入先サイトマスタ
     WHERE xbb.fb_interface_status     =  cv_interface_status_fb
     AND   xbb.gl_interface_status     =  cv_if_status_gl_before
     AND   xbb.supplier_code           =  pv.segment1
     AND   xbb.supplier_site_code      =  pvsa.vendor_site_code
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi ADD START
+    AND   pv.vendor_id                =  pvsa.vendor_id
+    AND   NVL( xbb.expect_payment_amt_tax, 0 ) = 0
+    AND   xbb.publication_date        BETWEEN TRUNC( gd_process_date, 'MM' )
+                                          AND LAST_DAY( TRUNC( gd_process_date ) )
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi ADD END
     AND   pvsa.hold_all_payments_flag =  cv_hold_pay_flag_n
     AND   (   ( pvsa.inactive_date    IS NULL )
             OR( pvsa.inactive_date    >= gd_payment_date ) )
     AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
-    AND   xbb.cust_code               =  hca.account_number
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi DELETE START
+--    AND   xbb.cust_code               =  hca.account_number
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi DELETE END
 -- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
     AND   pvsa.org_id = gn_org_id
 -- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
@@ -2139,7 +2169,10 @@ AS
                     );
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000 );
-      ov_retcode := cv_status_error;
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR START
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_normal;
+-- 2009/09/09 Ver.1.4 [障害0001327] SCS K.Yamaguchi REPAIR END
       CLOSE gl_interface_cur;
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
