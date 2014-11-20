@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_auto_code_assign_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_auto_code_assign_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -21,6 +21,7 @@ AS
  *  2008/12/21    1.0   T.maruyama       新規作成
  *  2008/12/25    1.0   M.maruyama       採番種別'2'（契約書番号)の戻り値編集を修正
  *                                       日付値を'YYYYMMDD'から'YYMMDD'へ
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

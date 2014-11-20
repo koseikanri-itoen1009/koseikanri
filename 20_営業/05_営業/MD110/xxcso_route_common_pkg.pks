@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE xxcso_route_common_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_route_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -29,6 +29,7 @@ AS
  *  2009/01/09          Kazumoto.Tomio  ルートＮｏ妥当性チェック(プロシージャ)追加
  *  2009/01/20          T.Maruyama      ＶＤ業態判定関数追加
  *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理(ファンクション)追加
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
   -- ===============================

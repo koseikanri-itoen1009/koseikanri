@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO019A07C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO019A07C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -35,6 +35,7 @@ AS
  *  2009-03-05    1.1   Kazuyo.Hosoi     【障害対応031】発令日判断基準日修正
  *  2009-03-11    1.1   Kazuyo.Hosoi     【障害対応047】顧客区分、ステータス抽出条件変更
  *  2009-04-21    1.2   Daisuke.Abe      【T1_0681】業務処理日付対応
+ *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

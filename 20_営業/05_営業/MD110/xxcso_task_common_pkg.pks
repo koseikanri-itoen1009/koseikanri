@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE xxcso_task_common_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_task_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -22,6 +22,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/05    1.0   K.Cho            新規作成
  *  2008/12/16    1.0   T.maruyama       訪問タスク削除関数
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

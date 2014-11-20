@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_task_common_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_task_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -24,6 +24,7 @@ AS
  *  2008/12/16    1.0   T.maruyama       訪問タスク削除関数
  *  2008/12/25    1.0   M.maruyama       API起動処理のOUTパラメータ'gx_return_status'の正常終了
  *                                       判定値を'S'から'fnd_api.g_ret_sts_success'へ変更
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

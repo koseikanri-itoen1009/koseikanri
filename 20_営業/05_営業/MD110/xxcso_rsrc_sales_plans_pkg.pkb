@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_rsrc_sales_plans_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_rsrc_sales_plans_pkg
 IS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -33,6 +33,7 @@ IS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/13    1.0   K.Boku           êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

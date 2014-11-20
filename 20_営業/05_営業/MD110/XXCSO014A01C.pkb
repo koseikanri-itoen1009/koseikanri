@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO014A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO014A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -32,6 +32,7 @@ AS
  *  2008-11-11    1.0   Kenji.Sai        新規作成
  *  2009-02-19    1.1   Kenji.Sai        レビュー後対応 
  *  2009-03-17    1.1   K.Boku           【結合障害067】upd_sales_plan_dayで、日(項目)に先頭０埋め対応
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 -- 

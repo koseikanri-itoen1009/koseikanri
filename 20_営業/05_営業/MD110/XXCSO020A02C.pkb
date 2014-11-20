@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO020A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO020A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -31,6 +31,7 @@ AS
  *  2008-12-22    1.0   Noriyuki.Yabuki  新規作成
  *  2009-02-05          Kazuo.Satomura   従業員番号からユーザー名を取得
  *  2009-02-27          Noriyuki.Yabuki  ワークフロー用APIの名称を小文字から大文字に修正
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################

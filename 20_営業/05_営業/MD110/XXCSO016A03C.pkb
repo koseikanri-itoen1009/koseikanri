@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO016A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO016A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -38,6 +38,7 @@ AS
  *  2008-12-09    1.0   Kazuyo.Hosoi     新規作成
  *  2009-02-25    1.1   K.Sai            レビュー結果反映 
  *  2009-04-16    1.2   K.Satomura       システムテスト障害対応(T1_0172,T1_0508)
+ *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################

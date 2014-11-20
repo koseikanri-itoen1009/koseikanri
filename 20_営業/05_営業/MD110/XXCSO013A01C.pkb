@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO013A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO013A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -41,6 +41,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-17    1.0   Noriyuki.Yabuki  êVãKçÏê¨
  *  2009-03-12    1.1   Daisuke.Abe      ïœçXàÀóä:IE_108ëŒâû
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

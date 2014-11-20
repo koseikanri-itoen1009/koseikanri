@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_route_common_pkg  
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_route_common_pkg  
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -32,6 +32,7 @@ AS
  *  2009/01/20    1.0   T.Maruyama      ＶＤ業態判定関数追加
  *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理(ファンクション)追加
  *  2009/02/27    1.0   Kazuo.Satomura  売上計画日別配分処理桁溢れ対応
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE apps.xxcso_rtn_rsrc_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_rtn_rsrc_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -23,6 +23,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/08    1.0   H.Ogawa          êVãKçÏê¨
  *  2008/12/24    1.0   M.maruyama       ÉwÉbÉ_èCê≥(Oracleî≈Ç©ÇÁSCSî≈Ç÷)
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY XXCSO010A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO010A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -71,6 +71,7 @@ AS
  *  2009-04-08    1.4   Kazuo.Satomura   システムテスト障害(障害番号T1_0617)
  *  2009-04-27    1.5   Kazuo.Satomura   システムテスト障害(障害番号T1_0766)
  *  2009-04-28    1.6   Kazuo.Satomura   システムテスト障害(障害番号T1_0733)
+ *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################

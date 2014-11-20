@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE apps.xxcso_019003j_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_019003j_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/28    1.0   R.Oikawa          êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

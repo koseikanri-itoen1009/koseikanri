@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO017A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO017A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -33,6 +33,7 @@ AS
  *  2009-03-05    1.1   Kazuyo.Hosoi     帳票レイアウトレビュー指摘対応
  *                                       (郵便番号の取得、JANコードの編集)
  *  2009-04-03    1.2   Kazuo.Satomura   ＳＴ障害対応(T1_0294)
+ *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################

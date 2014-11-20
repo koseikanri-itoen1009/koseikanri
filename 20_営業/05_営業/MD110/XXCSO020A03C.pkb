@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO020A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO020A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -40,6 +40,7 @@ AS
  *  2009-02-20          Kazuo.Satomura   仕様変更対応
  *                                       ・顧客ステータス、顧客区分を定数に変更
  *  2009-04-21          Kazuo.Satomura   システムテスト障害対応(T1_0685)
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################

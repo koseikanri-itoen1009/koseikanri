@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE xxcso_ipro_common_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_ipro_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/09    1.0   N.Yabuki         êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

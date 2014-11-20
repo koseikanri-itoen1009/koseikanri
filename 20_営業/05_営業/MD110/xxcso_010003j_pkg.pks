@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE xxcso_010003j_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_010003j_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -38,6 +38,7 @@ AS
  *  2009/04/27    1.3   N.Yanagitaira    [ST障害T1_0708]入力項目チェック処理統一修正
  *                                                      chk_double_byte
  *                                                      chk_single_byte_kana
+ *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得

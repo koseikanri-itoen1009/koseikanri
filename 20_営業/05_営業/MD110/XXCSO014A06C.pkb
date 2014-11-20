@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO014A06C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO014A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -35,6 +35,7 @@ AS
  *  2009-03-17    1.1   M.Maruyama        実績振替の集計追加変更によりデータ取得VIEWを
  *                                        売上実績ビューから、営業員用売上実績VIEWへ修正
  *  2009-03-18    1.1   M.Maruyama        DEBUGLOGメッセージ修正
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

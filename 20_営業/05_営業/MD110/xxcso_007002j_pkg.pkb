@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_007002j_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_007002j_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-26    1.0   Kazuo.Satomura   新規作成
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################

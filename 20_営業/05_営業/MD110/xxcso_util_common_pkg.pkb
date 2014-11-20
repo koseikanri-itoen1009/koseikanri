@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_util_common_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_util_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -58,6 +58,7 @@ AS
  *  2009/02/23    1.0   T.Mori           chk_exe_report_visite_sales（訪問売上計画管理表出力判定関数）に
  *                                       メッセージを追加
  *  2009/04/16    1.1   K.Satomura       conv_multi_byte新規作成(T1_0172対応)
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
   -- ===============================

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY apps.xxcso_009002j_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_009002j_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -62,6 +62,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/08    1.0   H.Ogawa          êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

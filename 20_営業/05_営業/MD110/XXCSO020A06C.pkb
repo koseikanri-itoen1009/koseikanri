@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO020A06C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO020A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -44,6 +44,7 @@ AS
  *                                       更新区分NULLチェック追加
  *  2008-01-30    1.0   Maruyama.Mio     INパラメータファイルID変数名変更(記述ルール参考)
  *  2008-02-25    1.1   Maruyama.Mio     【障害対応028】有効期間重複チェック不具合対応
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 -- 

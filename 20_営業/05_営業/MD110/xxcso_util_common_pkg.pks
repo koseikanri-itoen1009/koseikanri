@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE xxcso_util_common_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_util_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -49,6 +49,7 @@ AS
  *                                       get_working_days（営業日数取得関数）を追加
  *  2009/02/02    1.0   K.Boku           chk_responsibility新規作成
  *  2009/04/16    1.1   K.Satomura       conv_multi_byte新規作成(T1_0172対応)
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
   /**********************************************************************************

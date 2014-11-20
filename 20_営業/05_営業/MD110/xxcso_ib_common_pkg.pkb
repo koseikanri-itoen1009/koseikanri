@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcso_ib_common_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_ib_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -24,6 +24,7 @@ AS
  *  2008/12/10    1.0   N.Yabuki         新規作成
  *  2009/01/16    1.1   N.Yabuki         物件マスタ追加属性値情報取得関数２を追加
  *  2009/01/29    1.2   kyo              物件マスタ追加属性値情報取得関数２の修正
+ *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
   -- ===============================

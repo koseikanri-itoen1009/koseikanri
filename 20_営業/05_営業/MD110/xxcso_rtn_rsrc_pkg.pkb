@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY apps.xxcso_rtn_rsrc_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_rtn_rsrc_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -29,6 +29,7 @@ AS
  *  2008/12/08    1.0   H.Ogawa          新規作成
  *  2008/12/24    1.0   M.maruyama       ヘッダ修正(Oracle版からSCS版へ)
  *  2009/02/24    1.1   H.Ogawa          APIからの例外処理部を修正
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

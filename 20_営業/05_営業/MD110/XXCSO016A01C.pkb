@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO016A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO016A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-11-05    1.0   Kazuyo.Hosoi     êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

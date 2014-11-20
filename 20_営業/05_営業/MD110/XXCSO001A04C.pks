@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCSO001A04C
+CREATE OR REPLACE PACKAGE APPS.XXCSO001A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -25,6 +25,7 @@ AS
  *  2009-01-27    1.0   Maruyama.Mio     単体テスト完了後内部レビュー結果反映
  *  2009-02-27    1.1   Maruyama.Mio     【障害対応036】エラー件数カウント不具合対応
  *  2009-02-27    1.1   Maruyama.Mio     【障害対応037】第6営業日過ぎエラーメッセージ不具合対応
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

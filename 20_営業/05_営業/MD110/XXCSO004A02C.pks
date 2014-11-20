@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCSO004A02C
+CREATE OR REPLACE PACKAGE APPS.XXCSO004A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -22,6 +22,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-17    1.0   kyo     êVãKçÏê¨
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897ëŒâû
  *
  *****************************************************************************************/
 --

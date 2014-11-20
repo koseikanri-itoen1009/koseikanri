@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO014A05C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO014A05C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -30,6 +30,7 @@ AS
  *  2008-11-12    1.0   shun.sou         新規作成
  *  2009-01-27    1.1   Kenji.Sai        (A-3)にselect_data_expt例外を追加
  *  2009-03-16    1.1   K.Boku           【障害番号064】リソースマスタチェックの有効期間修正
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

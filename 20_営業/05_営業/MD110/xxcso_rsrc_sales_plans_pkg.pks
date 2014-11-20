@@ -1,4 +1,4 @@
-create or replace PACKAGE xxcso_rsrc_sales_plans_pkg
+CREATE OR REPLACE PACKAGE APPS.xxcso_rsrc_sales_plans_pkg
 IS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -31,6 +31,7 @@ IS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/13    1.0   K.Boku           新規作成
+ *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
   -- 売上計画トランザクション初期化

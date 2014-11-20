@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY XXCSO015A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO015A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -41,6 +41,7 @@ AS
  *  2009-04-06    1.3   D.Abe            ‚r‚sáŠQ‘Î‰(T1_0306‘Î‰)
  *  2009-04-10    1.4   K.Satomura       ‚r‚sáŠQ‘Î‰(T1_0408,0492‘Î‰)
  *  2009-04-30    1.5   K.Satomura       ‚r‚sáŠQ‘Î‰(T1_0517‘Î‰)
+ *  2009-05-01    1.6   Tomoko.Mori      T1_0897‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################

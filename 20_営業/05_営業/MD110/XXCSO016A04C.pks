@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCSO016A04C
+CREATE OR REPLACE PACKAGE APPS.XXCSO016A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -24,6 +24,7 @@ AS
  *  2009-02-26    1.1   K.Sai            レビュー結果反映 
  *  2009-03-05    1.1   Mio.Maruyama     販売実績テーブル仕様変更による
  *                                       データ抽出条件変更対応
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --

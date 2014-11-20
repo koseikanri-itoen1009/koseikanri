@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY apps.xxcso_020001j_pkg
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_020001j_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -43,9 +43,10 @@ AS
  *  2009/04/06    1.2   N.Yanagitaira    [障害T1_0316]回送先レコード更新処理修正
  *  2009/04/09    1.3   K.Satomura       [障害T1_0424]承認完了日・決裁日設定値修正
  *  2009/04/17    1.4   N.Yanagitaira    [障害T1_0536]通知ワークフロー送信元設定値修正
- *  2009/04/27    1.3   N.Yanagitaira    [障害T1_0708]入力項目チェック処理統一修正
+ *  2009/04/27    1.5   N.Yanagitaira    [障害T1_0708]入力項目チェック処理統一修正
  *                                                    chk_double_byte
  *                                                    chk_single_byte_kana
+ *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
  *****************************************************************************************/
 --
   -- ===============================

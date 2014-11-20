@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY XXCSO019A06C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO019A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -36,6 +36,7 @@ AS
  *  2009-03-02    1.0   Mio.Maruyama     成功件数カウントアップエラー修正
  *  2009-03-03    1.1   Kazuyo.Hosoi     SVF起動API埋め込み
  *  2009-03-11    1.1   Kazuyo.Hosoi     【障害対応047】顧客区分、ステータス抽出条件変更
+ *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *
  *****************************************************************************************/
 --
