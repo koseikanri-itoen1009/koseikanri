@@ -3,13 +3,14 @@
  * Table Name      : xxcff_contract_lines_bk
  * Description     : リース契約明細ＢＫ
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2012/10/05    1.0   SCSK 谷口    初回作成
+ *  2013/07/05    1.1   SCSK 中村    E_本稼動_10871 消費税増税対応
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_contract_lines_bk (
      contract_line_id               NUMBER        NOT NULL
@@ -49,6 +50,9 @@ CREATE TABLE xxcff.xxcff_contract_lines_bk (
     ,info_sys_if_date               DATE
     ,first_installation_address     VARCHAR2(600)
     ,first_installation_place       VARCHAR2(50)
+-- E_本稼動_10871 ADD K.Nakamura START
+    ,tax_code                       VARCHAR2(4)
+-- E_本稼動_10871 ADD K.Nakamura END
     ,run_period_name                VARCHAR2(7)   NOT NULL
     ,run_line_num                   NUMBER(3)     NOT NULL
     ,created_by                     NUMBER(15)    NOT NULL
@@ -103,6 +107,9 @@ COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.vd_if_date                      
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.info_sys_if_date                          IS 'リース管理情報連携日';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_installation_address                IS '初回設置場所';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_installation_place                  IS '初回設置先';
+-- E_本稼動_10871 ADD K.Nakamura START
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.tax_code                                  IS '税金コード';
+-- E_本稼動_10871 ADD K.Nakamura END
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.run_period_name                           IS '実行会計期間';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.run_line_num                              IS '実行枝番';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.created_by                                IS '作成者';

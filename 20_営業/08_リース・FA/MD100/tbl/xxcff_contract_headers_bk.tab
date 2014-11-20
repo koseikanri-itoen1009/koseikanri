@@ -3,13 +3,14 @@
  * Table Name      : xxcff_contract_headers_bk
  * Description     : リース契約ヘッダＢＫ
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2012/10/05    1.0   SCSK 谷口    初回作成
+ *  2013/07/05    1.1   SCSK 中村    E_本稼動_10871 消費税増税対応
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_contract_headers_bk (
      contract_header_id             NUMBER        NOT NULL
@@ -30,7 +31,10 @@ CREATE TABLE xxcff.xxcff_contract_headers_bk (
     ,third_payment_date             NUMBER(2)     NOT NULL
     ,start_period_name              VARCHAR2(7)   NOT NULL
     ,lease_payment_flag             VARCHAR2(1)
-    ,tax_code                       VARCHAR2(4)   NOT NULL
+-- E_本稼動_10871 MOD K.Nakamura START
+--    ,tax_code                       VARCHAR2(4)   NOT NULL
+    ,tax_code                       VARCHAR2(4)
+-- E_本稼動_10871 MOD K.Nakamura END
     ,run_period_name                VARCHAR2(7)   NOT NULL
     ,run_line_num                   NUMBER(3)     NOT NULL
     ,created_by                     NUMBER(15)    NOT NULL

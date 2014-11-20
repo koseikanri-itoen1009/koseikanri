@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF016A35C(body)
  * Description      : リース契約メンテナンス
  * MD.050           : MD050_CFF_016_A35_リース契約メンテナンス
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2013/02/12    1.1   SCSK中野         「E_本稼動_09967」対応
  *  2013/02/27    1.2   SCSK中村         「E_本稼動_09967」対応 入力パラメータチェック追加
  *  2013/03/11    1.3   SCSK中村         「E_本稼動_09967」対応 3回目以降支払日をパラメータより削除（非表示）
+ *  2013/07/05    1.4   SCSK中村         「E_本稼動_10871」対応 消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -1975,6 +1976,9 @@ AS
        ,info_sys_if_date              -- リース管理情報連携日
        ,first_installation_address    -- 初回設置場所
        ,first_installation_place      -- 初回設置先
+-- Add 2013/07/05 Ver.1.4 Start
+       ,tax_code                      -- 税金コード
+-- Add 2013/07/05 Ver.1.4 End
        ,run_period_name               -- 実行会計期間
        ,run_line_num                  -- 実行枝番
        ,created_by                    -- 作成者
@@ -2025,6 +2029,9 @@ AS
          ,xcl.info_sys_if_date              -- リース管理情報連携日
          ,xcl.first_installation_address    -- 初回設置場所
          ,xcl.first_installation_place      -- 初回設置先
+-- Add 2013/07/05 Ver.1.4 Start
+         ,xcl.tax_code                      -- 税金コード
+-- Add 2013/07/05 Ver.1.4 End
          ,gv_period_name                    -- 実行会計期間
          ,ln_run_line_num                   -- 実行枝番
          ,xcl.created_by                    -- 作成者
@@ -2844,6 +2851,9 @@ AS
        ,info_sys_if_date              -- リース管理情報連携日
        ,first_installation_address    -- 初回設置場所
        ,first_installation_place      -- 初回設置先
+-- Add 2013/07/05 Ver.1.4 Start
+       ,tax_code                      -- 税金コード
+-- Add 2013/07/05 Ver.1.4 End
        ,accounting_date               -- 計上日
        ,accounting_if_flag            -- 会計ＩＦフラグ
        ,description                   -- 摘要
@@ -2897,6 +2907,9 @@ AS
          ,xcl.info_sys_if_date                  -- リース管理情報連携日
          ,xcl.first_installation_address        -- 初回設置場所
          ,xcl.first_installation_place          -- 初回設置先
+-- Add 2013/07/05 Ver.1.4 Start
+         ,xcl.tax_code                          -- 税金コード
+-- Add 2013/07/05 Ver.1.4 End
          ,gd_calendar_period_close_date         -- 計上日（リース台帳オープン期間のカレンダ終了日）
          ,cv_acct_if_flag_sent                  -- 会計ＩＦフラグ（2：送信済）
          ,NULL                                  -- 摘要
