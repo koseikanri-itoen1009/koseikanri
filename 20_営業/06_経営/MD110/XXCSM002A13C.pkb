@@ -2,10 +2,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCSM002A13C(spec)
+ * Package Name     : XXCSM002A13C(body)
  * Description      : 商品計画リスト(時系列_本数単位)出力
  * MD.050           : 商品計画リスト(時系列_本数単位)出力 MD050_CSM_002_A13
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -53,6 +53,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  *  2009/02/24    1.5   Kenji.Sai       [障害CT_054] 入金値引年計の不具合対応
  *  2009/02/25    1.6   T.Tsukino       [障害CT_062] CSVファイル商品群出力不具合対応
  *  2009/05/07    1.7   M.Ohtsuki       [障害T1_0858] 共通関数修正に伴うパラメータの追加
+ *  2009/05/27    1.8   M.Ohtsuki       [障害T1_1199] 商品データの年間計の不具合の対応
  *
  *****************************************************************************************/
 --
@@ -1534,7 +1535,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
     ln_y_bsa                NUMBER  := 0;               -- 年間_数量*原価の合計
     ln_y_rate               NUMBER  := 0;               -- 年間_掛率
     lb_loop_end             BOOLEAN := FALSE;           -- LOOP判断用
-    lv_month_no             VARCHAR2(10);               -- 月
+--//+DEL START 2009/05/27 T1_1199 M.Ohtsuki
+--    lv_month_no             VARCHAR2(10);               -- 月
+--//+DEL END   2009/05/27 T1_1199 M.Ohtsuki
 --
 -- ===============================
 -- ユーザｰローカル例外
@@ -1642,6 +1645,8 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
             -- ======================================================
             -- 売上が0の場合【スキップ処理】
             -- ======================================================
+--//+DEL START 2009/05/27 T1_1199 M.Ohtsuki
+/*
             IF (rec_item_data.sales = 0) THEN
                 -- 商品コード
                 lv_item_cd      := rec_item_data.item_id;
@@ -1650,6 +1655,8 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                 -- 次のデータに移動します
                 RAISE global_skip_expt;
             END IF;
+*/
+--//+DEL END   2009/05/27 T1_1199 M.Ohtsuki
 --
             IF (lb_loop_end = FALSE) THEN
                 lb_loop_end := TRUE;
@@ -1692,6 +1699,20 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
               WHERE
                       item_cd         = lv_item_cd;   -- 商品コード
 --
+--//+ADD START 2009/05/27 T1_1199 M.Ohtsuki
+              IF (rec_item_data.sales = 0) THEN
+                -- 商品コード
+                lv_item_cd      := rec_item_data.item_id;
+                -- 年間データ変数の初期化
+                ln_y_sales      := 0;
+                ln_y_amount     := 0;
+                ln_y_psa        := 0;
+                ln_y_bsa        := 0;
+                ln_y_margin     := 0;
+--
+                RAISE global_skip_expt;
+              END IF;
+--//+ADD END   2009/05/27 T1_1199 M.Ohtsuki
               -- ===================================
               -- 次の商品の場合、再設定
               -- ===================================
@@ -1706,6 +1727,13 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
               -- 年間_数量*原価
               ln_y_bsa        := rec_item_data.amount * rec_item_data.base_price;
             ELSE
+--//+ADD START 2009/05/27 T1_1199 M.Ohtsuki
+              IF (rec_item_data.sales = 0) THEN
+                  -- 商品コード
+                  lv_item_cd      := rec_item_data.item_id;
+                  RAISE global_skip_expt;
+              END IF;
+--//+ADD END   2009/05/27 T1_1199 M.Ohtsuki
                 -- ===================================
                 -- 【同一商品】年間累計を加算する
                 -- ===================================
