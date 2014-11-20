@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/01/09    1.0   T.Miyata         新規作成
  *  2009/02/16    1.1   SCS K.NAKAMURA   [COS_002] g,mgからkgへの単位換算の不具合対応
  *  2009/02/19    1.2   K.Atsushiba      get_msgのパッケージ名修正
+ *  2009/04/10    1.3   T.Kitajima       [T1_0381]出荷依頼情報の数量0データ除外
  *
  *****************************************************************************************/
 --
@@ -193,6 +194,9 @@ AS
   cv_data_class_5           CONSTANT  VARCHAR2(1)   := '';                   -- 例外４取得ＳＱＬ
   cv_data_class_6           CONSTANT  VARCHAR2(1)   := '';                   -- 例外５取得ＳＱＬ
 --
+--****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+  cn_ship_zero              CONSTANT  NUMBER        := 0;                    -- 出荷実績0
+--****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -687,6 +691,9 @@ AS
           AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
           AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
           AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+          AND  NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+--****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
 --MIYATA MODIFY
 --          AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
           AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
@@ -1117,6 +1124,9 @@ AS
       AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
       AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
       AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+      AND NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+--****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
       AND  xoha.deliver_from         =   xilv.segment1             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
       AND  xilv.date_from                            <= gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
       AND  TRUNC( NVL( xilv.date_to, gd_max_date ) ) >= gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 >= 業務日付
@@ -1223,6 +1233,9 @@ AS
       AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
       AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
       AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+      AND NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+--****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
       AND  xoha.deliver_from         =   xilv.segment1             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
       AND  xilv.date_from                             <=  gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
       AND  TRUNC( NVL( xilv.date_to, gd_max_date ) )  >=  gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 >= 業務日付

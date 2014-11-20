@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,7 +45,10 @@ AS
  *                                                 外税、内税(伝票課税)時の売上金額の計算方法修正
  *                                                 外税時の売上金額合計の計算方法修正
  *                                                 入出庫データの販売実績(納品数量)設定値に総本数を設定
- *  2009/04/14    1.10  N.Maeda          [T1_0532]ヘッダ消費税金額合計算出値の代入値修正
+ *  2009/04/14    1.10  N.Maeda          [T1_0532] ヘッダ消費税金額合計算出値の代入値修正
+ *  2009/04/14    1.11  N.Maeda          [T1_0537_0544_558]入出庫データの販売実績(基準数量)設定値に総本数を設定
+ *                                                 入出庫データ登録時の納品明細番号をシーケンス取得からヘッダ毎の附番へ変更
+ *                                                 百貨店HHT時の保管場所取得方法の変更
  *
  *****************************************************************************************/
 --
@@ -1501,6 +1504,7 @@ AS
     lv_key_data2                      VARCHAR2(500);                                             -- キーデータ2
     ln_actual_id                      NUMBER;                                                    -- ヘッダID
     ln_sales_exp_line_id              NUMBER;                                                    -- 明細ID
+    ln_invoice_line_num               NUMBER;                                                    -- 納品明細番号
     ln_line_no                        NUMBER :=  1;                                              -- 明細チェック済番号
 --
   BEGIN
@@ -1558,6 +1562,9 @@ AS
       lt_head_record_type         := gt_inv_trans_head( trans_head_no ).record_type;           -- レコード種別
       lt_head_inside_cust_code    := gt_inv_trans_head( trans_head_no ).inside_cust_code;      -- 入庫側顧客コード
       lt_head_inside_business_low_t := gt_inv_trans_head( trans_head_no ).inside_business_low_type; -- 入庫側業態区分
+--
+      --納品明細番号の初期化
+      ln_invoice_line_num := 0;
 --
       --================================
       --販売実績ヘッダID(シーケンス取得)
@@ -1690,6 +1697,9 @@ AS
 --
         EXIT WHEN(lt_head_invoice_no <> lt_invoice_no);
 --
+      --納品明細番号のカウント
+      ln_invoice_line_num := ln_invoice_line_num + 1;
+--
         -- ===================
         -- 登録用明細ID取得
         -- ===================
@@ -1802,11 +1812,11 @@ AS
         gt_line_sales_exp_line_id( gn_line_data_no )       := ln_sales_exp_line_id;    -- 販売実績明細ID
         gt_line_sales_exp_header_id( gn_line_data_no )     := ln_actual_id;            -- 販売実績ヘッダID
         gt_line_dlv_invoice_number( gn_line_data_no )      := lt_invoice_no;           -- 納品伝票番号
-        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_sales_exp_line_id;    -- 納品明細番号
+        gt_line_dlv_invoice_l_num( gn_line_data_no )       := ln_invoice_line_num;     -- 納品明細番号
         gt_line_sales_class( gn_line_data_no )             := cv_sales_class;          -- 売上区分
         gt_line_red_black_flag( gn_line_data_no )          := lt_red_black_flag;       -- 赤黒フラグ
         gt_line_item_code( gn_line_data_no )               := lt_item_code;            -- 品目コード
-        gt_line_standard_qty( gn_line_data_no )            := cv_standard_qty;         -- 基準数量
+        gt_line_standard_qty( gn_line_data_no )            := lt_total_quantity;       -- 基準数量
         gt_line_standard_uom_code( gn_line_data_no )       := lt_stand_unit;           -- 基準単位
         gt_line_standard_unit_price( gn_line_data_no )     := cv_standard_unit_price;  -- 基準単価
         gt_line_business_cost( gn_line_data_no )           := NVL ( lt_sales_cost , cn_tkn_zero );-- 営業原価
@@ -2440,13 +2450,14 @@ AS
 --
         --保管場所マスタデータ取得
         BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
+          SELECT msi.secondary_inventory_name           -- 保管場所名称
           INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4  = lt_keep_in_code;
---          AND    msi.attribute4 = lt_customer_number;
+          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                 mtl_parameters mp                      -- 組織パラメータ
+          WHERE  msi.organization_id=mp.organization_id
+          AND    mp.organization_code = gv_orga_code
+          AND    msi.attribute4       = lt_keep_in_code
+          AND    msi.attribute13      = lt_depart_location_type_code;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -3029,13 +3040,14 @@ AS
 --
           --保管場所マスタデータ取得
           BEGIN
-            SELECT msi.secondary_inventory_name     -- 保管場所コード
+            SELECT msi.secondary_inventory_name           -- 保管場所名称
             INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-            WHERE  msi.attribute7 = lt_base_code
-            AND    msi.attribute13 = lt_depart_location_type_code
-            AND    msi.attribute4  = lt_keep_in_code;
---            AND    msi.attribute4 = lt_customer_number;
+            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                   mtl_parameters mp                      -- 組織パラメータ
+            WHERE  msi.organization_id=mp.organization_id
+            AND    mp.organization_code = gv_orga_code
+            AND    msi.attribute4       = lt_keep_in_code
+            AND    msi.attribute13      = lt_depart_location_type_code;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力          
@@ -4213,13 +4225,14 @@ AS
 --
         --保管場所マスタデータ取得
         BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
+          SELECT msi.secondary_inventory_name           -- 保管場所名称
           INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4  = lt_keep_in_code;
---          AND    msi.attribute4 = lt_customer_number;
+          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                 mtl_parameters mp                      -- 組織パラメータ
+          WHERE  msi.organization_id=mp.organization_id
+          AND    mp.organization_code = gv_orga_code
+          AND    msi.attribute4       = lt_keep_in_code
+          AND    msi.attribute13      = lt_depart_location_type_code;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -4766,13 +4779,14 @@ AS
 --
           --保管場所マスタデータ取得
           BEGIN
-            SELECT msi.secondary_inventory_name     -- 保管場所コード
+            SELECT msi.secondary_inventory_name           -- 保管場所名称
             INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-            WHERE  msi.attribute7 = lt_base_code
-            AND    msi.attribute13 = lt_depart_location_type_code
-            AND    msi.attribute4  = lt_keep_in_code;
---            AND    msi.attribute4 = lt_customer_number;
+            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                   mtl_parameters mp                      -- 組織パラメータ
+            WHERE  msi.organization_id=mp.organization_id
+            AND    mp.organization_code = gv_orga_code
+            AND    msi.attribute4       = lt_keep_in_code
+            AND    msi.attribute13      = lt_depart_location_type_code;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力
@@ -5906,13 +5920,14 @@ AS
 --
         --保管場所マスタデータ取得
         BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
+          SELECT msi.secondary_inventory_name           -- 保管場所名称
           INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4  = lt_keep_in_code;
---          AND    msi.attribute4 = lt_customer_number;
+          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                 mtl_parameters mp                      -- 組織パラメータ
+          WHERE  msi.organization_id=mp.organization_id
+          AND    mp.organization_code = gv_orga_code
+          AND    msi.attribute4       = lt_keep_in_code
+          AND    msi.attribute13      = lt_depart_location_type_code;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -6459,13 +6474,14 @@ AS
 --
           --保管場所マスタデータ取得
           BEGIN
-            SELECT msi.secondary_inventory_name     -- 保管場所コード
+            SELECT msi.secondary_inventory_name           -- 保管場所名称
             INTO   lt_secondary_inventory_name
-            FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-            WHERE  msi.attribute7 = lt_base_code
-            AND    msi.attribute13 = lt_depart_location_type_code
-            AND    msi.attribute4  = lt_keep_in_code;
---            AND    msi.attribute4 = lt_customer_number;
+            FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                   mtl_parameters mp                      -- 組織パラメータ
+            WHERE  msi.organization_id=mp.organization_id
+            AND    mp.organization_code = gv_orga_code
+            AND    msi.attribute4       = lt_keep_in_code
+            AND    msi.attribute13      = lt_depart_location_type_code;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力

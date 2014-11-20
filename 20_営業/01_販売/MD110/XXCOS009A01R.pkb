@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/01/07    1.0   T.TYOU           新規作成
  *  2009/02/12    1.1   T.TYOU           [障害番号：064]保管場所の外部結合条件足りない
  *  2009/02/17    1.2   T.TYOU           get_msgのパッケージ名修正
+ *  2009/04/14    1.3   T.Kiriu          [T1_0470]顧客発注番号取得元修正
  *
  *****************************************************************************************/
 --
@@ -876,7 +877,10 @@ AS
         ,hp.party_name                         AS deliver_to_name            -- 顧客名称
         ,ooha.order_number                     AS order_number               -- 受注番号
         ,oola.line_number                      AS line_number                -- 明細番号
-        ,oola.cust_po_number                   AS party_order_number         -- 顧客発注番号
+-- 2009/04/14 Mod Start
+--        ,oola.cust_po_number                   AS party_order_number         -- 顧客発注番号
+        ,ooha.cust_po_number                   AS party_order_number         -- 顧客発注番号
+-- 2009/04/14 Mod End
         ,oola.schedule_ship_date               AS shipped_date               -- 出荷日
         ,oola.request_date                     AS dlv_date                   -- 納品日
         ,oola.ordered_item                     AS order_item_no              -- 受注品番号
