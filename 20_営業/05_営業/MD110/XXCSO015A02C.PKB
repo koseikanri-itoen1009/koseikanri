@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2011-06-23    1.29  K.Kiriu          E_本稼動_07712対応
  *  2011-07-01    1.30  K.Kiriu          E_本稼動_07712対応(対応変更分)
  *  2011-07-08    1.31  K.Kiriu          E_本稼動_07712対応(担当営業取得変更)
+ *  2012-09-28    1.32  K.Taniguchi      E_本稼動_09604対応(担当営業取得変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1070,55 +1071,78 @@ AS
     lv_log_rq_line_num         VARCHAR2(20);            -- ログ用発注依頼明細番号
     ln_num1                    NUMBER;                  -- 1回目のハイフンの位置
     ln_num2                    NUMBER;                  -- 2回目のハイフンの位置
-/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+/* 2012-09-28 K.Taniguchi E_本稼動_09604対応 Mod START */
+--/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
+--    -- *** ローカル・カーソル ***
+--    -- 拠点最上位従業員取得
+--    CURSOR
+--      cur_employee_number(
+--         iv_sale_base_code  VARCHAR2  -- 売上拠点
+--        ,id_target_date     DATE      -- 依頼日
+--      )
+--    IS
+--    SELECT papf.employee_number  AS employee_number   --従業員番号
+--    FROM   per_person_types          ppt              --従業員タイプ
+--          ,per_periods_of_service    ppos             --従業員サービス
+--          ,per_all_assignments_f     paaf             --アサイメント
+--          ,per_all_people_f          papf             --従業員
+--          ,jtf_rs_resource_extns     jrre             --リソース
+--          ,jtf_rs_group_members      jrgm             --グループメンバー
+--          ,jtf_rs_groups_b           jrgb             --リソースグループ
+--          ,jtf_rs_role_relations     jrrr             --役割
+--          ,jtf_rs_salesreps          jrs              --営業担当
+--    WHERE jrgb.attribute1              = iv_sale_base_code
+--    AND   jrgb.group_id                = jrgm.group_id
+--    AND   jrgm.delete_flag             = cv_no
+--    AND   jrgm.resource_id             = jrre.resource_id
+--    AND   jrre.category                = cv_category_employee
+--    AND   jrrr.role_resource_id        = jrgm.group_member_id
+--    AND   jrrr.role_resource_type      = cv_resource_group_number
+--    AND   jrrr.delete_flag             = cv_no
+--    AND   jrrr.start_date_active      <= id_target_date
+--    AND   NVL( jrrr.end_date_active, id_target_date ) >= id_target_date
+--    AND   jrre.source_id               = papf.person_id
+--    AND   papf.person_id               = paaf.person_id
+--    AND   paaf.period_of_service_id    = ppos.period_of_service_id
+--    AND   ppos.actual_termination_date IS NULL
+--    AND   papf.person_type_id          = ppt.person_type_id
+--    AND   id_target_date BETWEEN papf.effective_start_date
+--                             AND papf.effective_end_date
+--    AND   ppt.system_person_type       = cv_person_type
+--    AND   ppt.active_flag              = cv_yes
+--    AND   jrre.resource_id             = jrs.resource_id
+--    AND   jrs.org_id                   = iv_org_id
+--    AND    TRUNC( jrs.start_date_active ) <= id_target_date
+--    AND    TRUNC( NVL( jrs.end_date_active, id_target_date ) )
+--                                          >= id_target_date
+--    ORDER BY
+--          paaf.ass_attribute11   -- 職位順
+--         ,ppos.date_start        -- 入社日
+--         ,papf.employee_number   -- 従業員番号
+--    ;
+--
     -- *** ローカル・カーソル ***
     -- 拠点最上位従業員取得
     CURSOR
       cur_employee_number(
          iv_sale_base_code  VARCHAR2  -- 売上拠点
-        ,id_target_date     DATE      -- 依頼日
       )
     IS
-    SELECT papf.employee_number  AS employee_number   --従業員番号
-    FROM   per_person_types          ppt              --従業員タイプ
-          ,per_periods_of_service    ppos             --従業員サービス
-          ,per_all_assignments_f     paaf             --アサイメント
-          ,per_all_people_f          papf             --従業員
-          ,jtf_rs_resource_extns     jrre             --リソース
-          ,jtf_rs_group_members      jrgm             --グループメンバー
-          ,jtf_rs_groups_b           jrgb             --リソースグループ
-          ,jtf_rs_role_relations     jrrr             --役割
-          ,jtf_rs_salesreps          jrs              --営業担当
-    WHERE jrgb.attribute1              = iv_sale_base_code
-    AND   jrgb.group_id                = jrgm.group_id
-    AND   jrgm.delete_flag             = cv_no
-    AND   jrgm.resource_id             = jrre.resource_id
-    AND   jrre.category                = cv_category_employee
-    AND   jrrr.role_resource_id        = jrgm.group_member_id
-    AND   jrrr.role_resource_type      = cv_resource_group_number
-    AND   jrrr.delete_flag             = cv_no
-    AND   jrrr.start_date_active      <= id_target_date
-    AND   NVL( jrrr.end_date_active, id_target_date ) >= id_target_date
-    AND   jrre.source_id               = papf.person_id
-    AND   papf.person_id               = paaf.person_id
-    AND   paaf.period_of_service_id    = ppos.period_of_service_id
-    AND   ppos.actual_termination_date IS NULL
-    AND   papf.person_type_id          = ppt.person_type_id
-    AND   id_target_date BETWEEN papf.effective_start_date
-                             AND papf.effective_end_date
-    AND   ppt.system_person_type       = cv_person_type
-    AND   ppt.active_flag              = cv_yes
-    AND   jrre.resource_id             = jrs.resource_id
-    AND   jrs.org_id                   = iv_org_id
-    AND    TRUNC( jrs.start_date_active ) <= id_target_date
-    AND    TRUNC( NVL( jrs.end_date_active, id_target_date ) )
-                                          >= id_target_date
-    ORDER BY
-          paaf.ass_attribute11   -- 職位順
-         ,ppos.date_start        -- 入社日
-         ,papf.employee_number   -- 従業員番号
+      SELECT  papf.employee_number    AS employee_number        -- 従業員番号
+      FROM    per_all_assignments_f   paaf                      -- アサイメント
+             ,per_all_people_f        papf                      -- 従業員
+             ,per_periods_of_service  ppos                      -- 従業員サービス
+      WHERE   papf.attribute28             = iv_sale_base_code  -- 拠点コード
+      AND     paaf.person_id               = papf.person_id     -- 従業員ID
+      AND     paaf.period_of_service_id    = ppos.period_of_service_id  -- ｻｰﾋﾞｽ期間ID
+      AND     ppos.actual_termination_date IS NULL              -- 退職者でない
+      ORDER BY
+              paaf.ass_attribute11   -- 職位順
+             ,ppos.date_start        -- 入社日
+             ,papf.employee_number   -- 従業員番号
     ;
-/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
+--/* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
+/* 2012-09-28 K.Taniguchi E_本稼動_09604対応 Mod END */
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2955,30 +2979,44 @@ AS
 --/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod END */
 --    END;
 --/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
+/* 2012-09-28 K.Taniguchi E_本稼動_09604対応 Mod START */
+--    -- ================
+--    -- 担当営業員コード
+--    -- ================
+--    -- 設置先顧客の売上拠点で最上位従業員を既に取得している場合
+--    IF ( gt_higher_emp_tab.EXISTS( lv_reqst_base_code ) ) THEN
+----
+--      -- 取得済の最上位営業員を設定
+--      lt_empoyee_number := gt_higher_emp_tab( lv_reqst_base_code );
+----
+--    -- 未取得の場合、カーソルから取得
+--    ELSE
+----
+--      -- 最上位従業員取得
+--      OPEN  cur_employee_number (
+--        lv_reqst_base_code  -- 設置先顧客の売上拠点
+--       ,ld_reqst_date       -- 依頼日
+--      );
+--      FETCH cur_employee_number INTO lt_empoyee_number;
+--      CLOSE cur_employee_number;
+----
+--      -- コレクションに追加
+--      gt_higher_emp_tab( lv_reqst_base_code ) := lt_empoyee_number;
+----
+--    END IF;
+--
     -- ================
     -- 担当営業員コード
     -- ================
-    -- 設置先顧客の売上拠点で最上位従業員を既に取得している場合
-    IF ( gt_higher_emp_tab.EXISTS( lv_reqst_base_code ) ) THEN
 --
-      -- 取得済の最上位営業員を設定
-      lt_empoyee_number := gt_higher_emp_tab( lv_reqst_base_code );
---
-    -- 未取得の場合、カーソルから取得
-    ELSE
---
-      -- 最上位従業員取得
-      OPEN  cur_employee_number (
-        lv_reqst_base_code  -- 設置先顧客の売上拠点
-       ,ld_reqst_date       -- 依頼日
-      );
-      FETCH cur_employee_number INTO lt_empoyee_number;
-      CLOSE cur_employee_number;
---
-      -- コレクションに追加
-      gt_higher_emp_tab( lv_reqst_base_code ) := lt_empoyee_number;
---
-    END IF;
+    -- 設置先顧客の売上拠点の最上位従業員を担当営業員として取得
+    -- 最上位従業員取得
+    OPEN  cur_employee_number (
+      lv_reqst_base_code  -- 設置先顧客の売上拠点
+    );
+    FETCH cur_employee_number INTO lt_empoyee_number;
+    CLOSE cur_employee_number;
+/* 2012-09-28 K.Taniguchi E_本稼動_09604対応 Mod END */
 --
     -- 最上位担当者が取得できない場合
     IF ( lt_empoyee_number IS NULL ) THEN
