@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.18
+ * Version                : 11.5.10.2.19
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2012/01/10   11.5.10.2.16   障害「E_本稼動_08887」対応
  *  2012/03/27   11.5.10.2.17   障害「E_本稼動_09336」対応
  *  2013/09/19   11.5.10.2.18   障害「E_本稼動_10999」対応
+ *  2014/03/06   11.5.10.2.19   障害「E_本稼動_11634」対応
  *
  *****************************************************************************************/
 --
@@ -1034,18 +1035,20 @@ AS
                                                              AND    xrs.invoice_date BETWEEN rtb.start_date_active
                                                                                      AND NVL( rtb.end_date_active, TO_DATE('4712/12/31','YYYY/MM/DD') )
                                                              AND    rtt.term_id  = xrs.terms_id ) )
-        OR (  ( xrsl.slip_line_type IS NOT NULL )
-          AND ( xrsl.slip_line_type_name                <> ( SELECT amlat.name            AS name            -- 請求内容
-                                                             FROM   ar_memo_lines_all_tl  amlat
-                                                                  , ar_memo_lines_all_b   amlab
-                                                             WHERE  amlat.memo_line_id    = amlab.memo_line_id
-                                                             AND    amlat.org_id          = amlab.org_id
-                                                             AND    amlat.language        = USERENV('LANG')
-                                                             AND    xrs.invoice_date BETWEEN amlab.start_date
-                                                                                     AND     NVL( amlab.end_date, TO_DATE('4712/12/31','YYYY/MM/DD') )
-                                                             AND    amlab.org_id          = xrs.org_id
-                                                             AND    amlab.set_of_books_id = xrs.set_of_books_id
-                                                             AND    amlab.memo_line_id    = xrsl.slip_line_type ) ) )
+-- 2014/03/06 ver 11.5.10.2.19 DEL START
+--        OR (  ( xrsl.slip_line_type IS NOT NULL )
+--          AND ( xrsl.slip_line_type_name                <> ( SELECT amlat.name            AS name            -- 請求内容
+--                                                             FROM   ar_memo_lines_all_tl  amlat
+--                                                                  , ar_memo_lines_all_b   amlab
+--                                                             WHERE  amlat.memo_line_id    = amlab.memo_line_id
+--                                                             AND    amlat.org_id          = amlab.org_id
+--                                                             AND    amlat.language        = USERENV('LANG')
+--                                                             AND    xrs.invoice_date BETWEEN amlab.start_date
+--                                                                                     AND     NVL( amlab.end_date, TO_DATE('4712/12/31','YYYY/MM/DD') )
+--                                                             AND    amlab.org_id          = xrs.org_id
+--                                                             AND    amlab.set_of_books_id = xrs.set_of_books_id
+--                                                             AND    amlab.memo_line_id    = xrsl.slip_line_type ) ) )
+-- 2014/03/06 ver 11.5.10.2.19 DEL END
         OR ( xrsl.tax_code <> SUBSTRB( xrsl.tax_name, 1, LENGTHB(xrsl.tax_code) ) )                          -- 税区分名
         OR ( xrsl.segment1 <> SUBSTRB( xrsl.segment1_name, 1, LENGTHB(xrsl.segment1) ) )                     -- AFF 会社
         OR ( xrsl.segment2 <> SUBSTRB( xrsl.segment2_name, 1, LENGTHB(xrsl.segment2) ) )                     -- AFF 部門
