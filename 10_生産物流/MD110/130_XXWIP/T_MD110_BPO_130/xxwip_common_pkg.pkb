@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.16
+ * Version                : 1.17
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2008/11/14   1.14  Oracle 二瓶 大輔   統合障害#649対応(委託加工費更新関数)
  *  2008/11/17   1.15  Oracle 二瓶 大輔   統合障害#678対応(処理日付更新関数)
  *  2008/12/22   1.16  Oracle 二瓶 大輔   本番障害#743対応(ロット追加・更新関数)
+ *  2008/12/25   1.17  Oracle 二瓶 大輔   本番障害#851対応(手持在庫数量算出API(投入実績用))
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4337,41 +4338,43 @@ AS
 --
     ln_total_qty := xxcmn_common_pkg.get_stock_qty(in_whse_id, in_item_id, in_lot_id);
 --
-    -- **************************************************
-    -- ***  他の生産バッチで使用されている数量を取得  ***
-    -- **************************************************
---
-    BEGIN
-      SELECT NVL(SUM(itp.trans_qty), 0) total
-      INTO   ln_other_qty
-      FROM   ic_tran_pnd            itp
-            ,xxcmn_item_locations_v xilv
--- 2008/10/09 v1.13 D.Nihei MOD START
---      WHERE  itp.whse_code     = xilv.whse_code
-      WHERE  itp.location     = xilv.segment1
--- 2008/10/09 v1.13 D.Nihei MOD END
-      AND    itp.doc_id        <>in_batch_id
-      AND    itp.item_id       = in_item_id
--- 2008/10/09 v1.13 D.Nihei MOD START
---      AND    itp.lot_id        = in_lot_id
-      AND    itp.lot_id        = NVL(in_lot_id, 0)
-      AND    itp.doc_type      = 'PROD'
--- 2008/10/09 v1.13 D.Nihei MOD END
-      AND    itp.completed_ind = 0
-      AND    itp.reverse_id    IS NULL
-      AND    xilv.inventory_location_id = in_whse_id
--- 2008/06/25 D.Nihei ADD START
-      AND    itp.line_type    = gn_material
--- 2008/06/25 D.Nihei ADD END
--- 2008/09/10 D.Nihei ADD START
-      AND    itp.delete_mark  = 0
--- 2008/09/10 D.Nihei ADD END
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        ln_other_qty := 0 ;
-    END ;
-    ln_total_qty := ln_other_qty + ln_total_qty;
+-- 2008/12/25 D.Nihei DEL START 
+--    -- **************************************************
+--    -- ***  他の生産バッチで使用されている数量を取得  ***
+--    -- **************************************************
+----
+--    BEGIN
+--      SELECT NVL(SUM(itp.trans_qty), 0) total
+--      INTO   ln_other_qty
+--      FROM   ic_tran_pnd            itp
+--            ,xxcmn_item_locations_v xilv
+---- 2008/10/09 v1.13 D.Nihei MOD START
+----      WHERE  itp.whse_code     = xilv.whse_code
+--      WHERE  itp.location     = xilv.segment1
+---- 2008/10/09 v1.13 D.Nihei MOD END
+--      AND    itp.doc_id        <>in_batch_id
+--      AND    itp.item_id       = in_item_id
+---- 2008/10/09 v1.13 D.Nihei MOD START
+----      AND    itp.lot_id        = in_lot_id
+--      AND    itp.lot_id        = NVL(in_lot_id, 0)
+--      AND    itp.doc_type      = 'PROD'
+---- 2008/10/09 v1.13 D.Nihei MOD END
+--      AND    itp.completed_ind = 0
+--      AND    itp.reverse_id    IS NULL
+--      AND    xilv.inventory_location_id = in_whse_id
+---- 2008/06/25 D.Nihei ADD START
+--      AND    itp.line_type    = gn_material
+---- 2008/06/25 D.Nihei ADD END
+---- 2008/09/10 D.Nihei ADD START
+--      AND    itp.delete_mark  = 0
+---- 2008/09/10 D.Nihei ADD END
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        ln_other_qty := 0 ;
+--    END ;
+--    ln_total_qty := ln_other_qty + ln_total_qty;
+---- 2008/12/25 D.Nihei DEL END
 --
     RETURN ln_total_qty;
 --
