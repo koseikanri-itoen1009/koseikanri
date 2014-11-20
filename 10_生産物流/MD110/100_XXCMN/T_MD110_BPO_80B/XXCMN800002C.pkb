@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2008/04/24    1.1   Oracle 山根 一浩 変更要求No60対応
  *  2008/05/20    1.2   Oracle 丸下 博宣 OPM品目カテゴリ割当の修正
  *  2008/05/27    1.3   Oracle 丸下 博宣 内部変更要求No122対応
+ *  2008/06/23    1.4   Oracle 山根 一浩 ST事前検証不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2406,9 +2407,10 @@ END IF;
       INTO   ln_cnt
       FROM   cm_cmpt_dtl ccd,
              ic_item_mst_b iimb
-      WHERE  iimb.item_no = ir_masters_rec.item_code
-      AND    ccd.item_id  = iimb.item_id
-      AND    ROWNUM       = 1;
+      WHERE  iimb.item_no      = ir_masters_rec.item_code
+      AND    ccd.item_id       = iimb.item_id
+      AND    ccd.calendar_code = gv_item_cal                     -- 2008.06.23 Add
+      AND    ROWNUM            = 1;
 --
     -- 登録以外
     ELSE
@@ -2420,6 +2422,7 @@ END IF;
       AND    ccd.item_id          = iimb.item_id
       AND    iimb.inactive_ind    = gv_inactive_ind_on
       AND    ccd.cost_cmpntcls_id = lb_cmpnt_id
+      AND    ccd.calendar_code    = gv_item_cal                  -- 2008.06.23 Add
       AND    ROWNUM               = 1;
     END IF;
 --

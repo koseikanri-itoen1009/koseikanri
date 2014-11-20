@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.3
+ * Version          : 1.9
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -95,6 +95,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/05/26    1.6  Oracle 熊本 和郎 規約違反(varchar使用)対応
  *  2008/05/29    1.7  Oracle 熊本 和郎 結合テスト障害対応(販売計画のMD050.機能フローとロジックの不一致修正)
  *  2008/06/04    1.8  Oracle 熊本 和郎 システムテスト障害対応(販売計画の削除対象抽出条件からROWNUM=1削除)
+ *  2008/06/12    1.9  Oracle 大橋 孝郎 結合テスト障害対応(400_不具合ログ#115)
  *
  *****************************************************************************************/
 --
@@ -217,7 +218,7 @@ PACKAGE BODY XXINV100001C AS
   gv_msg_10a_041  CONSTANT VARCHAR2(15) := 'APP-XXINV-10099'; -- 数値チェックエラー
   gv_msg_10a_042  CONSTANT VARCHAR2(15) := 'APP-XXINV-10100'; -- 金額データありエラー
   gv_msg_10a_061  CONSTANT VARCHAR2(15) := 'APP-XXINV-10142'; -- 商品区分取得エラー
-
+--
   gv_msg_10a_059  CONSTANT VARCHAR2(15) := 'APP-XXINV-10143'; -- ケース入り数取得エラー
   gv_msg_10a_058  CONSTANT VARCHAR2(15) := 'APP-XXINV-10144'; -- 計画商品フォーキャスト名取得エラー
 --
@@ -8551,6 +8552,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                                                     ,gv_cons_api) -- 予測API
                                                    ,1
                                                    ,5000);
+--add start 1.9
+      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--add end 1.9
       RAISE global_api_expt;
     END IF;
 --
@@ -8750,6 +8754,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                                                     ,gv_cons_api) -- 予測API
                                                     ,1
                                                     ,5000);
+--add start 1.9
+      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--add end 1.9
       RAISE global_api_expt;
     END IF;
 --
@@ -8837,6 +8844,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     ln_quantity                 NUMBER;      -- 全数量
     lb_retcode                  BOOLEAN;
     ln_target_cnt               NUMBER := 0;
+--add start 1.9
+    ln_warning_count            NUMBER := 0;
+--add end 1.9
 --
     -- *** ローカル・カーソル ***
     CURSOR forecast_araigae_cur
@@ -8968,6 +8978,46 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       END IF;
     END IF;
 */
+--add start 1.9
+    -- 開始日付の比較
+    IF (TRUNC(in_if_data_tbl(in_if_data_cnt).start_date_active) <> -- インタフェース開始日付
+      TRUNC(gd_keikaku_start_date))                                -- 計画商品対象開始日付
+    THEN
+      -- メッセージセット
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
+                                                    ,gv_msg_10a_021) -- フォーキャスト日付更新ワーニング
+                                                    ,1
+                                                    ,5000);
+      -- 処理結果レポートに出力
+      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+      ln_warning_count := ln_warning_count + 1;
+--
+      -- 計画商品対象開始年月日取得を登録のためのデータセットにセット
+      t_forecast_interface_tab_ins(1).forecast_date := gd_keikaku_start_date;
+    ELSE
+      t_forecast_interface_tab_ins(1).forecast_date := 
+                                      in_if_data_tbl(in_if_data_cnt).start_date_active;
+    END IF;
+    -- 終了日付の比較
+    IF (TRUNC(in_if_data_tbl(in_if_data_cnt).end_date_active) <> -- インタフェース終了日付
+      TRUNC(gd_keikaku_end_date))                                -- 計画商品終了日
+    THEN
+      -- メッセージセット
+      lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv  -- 'XXINV'
+                                                    ,gv_msg_10a_021) -- フォーキャスト日付更新ワーニング
+                                                    ,1
+                                                    ,5000);
+      -- 処理結果レポートに出力
+      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+      ln_warning_count := ln_warning_count + 1;
+--
+      -- 計画商品対象終了年月日取得を登録のためのデータセットにセット
+      t_forecast_interface_tab_ins(1).forecast_end_date := gd_keikaku_end_date;
+    ELSE
+      t_forecast_interface_tab_ins(1).forecast_end_date := 
+                                      in_if_data_tbl(in_if_data_cnt).end_date_active;
+    END IF;
+--add end 1.9
 --
     -- 登録する数量を算出するために品目マスタからケース入数を抽出する
     -- 条件に主キーがあるためNO_DATA_FOUNDにはならない
@@ -9001,10 +9051,12 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     t_forecast_interface_tab_ins(1).organization_id       := gn_3f_organization_id;
     t_forecast_interface_tab_ins(1).inventory_item_id     := ln_inventory_item_id;
     t_forecast_interface_tab_ins(1).quantity              := ln_quantity;
-    t_forecast_interface_tab_ins(1).forecast_date         :=
-                                         in_if_data_tbl(in_if_data_cnt).start_date_active;
-    t_forecast_interface_tab_ins(1).forecast_end_date     :=
-                                         in_if_data_tbl(in_if_data_cnt).end_date_active;
+--del start 1.9
+--    t_forecast_interface_tab_ins(1).forecast_date         :=
+--                                         in_if_data_tbl(in_if_data_cnt).start_date_active;
+--    t_forecast_interface_tab_ins(1).forecast_end_date     :=
+--                                         in_if_data_tbl(in_if_data_cnt).end_date_active;
+--del end 1.9
     t_forecast_interface_tab_ins(1).attribute5            :=
                                          in_if_data_tbl(in_if_data_cnt).base_code;
     t_forecast_interface_tab_ins(1).attribute6            :=
@@ -9028,7 +9080,18 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                                                     ,gv_cons_api) -- 予測API
                                                     ,1
                                                     ,5000);
+--add start 1.9
+      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--add end 1.9
       RAISE global_api_expt;
+--add start 1.9
+    ELSE
+      -- 警告が発生した場合
+      IF (ln_warning_count > 0) THEN
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        ov_retcode := gv_status_warn;
+      END IF;
+--add end 1.9
     END IF;
 --
   EXCEPTION
@@ -9302,6 +9365,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                                                     ,gv_cons_api) -- 予測API
                                                     ,1
                                                     ,5000);
+--add start 1.9
+      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--add end 1.9
       RAISE global_api_expt;
     END IF;
 --
@@ -9578,6 +9644,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                                                     ,gv_cons_api) -- 予測API
                                                     ,1
                                                     ,5000);
+--add start 1.9
+      FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_ins(1).error_message);
+--add end 1.9
       RAISE global_api_expt;
     END IF;
 --
@@ -10336,6 +10405,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     ln_error_flg  NUMBER;    -- インタ－フェースデータエラーありフラグ(0:なし, 1:あり)
     ln_data_cnt2   NUMBER;    -- 抽出インターフェースデータの処理カウンタ
     lb_retcode                  BOOLEAN;
+--add start 1.9
+    ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
+--add end 1.9
 --
     -- *** ローカル・レコード ***
     lr_araigae_data                 araigae_tbl;
@@ -10438,6 +10510,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       -- 警告ならば処理は続行する。
       IF (lv_retcode = gv_status_error) THEN
         ln_error_flg := 1;
+--add start 1.9
+      ELSIF (lv_retcode = gv_status_warn) THEN
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
     END LOOP if_data_check_loop;
@@ -10580,6 +10656,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     -- 例外を発生させる
     IF (ln_error_flg = 1) THEN
       RAISE global_api_expt;
+--add start 1.9
+    ELSIF (ln_warn_flg = 1) THEN
+      RAISE warn_expt;
+--add end 1.9
     END IF;
 --
   EXCEPTION
@@ -10645,6 +10725,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     lv_err_msg2  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
     ln_data_cnt2   NUMBER;    -- 抽出インターフェースデータの処理カウンタ
     lb_retcode                  BOOLEAN;
+--add start 1.9
+    ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
+--add end 1.9
 --
     -- *** ローカル・レコード ***
     lt_if_data    forecast_tbl;
@@ -10742,6 +10825,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       -- 警告ならば処理は続行する。
       IF (lv_retcode = gv_status_error) THEN
         ln_error_flg := 1;
+--add start 1.9
+      ELSIF (lv_retcode = gv_status_warn) THEN
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
     END LOOP if_data_check_loop;
@@ -10778,13 +10865,16 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --
       <<del_loop>>
       FOR ln_data_cnt2 IN 1..gn_araigae_cnt LOOP
-
+--
       -- 開始日付の比較
       IF (TRUNC(lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active) <>
         TRUNC(lt_if_data(ln_data_cnt).start_date_active))
       THEN
         -- メッセージセット
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod start 1.9
+--        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
                                                       ,1
@@ -10792,6 +10882,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--add start 1.9
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
       -- 終了日付の比較
@@ -10799,7 +10892,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         TRUNC(lt_if_data(ln_data_cnt).end_date_active))
       THEN
         -- メッセージセット
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod start 1.9
+--        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
                                                       ,1
@@ -10807,6 +10903,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--add start 1.9
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
       -- 登録済みデータの削除のためのデータセット
@@ -10922,11 +11021,17 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     IF (ln_error_flg = 1) THEN
       lv_errmsg := lv_err_msg2;
       RAISE global_api_expt;
+--add start 1.9
+    ELSIF (ln_warn_flg = 1) THEN
+      RAISE warn_expt;
+--add end 1.9
     END IF;
 --
   EXCEPTION
     WHEN warn_expt THEN
-      ov_errmsg  := lv_errmsg;
+--del start 1.9
+--      ov_errmsg  := lv_errmsg;
+--del end 1.9
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
 --
@@ -10986,6 +11091,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     ln_error_flg  NUMBER;    -- インタ－フェースデータエラーありフラグ(0:なし, 1:あり)
     ln_data_cnt2   NUMBER;    -- 抽出インターフェースデータの処理カウンタ
     lb_retcode                  BOOLEAN;
+--add start 1.9
+    ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
+--add end 1.9
 --
     -- *** ローカル・レコード ***
     lr_araigae_data                 araigae_tbl;
@@ -11086,6 +11194,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       -- 警告ならば処理は続行する。
       IF (lv_retcode = gv_status_error) THEN
         ln_error_flg := 1;
+--add start 1.9
+      ELSIF (lv_retcode = gv_status_warn) THEN
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
     END LOOP if_data_check_loop;
@@ -11120,13 +11232,16 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
 --
       <<del_loop>>
       FOR ln_data_cnt2 IN 1..gn_araigae_cnt LOOP
-
+--
       -- 開始日付の比較
       IF (TRUNC(lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active) <>
         TRUNC(lt_if_data(ln_data_cnt).start_date_active))
       THEN
         -- メッセージセット
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod start 1.9
+--        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
                                                       ,1
@@ -11134,6 +11249,9 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--add start 1.9
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
       -- 終了日付の比較
@@ -11141,7 +11259,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         TRUNC(lt_if_data(ln_data_cnt).end_date_active))
       THEN
         -- メッセージセット
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod start 1.9
+--        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
                                                       ,1
@@ -11149,6 +11270,9 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--add start 1.9
+        ln_warn_flg := 1;
+--add end 1.9
       END IF;
 --
       -- 登録済みデータの削除のためのデータセット
@@ -11260,11 +11384,17 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
     -- 例外を発生させる
     IF (ln_error_flg = 1) THEN
       RAISE global_api_expt;
+--add start 1.9
+    ELSIF (ln_warn_flg = 1) THEN
+      RAISE warn_expt;
+--add end 1.9
     END IF;
 --
   EXCEPTION
     WHEN warn_expt THEN
-      ov_errmsg  := lv_errmsg;
+--del start 1.9
+--      ov_errmsg  := lv_errmsg;
+--del end 1.9
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
 --
@@ -11593,6 +11723,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       -- エラーならば中止
       IF (ov_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--add start 1.9
+      ELSIF (ov_retcode = gv_status_warn) THEN
+        RAISE warn_expt;
+--add end 1.9
       END IF;
     ELSIF (iv_forecast_designator = gv_cons_fc_type_seigen_a) THEN
       -- 出荷数制限A
@@ -11602,6 +11736,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       -- エラーならば中止
       IF (ov_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--add start 1.9
+      ELSIF (ov_retcode = gv_status_warn) THEN
+        RAISE warn_expt;
+--add end 1.9
       END IF;
     ELSIF (iv_forecast_designator = gv_cons_fc_type_seigen_b) THEN
       -- 出荷数制限B
@@ -11611,6 +11749,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       -- エラーならば中止
       IF (ov_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--add start 1.9
+      ELSIF (ov_retcode = gv_status_warn) THEN
+        RAISE warn_expt;
+--add end 1.9
       END IF;
     ELSIF (iv_forecast_designator = gv_cons_fc_type_hanbai) THEN
       -- 販売計画
@@ -11620,13 +11762,19 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       -- エラーならば中止
       IF (ov_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+--add start 1.9
+      ELSIF (ov_retcode = gv_status_warn) THEN
+        RAISE warn_expt;
+--add end 1.9
       END IF;
     END IF;
 --
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
     WHEN warn_expt THEN
-      ov_errmsg  := lv_errmsg;
+--del start 1.9
+--      ov_errmsg  := lv_errmsg;
+--del end 1.9
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_warn;
 --
