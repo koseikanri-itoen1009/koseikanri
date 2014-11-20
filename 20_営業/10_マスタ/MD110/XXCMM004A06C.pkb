@@ -27,6 +27,7 @@ AS
  *  2009/01/16    1.1   R.Takigawa       CSV形式データ出力エラーを削除
  *                                       品目共通固定値定義
  *  2009/04/08    1.2   H.Yoshikawa      障害No.T1_0184 対応
+ *  2009/05/29    1.3   H.Yoshikawa      障害No.T1_0317 対応
  *
  *****************************************************************************************/
 --
@@ -120,8 +121,10 @@ AS
   cv_sep_com            CONSTANT VARCHAR2(1)   := ',';          -- CSV形式データ区切り文字
   cv_csv_file           CONSTANT VARCHAR2(1)   := '0';          -- CSVファイル
   cv_output_log         CONSTANT VARCHAR2(3)   := 'LOG';
-  cv_item_code_from     CONSTANT VARCHAR2(7)   := '0000001';    -- 品名コード開始
-  cv_item_code_to       CONSTANT VARCHAR2(7)   := '3999999';    -- 品名コード終了
+-- Ver1.3  Del 2009/05/29  T1_0317対応  不要なため削除(登録したデータは出力可能)
+--  cv_item_code_from     CONSTANT VARCHAR2(7)   := '0000001';    -- 品名コード開始
+--  cv_item_code_to       CONSTANT VARCHAR2(7)   := '3999999';    -- 品名コード終了
+-- End1.3
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -490,7 +493,9 @@ AS
       AND       xoiv.item_status       >= cn_itm_status_pre_reg
 -- End
       AND       xoiv.item_id            = se.item_id(+)
-      AND       xoiv.item_no BETWEEN cv_item_code_from AND cv_item_code_to
+-- Ver1.3  Del 2009/05/29  T1_0317対応  不要なため削除(登録したデータは出力可能)
+--      AND       xoiv.item_no BETWEEN cv_item_code_from AND cv_item_code_to
+-- End1.3
       AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
       AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
       ORDER BY  se.seisakugun,
