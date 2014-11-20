@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -39,6 +39,9 @@ AS
  *                                       (1.3.1)システムテスト障害対応(仕入標準単価ヘッダ抽出条件追加)
  *                                       (1.3.2)結合テスト障害対応(ヘッダだけのページが出力される不具合の修正)
  *                                       (1.3.3)結合テスト障害対応(実質原価の算出方法変更)
+ *  2008/06/30    1.4   Kazuo Kumamoto   システムテスト障害対応
+ *                                       (1.4.1)ケース入り数が1件目しか出力されない不具合対応
+ *                                       (1.4.2)「**項目計**」が「項目計」と出力される不具合対応
  *
  *****************************************************************************************/
 --
@@ -154,6 +157,9 @@ AS
   gv_quant              NUMBER := 0 ;         -- 数量
   gv_quant_disp         NUMBER := 0 ;         -- 数量（表示用）
   gv_quant_dpt          NUMBER := 0 ;         -- 数量（部署計）
+--add start 1.4.1
+  gv_save_case_quant    NUMBER := 0;
+--add end 1.4.1
 --
   gb_get_flg            BOOLEAN := FALSE ;    -- データ取得判定フラグ
   gt_xml_data_table     XML_DATA ;            -- ＸＭＬデータタグ表
@@ -1408,6 +1414,9 @@ AS
       -- ====================================================
       -- 費目情報出力
       -- ====================================================
+--add start 1.4.1
+      gv_case_quant := gv_save_case_quant;
+--add end 1.4.1
       prc_create_xml_data_typ
         (
           iv_dept_code      => iv_dept_code
@@ -1497,7 +1506,10 @@ AS
     -- ==================================================
     -- 定  数  宣  言
     -- ==================================================
-    lc_s_dtl_sct_name VARCHAR2(10) := '項目計' ;
+--mod start 1.4.2
+--    lc_s_dtl_sct_name VARCHAR2(10) := '項目計' ;
+    lc_s_dtl_sct_name VARCHAR2(14) := '＊＊項目計＊＊' ;
+--mod end 1.4.2
 --
     -- ==================================================
     -- 変  数  宣  言
@@ -1512,7 +1524,10 @@ AS
     lr_amount_dif           rec_amount_data ;   -- 算出項目：原価差異合計
     lr_amount_rcv           rec_amount_data ;   -- 算出項目：仮受金合計
     lr_amount_dtl           rec_amount_data ;   -- 算出項目：項目計
-    lv_s_dtl_sct_name       VARCHAR2(10) ;
+--mod start 1.4.2
+--    lv_s_dtl_sct_name       VARCHAR2(10) ;
+    lv_s_dtl_sct_name       VARCHAR2(14) ;
+--mod end 1.4.2
 --add start 1.3.2
     lb_s_dtl                BOOLEAN; -- 取引先情報取得判定
     lb_item_info            BOOLEAN;
@@ -2147,6 +2162,9 @@ AS
       -- ====================================================
       IF ( gr_param.output_type IN( xxcmn820011c.program_id_01            -- 明細：部門別品目別
                                    ,xxcmn820011c.program_id_03 ) ) THEN   -- 明細：品目別
+--add start 1.4.1
+        gv_save_case_quant := lr_ref.case_quant ;
+--add end 1.4.1
         prc_create_xml_data_vnd_dtl
           (
             iv_dept_code      => iv_dept_code
@@ -2269,7 +2287,10 @@ AS
     -- ==================================================
     -- 定  数  宣  言
     -- ==================================================
-    lc_s_dtl_sct_name VARCHAR2(10) := '項目計' ;
+--mod start 1.4.2
+--    lc_s_dtl_sct_name VARCHAR2(10) := '項目計' ;
+    lc_s_dtl_sct_name VARCHAR2(14) := '＊＊項目計＊＊' ;
+--mod end 1.4.2
 --
     -- ==================================================
     -- 変  数  宣  言
@@ -2284,7 +2305,10 @@ AS
     lr_amount_dif           rec_amount_data ;   -- 算出項目：原価差異合計
     lr_amount_rcv           rec_amount_data ;   -- 算出項目：仮受金合計
     lr_amount_dtl           rec_amount_data ;   -- 算出項目：項目計
-    lv_s_dtl_sct_name       VARCHAR2(10) ;
+--mod start 1.4.2
+--    lv_s_dtl_sct_name       VARCHAR2(10) ;
+    lv_s_dtl_sct_name       VARCHAR2(14) ;
+--mod end 1.4.2
 --add start 1.3.2
     lb_s_dtl                BOOLEAN;
     lb_vnd_info             BOOLEAN;
