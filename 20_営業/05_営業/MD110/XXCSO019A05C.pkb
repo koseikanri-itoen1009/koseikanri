@@ -11751,7 +11751,7 @@ DO_ERROR('A-X-4-3');
                     ,xxcso_tmp_rep_vs_plan        xtrvp
              WHERE   xrvsp.request_id             = cn_request_id
                AND   xrvsp.line_kind              = cn_line_kind1
-               AND   NVL(xtrvr.group_number, ' ') = NVL(xtrvr.group_number, ' ')
+               AND   NVL(xtrvr.group_number, ' ') = NVL(xrvsp.group_number, ' ')
                AND   xtrvp.employee_number(+)     = xtrvr.employee_number
              GROUP BY  xrvsp.report_output_no
                       ,xrvsp.base_code
@@ -17241,7 +17241,7 @@ DO_ERROR('A-X-4-3');
              WHERE   xrvsp.request_id             = cn_request_id
                AND   xrvsp.line_kind              = cn_line_kind1
                AND   xabv.base_code(+)            = xrvsp.up_base_code
-               AND   xtrvp.base_code(+)           = xrvsp.base_code
+               AND   xtrvp.base_code(+)           = xabv.under_base_code
              GROUP BY  xrvsp.report_output_no
                       ,xrvsp.up_base_code
                       ,xrvsp.up_hub_name
@@ -20084,7 +20084,7 @@ DO_ERROR('A-X-4-3');
              WHERE   xrvsp.request_id             = cn_request_id
                AND   xrvsp.line_kind              = cn_line_kind1
                AND   xabv.base_code(+)            = xrvsp.up_base_code
-               AND   xtrvp.base_code(+)           = xrvsp.base_code
+               AND   xtrvp.base_code(+)           = xabv.under_base_code
              GROUP BY  xrvsp.report_output_no
                       ,xrvsp.up_base_code
                       ,xrvsp.up_hub_name
