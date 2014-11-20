@@ -25,7 +25,8 @@ Regist quote information page for sales.
 @see itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.java
 
 HISTORY
-2009/01/14  R.Oikawa        new-->
+2009/01/14  R.Oikawa        new
+2009/05/15  N.Yanagitaira   T1_0230-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso017002j.webui.XxcsoQuoteStoreRegistCO" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -165,10 +166,12 @@ HISTORY
                                                    <lovMappings>
                                                       <lovMap id="AccountNumberLovMap" lovItem="AccountNumber" resultTo="AccountNumber" criteriaFrom="AccountNumber"/>
                                                       <lovMap id="PartyNameLovMap" lovItem="PartyName" resultTo="PartyName"/>
+                                                      <lovMap id="CustAccountIdlovMap" lovItem="CustAccountId" resultTo="CustAccountId"/>
                                                    </lovMappings>
                                                 </oa:messageLovInput>
                                              </ui:contents>
                                           </oa:messageComponentLayout>
+                                          <oa:formValue id="CustAccountId" dataType="NUMBER"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="QuoteHeaderCfRN0502">
