@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.17
+ * Version          : 1.18
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -53,6 +53,7 @@ AS
  *  2009/01/09    1.15 Takao Ohashi     I_S_50対応(履歴全削除)
  *  2009/01/15    1.16 Natsuki Yoshida  I_S_50対応(帳票タイトル対応)、本番#972対応
  *  2009/01/16    1.17 Takao Ohashi     I_S_50対応(予実区分値修正)
+ *  2009/01/20    1.18 Akiyoshi Shiina  本番#263対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -234,6 +235,9 @@ AS
       ,rcv_lot_no          ic_lots_mst.lot_no%TYPE                       -- 受入ロットNO
       ,rcv_quant           NUMBER                                        -- 受入総数
       ,rcv_unt_price       ic_lots_mst.attribute7%TYPE                   -- 受入単価
+-- 2009/01/20 v1.18 ADD START
+      ,description         VARCHAR2(240)                                 -- 摘要
+-- 2009/01/20 v1.18 ADD END
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -579,6 +583,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,gbh. attribute6             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
@@ -835,6 +842,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,gbh. attribute6             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
@@ -1225,6 +1235,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,gbh. attribute6             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
@@ -1479,6 +1492,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,gbh. attribute6             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
@@ -1845,6 +1861,9 @@ AS
     lv_sql_body := lv_sql_body || '    ELSE ' ;
     lv_sql_body := lv_sql_body || '      ' || gc_cost_0 ;
     lv_sql_body := lv_sql_body || ' END                          AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,gbh. attribute6             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b      ximb' ;
@@ -2010,6 +2029,9 @@ AS
     lv_sql_body := lv_sql_body || '    ELSE ' ;
     lv_sql_body := lv_sql_body || '      ' || gc_cost_0 ;
     lv_sql_body := lv_sql_body || ' END                          AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,gbh. attribute6             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b      ximb' ;
@@ -2192,6 +2214,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no';
       lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant';
       lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+      lv_sql_body := lv_sql_body || ' ,ijm. attribute2             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ELSE
       IF (gr_param.reason_code IS NOT NULL)                 -- xrpm.new_div_inventに指定がある
         OR
@@ -2239,6 +2264,9 @@ AS
       lv_sql_body := lv_sql_body || '    ELSE ' ;
       lv_sql_body := lv_sql_body || '      ' || gc_cost_0 ;
       lv_sql_body := lv_sql_body || ' END                          AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+      lv_sql_body := lv_sql_body || ' ,ijm. attribute2             AS description' ;
+-- 2009/01/20 v1.18 ADD END
     END IF ;
     ---------------------------------------------------------------------------------------
     -- FROM句
@@ -2558,6 +2586,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no';
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant';
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
+-- 2009/01/20 v1.18 ADD START
+    lv_sql_body := lv_sql_body || ' ,xoha. shipping_instructions AS description' ;
+-- 2009/01/20 v1.18 ADD END
     ---------------------------------------------------------------------------------------
     -- FROM句
     lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
@@ -2916,6 +2947,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
             lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
             lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
+-- 2009/01/20 v1.18 ADD START
+            lt_prod_all_data(ln_prod_cnt). description        := lt_prod_rcv_data(ln_rcv_cnt).description ;
+-- 2009/01/20 v1.18 ADD END
 --
             -- カウンタインクリメント
             ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -2968,6 +3002,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
+-- 2009/01/20 v1.18 ADD START
+        lt_prod_all_data(ln_prod_cnt). description        := lt_prod_rcv_data(ln_rcv_cnt).description ;
+-- 2009/01/20 v1.18 ADD END
 --
         -- カウンタインクリメント
         ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3000,6 +3037,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := 0 ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := 0 ;
+-- 2009/01/20 v1.18 ADD START
+        lt_prod_all_data(ln_prod_cnt). description        := lt_prod_pay_data(i).description ;
+-- 2009/01/20 v1.18 ADD END
 --
         -- カウンタインクリメント
         ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3037,6 +3077,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
           lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
           lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
+-- 2009/01/20 v1.18 ADD START
+          lt_prod_all_data(ln_prod_cnt). description        := lt_prod_rcv_data(ln_rcv_cnt).description ;
+-- 2009/01/20 v1.18 ADD END
 --
           -- カウンタインクリメント
           ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3245,6 +3288,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
             lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
             lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
+-- 2009/01/20 v1.18 ADD START
+            lt_prod_all_data(ln_prod_cnt). description        := lt_prod_rcv_data(ln_rcv_cnt).description ;
+-- 2009/01/20 v1.18 ADD END
 --
             -- カウンタインクリメント
             ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3297,6 +3343,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
+-- 2009/01/20 v1.18 ADD START
+        lt_prod_all_data(ln_prod_cnt). description        := lt_prod_rcv_data(ln_rcv_cnt).description ;
+-- 2009/01/20 v1.18 ADD END
 --
         -- カウンタインクリメント
         ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3329,6 +3378,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := 0 ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := 0 ;
+-- 2009/01/20 v1.18 ADD START
+        lt_prod_all_data(ln_prod_cnt). description      := lt_prod_pay_data(i).description ;
+-- 2009/01/20 v1.18 ADD END
 --
         -- カウンタインクリメント
         ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3366,6 +3418,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
           lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
           lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
+-- 2009/01/20 v1.18 ADD START
+          lt_prod_all_data(ln_prod_cnt). description        := lt_prod_rcv_data(ln_rcv_cnt).description ;
+-- 2009/01/20 v1.18 ADD END
 --
           -- カウンタインクリメント
           ln_prod_cnt := ln_prod_cnt + 1 ;
@@ -3457,6 +3512,9 @@ AS
     ,rcv_lot_no          -- 受入ロットNO
     ,rcv_quant           -- 受入総数
     ,rcv_unt_price       -- 受入単価
+-- 2009/01/20 ADD START
+    ,description         -- 摘要
+-- 2009/01/20 ADD END
     BULK COLLECT INTO ot_out_data
     FROM
     XXINV_550C_TMP
@@ -3552,6 +3610,9 @@ AS
     ,rcv_lot_no          -- 受入ロットNO
     ,rcv_quant           -- 受入総数
     ,rcv_unt_price       -- 受入単価
+-- 2009/01/20 ADD START
+    ,description         -- 摘要
+-- 2009/01/20 ADD END
     BULK COLLECT INTO ot_out_data
     FROM
     XXINV_550C_SCHEDULE_TMP
@@ -4366,6 +4427,13 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
         gt_xml_data_table(gl_xml_idx).tag_value 
               := ROUND( it_out_data(i).rcv_unt_price * it_out_data(i).rcv_quant );
+-- 2009/01/20 v1.18 ADD START
+        -- 摘要
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'description' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).description;
+-- 2009/01/20 v1.18 ADD END
 --
         ------------------------------
         -- 明細Ｇ終了タグ
