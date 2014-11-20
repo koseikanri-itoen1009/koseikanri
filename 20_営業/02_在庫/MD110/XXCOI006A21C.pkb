@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/11/18    1.7   N.Abe            [E_T4_00199]ケース数、入数、本数がNULLの場合、0に変換
  *  2009/11/29    1.8   N.Abe            [E_本稼動_00134]棚卸しデータ取込順の採番方法修正
  *  2009/12/01    1.9   H.Sasaki         [E_本稼動_00245]データソート順の変更
+ *  2010/03/23    1.10  Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
  *
  *****************************************************************************************/
 --
@@ -120,6 +121,10 @@ AS
 -- == 2009/05/07 V1.4 Added START ==================================================================
   chk_item_exist_expt      EXCEPTION;     -- 品目存在チェックエラー
 -- == 2009/05/07 V1.4 Added END   ==================================================================
+-- == 2010/03/23 V1.10 Added START ===============================================================
+  get_aff_dept_date_expt   EXCEPTION;     -- AFF部門取得エラー
+  aff_dept_inactive_expt   EXCEPTION;     -- AFF部門無効エラー
+-- == 2010/03/23 V1.10 Added END   ===============================================================
 --
   PRAGMA EXCEPTION_INIT(lock_expt, -54);
 --
@@ -340,6 +345,9 @@ AS
     it_quality_goods_kbn  IN  xxcoi_in_inv_result_file_if.quality_goods_kbn%TYPE, -- 7.良品区分  
     iv_inventory_status   IN  VARCHAR2,                                           -- 8.棚卸ステータス
     in_organization_id    IN  NUMBER,                                             -- 9.在庫組織ID
+-- == 2010/03/23 V1.10 Added START ===============================================================
+    it_slip_no            IN  xxcoi_in_inv_result_file_if.slip_no%TYPE,           --12.伝票No
+-- == 2010/03/23 V1.10 Added END   ===============================================================
     ov_subinventory_code  OUT VARCHAR2,                                           --10.保管場所
     ov_fiscal_date        OUT VARCHAR2,                                           --11.在庫会計期間
     ov_errbuf             OUT VARCHAR2,     --   エラー・メッセージ               --# 固定 #
@@ -380,12 +388,20 @@ AS
 -- == 2009/05/07 V1.4 Added START ==================================================================
     cv_xxcoi1_msg_10227   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10227';  -- 品目存在チェックエラー
 -- == 2009/05/07 V1.4 Added END   ==================================================================
+-- == 2010/03/23 V1.10 Added START ===============================================================
+    cv_xxcoi1_msg_10417   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10417';  -- AFF部門取得エラー
+    cv_xxcoi1_msg_10418   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10418';  -- AFF部門無効エラー
+-- == 2010/03/23 V1.10 Added END   ===============================================================
     --トークン
     cv_tkn_item_code      CONSTANT VARCHAR2(9)  := 'ITEM_CODE';
     cv_tkn_ivt_type       CONSTANT VARCHAR2(8)  := 'IVT_TYPE';
     cv_tkn_whse_type      CONSTANT VARCHAR2(9)  := 'WHSE_TYPE';
     cv_tkn_qlty_type      CONSTANT VARCHAR2(9)  := 'QLTY_TYPE';
     cv_tkn_status         CONSTANT VARCHAR2(6)  := 'STATUS';
+-- == 2010/03/23 V1.10 Added START ===============================================================
+    cv_tkn_base_code      CONSTANT VARCHAR2(9)  := 'BASE_CODE';
+    cv_tkn_slip_num       CONSTANT VARCHAR2(17) := 'SLIP_NUM';
+-- == 2010/03/23 V1.10 Added END   ===============================================================
     --クイックコード
     cv_lk_inv_dv          CONSTANT VARCHAR2(20) := 'XXCOI1_INVENTORY_KBN';          --棚卸区分
     cv_lk_ware_dv         CONSTANT VARCHAR2(25) := 'XXCOI1_WAREHOUSE_DIVISION';     --倉庫区分
@@ -406,6 +422,9 @@ AS
     -- *** ローカル変数 ***
     lt_lookup_meaning     fnd_lookup_values.meaning%TYPE;           --区分値妥当性チェック用
     lt_inv_status         xxcoi_inv_control.inventory_status%TYPE;  --棚卸ステータス
+-- == 2010/03/23 V1.10 Added START ===============================================================
+    lt_start_date_active  fnd_flex_values.start_date_active%TYPE;   -- AFF部門適用開始日
+-- == 2010/03/23 V1.10 Added END   ===============================================================
 --
     --品目情報取得用
     lv_item_status        VARCHAR2(5);                              --品目ステータス
@@ -696,6 +715,28 @@ AS
       RAISE inventory_status_expt;
     END IF;
 --
+-- == 2010/03/23 V1.10 Added START ===============================================================
+    --======================================
+    --6.拠点の有効チェック
+    --======================================
+    xxcoi_common_pkg.get_subinv_aff_active_date(
+        in_organization_id     => in_organization_id                                -- 在庫組織ID
+      , iv_subinv_code         => lt_subinv_code                                    -- 保管場所コード
+      , od_start_date_active   => lt_start_date_active                              -- 適用開始日
+      , ov_errbuf              => lv_errbuf
+      , ov_retcode             => lv_retcode
+      , ov_errmsg              => lv_errmsg
+    );
+    -- 適用開始日の取得に失敗した場合
+    IF ( lv_retcode != cv_status_normal ) THEN
+      RAISE get_aff_dept_date_expt;
+    END IF;
+    -- 棚卸日がAFF部門適用開始日以前の場合
+    IF ( it_inventory_date < NVL( lt_start_date_active, it_inventory_date ) ) THEN
+      RAISE aff_dept_inactive_expt;
+    END IF;
+--
+-- == 2010/03/23 V1.10 Added END   ===============================================================
     --在庫会計期間を戻り値に設定
     ov_fiscal_date := REPLACE(get_period_date_rec.period_date, cv_slash);
     --保管場所を戻り値に設定
@@ -821,6 +862,34 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_retcode := cv_status_warn;                     --# 任意 #
 --
+-- == 2010/03/23 V1.10 Added START ===============================================================
+    --*** AFF部門取得エラー ***
+    WHEN get_aff_dept_date_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcoi_short_name
+                     , iv_name         => cv_xxcoi1_msg_10417
+                     , iv_token_name1  => cv_tkn_base_code
+                     , iv_token_value1 => lt_base_code
+                     , iv_token_name2  => cv_tkn_slip_num
+                     , iv_token_value2 => it_slip_no
+                   );
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := cv_status_warn;                     --# 任意 #
+--
+    --*** AFF部門無効エラー ***
+    WHEN aff_dept_inactive_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcoi_short_name
+                     , iv_name         => cv_xxcoi1_msg_10418
+                     , iv_token_name1  => cv_tkn_base_code
+                     , iv_token_value1 => lt_base_code
+                     , iv_token_name2  => cv_tkn_slip_num
+                     , iv_token_value2 => it_slip_no
+                   );
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := cv_status_warn;                     --# 任意 #
+--
+-- == 2010/03/23 V1.10 Added END   ===============================================================
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -2441,6 +2510,9 @@ AS
           ,it_quality_goods_kbn => get_inv_data_rec.quality_goods_kbn -- 7.良品区分
           ,iv_inventory_status  => get_inv_data_rec.inventory_status  -- 8.棚卸ステータス
           ,in_organization_id   => ln_organization_id                 -- 9.在庫組織ID
+-- == 2010/03/23 V1.10 Added START ===============================================================
+          ,it_slip_no           => get_inv_data_rec.slip_no           --12.伝票No
+-- == 2010/03/23 V1.10 Added END   ===============================================================
           ,ov_subinventory_code => lt_subinventory_code               --10.保管場所
           ,ov_fiscal_date       => lv_fiscal_date                     --11.在庫会計期間
           ,ov_errbuf            => lv_errbuf                          -- エラー・メッセージ           --# 固定 #

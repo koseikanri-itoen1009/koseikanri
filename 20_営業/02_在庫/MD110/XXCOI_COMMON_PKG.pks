@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -37,6 +37,9 @@ AS
  *  ADD_HHT_ERR_LIST_DATA      HHT情報取込エラー出力
  *  GET_DISPOSITION_ID_2       勘定科目別名ID取得2
  *  GET_ITEM_INFO2             品目情報取得(品目ID、単位コード)
+ *  GET_BASE_AFF_ACTIVE_DATE   拠点AFF部門適用開始日取得
+ *  GET_SUBINV_AFF_ACTIVE_DATE 保管場所AFF部門適用開始日取得
+ *  CHK_AFF_ACTIVE             AFF部門チェック
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -44,6 +47,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/23    1.0   T.Nishikawa      新規作成
  *  2009/03/24    1.1   S.Kayahara       最終行に/追加
+ *  2010/03/23    1.2   Y.Goto           [E_本稼動_01943]AFF部門適用開始日取得を追加
+ *  2010/03/29    1.3   Y.Goto           [E_本稼動_01943]AFF部門チェックを追加
  *
  *****************************************************************************************/
 --
@@ -409,5 +414,45 @@ AS
    ,in_organization_id        IN NUMBER     -- 3.在庫組織ID
   ) RETURN NUMBER;                          -- 勘定科目別名ID
 --
+-- == 2010/03/23 V1.2 Added START ===============================================================
+/************************************************************************
+ * Function Name   : GET_BASE_AFF_ACTIVE_DATE
+ * Description     : 拠点コードからAFF部門の適用開始日を取得する。
+ ************************************************************************/
+  PROCEDURE get_base_aff_active_date(
+    iv_base_code             IN  VARCHAR2   -- 拠点コード
+   ,od_start_date_active     OUT DATE       -- 適用開始日
+   ,ov_errbuf                OUT VARCHAR2   -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2   -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2   -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Function Name   : GET_SUBINV_AFF_ACTIVE_DATE
+ * Description     : 保管場所コードからAFF部門の適用開始日を取得する。
+ ************************************************************************/
+  PROCEDURE get_subinv_aff_active_date(
+    in_organization_id       IN  NUMBER     -- 在庫組織ID
+   ,iv_subinv_code           IN  VARCHAR2   -- 保管場所コード
+   ,od_start_date_active     OUT DATE       -- 適用開始日
+   ,ov_errbuf                OUT VARCHAR2   -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2   -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2   -- ユーザー・エラーメッセージ
+  );
+--
+-- == 2010/03/23 V1.2 Added END   ===============================================================
+-- == 2010/03/29 V1.3 Added START ===============================================================
+/************************************************************************
+ * Function Name   : CHK_AFF_ACTIVE
+ * Description     : AFF部門の使用可能チェックを行います。
+ ************************************************************************/
+  FUNCTION chk_aff_active(
+    in_organization_id       IN  NUMBER     -- 在庫組織ID
+   ,iv_base_code             IN  VARCHAR2   -- 拠点コード
+   ,iv_subinv_code           IN  VARCHAR2   -- 保管場所コード
+   ,id_target_date           IN  DATE       -- 対象日
+  ) RETURN VARCHAR2;                        -- チェック結果
+--
+-- == 2010/03/29 V1.3 Added END   ===============================================================
 END XXCOI_COMMON_PKG;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  del_detail_data        旧明細削除処理(A-21)
  *  upd_old_data           旧情報出庫数量初期化処理(A-22)
  *  upd_no_order_data      受注非存在情報数量初期化処理(A-23)
+ *  chk_aff_dept_active    拠点有効チェック(A-24)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -64,6 +65,7 @@ AS
  *  2010/01/06    1.16  H.Sasaki         [E_本稼動_00908]既存一時表データの修正方法変更
  *  2010/01/13    1.17  H.Sasaki         [E_本稼動_00837]エラーメッセージ修正
  *  2010/02/15    1.18  H.Sasaki         [E_本稼動_01567]倉庫コード違いの入庫情報編集内容を修正
+ *  2010/03/23    1.19  Y.Goto           [E_本稼動_01943]A-24.拠点有効チェックを追加
  *
  *****************************************************************************************/
 --
@@ -135,6 +137,10 @@ AS
 -- == 2009/10/26 V1.9 Modified START ===============================================================
   main_store_expt           EXCEPTION;                                -- メイン倉庫区分重複エラー
 -- == 2009/10/26 V1.9 Modified END   ===============================================================
+-- == 2010/03/23 V1.19 Added START   =============================================================
+  get_aff_dept_date_expt    EXCEPTION;                                -- AFF部門取得エラー
+  aff_dept_inactive_expt    EXCEPTION;                                -- AFF部門無効エラー
+-- == 2010/03/23 V1.19 Added END   ===============================================================
 --
   PRAGMA EXCEPTION_INIT(lock_expt, -54);
 --
@@ -172,6 +178,9 @@ AS
 -- == 2009/10/26 V1.9 Modified START ===============================================================
   cv_token_10379   CONSTANT VARCHAR2(30)  := 'BASE_CODE_TOK';
 -- == 2009/10/26 V1.9 Modified END   ===============================================================
+-- == 2010/03/23 V1.19 Added START   =============================================================
+  cv_tkn_slip_num  CONSTANT VARCHAR2(30)  := 'SLIP_NUM';
+-- == 2010/03/23 V1.19 Added END   ===============================================================
 --
   -- 初期処理出力
   cv_prf_org_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
@@ -195,6 +204,10 @@ AS
 -- == 2009/10/26 V1.9 Modified START ===============================================================
   cv_msg_code_10379           CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10379'; -- メイン倉庫区分重複エラーメッセージ
 -- == 2009/10/26 V1.9 Modified END   ===============================================================
+-- == 2010/03/23 V1.19 Added START   =============================================================
+  cv_get_aff_dept_date_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10417'; -- AFF部門取得エラー
+  cv_aff_dept_inactive_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10418'; -- AFF部門無効エラー
+-- == 2010/03/23 V1.19 Added END   ===============================================================
 --
   -- 更新時出力
   cv_lock_expt_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10029'; -- ロックエラーメッセージ(入庫情報一時表)
@@ -4352,6 +4365,129 @@ AS
 --
   END chk_period_status;
 --
+-- == 2010/03/23 V1.19 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : chk_aff_dept_active（ループ部）
+   * Description      : 拠点有効チェック(A-24)
+   ***********************************************************************************/
+  PROCEDURE chk_aff_dept_active(
+      in_slip_cnt   IN  NUMBER        --   1.ループカウンタ
+    , ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg     OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_aff_dept_active';      -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_start_date_active  fnd_flex_values.start_date_active%TYPE;    -- AFF部門適用開始日
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- ===============================
+    -- 共通関数を使用しAFF部門適用開始日を取得
+    -- ===============================
+    xxcoi_common_pkg.get_base_aff_active_date(
+        iv_base_code          => g_summary_tab ( in_slip_cnt ) .base_code   -- 1.拠点コード
+      , od_start_date_active  => lt_start_date_active                       -- 2.適用開始日
+      , ov_errbuf             => lv_errbuf
+      , ov_retcode            => lv_retcode
+      , ov_errmsg             => lv_errmsg
+    );
+    -- 適用開始日の取得に失敗した場合
+    IF ( lv_retcode != cv_status_normal ) THEN
+      RAISE get_aff_dept_date_expt;
+    END IF;
+    -- 棚卸日がAFF部門適用開始日以前の場合
+    IF ( g_summary_tab ( in_slip_cnt ) .slip_date < NVL( lt_start_date_active
+                                                       , g_summary_tab ( in_slip_cnt ) .slip_date ) )
+    THEN
+      RAISE aff_dept_inactive_expt;
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    WHEN get_aff_dept_date_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                     , iv_name         => cv_get_aff_dept_date_msg
+                     , iv_token_name1  => cv_tkn_base_code
+                     , iv_token_value1 => g_summary_tab ( in_slip_cnt ) .base_code
+                     , iv_token_name2  => cv_tkn_slip_num
+                     , iv_token_value2 => g_summary_tab ( in_slip_cnt ) .req_move_no
+                   );
+      lv_errbuf := lv_errmsg;
+      ov_errmsg := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+    WHEN aff_dept_inactive_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                     , iv_name         => cv_aff_dept_inactive_msg
+                     , iv_token_name1  => cv_tkn_base_code
+                     , iv_token_value1 => g_summary_tab ( in_slip_cnt ) .base_code
+                     , iv_token_name2  => cv_tkn_slip_num
+                     , iv_token_value2 => g_summary_tab ( in_slip_cnt ) .req_move_no
+                   );
+      lv_errbuf := lv_errmsg;
+      ov_errmsg := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_aff_dept_active;
+--
+-- == 2010/03/23 V1.19 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -4551,6 +4687,26 @@ AS
           END IF;
         END IF;
 --
+-- == 2010/03/23 V1.19 Added START ===============================================================
+    -- ===============================
+    -- A-24.拠点有効チェック
+    -- ===============================
+        IF ( lb_slip_chk_status = TRUE ) THEN
+          chk_aff_dept_active(
+              in_slip_cnt => gn_slip_cnt                              -- 1.ループカウンタ
+            , ov_errbuf   => lv_errbuf                                -- エラー・メッセージ
+            , ov_retcode  => lv_retcode                               -- リターン・コード
+            , ov_errmsg   => lv_errmsg                                -- ユーザー・エラー・メッセージ
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            gn_warn_cnt := gn_warn_cnt + 1;
+            lb_slip_chk_status := FALSE;
+          END IF;
+        END IF;
+--
+-- == 2010/03/23 V1.19 Added END   ===============================================================
 -- *************************************************************************************************
 --  サマリ情報の作成(START)
 -- *************************************************************************************************

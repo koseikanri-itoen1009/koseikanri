@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.8
+ * Version          : 1.10
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -37,6 +37,9 @@ AS
  *  ADD_HHT_ERR_LIST_DATA      HHT情報取込エラー出力
  *  GET_DISPOSITION_ID_2       勘定科目別名ID取得2
  *  GET_ITEM_INFO2             品目情報取得(品目ID、単位コード)
+ *  GET_BASE_AFF_ACTIVE_DATE   拠点AFF部門適用開始日取得
+ *  GET_SUBINV_AFF_ACTIVE_DATE 保管場所AFF部門適用開始日取得
+ *  CHK_AFF_ACTIVE             AFF部門チェック
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -52,6 +55,8 @@ AS
  *  2009/05/18    1.6   T.Nakamura       [T1_1044]HHT倉庫保管場所コードの取得条件変更
  *  2009/06/03    1.7   H.Sasaki         [T1_1287][T1_1288]アサイメントの有効日を条件に追加
  *  2009/09/30    1.8   N.Abe            [E_T3_00616]アサインメントの有効日を条件に追加
+ *  2010/03/23    1.9   Y.Goto           [E_本稼動_01943]AFF部門適用開始日取得を追加
+ *  2010/03/29    1.10  Y.Goto           [E_本稼動_01943]AFF部門チェックを追加
  *
  *****************************************************************************************/
 --
@@ -3239,5 +3244,179 @@ AS
 --
 --###########################   END   ##############################
 --
+-- == 2010/03/23 V1.9 Added START ===============================================================
+/************************************************************************
+ * Procedure Name  : GET_BASE_AFF_ACTIVE_DATE
+ * Description     : 拠点コードからAFF部門の適用開始日を取得する。
+ ************************************************************************/
+  PROCEDURE get_base_aff_active_date(
+    iv_base_code             IN  VARCHAR2   -- 拠点コード
+   ,od_start_date_active     OUT DATE       -- 適用開始日
+   ,ov_errbuf                OUT VARCHAR2   -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2   -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2   -- ユーザー・エラーメッセージ
+  )
+  IS
+    cv_prg_name CONSTANT VARCHAR2(99) := 'get_base_aff_active_date';
+  BEGIN
+    IF (iv_base_code IS NULL) THEN
+      ov_retcode := cv_status_error;    -- 異常:2
+    ELSE
+      ov_retcode := cv_status_normal;   -- 正常:0
+      -- ====================================================
+      -- 適用開始日取得
+      -- ====================================================
+      SELECT ffv.start_date_active AS start_date_active      -- 適用開始日
+      INTO   od_start_date_active
+      FROM   fnd_flex_value_sets           ffvs              -- キーフレックス（セット）
+            ,fnd_flex_values               ffv               -- キーフレックス（値）
+      WHERE  ffvs.flex_value_set_id    = ffv.flex_value_set_id
+      AND    ffvs.flex_value_set_name  = 'XX03_DEPARTMENT'
+      AND    ffv.enabled_flag          = 'Y'
+      AND    ffv.flex_value            = iv_base_code
+      ;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+  END get_base_aff_active_date;
+--
+/************************************************************************
+ * Procedure Name  : GET_SUBINV_AFF_ACTIVE_DATE
+ * Description     : 保管場所コードからAFF部門の適用開始日を取得する。
+ ************************************************************************/
+  PROCEDURE get_subinv_aff_active_date(
+    in_organization_id       IN  NUMBER     -- 在庫組織ID
+   ,iv_subinv_code           IN  VARCHAR2   -- 保管場所コード
+   ,od_start_date_active     OUT DATE       -- 適用開始日
+   ,ov_errbuf                OUT VARCHAR2   -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2   -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2   -- ユーザー・エラーメッセージ
+  )
+  IS
+    cv_prg_name CONSTANT VARCHAR2(99) := 'get_subinv_aff_active_date';
+  BEGIN
+    IF (in_organization_id IS NULL) OR (iv_subinv_code IS NULL) THEN
+      ov_retcode := cv_status_error;    -- 異常:2
+    ELSE
+      ov_retcode := cv_status_normal;   -- 正常:0
+      -- ====================================================
+      -- 適用開始日取得
+      -- ====================================================
+      SELECT ffv.start_date_active AS start_date_active      -- 適用開始日
+      INTO   od_start_date_active
+      FROM   mtl_secondary_inventories     msi               -- 保管場所マスタ
+            ,fnd_flex_value_sets           ffvs              -- キーフレックス（セット）
+            ,fnd_flex_values               ffv               -- キーフレックス（値）
+      WHERE  ffvs.flex_value_set_id       = ffv.flex_value_set_id
+      AND    ffvs.flex_value_set_name     = 'XX03_DEPARTMENT'
+      AND    ffv.enabled_flag             = 'Y'
+      AND    ffv.flex_value               = msi.attribute7
+      AND    msi.organization_id          = in_organization_id
+      AND    msi.secondary_inventory_name = iv_subinv_code
+      ;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+  END get_subinv_aff_active_date;
+--
+-- == 2010/03/23 V1.9 Added END   ===============================================================
+-- == 2010/03/29 V1.10 Added START ===============================================================
+/************************************************************************
+ * Function Name   : CHK_AFF_ACTIVE
+ * Description     : AFF部門の使用可能チェックを行います。
+ ************************************************************************/
+  FUNCTION chk_aff_active(
+      in_organization_id      IN  NUMBER      -- 在庫組織ID
+    , iv_base_code            IN  VARCHAR2    -- 拠点コード
+    , iv_subinv_code          IN  VARCHAR2    -- 保管場所コード
+    , id_target_date          IN  DATE        -- 対象日
+  ) RETURN VARCHAR2                           -- チェック結果
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'chk_aff_active'; -- プログラム名
+    cv_y         CONSTANT VARCHAR2(1)  := 'Y';               -- 使用可能
+    cv_n         CONSTANT VARCHAR2(1)  := 'N';               -- 使用不可
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ld_start_date_active      fnd_flex_values.start_date_active%TYPE; -- 適用開始日
+--
+  BEGIN
+--
+    -- ====================================================
+    -- AFF部門取得
+    -- ====================================================
+    IF (iv_base_code IS NOT NULL) THEN
+      -- 拠点コードより使用可不可を確認
+      SELECT  ffv.start_date_active         start_date_active --  適応開始日
+      INTO    ld_start_date_active
+      FROM    fnd_flex_value_sets           ffvs              --  キーフレックス（セット）
+            , fnd_flex_values               ffv               --  キーフレックス（値）
+      WHERE   ffvs.flex_value_set_id      =   ffv.flex_value_set_id
+      AND     ffvs.flex_value_set_name    =   'XX03_DEPARTMENT'
+      AND     ffv.enabled_flag            =   'Y'
+      AND     ffv.flex_value              =   iv_base_code
+      ;
+      --
+      IF  (ld_start_date_active IS NULL) THEN
+        -- 適応開始日NULLの場合、使用可能
+        RETURN  cv_y;
+      ELSIF (ld_start_date_active   <=  id_target_date) THEN
+        -- 対象日が適応開始日以降の場合、使用可能
+        RETURN  cv_y;
+      ELSE
+        -- 対象日が適応開始日より前の場合、使用不可
+        RETURN  cv_n;
+      END IF;
+      --
+    ELSIF (iv_subinv_code IS NOT NULL) THEN
+      -- 保管場所コードより使用可不可を確認
+      SELECT  ffv.start_date_active AS start_date_active      -- 適用開始日
+      INTO    ld_start_date_active
+      FROM    mtl_secondary_inventories     msi               -- 保管場所マスタ
+            , fnd_flex_value_sets           ffvs              -- キーフレックス（セット）
+            , fnd_flex_values               ffv               -- キーフレックス（値）
+      WHERE   ffvs.flex_value_set_id        =   ffv.flex_value_set_id
+      AND     ffvs.flex_value_set_name      =   'XX03_DEPARTMENT'
+      AND     ffv.enabled_flag              =   'Y'
+      AND     ffv.flex_value                =   msi.attribute7
+      AND     msi.organization_id           =   in_organization_id
+      AND     msi.secondary_inventory_name  =   iv_subinv_code
+      ;
+      --
+      IF  (ld_start_date_active IS NULL) THEN
+        -- 適応開始日NULLの場合、使用可能
+        RETURN  cv_y;
+      ELSIF (ld_start_date_active   <=  id_target_date) THEN
+        -- 対象日が適応開始日以降の場合、使用可能
+        RETURN  cv_y;
+      ELSE
+        -- 対象日が適応開始日より前の場合、使用不可
+        RETURN  cv_n;
+      END IF;
+      --
+    ELSE
+      -- 拠点、保管場所がともにNULLの場合、使用不可
+      RETURN cv_n;
+      --
+    END IF;
+
+--
+  EXCEPTION
+    -- NOTFOUND, TOO_MANY_ROWS等は使用不可
+    WHEN OTHERS THEN
+      RETURN cv_n;
+--
+  END chk_aff_active;
+--
+-- == 2010/03/29 V1.10 Added END   ===============================================================
 END XXCOI_COMMON_PKG;
 /
