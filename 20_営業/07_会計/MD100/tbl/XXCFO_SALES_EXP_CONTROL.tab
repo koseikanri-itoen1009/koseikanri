@@ -1,0 +1,54 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCFO_SALES_EXP_CONTROL
+ * Description : 販売実績管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/09/05    1.0   SCSK T.Osawa     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCFO.XXCFO_SALES_EXP_CONTROL (
+     business_date                  DATE          NOT NULL
+    ,sales_exp_header_id            NUMBER        NOT NULL
+    ,process_flag                   VARCHAR2(1)   NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcfo.xxcfo_sales_exp_control IS '販売実績管理テーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.business_date                          IS '業務日付'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.sales_exp_header_id                    IS '販売実績ヘッダID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.process_flag                           IS '処理済フラグ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.last_update_login                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.program_id                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_sales_exp_control.program_update_date                    IS 'プログラム更新日'
+/

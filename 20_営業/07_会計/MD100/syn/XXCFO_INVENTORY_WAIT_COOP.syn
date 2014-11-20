@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_inventory_wait_coop FOR xxcfo.xxcfo_inventory_wait_coop;
