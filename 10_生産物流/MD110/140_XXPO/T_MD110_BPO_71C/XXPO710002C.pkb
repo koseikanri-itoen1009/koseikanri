@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表累計            (T_MD070_BPO_71C)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -27,7 +27,8 @@ AS
  * ------------- ----- ------------------ -------------------------------------------------
  *  2008/01/22    1.0   Yasuhisa Yamamoto  新規作成
  *  2008/05/20    1.1   Yohei    Takayama  結合テスト対応(710_11)
- *  2008/07/02    1.2   Satoshi Yunba      禁則文字対応
+ *  2008/07/02    1.2   Satoshi  Yunba     禁則文字対応
+ *  2008/10/17    1.3   Yuko     Kawano    統合指摘#216対応
  *
  *****************************************************************************************/
 --
@@ -396,8 +397,16 @@ AS
                 ,xnpt.aracha_item_code                    AS item_code              -- 品目
                 ,ximv.item_short_name                     AS item_name              -- 品名
                 ,SUM( NVL( xnpt.aracha_quantity, 0 ) )    AS quantity               -- 数量
-                ,SUM( ROUND( NVL( xnpt.aracha_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) ) )
-                                                          AS stock_amount           -- 在庫金額
+-- 2008/10/17 Y.Kawano mod start
+--                ,SUM( ROUND( NVL( xnpt.aracha_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) ) )
+--                                                          AS stock_amount           -- 在庫金額
+                ,CASE
+                  WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
+                    SUM( ROUND( NVL( xnpt.aracha_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) ) )
+                  WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+                    SUM( ROUND( NVL( xnpt.aracha_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) ) )
+                 END                                      AS stock_amount           -- 在庫金額
+-- 2008/10/17 Y.Kawano mod end
                 ,CASE
                   WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
                      SUM(  ROUND( NVL( xnpt.collect1_temp_unit_price, 0) * NVL( xnpt.collect1_quantity, 0) )
@@ -523,8 +532,16 @@ AS
                        ,xnpt.byproduct1_item_code         AS item_code              -- 副産物１品目コード
                        ,ximv.item_short_name              AS item_name              -- 品名
                        ,NVL( xnpt.byproduct1_quantity, 0) AS quantity               -- 副産物１数量
-                       ,ROUND( NVL( xnpt.byproduct1_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
-                                                          AS amount                 -- 副産物１金額
+-- 2008/10/17 Y.Kawano mod start
+--                       ,ROUND( NVL( xnpt.byproduct1_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
+--                                                          AS amount                 -- 副産物１金額
+                ,CASE
+                  WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
+                    ROUND( NVL( xnpt.byproduct1_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) )
+                  WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+                    ROUND( NVL( xnpt.byproduct1_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) )
+                 END                                      AS amount                 -- 副産物１金額
+-- 2008/10/17 Y.Kawano mod end
                  FROM   xxpo_namaha_prod_txns     xnpt                              -- 生葉実績（アドオン）
                        ,ic_lots_mst               ilm                               -- OPMロットマスタ
                        ,xxcmn_item_mst2_v         ximv                              -- OPM品目情報VIEW2
@@ -556,8 +573,16 @@ AS
                        ,xnpt.byproduct2_item_code         AS item_code              -- 副産物２品目コード
                        ,ximv.item_short_name              AS item_name              -- 品名
                        ,NVL( xnpt.byproduct2_quantity, 0) AS quantity               -- 副産物２数量
-                       ,ROUND( NVL( xnpt.byproduct2_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
-                                                          AS amount                 -- 副産物２金額
+-- 2008/10/17 Y.Kawano mod start
+--                       ,ROUND( NVL( xnpt.byproduct2_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
+--                                                          AS amount                 -- 副産物２金額
+                ,CASE
+                  WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
+                    ROUND( NVL( xnpt.byproduct2_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) )
+                  WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+                    ROUND( NVL( xnpt.byproduct2_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) )
+                 END                                      AS amount                 -- 副産物２金額
+-- 2008/10/17 Y.Kawano mod end
                  FROM   xxpo_namaha_prod_txns     xnpt                              -- 生葉実績（アドオン）
                        ,ic_lots_mst               ilm                               -- OPMロットマスタ
                        ,xxcmn_item_mst2_v         ximv                              -- OPM品目情報VIEW2
@@ -589,8 +614,16 @@ AS
                        ,xnpt.byproduct3_item_code         AS item_code              -- 副産物３品目コード
                        ,ximv.item_short_name              AS item_name              -- 品名
                        ,NVL( xnpt.byproduct3_quantity, 0) AS quantity               -- 副産物３数量
-                       ,ROUND( NVL( xnpt.byproduct3_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
-                                                          AS amount                 -- 副産物３金額
+-- 2008/10/17 Y.Kawano mod start
+--                       ,ROUND( NVL( xnpt.byproduct3_quantity, 0) * TO_NUMBER( NVL( ilm.attribute7, '0' ) ) ) 
+--                                                          AS amount                 -- 副産物３金額
+                ,CASE
+                  WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
+                    ROUND( NVL( xnpt.byproduct3_quantity, 0 ) * TO_NUMBER( NVL( ilm.attribute7, '0') ) )
+                  WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+                    ROUND( NVL( xnpt.byproduct3_quantity, 0 ) * TO_NUMBER( NVL( xnpt.company_final_unit_price, '0') ) )
+                 END                                      AS amount                 -- 副産物２金額
+-- 2008/10/17 Y.Kawano mod end
                  FROM   xxpo_namaha_prod_txns     xnpt                              -- 生葉実績（アドオン）
                        ,ic_lots_mst               ilm                               -- OPMロットマスタ
                        ,xxcmn_item_mst2_v         ximv                              -- OPM品目情報VIEW2
