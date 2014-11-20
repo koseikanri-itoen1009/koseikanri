@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、品目毎の明細および棚卸数量を帳票に出力します。
  *                    帳票に出力した棚卸結果データには処理済フラグ"Y"を設定します。
  * MD.050           : 棚卸チェックリスト    MD050_COI_006_A08
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/03/05    1.3   T.Nakamura       [障害COI_033] 件数出力の不具合対応
  *  2009/03/23    1.4   H.Sasaki         [障害T1_0107] 抽出条件の修正
  *  2009/04/30    1.5   T.Nakamura       最終行にバックスラッシュを追加
+ *  2009/07/14    1.6   H.Sasaki         [0000461]帳票ワークテーブルに取込順を設定
  *
  *****************************************************************************************/
 --
@@ -337,7 +338,13 @@ AS
              ,xir.case_qty                      xir_case_qty                  -- ケース数
              ,xir.quantity                      xir_quantity                  -- 本数
              ,xir.quality_goods_kbn             xir_quality_goods_kbn         -- 良品区分
-             ,xir.input_order                   xir_input_order               -- 取込み順
+-- == 2009/07/14 V1.6 Modified START ===============================================================
+--             ,xir.input_order                   xir_input_order               -- 取込み順
+             ,ROW_NUMBER() OVER
+                        (PARTITION BY xir.base_code, msi.secondary_inventory_name
+                         ORDER BY     xir.creation_date, xir.input_order
+                        ) xir_input_order                                     --  取込み順
+-- == 2009/07/14 V1.6 Modified END   ===============================================================
       FROM    xxcoi_inv_result                  xir                           -- HHT棚卸結果テーブル(XXCOI)
              ,xxcoi_inv_control                 xic                           -- 棚卸管理テーブル   (XXCOI)
              ,mtl_secondary_inventories         msi                           -- 保管場所マスタ     (INV)
@@ -447,6 +454,9 @@ AS
            ,check_year
            ,check_month
            ,inventory_kbn
+-- == 2009/07/14 V1.6 Added START ===============================================================
+           ,input_order
+-- == 2009/07/14 V1.6 Added END   ===============================================================
            ,base_code
            ,base_name
            ,subinventory_code
@@ -474,6 +484,9 @@ AS
            ,TO_CHAR(pickout_rec.xir_inventory_date,'YYYY')            -- 年
            ,TO_CHAR(pickout_rec.xir_inventory_date,'MM')              -- 月
            ,cv_inv_kbn                                                -- 棚卸区分
+-- == 2009/07/14 V1.6 Added START ===============================================================
+           ,pickout_rec.xir_input_order
+-- == 2009/07/14 V1.6 Added END   ===============================================================
            ,pickout_rec.xir_base_code                                 -- 拠点コード
            ,pickout_rec.biv_base_short_name                           -- 拠点名(略称)
            ,pickout_rec.msi_secondary_inventory_name                  -- 保管場所コード

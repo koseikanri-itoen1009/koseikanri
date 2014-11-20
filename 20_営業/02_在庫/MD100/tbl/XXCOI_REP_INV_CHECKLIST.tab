@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOI_REP_INV_CHECKLIST
  * Description : 棚卸チェックリスト帳票ワーク
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2009/07/13    1.1   H.Sasaki         [0000461]項目：取込順を追加
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_rep_inv_checklist (
@@ -17,6 +18,9 @@
     ,check_year                     VARCHAR2(4)
     ,check_month                    VARCHAR2(2)
     ,inventory_kbn                  VARCHAR2(80)
+-- == 2009/07/13 V1.1 Added START ===============================================================
+    ,input_order                    NUMBER
+-- == 2009/07/13 V1.1 Added END   ===============================================================
     ,base_code                      VARCHAR2(4)
     ,base_name                      VARCHAR2(50)
     ,subinventory_code              VARCHAR2(10)
@@ -54,6 +58,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_month                     
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_kbn                    IS '棚卸区分';
 /
+-- == 2009/07/13 V1.1 Added START ===============================================================
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.input_order                      IS '取込順';
+/
+-- == 2009/07/13 V1.1 Added END   ===============================================================
 COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_code                        IS '拠点コード';
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_name                        IS '拠点名';
