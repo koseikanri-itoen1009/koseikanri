@@ -289,7 +289,6 @@ EOF
   L_conc_args="${L_conc_args} WAIT=1 CONCURRENT"
   # 2009/06/17 Ver.1.8 Shigeto.Niki mod END
 
-  L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
   L_conc_args="${L_conc_args} \"${L_conc_appl}\""
   L_conc_args="${L_conc_args} \"${L_conc_name}\""
 
