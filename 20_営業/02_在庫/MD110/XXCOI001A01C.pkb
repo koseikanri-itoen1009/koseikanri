@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.20
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,7 +35,6 @@ AS
  *  upd_old_data           旧情報出庫数量初期化処理(A-22)
  *  upd_no_order_data      受注非存在情報数量初期化処理(A-23)
  *  chk_aff_dept_active    拠点有効チェック(A-24)
- *  upd_storage_information 入庫情報一時表更新(A-25)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -67,8 +66,6 @@ AS
  *  2010/01/13    1.17  H.Sasaki         [E_本稼動_00837]エラーメッセージ修正
  *  2010/02/15    1.18  H.Sasaki         [E_本稼動_01567]倉庫コード違いの入庫情報編集内容を修正
  *  2010/03/23    1.19  Y.Goto           [E_本稼動_01943]A-24.拠点有効チェックを追加
- *  2011/02/03    1.20  H.Sekine         [E_本稼動_03342]受注明細アドオンの取込済みフラグを更新処理の修正
- *                                       [E_本稼動_05090]配送先が直送の入庫情報一時表の出庫数量を0に更新するよう修正
  *
  *****************************************************************************************/
 --
@@ -184,11 +181,6 @@ AS
 -- == 2010/03/23 V1.19 Added START   =============================================================
   cv_tkn_slip_num  CONSTANT VARCHAR2(30)  := 'SLIP_NUM';
 -- == 2010/03/23 V1.19 Added END   ===============================================================
--- == 2011/02/03 V1.20 Added START   =============================================================
-  cv_cust_class    CONSTANT VARCHAR2(2)   := '10';
-  cv_date_format1  CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
-  cv_date_format2  CONSTANT VARCHAR2(6)   := 'YYYYMM';
--- == 2011/02/03 V1.20 Added END   ===============================================================
 --
   -- 初期処理出力
   cv_prf_org_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
@@ -3646,10 +3638,7 @@ AS
    * Description      : 受注明細アドオン更新(A-13)
    ***********************************************************************************/
   PROCEDURE upd_order_lines(
--- == 2011/02/03 V1.20 Mod START   ==============================================================
---      in_line_cnt    IN NUMBER                                        -- 1.ループカウンタ
-      in_slip_cnt   IN NUMBER                                        -- 1.ループカウンタ
--- == 2011/02/03 V1.20 Mod End     ==============================================================
+      in_line_cnt    IN NUMBER                                        -- 1.ループカウンタ
     , ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
     , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
     , ov_errmsg     OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3675,32 +3664,15 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
--- == 2011/02/03 V1.20 Delet START     ==============================================================
---    CURSOR upd_xola_tbl_cur(
---      g_detail_tab g_detail_ttype )
---    IS
---      SELECT xola.rowid
---      FROM   xxwsh_order_lines_all xola
---      WHERE  xola.order_header_id = g_detail_tab ( in_line_cnt ) .order_header_id
---      AND    xola.order_line_id   = g_detail_tab ( in_line_cnt ) .order_line_id
---      FOR UPDATE NOWAIT
---    ;
--- == 2011/02/03 V1.20 Delet END       ==============================================================
--- == 2011/02/03 V1.20 Add START       ==============================================================
-    CURSOR upd_xola_tbl_cur
+    CURSOR upd_xola_tbl_cur(
+      g_detail_tab g_detail_ttype )
     IS
       SELECT xola.rowid
-            ,xoha.req_status
-      FROM   xxwsh_order_headers_all xoha
-            ,xxwsh_order_lines_all   xola
-      WHERE  xoha.order_header_id      = xola.order_header_id
-      AND    xoha.request_no           = g_summary_tab ( in_slip_cnt ) .req_move_no
-      AND    xoha.latest_external_flag = cv_y_flag
-      AND    xola.request_item_code    = g_summary_tab ( in_slip_cnt ) .item_no
-      AND    xola.delete_flag          = g_summary_tab ( in_slip_cnt ) .delete_flag
+      FROM   xxwsh_order_lines_all xola
+      WHERE  xola.order_header_id = g_detail_tab ( in_line_cnt ) .order_header_id
+      AND    xola.order_line_id   = g_detail_tab ( in_line_cnt ) .order_line_id
       FOR UPDATE NOWAIT
     ;
--- == 2011/02/03 V1.20 Add END         ==============================================================
 --
     -- *** ローカル・レコード ***
     upd_xola_tbl_rec  upd_xola_tbl_cur%ROWTYPE;
@@ -3721,45 +3693,25 @@ AS
     -- ===============================
     -- 受注明細アドオンテーブルのロック取得
     -- ===============================
--- == 2011/02/03 V1.20 Mod START   ==============================================================
---    OPEN upd_xola_tbl_cur(
---      g_detail_tab
---   );
-    OPEN upd_xola_tbl_cur;
--- == 2011/02/03 V1.20 Mod End     ==============================================================
+    OPEN upd_xola_tbl_cur(
+      g_detail_tab
+    );
     -- レコード読込
     FETCH upd_xola_tbl_cur INTO upd_xola_tbl_rec;
 --
--- == 2011/02/03 V1.20 Mod START   ==============================================================
---      IF ( g_detail_tab ( in_line_cnt ) .req_status = gt_ship_status_close ) THEN
-      IF ( upd_xola_tbl_rec.req_status = gt_ship_status_close ) THEN
+      IF ( g_detail_tab ( in_line_cnt ) .req_status = gt_ship_status_close ) THEN
         -- 受注明細アドオンテーブルの更新（出荷指示の場合は指示連携済みフラグ更新）
         UPDATE xxwsh_order_lines_all xola
         SET    xola.shipping_request_if_flg = cv_y_flag
-             ,last_updated_by         = cn_last_updated_by
-             ,last_update_date        = cd_last_update_date
-             ,last_update_login       = cn_last_update_login
-             ,request_id              = cn_request_id
-             ,program_application_id  = cn_program_application_id
-             ,program_id              = cn_program_id
-             ,program_update_date     = cd_program_update_date
-        WHERE  xola.rowid             = upd_xola_tbl_rec.rowid
+        WHERE  xola.rowid                   = upd_xola_tbl_rec.rowid
         ;
       ELSE
         -- 受注明細アドオンテーブルの更新（出荷実績・取消の場合は実績連携済みフラグ更新）
         UPDATE xxwsh_order_lines_all xola
         SET    xola.shipping_result_if_flg  = cv_y_flag
-             ,last_updated_by               = cn_last_updated_by
-             ,last_update_date              = cd_last_update_date
-             ,last_update_login             = cn_last_update_login
-             ,request_id                    = cn_request_id
-             ,program_application_id        = cn_program_application_id
-             ,program_id                    = cn_program_id
-             ,program_update_date           = cd_program_update_date
         WHERE  xola.rowid                   = upd_xola_tbl_rec.rowid
         ;
       END IF;
--- == 2011/02/03 V1.20 Mod End     ==============================================================
 --
     -- カーソルクローズ
     CLOSE upd_xola_tbl_cur;
@@ -4536,160 +4488,6 @@ AS
   END chk_aff_dept_active;
 --
 -- == 2010/03/23 V1.19 Added END   ===============================================================
--- == 2011/02/03 V1.20 Added START ===============================================================
-  /**********************************************************************************
-   * Procedure Name   : upd_storage_information
-   * Description      : 入庫情報一時表更新(A-25)
-   ***********************************************************************************/
-  PROCEDURE upd_storage_information(
-      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
-    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
-    , ov_errmsg     OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_storage_information';      -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    lv_f_inv_acct_period      VARCHAR2(100);        -- 在庫会計期間（年月 YYYYMM）
---
-    -- *** ローカル・カーソル ***
---
-    CURSOR storage_information_cur
-    IS
-      SELECT  xsi.ROWID
-            , xsi.item_code
-            , xsi.slip_num
-            , xsi.slip_date
-      FROM    xxcoi_storage_information     xsi
-      WHERE   xsi.slip_date   >=  TRUNC( TO_DATE( lv_f_inv_acct_period , cv_date_format2 ) )
-      AND     xsi.slip_date   <   (TRUNC( gd_process_date ) + 1)
-      AND     xsi.ship_summary_qty  IS NOT NULL
-      AND     xsi.ship_summary_qty  <>  0
-      AND     xsi.summary_data_flag = cv_y_flag
-      AND EXISTS(
-            SELECT  1
-            FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
-                  , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
-                  , hz_party_sites                   hps                    -- パーティサイトマスタ
-                  , hz_cust_accounts                 hca                    -- 顧客マスタ
-            WHERE  xoha.order_header_id   =   xola.order_header_id
-            AND    ((xoha.req_status = gt_ship_status_result
-                     AND xoha.arrival_date >= TRUNC( TO_DATE( lv_f_inv_acct_period , cv_date_format2 )  )
-                     AND xoha.arrival_date <  TRUNC( gd_process_date ) + 1
-                    )
-                    OR
-                    (xoha.req_status <> gt_ship_status_result
-                     AND xoha.schedule_arrival_date >= TRUNC( TO_DATE( lv_f_inv_acct_period , cv_date_format2 )  )
-                     AND xoha.schedule_arrival_date <  TRUNC( gd_process_date ) + 1
-                    )
-                   )
-            AND ( ( -- 締め済み、確定通知済出荷依頼（出荷依頼は削除明細を除外）
-                    xoha.req_status                      = gt_ship_status_close
-                    AND xoha.deliver_to_id               = hps.party_site_id
-                  )
-               OR ( -- 出荷実績計上済出荷実績（出荷実績は削除明細を除外、ただし出荷依頼連携済は対象）
-                    xoha.req_status                      = gt_ship_status_result
-                    AND xoha.result_deliver_to_id        = hps.party_site_id
-                  )
-               OR ( -- 出荷依頼連携済に対して取消を行ったものは対象
-                    xoha.req_status                                       = gt_ship_status_cancel
-                    AND NVL(xoha.deliver_to_id,xoha.result_deliver_to_id) = hps.party_site_id
-                  )
-                )
-            AND (xola.shipping_request_if_flg = cv_y_flag OR xola.shipping_result_if_flg = cv_y_flag )
-            AND hps.party_id              = hca.party_id
-            AND hca.customer_class_code   = cv_cust_class
-            AND xoha.latest_external_flag = cv_y_flag
-            AND xoha.request_no           = xsi.slip_num
-            AND xola.request_item_code    = xsi.item_code)
-      ;
---
-    -- *** ローカル・レコード ***
-    storage_information_rec     storage_information_cur%ROWTYPE;
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
-    --
-    -- OPEN在庫会計期間を取得
-    SELECT  MIN( TO_CHAR( oap.period_start_date , cv_date_format2 ) ) -- 最も古い会計年月
-    INTO    lv_f_inv_acct_period
-    FROM    org_acct_periods      oap                     -- 在庫会計期間テーブル
-    WHERE   oap.organization_id = gt_org_id
-    AND     oap.open_flag       = cv_y_flag;
-    --
-    -- ループ処理
-    <<storage_information_loop>>
-    FOR storage_information_rec IN storage_information_cur LOOP
-      --
-      -- 入庫情報一時表を更新する
-      UPDATE xxcoi_storage_information  xsi
-      SET    ship_case_qty          = 0
-            ,ship_singly_qty        = 0
-            ,ship_summary_qty       = 0
-            ,last_updated_by        = cn_last_updated_by
-            ,last_update_date       = cd_last_update_date
-            ,last_update_login      = cn_last_update_login
-            ,request_id             = cn_request_id
-            ,program_application_id = cn_program_application_id
-            ,program_id             = cn_program_id
-            ,program_update_date    = cd_program_update_date
-      WHERE  xsi.ROWID              = storage_information_rec.ROWID;
-      --
-      -- 入庫情報一時表を削除する
-      DELETE FROM xxcoi_storage_information  xsi
-      WHERE   xsi.item_code         = storage_information_rec.item_code
-      AND     xsi.slip_num          = storage_information_rec.slip_num
-      AND     xsi.slip_date         = storage_information_rec.slip_date
-      AND     xsi.summary_data_flag = cv_n_flag;
-      --
-    END LOOP storage_information_loop;
---
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END upd_storage_information;
--- == 2011/02/03 V1.20 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -4775,19 +4573,6 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
--- == 2011/02/03 V1.20 Added START ===============================================================
-    -- ===============================
-    -- A-25.入庫情報一時表更新
-    -- ===============================
-    upd_storage_information(
-        ov_errbuf  => lv_errbuf                                       -- エラー・メッセージ           --# 固定 #
-      , ov_retcode => lv_retcode                                      -- リターン・コード             --# 固定 #
-      , ov_errmsg  => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    IF ( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
--- == 2011/02/03 V1.20 Added END   ===============================================================
 --
     -- ===============================
     -- A-2.入庫情報サマリの取得
@@ -5239,47 +5024,26 @@ AS
               RAISE global_process_expt;
             END IF;
 -- == 2009/12/18 V1.14 Modified END   ===============================================================
--- == 2011/02/03 V1.20 Deleted START   ==============================================================
---            --
---            -- ===============================
---            -- A-13.受注明細アドオンの更新
---            -- ===============================
---            upd_order_lines(
---                in_line_cnt => gn_line_cnt                            -- 1.ループカウンタ
---              , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
---              , ov_retcode  => lv_retcode                             -- リターン・コード
---              , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
---            );
---            --
---            IF ( lv_retcode = cv_status_error ) THEN
---              RAISE global_process_expt;
---            ELSIF ( lv_retcode = cv_status_warn ) THEN
---              gn_warn_cnt := gn_warn_cnt + 1;
---              -- 次伝票Noへ遷移
---              EXIT g_detail_tab_loop;
---            END IF;
---            --
--- == 2011/02/03 V1.20 Deleted END   ================================================================
+            --
+            -- ===============================
+            -- A-13.受注明細アドオンの更新
+            -- ===============================
+            upd_order_lines(
+                in_line_cnt => gn_line_cnt                            -- 1.ループカウンタ
+              , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
+              , ov_retcode  => lv_retcode                             -- リターン・コード
+              , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
+            );
+            --
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            ELSIF ( lv_retcode = cv_status_warn ) THEN
+              gn_warn_cnt := gn_warn_cnt + 1;
+              -- 次伝票Noへ遷移
+              EXIT g_detail_tab_loop;
+            END IF;
+            --
           END LOOP g_detail_tab_loop;
--- == 2011/02/03 V1.20 Added START   ================================================================
-        --
-        -- ===============================
-        -- A-13.受注明細アドオンの更新
-        -- ===============================
-        upd_order_lines(
-            in_slip_cnt => gn_slip_cnt                            -- 1.ループカウンタ
-          , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
-          , ov_retcode  => lv_retcode                             -- リターン・コード
-          , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
-        );
-        --
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        ELSIF ( lv_retcode = cv_status_warn ) THEN
-          gn_warn_cnt := gn_warn_cnt + 1;
-        END IF;
-        --
--- == 2011/02/03 V1.20 Added END   ==================================================================
         END IF;
 --
         -- 正常終了件数カウントアップ（伝票単位）
