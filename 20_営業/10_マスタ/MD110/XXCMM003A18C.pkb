@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,7 +31,8 @@ AS
  *  2009/06/09    1.6   Yutaka.Kuboshima 障害T1_1364の対応
  *  2009/09/30    1.7   Yutaka.Kuboshima 障害0001350の対応
  *  2009/11/28    1.8   Hiroshi.Oshida   障害 本稼動_00151の対応
- *
+ *  2009/11/23    1.9   Yutaka.Kuboshima 障害 本番_00341の対応
+*
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -644,6 +645,9 @@ AS
                        AND     NVL(ereaviw.resource_e_date, TO_DATE(cv_eff_last_date, cv_fnd_date)))
               AND      hcaviw1.party_id  = hopviw1.party_id
               AND      hopviw1.organization_profile_id = ereaviw.organization_profile_id
+-- 2009/11/23 Ver1.9 add start by Yutaka.Kuboshima
+              AND      hopviw1.effective_end_date IS NULL
+-- 2009/11/23 Ver1.9 add end by Yutaka.Kuboshima
               AND      ereaviw.extension_id            = (SELECT   erearow1.extension_id
                                                           FROM     hz_organization_profiles      hoprow1,       --組織プロファイルマスタ
                                                                    ego_resource_agv              erearow1       --組織プロファイル拡張マスタ(営業員)
@@ -652,6 +656,9 @@ AS
                                                                    AND     NVL(erearow1.resource_e_date, TO_DATE(cv_eff_last_date, cv_fnd_date)))
                                                           AND      hcaviw1.party_id            = hoprow1.party_id
                                                           AND      hoprow1.organization_profile_id = erearow1.organization_profile_id
+-- 2009/11/23 Ver1.9 add start by Yutaka.Kuboshima
+                                                          AND      hoprow1.effective_end_date IS NULL
+-- 2009/11/23 Ver1.9 add end by Yutaka.Kuboshima
                                                           AND      ROWNUM = 1 ))  hopera, --組織プロファイル(担当営業員)
 --
              (SELECT hopviw2.party_id              party_id,
@@ -668,6 +675,9 @@ AS
                       AND     NVL(eroaviw.route_e_date, TO_DATE(cv_eff_last_date, cv_fnd_slash_date)))
               AND     hcaviw2.party_id  = hopviw2.party_id
               AND     hopviw2.organization_profile_id = eroaviw.organization_profile_id
+-- 2009/11/23 Ver1.9 add start by Yutaka.Kuboshima
+              AND     hopviw2.effective_end_date IS NULL
+-- 2009/11/23 Ver1.9 add end by Yutaka.Kuboshima
               AND     eroaviw.extension_id            = (SELECT  eroarow2.extension_id
                                                          FROM    ego_route_agv                 eroarow2,               --組織プロファイル拡張マスタ(ルート)
                                                                  hz_organization_profiles      hoprow2                 --組織プロファイルマスタ
@@ -675,6 +685,9 @@ AS
                                                                  BETWEEN NVL(eroarow2.route_s_date, TO_DATE(gv_process_date, cv_fnd_slash_date))
                                                                  AND     NVL(eroarow2.route_e_date, TO_DATE(cv_eff_last_date, cv_fnd_slash_date)))
                                                          AND     hcaviw2.party_id  = hoprow2.party_id
+-- 2009/11/23 Ver1.9 add start by Yutaka.Kuboshima
+                                                         AND     hoprow2.effective_end_date IS NULL
+-- 2009/11/23 Ver1.9 add end by Yutaka.Kuboshima
                                                          AND     hoprow2.organization_profile_id = eroarow2.organization_profile_id
                                                          AND     ROWNUM = 1 ))  hopero, --組織プロファイル(ルート)
 --
