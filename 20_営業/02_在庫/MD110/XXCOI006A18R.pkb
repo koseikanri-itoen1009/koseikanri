@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A18R(body)
  * Description      : 払出明細表（拠点別・合計）
  * MD.050           : 払出明細表（拠点別・合計） <MD050_XXCOI_006_A18>
- * Version          : V1.4
+ * Version          : V1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                                払出合計に基準在庫変更入庫を追加
  *  2009/07/13    1.3   N.Abe            [0000282]百貨店計、専門店計の名称出力を修正
  *  2009/07/14    1.4   N.Abe            [0000462]群コード取得方法修正
+ *  2009/07/21    1.5   H.Sasaki         [0000807]VD出庫数量より、基準在庫変更入庫数量を減算
  *
  *****************************************************************************************/
 --
@@ -849,7 +850,11 @@ AS
                                  - ir_svf_data.sales_shipped_b
                                  - ir_svf_data.return_goods
                                  + ir_svf_data.return_goods_b;              -- 12.売上出庫数量
-      ln_vd_ship_qty          :=   ir_svf_data.inventory_change_out;        -- 14.VD出庫数量
+-- == 2009/07/21 V1.5 Modified START ===============================================================
+--      ln_vd_ship_qty          :=   ir_svf_data.inventory_change_out;
+      ln_vd_ship_qty          :=   ir_svf_data.inventory_change_out
+                                 - ir_svf_data.inventory_change_in;         -- 14.VD出庫数量
+-- == 2009/07/21 V1.5 Modified END   ===============================================================
       ln_support_qty          :=   ir_svf_data.customer_support_ss
                                  - ir_svf_data.customer_support_ss_b
                                  + ir_svf_data.ccm_sample_ship
@@ -862,7 +867,7 @@ AS
                                  - ir_svf_data.removed_goods_b;             -- 20.廃却出庫数量
 -- == 2009/06/26 V1.2 Modified START ===============================================================
 --      ln_kuragae_ship_qty     :=   ir_svf_data.change_ship
---                                 + ir_svf_data.wear_increase;               -- 22.倉替出庫数量
+--                                 + ir_svf_data.wear_increase;
       ln_kuragae_ship_qty     :=   ir_svf_data.change_ship;                 -- 22.倉替出庫数量
 -- == 2009/06/26 V1.2 Modified END ===============================================================
       ln_hurikae_ship_qty     :=   ir_svf_data.goods_transfer_old;          -- 24.振替出庫数量

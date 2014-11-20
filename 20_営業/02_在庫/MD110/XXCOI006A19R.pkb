@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A19R(body)
  * Description      : 払出明細表（拠点別計）
  * MD.050           : 払出明細表（拠点別計） <MD050_XXCOI_006_A19>
- * Version          : V1.2
+ * Version          : V1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *                                                    月次在庫の検索条件に棚卸ステータスを追加
  *  2009/06/26    1.2   H.Sasaki         [0000258]数量計算に棚卸減耗数を加算しない
  *                                                払出合計に基準在庫変更入庫を追加
+ *  2009/07/21    1.3   H.Sasaki         [0000807]VD出庫数量より、基準在庫変更入庫数量を減算
  *
  *****************************************************************************************/
 --
@@ -490,7 +491,11 @@ AS
                                    - ir_svf_data.return_goods
                                    + ir_svf_data.return_goods_b;                          -- 07.売上出庫数量
       ln_sales_ship_money       :=  ROUND(ir_svf_data.cost_amt * ln_sales_ship_qty);      -- 08.売上出庫金額
-      ln_vd_ship_qty            :=   ir_svf_data.inventory_change_out;                    -- 09.VD出庫数量
+-- == 2009/07/21 V1.3 Modified START ===============================================================
+--      ln_vd_ship_qty            :=   ir_svf_data.inventory_change_out;
+      ln_vd_ship_qty            :=   ir_svf_data.inventory_change_out
+                                   - ir_svf_data.inventory_change_in;                     -- 09.VD出庫数量
+-- == 2009/07/21 V1.3 Modified END   ===============================================================
       ln_vd_ship_money          :=  ROUND(ir_svf_data.cost_amt * ln_vd_ship_qty);         -- 10.VD出庫金額
       ln_support_qty            :=   ir_svf_data.customer_support_ss
                                    - ir_svf_data.customer_support_ss_b

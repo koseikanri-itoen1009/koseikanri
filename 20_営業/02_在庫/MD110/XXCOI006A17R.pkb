@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A17R(body)
  * Description      : 受払残高表（拠点別計）
  * MD.050           : 受払残高表（拠点別計） <MD050_XXCOI_006_A17>
- * Version          : V1.3
+ * Version          : V1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/06/02    1.2   H.Sasaki         [T1_1293]棚卸減耗数量取得条件を追加
  *  2009/06/26    1.3   H.Sasaki         [0000258]T1_1293の対応を取り消し
  *                                                払出合計に基準在庫変更入庫を追加
+ *  2009/07/21    1.4   H.Sasaki         [0000642]払出合計の金額算出方法を変更
  *
  *****************************************************************************************/
 --
@@ -571,7 +572,40 @@ AS
       ln_factry_in_money        :=    ROUND(ir_svf_data.cost_amt * ln_factry_in_qty);        -- 16.工場入庫(金額)
       ln_kuragae_in_money       :=    ROUND(ir_svf_data.cost_amt * ln_kuragae_in_qty);       -- 17.倉替入庫(金額)
       ln_hurikae_in_money       :=    ROUND(ir_svf_data.cost_amt * ln_hurikae_in_qty);       -- 18.振替入庫(金額)
-      ln_payment_total_money    :=    ROUND(ir_svf_data.cost_amt * ln_payment_total_qty);    -- 19.払出合計(金額)
+-- == 2009/07/21 V1.4 Modified START ===============================================================
+--      ln_payment_total_money    :=    ROUND(ir_svf_data.cost_amt * ln_payment_total_qty);    -- 19.払出合計(金額)
+      ln_payment_total_money    :=    ROUND((  ir_svf_data.sales_shipped
+                                             - ir_svf_data.sales_shipped_b
+                                             - ir_svf_data.return_goods
+                                             + ir_svf_data.return_goods_b
+                                            )                    * ir_svf_data.cost_amt)
+                                    + ROUND((  ir_svf_data.customer_support_ss
+                                             - ir_svf_data.customer_support_ss_b
+                                             + ir_svf_data.ccm_sample_ship
+                                             - ir_svf_data.ccm_sample_ship_b
+                                            )                    * ir_svf_data.cost_amt)
+                                    + ROUND((  ir_svf_data.sample_quantity
+                                             - ir_svf_data.sample_quantity_b
+                                             + ir_svf_data.customer_sample_ship
+                                             - ir_svf_data.customer_sample_ship_b
+                                            )                    * ir_svf_data.cost_amt)
+                                    + ROUND((  ir_svf_data.inventory_change_out
+                                             - ir_svf_data.inventory_change_in
+                                            )                    * ir_svf_data.cost_amt)
+                                    + ROUND((  ir_svf_data.removed_goods
+                                             - ir_svf_data.removed_goods_b
+                                            )                    * ir_svf_data.cost_amt)
+                                    + ROUND(ir_svf_data.change_ship
+                                                                 * ir_svf_data.cost_amt)
+                                    + ROUND(ir_svf_data.goods_transfer_old
+                                                                 * ir_svf_data.cost_amt)
+                                    + ROUND((  ir_svf_data.factory_change
+                                             - ir_svf_data.factory_change_b
+                                            )                    * ir_svf_data.cost_amt)
+                                    + ROUND((  ir_svf_data.factory_return
+                                             - ir_svf_data.factory_return_b
+                                            )                    * ir_svf_data.cost_amt);    -- 19.払出合計(金額)
+-- == 2009/07/21 V1.4 Modified END   ===============================================================
       ln_inventory_total_money  :=    ROUND(ir_svf_data.cost_amt * ln_inventory_total_qty);  -- 20.棚卸高計(金額)
       ln_inferior_goods_money   :=    ROUND(ir_svf_data.cost_amt * ln_inferior_goods_qty);   -- 21.(不良品棚卸高)(金額)
       ln_genmou_money           :=    ROUND(ir_svf_data.cost_amt * ln_genmou_qty);           -- 22.棚卸減耗(金額)
