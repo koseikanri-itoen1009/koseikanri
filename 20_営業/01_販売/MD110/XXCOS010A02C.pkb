@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/07/01    1.7   M.Sano           [0000064]受注DFF項目追加に伴う、連携項目追加
  *  2009/08/04    1.7   M.Sano           [0000923]情報区分がNULL、01、02のみ対象とするように変更
  *  2009/11/05    1.8   N.Maeda          [E_T4_00081] 予定出荷日セット内容をNULLに変更
+ *  2009/12/04    1.9   M.Fujinuma       [E_本稼動_00316]営業担当IDを受注ヘッダOIF用変数に追加
  *
  *****************************************************************************************/
 --
@@ -427,6 +428,10 @@ AS
   TYPE  g_tab_h_attribute20              IS TABLE OF oe_headers_iface_all.attribute20%TYPE -- 分類区分
     INDEX BY PLS_INTEGER;
 -- 2009/07/01 Ver.1.7 M.Sano mod End
+-- 2009/12/04 Ver.1.9 M.Fujinuma add Start
+  TYPE  g_tab_salesrep_id                IS TABLE OF oe_headers_iface_all.salesrep_id%TYPE
+    INDEX BY PLS_INTEGER;                                                                         -- 営業担当ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add End
   -- 受注明細OIF テーブルタイプ定義
   TYPE  g_tab_order_source_id_l          IS TABLE OF oe_lines_iface_all.order_source_id%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- インポートソースID
@@ -488,6 +493,9 @@ AS
   gt_h_attribute5                          g_tab_h_attribute5;                -- 伝票区分
   gt_h_attribute20                         g_tab_h_attribute20;               -- 大分類コード
 -- 2009/07/01 Ver.1.7 M.Sano mod End
+-- 2009/12/04 Ver.1.9 M.Fujinuma add Start
+  gt_salesrep_id                           g_tab_salesrep_id;                  -- 営業担当ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add End
 --
   -- 受注明細OIFインサート用変数
   gt_order_source_id_l                    g_tab_order_source_id_l;           -- インポートソースID
@@ -1051,6 +1059,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2009/12/04 Ver.1.9 M.Fujinuma add Start
+    ln_salesrep_id  VARCHAR2(100);    -- 営業担当ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1092,6 +1103,36 @@ AS
     gt_h_attribute5 ( gn_idx )           :=  gt_edi_headers ( gn_idx ).invoice_class;             -- 伝票区分
     gt_h_attribute20 ( gn_idx )          :=  gt_edi_headers ( gn_idx ).big_classification_code;   -- 大分類コード
 -- 2009/07/01 Ver.1.7 M.Sano add End
+-- 2009/12/04 Ver.1.9 M.Fujinuma add Start
+    -- 営業担当IDを設定
+    BEGIN
+--
+      SELECT jrs.salesrep_id
+      INTO   ln_salesrep_id
+      FROM   hz_cust_accounts          hca
+            ,hz_organization_profiles  hop
+            ,ego_resource_agv          era
+            ,jtf_rs_salesreps          jrs
+      WHERE  hca.account_number          = gt_customer_number ( gn_idx )  --顧客コード
+      AND    hop.party_id                = hca.PARTY_ID
+      AND    era.organization_profile_id = hop.organization_profile_id
+      AND    hop.effective_end_date      IS NULL
+      AND    jrs.salesrep_number         = era.resource_no
+      AND    jrs.org_id                  = gt_org_id ( gn_idx )           -- 営業単位ID
+      AND    trunc(era.resource_s_date)    <=           trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))  --受注日
+      AND    trunc(nvl(era.resource_e_date,sysdate)) >= trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
+      AND    trunc(jrs.start_date_active)  <=           trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
+      AND    trunc(nvl(jrs.end_date_active,sysdate)) >= trunc(nvl(gt_ordered_date ( gn_idx ),sysdate))
+      AND    rownum = 1;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_salesrep_id := NULL;
+--
+    END;
+--
+    gt_salesrep_id ( gn_idx ) := ln_salesrep_id;    -- 営業担当ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add End
 --
   EXCEPTION
 --
@@ -1662,6 +1703,9 @@ AS
          , order_type_id                                                -- 受注タイプID
          , org_id                                                       -- 営業単位ID
          , price_list_id                                                -- 価格表ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add Start
+         , salesrep_id                                                  -- 営業担当ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add End
          , customer_number                                              -- 顧客コード
          , request_date                                                 -- 要求日
          , context                                                      -- コンテキスト
@@ -1689,6 +1733,9 @@ AS
          , gt_order_type_id ( gn_idx )                                  -- 受注タイプID
          , gt_org_id ( gn_idx )                                         -- 営業単位ID
          , gt_price_list_id ( gn_idx )                                  -- 価格表ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add Start
+         , gt_salesrep_id ( gn_idx )                                    -- 営業担当ID
+-- 2009/12/04 Ver.1.9 M.Fujinuma add End
          , gt_customer_number ( gn_idx )                                -- 顧客コード
          , gt_request_date ( gn_idx )                                   -- 要求日
          , gt_name_h ( gn_idx )                                         -- コンテキスト
