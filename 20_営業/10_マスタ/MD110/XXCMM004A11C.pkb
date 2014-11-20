@@ -43,6 +43,7 @@ AS
  *  2009/02/16    1.3   K.Ito            OUTBOUND用CSVファイル作成場所、ファイル名共通化
  *                                       ファイル名を出力するように修正
  *  2009/05/12    1.4   H.Yoshikawa      障害T1_0905,T1_0906対応
+ *  2009/06/15    1.5   H.Yoshikawa      障害T1_1455対応
  *
  *****************************************************************************************/
 --
@@ -562,8 +563,12 @@ AS
                  ,TO_CHAR( xoiv.price_apply_date, cv_date_fmt_ymd )
                                       AS price_apply_date                     -- 定価適用開始日
                  ,xoiv.sales_div                                              -- 売上対象区分
-                 ,TO_MULTI_BYTE( xoiv.item_um )
+-- Ver1.5 Mod 2009/06/15 文字数制限対応
+--                 ,TO_MULTI_BYTE( xoiv.item_um )
+--                                      AS item_um                              -- 基準単位
+                 ,SUBSTR( TO_MULTI_BYTE( xoiv.item_um ), 1, 2 )
                                       AS item_um                              -- 基準単位
+-- End1.5
                  ,mcv.segment1        AS item_product_class                   -- 商品製品区分
                  ,xoiv.rate_class                                             -- 率区分
                  ,xoiv.net                                                    -- NET
