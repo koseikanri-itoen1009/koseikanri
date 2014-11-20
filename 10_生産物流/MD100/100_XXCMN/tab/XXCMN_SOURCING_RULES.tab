@@ -1,0 +1,50 @@
+CREATE TABLE xxcmn.xxcmn_sourcing_rules
+(
+  sourcing_rules_id         NUMBER          NOT NULL,
+  item_code                 VARCHAR2(7)     NOT NULL,
+  base_code                 VARCHAR2(4)     NOT NULL,
+  ship_to_code              VARCHAR2(9)     NOT NULL,
+  start_date_active         DATE            NOT NULL,
+  end_date_active           DATE,
+  delivery_whse_code        VARCHAR2(4),
+  move_from_whse_code1      VARCHAR2(4),
+  move_from_whse_code2      VARCHAR2(4),
+  vendor_site_code1         VARCHAR2(4),
+  vendor_site_code2         VARCHAR2(4),
+  plan_item_flag            NUMBER(1,0),
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxcmn_sourcing_rules_pk PRIMARY KEY ( sourcing_rules_id )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.sourcing_rules_id        IS '物流構成アドオンID';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.item_code                IS '品目コード';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.base_code                IS '拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.ship_to_code             IS '配送先コード';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.start_date_active        IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.end_date_active          IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.delivery_whse_code       IS '出荷保管倉庫コード';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.move_from_whse_code1     IS '移動元保管倉庫コード1';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.move_from_whse_code2     IS '移動元保管倉庫コード2';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.vendor_site_code1        IS '仕入先サイトコード1';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.vendor_site_code2        IS '仕入先サイトコード2';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.plan_item_flag           IS '計画商品フラグ';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.created_by               IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.creation_date            IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.request_id               IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.program_application_id   IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_sourcing_rules.program_update_date      IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_sourcing_rules IS '物流構成アドオンマスタ';

@@ -1,0 +1,53 @@
+CREATE TABLE xxcmn.xxcmn_ship_methods
+(
+  ship_methods_id               NUMBER        NOT NULL,
+  code_class1                   VARCHAR2(2)   NOT NULL,
+  entering_despatching_code1    VARCHAR2(9)   NOT NULL,
+  code_class2                   VARCHAR2(2)   NOT NULL,
+  entering_despatching_code2    VARCHAR2(9)   NOT NULL,
+  ship_method                   VARCHAR2(30)  NOT NULL,
+  start_date_active             DATE          NOT NULL,
+  end_date_active               DATE,
+  drink_deadweight              NUMBER(7,0),
+  leaf_deadweight               NUMBER(7,0),
+  drink_loading_capacity        NUMBER(7,0),
+  leaf_loading_capacity         NUMBER(7,0),
+  palette_max_qty               NUMBER(7,0),
+  created_by                    NUMBER(15,0)  NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15,0)  NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxcmn_ship_methods_pk PRIMARY KEY ( ship_methods_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON TABLE  xxcmn.xxcmn_ship_methods  IS '出荷方法アドオンマスタ';
+--
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.ship_methods_id              IS '出荷方法アドオンID';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.code_class1                  IS 'コード区分１';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.entering_despatching_code1   IS '入出庫場所コード１';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.code_class2                  IS 'コード区分２';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.entering_despatching_code2   IS '入出庫場所コード２';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.ship_method                  IS '出荷方法';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.start_date_active            IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.end_date_active              IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.drink_deadweight             IS 'ドリンク積載重量';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.leaf_deadweight              IS 'リーフ積載重量';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.drink_loading_capacity       IS 'ドリンク積載容積';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.leaf_loading_capacity        IS 'リーフ積載容積';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.palette_max_qty              IS 'パレット最大枚数';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.created_by                   IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.creation_date                IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.last_updated_by              IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.last_update_date             IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.last_update_login            IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.request_id                   IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.program_application_id       IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.program_id                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_ship_methods.program_update_date          IS 'プログラムによる更新日';
+

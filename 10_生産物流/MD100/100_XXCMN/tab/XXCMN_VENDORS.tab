@@ -1,0 +1,56 @@
+CREATE TABLE xxcmn.xxcmn_vendors
+(
+  vendor_id                 NUMBER         NOT NULL,
+  start_date_active         DATE           NOT NULL,
+  end_date_active           DATE,
+  vendor_name               VARCHAR2(60),
+  vendor_short_name         VARCHAR2(20),
+  vendor_name_alt           VARCHAR2(30),
+  zip                       VARCHAR2(8),
+  address_line1             VARCHAR2(30),
+  address_line2             VARCHAR2(30),
+  phone                     VARCHAR2(15),
+  fax                       VARCHAR2(15),
+  department                VARCHAR2(4),
+  terms_date                DATE,
+  payment_to                VARCHAR2(4),
+  mediation                 VARCHAR2(4),
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxcmn_vendors_pk PRIMARY KEY ( vendor_id, start_date_active )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.vendor_id               IS '仕入先ID';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.start_date_active       IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.end_date_active         IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.vendor_name             IS '正式名';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.vendor_short_name       IS '略称';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.vendor_name_alt         IS 'カナ名';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.zip                     IS '郵便番号';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.address_line1           IS '住所１';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.address_line2           IS '住所２';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.phone                   IS '電話番号';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.fax                     IS 'FAX番号';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.department              IS '部署';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.terms_date              IS '支払条件設定日';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.payment_to              IS '支払先';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.mediation               IS '斡旋者';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.created_by              IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.program_application_id  IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_vendors.program_update_date    IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_vendors IS '仕入先アドオンマスタ';

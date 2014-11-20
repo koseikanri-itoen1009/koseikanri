@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwip_material_detail FOR xxwip.xxwip_material_detail;

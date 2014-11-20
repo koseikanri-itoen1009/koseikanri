@@ -1,0 +1,2 @@
+--DROP INDEX xxpo.xxpo_rart_n02 ;
+CREATE INDEX xxpo.xxpo_rart_n02 ON xxpo.xxpo_rcv_and_rtn_txns(vendor_id) TABLESPACE xxidx ;

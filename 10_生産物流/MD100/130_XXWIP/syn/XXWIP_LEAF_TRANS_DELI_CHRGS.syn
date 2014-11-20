@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwip_leaf_trans_deli_chrgs FOR xxwip.xxwip_leaf_trans_deli_chrgs;

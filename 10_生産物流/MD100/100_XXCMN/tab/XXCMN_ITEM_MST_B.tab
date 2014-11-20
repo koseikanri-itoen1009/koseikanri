@@ -1,0 +1,97 @@
+CREATE TABLE xxcmn.xxcmn_item_mst_b
+  (
+    item_id                   NUMBER        NOT NULL,
+    start_date_active         DATE          NOT NULL,
+    end_date_active           DATE,
+    active_flag               VARCHAR2(1),
+    item_name                 VARCHAR2(60),
+    item_short_name           VARCHAR2(20),
+    item_name_alt             VARCHAR2(30),
+    parent_item_id            NUMBER,
+    obsolete_class            VARCHAR2(1),
+    obsolete_date             DATE,
+    model_type                NUMBER(2,0),
+    product_class             NUMBER(2,0),
+    product_type              NUMBER(2,0),
+    expiration_day            NUMBER(4,0),
+    delivery_lead_time        NUMBER(4,0),
+    whse_county_code          VARCHAR2(4),
+    standard_yield            NUMBER(5,2),
+    shipping_end_date         DATE,
+    rate_class                VARCHAR2(1),
+    shelf_life                NUMBER(4),
+    shelf_life_class          VARCHAR2(2),
+    bottle_class              VARCHAR2(2),
+    uom_class                 VARCHAR2(2),
+    inventory_chk_class       VARCHAR2(2),
+    trace_class               VARCHAR2(2),
+    shipping_cs_unit_qty      NUMBER(5),
+    palette_max_cs_qty        NUMBER(2),
+    palette_max_step_qty      NUMBER(2),
+    palette_step_qty          NUMBER(2),
+    cs_weigth_or_capacity     NUMBER(10),
+    raw_material_consumption  NUMBER(10),
+    attribute1                VARCHAR2(20),
+    attribute2                VARCHAR2(20),
+    attribute3                VARCHAR2(20),
+    attribute4                VARCHAR2(20),
+    attribute5                VARCHAR2(20),
+    created_by                NUMBER(15,0)  NOT NULL,
+    creation_date             DATE          NOT NULL,
+    last_updated_by           NUMBER(15,0)  NOT NULL,
+    last_update_date          DATE          NOT NULL,
+    last_update_login         NUMBER(15,0),
+    request_id                NUMBER(15,0),
+    program_application_id    NUMBER(15,0),
+    program_id                NUMBER(15,0),
+    program_update_date       DATE,
+    CONSTRAINT xxcmn_item_mst_b_pk PRIMARY KEY ( item_id, start_date_active )
+    USING INDEX TABLESPACE xxidx
+  ) ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.item_id                   IS '品目ID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.start_date_active         IS '適用開始日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.end_date_active           IS '適用終了日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.active_flag               IS '適用済フラグ' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.item_name                 IS '正式名' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.item_short_name           IS '略称' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.item_name_alt             IS 'カナ名' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.parent_item_id            IS '親品目ID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.obsolete_class            IS '廃止区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.obsolete_date             IS '廃止日（製造中止日）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.model_type                IS '型種別' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.product_class             IS '商品分類' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.product_type              IS '商品種別' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.expiration_day            IS '賞味期間' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.delivery_lead_time        IS '納入期間' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.whse_county_code          IS '工場群コード' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.standard_yield            IS '標準歩留' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.shipping_end_date         IS '出荷停止日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.rate_class                IS '率区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.shelf_life                IS '消費期間' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.shelf_life_class          IS '賞味期間区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.bottle_class              IS '容器区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.uom_class                 IS '単位区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.inventory_chk_class       IS '棚卸区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.trace_class               IS 'トレース区分' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.shipping_cs_unit_qty      IS '出荷入数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.palette_max_cs_qty        IS '配数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.palette_max_step_qty      IS 'パレット当り最大段数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.palette_step_qty          IS 'パレット段' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.cs_weigth_or_capacity     IS 'ケース重量容積' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.raw_material_consumption  IS '原料使用量' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute1                IS '予備１' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute2                IS '予備２' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute3                IS '予備３' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute4                IS '予備４' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute5                IS '予備５' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.created_by                IS '作成者' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.creation_date             IS '作成日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.last_updated_by           IS '最終更新者' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.last_update_date          IS '最終更新日' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.last_update_login         IS '最終更新ログイン' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.request_id                IS '要求ID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.program_application_id    IS 'コンカレント・プログラムのアプリケーションID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.program_id                IS 'コンカレント・プログラムID' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.program_update_date       IS 'プログラムによる更新日' ;
+--
+COMMENT ON TABLE  xxcmn.xxcmn_item_mst_b  IS '品目アドオン';

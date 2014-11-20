@@ -1,0 +1,3 @@
+@XXCMN_IMB_N01.ind;
+@XXCMN_IMB_N02.ind;
+@XXCMN_XLA_N01.ind;

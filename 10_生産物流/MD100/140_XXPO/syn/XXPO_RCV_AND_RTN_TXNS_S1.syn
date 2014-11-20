@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxpo_rcv_and_rtn_txns_s1 FOR xxpo.xxpo_rcv_and_rtn_txns_s1;

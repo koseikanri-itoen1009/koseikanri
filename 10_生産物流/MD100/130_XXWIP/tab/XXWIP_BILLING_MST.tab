@@ -1,0 +1,64 @@
+CREATE TABLE xxwip.xxwip_billing_mst
+(
+  billing_mst_id                NUMBER(10,0) NOT NULL,
+  billing_code                  VARCHAR2(15) NOT NULL,
+  billing_date                  VARCHAR2(6)  NOT NULL,
+  billing_name                  VARCHAR2(60),
+  post_no                       VARCHAR2(8),
+  address                       VARCHAR2(60),
+  telephone_no                  VARCHAR2(15),
+  fax_no                        VARCHAR2(15),
+  money_transfer_date           VARCHAR2(2),
+  condition_setting_date        DATE,
+  last_month_charge_amount      NUMBER(11,0),
+  amount_receipt_money          NUMBER(11,0),
+  amount_adjustment             NUMBER(11,0),
+  balance_carried_forward       NUMBER(11,0),
+  charged_amount                NUMBER(11,0),
+  charged_amount_total          NUMBER(11,0),
+  month_sales                   NUMBER(11,0),
+  consumption_tax               NUMBER(11,0),
+  congestion_charge             NUMBER(11,0),
+  created_by                    NUMBER(15,0)  NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15,0)  NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwip_billing_mst_pk PRIMARY KEY ( billing_mst_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.billing_mst_id            IS '請求先アドオンマスタID';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.billing_code              IS '請求先コード';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.billing_date              IS '請求年月';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.billing_name              IS '請求先名';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.post_no                   IS '郵便番号';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.address                   IS '住所';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.telephone_no              IS '電話番号';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.fax_no                    IS 'FAX番号';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.money_transfer_date       IS '振込日';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.condition_setting_date    IS '支払条件設定日';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.last_month_charge_amount  IS '前月請求額';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.amount_receipt_money      IS '今回入金額';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.amount_adjustment         IS '調整額';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.balance_carried_forward   IS '繰越額';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.charged_amount            IS '今回請求金額';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.charged_amount_total      IS '請求金額合計';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.month_sales               IS '今月売上額';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.consumption_tax           IS '消費税';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.congestion_charge         IS '通行料等';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.created_by                IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.creation_date             IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.request_id                IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_billing_mst.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwip.xxwip_billing_mst IS '請求先アドオンマスタ';

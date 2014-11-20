@@ -1,0 +1,48 @@
+CREATE TABLE xxcmn.xxcmn_locations_all 
+(
+  location_id               NUMBER(15,0)  NOT NULL, 
+  start_date_active         DATE          NOT NULL,
+  end_date_active           DATE, 
+  location_name             VARCHAR2(60), 
+  location_short_name       VARCHAR2(20), 
+  location_name_alt         VARCHAR2(30), 
+  zip                       VARCHAR2(8), 
+  address_line1             VARCHAR2(60), 
+  phone                     VARCHAR2(15), 
+  fax                       VARCHAR2(15), 
+  division_code             VARCHAR2(6), 
+  created_by                NUMBER(15,0)  NOT NULL, 
+  creation_date             DATE          NOT NULL, 
+  last_updated_by           NUMBER(15,0)  NOT NULL, 
+  last_update_date          DATE          NOT NULL, 
+  last_update_login         NUMBER(15,0), 
+  request_id                NUMBER(15,0), 
+  program_application_id    NUMBER(15,0), 
+  program_id                NUMBER(15,0), 
+  program_update_date       DATE, 
+  CONSTRAINT xxcmn_locations_all_pk PRIMARY KEY (location_id, start_date_active)
+  USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.location_id             IS '事業所ID';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.start_date_active       IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.end_date_active         IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.location_name           IS '正式名';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.location_short_name     IS '略称';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.location_name_alt       IS 'カナ名';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.zip                     IS '郵便番号';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.address_line1           IS '住所';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.phone                   IS '電話番号';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.fax                     IS 'FAX番号';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.division_code           IS '本部コード';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.created_by              IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.program_application_id  IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_locations_all.program_update_date     IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE xxcmn.xxcmn_locations_all IS '事業所アドオンマスタ';

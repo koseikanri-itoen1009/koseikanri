@@ -1,0 +1,52 @@
+CREATE TABLE xxwip.xxwip_transfer_fare_inf
+(
+  transfer_fare_inf_id    NUMBER(10,0)    NOT NULL,
+  target_date             VARCHAR2(6)     NOT NULL,
+  request_no              VARCHAR2(9)     NOT NULL,
+  goods_classe            VARCHAR2(1)     NOT NULL,
+  delivery_date           DATE,
+  jurisdicyional_hub      VARCHAR2(4)     NOT NULL,
+  delivery_whs            VARCHAR2(4)     NOT NULL,
+  ship_to                 VARCHAR2(4)     NOT NULL,
+  item_code               VARCHAR2(32)    NOT NULL,
+  price                   NUMBER(4,0)     NOT NULL,
+  calc_qry                NUMBER(8,0)     NOT NULL,
+  actual_qty              NUMBER(8,0)     NOT NULL,
+  amount                  NUMBER(10,0)    NOT NULL,
+  created_by              NUMBER(15,0)    NOT NULL,
+  creation_date           DATE            NOT NULL,
+  last_updated_by         NUMBER(15,0)    NOT NULL,
+  last_update_date        DATE            NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxwip_transfer_fare_inf_pk PRIMARY KEY ( transfer_fare_inf_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.transfer_fare_inf_id         IS '振替運賃情報ID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.target_date                  IS '対象年月';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.request_no                   IS '依頼Ｎｏ';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.goods_classe                 IS '商品区分';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.delivery_date                IS '配送日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.jurisdicyional_hub           IS '管轄拠点';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.delivery_whs                 IS '出庫元';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.ship_to                      IS '配送先';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.item_code                    IS '品目コード';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.price                        IS '単価';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.calc_qry                     IS '計算数量';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.actual_qty                   IS '実際数量';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.amount                       IS '金額';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.created_by                   IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.creation_date                IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.last_updated_by              IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.last_update_date             IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.last_update_login            IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.request_id                   IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.program_application_id       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.program_id                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_fare_inf.program_update_date          IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwip.xxwip_transfer_fare_inf IS '振替運賃情報アドオン';

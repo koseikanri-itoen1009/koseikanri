@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_wf_key_s1 FOR xxcmn.xxcmn_wf_key_s1;

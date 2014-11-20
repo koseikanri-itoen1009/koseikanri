@@ -1,0 +1,52 @@
+CREATE TABLE xxwip.xxwip_material_detail
+(
+  mtl_detail_addon_id       NUMBER(10,0)    NOT NULL,
+  batch_id                  NUMBER(10,0)    NOT NULL,
+  material_detail_id        NUMBER(10,0)    NOT NULL,
+  item_id                   NUMBER(10,0)    NOT NULL,
+  lot_id                    NUMBER(10,0),
+  instructions_qty          NUMBER(12,3),
+  invested_qty              NUMBER(12,3)    DEFAULT 0    NOT NULL,
+  return_qty                NUMBER(12,3)    DEFAULT 0    NOT NULL,
+  mtl_prod_qty              NUMBER(12,3)    DEFAULT 0    NOT NULL,
+  mtl_mfg_qty               NUMBER(12,3)    DEFAULT 0    NOT NULL,
+  location_code             VARCHAR2(4),
+  plan_type                 VARCHAR2(1),
+  plan_number               VARCHAR2(12),
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxwip_material_dtl_pk PRIMARY KEY ( mtl_detail_addon_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_material_detail.mtl_detail_addon_id     IS '生産原料詳細アドオンID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.batch_id                IS 'バッチID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.material_detail_id      IS '生産原料詳細ID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.item_id                 IS '品目ID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.lot_id                  IS 'ロットID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.instructions_qty        IS '指示総数';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.invested_qty            IS '投入数量';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.return_qty              IS '戻入数量';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.mtl_prod_qty            IS '資材製造不良数';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.mtl_mfg_qty             IS '資材業者不良数';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.location_code           IS '手配倉庫コード';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.plan_type               IS '予定区分';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.plan_number             IS '番号';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.created_by              IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.creation_date           IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.request_id              IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_material_detail.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwip.xxwip_material_detail IS '生産原料詳細アドオン';

@@ -1,0 +1,38 @@
+CREATE TABLE xxcmn.xxcmn_lot_cost
+(
+  item_id                 NUMBER(15,0)      NOT NULL,
+  item_code               VARCHAR2(32)      NOT NULL,
+  lot_id                  NUMBER (15,0)     NOT NULL,
+  lot_num                 VARCHAR2(32)      NOT NULL,
+  trans_qty               NUMBER(12,3),
+  unit_ploce              NUMBER(9,2),
+  created_by              NUMBER(15,0)      NOT NULL,
+  creation_date           DATE              NOT NULL,
+  last_updated_by         NUMBER(15,0)      NOT NULL,
+  last_update_date        DATE              NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxcmn_lot_cost_pk PRIMARY KEY ( item_id, lot_id )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.item_id                IS '品目ID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.item_code              IS '品目コード';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.lot_id                 IS 'ロットID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.lot_num                IS 'ロットＮｏ';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.trans_qty              IS '取引数量';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.unit_ploce             IS '単価';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.created_by             IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.program_application_id IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_lot_cost.program_update_date    IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_lot_cost IS 'ロット別原価（アドオン）';

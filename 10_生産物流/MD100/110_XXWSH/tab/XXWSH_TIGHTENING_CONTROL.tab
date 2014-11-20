@@ -1,0 +1,47 @@
+CREATE TABLE xxwsh.xxwsh_tightening_control
+(
+  transaction_id                NUMBER          NOT NULL,
+  concurrent_id                 NUMBER          NOT NULL,
+  order_type_id                 NUMBER          NOT NULL,
+  deliver_from                  VARCHAR2(4)     NOT NULL,
+  prod_class                    VARCHAR2(3)     NOT NULL,
+  sales_branch_category         VARCHAR2(3)     NOT NULL,
+  lead_time_day                 NUMBER          NOT NULL,
+  schedule_ship_date            DATE            NOT NULL,
+  tighten_release_class         VARCHAR2(1)     NOT NULL,
+  tightening_date               DATE            NOT NULL,
+  base_record_class             VARCHAR2(1)     NOT NULL,
+  created_by                    NUMBER(15,0)    NOT NULL,
+  creation_date                 DATE            NOT NULL,
+  last_updated_by               NUMBER(15,0)    NOT NULL,
+  last_update_date              DATE            NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwsh_tightening_control_pk PRIMARY KEY ( transaction_id )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.transaction_id         IS 'トランザクションID';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.concurrent_id          IS 'コンカレントID';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.order_type_id          IS '受注タイプID';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.deliver_from           IS '出荷元保管場所';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.prod_class             IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.sales_branch_category  IS '拠点カテゴリ';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.lead_time_day          IS '生産物流LT';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.schedule_ship_date     IS '出荷予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.tighten_release_class  IS '締め／解除区分';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.tightening_date        IS '締め実施日時';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.base_record_class      IS '基準レコード区分';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.created_by             IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.creation_date          IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.request_id             IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.program_update_date    IS 'プログラム更新日';
+--

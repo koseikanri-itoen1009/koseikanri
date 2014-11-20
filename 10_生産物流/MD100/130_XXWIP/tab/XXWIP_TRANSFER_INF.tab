@@ -1,0 +1,52 @@
+CREATE TABLE xxwip.xxwip_transfer_inf
+(
+  transfer_inf_id         NUMBER(10,0)    NOT NULL,
+  target_date             VARCHAR2(6)     NOT NULL,
+  business_block          VARCHAR2(4)     NOT NULL,
+  goods_classe            VARCHAR2(1)     NOT NULL,
+  jurisdicyional_hub      VARCHAR2(4)     NOT NULL,
+  area_name               VARCHAR2(240),
+  transfe_qty             NUMBER(9,3)     NOT NULL,
+  transfer_amount         NUMBER(8,0)     NOT NULL,
+  restore_amount          NUMBER(8,0)     NOT NULL,
+  shipping_expenses_a     NUMBER(8,0)     NOT NULL,
+  shipping_expenses_b     NUMBER(8,0)     NOT NULL,
+  shipping_expenses_c     NUMBER(8,0)     NOT NULL,
+  etc_amount              NUMBER(8,0)     NOT NULL,
+  created_by              NUMBER(15,0)    NOT NULL,
+  creation_date           DATE            NOT NULL,
+  last_updated_by         NUMBER(15,0)    NOT NULL,
+  last_update_date        DATE            NOT NULL,
+  last_update_login       NUMBER(15,0),
+  request_id              NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE,
+  CONSTRAINT xxwip_transfer_inf_pk PRIMARY KEY ( transfer_inf_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.transfer_inf_id         IS '振替情報ID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.target_date             IS '対象年月';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.business_block          IS '営業ブロック';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.goods_classe            IS '商品区分';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.jurisdicyional_hub      IS '管轄拠点';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.area_name               IS '地区名';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.transfe_qty             IS '振替数量';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.transfer_amount         IS '振替金額';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.restore_amount          IS '還元金額';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.shipping_expenses_a     IS '運送費A';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.shipping_expenses_b     IS '運送費B';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.shipping_expenses_c     IS '運送費C';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.etc_amount              IS 'その他';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.created_by              IS '作成者';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.creation_date           IS '作成日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.request_id              IS '要求ID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwip.xxwip_transfer_inf.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwip.xxwip_transfer_inf IS '振替情報アドオン';

@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxpo_requisition_headers_s1 FOR xxpo.xxpo_requisition_headers_s1;

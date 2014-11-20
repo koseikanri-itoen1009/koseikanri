@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwip_mtl_detail_addon_id_s1 FOR xxwip.xxwip_mtl_detail_addon_id_s1;

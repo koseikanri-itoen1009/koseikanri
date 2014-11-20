@@ -1,0 +1,2 @@
+/* 受注明細アドオン．シーケンス シノニム */
+CREATE OR REPLACE SYNONYM apps.xxwsh_order_lines_all_s1 FOR xxwsh.xxwsh_order_lines_all_s1;

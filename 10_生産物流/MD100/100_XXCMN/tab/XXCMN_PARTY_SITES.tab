@@ -1,0 +1,58 @@
+CREATE TABLE xxcmn.xxcmn_party_sites
+(
+  party_site_id          NUMBER(15,0) NOT NULL ENABLE, 
+  party_id               NUMBER(15,0) NOT NULL ENABLE, 
+  location_id            NUMBER(15,0) NOT NULL ENABLE, 
+  start_date_active      DATE         NOT NULL ENABLE, 
+  end_date_active        DATE, 
+  base_code              VARCHAR2(4), 
+  party_site_name        VARCHAR2(60), 
+  party_site_short_name  VARCHAR2(20), 
+  party_site_name_alt    VARCHAR2(30), 
+  zip                    VARCHAR2(8), 
+  address_line1          VARCHAR2(30), 
+  address_line2          VARCHAR2(30), 
+  phone                  VARCHAR2(15), 
+  fax                    VARCHAR2(15), 
+  invoice_report_id      VARCHAR2(10), 
+  freshness_condition    VARCHAR2(2), 
+  created_by             NUMBER(15,0) NOT NULL ENABLE, 
+  creation_date          DATE         NOT NULL ENABLE, 
+  last_updated_by        NUMBER(15,0) NOT NULL ENABLE, 
+  last_update_date       DATE         NOT NULL ENABLE, 
+  last_update_login      NUMBER(15,0), 
+  request_id             NUMBER(15,0), 
+  program_application_id NUMBER(15,0), 
+  program_id             NUMBER(15,0), 
+  program_update_date    DATE, 
+  CONSTRAINT xxcmn_party_sites_pk PRIMARY KEY (party_site_id, party_id, location_id, start_date_active)
+  USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.party_site_id          IS 'パーティーサイトID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.party_id               IS 'パーティーID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.location_id            IS 'ロケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.start_date_active      IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.end_date_active        IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.base_code              IS '拠点コード';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.party_site_name        IS '正式名';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.party_site_short_name  IS '略称';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.party_site_name_alt    IS 'カナ名';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.zip                    IS '郵便番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.address_line1          IS '住所１';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.address_line2          IS '住所２';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.phone                  IS '電話番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.fax                    IS 'FAX番号';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.invoice_report_id      IS '送り状レポートID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.freshness_condition    IS '鮮度条件';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.created_by             IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.program_application_id IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_party_sites.program_update_date    IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE xxcmn.xxcmn_party_sites  IS 'パーティサイトアドオンマスタ';

@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxpo_headers_all FOR xxpo.xxpo_headers_all;

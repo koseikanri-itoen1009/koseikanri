@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_sourcing_rules_s1 FOR xxcmn.xxcmn_sourcing_rules_s1;

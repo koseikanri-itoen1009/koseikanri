@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_delivery_no_s1 FOR xxcmn.xxcmn_delivery_no_s1;

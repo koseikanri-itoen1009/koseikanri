@@ -1,0 +1,48 @@
+CREATE TABLE xxinv.xxinv_mov_lot_details
+(
+  mov_lot_dtl_id            NUMBER          NOT NULL,
+  mov_line_id               NUMBER          NOT NULL,
+  document_type_code        VARCHAR2(2)     NOT NULL,
+  record_type_code          VARCHAR2(2)     NOT NULL,
+  item_id                   NUMBER,
+  item_code                 VARCHAR2(7)     NOT NULL,
+  lot_id                    NUMBER          NOT NULL,
+  lot_no                    VARCHAR2(10),
+  actual_date               DATE,
+  actual_quantity           NUMBER,
+  automanual_reserve_class  VARCHAR2(2),
+  created_by                NUMBER(15,0)    NOT NULL,
+  creation_date             DATE            NOT NULL,
+  last_updated_by           NUMBER(15,0)    NOT NULL,
+  last_update_date          DATE            NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxinv_mov_lot_details_pk PRIMARY KEY ( mov_lot_dtl_id )
+  USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.mov_lot_dtl_id           IS 'ロット詳細ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.mov_line_id              IS '明細ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.document_type_code       IS '文書タイプ';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.record_type_code         IS 'レコードタイプ';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.item_id                  IS 'OPM品目ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.item_code                IS '品目';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.lot_id                   IS 'ロットID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.lot_no                   IS 'ロットNo';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.actual_date              IS '実績日';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.actual_quantity          IS '実績数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.automanual_reserve_class IS '自動手動引当区分';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.created_by               IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.creation_date            IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.request_id               IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxinv.xxinv_mov_lot_details IS '移動ロット詳細(アドオン)';

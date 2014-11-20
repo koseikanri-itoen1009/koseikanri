@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_locations_all FOR xxcmn.xxcmn_locations_all;

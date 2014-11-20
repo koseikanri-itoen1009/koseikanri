@@ -1,0 +1,4 @@
+/* 受注ヘッダアドオン．シーケンスCREATE */
+-- 初期値は既にテストデータが存在していたため「1000000000」
+--DROP SEQUENCE xxwsh.xxwsh_order_headers_all_s1;
+CREATE SEQUENCE xxwsh.xxwsh_order_headers_all_s1 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 START WITH 1000000000 CACHE 20 NOORDER  NOCYCLE;

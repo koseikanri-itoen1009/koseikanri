@@ -1,0 +1,102 @@
+CREATE TABLE xxwsh.xxwsh_order_lines_all
+(
+  order_line_id                 NUMBER        NOT NULL,
+  order_header_id               NUMBER        NOT NULL,
+  order_line_number             NUMBER        NOT NULL,
+  header_id                     NUMBER,
+  line_id                       NUMBER,
+  request_no                    VARCHAR2(12)  NOT NULL,
+  shipping_inventory_item_id    NUMBER,
+  shipping_item_code            VARCHAR2(7)   NOT NULL,
+  quantity                      NUMBER,
+  uom_code                      VARCHAR2(3),
+  unit_price                    NUMBER,
+  shipped_quantity              NUMBER,
+  designated_production_date    DATE,
+  based_request_quantity        NUMBER,
+  request_item_id               NUMBER,
+  request_item_code             VARCHAR2(7),
+  ship_to_quantity              NUMBER,
+  futai_code                    VARCHAR2(2),
+  designated_date               DATE,
+  move_number                   VARCHAR2(12),
+  po_number                     VARCHAR2(12),
+  cust_po_number                VARCHAR2(5),
+  pallet_quantity               NUMBER,
+  layer_quantity                NUMBER,
+  case_quantity                 NUMBER,
+  weight                        NUMBER,
+  capacity                      NUMBER,
+  pallet_qty                    NUMBER,
+  pallet_weight                 NUMBER,
+  reserved_quantity             NUMBER,
+  automanual_reserve_class      VARCHAR2(2),
+  delete_flag                   VARCHAR2(1),
+  warning_class                 VARCHAR2(2),
+  warning_date                  DATE,
+  line_description              VARCHAR2(60),
+  rm_if_flg                     VARCHAR2(1),
+  shipping_request_if_flg       VARCHAR2(1),
+  shipping_result_if_flg        VARCHAR2(1),
+  created_by                    NUMBER(15,0)    NOT NULL,
+  creation_date                 DATE            NOT NULL,
+  last_updated_by               NUMBER(15,0)    NOT NULL,
+  last_update_date              DATE            NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwsh_order_lines_all_pk PRIMARY KEY (ORDER_LINE_ID)
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.order_line_id               IS '受注明細アドオンID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.order_header_id             IS '受注ヘッダアドオンID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.order_line_number           IS '明細番号';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.header_id                   IS '受注ヘッダID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.line_id                     IS '受注明細ID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.request_no                  IS '依頼No';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.shipping_inventory_item_id  IS '出荷品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.shipping_item_code          IS '出荷品目';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.quantity                    IS '数量';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.uom_code                    IS '単位';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.unit_price                  IS '単価';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.shipped_quantity            IS '出荷実績数量';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.designated_production_date  IS '指定製造日';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.based_request_quantity      IS '拠点依頼数量';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.request_item_id             IS '依頼品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.request_item_code           IS '依頼品目';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.ship_to_quantity            IS '入庫実績数量';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.futai_code                  IS '付帯コード';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.designated_date             IS '指定日付（リーフ）';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.move_number                 IS '移動No';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.po_number                   IS '発注No';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.cust_po_number              IS '顧客発注';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.pallet_quantity             IS 'パレット数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.layer_quantity              IS '段数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.case_quantity               IS 'ケース数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.weight                      IS '重量';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.capacity                    IS '容積';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.pallet_qty                  IS 'パレット枚数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.pallet_weight               IS 'パレット重量';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.reserved_quantity           IS '引当数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.automanual_reserve_class    IS '自動手動引当区分';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.delete_flag                 IS '削除フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.warning_class               IS '警告区分';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.warning_date                IS '警告日付';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.line_description            IS '摘要';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.rm_if_flg                   IS '倉替返品インタフェース済フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.shipping_request_if_flg     IS '出荷依頼インタフェース済フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.shipping_result_if_flg      IS '出荷実績インタフェース済フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.created_by                  IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.creation_date               IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.last_updated_by             IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.last_update_date            IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.last_update_login           IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.request_id                  IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.program_id                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_order_lines_all.program_update_date         IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwsh.xxwsh_order_lines_all  IS '受注明細アドオン';

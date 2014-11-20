@@ -1,0 +1,2 @@
+--DROP INDEX xxpo.xxpo_ph_n03 ;
+CREATE INDEX xxpo.xxpo_ph_n03 ON xxpo.xxpo_price_headers(item_code,price_type) TABLESPACE xxidx ;

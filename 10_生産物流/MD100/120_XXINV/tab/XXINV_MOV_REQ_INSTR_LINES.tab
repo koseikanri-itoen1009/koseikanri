@@ -1,0 +1,80 @@
+CREATE TABLE xxinv.xxinv_mov_req_instr_lines
+(
+  mov_line_id                 NUMBER        NOT NULL,
+  mov_hdr_id                  NUMBER        NOT NULL,
+  line_number                 NUMBER(3)     NOT NULL,
+  organization_id             NUMBER,
+  item_id                     NUMBER        NOT NULL,
+  item_code                   VARCHAR2(7),
+  request_qty                 NUMBER,
+  pallet_quantity             NUMBER,
+  layer_quantity              NUMBER,
+  case_quantity               NUMBER,
+  instruct_qty                NUMBER,
+  reserved_quantity           NUMBER,
+  uom_code                    VARCHAR2(3),
+  designated_production_date  DATE,
+  pallet_qty                  NUMBER,
+  move_num                    VARCHAR2(12),
+  po_num                      VARCHAR2(12),
+  first_instruct_qty          NUMBER,
+  shipped_quantity            NUMBER,
+  ship_to_quantity            NUMBER,
+  weight                      NUMBER,
+  capacity                    NUMBER,
+  pallet_weight               NUMBER,
+  automanual_reserve_class    VARCHAR2(2),
+  delete_flg                  VARCHAR2(1),
+  warning_date                DATE,
+  warning_class               VARCHAR2(2),
+  created_by                  NUMBER(15,0)    NOT NULL,
+  creation_date               DATE            NOT NULL,
+  last_updated_by             NUMBER(15,0)    NOT NULL,
+  last_update_date            DATE            NOT NULL,
+  last_update_login           NUMBER(15,0),
+  request_id                  NUMBER(15,0),
+  program_application_id      NUMBER(15,0),
+  program_id                  NUMBER(15,0),
+  PROGRAM_UPDATE_DATE         DATE,
+  CONSTRAINT xxinv_mov_req_instr_lines_pk PRIMARY KEY ( mov_line_id )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.mov_line_id                 IS '移動明細ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.mov_hdr_id                  IS '移動ヘッダID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.line_number                 IS '明細番号';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.organization_id             IS '組織ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.item_id                     IS 'OPM品目ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.item_code                   IS '品目';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.request_qty                 IS '依頼数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.pallet_quantity             IS 'パレット数';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.layer_quantity              IS '段数';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.case_quantity               IS 'ケース数';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.instruct_qty                IS '指示数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.reserved_quantity           IS '引当数';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.uom_code                    IS '単位';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.designated_production_date  IS '指定製造日';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.pallet_qty                  IS 'パレット枚数';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.move_num                    IS '参照移動番号';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.po_num                      IS '参照発注番号';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.first_instruct_qty          IS '初回指示数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.shipped_quantity            IS '出庫実績数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.ship_to_quantity            IS '入庫実績数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.weight                      IS '重量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.capacity                    IS '容積';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.pallet_weight               IS 'パレット重量';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.automanual_reserve_class    IS '自動手動引当区分';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.delete_flg                  IS '取消フラグ';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.warning_date                IS '警告日付';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.warning_class               IS '警告区分';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.created_by                  IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.creation_date               IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.last_updated_by             IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.last_update_date            IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.last_update_login           IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.request_id                  IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.program_id                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_mov_req_instr_lines.program_update_date         IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxinv.xxinv_mov_req_instr_lines IS '移動依頼/指示明細(アドオン)';

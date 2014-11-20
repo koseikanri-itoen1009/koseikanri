@@ -1,0 +1,50 @@
+CREATE TABLE xxcmn.xxcmn_delivery_lt
+(
+  delivery_lt_id              NUMBER        NOT NULL,
+  code_class1                 VARCHAR2(2)   NOT NULL,
+  entering_despatching_code1  VARCHAR2(9)   NOT NULL,
+  code_class2                 VARCHAR2(2)   NOT NULL,
+  entering_despatching_code2  VARCHAR2(9)   NOT NULL,
+  start_date_active           DATE          NOT NULL,
+  end_date_active             DATE,
+  delivery_lead_time          NUMBER(2,0),
+  consolidated_flag           NUMBER(1,0),
+  drink_lead_time_day         NUMBER(3,0),
+  leaf_lead_time_day          NUMBER(3,0),
+  receipt_change_lead_time_day    NUMBER(3,0),
+  created_by                  NUMBER(15,0)  NOT NULL,
+  creation_date               DATE          NOT NULL,
+  last_updated_by             NUMBER(15,0)  NOT NULL,
+  last_update_date            DATE          NOT NULL,
+  last_update_login           NUMBER(15,0),
+  request_id                  NUMBER(15,0),
+  program_application_id      NUMBER(15,0),
+  program_id                  NUMBER(15,0),
+  program_update_date         DATE,
+  CONSTRAINT xxcmn_delivery_lt_pk PRIMARY KEY ( delivery_lt_id )
+  USING INDEX TABLESPACE xxidx
+  ) ;
+--
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.delivery_lt_id                IS '配送LTアドオンID';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.code_class1                   IS 'コード区分１';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.entering_despatching_code1    IS '入出庫場所コード１';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.code_class2                   IS 'コード区分２';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.entering_despatching_code2    IS '入出庫場所コード２';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.start_date_active             IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.end_date_active               IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.delivery_lead_time            IS '配送リードタイム';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.consolidated_flag             IS '混載許可フラグ';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.drink_lead_time_day           IS 'ドリンク生産物流LT';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.leaf_lead_time_day            IS 'リーフ生産物流LT';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.receipt_change_lead_time_day      IS '引取変更LT';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.created_by                    IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.creation_date                 IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.last_updated_by               IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.last_update_date              IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.last_update_login             IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.request_id                    IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.program_application_id        IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.program_id                    IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.program_update_date           IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE  xxcmn.xxcmn_delivery_lt IS '配送L/Tアドオンマスタ';

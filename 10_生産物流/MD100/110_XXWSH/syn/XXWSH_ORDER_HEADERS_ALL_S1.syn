@@ -1,0 +1,2 @@
+/* 受注ヘッダアドオン．シーケンス シノニム */
+CREATE OR REPLACE SYNONYM apps.xxwsh_order_headers_all_s1 FOR xxwsh.xxwsh_order_headers_all_s1;

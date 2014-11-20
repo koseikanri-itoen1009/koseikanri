@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_ship_methods_s1 FOR xxcmn.xxcmn_ship_methods_s1;

@@ -1,0 +1,92 @@
+CREATE TABLE xxwsh.xxwsh_carriers_schedule
+(
+  transaction_id                NUMBER          NOT NULL,
+  transaction_type              VARCHAR2(2)     NOT NULL,
+  mixed_type                    VARCHAR2(2)     NOT NULL,
+  delivery_no                   VARCHAR2(12)    NOT NULL,
+  default_line_number           VARCHAR2(12),
+  carrier_id                    NUMBER,
+  carrier_code                  VARCHAR2(4),
+  deliver_from_id               NUMBER,
+  deliver_from                  VARCHAR2(4),
+  deliver_to_id                 NUMBER,
+  deliver_to                    VARCHAR2(9),
+  deliver_to_code_class         VARCHAR2(2),
+  delivery_type                 VARCHAR2(2),
+  order_type_id                 NUMBER,
+  auto_process_type             VARCHAR2(1),
+  schedule_ship_date            DATE,
+  schedule_arrival_date         DATE,
+  description                   VARCHAR2(60),
+  payment_freight_flag          VARCHAR2(1),
+  demand_freight_flag           VARCHAR2(1),
+  sum_loading_weight            NUMBER,
+  sum_loading_capacity          NUMBER,
+  loading_efficiency_weight     NUMBER,
+  loading_efficiency_capacity   NUMBER,
+  based_weight                  NUMBER,
+  based_capacity                NUMBER,
+  result_freight_carrier_id     NUMBER,
+  result_freight_carrier_code   VARCHAR2(4),
+  result_shipping_method_code   VARCHAR2(2),
+  shipped_date                  DATE,
+  arrival_date                  DATE,
+  weight_capacity_class         VARCHAR2(1),
+  freight_charge_type           VARCHAR2(1),
+  created_by                    NUMBER(15,0)    NOT NULL,
+  creation_date                 DATE            NOT NULL,
+  last_updated_by               NUMBER(15,0)    NOT NULL,
+  last_update_date              DATE            NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwsh_carriers_schedule_pk PRIMARY KEY ( transaction_id )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.transaction_id               IS 'トランザクションID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.transaction_type             IS '処理種別（配車）';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.mixed_type                   IS '混載種別';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.delivery_no                  IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.default_line_number          IS '基準明細No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.carrier_id                   IS '運送業者ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.carrier_code                 IS '運送業者';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.deliver_from_id              IS '配送元ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.deliver_from                 IS '配送元';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.deliver_to_id                IS '配送先ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.deliver_to                   IS '配送先';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.deliver_to_code_class        IS '配送先コード区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.delivery_type                IS '配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.order_type_id                IS '出庫形態';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.auto_process_type            IS '自動配車対象区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.schedule_ship_date           IS '出庫予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.schedule_arrival_date        IS '着荷予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.description                  IS '摘要';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.payment_freight_flag         IS '支払運賃計算対象フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.demand_freight_flag          IS '請求運賃計算対象フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.sum_loading_weight           IS '積載重量合計';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.sum_loading_capacity         IS '積載容積合計';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.loading_efficiency_weight    IS '重量積載効率';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.loading_efficiency_capacity  IS '容積積載効率';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.based_weight                 IS '基本重量';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.based_capacity               IS '基本容積';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.result_freight_carrier_id    IS '運送業者_実績ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.result_freight_carrier_code  IS '運送業者_実績';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.result_shipping_method_code  IS '配送区分_実績';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.shipped_date                 IS '出荷日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.arrival_date                 IS '着荷日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.weight_capacity_class        IS '重量容積区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.freight_charge_type          IS '運賃形態';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.created_by                   IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.creation_date                IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.last_updated_by              IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.last_update_date             IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.last_update_login            IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.request_id                   IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.program_application_id       IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.program_id                   IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_schedule.program_update_date          IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwsh.xxwsh_carriers_schedule IS '配車配送計画（アドオン）';

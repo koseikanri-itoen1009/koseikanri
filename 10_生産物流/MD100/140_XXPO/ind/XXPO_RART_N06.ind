@@ -1,0 +1,2 @@
+--DROP INDEX xxpo.xxpo_rart_n06 ;
+CREATE INDEX xxpo.xxpo_rart_n06 ON xxpo.xxpo_rcv_and_rtn_txns(department_code,txns_date) TABLESPACE xxidx ;

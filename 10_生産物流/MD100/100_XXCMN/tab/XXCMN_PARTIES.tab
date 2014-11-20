@@ -1,0 +1,82 @@
+CREATE TABLE xxcmn.xxcmn_parties 
+(
+  party_id                          NUMBER(15,0) NOT NULL, 
+  start_date_active                 DATE         NOT NULL, 
+  end_date_active                   DATE, 
+  party_name                        VARCHAR2(60), 
+  party_short_name                  VARCHAR2(20), 
+  party_name_alt                    VARCHAR2(30), 
+  zip                               VARCHAR2(8), 
+  address_line1                     VARCHAR2(30), 
+  address_line2                     VARCHAR2(30), 
+  phone                             VARCHAR2(15), 
+  fax                               VARCHAR2(15), 
+  reserve_order                     NUMBER(5,0), 
+  drink_transfer_std                VARCHAR2(1), 
+  leaf_transfer_std                 VARCHAR2(1), 
+  transfer_group                    VARCHAR2(3), 
+  distribution_block                VARCHAR2(6), 
+  base_major_division               VARCHAR2(1), 
+  department                        VARCHAR2(4), 
+  billing_department                VARCHAR2(4), 
+  payment_term_id                   NUMBER(15,0), 
+  tax_rounding_rule                 VARCHAR2(1), 
+  consumption_tax_code              VARCHAR2(1), 
+  eos_control_type                  VARCHAR2(1), 
+  eos_detination                    VARCHAR2(4), 
+  carriage_due_date                 NUMBER(2,0), 
+  carriage_rounding_rule            VARCHAR2(1), 
+  carriage_tax_code                 VARCHAR2(1), 
+  pay_judgement_code                VARCHAR2(1), 
+  created_by                        NUMBER(15,0)  NOT NULL, 
+  creation_date                     DATE          NOT NULL, 
+  last_updated_by                   NUMBER(15,0)  NOT NULL, 
+  last_update_date                  DATE          NOT NULL, 
+  last_update_login                 NUMBER(15,0), 
+  request_id                        NUMBER(15,0), 
+  program_application_id            NUMBER(15,0), 
+  program_id                        NUMBER(15,0), 
+  program_update_date               DATE, 
+  CONSTRAINT xxcmn_parties_pk PRIMARY KEY (party_id, start_date_active)
+  USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON COLUMN xxcmn.xxcmn_parties.party_id                 IS 'パーティーID';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.start_date_active        IS '適用開始日';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.end_date_active          IS '適用終了日';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.party_name               IS '正式名';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.party_short_name         IS '略称';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.party_name_alt           IS 'カナ名';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.zip                      IS '郵便番号';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.address_line1            IS '住所１';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.address_line2            IS '住所２';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.phone                    IS '電話番号';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.fax                      IS 'ＦＡＸ番号';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.reserve_order            IS '引当順';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.drink_transfer_std       IS 'ドリンク運賃振替基準';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.leaf_transfer_std        IS 'リーフ運賃振替基準';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.transfer_group           IS '振替グループ';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.distribution_block       IS '物流ブロック';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.base_major_division      IS '拠点大分類';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.department               IS '部署';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.billing_department       IS '請求管理部署';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.payment_term_id          IS '支払条件';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.tax_rounding_rule        IS '四捨五入区分';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.consumption_tax_code     IS '消費税区分';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.eos_control_type         IS 'EOS管理区分';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.eos_detination           IS 'EOS宛先';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.carriage_due_date        IS '運送費 - 締日';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.carriage_rounding_rule   IS '運送費 - 四捨五入区分';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.carriage_tax_code        IS '運送費 - 消費税区分';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.pay_judgement_code       IS '支払判断区分';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.created_by               IS '作成者';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.creation_date            IS '作成日';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.request_id               IS '要求ID';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.program_application_id   IS 'コンカレント・プログラムのアプリケーションID';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcmn.xxcmn_parties.program_update_date      IS 'プログラムによる更新日';
+--
+COMMENT ON TABLE xxcmn.xxcmn_parties  IS 'パーティアドオンマスタ';

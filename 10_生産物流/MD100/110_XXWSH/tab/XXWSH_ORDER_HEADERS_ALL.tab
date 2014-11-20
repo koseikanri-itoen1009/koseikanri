@@ -1,0 +1,203 @@
+CREATE TABLE xxwsh.xxwsh_order_headers_all
+(
+  order_header_id               NUMBER          NOT NULL,
+  order_type_id                 NUMBER          NOT NULL,
+  organization_id               NUMBER          NOT NULL,
+  header_id                     NUMBER,
+  latest_external_flag          VARCHAR2(1)     NOT NULL,
+  ordered_date                  DATE            NOT NULL,
+  customer_id                   NUMBER,
+  customer_code                 VARCHAR2(4),
+  deliver_to_id                 NUMBER,
+  deliver_to                    VARCHAR2(9),
+  shipping_instructions         VARCHAR2(2000),
+  career_id                     NUMBER,
+  freight_carrier_code          VARCHAR2(4),
+  shipping_method_code          VARCHAR2(2),
+  cust_po_number                VARCHAR2(20),
+  price_list_id                 NUMBER,
+  request_no                    VARCHAR2(12)    NOT NULL,
+  req_status                    VARCHAR2(2)     NOT NULL,
+  delivery_no                   VARCHAR2(12),
+  prev_delivery_no              VARCHAR2(12),
+  schedule_ship_date            DATE,
+  schedule_arrival_date         DATE,
+  mixed_no                      VARCHAR2(12),
+  collected_pallet_qty          NUMBER,
+  confirm_request_class         VARCHAR2(1),
+  freight_charge_class          VARCHAR2(1),
+  shikyu_instruction_class      VARCHAR2(1),
+  shikyu_inst_rcv_class         VARCHAR2(1),
+  amount_fix_class              VARCHAR2(1),
+  takeback_class                VARCHAR2(1),
+  deliver_from_id               NUMBER          NOT NULL,
+  deliver_from                  VARCHAR2(4),
+  head_sales_branch             VARCHAR2(4),
+  input_sales_branch            VARCHAR2(4),
+  po_no                         VARCHAR2(12),
+  prod_class                    VARCHAR2(2),
+  item_class                    VARCHAR2(2),
+  no_cont_freight_class         VARCHAR2(1),
+  arrival_time_from             VARCHAR2(4),
+  arrival_time_to               VARCHAR2(4),
+  designated_item_id            NUMBER,
+  designated_item_code          VARCHAR2(7),
+  designated_production_date    DATE,
+  designated_branch_no          VARCHAR2(10),
+  slip_number                   VARCHAR2(20),
+  sum_quantity                  NUMBER,
+  small_quantity                NUMBER,
+  label_quantity                NUMBER,
+  loading_efficiency_weight     NUMBER,
+  loading_efficiency_capacity   NUMBER,
+  based_weight                  NUMBER,
+  based_capacity                NUMBER,
+  sum_weight                    NUMBER,
+  sum_capacity                  NUMBER,
+  mixed_ratio                   NUMBER,
+  pallet_sum_quantity           NUMBER,
+  real_pallet_quantity          NUMBER,
+  sum_pallet_weight             NUMBER,
+  order_source_ref              VARCHAR2(50),
+  result_freight_carrier_id     NUMBER,
+  result_freight_carrier_code   VARCHAR2(4),
+  result_shipping_method_code   VARCHAR2(2),
+  result_deliver_to_id          NUMBER,
+  result_deliver_to             VARCHAR2(9),
+  shipped_date                  DATE,
+  arrival_date                  DATE,
+  weight_capacity_class         VARCHAR2(1),
+  actual_confirm_class          VARCHAR2(1),
+  notif_status                  VARCHAR2(3),
+  prev_notif_status             VARCHAR2(3),
+  notif_date                    DATE,
+  new_modify_flg                VARCHAR2(1),
+  process_status                VARCHAR2(3),
+  performance_management_dept   VARCHAR2(4),
+  instruction_dept              VARCHAR2(4),
+  transfer_location_id          NUMBER,
+  transfer_location_code        VARCHAR2(4),
+  mixed_sign                    VARCHAR2(2),
+  screen_update_date            DATE,
+  screen_update_by              NUMBER(15,0),
+  tightening_date               DATE,
+  vendor_id                     NUMBER,
+  vendor_code                   VARCHAR2(4),
+  vendor_site_id                NUMBER,
+  vendor_site_code              VARCHAR2(4),
+  registered_sequence           NUMBER,
+  tightening_program_id         NUMBER(15,0),
+  corrected_tighten_class       VARCHAR2(1),
+  created_by                    NUMBER(15,0)  NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15,0)  NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwsh_order_headers_all_pk PRIMARY KEY (order_header_id)
+  USING INDEX TABLESPACE xxidx
+  );
+--
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.order_header_id              IS '受注ヘッダアドオンID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.order_type_id                IS '受注タイプID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.organization_id              IS '組織ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.header_id                    IS '受注ヘッダID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.latest_external_flag         IS '最新フラグ';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.ordered_date                 IS '受注日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.customer_id                  IS '顧客ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.customer_code                IS '顧客';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.deliver_to_id                IS '出荷先ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.deliver_to                   IS '出荷先';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.shipping_instructions        IS '出荷指示';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.career_id                    IS '運送業者ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.freight_carrier_code         IS '運送業者';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.shipping_method_code         IS '配送区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.cust_po_number               IS '顧客発注';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.price_list_id                IS '価格表';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.request_no                   IS '依頼No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.req_status                   IS 'ステータス';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.delivery_no                  IS '配送No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.prev_delivery_no             IS '前回配送No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.schedule_ship_date           IS '出荷予定日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.schedule_arrival_date        IS '着荷予定日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.mixed_no                     IS '混載元No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.collected_pallet_qty         IS 'パレット回収枚数';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.confirm_request_class        IS '物流担当確認依頼区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.freight_charge_class         IS '運賃区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.shikyu_instruction_class     IS '支給出庫指示区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.shikyu_inst_rcv_class        IS '支給指示受領区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.amount_fix_class             IS '有償金額確定区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.takeback_class               IS '引取区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.deliver_from_id              IS '出荷元ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.deliver_from                 IS '出荷元保管場所';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.head_sales_branch            IS '管轄拠点';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.input_sales_branch           IS '入力拠点';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.po_no                        IS '発注No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.prod_class                   IS '商品区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.item_class                   IS '品目区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.no_cont_freight_class        IS '契約外運賃区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.arrival_time_from            IS '着荷時間FROM';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.arrival_time_to              IS '着荷時間TO';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.designated_item_id           IS '製造品目ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.designated_item_code         IS '製造品目';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.designated_production_date   IS '製造日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.designated_branch_no         IS '製造枝番';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.slip_number                  IS '送り状No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.sum_quantity                 IS '合計数量';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.small_quantity               IS '小口個数';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.label_quantity               IS 'ラベル枚数';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.loading_efficiency_weight    IS '重量積載効率';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.loading_efficiency_capacity  IS '容積積載効率';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.based_weight                 IS '基本重量';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.based_capacity               IS '基本容積';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.sum_weight                   IS '積載重量合計';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.sum_capacity                 IS '積載容積合計';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.mixed_ratio                  IS '混載率';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.pallet_sum_quantity          IS 'パレット合計枚数';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.real_pallet_quantity         IS 'パレット実績枚数';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.sum_pallet_weight            IS '合計パレット重量';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.order_source_ref             IS '受注ソース参照';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.result_freight_carrier_id    IS '運送業者_実績ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.result_freight_carrier_code  IS '運送業者_実績';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.result_shipping_method_code  IS '配送区分_実績';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.result_deliver_to_id         IS '出荷先_実績ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.result_deliver_to            IS '出荷先_実績';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.shipped_date                 IS '出荷日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.arrival_date                 IS '着荷日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.weight_capacity_class        IS '重量容積区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.actual_confirm_class         IS '実績計上済区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.notif_status                 IS '通知ステータス';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.prev_notif_status            IS '前回通知ステータス';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.notif_date                   IS '確定通知実施日時';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.new_modify_flg               IS '新規修正フラグ';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.process_status               IS '処理経過ステータス';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.performance_management_dept  IS '成績管理部署';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.instruction_dept             IS '指示部署';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.transfer_location_id         IS '振替先ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.transfer_location_code       IS '振替先';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.mixed_sign                   IS '混載記号';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.screen_update_date           IS '画面更新日時';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.screen_update_by             IS '画面更新者';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.tightening_date              IS '出荷依頼締め日時';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.vendor_id                    IS '取引先ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.vendor_code                  IS '取引先';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.vendor_site_id               IS '取引先サイトID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.vendor_site_code             IS '取引先サイト';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.registered_sequence          IS '登録順序';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.tightening_program_id        IS '締めコンカレントID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.corrected_tighten_class      IS '締め後修正区分';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.created_by                   IS '作成者';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.creation_date                IS '作成日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.last_updated_by              IS '最終更新者';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.last_update_date             IS '最終更新日';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.last_update_login            IS '最終更新ログイン';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.request_id                   IS '要求ID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.program_application_id       IS 'コンカレント・プログラム・アプリケーションID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.program_id                   IS 'コンカレント・プログラムID';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.program_update_date          IS 'プログラム更新日';
+--
+   COMMENT ON TABLE xxwsh.xxwsh_order_headers_all                               IS '受注ヘッダアドオン';
+ 

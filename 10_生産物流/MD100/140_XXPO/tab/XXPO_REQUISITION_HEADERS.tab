@@ -1,0 +1,58 @@
+CREATE TABLE xxpo.xxpo_requisition_headers
+(
+  requisition_header_id         NUMBER        NOT NULL,
+  po_header_number              VARCHAR2(12)  NOT NULL,
+  status                        VARCHAR2(30),
+  vendor_id                     NUMBER,
+  vendor_code                   VARCHAR2(30),
+  vendor_site_id                NUMBER,
+  promised_date                 DATE,
+  location_id                   NUMBER,
+  location_code                 VARCHAR2(30),
+  drop_ship_type                VARCHAR2(30)  DEFAULT '1',
+  delivery_code                 VARCHAR2(30),
+  requested_by_code             VARCHAR2(30),
+  requested_dept_code           VARCHAR2(60),
+  requested_to_department_code  VARCHAR2(60),
+  description                   VARCHAR2(150),
+  change_flag                   VARCHAR2(1),
+  created_by                    NUMBER(15,0)  NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15,0)  NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxpo_requisition_h_pk PRIMARY KEY ( requisition_header_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.requisition_header_id          IS '発注依頼ヘッダID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.po_header_number               IS '発注番号';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.status                         IS 'ステータス';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.vendor_id                      IS '仕入先ID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.vendor_code                    IS '仕入先コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.vendor_site_id                 IS '仕入先サイトID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.promised_date                  IS '納入日';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.location_id                    IS '納入先ID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.location_code                  IS '納入先コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.drop_ship_type                 IS '直送区分';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.delivery_code                  IS '配送先コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.requested_by_code              IS '依頼者コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.requested_dept_code            IS '依頼者部署コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.requested_to_department_code   IS '依頼先部署コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.description                    IS '摘要';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.change_flag                    IS '変更フラグ';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.created_by                     IS '作成者';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.creation_date                  IS '作成日';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.last_updated_by                IS '最終更新者';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.last_update_date               IS '最終更新日';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.last_update_login              IS '最終更新ログイン';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.request_id                     IS '要求ID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.program_application_id         IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.program_id                     IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_headers.program_update_date            IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxpo.xxpo_requisition_headers IS '発注依頼ヘッダ(アドオン)';

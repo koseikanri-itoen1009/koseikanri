@@ -1,0 +1,50 @@
+CREATE TABLE xxpo.xxpo_requisition_lines
+(
+  requisition_line_id           NUMBER        NOT NULL,
+  requisition_header_id         NUMBER        NOT NULL,
+  requisition_line_number       NUMBER        NOT NULL,
+  item_id                       NUMBER,
+  item_code                     VARCHAR2(40),
+  pack_quantity                 NUMBER(8,3),
+  requested_quantity            NUMBER(12,3),
+  requested_quantity_uom        VARCHAR2(3),
+  requested_date                DATE,
+  ordered_quantity              NUMBER(12,3),
+  description                   VARCHAR2(150),
+  cancelled_flg                 VARCHAR2(1)   DEFAULT 'N' NOT NULL,
+  created_by                    NUMBER(15,0)  NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15,0)  NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxpo_requisition_l_pk PRIMARY KEY ( requisition_line_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.requisition_line_id      IS '発注依頼明細ID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.requisition_header_id    IS '発注依頼ヘッダID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.requisition_line_number  IS '明細番号';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.item_id                  IS '品目ID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.item_code                IS '品目コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.pack_quantity            IS '在庫入数';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.requested_quantity       IS '依頼数量';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.requested_quantity_uom   IS '依頼数量単位コード';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.requested_date           IS '日付指定';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.ordered_quantity         IS '発注数量';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.description              IS '摘要';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.cancelled_flg            IS '取消フラグ';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.created_by               IS '作成者';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.creation_date            IS '作成日';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.request_id               IS '要求ID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxpo.xxpo_requisition_lines.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxpo.xxpo_requisition_lines IS '発注依頼明細(アドオン)';
