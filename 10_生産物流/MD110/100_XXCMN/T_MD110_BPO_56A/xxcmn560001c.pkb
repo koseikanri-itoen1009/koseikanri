@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2008/07/02    1.2   ORACLE 丸下博宣  循環参照防止にバッチIDを追加
  *  2008/07/03    1.3   ORACLE 丸下博宣  循環参照防止条件修正
  *  2008/08/18    1.4   ORACLE 椎名昭圭  TE080指摘事項#6対応
+ *  2008/09/01    1.5   ORACLE 椎名昭圭  TE080指摘事項#7対応
+ *                                       PT不具合修正
  *
  *****************************************************************************************/
 --
@@ -136,16 +138,26 @@ AS
     -- ロット基本情報
     p_item_id           ic_tran_pnd.item_id%TYPE,                         -- 親品目ID
     p_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 親ロットID
-    p_batch_id          gme_material_details.batch_id%TYPE,               -- 親バッチID
-    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
-    p_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 親品目名称
+-- 2008/09/01 v1.5 UPDATE START
+--    p_batch_id          gme_material_details.batch_id%TYPE,               -- 親バッチID
+--    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
+--    p_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 親品目名称
+    p_batch_id          gme_batch_header.batch_id%TYPE,                   -- 親バッチID
+    p_item_no           xxcmn_item_mst2_v.item_no%TYPE,                   -- 親品目コード
+    p_item_name         xxcmn_item_mst2_v.item_name%TYPE,                 -- 親品目名称
+-- 2008/09/01 v1.5 UPDATE END
     p_lot_no            ic_lots_mst.lot_no%TYPE,                          -- 親ロットNo
     p_whse_code         ic_tran_pnd.whse_code%TYPE,                       -- 倉庫コード
     c_item_id           ic_tran_pnd.item_id%TYPE,                         -- 子品目ID
     c_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 子ロットID
-    c_batch_id          gme_material_details.batch_id%TYPE,               -- 子バッチID
-    c_item_no           ic_item_mst_b.item_no%TYPE,                       -- 子品目コード
-    c_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 子品目名称
+-- 2008/09/01 v1.5 UPDATE START
+--    c_batch_id          gme_material_details.batch_id%TYPE,               -- 子バッチID
+--    c_item_no           ic_item_mst_b.item_no%TYPE,                       -- 子品目コード
+--    c_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 子品目名称
+    c_batch_id          gme_batch_header.batch_id%TYPE,                   -- 子バッチID
+    c_item_no           xxcmn_item_mst2_v.item_no%TYPE,                   -- 子品目コード
+    c_item_name         xxcmn_item_mst2_v.item_name%TYPE,                 -- 子品目名称
+-- 2008/09/01 v1.5 UPDATE END
     c_lot_no            ic_lots_mst.lot_no%TYPE,                          -- 子ロットNo
     -- OPMロット情報
     lot_date            ic_lots_mst.attribute1%TYPE,                      -- 製造年月日
@@ -176,8 +188,12 @@ AS
   TYPE mst_rcv_rec IS RECORD(
     p_item_id           ic_tran_pnd.item_id%TYPE,                         -- 親品目ID
     p_lot_id            ic_tran_pnd.lot_id%TYPE,                          -- 親ロットID
-    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
-    p_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 親品目名称
+-- 2008/09/01 v1.5 UPDATE START
+--    p_item_no           ic_item_mst_b.item_no%TYPE,                       -- 親品目コード
+--    p_item_name         xxcmn_item_mst_b.item_name%TYPE,                  -- 親品目名称
+    p_item_no           xxcmn_item_mst2_v.item_no%TYPE,                   -- 親品目コード
+    p_item_name         xxcmn_item_mst2_v.item_name%TYPE,                 -- 親品目名称
+-- 2008/09/01 v1.5 UPDATE END
     p_lot_no            ic_lots_mst.lot_no%TYPE,                          -- 親ロットNo
     whse_code           ic_tran_pnd.whse_code%TYPE,                       -- 倉庫コード
     receipt_date        rcv_transactions.transaction_date%TYPE,           -- 受入日
@@ -981,6 +997,10 @@ AS
     cv_line_type_02         CONSTANT VARCHAR2(2)    := '2';                     -- 副産物
     cv_line_type_03         CONSTANT VARCHAR2(2)    := '-1';                    -- 投入品
     cv_batch_status         CONSTANT VARCHAR2(2)    := '-1';                    -- 取消
+-- 2008/09/01 v1.5 ADD START
+    cv_ja                   CONSTANT VARCHAR2(2)    := 'JA';
+    cv_prof_name            CONSTANT VARCHAR2(20)   := 'XXINV_DUMMY_ROUTING'; -- ダミー工順_品目振替
+-- 2008/09/01 v1.5 ADD END
     cv_out_trace            CONSTANT VARCHAR2(1)    := '1';                     -- ロットトレース(原料へ)
     cv_out_back             CONSTANT VARCHAR2(1)    := '2';                     -- トレースバック(製品へ)
     cv_sql_dot              CONSTANT VARCHAR2(1)    := ',';                     -- カンマ
@@ -1079,6 +1099,9 @@ AS
               ||      ',gme_material_details gmd '
               ||      ',gme_batch_header     gbh '
               ||      ',gmd_routings_b       grb '
+-- 2008/09/01 v1.5 ADD START
+              ||      ',gmd_routing_class_tl grct '
+-- 2008/09/01 v1.5 ADD END
               ||      ',( SELECT itp.item_id '
               ||               ',itp.lot_id '
               ||               ',gbh.batch_id '
@@ -1102,7 +1125,10 @@ AS
               ||       ') bc '
               || 'WHERE  itp.doc_type            = :para_doc_type '
               || 'AND    itp.completed_ind       = :para_comp_ind '
-              || 'AND    itp.line_type           IN (:para_line_type_01,:para_line_type_02) '
+-- 2008/09/01 v1.5 UPDATE START
+--              || 'AND    itp.line_type           IN (:para_line_type_01,:para_line_type_02) '
+              || 'AND    itp.line_type           = :para_line_type_01 '
+-- 2008/09/01 v1.5 UPDATE END
               || 'AND    itp.doc_line            = gmd.line_no '
               || 'AND    itp.doc_id              = gmd.batch_id '
               || 'AND    itp.item_id             = gmd.item_id '
@@ -1120,6 +1146,11 @@ AS
 --              || 'AND    gbh.batch_id           <> bc.batch_id '
 -- E 2008/05/27 1.1 DEL BY M.Ikeda ------------------------------------------------------------ E --
               || 'AND    gbh.routing_id          = grb.routing_id '
+-- 2008/09/01 v1.5 ADD START
+              || 'AND    grct.routing_class      = grb.routing_class '
+              || 'AND    grct.language           = :para_ja '
+              || 'AND    grct.routing_class_desc <> FND_PROFILE.VALUE(:para_prof_name) '
+-- 2008/09/01 v1.5 ADD END
               || 'AND    ximv.start_date_active <= trunc(itp.last_update_date) '
               || 'AND    ximv.end_date_active   >= trunc(itp.last_update_date) '
               || 'AND    (( gbh.batch_status    <> :para_batch_status ) '
@@ -1313,11 +1344,13 @@ AS
                     || 'AND   pp.item_id     = :para_item_id '
                     || 'AND   pp.lot_id      = :para_lot_id ';
 --
-    IF ( iv_batch_id IS NOT NULL ) THEN
-      lv_sql_where_01 := lv_sql_where_01 
-                    || 'AND   pp.batch_id    < ' || iv_batch_id || ' ';
-    END IF;
+-- 2008/09/01 UPDATE v1.5 START
+--    IF ( iv_batch_id IS NOT NULL ) THEN
+--      lv_sql_where_01 := lv_sql_where_01 
+--                    || 'AND   pp.batch_id    < ' || iv_batch_id || ' ';
+--    END IF;
 --
+-- 2008/09/01 UPDATE v1.5 END
     -- WHERE句(定義)定義
     lv_sql_where_02 := 'WHERE pp.batch_id    = cp.batch_id(+) '
                     || 'AND   pp.lot_id     <> cp.lot_id(+) '
@@ -1327,11 +1360,13 @@ AS
                     || 'AND   pp.item_id     = :para_item_id '
                     || 'AND   pp.lot_id      = :para_lot_id ';
 --
-    IF ( iv_batch_id IS NOT NULL ) THEN
-      lv_sql_where_02 := lv_sql_where_02 
-                    || 'AND   pp.batch_id    > ' || iv_batch_id || ' ';
-    END IF;
+-- 2008/09/01 UPDATE v1.5 START
+--    IF ( iv_batch_id IS NOT NULL ) THEN
+--      lv_sql_where_02 := lv_sql_where_02 
+--                    || 'AND   pp.batch_id    > ' || iv_batch_id || ' ';
+--    END IF;
 --
+-- 2008/09/01 UPDATE v1.5 END
     -- 出力制御(1：ロットトレース)
     IF ( iv_out_control = cv_out_trace ) THEN
 --
@@ -1346,7 +1381,11 @@ AS
                                                                      ,cv_doc_type
                                                                      ,cv_comp_ind
                                                                      ,cv_line_type_01
-                                                                     ,cv_line_type_02
+-- 2008/09/01 UPDATE v1.5 START
+--                                                                     ,cv_line_type_02
+                                                                     ,cv_ja
+                                                                     ,cv_prof_name
+-- 2008/09/01 UPDATE v1.5 END
                                                                      ,cv_batch_status
                                                                      ,cv_batch_status
                                                                      ,cv_doc_type
