@@ -26,6 +26,7 @@ AS
  *  2009/02/23    1.1   Takuya Kaihara   ファイルクローズ処理修正
  *  2009/03/09    1.2   Takuya Kaihara   プロファイル値共通化
  *  2009/05/12    1.3   Yutaka.Kuboshima 障害T1_0176,T1_0831の対応
+ *  2009/05/21    1.4   Yutaka.Kuboshima 障害T1_1131の対応
  *
  *****************************************************************************************/
 --
@@ -691,6 +692,9 @@ AS
       AND     hcp.autocash_hierarchy_id     = aah.autocash_hierarchy_id(+)
       AND     hcsu.site_use_code            = flvsuc.lookup_code(+)
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
+-- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
+      AND     hcsu.status                   = cv_a_flag
+-- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
       ORDER BY hca.account_number;
 --
     -- 顧客一括更新情報カーソルレコード型
@@ -795,12 +799,18 @@ AS
                                   AND     hcsun.site_use_code     = cv_ship_to
                                   AND     hpsn.location_id        = hln.location_id
                                   AND     hpsn.party_site_id      = hcasn.party_site_id
+-- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
+                                  AND     hcsun.status            = cv_a_flag
+-- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
                                   AND     hln.location_id         = (SELECT MIN(hpsiva.location_id)
                                                                     FROM    hz_cust_acct_sites hcasiva,
                                                                             hz_party_sites     hpsiva
                                                                     WHERE  hcasiva.cust_account_id = hcan.cust_account_id
                                                                     AND    hcasiva.party_site_id   = hpsiva.party_site_id
                                                                     AND    hpsiva.status           = cv_a_flag))      --ロケーションIDの最小値
+-- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
+        AND     hcsu.status            = cv_a_flag
+-- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
         AND     hl.location_id         = (SELECT MIN(hpsiv.location_id)
                                          FROM   hz_cust_acct_sites hcasiv,
                                                 hz_party_sites     hpsiv
