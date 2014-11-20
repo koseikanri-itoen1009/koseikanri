@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,7 +36,14 @@ AS
  *  2009/05/22    1.4   SCS 萱原 伸哉    [障害T1_1127] EDI請求書のチェーン店コードへの値の設定対応
  *  2009/05/26    1.4   SCS 萱原 伸哉    [障害T1_1128] EDI請求書の請求消費税額／支払消費税額処理修正
                                                        エラー売掛コード1(請求書)設定顧客メッセージ出力箇所変更
- *  2009/05/26    1.4   SCS 萱原 伸哉    [障害T1_1121] EDI請求書の仕入先コード／取引先コード取得処理修正                               
+ *  2009/05/26    1.4   SCS 萱原 伸哉    [障害T1_1121] EDI請求書の仕入先コード／取引先コード取得処理修正  
+ *  2009/06/16    1.5   SCS 萱原 伸哉    [障害T1_1337,T1_1338,T1_1339]
+                                                       取引先コード設定処理修正
+                                                       請求消費税額／支払消費税額出力処理修正
+                                                       レコード順序修正
+                                                       請求金額合計,値引き合計,返品合計,返品合計の集計単位修正 
+                                                       取引先レコード通番設定処理修正   
+                                                       税差額レコード出力処理修正                           
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -846,6 +853,9 @@ AS
 --
     -- 金額合計変数
     ln_slip_amount  NUMBER;         -- 請求金額（伝票単位）
+-- Modify 2009.06.08 Ver1.5 Start
+    ln_slip_tax_amount  NUMBER;     -- 請求消費税額（伝票単位）
+-- Modify 2009.06.08 Ver1.5 END
     ln_vend_amount  NUMBER;         -- 請求金額合計（取引先コード単位）
     ln_disc_amount  NUMBER;         -- 値引き合計（取引先コード単位）
     ln_retn_amount  NUMBER;         -- 返品合計（取引先コード単位）
@@ -871,6 +881,9 @@ AS
     lv_output_file_msg     VARCHAR2(5000);  -- EDI出力ファイル名メッセージ
     lv_output_rec_num_msg  VARCHAR2(5000);  -- EDI出力ファイルレコード数メッセージ
 --
+-- Modify 2009.06.15 Ver1.5 Start
+    lv_tax_gap_out_flg     VARCHAR2(1);     -- 税差額取引出力フラグ
+-- Modify 2009.06.15 Ver1.5 End
     -- *** ローカル・カーソル ***
 --
     -- EDI請求データ抽出
@@ -887,10 +900,13 @@ AS
                     ,cv_format_date_ymd)              inv_creation_day       -- データ作成日
             ,TO_CHAR(xih.inv_creation_date
                     ,cv_format_date_hms)              inv_creation_time      -- データ作成時刻
+-- Modify 2009.06.05 Ver1.5 Start
 -- Modify 2009.05.26 Ver1.4 Start                    
 --            ,NVL(xih.vender_code,cv_nul_v_code)       vender_code            -- 仕入先コード／取引先コード
-            ,gv_comp_code                             vender_code            -- 仕入先コード／取引先コード
+--            ,gv_comp_code                             vender_code            -- 仕入先コード／取引先コード
+            ,NVL(xih.vender_code,gv_comp_code)        vender_code           -- 仕入先コード／取引先コード
 -- Modify 2009.05.26 Ver1.4 End
+-- Modify 2009.06.05 Ver1.5 End
             ,TO_CHAR(xih.invoice_id)                  invoice_id             -- 一括請求書ID
             ,xih.tax_gap_amount                       tax_gap_amount         -- 税差額
             ,SUBSTRB(xih.itoen_name,1,30)             itoen_name             -- 仕入先名称／取引先名称（漢字）
@@ -991,10 +1007,20 @@ AS
               AND xih.cutoff_date = gd_target_date ))        -- パラメータ．締日
         AND xih.set_of_books_id = gn_set_of_bks_id
         AND xih.org_id = gn_org_id
-      ORDER BY xih.vender_code   -- 取引先コード
-              ,xih.invoice_id    -- 一括請求書ID
-              ,xil.slip_num      -- 伝票番号
-              ,xil.note_line_id  -- 行No
+-- Modify 2009.06.05 Ver1.5 Start
+--      ORDER BY xih.vender_code   -- 取引先コード
+--              ,xih.invoice_id    -- 一括請求書ID
+--              ,xil.slip_num      -- 伝票番号
+--              ,xil.note_line_id  -- 行No
+-- Modify 2009.06.16 Ver1.5 Start
+--      ORDER BY xih.vender_code                                -- 取引先コード
+      ORDER BY NVL(xih.vender_code, gv_comp_code)             -- 取引先コード
+-- Modify 2009.06.16 Ver1.5 End      
+              ,xil.ship_shop_code                             -- 店コード
+              ,NVL(xil.acceptance_date, xil.delivery_date)    -- 検収日(納品日)
+              ,xil.slip_num                                   -- 伝票番号
+              ,xil.note_line_id                               -- 行No
+-- Modify 2009.06.05 Ver1.5 End
       ;
 --
     TYPE get_edi_data_tbl1 IS TABLE OF get_edi_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -1012,7 +1038,7 @@ AS
 --###########################  固定部 END   ############################
 --
     --===============================================================
-    -- 	
+    -- 
     --===============================================================
     -- カーソルオープン
     OPEN get_edi_data_cur(iv_ar_code1);
@@ -1031,6 +1057,9 @@ AS
 --
     ln_slip_num    := 0;
     ln_slip_amount := 0;
+-- Modify 2009.06.08 Ver1.5 Start
+    ln_slip_tax_amount := 0;
+-- Modify 2009.06.08 Ver1.5 End
     ln_vend_amount := 0;
     ln_disc_amount := 0;
     ln_retn_amount := 0;
@@ -1074,9 +1103,17 @@ AS
             END CASE;
             -- 請求金額（絶対値）の更新
             lt_set_edi_data_tbl1(j).inv_slip_amount := ABS(ln_slip_amount);
+-- Modify 2009.06.08 Ver1.5 Start
+            -- 消費税金額（絶対値）の更新
+            lt_set_edi_data_tbl1(j).tax_amount := ABS(ln_slip_tax_amount);
+-- Modify 2009.06.08 Ver1.5 End
           END LOOP slip_loop;
           -- 請求金額（伝票単位）変数クリア
           ln_slip_amount := 0;
+-- Modify 2009.06.08 Ver1.5 Start
+          -- 消費税金額（伝票単位）変数クリア
+          ln_slip_tax_amount := 0;
+-- Modify 2009.06.08 Ver1.5 End
           -- ブレイク変数更新
           lv_b_slip_num := lt_get_edi_data_tbl1(i).slip_num;
           -- 伝票枚数更新
@@ -1093,6 +1130,21 @@ AS
           IF (lt_get_edi_data_tbl1(i-1).tax_type = cv_syohizei_kbn_te) AND
              (lt_get_edi_data_tbl1(i-1).tax_gap_trx_id IS NOT NULL) THEN
 --
+-- Modify 2009.06.15 Ver1.5 Start
+            lv_tax_gap_out_flg := cv_flag_yes;
+            -- 同一一括請求書IDが後続のレコードに存在するか確認
+            <<tax_gap_out_loop>>
+            FOR l IN i..(ln_target_cnt) LOOP
+              IF (lv_b_inv_id = lt_get_edi_data_tbl1(l).invoice_id) THEN
+                -- 税差額取引出力フラグをNに設定
+                lv_tax_gap_out_flg := cv_flag_no;
+              END IF;
+            END LOOP tax_gap_out_loop;
+--
+            --税差額取引出力フラグがYの場合、税差額レコード挿入
+            IF (lv_tax_gap_out_flg = cv_flag_yes) THEN
+--
+-- Modify 2009.06.15 Ver1.5 End
             lt_set_edi_data_tbl1(ln_data_cnt).file_rec_type
               := lt_get_edi_data_tbl1(i-1).file_rec_type;                      -- レコード区分
 -- Modify 2009.05.22 Ver1.4 Start
@@ -1190,35 +1242,56 @@ AS
             ln_slip_point := ln_data_cnt;
           END IF;
 --
+-- Modify 2009.06.15 Ver1.5 Start
+          END IF;
+-- Modify 2009.06.15 Ver1.5 End
           -- ブレイク変数更新
           lv_b_inv_id := lt_get_edi_data_tbl1(i).invoice_id;
         END IF;
 --
         -- 前行取引先コードが現在行取引先コードでない場合、
         IF (lv_b_vend_cd <> lt_get_edi_data_tbl1(i).vender_code) THEN
-          -- 金額更新処理ループ
-          <<vend_loop>>
-          FOR k IN ln_vend_point..(ln_data_cnt - 1) LOOP
-            -- 請求合計金額／支払合計金額の更新
-            lt_set_edi_data_tbl1(k).inv_amount := ln_vend_amount;
-            -- 値引き合計の更新
-            lt_set_edi_data_tbl1(k).discount_amount := ABS(ln_disc_amount);
-            -- 返品合計の更新
-            lt_set_edi_data_tbl1(k).return_amount := ABS(ln_retn_amount);
-            -- 伝票枚数の更新
-            lt_set_edi_data_tbl1(k).inv_slip_ttl := ln_slip_num;
-          END LOOP vend_loop;
+-- Modify 2009.06.05 Ver1.5 Start
+          -- 現在行取引先コードが最終レコード(ダミーコード)の場合、
+          IF (lt_get_edi_data_tbl1(i).vender_code = cv_end_v_code) THEN
+-- Modify 2009.06.05 Ver1.5 End
+            -- 金額更新処理ループ
+            <<vend_loop>>
+            FOR k IN ln_vend_point..(ln_data_cnt - 1) LOOP
+              -- 請求合計金額／支払合計金額の更新
+              lt_set_edi_data_tbl1(k).inv_amount := ln_vend_amount;
+              -- 値引き合計の更新
+              lt_set_edi_data_tbl1(k).discount_amount := ABS(ln_disc_amount);
+              -- 返品合計の更新
+              lt_set_edi_data_tbl1(k).return_amount := ABS(ln_retn_amount);
+              -- 伝票枚数の更新
+              lt_set_edi_data_tbl1(k).inv_slip_ttl := ln_slip_num;
+            END LOOP vend_loop;
 --
           -- 変数の初期化
-          ln_vend_cnt    := 1; -- 取引先内レコードカウンタ
-          ln_vend_amount := 0; -- 請求金額合計
-          ln_disc_amount := 0; -- 値引き合計
-          ln_retn_amount := 0; -- 返品合計
-          ln_slip_num    := 0; -- 伝票枚数
-          -- ブレイク変数更新
-          lv_b_vend_cd := lt_get_edi_data_tbl1(i).vender_code;
-          -- 更新開始位置更新
-          ln_vend_point := ln_data_cnt;
+-- Modify 2009.06.05 Ver1.5 Start
+--          ln_vend_cnt    := 1; -- 取引先内レコードカウンタ
+-- Modify 2009.06.05 Ver1.5 End
+            ln_vend_amount := 0; -- 請求金額合計
+            ln_disc_amount := 0; -- 値引き合計
+            ln_retn_amount := 0; -- 返品合計
+            ln_slip_num    := 0; -- 伝票枚数
+-- Modify 2009.06.10 Ver1.5 Start
+--            -- ブレイク変数更新
+--            lv_b_vend_cd := lt_get_edi_data_tbl1(i).vender_code;
+-- Modify 2009.06.10 Ver1.5 End
+            -- 更新開始位置更新
+            ln_vend_point := ln_data_cnt;
+-- Modify 2009.06.05 Ver1.5 Start
+          END IF;
+--
+        -- ブレイク変数更新
+        lv_b_vend_cd := lt_get_edi_data_tbl1(i).vender_code;
+--
+        -- 変数の初期化
+        ln_vend_cnt  := 1; -- 取引先内レコードカウンタ
+--
+-- Modify 2009.06.05 Ver1.5 End
         END IF;
 --
         -- 終了判定
@@ -1228,6 +1301,9 @@ AS
 --
         -- 合計値加算
         ln_slip_amount := ln_slip_amount + lt_get_edi_data_tbl1(i).inv_slip_amount; -- 請求金額／支払金額
+-- Modify 2009.06.05 Ver1.5 Start
+        ln_slip_tax_amount := ln_slip_tax_amount + lt_get_edi_data_tbl1(i).tax_amount; -- 請求消費税額／支払消費税額
+-- Modify 2009.06.05 Ver1.5 End        
         ln_vend_amount := ln_vend_amount + lt_get_edi_data_tbl1(i).inv_amount;      -- 請求合計金額／支払合計金額
         ln_disc_amount := ln_disc_amount + lt_get_edi_data_tbl1(i).discount_amount; -- 値引合計金額
         ln_retn_amount := ln_retn_amount + lt_get_edi_data_tbl1(i).return_amount;   -- 返品合計金額
@@ -2562,7 +2638,7 @@ AS
                               ,xxcfr_bill_customers_v  xbcv
                           WHERE flvv.lookup_code = xbcv.receiv_code1
                             AND xbcv.inv_prt_type = cv_inv_prt_type
-                            AND xih.invoice_id = xil.invoice_id      -- 一括請求書ID
+                            AND xih.invoice_id = xil.invoice_id      -- 一括請求書	ID
                             AND xbcv.bill_customer_code = xih.bill_cust_code
                             AND xih.request_id = xiit.request_id
                             AND xiit.set_of_books_id = gn_set_of_bks_id
