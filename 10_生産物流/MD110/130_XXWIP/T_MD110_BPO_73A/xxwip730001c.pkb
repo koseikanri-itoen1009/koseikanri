@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -104,6 +104,7 @@ AS
  *  2008/10/21    1.9  Oracle 野村       T_S_572 統合#392対応
  *  2008/10/27    1.10 Oracle 野村       統合#436対応
  *  2008/10/31    1.11 Oracle 野村       統合#531対応
+ *  2008/11/07    1.12 Oracle 野村       統合#584対応
  *
  *****************************************************************************************/
 --
@@ -8609,7 +8610,10 @@ AS
       -- *** 合計 ***
       -- 契約運賃＋混載割増金額＋ピッキング料＋諸料金
       ueh_head_total_amount_tab(ln_index) :=  gt_exch_deliv_tab(ln_index).shipping_expenses +
-                                              gt_exch_deliv_tab(ln_index).consolid_surcharge +
+-- ##### 20081107 Ver.1.12 統合#584対応 START #####
+--                                              gt_exch_deliv_tab(ln_index).consolid_surcharge +
+                                              ueh_head_cnsld_srhrg_tab(ln_index) +
+-- ##### 20081107 Ver.1.12 統合#584対応 END   #####
                                               ueh_head_pick_charge_tab(ln_index) +
                                               NVL(gt_exch_deliv_tab(ln_index).many_rate,0);
 --
