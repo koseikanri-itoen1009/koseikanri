@@ -35,7 +35,10 @@ SELECT xoha.request_no                    request_no            -- 依頼No
       ,xvsv.vendor_site_short_name        ship_to_name          -- 配送先名
       ,xoha.deliver_from_id               ship_whse_id          -- 出庫倉庫ID
       ,xoha.deliver_from                  ship_whse_code        -- 出庫倉庫コード
-      ,xilv.short_name                    ship_whse_name        -- 出庫倉庫名
+-- 2008-07-15 H.Itou Mod Start
+--      ,xilv.short_name                    ship_whse_name        -- 出庫倉庫名
+      ,xilv.description                   ship_whse_name        -- 出庫倉庫名
+-- 2008-07-15 H.Itou Mod End
       ,NVL(xoha.result_freight_carrier_id, xoha.career_id)
                                           freight_carrier_id    -- 運送業者ID
       ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code)

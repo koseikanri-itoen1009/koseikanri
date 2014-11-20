@@ -11,83 +11,85 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT
- xoha.order_header_id order_header_id --受注ヘッダアドオンID
-,xoha.request_no request_no --依頼No
-,xoha.order_type_id order_type_id --受注タイプID
-,xottv.transaction_type_name order_type_name --受注タイプ名称
-,xoha.req_status trans_status --ステータス
-,xlvv.meaning trans_status_name --支給依頼ステータス名称
-,xoha.notif_status notif_status --通知ステータス
-,xoha.shipped_date shipped_date --出荷日
-,xoha.arrival_date arrival_date --着荷日
-,xoha.vendor_code vendor_code --取引先
-,xvv.vendor_short_name vendor_name --取引先略称
-,xoha.vendor_site_code ship_to_code --取引先サイト
-,xvsv.vendor_site_short_name ship_to_name --取引先サイト略称
-,xoha.delivery_no ship_to_no --配送No
-,xoha.performance_management_dept req_dept_code --成績管理部署
-,xoha.instruction_dept inst_dept_code --指示部署
-,xoha.deliver_from ship_whse_code --出荷元保管場所
-,xilv.short_name ship_whse_name --出荷元保管場所略称
-,xoha.shikyu_inst_rcv_class rcv_class --支給指示受領区分
-,xoha.amount_fix_class fix_class --有償金額確定区分
-,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS') xoha_last_update_date -- 最終更新日(受注ヘッダアドオン)
-,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS') xola_last_update_date -- 最終更新日(受注明細アドオン)
-,DECODE(xoha.req_status, 
-        '99', 'RequestNoDisp',
-              'RequestNo') req_no_switcher --依頼Noリンク可不可 
-,xvv.spare2 list_header_id_vendor --取引先価格表ID
-,xlvvs.lookup_code exe_type -- 起動タイプ
-FROM
- xxwsh_order_headers_all xoha --受注ヘッダアドオン
-,xxcmn_lookup_values_v xlvv --クイックコード情報view(ステータス用)
-,xxwsh_oe_transaction_types2_v xottv --受注タイプ情報view2
-,xxcmn_vendors2_v xvv --仕入先情報view2
-,xxcmn_vendor_sites2_v xvsv --仕入先サイト情報view2
-,xxcmn_item_locations2_v xilv --OPM保管場所情報view2
-,(SELECT
-   xol.order_header_id       order_header_id
-  ,MAX(xol.last_update_date) last_update_date
-  FROM   xxwsh_order_lines_all xol
-  GROUP BY xol.order_header_id) xola  -- 受注明細アドオン
-,xxpo_security_supply_v xssv -- セキュリティview
-,xxcmn_lookup_values_v xlvvs -- クイックコード情報view(セキュリティview用)
---受注ヘッダアドオン抽出条件
-WHERE xoha.prod_class = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') --商品区分
---受注明細抽出条件
-AND xola.order_header_id = xoha.order_header_id
---クイックコード抽出条件
-AND xlvv.lookup_type = 'XXPO_TRANSACTION_STATUS'  --参照タイプ
-AND xlvv.lookup_code = xoha.req_status  --参照コード=ステータス
---受注タイプ情報view2抽出条件
-AND xottv.transaction_type_id = xoha.order_type_id  --受注タイプID=受注タイプID
-AND xottv.shipping_shikyu_class  = '2'  -- 支給依頼
-AND xottv.ship_sikyu_rcv_pay_ctg = '06'  -- 有償返品
-AND xottv.used_disp_flg = 'Y'  --画面使用
---仕入先情報view2抽出条件
-AND xvv.vendor_id = xoha.vendor_id  --仕入先ID=取引先ID
---仕入先サイト情報view2抽出条件
-AND xvsv.vendor_site_id = xoha.vendor_site_id  --仕入先サイトID=取引先サイトID
---OPM保管場所情報view2抽出条件
-AND xilv.inventory_location_id = xoha.deliver_from_id  --保管場所コード=出荷元ID
---セキュリティview抽出条件
-AND xssv.user_id = FND_GLOBAL.USER_ID -- ログインユーザID
-AND NVL(xssv.vendor_code,xoha.vendor_code) = xoha.vendor_code -- 取引先
-AND NVL(xssv.vendor_site_code,xoha.vendor_site_code) = xoha.vendor_site_code -- 取引先サイト
-AND NVL(xssv.segment1,xoha.deliver_from) = xoha.deliver_from -- 出庫倉庫
---クイックコード(セキュリティview用)抽出条件
-AND xlvvs.lookup_type = 'XXPO_START_UP_TYPE' --参照タイプ
-AND xlvvs.attribute3 = xssv.security_class -- セキュリティ区分
---各アドオンテーブル適用期間
-AND NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
-                                                    AND     NVL(xottv.end_date_active, TO_DATE('99991231', 'YYYYMMDD'))
-AND NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvv.start_date_active
-                                                    AND     xvv.end_date_active
-AND NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvsv.start_date_active 
-                                                    AND     xvsv.end_date_active
-AND NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from
-                                                    AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
+SELECT xoha.order_header_id             order_header_id         --受注ヘッダアドオンID
+      ,xoha.request_no                  request_no              --依頼No
+      ,xoha.order_type_id               order_type_id           --受注タイプID
+      ,xottv.transaction_type_name      order_type_name         --受注タイプ名称
+      ,xoha.req_status                  trans_status            --ステータス
+      ,xlvv.meaning                     trans_status_name       --支給依頼ステータス名称
+      ,xoha.notif_status                notif_status            --通知ステータス
+      ,xoha.shipped_date                shipped_date            --出荷日
+      ,xoha.arrival_date                arrival_date            --着荷日
+      ,xoha.vendor_code                 vendor_code             --取引先
+      ,xvv.vendor_short_name            vendor_name             --取引先略称
+      ,xoha.vendor_site_code            ship_to_code            --取引先サイト
+      ,xvsv.vendor_site_short_name      ship_to_name            --取引先サイト略称
+      ,xoha.delivery_no                 ship_to_no              --配送No
+      ,xoha.performance_management_dept req_dept_code           --成績管理部署
+      ,xoha.instruction_dept            inst_dept_code          --指示部署
+      ,xoha.deliver_from                ship_whse_code          --出荷元保管場所
+-- 2008-07-15 H.Itou Mod Start
+--      ,xilv.short_name                  ship_whse_name          --出荷元保管場所略称
+      ,xilv.description                ship_whse_name          --出荷元保管場所略称
+-- 2008-07-15 H.Itou Mod End
+      ,xoha.shikyu_inst_rcv_class       rcv_class               --支給指示受領区分
+      ,xoha.amount_fix_class            fix_class               --有償金額確定区分
+      ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                        xoha_last_update_date   --最終更新日(受注ヘッダアドオン)
+      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                        xola_last_update_date   --最終更新日(受注明細アドオン)
+      ,DECODE(xoha.req_status, 
+              '99', 'RequestNoDisp',
+                    'RequestNo')        req_no_switcher         --依頼Noリンク可不可 
+      ,xvv.spare2                       list_header_id_vendor   --取引先価格表ID
+      ,xlvvs.lookup_code                exe_type                --起動タイプ
+FROM   xxwsh_order_headers_all          xoha                    --受注ヘッダアドオン
+      ,xxcmn_lookup_values_v            xlvv                    --クイックコード情報view(ステータス用)
+      ,xxwsh_oe_transaction_types2_v    xottv                   --受注タイプ情報view2
+      ,xxcmn_vendors2_v                 xvv                     --仕入先情報view2
+      ,xxcmn_vendor_sites2_v            xvsv                    --仕入先サイト情報view2
+      ,xxcmn_item_locations2_v          xilv                    --OPM保管場所情報view2
+      ,(SELECT   xol.order_header_id         order_header_id
+                ,MAX(xol.last_update_date)   last_update_date
+        FROM     xxwsh_order_lines_all xol
+        GROUP BY xol.order_header_id)   xola                    --受注明細アドオン
+      ,xxpo_security_supply_v           xssv                    --セキュリティview
+      ,xxcmn_lookup_values_v            xlvvs                   --クイックコード情報view(セキュリティview用)
+WHERE  --受注ヘッダアドオン抽出条件
+       xoha.prod_class              = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') --商品区分
+       --受注明細抽出条件
+AND    xola.order_header_id         = xoha.order_header_id       -- 受注ヘッダアドオンID
+       --クイックコード抽出条件
+AND    xlvv.lookup_type             = 'XXPO_TRANSACTION_STATUS'  --参照タイプ
+AND    xlvv.lookup_code             = xoha.req_status            --参照コード = ステータス
+       --受注タイプ情報view2抽出条件
+AND    xottv.transaction_type_id    = xoha.order_type_id         --受注タイプID = 受注タイプID
+AND    xottv.shipping_shikyu_class  = '2'                        --支給依頼
+AND    xottv.ship_sikyu_rcv_pay_ctg = '06'                       --有償返品
+AND    xottv.used_disp_flg          = 'Y'                        --画面使用
+       --仕入先情報view2抽出条件
+AND    xvv.vendor_id                = xoha.vendor_id             --仕入先ID = 取引先ID
+       --仕入先サイト情報view2抽出条件
+AND    xvsv.vendor_site_id          = xoha.vendor_site_id        --仕入先サイトID = 取引先サイトID
+       --OPM保管場所情報view2抽出条件
+AND    xilv.inventory_location_id   = xoha.deliver_from_id       --保管場所コード = 出荷元ID
+       --セキュリティview抽出条件
+AND    xssv.user_id                                     = FND_GLOBAL.USER_ID    --ログインユーザID
+AND    NVL(xssv.vendor_code,xoha.vendor_code)           = xoha.vendor_code      --取引先
+AND    NVL(xssv.vendor_site_code,xoha.vendor_site_code) = xoha.vendor_site_code --取引先サイト
+AND    NVL(xssv.segment1,xoha.deliver_from)             = xoha.deliver_from     --出庫倉庫
+       --クイックコード(セキュリティview用)抽出条件
+AND    xlvvs.lookup_type            = 'XXPO_START_UP_TYPE' --参照タイプ
+AND    xlvvs.attribute3             = xssv.security_class  --セキュリティ区分
+       --各アドオンテーブル適用期間
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
+                                                       AND     NVL(xottv.end_date_active, TO_DATE('99991231', 'YYYYMMDD'))
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvv.start_date_active
+                                                       AND     xvv.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvsv.start_date_active 
+                                                       AND     xvsv.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from
+                                                       AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

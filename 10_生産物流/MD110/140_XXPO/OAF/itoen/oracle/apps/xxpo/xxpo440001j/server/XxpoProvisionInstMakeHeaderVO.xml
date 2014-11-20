@@ -35,7 +35,10 @@ SELECT xoha.order_header_id               order_header_id       -- éÛíçÉwÉbÉ_ÉAÉ
       ,xvsv.vendor_site_short_name        ship_to_name          -- îzëóêÊñº
       ,xoha.deliver_from_id               ship_whse_id          -- èoå…ëqå…ID
       ,xoha.deliver_from                  ship_whse_code        -- èoå…ëqå…ÉRÅ[Éh
-      ,xilv.short_name                    ship_whse_name        -- èoå…ëqå…ñº
+-- 2008-07-15 H.Itou Mod Start
+--      ,xilv.short_name                    ship_whse_name        -- èoå…ëqå…ñº
+      ,xilv.description                   ship_whse_name        -- èoå…ëqå…ñº
+-- 2008-07-15 H.Itou Mod End
       ,NVL(xoha.result_freight_carrier_id, xoha.career_id)
                                           freight_carrier_id    -- â^ëóã∆é“ID
       ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code)

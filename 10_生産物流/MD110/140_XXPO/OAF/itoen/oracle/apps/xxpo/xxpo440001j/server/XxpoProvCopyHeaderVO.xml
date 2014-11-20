@@ -28,7 +28,10 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
       ,xvsv.vendor_site_short_name        ship_to_name          -- ”z‘—æ–¼
       ,xoha.deliver_from_id               ship_whse_id          -- oŒÉ‘qŒÉID
       ,xoha.deliver_from                  ship_whse_code        -- oŒÉ‘qŒÉƒR[ƒh
-      ,xilv.short_name                    ship_whse_name        -- oŒÉ‘qŒÉ–¼
+-- 2008-007-15 H.Itou Mod Start
+--      ,xilv.short_name                    ship_whse_name        -- oŒÉ‘qŒÉ–¼
+      ,xilv.description                   ship_whse_name        -- oŒÉ‘qŒÉ–¼
+-- 2008-007-15 H.Itou Mod End
       ,xoha.career_id                     freight_carrier_id    -- ‰^‘—‹ÆÒID
       ,xoha.freight_carrier_code          freight_carrier_code  -- ‰^‘—‹ÆÒƒR[ƒh
       ,xcv.party_short_name               freight_carrier_name  -- ‰^‘—‹ÆÒ–¼Ì(—ªÌ)

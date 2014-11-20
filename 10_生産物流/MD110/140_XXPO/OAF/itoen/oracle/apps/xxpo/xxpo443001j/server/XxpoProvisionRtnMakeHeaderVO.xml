@@ -10,76 +10,92 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT xoha.order_header_id order_header_id -- 受注ヘッダアドオンID
-      ,xottv.auto_create_po_class auto_create_po_class -- 自動発注作成区分
-      ,xottv.transaction_type_id order_type_id -- 発生区分(受注タイプID)
-      ,xoha.weight_capacity_class weight_capacity_class -- 重量容積区分
-      ,xoha.req_status trans_status -- ステータス(コード)
-      ,xlvv1.meaning trans_status_name -- ステータス(名称)
-      ,xoha.request_no request_no -- 依頼No
-      ,xoha.notif_status notif_status -- 通知ステータス(コード)
---      ,xlvv2.meaning notif_status_name -- 通知ステータス(名称)
-      ,NULL notif_status_name -- 通知ステータス(名称)
-      ,xoha.new_modify_flg new_modify_flg -- 修正フラグ(新規修正フラグ)
-      ,xoha.delivery_no ship_to_no -- 配送No
-      ,xoha.prev_delivery_no prev_ship_to_no -- 前回配送No 
-      ,xoha.po_no po_no -- 発注No
-      ,xoha.performance_management_dept req_dept_code -- 依頼部署コード
-      ,xlv1.location_short_name req_dept_name -- 依頼部署名
-      ,xoha.instruction_dept inst_dept_code -- 指示部署コード
-      ,xlv2.location_short_name inst_dept_name -- 指示部署名
-      ,xoha.vendor_id vendor_id -- 取引先ID
-      ,xoha.vendor_code vendor_code -- 取引先コード
-      ,xvv.vendor_short_name vendor_name -- 取引先名
-      ,xoha.vendor_site_id ship_to_id -- 配送先ID
-      ,xoha.vendor_site_code ship_to_code -- 配送先コード
-      ,xvsv.vendor_site_short_name ship_to_name -- 配送先名
-      ,xoha.deliver_from_id ship_whse_id -- 出庫倉庫ID
-      ,xoha.deliver_from ship_whse_code -- 出庫倉庫コード
-      ,xilv.short_name ship_whse_name -- 出庫倉庫名
-      ,NVL(xoha.result_freight_carrier_id, xoha.career_id) freight_carrier_id -- 運送業者ID
-      ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code) freight_carrier_code -- 運送業者コード
---      ,xcv.party_short_name freight_carrier_name -- 運送業者名称(略称)
-      ,NULL freight_carrier_name -- 運送業者名称(略称)
-      ,NVL(xoha.shipped_date, xoha.schedule_ship_date) shipped_date -- 出庫日
-      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date) arrival_date -- 入庫日
-      ,xoha.arrival_time_from arrival_time_from -- 着荷時間fromコード
---      ,xlvv3.meaning arrival_time_from_name -- 着荷時間from(名称)
-      ,NULL arrival_time_from_name -- 着荷時間from(名称)
-      ,xoha.arrival_time_to arrival_time_to -- 着荷時間toコード
---      ,xlvv4.meaning arrival_time_to_name -- 着荷時間to(名称)
-      ,NULL arrival_time_to_name -- 着荷時間to(名称)
-      ,NVL(xoha.result_shipping_method_code, xoha.shipping_method_code) shipping_method_code -- 配送区分
---      ,xlvv5.meaning shipping_method_name -- 配送区分(名称)
-      ,NULL shipping_method_name -- 配送区分(名称)
-      ,xoha.freight_charge_class freight_charge_class -- 運賃区分
-      ,xoha.takeback_class takeback_class -- 引取区分
-      ,xoha.designated_production_date designated_prod_date -- 製造日
-      ,xoha.designated_item_code designated_item_code -- 製造品目コード
---      ,ximv.item_short_name designated_item_name -- 製造品目名称
-      ,NULL designated_item_name -- 製造品目名称
-      ,xoha.designated_branch_no designated_branch_no -- 製造番号
-      ,xoha.shipping_instructions shipping_instructions -- 摘要(出荷指示)
-      ,xoha.shikyu_inst_rcv_class rcv_class -- 受領
-      ,xoha.amount_fix_class fix_class -- 確定
-      ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS') xoha_last_update_date  -- 最終更新日(受注ヘッダアドオン)
-      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS') xola_last_update_date  -- 最終更新日(受注明細アドオン)
-      ,xoha.designated_item_id designated_item_id -- 製造品目ID
-      ,xottv.transaction_type_name order_type_name -- 発生区分名(受注タイプ名)
-      ,'N' new_flag -- 新規フラグ(更新の場合、「N」固定)
-      ,xilv.frequent_mover frequent_mover -- 代表運送会社
-      ,xcav.party_id customer_id -- 顧客ID(パーティーID)
-      ,xcav.party_number customer_code -- 顧客コード(組織番号)
-      ,xvv.spare2 price_list -- 価格表
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '') based_weight -- 基本重量
-      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990') sum_weight -- 積載重量合計
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.000'), '') efficiency_weight -- 重量積載効率
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '') based_capacity -- 基本容積
-      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990') sum_capacity -- 積載容積合計
-      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.000'), '') efficiency_capacity -- 容積積載効率
-      ,xoha.sum_quantity                   sum_quantity           -- 合計数量
-      ,xoha.small_quantity                 small_quantity         -- 小口個数
-      ,xoha.label_quantity                 label_quantity         -- ラベル枚数
+SELECT xoha.order_header_id                order_header_id           -- 受注ヘッダアドオンID
+      ,xottv.auto_create_po_class          auto_create_po_class      -- 自動発注作成区分
+      ,xottv.transaction_type_id           order_type_id             -- 発生区分(受注タイプID)
+      ,xoha.weight_capacity_class          weight_capacity_class     -- 重量容積区分
+      ,xoha.req_status                     trans_status              -- ステータス(コード)
+      ,xlvv1.meaning                       trans_status_name         -- ステータス(名称)
+      ,xoha.request_no                     request_no                -- 依頼No
+      ,xoha.notif_status                   notif_status              -- 通知ステータス(コード)
+--      ,xlvv2.meaning                       notif_status_name         -- 通知ステータス(名称)
+      ,NULL                                notif_status_name         -- 通知ステータス(名称)
+      ,xoha.new_modify_flg                 new_modify_flg            -- 修正フラグ(新規修正フラグ)
+      ,xoha.delivery_no                    ship_to_no                -- 配送No
+      ,xoha.prev_delivery_no               prev_ship_to_no           -- 前回配送No 
+      ,xoha.po_no                          po_no                     -- 発注No
+      ,xoha.performance_management_dept    req_dept_code             -- 依頼部署コード
+      ,xlv1.location_short_name            req_dept_name             -- 依頼部署名
+      ,xoha.instruction_dept               inst_dept_code            -- 指示部署コード
+      ,xlv2.location_short_name            inst_dept_name            -- 指示部署名
+      ,xoha.vendor_id                      vendor_id                 -- 取引先ID
+      ,xoha.vendor_code                    vendor_code               -- 取引先コード
+      ,xvv.vendor_short_name               vendor_name               -- 取引先名
+      ,xoha.vendor_site_id                 ship_to_id                -- 配送先ID
+      ,xoha.vendor_site_code               ship_to_code              -- 配送先コード
+      ,xvsv.vendor_site_short_name         ship_to_name              -- 配送先名
+      ,xoha.deliver_from_id                ship_whse_id              -- 出庫倉庫ID
+      ,xoha.deliver_from                   ship_whse_code            -- 出庫倉庫コード
+-- 2008-07-15 H.Itou Mod Start
+--      ,xilv.short_name                     ship_whse_name            -- 出庫倉庫名
+      ,xilv.description                    ship_whse_name            -- 出庫倉庫名
+-- 2008-07-15 H.Itou Mod End
+      ,NVL(xoha.result_freight_carrier_id, xoha.career_id)
+                                           freight_carrier_id        -- 運送業者ID
+      ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code)
+                                           freight_carrier_code      -- 運送業者コード
+--      ,xcv.party_short_name                freight_carrier_name      -- 運送業者名称(略称)
+      ,NULL                                freight_carrier_name      -- 運送業者名称(略称)
+      ,NVL(xoha.shipped_date, xoha.schedule_ship_date)
+                                           shipped_date              -- 出庫日
+      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                           arrival_date              -- 入庫日
+      ,xoha.arrival_time_from              arrival_time_from         -- 着荷時間fromコード
+--      ,xlvv3.meaning                       arrival_time_from_name    -- 着荷時間from(名称)
+      ,NULL                                arrival_time_from_name    -- 着荷時間from(名称)
+      ,xoha.arrival_time_to                arrival_time_to           -- 着荷時間toコード
+--      ,xlvv4.meaning                       arrival_time_to_name      -- 着荷時間to(名称)
+      ,NULL                                arrival_time_to_name      -- 着荷時間to(名称)
+      ,NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
+                                           shipping_method_code      -- 配送区分
+--      ,xlvv5.meaning                       shipping_method_name      -- 配送区分(名称)
+      ,NULL                                shipping_method_name      -- 配送区分(名称)
+      ,xoha.freight_charge_class           freight_charge_class      -- 運賃区分
+      ,xoha.takeback_class                 takeback_class            -- 引取区分
+      ,xoha.designated_production_date     designated_prod_date      -- 製造日
+      ,xoha.designated_item_code           designated_item_code      -- 製造品目コード
+--      ,ximv.item_short_name              designated_item_name        -- 製造品目名称
+      ,NULL                                designated_item_name      -- 製造品目名称
+      ,xoha.designated_branch_no           designated_branch_no      -- 製造番号
+      ,xoha.shipping_instructions          shipping_instructions     -- 摘要(出荷指示)
+      ,xoha.shikyu_inst_rcv_class          rcv_class                 -- 受領
+      ,xoha.amount_fix_class               fix_class                 -- 確定
+      ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                           xoha_last_update_date     -- 最終更新日(受注ヘッダアドオン)
+      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                           xola_last_update_date     -- 最終更新日(受注明細アドオン)
+      ,xoha.designated_item_id             designated_item_id        -- 製造品目ID
+      ,xottv.transaction_type_name         order_type_name           -- 発生区分名(受注タイプ名)
+      ,'N'                                 new_flag                  -- 新規フラグ(更新の場合、「N」固定)
+      ,xilv.frequent_mover                 frequent_mover            -- 代表運送会社
+      ,xcav.party_id                       customer_id               -- 顧客ID(パーティーID)
+      ,xcav.party_number                   customer_code             -- 顧客コード(組織番号)
+      ,xvv.spare2                          price_list                -- 価格表
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '')
+                                           based_weight              -- 基本重量
+      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+                                           sum_weight                -- 積載重量合計
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.000'), '')
+                                           efficiency_weight         -- 重量積載効率
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '')
+                                           based_capacity            -- 基本容積
+      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990') 
+                                           sum_capacity              -- 積載容積合計
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.000'), '') 
+                                           efficiency_capacity       -- 容積積載効率
+      ,xoha.sum_quantity                   sum_quantity              -- 合計数量
+      ,xoha.small_quantity                 small_quantity            -- 小口個数
+      ,xoha.label_quantity                 label_quantity            -- ラベル枚数
 /*    DB項目     */ 
       ,xottv.transaction_type_id           db_order_type_id          -- 発生区分(受注タイプID)
       ,xoha.weight_capacity_class          db_weight_capacity_class  -- 重量容積区分
@@ -88,9 +104,12 @@ SELECT xoha.order_header_id order_header_id -- 受注ヘッダアドオンID
       ,xoha.vendor_code                    db_vendor_code            -- 取引先コード
       ,xoha.vendor_site_code               db_ship_to_code           -- 配送先コード
       ,xoha.deliver_from                   db_ship_whse_code         -- 出庫倉庫コード
-      ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code) db_freight_carrier_code   -- 運送業者コード
-      ,NVL(xoha.shipped_date, xoha.schedule_ship_date) db_shipped_date           -- 出庫日
-      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date) db_arrival_date           -- 入庫日
+      ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code)
+                                           db_freight_carrier_code   -- 運送業者コード
+      ,NVL(xoha.shipped_date, xoha.schedule_ship_date)
+                                           db_shipped_date           -- 出庫日
+      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                           db_arrival_date           -- 入庫日
       ,xoha.arrival_time_from              db_arrival_time_from      -- 着荷時間fromコード
       ,xoha.arrival_time_to                db_arrival_time_to        -- 着荷時間toコード
       ,NVL(xoha.result_shipping_method_code, xoha.shipping_method_code) db_shipping_method_code   -- 配送区分
@@ -109,64 +128,64 @@ SELECT xoha.order_header_id order_header_id -- 受注ヘッダアドオンID
            THEN '0' -- 実績入力無し
            ELSE '5' -- 実績入力有り
        END                                 rcv_type                  -- 受領タイプ
-FROM   xxwsh_order_headers_all xoha -- 受注ヘッダアドオン
-      ,xxwsh_oe_transaction_types2_v  xottv -- 受注タイプ情報VIEW2
-      ,xxcmn_locations2_v xlv1 -- 事業所情報VIEW2(依頼部署用)
-      ,xxcmn_locations2_v xlv2 -- 事業所情報VIEW2(指示部署用)
-      ,xxcmn_vendors2_v xvv -- 仕入先情報VIEW2
-      ,xxcmn_vendor_sites2_v xvsv -- 仕入先サイト情報VIEW2
-      ,xxcmn_cust_accounts2_v xcav -- 顧客情報VIEW2
---      ,xxcmn_carriers2_v xcv -- 運送業者情報VIEW2
---      ,xxcmn_item_mst2_v ximv -- OPM品目情報VIEW2
-      ,xxcmn_item_locations2_v xilv -- OPM保管場所情報VIEW
-      ,xxcmn_lookup_values_v xlvv1 -- クイックコード情報VIEW(ステータス用)
---      ,xxcmn_lookup_values_v xlvv2 -- クイックコード情報VIEW(通知ステータス用)
---      ,xxcmn_lookup_values_v xlvv3 -- クイックコード情報VIEW(着荷時間FROM用)
---      ,xxcmn_lookup_values_v xlvv4 -- クイックコード情報VIEW(着荷時間TO用)
---      ,xxcmn_lookup_values_v xlvv5 -- クイックコード情報VIEW(配送区分用)
+FROM   xxwsh_order_headers_all             xoha                      -- 受注ヘッダアドオン
+      ,xxwsh_oe_transaction_types2_v       xottv                     -- 受注タイプ情報VIEW2
+      ,xxcmn_locations2_v                  xlv1                      -- 事業所情報VIEW2(依頼部署用)
+      ,xxcmn_locations2_v                  xlv2                      -- 事業所情報VIEW2(指示部署用)
+      ,xxcmn_vendors2_v                    xvv                       -- 仕入先情報VIEW2
+      ,xxcmn_vendor_sites2_v               xvsv                      -- 仕入先サイト情報VIEW2
+      ,xxcmn_cust_accounts2_v              xcav                      -- 顧客情報VIEW2
+--      ,xxcmn_carriers2_v                   xcv                      -- 運送業者情報VIEW2
+--      ,xxcmn_item_mst2_v                   ximv                     -- OPM品目情報VIEW2
+      ,xxcmn_item_locations2_v             xilv                      -- OPM保管場所情報VIEW
+      ,xxcmn_lookup_values_v               xlvv1                     -- クイックコード情報VIEW(ステータス用)
+--      ,xxcmn_lookup_values_v               xlvv2                     -- クイックコード情報VIEW(通知ステータス用)
+--      ,xxcmn_lookup_values_v               xlvv3                     -- クイックコード情報VIEW(着荷時間FROM用)
+--      ,xxcmn_lookup_values_v               xlvv4                     -- クイックコード情報VIEW(着荷時間TO用)
+--      ,xxcmn_lookup_values_v               xlvv5                     -- クイックコード情報VIEW(配送区分用)
       ,(SELECT xol.order_header_id       order_header_id
               ,MAX(xol.last_update_date) last_update_date
         FROM   xxwsh_order_lines_all xol
-        GROUP BY xol.order_header_id) xola -- 受注明細アドオン
-      ,(SELECT xol1.order_header_id       order_header_id
+        GROUP BY xol.order_header_id)      xola                      -- 受注明細アドオン
+      ,(SELECT xol1.order_header_id      order_header_id
               ,SUM(DECODE(xol1.shipped_quantity,NULL,0,1)) shipped_quantity_cnt
               ,SUM(DECODE(xol1.ship_to_quantity,NULL,0,1)) ship_to_quantity_cnt
         FROM   xxwsh_order_lines_all xol1
         WHERE  NVL(xol1.delete_flag,'N') = 'N'
-        GROUP BY xol1.order_header_id) xol1
+        GROUP BY xol1.order_header_id)     xol1                      -- 受注明細アドオン
 -------------------- 結合条件 --------------------
 --受注タイプ情報VIEW2
-WHERE  xottv.transaction_type_id = xoha.order_type_id
+WHERE  xottv.transaction_type_id   = xoha.order_type_id
 --事業所情報VIEW2(依頼部署用)
-AND    xlv1.location_code = xoha.performance_management_dept
+AND    xlv1.location_code          = xoha.performance_management_dept
 --事業所情報VIEW2(指示部署用)
-AND    xlv2.location_code = xoha.instruction_dept
+AND    xlv2.location_code          = xoha.instruction_dept
 --仕入先情報VIEW2
-AND    xvv.vendor_id = xoha.vendor_id
+AND    xvv.vendor_id               = xoha.vendor_id
 --仕入先サイト情報VIEW2
-AND    xvsv.vendor_site_id = xoha.vendor_site_id
+AND    xvsv.vendor_site_id         = xoha.vendor_site_id
 --顧客情報VIEW2
-AND    xcav.account_number = xvv.customer_num
+AND    xcav.account_number         = xvv.customer_num
 --運送業者情報VIEW2
---AND    xcv.party_id(+) = NVL(xoha.result_freight_carrier_id, xoha.career_id)
+--AND    xcv.party_id(+)             = NVL(xoha.result_freight_carrier_id, xoha.career_id)
 --OPM品目情報VIEW2
 --AND    ximv.inventory_item_id(+) = xoha.designated_item_id
 --OPM保管場所情報VIEW2
-AND    xilv.inventory_location_id = xoha.deliver_from_id
+AND    xilv.inventory_location_id  = xoha.deliver_from_id
 --受注明細アドオン(最終更新日取得用)
-AND    xola.order_header_id = xoha.order_header_id
+AND    xola.order_header_id        = xoha.order_header_id
 --受注明細アドオン(実績入力確認用)
-AND    xol1.order_header_id = xoha.order_header_id
+AND    xol1.order_header_id        = xoha.order_header_id
 --クイックコード情報VIEW(ステータス用)
-AND    xlvv1.lookup_code = xoha.req_status
+AND    xlvv1.lookup_code             = xoha.req_status
 --クイックコード情報VIEW(通知ステータス用)
---AND    xlvv2.lookup_code = xoha.notif_status
+--AND    xlvv2.lookup_code           = xoha.notif_status
 --クイックコード情報VIEW(着荷時間FROM用)
---AND    xlvv3.lookup_code = xoha.arrival_time_from
+--AND    xlvv3.lookup_code           = xoha.arrival_time_from
 --クイックコード情報VIEW(着荷時間TO用)
---AND    xlvv4.lookup_code = xoha.arrival_time_to
+--AND    xlvv4.lookup_code           = xoha.arrival_time_to
 --クイックコード情報VIEW(配送区分用)
---AND    xlvv5.lookup_code(+) = NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
+--AND    xlvv5.lookup_code(+)        = NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
 -------------------- 抽出条件 --------------------
 --受注タイプ情報VIEW2
 AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
@@ -196,18 +215,18 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xcav.start_date_a
 AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from
                                                        AND     NVL(xilv.date_to, TO_DATE('99991231', 'YYYYMMDD'))
 --クイックコード情報VIEW(ステータス用)
-AND    xlvv1.lookup_type = 'XXPO_TRANSACTION_STATUS'  -- 支給依頼ステータス
+AND    xlvv1.lookup_type         = 'XXPO_TRANSACTION_STATUS'  -- 支給依頼ステータス
 --クイックコード情報VIEW(通知ステータス用)
---AND    xlvv2.lookup_type = 'XXWSH_NOTIF_STATUS'  -- 通知ステータス
+--AND    xlvv2.lookup_type       = 'XXWSH_NOTIF_STATUS'  -- 通知ステータス
 --クイックコード情報VIEW(着荷時間FROM用)
---AND    xlvv3.lookup_type = 'XXWSH_ARRIVAL_TIME'  -- 着荷時間
+--AND    xlvv3.lookup_type       = 'XXWSH_ARRIVAL_TIME'  -- 着荷時間
 --クイックコード情報VIEW(着荷時間TO用)
---AND    xlvv4.lookup_type = 'XXWSH_ARRIVAL_TIME'  -- 着荷時間
+--AND    xlvv4.lookup_type       = 'XXWSH_ARRIVAL_TIME'  -- 着荷時間
 --クイックコード情報VIEW(配送区分用)
---AND    xlvv5.lookup_type(+) = 'XXCMN_SHIP_METHOD'
+--AND    xlvv5.lookup_type(+)    = 'XXCMN_SHIP_METHOD'
 --受注ヘッダアドオン
-AND    xoha.request_no = :1
-AND    xoha.latest_external_flag    = 'Y'
+AND    xoha.request_no           = :1
+AND    xoha.latest_external_flag = 'Y'
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

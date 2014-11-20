@@ -31,7 +31,10 @@ SELECT xoha.order_header_id               order_header_id       -- ó’ƒwƒbƒ_ƒAƒ
       ,xoha.performance_management_dept   req_dept_code         -- ˆË—Š•”ƒR[ƒh
       ,xoha.instruction_dept              inst_dept_code        -- w¦•”ƒR[ƒh
       ,xoha.deliver_from                  ship_whse_code        -- oŒÉ‘qŒÉƒR[ƒh
-      ,xilv.short_name                    ship_whse_name        -- oŒÉ‘qŒÉ–¼
+-- 2008-07-15 H.Itou Mod Start
+--      ,xilv.short_name                    ship_whse_name        -- oŒÉ‘qŒÉ–¼
+      ,xilv.description                   ship_whse_name        -- oŒÉ‘qŒÉ–¼
+-- 2008-07-15 H.Itou Mod End
       ,xoha.shikyu_inst_rcv_class         rcv_class             -- ó—Ì
       ,xoha.amount_fix_class              fix_class             -- Šm’è
       ,TO_CHAR(xoha.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
