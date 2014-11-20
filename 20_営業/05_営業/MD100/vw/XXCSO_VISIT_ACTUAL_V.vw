@@ -3,13 +3,14 @@
  * VIEW Name       : xxcso_visit_actual_v
  * Description     : 共通用：有効訪問実績ビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/04/14    1.0  K.Satomura    初回作成
+ *  2009/04/24    1.1  K.Satomura    システムテスト障害対応(T1_0734)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_visit_actual_v
 (
@@ -338,7 +339,10 @@ AND    jtb.source_object_type_code = 'OPPORTUNITY'
 AND    jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
 AND    NVL(jtb.deleted_flag, 'N')  = 'N'
 AND    jtb.actual_end_date IS NOT NULL
-AND    ala.customer_id             = jtb.source_object_id
+/* 2009.04.24 K.Satomura T1_0734対応 START */
+--AND    ala.customer_id             = jtb.source_object_id
+AND    ala.lead_id                 = jtb.source_object_id
+/* 2009.04.24 K.Satomura T1_0734対応 END */
 WITH READ ONLY
 ;
 COMMENT ON COLUMN xxcso_visit_actual_v.task_id IS 'タスクID';

@@ -3,7 +3,7 @@
  * VIEW Name       : XXCSO_VISIT_SALES_RESULTS_V
  * Description     : 共通用：訪問売上実績ビュー
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,7 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/03    1.1  K.Boku        売上実績VIEWを参照する
  *  2009/04/14    1.2  K.Satomura    システムテスト障害対応(T1_0479,T1_0480)
+ *  2009/04/24    1.3  K.Satomura    システムテスト障害対応(T1_0734,T1_0743)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_VISIT_SALES_RESULTS_V
 (
@@ -82,8 +83,21 @@ FROM   (
          AND   jtb.owner_type_code         = 'RS_EMPLOYEE'
          AND   jtb.deleted_flag            = 'N'
          AND   jtb.attribute11             = '1'
-         AND   jtb.attribute12             IN ('3', '5')
-         AND   jtb.attribute13             = xsv.order_no_hht(+)
+         /* 2009.04.14 K.Satomura T1_0743対応 START */
+         --AND   jtb.attribute12             IN ('3', '5')
+         --AND   jtb.attribute13             = xsv.order_no_hht(+)
+         AND   (
+                     jtb.attribute12            = '3'
+                 AND TO_NUMBER(jtb.attribute13) = xsv.order_no_hht
+               )
+               OR
+               (     jtb.attribute12 = '5'
+                 AND jtb.attribute13 = xsv.dlv_invoice_number
+               )
+         /* 2009.04.14 K.Satomura T1_0743対応 END */
+         /* 2009.04.14 K.Satomura T1_0734対応 START */
+         AND   jtb.actual_end_date IS NOT NULL
+         /* 2009.04.14 K.Satomura T1_0734対応 END */
          GROUP BY jtb.source_object_id
                  ,jtb.task_id
                  ,jtb.owner_id
@@ -105,9 +119,23 @@ FROM   (
          AND   jtb.owner_type_code         = 'RS_EMPLOYEE'
          AND   jtb.deleted_flag            = 'N'
          AND   jtb.attribute11             = '1'
-         AND   jtb.attribute12             IN ('3', '5')
-         AND   jtb.attribute13             = xsv.order_no_hht(+)
-         AND   ala.customer_id             = jtb.source_object_id
+         /* 2009.04.14 K.Satomura T1_0743対応 START */
+         --AND   jtb.attribute12             IN ('3', '5')
+         --AND   jtb.attribute13             = xsv.order_no_hht(+)
+         AND   (
+                     jtb.attribute12            = '3'
+                 AND TO_NUMBER(jtb.attribute13) = xsv.order_no_hht
+               )
+               OR
+               (     jtb.attribute12 = '5'
+                 AND jtb.attribute13 = xsv.dlv_invoice_number
+               )
+         /* 2009.04.14 K.Satomura T1_0743対応 END */
+         /* 2009.04.14 K.Satomura T1_0734対応 START */
+         --AND   ala.customer_id             = jtb.source_object_id
+         AND   ala.lead_id                 = jtb.source_object_id
+         AND   jtb.actual_end_date IS NOT NULL
+         /* 2009.04.14 K.Satomura T1_0734対応 END */
          GROUP BY ala.customer_id
                  ,jtb.task_id
                  ,jtb.owner_id
@@ -135,6 +163,9 @@ FROM   (
          AND jtb.owner_type_code         = 'RS_EMPLOYEE'
          AND jtb.deleted_flag            = 'N'
          AND NVL(jtb.attribute11, ' ') || '-' || NVL(jtb.attribute12, ' ') NOT IN ('1-3', '1-5')
+         /* 2009.04.14 K.Satomura T1_0734対応 START */
+         AND   jtb.actual_end_date IS NOT NULL
+         /* 2009.04.14 K.Satomura T1_0734対応 END */
          UNION ALL
          SELECT ala.customer_id     party_id
                ,jtb.task_id         task_id
@@ -150,7 +181,11 @@ FROM   (
          AND   jtb.owner_type_code         = 'RS_EMPLOYEE'
          AND   jtb.deleted_flag            = 'N'
          AND   NVL(jtb.attribute11, ' ') || '-' || NVL(jtb.attribute12, ' ') NOT IN ('1-3', '1-5')
-         AND   ala.customer_id             = jtb.source_object_id
+         /* 2009.04.14 K.Satomura T1_0734対応 START */
+         --AND   ala.customer_id             = jtb.source_object_id
+         AND   ala.lead_id                 = jtb.source_object_id
+         AND   jtb.actual_end_date IS NOT NULL
+         /* 2009.04.14 K.Satomura T1_0734対応 END */
        )
        /* 2009.04.14 K.Satomura T1_0479,T1_0480対応 END */
 WITH READ ONLY

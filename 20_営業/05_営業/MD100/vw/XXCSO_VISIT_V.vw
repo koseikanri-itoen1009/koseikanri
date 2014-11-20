@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_visit_v
  * Description     : 共通用：訪問実績ビュー
  * MD.070          : 
- * Version         : 1.4
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,7 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/04    1.1  K.Boku        有効訪問区分判定に登録区分を追加
  *  2009/04/14    1.2  K.Satomura    システムテスト障害対応(T1_0479,T1_0480)
+ *  2009/04/24    1.3  K.Satomura    システムテスト障害対応(T1_0734)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_visit_v
 (
@@ -31,7 +32,10 @@ CREATE OR REPLACE VIEW apps.xxcso_visit_v
 ,attribute10
 ,eff_visit_flag
 ,register_div
-,order_no_hht
+/* 2009.04.14 K.Satomura T1_0734対応 START */
+--,order_no_hht
+,attribute13
+/* 2009.04.14 K.Satomura T1_0734対応 END */
 ,customer_status
 ,visit_num_a
 ,visit_num_b
@@ -509,10 +513,16 @@ AND  jtb.attribute7 = flv7.lookup_code(+)
 AND  jtb.attribute8 = flv8.lookup_code(+)
 AND  jtb.attribute9 = flv9.lookup_code(+)
 AND  jtb.attribute10 = flv10.lookup_code(+)
+/* 2009.04.14 K.Satomura T1_0734対応 START */
+AND  jtb.actual_end_date IS NOT NULL
+/* 2009.04.14 K.Satomura T1_0734対応 END */
 /* 2009.04.14 K.Satomura T1_0479,T1_0480対応 START */
 AND  jtb.task_type_id = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
 UNION ALL
-SELECT jtb.source_object_id
+/* 2009.04.14 K.Satomura T1_0734対応 START */
+--SELECT jtb.source_object_id
+SELECT ala.customer_id
+/* 2009.04.14 K.Satomura T1_0734対応 END */
       ,jtb.task_id
       ,jtb.owner_id
       ,jtb.actual_end_date
@@ -889,7 +899,6 @@ FROM   jtf_tasks_b  jtb
        ) flv10
 WHERE  jtb.source_object_type_code = 'OPPORTUNITY'
 AND    jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
-AND    jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
 AND    jtb.owner_type_code         = 'RS_EMPLOYEE'
 AND    jtb.deleted_flag            = 'N'
 AND    jtb.attribute1              = flv1.lookup_code(+)
@@ -902,7 +911,12 @@ AND    jtb.attribute7              = flv7.lookup_code(+)
 AND    jtb.attribute8              = flv8.lookup_code(+)
 AND    jtb.attribute9              = flv9.lookup_code(+)
 AND    jtb.attribute10             = flv10.lookup_code(+)
-AND    ala.customer_id             = jtb.source_object_id
+/* 2009.04.14 K.Satomura T1_0734対応 START */
+--AND    ala.customer_id             = jtb.source_object_id
+AND    ala.lead_id                 = jtb.source_object_id
+AND    jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+AND    jtb.actual_end_date IS NOT NULL
+/* 2009.04.14 K.Satomura T1_0734対応 END */
 /* 2009.04.14 K.Satomura T1_0479,T1_0480対応 END */
 WITH READ ONLY
 ;

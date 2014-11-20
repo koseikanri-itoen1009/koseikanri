@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_sales_v
  * Description     : 共通用：売上実績ビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,7 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/03    1.1  K.Boku        売上実績振替情報テーブル取得する
  *  2009/03/09    1.1  M.Maruyama    販売実績ヘッダ.取消・訂正区分追加
+ *  2009/04/22    1.2  K.Satomura    システムテスト障害対応(T1_0743)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sales_v
 (
@@ -25,6 +26,9 @@ CREATE OR REPLACE VIEW apps.xxcso_sales_v
 ,pure_amount
 ,sold_out_class
 ,sold_out_time
+/* 2009.04.22 K.Satomura T1_0743対応 START */
+,dlv_invoice_number
+/* 2009.04.22 K.Satomura T1_0743対応 END */
 )
 AS
 SELECT  seh.ship_to_customer_code      -- 顧客【納品先】
@@ -37,6 +41,9 @@ SELECT  seh.ship_to_customer_code      -- 顧客【納品先】
        ,sel.pure_amount                -- 本体金額（明細）
        ,sel.sold_out_class             -- 売切区分
        ,sel.sold_out_time              -- 売切時間
+       /* 2009.04.22 K.Satomura T1_0743対応 START */
+       ,seh.dlv_invoice_number         -- 納品伝票番号
+       /* 2009.04.22 K.Satomura T1_0743対応 END */
 FROM    xxcos_sales_exp_headers  seh   -- 販売実績ヘッダー
        ,xxcos_sales_exp_lines  sel     -- 販売実績明細
 WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id  -- 販売実績ヘッダID
@@ -57,6 +64,9 @@ SELECT  xsti.cust_code                 -- 顧客コード
        ,xsti.selling_amt_no_tax        -- 売上金額（税抜き）
        ,NULL                           --
        ,NULL                           --
+       /* 2009.04.22 K.Satomura T1_0743対応 START */
+       ,NULL                           -- 納品伝票番号
+       /* 2009.04.22 K.Satomura T1_0743対応 END */
 FROM    xxcok_selling_trns_info xsti   -- 売上実績振替情報テーブル
 WHERE  NOT EXISTS 
        ( -- 品目コード<>変動電気料品目コード
