@@ -7,7 +7,7 @@ AS
  * Description      : 帳票発行画面(アドオン)で指定した条件を元にEDI経由で取り込んだ在庫情報を、
  *                    帳票サーバ向けにファイルを出力します。
  * MD.050           : 在庫情報データ作成 MD050_COS_014_A05
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/06/18    1.9   T.Kitajima       [T1_1158] 店舗コードNULL対応
  *  2010/03/09    1.10  T.Nakano         [E_本稼動_01695] EDI取込日の変更
  *  2010/06/15    1.11  S.Niki           [E_本稼動_03075] 拠点選択対応
+ *  2011/10/11    1.12  S.Niki           [E_本稼動_07906] 流通BMS対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1922,6 +1923,10 @@ AS
              ,xei.rebate_amt_sum                                               rebate_amt_sum                 --割戻し金額合計
              ,xei.collect_bottle_amt_sum                                       collect_bottle_amt_sum         --回収容器金額合計
              ,xei.chain_peculiar_area_footer                                   chain_peculiar_area_footer     --チェーン店固有エリア（フッター）
+----******************************************* 2011/10/11 1.12 S.Niki ADD  START  *************************************
+             ,xei.bms_header_data                                              bms_header_data                --流通ＢＭＳヘッダデータ
+             ,xei.bms_line_data                                                bms_line_data                  --流通ＢＭＳ明細データ
+----******************************************* 2011/10/11 1.12 S.Niki ADD  END  *************************************
         --抽出条件
         FROM 
              (
@@ -2135,6 +2140,10 @@ AS
                       ,xca.torihikisaki_code                                   torihikisaki_code              --取引先コード
                       ,xca.delivery_base_code                                  delivery_base_code             --納品拠点コード
                       ,xei.conv_customer_code                                  conv_customer_code             --換算後顧客コード
+----******************************************* 2011/10/11 1.12 S.Niki ADD  START  *************************************
+                      ,xei.bms_header_data                                     bms_header_data                --流通ＢＭＳヘッダデータ
+                      ,xei.bms_line_data                                       bms_line_data                  --流通ＢＭＳ明細データ
+----******************************************* 2011/10/11 1.12 S.Niki ADD  END  *************************************
                  FROM  xxcos_edi_inventory                                     xei                            --EDI在庫情報テーブル
                       ,xxcmm_cust_accounts                                     xca                            --顧客マスタアドオン
                       ,hz_cust_accounts                                        hca                            --顧客マスタ
@@ -2372,6 +2381,10 @@ AS
                       ,NULL                                                    torihikisaki_code              --取引先コード
                       ,NULL                                                    delivery_base_code             --納品拠点コード
                       ,xei.conv_customer_code                                  conv_customer_code             --換算後顧客コード
+----******************************************* 2011/10/11 1.12 S.Niki ADD  START  *************************************
+                      ,xei.bms_header_data                                     bms_header_data                --流通ＢＭＳヘッダデータ
+                      ,xei.bms_line_data                                       bms_line_data                  --流通ＢＭＳ明細データ
+----******************************************* 2011/10/11 1.12 S.Niki ADD  END  *************************************
                  FROM xxcos_edi_inventory                                      xei                            --EDI在庫情報テーブル
                 WHERE xei.conv_customer_code     IS NULL
              )                                                                 xei                            --EDI在庫情報テーブル
@@ -2778,6 +2791,10 @@ AS
        ,l_data_tab('REBATE_AMT_SUM')                                          --割戻し金額合計
        ,l_data_tab('COLLECT_BOTTLE_AMT_SUM')                                  --回収容器金額合計
        ,l_data_tab('CHAIN_PECULIAR_AREA_FOOTER')                              --チェーン店固有エリア（フッター）
+----******************************************* 2011/10/11 1.12 S.Niki ADD  START  *************************************
+       ,l_data_tab('BMS_HEADER_DATA')                                         --流通ＢＭＳヘッダデータ
+       ,l_data_tab('BMS_LINE_DATA')                                           --流通ＢＭＳ明細データ
+----******************************************* 2011/10/11 1.12 S.Niki ADD  END  *************************************
       ;
       EXIT WHEN cur_data_record%NOTFOUND;
 --
