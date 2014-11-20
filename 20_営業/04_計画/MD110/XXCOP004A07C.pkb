@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/05/12    1.4   SCS.Kikuchi      T1_0951対応
  *  2009/06/15    1.5   SCS.Goto         T1_1193,T1_1194対応
  *  2009/06/29    1.6   SCS.Fukada       統合テスト障害:0000169対応
+ *  2009/07/07    1.7   SCS.Sasaki       統合テスト障害:0000482対応
  *
  *****************************************************************************************/
 --
@@ -1067,6 +1068,9 @@ AS
 --      SELECT /*+ ORDERED */
       SELECT
 --20090615_Ver1.5_T1_1194_SCS.Goto_MOD_END
+--20090707_Ver1.7_0000482_SCS.Sasaki_ADD_START
+             /*+ leading(XOLA) index(xola XXWSH_OL_SALES_N01) */ 
+--20090707_Ver1.7_0000482_SCS.Sasaki_ADD_END
              xoha.order_header_id             order_header_id       -- 受注ヘッダアドオン.受注ヘッダアドオンID
 --20090413_Ver1.3_T1_0507_SCS.Kikuchi_MOD_END
             ,xola.order_line_id               order_line_id         -- 受注明細アドオン.受注明細アドオンID
