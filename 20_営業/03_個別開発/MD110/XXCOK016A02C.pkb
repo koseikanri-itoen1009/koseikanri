@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/06    1.0   T.Abe            新規作成
  *  2009/03/25    1.1   S.Kayahara       最終行にスラッシュ追加
+ *  2009/04/27    1.2   M.Hiruta         本振用FBデータ作成処理時の拠点コード抽出元テーブルを変更
  *
  *****************************************************************************************/
 --
@@ -170,7 +171,10 @@ AS
   -- FB作成明細データ（本振用FBデータ作成処理）
   CURSOR fb_line_cur
   IS
-  SELECT pv.attribute5                                   AS base_code                -- 拠点コード
+-- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
+--  SELECT pv.attribute5                                   AS base_code                -- 拠点コード
+  SELECT pvsa.attribute5                                 AS base_code                -- 拠点コード
+-- End   2009/04/27 Ver_1.2 T1_0817 M.Hiruta
         ,xbb.supplier_code                               AS supplier_code            -- 仕入先コード
         ,xbb.supplier_site_code                          AS supplier_site_code       -- 仕入先サイトコード
         ,SUM( xbb.backmargin )                           AS backmargin               -- 販売手数料
@@ -209,7 +213,10 @@ AS
   AND    abaua.primary_flag             = cv_yes
   AND    ( gd_pay_date                 >= abaua.start_date  OR abaua.start_date IS NULL )
   AND    ( gd_pay_date                 <= abaua.end_date    OR abaua.end_date   IS NULL )
-  GROUP BY pv.attribute5
+-- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
+--  GROUP BY pv.attribute5
+  GROUP BY pvsa.attribute5
+-- End   2009/04/27 Ver_1.2 T1_0817 M.Hiruta
           ,xbb.supplier_code
           ,xbb.supplier_site_code
           ,pvsa.bank_charge_bearer
@@ -220,7 +227,10 @@ AS
           ,abaa.bank_account_type
           ,abaa.bank_account_num
           ,abaa.account_holder_name_alt
-  ORDER BY pv.attribute5 ASC
+-- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
+--  ORDER BY pv.attribute5 ASC
+  ORDER BY pvsa.attribute5 ASC
+-- End   2009/04/27 Ver_1.2 T1_0817 M.Hiruta
           ,xbb.supplier_code  ASC;
   fb_line_rec  fb_line_cur%ROWTYPE;
   --================================
