@@ -30,6 +30,7 @@ AS
  *  count_base_code_cust   拠点計顧客軒数情報集計＆登録処理(B-18)
  *  count_delete_invalidity期限切れ集計データ削除処理(B-16)
  *  control_count          各種件数取得制御(B-7)
+ *  no_visit_control_cnt   未訪問客件数取得制御(B-20)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -59,7 +60,7 @@ AS
  *  2010/04/16    1.13  D.Abe            [E_本稼動_02270]対応 拠点計顧客軒数を追加
  *  2010/05/18    1.14  D.Abe            [E_本稼動_02767]対応 PT対応（xxcos_rs_info2_vを変更）
  *  2010/12/14    1.15  K.Kiriu          [E_本稼動_05671]対応 PT対応（有効訪問ビューの関数を外だしにする）
- *  2011/03/03    1.16  H.Sasaki         [E_本稼動_06700]対応 PT対応（未訪問客ビューのNOT EXISTSを変更）
+ *  2011/05/17    1.16  H.Sasaki         [E_本稼動_07118]対応 処理の並列実行化
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -182,6 +183,10 @@ AS
   ct_msg_count_reslut           CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10558';
   --  営業成績表 期限切れ集計情報削除件数
   ct_msg_delete_invalidity      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10559';
+/* 2011/05/17 Ver1.16 Add START */
+  --  営業成績表 未訪問客情報集計処理件数
+  ct_msg_count_no_visit         CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10591';
+/* 2011/05/17 Ver1.16 Add END   */
   --  XXCOS:変動電気料品目コード
   ct_msg_electric_fee_item_cd   CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10572';
   --  XXCOS:ダミー営業グループコード
@@ -355,6 +360,12 @@ AS
   cv_para_cls_s_group_sum_trans CONSTANT  VARCHAR2(1) := '5';
   --  各種件数取得制御
   cv_para_cls_control_count     CONSTANT  VARCHAR2(1) := '6';
+/* 2011/05/17 Ver1.16 Add START */
+  --  未訪問客件数（前月）取得処理
+  cv_para_no_visit_last_month   CONSTANT  VARCHAR2(1) := '7';
+  --  未訪問客件数（当月）取得処理
+  cv_para_no_visit_this_month   CONSTANT  VARCHAR2(1) := '8';
+/* 2011/05/17 Ver1.16 Add END   */
 --
   --  会計情報
   --  ＡＲ
@@ -415,6 +426,11 @@ AS
   --  達成
   ct_evaluration_kbn_acvmt      CONSTANT  xxcsm_new_cust_point_hst.evaluration_kbn%TYPE := '0';
 /* 2009/04/28 Ver1.4 Add End   */
+/* 2011/05/17 Ver1.16 Add START */
+  --  呼出元プロシージャ判定コード
+  cv_process_1                  CONSTANT VARCHAR2(1)  :=  '1';      --  B-7.各種件数取得制御
+  cv_process_2                  CONSTANT VARCHAR2(1)  :=  '2';      --  B-20.未訪問客件数取得制御
+/* 2011/05/17 Ver1.16 Add END   */
 --
   --  件数区分
   --  顧客軒数
@@ -584,8 +600,24 @@ AS
     SELECT  rbcs.ROWID                  AS  rbsg_rowid
     FROM    xxcos_rep_bus_count_sum     rbcs
     WHERE   rbcs.target_date            =   icp_target_date
+/* 2011/05/17 Ver1.16 Add START */
+    AND     rbcs.counter_class          <>  ct_counter_cls_no_visit
+/* 2011/05/17 Ver1.16 Add END   */
     FOR UPDATE NOWAIT
     ;
+/* 2011/05/17 Ver1.16 Add START */
+  --  当月分ロック取得用（営業成績表 営業件数集計テーブル(未訪問客情報)）
+  CURSOR  lock_rep_bus_no_visit_cur     (
+                                        icp_target_date         xxcos_rep_bus_count_sum.target_date%TYPE
+                                        )
+  IS
+    SELECT  rbcs.ROWID                  AS  rbsg_rowid
+    FROM    xxcos_rep_bus_count_sum     rbcs
+    WHERE   rbcs.target_date            =   icp_target_date
+    AND     rbcs.counter_class          =   ct_counter_cls_no_visit
+    FOR UPDATE NOWAIT
+    ;
+/* 2011/05/17 Ver1.16 Add END   */
 --
   --  期限切れ情報ロック取得用（営業成績表 新規貢献売上集計テーブル）
   CURSOR  lock_newcust_invalidity_cur   (
@@ -792,8 +824,18 @@ AS
     END IF;
 --
 /* 2010/12/14 Ver1.15 Add Start */
-    -- 実行区分が'0'(全て)か'6'(各種件数取得制御)の場合
-    IF ( gv_processing_class IN ( cv_para_cls_all, cv_para_cls_control_count ) ) THEN
+/* 2011/05/17 Ver1.16 Mod START */
+    -- 実行区分が'0'(全て)か'6'(各種件数取得制御)
+    --  '7'(未訪問客件数（前月）取得処理)、'8'(未訪問客件数（当月）取得処理)の場合
+--    IF ( gv_processing_class IN ( cv_para_cls_all, cv_para_cls_control_count ) ) THEN
+    IF  ( gv_processing_class IN  (   cv_para_cls_all
+                                    , cv_para_cls_control_count
+                                    , cv_para_no_visit_last_month
+                                    , cv_para_no_visit_this_month
+                                  )
+        )
+    THEN
+/* 2011/05/17 Ver1.16 Mod END   */
       --==================================
       -- 5.XXCSO:タスクステータスID（クローズ）
       --==================================
@@ -2591,6 +2633,9 @@ AS
    ***********************************************************************************/
   PROCEDURE count_results_delete(
     it_account_info     IN  g_account_info_rec,   --  1.会計情報
+/* 2011/05/17 Ver1.16 Add START */
+    iv_process_type     IN  VARCHAR2,             --  2.呼出元プロシージャ判定
+/* 2011/05/17 Ver1.16 Add END   */
     ov_errbuf           OUT VARCHAR2,             --  エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,             --  リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)             --  ユーザー・エラー・メッセージ --# 固定 #
@@ -2638,12 +2683,23 @@ AS
     -- 1.ロック制御  （営業成績表 営業件数集計テーブル）
     --==================================
     BEGIN
-      --  ロック用カーソルオープン
-      OPEN  lock_rep_bus_count_sum_cur(
-                                      it_account_info.base_years
-                                      );
-      --  ロック用カーソルクローズ
-      CLOSE lock_rep_bus_count_sum_cur;
+/* 2011/05/17 Ver1.16 Mod START */
+--      --  ロック用カーソルオープン
+--      OPEN  lock_rep_bus_count_sum_cur(
+--                                      it_account_info.base_years
+--                                      );
+--      --  ロック用カーソルクローズ
+--      CLOSE lock_rep_bus_count_sum_cur;
+      IF (iv_process_type = cv_process_1) THEN
+        -- B-7.各種件数取得制御よりコールされた場合
+        OPEN  lock_rep_bus_count_sum_cur(it_account_info.base_years);
+        CLOSE lock_rep_bus_count_sum_cur;
+      ELSE
+        -- B-20.未訪問客件数取得制御よりコールされた場合
+        OPEN  lock_rep_bus_no_visit_cur(it_account_info.base_years);
+        CLOSE lock_rep_bus_no_visit_cur;
+      END IF;
+/* 2011/05/17 Ver1.16 Mod END   */
     EXCEPTION
       WHEN global_data_lock_expt THEN
         --  テーブル名取得
@@ -2658,6 +2714,9 @@ AS
           iv_token_name1        => cv_tkn_table,
           iv_token_value1       => lt_table_name
           );
+/* 2011/05/17 Ver1.16 Mod START */
+        gn_error_cnt := 1;
+/* 2011/05/17 Ver1.16 Mod END   */
         RAISE global_data_lock_expt;
     END;
 --
@@ -2665,17 +2724,32 @@ AS
     -- 2.対象データ削除
     --==================================
     BEGIN
-      DELETE
-/* 2009/09/04 Ver1.7 Mod Start */
---      FROM    xxcos_rep_bus_count_sum
---      WHERE   target_date = it_account_info.base_years
-      /*+
-        INDEX(xrbcs xxcos_rep_bus_count_sum_n02)
-      */
-      FROM    xxcos_rep_bus_count_sum xrbcs
-      WHERE   xrbcs.target_date = it_account_info.base_years
-/* 2009/09/04 Ver1.7 Mod End   */
-      ;
+/* 2011/05/17 Ver1.16 Mod START */
+--      DELETE
+--/* 2009/09/04 Ver1.7 Mod Start */
+----      FROM    xxcos_rep_bus_count_sum
+----      WHERE   target_date = it_account_info.base_years
+--      /*+
+--        INDEX(xrbcs xxcos_rep_bus_count_sum_n02)
+--      */
+--      FROM    xxcos_rep_bus_count_sum xrbcs
+--      WHERE   xrbcs.target_date = it_account_info.base_years
+--/* 2009/09/04 Ver1.7 Mod End   */
+--      ;
+      IF (iv_process_type = cv_process_1) THEN
+        -- B-7.各種件数取得制御よりコールされた場合
+        DELETE  /*+ INDEX(xrbcs xxcos_rep_bus_count_sum_n02) */
+        FROM    xxcos_rep_bus_count_sum   xrbcs
+        WHERE   xrbcs.target_date     =   it_account_info.base_years
+        AND     xrbcs.counter_class   <>  ct_counter_cls_no_visit;
+      ELSE
+        -- B-20.未訪問客件数取得制御よりコールされた場合
+        DELETE  /*+ INDEX(xrbcs xxcos_rep_bus_count_sum_n02) */
+        FROM    xxcos_rep_bus_count_sum   xrbcs
+        WHERE   xrbcs.target_date     =   it_account_info.base_years
+        AND     xrbcs.counter_class   =   ct_counter_cls_no_visit;
+      END IF;
+/* 2011/05/17 Ver1.16 Mod END   */
     EXCEPTION
       WHEN OTHERS THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -3281,52 +3355,34 @@ AS
                                                   DECODE(it_account_idx,  cn_this_month,  hzpt.duns_number_c
                                                                                        ,  xcac.past_customer_status)
               AND     xlva.attribute6             =       cv_yes
-/* 2011/03/03 Ver1.16 Mod Start */
---              AND NOT EXISTS  (
-----/* 2009/04/28 Ver1.4 Mod Start */
-----                              SELECT  task.ROWID
-----                              FROM    jtf_tasks_b                   task
---                              SELECT  task.task_id
---/* 2010/12/14 Ver1.15 Mod Start */
-----                              FROM    xxcso_visit_actual_v task
---                              FROM    xxcos_visit_actual_v task
---/* 2010/12/14 Ver1.15 Mod End   */
---/* 2009/04/28 Ver1.4 Mod End   */
---                              WHERE   task.actual_end_date          >=      it_account_info.from_date
---                              AND     task.actual_end_date          <       it_account_info.base_date + 1
---/* 2009/04/28 Ver1.4 Del Start */
-----                              AND     task.source_object_type_code  =       ct_task_obj_type_party
-----                              AND     task.owner_type_code          =       ct_task_own_type_employee
-----                              AND     task.deleted_flag             =       cv_no
---/* 2009/04/28 Ver1.4 Del End   */
+              AND NOT EXISTS  (
 --/* 2009/04/28 Ver1.4 Mod Start */
-----                              AND     task.source_object_id         =       xsal.party_id
---                              AND     task.party_id                 =       xsal.party_id
---/* 2009/04/28 Ver1.4 Mod End   */
-----                              AND     task.owner_id                 =       xsal.resource_id
---/* 2010/12/14 Ver1.15 Add Start */
---                              AND     task.task_status_id           =       gt_prof_task_status_id
---                              AND     task.task_type_id             =       gt_prof_task_type_id
---/* 2010/12/14 Ver1.15 Add End   */
---                              AND     ROWNUM                        =       1
---                              )
-              AND     0 = NVL(
-                              ( SELECT  /*+
-                                         USE_NL(task.jtb2)
-                                         INDEX_DESC(task.jtb  XXCSO_JTF_TASKS_B_N20) 
-                                         INDEX_DESC(task.jtb2 XXCSO_JTF_TASKS_B_N20) 
-                                        */
-                                        1
-                                FROM    xxcos_visit_actual_v  task
-                                WHERE   TRUNC(task.actual_end_date)   >=  it_account_info.from_date
-                                AND     TRUNC(task.actual_end_date)   <   it_account_info.base_date + 1
-                                AND     task.source_object_id         =   xsal.party_id
-                                AND     task.task_status_id           =   gt_prof_task_status_id
-                                AND     task.task_type_id             =   gt_prof_task_type_id
-                                AND     ROWNUM                        =   1
-                              ), 0
-                          )
-/* 2011/03/03 Ver1.16 Mod End   */
+--                              SELECT  task.ROWID
+--                              FROM    jtf_tasks_b                   task
+                              SELECT  task.task_id
+/* 2010/12/14 Ver1.15 Mod Start */
+--                              FROM    xxcso_visit_actual_v task
+                              FROM    xxcos_visit_actual_v task
+/* 2010/12/14 Ver1.15 Mod End   */
+/* 2009/04/28 Ver1.4 Mod End   */
+                              WHERE   task.actual_end_date          >=      it_account_info.from_date
+                              AND     task.actual_end_date          <       it_account_info.base_date + 1
+/* 2009/04/28 Ver1.4 Del Start */
+--                              AND     task.source_object_type_code  =       ct_task_obj_type_party
+--                              AND     task.owner_type_code          =       ct_task_own_type_employee
+--                              AND     task.deleted_flag             =       cv_no
+/* 2009/04/28 Ver1.4 Del End   */
+/* 2009/04/28 Ver1.4 Mod Start */
+--                              AND     task.source_object_id         =       xsal.party_id
+                              AND     task.party_id                 =       xsal.party_id
+/* 2009/04/28 Ver1.4 Mod End   */
+--                              AND     task.owner_id                 =       xsal.resource_id
+/* 2010/12/14 Ver1.15 Add Start */
+                              AND     task.task_status_id           =       gt_prof_task_status_id
+                              AND     task.task_type_id             =       gt_prof_task_type_id
+/* 2010/12/14 Ver1.15 Add End   */
+                              AND     ROWNUM                        =       1
+                              )
               GROUP BY
                       xrsi.base_code,
                       xrsi.employee_number
@@ -5333,6 +5389,12 @@ AS
        which  =>  FND_FILE.OUTPUT
       ,buff   =>  lv_errmsg
     );
+/* 2011/05/17 Ver1.16 Add START */
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  ''
+    );
+/* 2011/05/17 Ver1.16 Add START */
 --
   EXCEPTION
     --*** ロック例外ハンドラ ***
@@ -5456,6 +5518,9 @@ AS
         --  実績件数削除処理(B-8)
         count_results_delete(
           g_account_info_tab(lp_idx),
+/* 2011/05/17 Ver1.16 Add START */
+          cv_process_1,
+/* 2011/05/17 Ver1.16 Add END   */
           lv_errbuf,         -- エラー・メッセージ           --# 固定 #
           lv_retcode,        -- リターン・コード             --# 固定 #
           lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5482,18 +5547,20 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-        --  未訪問客件数情報集計＆登録処理(B-10)
-        count_no_visit(
-          g_account_info_tab(lp_idx),
-          lp_idx,
-          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-          lv_retcode,        -- リターン・コード             --# 固定 #
-          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-        --  処理ステータス判定
-        IF ( lv_retcode = cv_status_error ) THEN
-          --  (エラー処理)
-          RAISE global_process_expt;
-        END IF;
+/* 2011/05/17 Ver1.16 Del START */
+--        --  未訪問客件数情報集計＆登録処理(B-10)
+--        count_no_visit(
+--          g_account_info_tab(lp_idx),
+--          lp_idx,
+--          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--          lv_retcode,        -- リターン・コード             --# 固定 #
+--          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--        --  処理ステータス判定
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          --  (エラー処理)
+--          RAISE global_process_expt;
+--        END IF;
+/* 2011/05/17 Ver1.16 Del END   */
 --
         --  未取引客件数情報集計＆登録処理(B-11)
         count_no_trade(
@@ -5593,6 +5660,12 @@ AS
         );
       END IF;
     END LOOP  count_results;
+/* 2011/05/17 Ver1.16 Add START */
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  ''
+    );
+/* 2011/05/17 Ver1.16 Add START */
 --
     --  期限切れ集計データ削除処理(B-16)
     count_delete_invalidity (
@@ -5666,6 +5739,191 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END control_count;
+--
+/* 2011/05/17 Ver1.16 Add START */
+  /**********************************************************************************
+   * Procedure Name   : no_visit_control_cnt
+   * Description      : 未訪問客件数取得制御(B-20)
+   ***********************************************************************************/
+  PROCEDURE no_visit_control_cnt(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'no_visit_control_cnt'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_start_idx    NUMBER;
+    ln_end_idx      NUMBER;
+--
+    --  配列index定義
+    lp_idx                                PLS_INTEGER;
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --==================================
+    -- 1.処理実行判定
+    --==================================
+    IF (gv_processing_class = cv_para_cls_all) THEN
+      --  処理区分「0:全て」の場合、前月、当月を処理
+      ln_start_idx  :=  cn_last_month;
+      ln_end_idx    :=  cn_this_month;
+    ELSIF (gv_processing_class = cv_para_no_visit_last_month) THEN
+      --  処理区分「7:未訪問客件数取得（前月）」の場合、前月のみ処理
+      ln_start_idx  :=  cn_last_month;
+      ln_end_idx    :=  cn_last_month;
+    ELSIF (gv_processing_class = cv_para_no_visit_this_month) THEN
+      --  処理区分「8:未訪問客件数取得（当月）」の場合、当月のみ処理
+      ln_start_idx  :=  cn_this_month;
+      ln_end_idx    :=  cn_this_month;
+    ELSE
+      --  本処理はスキップ
+      RETURN;
+    END IF;
+--
+    --==================================
+    -- 19.営業員情報登録処理
+    --==================================
+    resource_sum(
+        ov_errbuf     =>  lv_errbuf       -- エラー・メッセージ           --# 固定 #
+      , ov_retcode    =>  lv_retcode      -- リターン・コード             --# 固定 #
+      , ov_errmsg     =>  lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --  処理ステータス判定
+    IF ( lv_retcode = cv_status_error ) THEN
+      --  (エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+    --==================================
+    -- 2.各種件数カウント制御
+    --==================================
+    <<count_results>>
+    FOR lp_idx IN ln_start_idx .. ln_end_idx LOOP
+      --  件数初期化
+      g_counter_tab(cn_counter_count_sum).insert_counter := 0;
+      g_counter_tab(cn_counter_count_sum).select_counter := 0;
+      g_counter_tab(cn_counter_count_sum).update_counter := 0;
+      g_counter_tab(cn_counter_count_sum).delete_counter := 0;
+      g_counter_tab(cn_counter_count_sum).delete_counter_invalidity := 0;
+--
+      --  会計ステータスopen時のみ処理を実行
+      IF ( g_account_info_tab(lp_idx).status = cv_open ) THEN
+        --  実績件数削除処理(B-8)
+        count_results_delete(
+            it_account_info     =>  g_account_info_tab(lp_idx)
+          , iv_process_type     =>  cv_process_2
+          , ov_errbuf           =>  lv_errbuf         -- エラー・メッセージ           --# 固定 #
+          , ov_retcode          =>  lv_retcode        -- リターン・コード             --# 固定 #
+          , ov_errmsg           =>  lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --  処理ステータス判定
+        IF ( lv_retcode = cv_status_error ) THEN
+          --  カーソルクローズ  （営業成績表 営業件数集計テーブル）
+          IF ( lock_rep_bus_no_visit_cur%ISOPEN ) THEN
+            CLOSE lock_rep_bus_no_visit_cur;
+          END IF;
+          --  (エラー処理)
+          RAISE global_process_expt;
+        END IF;
+--
+        --  未訪問客件数情報集計＆登録処理(B-10)
+        count_no_visit(
+            it_account_info   =>  g_account_info_tab(lp_idx)
+          , it_account_idx    =>  lp_idx
+          , ov_errbuf         =>  lv_errbuf           -- エラー・メッセージ           --# 固定 #
+          , ov_retcode        =>  lv_retcode          -- リターン・コード             --# 固定 #
+          , ov_errmsg         =>  lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --  処理ステータス判定
+        IF ( lv_retcode = cv_status_error ) THEN
+          --  (エラー処理)
+          RAISE global_process_expt;
+        END IF;
+--
+        --  処理件数メッセージ編集（営業成績表 実績集計処理件数）
+        lv_errmsg :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  ct_xxcos_appl_short_name
+                        , iv_name           =>  ct_msg_count_no_visit
+                        , iv_token_name1    =>  cv_tkn_object_years
+                        , iv_token_value1   =>  g_account_info_tab(lp_idx).base_years
+                        , iv_token_name2    =>  cv_tkn_delete_count
+                        , iv_token_value2   =>  g_counter_tab(cn_counter_count_sum).delete_counter
+                        , iv_token_name3    =>  cv_tkn_insert_count
+                        , iv_token_value3   =>  g_counter_tab(cn_counter_count_sum).insert_counter
+                      );
+        --  処理件数メッセージ出力
+        FND_FILE.PUT_LINE(
+            which   =>  FND_FILE.OUTPUT
+          , buff    =>  lv_errmsg
+        );
+      END IF;
+    END LOOP  count_results;
+--
+    --  コミット発行
+    COMMIT;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errbuf   :=  lv_errbuf;
+      ov_errmsg   :=  lv_errmsg;
+      ov_retcode  :=  lv_retcode;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END no_visit_control_cnt;
+/* 2011/05/17 Ver1.16 Add END   */
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -5825,6 +6083,12 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+/* 2011/05/17 Ver1.16 Add START */
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  ''
+    );
+/* 2011/05/17 Ver1.16 Add START */
     -- ===============================
     -- 各種件数取得制御(B-7)
     -- ===============================
@@ -5838,6 +6102,21 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+/* 2011/05/17 Ver1.16 Add START */
+    -- ===============================
+    -- 未訪問客件数取得制御(B-20)
+    -- ===============================
+    no_visit_control_cnt(
+        ov_errbuf     =>  lv_errbuf         -- エラー・メッセージ           --# 固定 #
+      , ov_retcode    =>  lv_retcode        -- リターン・コード             --# 固定 #
+      , ov_errmsg     =>  lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF ( lv_retcode = cv_status_error ) THEN
+      --  (エラー処理)
+      RAISE global_process_expt;
+    END IF;
+/* 2011/05/17 Ver1.16 Add END   */
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
       -- カーソルのクローズをここに記述する
@@ -5949,6 +6228,12 @@ AS
     --*** エラー出力は要件によって使い分けてください ***--
     --エラー出力
     IF (lv_retcode = cv_status_error) THEN
+/* 2011/05/17 Ver1.16 Add START */
+      FND_FILE.PUT_LINE(
+          which   =>  FND_FILE.OUTPUT
+        , buff    =>  ''
+      );
+/* 2011/05/17 Ver1.16 Add START */
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
         ,buff   => lv_errmsg --ユーザー・エラーメッセージ
