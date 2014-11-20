@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF016A35C(body)
  * Description      : リース契約メンテナンス
  * MD.050           : MD050_CFF_016_A35_リース契約メンテナンス
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2012/10/12    1.0   SCSK谷口         新規作成
  *  2013/02/12    1.1   SCSK中野         「E_本稼動_09967」対応
  *  2013/02/27    1.2   SCSK中村         「E_本稼動_09967」対応 入力パラメータチェック追加
+ *  2013/03/11    1.3   SCSK中村         「E_本稼動_09967」対応 3回目以降支払日をパラメータより削除（非表示）
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,10 @@ AS
 -- Add 2013/02/27 Ver1.2 Start
   cv_payment_frequency_3          CONSTANT NUMBER := 3;                               -- 支払回数（最終支払日導出用の3回）
 -- Add 2013/02/27 Ver1.2 End
+-- Add 2013/03/11 Ver1.3 Start
+  cv_format_dd                    CONSTANT VARCHAR2(2)   := 'DD';                     -- 日付書式
+  cn_third_payment_date_31        CONSTANT NUMBER        := 31;                       -- 月末日（3回目以降支払日の月末固定値）
+-- Add 2013/03/11 Ver1.3 End
   -- メッセージ
   cv_msg_param_output             CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00206';       -- パラメータ出力用
   cv_msg_common_err               CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00094';       -- 共通関数エラー
@@ -172,7 +177,9 @@ AS
   cv_val_contract_date            CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50134';       -- リース契約日
   cv_val_first_payment_date       CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50052';       -- 初回支払日
   cv_val_second_payment_date      CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50053';       -- 2回目支払日
-  cv_val_third_payment_date       CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50054';       -- 3回目以降支払日
+-- Del 2013/03/11 Ver1.3 Start
+--  cv_val_third_payment_date       CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50054';       -- 3回目以降支払日
+-- Del 2013/03/11 Ver1.3 End
   cv_val_comments                 CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50045';       -- 件名
   cv_val_contract_number_colon    CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50211';       -- 契約番号：
   cv_val_lease_company_colon      CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50212';       -- リース会社：
@@ -463,16 +470,18 @@ AS
                  );
     FND_FILE.PUT_LINE(FND_FILE.LOG, lv_msg);
     --
-    -- 10.３回目以降支払日
-    lv_msg := xxccp_common_pkg.get_msg(
-                   iv_application   => cv_appl_short_name_xxcff     -- アプリケーション短縮名
-                  ,iv_name          => cv_msg_param_output          -- メッセージコード
-                  ,iv_token_name1   => cv_tkn_param_name            -- トークンコード1
-                  ,iv_token_value1  => cv_val_third_payment_date    -- トークン値1
-                  ,iv_token_name2   => cv_tkn_param_val             -- トークンコード2
-                  ,iv_token_value2  => iv_third_payment_date        -- トークン値2
-                 );
-    FND_FILE.PUT_LINE(FND_FILE.LOG, lv_msg);
+-- Del 2013/03/11 Ver1.3 Start
+--    -- 10.３回目以降支払日
+--    lv_msg := xxccp_common_pkg.get_msg(
+--                   iv_application   => cv_appl_short_name_xxcff     -- アプリケーション短縮名
+--                  ,iv_name          => cv_msg_param_output          -- メッセージコード
+--                  ,iv_token_name1   => cv_tkn_param_name            -- トークンコード1
+--                  ,iv_token_value1  => cv_val_third_payment_date    -- トークン値1
+--                  ,iv_token_name2   => cv_tkn_param_val             -- トークンコード2
+--                  ,iv_token_value2  => iv_third_payment_date        -- トークン値2
+--                 );
+--    FND_FILE.PUT_LINE(FND_FILE.LOG, lv_msg);
+-- Del 2013/03/11 Ver1.3 End
     --
     -- 11.件名
     lv_msg := xxccp_common_pkg.get_msg(
@@ -691,7 +700,9 @@ AS
       AND iv_contract_date        IS NULL   -- 7. 契約日
       AND iv_first_payment_date   IS NULL   -- 8. 初回支払日
       AND iv_second_payment_date  IS NULL   -- 9. ２回目支払日
-      AND iv_third_payment_date   IS NULL   -- 10.３回目以降支払日
+-- Del 2013/03/11 Ver1.3 Start
+--      AND iv_third_payment_date   IS NULL   -- 10.３回目以降支払日
+-- Del 2013/03/11 Ver1.3 End
       AND iv_comments             IS NULL   -- 11.件名
     )
     THEN
@@ -843,20 +854,22 @@ AS
         RAISE global_process_expt;
     END;
     --
-    -- 10.３回目以降支払日
-    BEGIN
-      gn_param_third_payment_date := iv_third_payment_date;
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application   => cv_appl_short_name_xxcff   -- アプリケーション短縮名
-                      ,iv_name          => cv_msg_param_type_err      -- メッセージコード
-                      ,iv_token_name1   => cv_tkn_input               -- トークンコード1
-                      ,iv_token_value1  => cv_val_third_payment_date  -- トークン値1
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
+-- Del 2013/03/11 Ver1.3 Start
+--    -- 10.３回目以降支払日
+--    BEGIN
+--      gn_param_third_payment_date := iv_third_payment_date;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application   => cv_appl_short_name_xxcff   -- アプリケーション短縮名
+--                      ,iv_name          => cv_msg_param_type_err      -- メッセージコード
+--                      ,iv_token_name1   => cv_tkn_input               -- トークンコード1
+--                      ,iv_token_value1  => cv_val_third_payment_date  -- トークン値1
+--                     );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--    END;
+-- Del 2013/03/11 Ver1.3 End
     --
     -- 11.件名
     BEGIN
@@ -2335,6 +2348,27 @@ AS
 --
     END IF;
 --
+-- Add 2013/03/11 Ver1.3 Start
+    -- ============================================
+    -- 更新値を変数に格納（3回目以降支払日）
+    -- ============================================
+    -- 2回目支払日
+    IF ( gd_param_second_payment_date IS NULL ) THEN
+      -- NULLのまま
+      gn_param_third_payment_date := NULL;
+    ELSE
+      -- 月末日の場合
+      IF ( gd_param_second_payment_date = LAST_DAY(gd_param_second_payment_date) ) THEN
+        -- 31固定で設定
+        gn_param_third_payment_date := cn_third_payment_date_31;
+      ELSE
+        -- 2回目支払日の日付を設定
+        gn_param_third_payment_date := TO_NUMBER(TO_CHAR(gd_param_second_payment_date, cv_format_dd));
+      END IF;
+      --
+    END IF;
+-- Add 2013/03/11 Ver1.3 End
+--
     -- ============================================
     -- 更新値を変数に格納（年数）
     -- ============================================
@@ -3246,7 +3280,9 @@ AS
       AND gd_param_contract_date        IS NULL       -- 7. 契約日
       AND gd_param_first_payment_date   IS NULL       -- 8. 初回支払日
       AND gd_param_second_payment_date  IS NULL       -- 9. ２回目支払日
-      AND gn_param_third_payment_date   IS NULL       -- 10.３回目以降支払日
+-- Del 2013/03/11 Ver1.3 Start
+--      AND gn_param_third_payment_date   IS NULL       -- 10.３回目以降支払日
+-- Del 2013/03/11 Ver1.3 End
       AND gv_param_comments             IS NOT NULL   -- 11.件名
     )
     THEN
