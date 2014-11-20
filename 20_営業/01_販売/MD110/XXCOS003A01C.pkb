@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *                                       [0000064]受注ヘッダDFF項目漏れ対応
  *  2009/08/06   1.4    M.Sano           [0000426]『HHT向け納品予定データ作成』PTの考慮
  *  2009/09/01   1.5    M.Sano           [0001066]『HHT向け納品予定データ作成』PTの考慮
+ *  2010/03/30   1.6    S.Miyakoshi      [E_本稼動_02058]単位換算処理の追加
  *
  *****************************************************************************************/
 --
@@ -87,6 +88,9 @@ AS
   -- ユーザー定義例外
   -- ===============================
   global_data_check_expt    EXCEPTION;     -- データチェック時のエラー
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
+  global_change_err_expt    EXCEPTION;     -- 単位換算エラー
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -115,6 +119,9 @@ AS
   cv_tkn_item_name        CONSTANT VARCHAR2(20) := 'ITEM_NAME';
   cv_tkn_item_value       CONSTANT VARCHAR2(20) := 'ITEM_VALUE';
   cv_tkn_filename         CONSTANT VARCHAR2(20) := 'FILE_NAME';
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
+  cv_tkn_err_msg          CONSTANT VARCHAR2(20) := 'ERR_MSG';                   -- エラー内容
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
   cv_msg_lock             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00001';          -- ロックエラー
   cv_msg_file_open        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00009';          -- 
   cv_msg_update_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00011';          -- 
@@ -140,14 +147,21 @@ AS
   cv_tkn_organization_cd  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00048';          -- XXCOI:在庫組織コード
   cv_tkn_update_table     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10668';          -- EDI明細情報テーブル
   cv_edi_line_id          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10669';          -- 受注明細情報ID
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
+  cv_msg_change_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10670';          -- 単位換算エラー
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
   -- その他
   cv_file_access_mode     CONSTANT VARCHAR2(10) := 'W';                         -- ファイルアクセスモード
   cv_cust_class_cust      CONSTANT VARCHAR2(10) := '10';                        -- 顧客区分（顧客）
   cv_cust_class_chain     CONSTANT VARCHAR2(10) := '18';                        -- 顧客区分（チェーン店）
   cv_enabled              CONSTANT VARCHAR2(10) := 'Y';                         -- 有効フラグ
   cv_default_language     CONSTANT VARCHAR2(10) := USERENV('LANG');             -- 標準言語タイプ
-  cv_number_format8       CONSTANT VARCHAR2(20) := 'FM99999999.00';             -- 数値フォーマット８桁
-  cv_number_format7       CONSTANT VARCHAR2(20) := 'FM9999999.00';              -- 数値フォーマット７桁
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD START ************************ --
+--  cv_number_format8       CONSTANT VARCHAR2(20) := 'FM99999999.00';             -- 数値フォーマット８桁
+--  cv_number_format7       CONSTANT VARCHAR2(20) := 'FM9999999.00';              -- 数値フォーマット７桁
+  cv_number_format8       CONSTANT VARCHAR2(20) := 'FM99999990.00';             -- 数値フォーマット８桁
+  cv_number_format7       CONSTANT VARCHAR2(20) := 'FM9999990.00';              -- 数値フォーマット７桁
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD  END  ************************ --
 /* 2009/07/08 Ver1.4 Add Start */
   --情報区分
   cv_target_order_01      CONSTANT  VARCHAR2(2) := '01';                        -- 受注作成対象01
@@ -955,6 +969,12 @@ AS
     lv_item_name           VARCHAR2(20);
     lv_message_code        VARCHAR2(20);
     lv_item_value          VARCHAR2(100);
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
+    lv_organization_id     VARCHAR2(10);                    -- 在庫組織ＩＤ
+    lv_after_uom_code      VARCHAR2(10);                    -- 換算後単位コード
+    ln_after_quantity      NUMBER;                          -- 換算後数量
+    ln_content             NUMBER;                          -- 入数
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
 --
   BEGIN
 --
@@ -1110,11 +1130,40 @@ AS
           RAISE global_data_check_expt;
         END IF;
 --
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
+        -- 受注数量の単位換算
+        lv_organization_id := NULL;  --NULLを設定（共通関数内で導出）
+        lv_after_uom_code  := NULL;  --換算後単位コードの初期化
+        xxcos_common_pkg.get_uom_cnv(
+                                     main_rec.order_quantity_uom,   -- 換算前単位コード
+                                     main_rec.ordered_quantity,     -- 換算前数量
+                                     main_rec.ordered_item,         -- 品目コード
+                                     gv_organization_code,          -- 在庫組織コード
+                                     main_rec.inventory_item_id,    -- 品目ID
+                                     lv_organization_id,            -- 在庫組織ＩＤ
+                                     lv_after_uom_code,             -- 換算後単位コード
+                                     ln_after_quantity,             -- 換算後数量
+                                     ln_content,                    -- 入数
+                                     lv_errbuf,                     -- エラー･メッセージ
+                                     lv_retcode,                    -- リターンコード
+                                     lv_errmsg                      -- ユーザ･エラー･メッセージ
+                                    );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_change_err_expt;
+        END IF;
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
+--
         -- 受注明細テーブル：受注数量
-        IF ( main_rec.ordered_quantity > cn_max_val_ordered_quantity ) THEN
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD START ************************ --
+--        IF ( main_rec.ordered_quantity > cn_max_val_ordered_quantity ) THEN
+        IF ( ln_after_quantity > cn_max_val_ordered_quantity ) THEN
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD  END  ************************ --
           lv_message_code := cv_msg_overflow;
           lv_item_name := gv_msg_ordered_quantity;
-          lv_item_value   := main_rec.ordered_quantity;
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD START ************************ --
+--          lv_item_value   := main_rec.ordered_quantity;
+          lv_item_value   := ln_after_quantity;
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD  END  ************************ --
           RAISE global_data_check_expt;
         END IF;
 --
@@ -1154,6 +1203,33 @@ AS
           ov_errbuf := lv_errmsg;
           gv_transaction_status := cv_error_status;
           ov_retcode  := cv_status_warn;
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
+        WHEN global_change_err_expt THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                               ,cv_msg_change_err
+                                               ,cv_tkn_order_number
+                                               ,main_rec.order_number
+                                               ,cv_tkn_line_number
+                                               ,main_rec.line_number
+                                               ,cv_tkn_err_msg
+                                               ,lv_errmsg
+                                               );
+--
+          -- ログ出力
+          log_output( cv_prg_name, lv_errmsg );
+          ov_errmsg := lv_errmsg;
+          ov_errbuf := lv_errmsg;
+          gv_transaction_status := cv_error_status;
+          ov_retcode  := cv_status_warn;
+--
+          --空行
+          FND_FILE.PUT_LINE(which  => FND_FILE.OUTPUT
+                           ,buff   => ''
+                           );
+          FND_FILE.PUT_LINE(which  => FND_FILE.LOG
+                           ,buff   => ''
+                           );
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
       END;
 --
       -- ===============================
@@ -1187,7 +1263,10 @@ AS
       gt_vndor_deli_lines(gn_set_cnt).customer_item_number := gv_customer_item_number       ;--他社品名コード
       gt_vndor_deli_lines(gn_set_cnt).customer_item_desc   := gv_customer_item_desc         ;--他社品名
       gt_vndor_deli_lines(gn_set_cnt).quantity_sign        := lv_sign                       ;--数量サイン（明細カテゴリコード）
-      gt_vndor_deli_lines(gn_set_cnt).ordered_quantity     := main_rec.ordered_quantity     ;--数量
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD START ************************ --
+--      gt_vndor_deli_lines(gn_set_cnt).ordered_quantity     := main_rec.ordered_quantity     ;--数量
+      gt_vndor_deli_lines(gn_set_cnt).ordered_quantity     := ln_after_quantity             ;--数量
+-- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD  END  ************************ --
       gt_vndor_deli_lines(gn_set_cnt).unit_selling_price   := main_rec.unit_selling_price   ;--卸単価
       gt_vndor_deli_lines(gn_set_cnt).selling_price        := main_rec.selling_price        ;--売単価
       gt_vndor_deli_lines(gn_set_cnt).edi_line_info_id     := main_rec.edi_line_info_id     ;--EDI明細情報ID
