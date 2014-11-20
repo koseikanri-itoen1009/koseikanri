@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/10/05    1.9   K.Satomura       [0001369]納品予定日をプロファイルオプション値以降の
  *                                                日時を対象とする
  *  2009/10/07    1.10  K.Satomura       [0001378]帳票ワークテーブルの桁あふれ対応
+ *  2009/11/26    1.11  N.Maeda          [E_本番_00092] 納品予定日条件のメインSQL取込
  *
  *****************************************************************************************/
 --
@@ -201,20 +202,29 @@ AS
 --
   -- 調査など例外抽出のSQLを特定する為に項目。調査時は値をセットして下さい。
   -- データ区分
--- ******************** 2009/10/05 1.9 K.Satomura MOD START ******************************* --
-  --cv_data_class_1           CONSTANT  VARCHAR2(1)   := '';                   -- 例外１取得ＳＱＬ
-  --cv_data_class_2           CONSTANT  VARCHAR2(1)   := '';                   -- 例外２取得ＳＱＬ
-  --cv_data_class_3           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－１取得ＳＱＬ
-  --cv_data_class_4           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－２取得ＳＱＬ
-  --cv_data_class_5           CONSTANT  VARCHAR2(1)   := '';                   -- 例外４取得ＳＱＬ
-  --cv_data_class_6           CONSTANT  VARCHAR2(1)   := '';                   -- 例外５取得ＳＱＬ
-  cv_data_class_1           CONSTANT  VARCHAR2(1)   := '1';                   -- 例外１取得ＳＱＬ
-  cv_data_class_2           CONSTANT  VARCHAR2(1)   := '2';                   -- 例外２取得ＳＱＬ
-  cv_data_class_3           CONSTANT  VARCHAR2(1)   := '3';                   -- 例外３－１取得ＳＱＬ
-  cv_data_class_4           CONSTANT  VARCHAR2(1)   := '4';                   -- 例外３－２取得ＳＱＬ
-  cv_data_class_5           CONSTANT  VARCHAR2(1)   := '5';                   -- 例外４取得ＳＱＬ
-  cv_data_class_6           CONSTANT  VARCHAR2(1)   := '6';                   -- 例外５取得ＳＱＬ
--- ******************** 2009/10/05 1.9 K.Satomura MOD END   ******************************* --
+-- *********** 2009/11/26 1.11 N.Maeda MOD START *********** --
+---- ******************** 2009/10/05 1.9 K.Satomura MOD START ******************************* --
+--  --cv_data_class_1           CONSTANT  VARCHAR2(1)   := '';                   -- 例外１取得ＳＱＬ
+--  --cv_data_class_2           CONSTANT  VARCHAR2(1)   := '';                   -- 例外２取得ＳＱＬ
+--  --cv_data_class_3           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－１取得ＳＱＬ
+--  --cv_data_class_4           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－２取得ＳＱＬ
+--  --cv_data_class_5           CONSTANT  VARCHAR2(1)   := '';                   -- 例外４取得ＳＱＬ
+--  --cv_data_class_6           CONSTANT  VARCHAR2(1)   := '';                   -- 例外５取得ＳＱＬ
+--  cv_data_class_1           CONSTANT  VARCHAR2(1)   := '1';                   -- 例外１取得ＳＱＬ
+--  cv_data_class_2           CONSTANT  VARCHAR2(1)   := '2';                   -- 例外２取得ＳＱＬ
+--  cv_data_class_3           CONSTANT  VARCHAR2(1)   := '3';                   -- 例外３－１取得ＳＱＬ
+--  cv_data_class_4           CONSTANT  VARCHAR2(1)   := '4';                   -- 例外３－２取得ＳＱＬ
+--  cv_data_class_5           CONSTANT  VARCHAR2(1)   := '5';                   -- 例外４取得ＳＱＬ
+--  cv_data_class_6           CONSTANT  VARCHAR2(1)   := '6';                   -- 例外５取得ＳＱＬ
+---- ******************** 2009/10/05 1.9 K.Satomura MOD END   ******************************* --
+  cv_data_class_1           CONSTANT  VARCHAR2(1)   := '';                   -- 例外１取得ＳＱＬ
+  cv_data_class_2           CONSTANT  VARCHAR2(1)   := '';                   -- 例外２取得ＳＱＬ
+  cv_data_class_3           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－１取得ＳＱＬ
+  cv_data_class_4           CONSTANT  VARCHAR2(1)   := '';                   -- 例外３－２取得ＳＱＬ
+  cv_data_class_5           CONSTANT  VARCHAR2(1)   := '';                   -- 例外４取得ＳＱＬ
+  cv_data_class_6           CONSTANT  VARCHAR2(1)   := '';                   -- 例外５取得ＳＱＬ
+  cv_user_lang              CONSTANT  fnd_lookup_values.language%TYPE := USERENV( 'LANG' ); -- 'JA'
+-- *********** 2009/11/26 1.11 N.Maeda MOD  END  *********** --
 --
 --****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
   cn_ship_zero              CONSTANT  NUMBER        := 0;                    -- 出荷実績0
@@ -363,19 +373,27 @@ AS
       INTO
         gv_subinventory_class
       FROM
-        fnd_application               fa,
-        fnd_lookup_types              flt,
+-- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
+--        fnd_application               fa,
+--        fnd_lookup_types              flt,
+-- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
         fnd_lookup_values             flv
       WHERE
-          fa.application_id           = flt.application_id
-      AND flt.lookup_type             = flv.lookup_type
-      AND fa.application_short_name   = cv_xxcos_short_name
-      AND flv.lookup_type             = cv_hokan_direct_type_mst
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--          fa.application_id           = flt.application_id
+--      AND flt.lookup_type             = flv.lookup_type
+--      AND fa.application_short_name   = cv_xxcos_short_name
+--      AND flv.lookup_type             = cv_hokan_direct_type_mst
+          flv.lookup_type             = cv_hokan_direct_type_mst
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
       AND flv.lookup_code             = cv_hokan_direct_11
       AND flv.start_date_active      <= gd_process_date
       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
       AND flv.enabled_flag            = cv_yes_flg
-      AND flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--      AND flv.language                = USERENV( 'LANG' )
+      AND flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
       ;
 --
    EXCEPTION
@@ -583,18 +601,27 @@ AS
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                  FROM
-                                    fnd_application    fa
-                                   ,fnd_lookup_types   flt
-                                   ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                    fnd_application    fa
+--                                   ,fnd_lookup_types   flt
+--                                   ,fnd_lookup_values  flv
+                                   fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  WHERE
-                                      fa.application_id           = flt.application_id
-                                 AND  flt.lookup_type             = flv.lookup_type
-                                 AND  fa.application_short_name   = cv_xxcos_short_name
-                                 AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                      fa.application_id           = flt.application_id
+--                                 AND  flt.lookup_type             = flv.lookup_type
+--                                 AND  fa.application_short_name   = cv_xxcos_short_name
+--                                 AND  flv.lookup_type             = cv_no_inv_item_code
+                                      flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  flv.start_date_active      <= gd_process_date
                                  AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                  AND  flv.enabled_flag            = cv_yes_flg
-                                 AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                 AND flv.language                = USERENV( 'LANG' )
+                                 AND flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                                )
                AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -604,6 +631,9 @@ AS
                                                          ,cv_base_all
                                                          ,xca.delivery_base_code
                                                          ,iv_base_code )
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
@@ -635,15 +665,21 @@ AS
                        flv.meaning      AS UOM_CODE
                      , flv.description  AS CNV_VALUE
                    FROM
-                     fnd_application   fa,
-                     fnd_lookup_types  flt,
+-- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
+--                     fnd_application   fa,
+--                     fnd_lookup_types  flt,
+-- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
                      fnd_lookup_values flv
                    WHERE
-                         fa.application_id         = flt.application_id
-                     AND flt.lookup_type           = flv.lookup_type
-                     AND fa.application_short_name = cv_xxcos_short_name
-                     AND flv.enabled_flag          = cv_yes_flg
-                     AND flv.language              = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                         fa.application_id         = flt.application_id
+--                     AND flt.lookup_type           = flv.lookup_type
+--                     AND fa.application_short_name = cv_xxcos_short_name
+--                     AND flv.enabled_flag          = cv_yes_flg
+--                     AND flv.language                = USERENV( 'LANG' )
+                         flv.enabled_flag          = cv_yes_flg
+                     AND flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                      AND flv.start_date_active    <= gd_process_date
                      AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
                      AND flv.lookup_type           = cv_weight_uom_cnv_mst
@@ -653,7 +689,10 @@ AS
                AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
                AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
                AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
-               AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--               AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+               AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
                AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
                AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
@@ -664,18 +703,27 @@ AS
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                  FROM
-                                    fnd_application    fa
-                                   ,fnd_lookup_types   flt
-                                   ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                    fnd_application    fa
+--                                   ,fnd_lookup_types   flt
+--                                   ,fnd_lookup_values  flv
+                                   fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  WHERE
-                                      fa.application_id           = flt.application_id
-                                 AND  flt.lookup_type             = flv.lookup_type
-                                 AND  fa.application_short_name   = cv_xxcos_short_name
-                                 AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                      fa.application_id           = flt.application_id
+--                                 AND  flt.lookup_type             = flv.lookup_type
+--                                 AND  fa.application_short_name   = cv_xxcos_short_name
+--                                 AND  flv.lookup_type             = cv_no_inv_item_code
+                                      flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  flv.start_date_active      <= gd_process_date
                                  AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                  AND  flv.enabled_flag            = cv_yes_flg
-                                 AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                 AND  flv.language                = USERENV( 'LANG' )
+                                 AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                                )
                AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -693,6 +741,9 @@ AS
                AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
                AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
                AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+               AND  TRUNC(oola.request_date)   >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
@@ -726,6 +777,9 @@ AS
           AND  oola.line_id               = ooal.line_id                  -- 受注明細.受注明細ID = 最終歴用.受注明細ID
           AND  oola.packing_instructions  = ooas.deliver_requested_no     -- 例外１営業サブクエリ.出荷依頼No = サマリー用サブクエリ.出荷依頼No
           AND  NVL( oola.attribute6, oola.ordered_item ) = ooas.item_code -- 例外１営業サブクエリ.品目コード = サマリー用サブクエリ.品目コード
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
         )
         ooa1,
         -- ****** 例外１生産サブクエリ：ooa2 ******
@@ -866,18 +920,27 @@ AS
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                  FROM
-                                    fnd_application    fa
-                                   ,fnd_lookup_types   flt
-                                   ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                    fnd_application    fa
+--                                   ,fnd_lookup_types   flt
+--                                   ,fnd_lookup_values  flv
+                                   fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  WHERE
-                                      fa.application_id           = flt.application_id
-                                 AND  flt.lookup_type             = flv.lookup_type
-                                 AND  fa.application_short_name   = cv_xxcos_short_name
-                                 AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                      fa.application_id           = flt.application_id
+--                                 AND  flt.lookup_type             = flv.lookup_type
+--                                 AND  fa.application_short_name   = cv_xxcos_short_name
+--                                 AND  flv.lookup_type             = cv_no_inv_item_code
+                                      flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  flv.start_date_active      <= gd_process_date
                                  AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                  AND  flv.enabled_flag            = cv_yes_flg
-                                 AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                 AND  flv.language                = USERENV( 'LANG' )
+                                 AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                                )
                AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -887,6 +950,9 @@ AS
                                                          ,cv_base_all
                                                          ,xca.delivery_base_code
                                                          ,iv_base_code )
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
@@ -919,6 +985,9 @@ AS
 --          AND  ooha.header_id             = ooal.header_id               -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 最終歴用ｻﾌﾞｸｴﾘ.受注ﾍｯﾀﾞID
 --MIYATA DELETE
           AND  oola.line_id               = ooal.line_id                 -- 受注明細.受注明細ID = 最終歴用ｻﾌﾞｸｴﾘ.受注明細ID
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
         )
         ooa1,
         -- ****** 例外２生産サブクエリ：ooa2 ******
@@ -985,15 +1054,21 @@ AS
                   flv.meaning      AS UOM_CODE
                 , flv.description  AS CNV_VALUE
               FROM
-                fnd_application   fa,
-                fnd_lookup_types  flt,
+-- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
+--                fnd_application   fa,
+--                fnd_lookup_types  flt,
+-- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
                 fnd_lookup_values flv
               WHERE
-                    fa.application_id         = flt.application_id
-                AND flt.lookup_type           = flv.lookup_type
-                AND fa.application_short_name = cv_xxcos_short_name
-                AND flv.enabled_flag          = cv_yes_flg
-                AND flv.language              = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                    fa.application_id         = flt.application_id
+--                AND flt.lookup_type           = flv.lookup_type
+--                AND fa.application_short_name = cv_xxcos_short_name
+--                AND flv.enabled_flag          = cv_yes_flg
+--                AND flv.language              = USERENV( 'LANG' )
+                    flv.enabled_flag          = cv_yes_flg
+                AND flv.language              = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                 AND flv.start_date_active    <= gd_process_date
                 AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
                 AND flv.lookup_type           = cv_weight_uom_cnv_mst
@@ -1003,7 +1078,10 @@ AS
           AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
           AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
           AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
-          AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--          AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+          AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
           AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
           AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
           AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
@@ -1014,18 +1092,26 @@ AS
           AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                               'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                             FROM
-                               fnd_application    fa
-                              ,fnd_lookup_types   flt
-                              ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                               fnd_application    fa
+--                              ,fnd_lookup_types   flt
+--                              ,fnd_lookup_values  flv
+                              fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                             WHERE
-                                 fa.application_id           = flt.application_id
-                            AND  flt.lookup_type             = flv.lookup_type
-                            AND  fa.application_short_name   = cv_xxcos_short_name
-                            AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                 fa.application_id           = flt.application_id
+--                            AND  flt.lookup_type             = flv.lookup_type
+--                            AND  fa.application_short_name   = cv_xxcos_short_name
+                                 flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                             AND  flv.start_date_active      <= gd_process_date
                             AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                             AND  flv.enabled_flag            = cv_yes_flg
-                            AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                            AND  flv.language                = USERENV( 'LANG' )
+                            AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                             AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                           )
           AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -1043,6 +1129,9 @@ AS
           AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
           AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
           AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
           GROUP BY
              oola.packing_instructions
             ,NVL( oola.attribute6, oola.ordered_item )
@@ -1107,7 +1196,10 @@ AS
 --****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
       AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
       AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
-      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+      AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
 --****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
       AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
@@ -1119,18 +1211,27 @@ AS
       AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                           'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                         FROM
-                           fnd_application    fa
-                          ,fnd_lookup_types   flt
-                          ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                           fnd_application    fa
+--                          ,fnd_lookup_types   flt
+--                          ,fnd_lookup_values  flv
+                          fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                         WHERE
-                             fa.application_id           = flt.application_id
-                        AND  flt.lookup_type             = flv.lookup_type
-                        AND  fa.application_short_name   = cv_xxcos_short_name
-                        AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+---                             fa.application_id           = flt.application_id
+---                        AND  flt.lookup_type             = flv.lookup_type
+---                        AND  fa.application_short_name   = cv_xxcos_short_name
+---                        AND  flv.lookup_type             = cv_no_inv_item_code
+                             flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                         AND  flv.start_date_active      <= gd_process_date
                         AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                         AND  flv.enabled_flag            = cv_yes_flg
-                        AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                        AND  flv.language                = USERENV( 'LANG' )
+                        AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                         AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                      )
       AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -1175,6 +1276,9 @@ AS
 --              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
 -- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
               )
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
 --
       UNION
 --
@@ -1265,18 +1369,27 @@ AS
               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                 FROM
-                                   fnd_application    fa
-                                  ,fnd_lookup_types   flt
-                                  ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                   fnd_application    fa
+--                                  ,fnd_lookup_types   flt
+--                                  ,fnd_lookup_values  flv
+                                  fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                 WHERE
-                                     fa.application_id           = flt.application_id
-                                AND  flt.lookup_type             = flv.lookup_type
-                                AND  fa.application_short_name   = cv_xxcos_short_name
-                                AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+---                                     fa.application_id           = flt.application_id
+---                                AND  flt.lookup_type             = flv.lookup_type
+---                                AND  fa.application_short_name   = cv_xxcos_short_name
+---                                AND  flv.lookup_type             = cv_no_inv_item_code
+                                     flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                 AND  flv.start_date_active      <= gd_process_date
                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                 AND  flv.enabled_flag            = cv_yes_flg
-                                AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                AND  flv.language                = USERENV( 'LANG' )
+                                AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                               )
               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -1294,6 +1407,9 @@ AS
 --              AND  xola.shipping_item_code    =  NVL( oola.attribute6, oola.ordered_item )
 -- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
               )
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+      AND  TRUNC(xoha.arrival_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
 --
       UNION
 --
@@ -1384,18 +1500,27 @@ AS
               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                 FROM
-                                   fnd_application    fa
-                                  ,fnd_lookup_types   flt
-                                  ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                   fnd_application    fa
+--                                  ,fnd_lookup_types   flt
+--                                  ,fnd_lookup_values  flv
+                                  fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                 WHERE
-                                     fa.application_id           = flt.application_id
-                                AND  flt.lookup_type             = flv.lookup_type
-                                AND  fa.application_short_name   = cv_xxcos_short_name
-                                AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                     fa.application_id           = flt.application_id
+--                                AND  flt.lookup_type             = flv.lookup_type
+--                                AND  fa.application_short_name   = cv_xxcos_short_name
+--                                AND  flv.lookup_type             = cv_no_inv_item_code
+                                     flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                 AND  flv.start_date_active      <= gd_process_date
                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                 AND  flv.enabled_flag            = cv_yes_flg
-                                AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                                AND  flv.language                = USERENV( 'LANG' )
+                                AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                               )
               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -1407,6 +1532,9 @@ AS
                                                         ,iv_base_code )
               AND  xoha.request_no            =  oola.packing_instructions  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
               )
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+      AND  TRUNC(xoha.arrival_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
 --
       UNION
 --
@@ -1461,7 +1589,10 @@ AS
 --****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
       AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
       AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
-      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+      AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
 --****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
       AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
       AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
@@ -1472,18 +1603,27 @@ AS
       AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                           'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                         FROM
-                           fnd_application    fa
-                          ,fnd_lookup_types   flt
-                          ,fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+--                           fnd_application    fa
+--                          ,fnd_lookup_types   flt
+--                          ,fnd_lookup_values  flv
+                          fnd_lookup_values  flv
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                         WHERE
-                             fa.application_id           = flt.application_id
-                        AND  flt.lookup_type             = flv.lookup_type
-                        AND  fa.application_short_name   = cv_xxcos_short_name
-                        AND  flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+---                             fa.application_id           = flt.application_id
+---                        AND  flt.lookup_type             = flv.lookup_type
+---                        AND  fa.application_short_name   = cv_xxcos_short_name
+---                        AND  flv.lookup_type             = cv_no_inv_item_code
+                             flv.lookup_type             = cv_no_inv_item_code
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                         AND  flv.start_date_active      <= gd_process_date
                         AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                         AND  flv.enabled_flag            = cv_yes_flg
-                        AND  flv.language                = USERENV( 'LANG' )
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        AND  flv.language                = USERENV( 'LANG' )
+                        AND  flv.language                = cv_user_lang
+-- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                         AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                      )
       AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
@@ -1523,6 +1663,9 @@ AS
                                                         ,iv_base_code )
               AND  oola.packing_instructions =   xoha.request_no           -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
               )
+-- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+-- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
       ;
 --
     -- *** ローカル・レコード ***
@@ -1545,72 +1688,76 @@ AS
     --==================================
     <<loop_get_data>>
     FOR l_data_rec IN data_cur LOOP
--- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
-      IF (
-           (     l_data_rec.data_class IN (cv_data_class_1, cv_data_class_2, cv_data_class_3, cv_data_class_6)
-             AND l_data_rec.schedule_dlv_date >= TRUNC(gd_trans_start_date)
-           )
-         OR
-           (     l_data_rec.data_class IN (cv_data_class_4, cv_data_class_5)
-             AND l_data_rec.arrival_date >= TRUNC(gd_trans_start_date)
-           )
-         )
-      THEN
--- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
-        -- レコードIDの取得
-        BEGIN
+-- *********** 2009/11/26 1.11 N.Maeda DEL START *********** --
+---- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+--      IF (
+--           (     l_data_rec.data_class IN (cv_data_class_1, cv_data_class_2, cv_data_class_3, cv_data_class_6)
+--             AND l_data_rec.schedule_dlv_date >= TRUNC(gd_trans_start_date)
+--           )
+--         OR
+--           (     l_data_rec.data_class IN (cv_data_class_4, cv_data_class_5)
+--             AND l_data_rec.arrival_date >= TRUNC(gd_trans_start_date)
+--           )
+--         )
+--      THEN
+---- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+-- *********** 2009/11/26 1.11 N.Maeda DEL  END  *********** --
+      -- レコードIDの取得
+      BEGIN
 --
-          SELECT
-            xxcos_rep_direct_list_s01.nextval
-          INTO
-            ln_record_id
-          FROM
-            dual
-          ;
-        END;
+        SELECT
+          xxcos_rep_direct_list_s01.nextval
+        INTO
+          ln_record_id
+        FROM
+          dual
+        ;
+      END;
 --
-        -- カウントアップ
-        ln_idx := ln_idx + 1;
+      -- カウントアップ
+      ln_idx := ln_idx + 1;
 --
-        -- 変数へ格納
-        gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;                          -- レコードID 
-        gt_rpt_data_tab( ln_idx ).base_code                := l_data_rec.base_code;                  -- 拠点コード
-                                                                                                     -- 拠点名称
-        gt_rpt_data_tab( ln_idx ).base_name                := SUBSTRB( l_data_rec.base_name, 1, 40 );
-        gt_rpt_data_tab( ln_idx ).order_number             := l_data_rec.order_number;               -- 受注番号
-        gt_rpt_data_tab( ln_idx ).order_line_no            := l_data_rec.order_line_no;              -- 受注明細No.
-        gt_rpt_data_tab( ln_idx ).line_no                  := l_data_rec.line_no;                    -- 明細No.
-        gt_rpt_data_tab( ln_idx ).deliver_requested_no     := l_data_rec.deliver_requested_no;       -- 出荷依頼No
-        gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := l_data_rec.deliver_from_whse_number;   -- 出荷元倉庫番号
-                                                                                                     -- 出荷元倉庫名
-        gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := SUBSTRB( l_data_rec.deliver_from_whse_name, 1, 20 );
-        gt_rpt_data_tab( ln_idx ).customer_number          := l_data_rec.customer_number;            -- 顧客番号
-                                                                                                     -- 顧客名
-        gt_rpt_data_tab( ln_idx ).customer_name            := SUBSTRB( l_data_rec.customer_name, 1, 20 );
-        gt_rpt_data_tab( ln_idx ).item_code                := l_data_rec.item_code;                  -- 品目コード
-        gt_rpt_data_tab( ln_idx ).item_name                := SUBSTRB( l_data_rec.item_name, 1, 20 );-- 品名
-        gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := l_data_rec.schedule_dlv_date;          -- 納品予定日
-                                                                                                     -- 検収予定日
-        gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := TO_DATE( l_data_rec.schedule_inspect_date, cv_yyyymmddhhmiss );
-        gt_rpt_data_tab( ln_idx ).arrival_date             := l_data_rec.arrival_date;               -- 着日
-        gt_rpt_data_tab( ln_idx ).order_quantity           := l_data_rec.order_quantity;             -- 受注数
-        gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := l_data_rec.deliver_actual_quantity;    -- 出荷実績数
-        gt_rpt_data_tab( ln_idx ).uom_code                 := l_data_rec.uom_code;                   -- 単位
-        gt_rpt_data_tab( ln_idx ).output_quantity          := l_data_rec.output_quantity;            -- 差異数
-        gt_rpt_data_tab( ln_idx ).data_class               := l_data_rec.data_class;                 -- データ区分
-        gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;                         -- 作成者
-        gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;                      -- 作成日
-        gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;                    -- 最終更新者
-        gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;                   -- 最終更新日
-        gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;                  -- 最終更新ﾛｸﾞｲﾝ
-        gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;                         -- 要求ID
-        gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-        gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-        gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;                -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      -- 変数へ格納
+      gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;                          -- レコードID 
+      gt_rpt_data_tab( ln_idx ).base_code                := l_data_rec.base_code;                  -- 拠点コード
+                                                                                                   -- 拠点名称
+      gt_rpt_data_tab( ln_idx ).base_name                := SUBSTRB( l_data_rec.base_name, 1, 40 );
+      gt_rpt_data_tab( ln_idx ).order_number             := l_data_rec.order_number;               -- 受注番号
+      gt_rpt_data_tab( ln_idx ).order_line_no            := l_data_rec.order_line_no;              -- 受注明細No.
+      gt_rpt_data_tab( ln_idx ).line_no                  := l_data_rec.line_no;                    -- 明細No.
+      gt_rpt_data_tab( ln_idx ).deliver_requested_no     := l_data_rec.deliver_requested_no;       -- 出荷依頼No
+      gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := l_data_rec.deliver_from_whse_number;   -- 出荷元倉庫番号
+                                                                                                   -- 出荷元倉庫名
+      gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := SUBSTRB( l_data_rec.deliver_from_whse_name, 1, 20 );
+      gt_rpt_data_tab( ln_idx ).customer_number          := l_data_rec.customer_number;            -- 顧客番号
+                                                                                                   -- 顧客名
+      gt_rpt_data_tab( ln_idx ).customer_name            := SUBSTRB( l_data_rec.customer_name, 1, 20 );
+      gt_rpt_data_tab( ln_idx ).item_code                := l_data_rec.item_code;                  -- 品目コード
+      gt_rpt_data_tab( ln_idx ).item_name                := SUBSTRB( l_data_rec.item_name, 1, 20 );-- 品名
+      gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := l_data_rec.schedule_dlv_date;          -- 納品予定日
+                                                                                                   -- 検収予定日
+      gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := TO_DATE( l_data_rec.schedule_inspect_date, cv_yyyymmddhhmiss );
+      gt_rpt_data_tab( ln_idx ).arrival_date             := l_data_rec.arrival_date;               -- 着日
+      gt_rpt_data_tab( ln_idx ).order_quantity           := l_data_rec.order_quantity;             -- 受注数
+      gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := l_data_rec.deliver_actual_quantity;    -- 出荷実績数
+      gt_rpt_data_tab( ln_idx ).uom_code                 := l_data_rec.uom_code;                   -- 単位
+      gt_rpt_data_tab( ln_idx ).output_quantity          := l_data_rec.output_quantity;            -- 差異数
+      gt_rpt_data_tab( ln_idx ).data_class               := l_data_rec.data_class;                 -- データ区分
+      gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;                         -- 作成者
+      gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;                      -- 作成日
+      gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;                    -- 最終更新者
+      gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;                   -- 最終更新日
+      gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;                  -- 最終更新ﾛｸﾞｲﾝ
+      gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;                         -- 要求ID
+      gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+      gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+      gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;                -- ﾌﾟﾛｸﾞﾗﾑ更新日
 --
--- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
-      END IF;
--- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+-- *********** 2009/11/26 1.11 N.Maeda DEL START *********** --
+---- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+--      END IF;
+---- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+-- *********** 2009/11/26 1.11 N.Maeda DEL  END  *********** --
     END LOOP loop_get_data;
 --
     --処理件数カウント
