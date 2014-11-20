@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *                                                     問屋販売条件請求書の問屋管理コードで検索を行う
  *  2009/04/09    1.9   K.YAMAGUCHI      [障害T1_0341] 請求先顧客取得 抽出条件変更
  *  2009/04/13    1.10  K.YAMAGUCHI      [障害T1_0411] 問屋請求書見積照合 抽出条件変更
+ *  2009/04/15    1.11  K.YAMAGUCHI      [障害T1_0570] 担当営業員コード取得 組織プロファイル有効判定条件変更
  *
  *****************************************************************************************/
   -- ==============================
@@ -682,7 +683,7 @@ AS
    *FUNCTION NAME : get_sales_staff_code_f
    *Desctiption   : 担当営業員コード取得
    ******************************************************************************/
-  FUNCTION get_sales_staff_code_f(
+   FUNCTION get_sales_staff_code_f(
     iv_customer_code IN VARCHAR2 -- 顧客コード
   , id_proc_date     IN DATE     -- 処理日
   )
@@ -710,8 +711,12 @@ AS
          , per_all_people_f           papf                -- 従業員
     WHERE  hca.account_number          = iv_customer_code -- 顧客コード
     AND    hca.party_id                = hop.party_id
-    AND    TRUNC( hop.effective_start_date )                          <= TRUNC( id_proc_date )
-    AND    TRUNC( NVL( hop.effective_end_date, id_proc_date ) )       >= TRUNC( id_proc_date )
+-- 2009/04/15 Ver.1.11 [障害T1_0570] SCS K.Yamaguchi REPAIR START
+--    AND    TRUNC( hop.effective_start_date )                          <= TRUNC( id_proc_date )
+--    AND    TRUNC( NVL( hop.effective_end_date, id_proc_date ) )       >= TRUNC( id_proc_date )
+    AND    TRUNC( hop.effective_start_date )                          <= TRUNC( SYSDATE )
+    AND    TRUNC( NVL( hop.effective_end_date, SYSDATE ) )            >= TRUNC( SYSDATE )
+-- 2009/04/15 Ver.1.11 [障害T1_0570] SCS K.Yamaguchi REPAIR END
     AND    hop.organization_profile_id = era.organization_profile_id
     AND    TRUNC( NVL( era.resource_s_date, TRUNC( id_proc_date ) ) ) <= TRUNC( id_proc_date )
     AND    TRUNC( NVL( era.resource_e_date, TRUNC( id_proc_date ) ) ) >= TRUNC( id_proc_date )
