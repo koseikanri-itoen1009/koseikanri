@@ -24,9 +24,15 @@ SELECT xcimv.item_id               item_id         -- 品目ID
       ,xcimv.lot_ctl               lot_ctl         -- ロット管理区分
       ,xcimv.weight_capacity_class weight_capacity -- 重量容積区分
       ,xcicv.item_class_code      item_class_code -- 品目区分
-FROM xxcmn_item_mst_v xcimv
+-- 2008/09/24 H.Itou Mod Start 統合テスト指摘25 廃止区分・無効フラグを見ない
+--FROM xxcmn_item_mst_v xcimv
+FROM xxcmn_item_mst2_v xcimv
+-- 2008/09/24 H.Itou Mod End
     ,xxcmn_item_categories5_v xcicv
 WHERE xcicv.prod_class_code = FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY')
+-- 2008/09/24 H.Itou Add Start 統合テスト指摘25 廃止区分・無効フラグを見ない
+AND   TRUNC(SYSDATE) BETWEEN xcimv.start_date_active AND xcimv.end_date_active
+-- 2008/09/24 H.Itou Add End
 AND   xcimv.item_id = xcicv.item_id
    ]]></SQLQuery>
    <DesignTime>
