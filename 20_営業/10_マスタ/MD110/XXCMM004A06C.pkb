@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A06C(body)
  * Description      : 原価一覧作成
  * MD.050           : 原価一覧作成 MD050_CMM_004_A06
- * Version          : Draft2C
+ * Version          : Issue3.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *                                       品目共通固定値定義
  *  2009/04/08    1.2   H.Yoshikawa      障害No.T1_0184 対応
  *  2009/05/29    1.3   H.Yoshikawa      障害No.T1_0317 対応
+ *  2009/07/08    1.4   H.Yoshikawa      障害No.0000364 対応
  *
  *****************************************************************************************/
 --
@@ -113,6 +114,9 @@ AS
   cv_cost_type1         CONSTANT VARCHAR2(10)  := '確定済';     -- 原価タイプ:確定済
   cv_emargency_flag     CONSTANT VARCHAR2(1)   := '*';          -- 警告
   cv_update_div         CONSTANT VARCHAR2(1)   := 'D';          -- 更新区分
+--Ver1.4  2009/07/08  ADD  LOOKUPのフラグ用に追加
+  cv_y                  CONSTANT VARCHAR2(1)   := 'Y';
+--End1.4
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';          -- 適用フラグ
   cv_apply_date         CONSTANT VARCHAR2(10)  := '9999/99/99'; -- デフォルト日付
   cv_date_fmt_std        CONSTANT VARCHAR2(10) := xxcmm_004common_pkg.cv_date_fmt_std; -- デフォルト日付
@@ -332,7 +336,11 @@ AS
       AND       ccmv.cost_cmpntcls_code  = flv.meaning
       AND       ccmd.item_id             = in_item_id
       AND       ccmd.calendar_code       = gv_calendar_code
-      AND       flv.lookup_type          = cv_lookup_cost_cmpt;
+--Ver1.4  2009/07/08  enabled_flagを条件に追加
+--      AND       flv.lookup_type          = cv_lookup_cost_cmpt;
+      AND       flv.lookup_type          = cv_lookup_cost_cmpt
+      AND       flv.enabled_flag         = cv_y;
+--End1.4
 --
   BEGIN
 --
@@ -380,6 +388,12 @@ AS
         WHEN ( l_cost_rec.cost_cmpntcls_code = cv_cost_cmpnt_07kei ) THEN
           o_cost_rec.cmpnt_cost7 := l_cost_rec.cmpnt_cost;
           ln_sum_cost := ln_sum_cost + l_cost_rec.cmpnt_cost;
+--Ver1.4  2009/07/08  Add  0000364対応
+        ELSE
+          -- 標準原価計に予備も追加（他機能と合わせるため）
+          --  ※予備１～予備３には0円のみ設定される想定
+          ln_sum_cost := ln_sum_cost + l_cost_rec.cmpnt_cost;
+--End1.4
       END CASE;
     END LOOP cnp_cost_loop;
     --
