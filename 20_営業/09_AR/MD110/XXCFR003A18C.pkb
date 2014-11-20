@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜(店舗別内訳)
  * MD.050           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
  * MD.070           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
- * Version          : 1.20
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/09/25    1.00 SCS 安川 智博    初回作成
  *  2009/11/11    1.10 SCS 安川 智博    共通課題「I_E_664」対応
  *  2010/02/03    1.20 SCS 安川 智博    障害「E_本稼動_01503」対応
+ *  2010/12/10    1.30 SCS 石渡 賢和    障害「E_本稼動_05401」対応
  *
  *****************************************************************************************/
 --
@@ -236,6 +237,9 @@ AS
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code10     IN      VARCHAR2,         -- 顧客
+-- Add 2010.12.10 Ver1.30 Start
+    iv_bill_pub_cycle      IN      VARCHAR2,         -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -302,6 +306,9 @@ AS
                                    ,iv_conc_param3  => iv_customer_code20           -- コンカレントパラメータ３
                                    ,iv_conc_param4  => iv_customer_code21           -- コンカレントパラメータ４
                                    ,iv_conc_param5  => iv_customer_code14           -- コンカレントパラメータ５
+-- Add 2010.12.10 Ver1.30 Start
+                                   ,iv_conc_param6  => iv_bill_pub_cycle            -- コンカレントパラメータ６
+-- Add 2010.12.10 Ver1.30 End
                                    ,ov_errbuf       => ov_errbuf                    -- エラー・メッセージ
                                    ,ov_retcode      => ov_retcode                   -- リターン・コード
                                    ,ov_errmsg       => ov_errmsg);                  -- ユーザー・エラー・メッセージ 
@@ -673,6 +680,9 @@ AS
     iv_customer_code21      IN   VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code20      IN   VARCHAR2,         -- 請求書用顧客
     iv_customer_code10      IN   VARCHAR2,         -- 顧客
+-- Add 2010.12.10 Ver1.30 Start
+    iv_bill_pub_cycle       IN   VARCHAR2,         -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
     ov_errbuf               OUT  VARCHAR2,            -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT  VARCHAR2,            -- リターン・コード             --# 固定 #
     ov_errmsg               OUT  VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -949,6 +959,9 @@ AS
             bill_hzad_1.tax_div                 AS bill_tax_div,            --顧客14消費税区分
             bill_hsua_1.attribute7              AS bill_invoice_type,       --顧客14請求書出力形式      
             bill_hsua_1.payment_term_id         AS bill_payment_term_id,    --顧客14支払条件
+-- Add 2010.12.10 Ver1.30 Start
+            bill_hsua_1.attribute8              AS bill_pub_cycle,          --顧客14請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
             bill_hcp.cons_inv_flag              AS cons_inv_flag            --一括請求書式
      FROM hz_cust_accounts          bill_hzca_1,              --顧客14顧客マスタ
           hz_cust_accounts          ship_hzca_1,              --顧客10顧客マスタ
@@ -1191,6 +1204,9 @@ AS
            AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))  -- 消費税区分 IN (内税(伝票),内税(単価))
            AND  (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
           AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
+-- Add 2010.12.10 Ver1.30 Start
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+-- Add 2010.12.10 Ver1.30 End
           THEN
             INSERT INTO xxcfr_rep_st_invoice_inc_tax_d(
               report_id               , -- 帳票ＩＤ
@@ -1397,6 +1413,9 @@ AS
            AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))  -- 消費税区分 IN (内税(伝票),内税(単価))
            AND  (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
            AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
+-- Add 2010.12.10 Ver1.30 Start
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+-- Add 2010.12.10 Ver1.30 End
           THEN
             OPEN get_21account_cur(all_account_rec.customer_id);
             FETCH get_21account_cur INTO get_21account_rec;
@@ -1638,6 +1657,9 @@ AS
            AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))  -- 消費税区分 IN (内税(伝票),内税(単価))
            AND  (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
            AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
+-- Add 2010.12.10 Ver1.30 Start
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+-- Add 2010.12.10 Ver1.30 End
           THEN
             OPEN get_20account_cur(all_account_rec.customer_id);
             FETCH get_20account_cur INTO get_20account_rec;
@@ -1874,6 +1896,9 @@ AS
            AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))  -- 消費税区分 IN (内税(伝票),内税(単価))
            AND  (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
            AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
+-- Add 2010.12.10 Ver1.30 Start
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+-- Add 2010.12.10 Ver1.30 End
           THEN
             OPEN get_21account_cur(all_account_rec.customer_id);
             FETCH get_21account_cur INTO get_21account_rec;
@@ -2114,6 +2139,9 @@ AS
            AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))  -- 消費税区分 IN (内税(伝票),内税(単価))
            AND  (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
            AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
+-- Add 2010.12.10 Ver1.30 Start
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+-- Add 2010.12.10 Ver1.30 End
           THEN
             INSERT INTO xxcfr_rep_st_invoice_inc_tax_d(
               report_id               , -- 帳票ＩＤ
@@ -2320,6 +2348,9 @@ AS
            AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))  -- 消費税区分 IN (内税(伝票),内税(単価))
            AND  (get_14account_rec.bill_invoice_type = cv_inv_prt_type) -- 請求書出力形式 = 1.伊藤園標準
            AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes) -- 一括請求書式 = 'Y'(有効)
+-- Add 2010.12.10 Ver1.30 Start
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+-- Add 2010.12.10 Ver1.30 End
           THEN
             OPEN get_20account_cur(all_account_rec.customer_id);
             FETCH get_20account_cur INTO get_20account_rec;
@@ -3043,6 +3074,9 @@ AS
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code10     IN      VARCHAR2,         -- 顧客
+-- Add 2010.12.10 Ver1.30 Start
+    iv_bill_pub_cycle      IN      VARCHAR2,         -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3101,6 +3135,9 @@ AS
       ,iv_customer_code21     -- 統括請求書用顧客
       ,iv_customer_code20     -- 請求書用顧客
       ,iv_customer_code10     -- 顧客
+-- Add 2010.12.10 Ver1.30 Start
+      ,iv_bill_pub_cycle      -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3142,6 +3179,9 @@ AS
       ,iv_customer_code21     -- 統括請求書用顧客
       ,iv_customer_code20     -- 請求書用顧客
       ,iv_customer_code10     -- 顧客
+-- Add 2010.12.10 Ver1.30 Start
+      ,iv_bill_pub_cycle      -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3235,6 +3275,9 @@ AS
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code14     IN      VARCHAR2          -- 売掛管理先顧客
+-- Add 2010.12.10 Ver1.30 Start
+   ,iv_bill_pub_cycle      IN      VARCHAR2          -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
   )
 --
 --
@@ -3295,6 +3338,9 @@ AS
       ,iv_customer_code21 => iv_customer_code21     -- 統括請求書用顧客
       ,iv_customer_code20 => iv_customer_code20     -- 請求書用顧客
       ,iv_customer_code10 => iv_customer_code10     -- 顧客
+-- Add 2010.12.10 Ver1.30 Start
+      ,iv_bill_pub_cycle  => iv_bill_pub_cycle      -- 請求書発行サイクル
+-- Add 2010.12.10 Ver1.30 End
       ,ov_errbuf          => lv_errbuf      -- エラー・メッセージ           --# 固定 #
       ,ov_retcode         => lv_retcode     -- リターン・コード             --# 固定 #
       ,ov_errmsg          => lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
