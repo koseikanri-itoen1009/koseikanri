@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書（配送先明細）
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書（配送先明細） T_MD070_BPO_62I
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/05/14    1.0   Nozomi Kashiwagi   新規作成
  *  2008/06/24    1.1   Masayoshi Uehara   支給の場合、パラメータ配送先/入庫先のリレーションを
  *                                         vendor_site_codeに変更。
+ *  2008/07/04    1.2   Satoshi Yunba      禁則文字対応
  *
  *****************************************************************************************/
 --
@@ -1263,7 +1264,7 @@ AS
 --
     --データの場合
     IF (ir_xml.tag_type = 'D') THEN
-      lv_data := '<'|| ir_xml.tag_name || '>' || ir_xml.tag_value || '</' || ir_xml.tag_name || '>';
+      lv_data := '<'|| ir_xml.tag_name || '><![CDATA[' || ir_xml.tag_value || ']]></' || ir_xml.tag_name || '>';
     ELSE
       lv_data := '<' || ir_xml.tag_name || '>';
     END IF ;
