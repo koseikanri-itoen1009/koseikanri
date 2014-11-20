@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2011/02/19    1.22  K.Ou             [E_本稼動_01671]パフォマンス改善対応
  *  2011/04/19    1.23  M.Hirose         [E_本稼動_02070]受注日と出荷日から導出した受注日の妥当性チェック処理を削除
  *  2012/07/26    1.24  K.Onotsuka       [E_本稼動_09616]受注明細登録時に項目追加(unit_list_price(単価))
+ *  2013/10/04    1.25  K.Kiriu          [E_本稼動_11135]PT対応
  *
  *****************************************************************************************/
 --
@@ -226,6 +227,9 @@ AS
   cv_hokan_type_mst_t           CONSTANT VARCHAR2(50) := 'XXCOS1_HOKAN_DIRECT_TYPE_MST';        -- 保管場所分類
   cv_hokan_type_mst_c           CONSTANT VARCHAR2(50) := 'XXCOS_DIRECT_11';                     -- 保管場所分類
   cv_tran_type_mst_t            CONSTANT VARCHAR2(50) := 'XXCOS1_TRAN_TYPE_MST_008_A01';        -- 受注タイプ
+-- 2013/10/04 Ver.1.25 Add Start
+  cv_tran_type_mst_c            CONSTANT VARCHAR2(50) := 'XXCOS_008_A01%';                      -- 受注タイプ(コード)
+-- 2013/10/04 Ver.1.25 Add End
   cv_non_inv_item_mst_t         CONSTANT VARCHAR2(50) := 'XXCOS1_NO_INV_ITEM_CODE';             -- 非在庫品目
   cv_shipping_class_t           CONSTANT VARCHAR2(50) := 'XXWSH_SHIPPING_CLASS';                -- 出荷区分(タイプ)
   cv_shipping_class_c           CONSTANT VARCHAR2(50) := '02';                                  -- 出荷区分(コード)
@@ -338,27 +342,41 @@ AS
   gt_max_wait                   fnd_profile_option_values.profile_option_value%TYPE;      -- 最大監視時間
   gt_interval                   fnd_profile_option_values.profile_option_value%TYPE;      -- 監視間隔
 /* 2009/07/28 Ver.1.11 Add End   */
-/* 2011/02/18 Ver.1.22 Add Start */
-  gn_order_past_day             NUMBER;                                                   -- XXCOS:受注データ過去取得日数
-/* 2011/02/18 Ver.1.22 Add End */
+-- 2013/10/04 Ver.1.25 Mod Start
+--/* 2011/02/18 Ver.1.22 Add Start */
+--  gn_order_past_day             NUMBER;                                                   -- XXCOS:受注データ過去取得日数
+--/* 2011/02/18 Ver.1.22 Add End */
+  --対象データ取得日付
+  gd_get_data_from_date         DATE;                                                     -- 取得開始日
+  gd_get_data_to_date           DATE;                                                     -- 取得終了日
+-- 2013/10/04 Ver.1.25 Mod End
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
   -- ===============================
+  --受注番号指定なし
   CURSOR order_data_cur(
 --****************************** 2009/05/15 1.7 T.Kitajima ADD START ******************************--
     iv_send_flg     IN  VARCHAR2,     -- 新規/再送区分
 --****************************** 2009/05/15 1.7 T.Kitajima ADD  END  ******************************--
-    iv_base_code    IN  VARCHAR2,     -- 拠点コード
-    iv_order_number IN  VARCHAR2)     -- 受注番号
+-- 2013/10/04 Ver.1.25 Mod Start
+--    iv_base_code    IN  VARCHAR2,     -- 拠点コード
+--    iv_order_number IN  VARCHAR2)     -- 受注番号
+    iv_base_code    IN  VARCHAR2)     -- 拠点コード
+-- 2013/10/04 Ver.1.25 Mod Start
   IS
 /* 2009/09/16 Ver.1.12 Mod Start */
     SELECT 
            /*+
-                 LEADING(xca)
-                 INDEX(xca xxcmm_cust_accounts_n21)
-                 USE_NL(hca ooha ottah flv_tran)
-                 USE_NL(ooha oola ottal msi)
+-- 2013/10/04 Ver.1.25 Mod Start
+--                 LEADING(xca)
+--                 INDEX(xca xxcmm_cust_accounts_n21)
+--                 USE_NL(hca ooha ottah flv_tran)
+--                 USE_NL(ooha oola ottal msi)
+             LEADING(ooha xca oola msi)
+             INDEX(ooha xxcos_oe_order_headers_all_n10)
+             USE_NL(ooha xca oola msi ottah flv_tran ottal msib hca iim xicv xim)
+-- 2013/10/04 Ver.1.25 Mod End
            */
            ooha.context                              context                 -- 受注タイプ
 --    SELECT ooha.context                              context                 -- 受注タイプ
@@ -540,7 +558,10 @@ AS
 /* 2009/07/14 Ver1.10 Add End   */
     AND   oola.flow_status_code                   NOT IN (cv_flow_status_cancelled
                                                          ,cv_flow_status_closed)              -- ステータス(明細)
-    AND   ooha.sold_to_org_id                     = hca.cust_account_id                       -- 顧客ID
+-- 2013/10/04 Ver.1.25 Mod Start
+--    AND   ooha.sold_to_org_id                     = hca.cust_account_id                       -- 顧客ID
+    AND   ooha.sold_to_org_id                     = xca.customer_id                           -- 顧客ID
+-- 2013/10/04 Ver.1.25 Mod Start
     AND   ooha.order_type_id                      = ottah.transaction_type_id                 -- 取引タイプID
 /* 2009/09/16 Ver.1.12 Mod Start */
     AND   ottah.language                          = cv_lang
@@ -559,7 +580,9 @@ AS
     AND   xca.delivery_base_code                  = iv_base_code                                -- 納品拠点コード
 --    AND   xca.delivery_base_code                  = NVL(iv_base_code, xca.delivery_base_code) -- 納品拠点コード
 /* 2009/09/16 Ver.1.12 Mod End */
-    AND   ooha.order_number                       = NVL(iv_order_number, ooha.order_number)   -- 受注ヘッダ番号
+-- 2013/10/04 Ver.1.25 Del Start
+--    AND   ooha.order_number                       = NVL(iv_order_number, ooha.order_number)   -- 受注ヘッダ番号
+-- 2013/10/04 Ver.1.25 Del End
 --****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
 --    AND   oola.packing_instructions               IS NULL                                     -- 出荷依頼
     AND   ( 
@@ -618,6 +641,9 @@ AS
 --                       AND    flv_non_inv.enabled_flag      = cv_enabled_flag)
     AND   flv_tran.lookup_type                    = cv_tran_type_mst_t
 /* 2009/09/16 Ver.1.12 Mod Start */
+-- 2013/10/04 Ver.1.25 Add Start
+    AND   flv_tran.lookup_code                 LIKE cv_tran_type_mst_c
+-- 2013/10/04 Ver.1.25 Add End
     AND   flv_tran.language                       = cv_lang
 --    AND   flv_tran.language                       = USERENV('LANG')
 /* 2009/09/16 Ver.1.12 Mod End */
@@ -633,13 +659,244 @@ AS
     AND   xim.obsolete_class                         <> cv_obsolete_class_on
 /* 2009/09/16 Ver.1.12 Add End */
 /* 2011/02/18 Ver.1.22 Add Start */
-    AND   ooha.request_date >= gd_business_date - gn_order_past_day
+-- 2013/10/04 Ver.1.25 Mod Start
+--    AND   ooha.request_date >= gd_business_date - gn_order_past_day
+    AND   ooha.request_date    >= gd_get_data_from_date
+-- 2013/10/04 Ver.1.25 Mod End
     AND   ooha.flow_status_code = cv_flow_status_code
 /* 2011/02/18 Ver.1.22 Add End */
+-- 2013/10/04 Ver.1.25 Add Start
+    AND   ooha.ordered_date    >= gd_get_data_from_date
+    AND   ooha.ordered_date    <  gd_get_data_to_date       -- "業務日付-取得日数"から"業務日付+取得日数"の間
+    AND   ooha.org_id           = gt_org_id                 -- 営業単位
+-- 2013/10/04 Ver.1.25 Add End
     FOR UPDATE OF  oola.line_id
                   ,ooha.header_id
     NOWAIT
     ;
+-- 2013/10/04 Ver.1.25 Add Start
+    --受注番号指定あり
+  CURSOR order_data_order_cur(
+    iv_send_flg     IN  VARCHAR2,     -- 新規/再送区分
+    iv_base_code    IN  VARCHAR2,     -- 拠点コード
+    iv_order_number IN  VARCHAR2)     -- 受注番号
+  IS
+    SELECT
+           /*+
+             LEADING(ooha)
+             INDEX(ooha oe_order_headers_u2) 
+             USE_NL(ooha xca oola msi ottah flv_tran ottal msib hca iim xicv xim)
+           */
+           ooha.context                              context                 -- 受注タイプ
+          ,TRUNC(ooha.ordered_date)                  ordered_date            -- 受注日
+          ,ooha.sold_to_org_id                       sold_to_org_id          -- 顧客コード
+          ,ooha.shipping_instructions                shipping_instructions   -- 出荷指示
+          ,NVL(ooha.attribute19,
+               DECODE(SUBSTR(ooha.cust_po_number, 1, 1),'I','', ooha.cust_po_number))
+                                                     cust_po_number          -- 顧客発注
+          ,TRUNC(oola.request_date)                  request_date            -- 要求日
+          ,NVL(oola.attribute6, oola.ordered_item)   child_code              -- 受注品目
+          ,TRUNC(oola.schedule_ship_date)            schedule_ship_date      -- 予定出荷日
+          ,oola.ordered_quantity                     ordered_quantity        -- 受注数量
+          ,xca.delivery_base_code                    delivery_base_code      -- 納品拠点コード
+           ,NULL                                     province                -- 配送先コード      A-17で設定
+          ,NVL(oola.attribute6, oola.ordered_item)   item_code               -- 品目コード
+          ,oola.ordered_item                         parent_item_code        -- 親品目コード
+          ,oola.context                              line_context            -- コンテキスト
+          ,xicv.prod_class_name                      item_div_name           -- 商品区分名
+          ,xicv.prod_class_code                      prod_class_code         -- 商品区分コード
+          ,ooha.order_number                         order_number            -- 受注番号
+          ,oola.line_number                          line_number             -- 明細番号
+          ,oola.rowid                                row_id                  -- 行ID
+          ,oola.attribute5                           sales_class             -- 売上区分
+          ,msib.customer_order_enabled_flag          customer_order_flag     -- 顧客受注可能
+          ,msib.inventory_item_id                    inventory_item_id       -- 品目ID
+          ,oola.order_quantity_uom                   order_quantity_uom      -- 受注単位
+          ,ooha.attribute19                          cust_po_number_att19    -- 顧客発注
+          ,oola.line_id                              line_id                 -- 明細ID
+          ,oola.ship_from_org_id                     ship_from_org_id        -- 組織ID
+          ,NVL(oola.attribute8,ooha.attribute13)     time_from               -- 時間指定FROM
+          ,NVL(oola.attribute9,ooha.attribute14)     time_to                 -- 時間指定TO
+          ,ooha.header_id                            header_id               -- ヘッダID
+          ,NULL                                      ship_to_subinv          -- 出荷元保管場所(A-3で設定)
+          ,NULL                                      lead_time               -- リードタイム(生産物流)
+          ,NULL                                      delivery_lt             -- リードタイム(配送)
+          ,NULL                                      req_header_id           -- 出荷依頼用ヘッダーID
+          ,NULL                                      conv_ordered_quantity   -- 換算後受注数量
+          ,NULL                                      conv_order_quantity_uom -- 換算後受注単位
+          ,NULL                                      head_sort_key           -- ヘッダー集約(ソート)キー   A-5で設定
+          ,cn_check_status_normal                    check_status            -- チェックステータス
+          ,xca.rsv_sale_base_code                    rsv_sale_base_code      -- 予約売上拠点コード
+          ,xca.rsv_sale_base_act_date                rsv_sale_base_act_date  -- 予約売上拠点有効開始日
+          ,hca.account_number                        account_number          -- 顧客コード
+          ,oola.ship_to_org_id                       ship_to_org_id          -- 出荷先組織ID
+          ,oola.order_source_id                      order_source_ref        -- 受注ソース参照
+          ,oola.packing_instructions                 packing_instructions    -- 出荷依頼NO
+          ,oola.line_type_id                         line_type_id            -- 明細タイプ
+          ,oola.attribute1                           attribute1
+          ,oola.attribute2                           attribute2
+          ,oola.attribute3                           attribute3
+          ,oola.attribute4                           attribute4
+          ,oola.attribute5                           attribute5
+          ,oola.attribute6                           attribute6
+          ,oola.attribute7                           attribute7
+          ,oola.attribute8                           attribute8
+          ,oola.attribute9                           attribute9
+          ,oola.attribute10                          attribute10
+          ,oola.attribute11                          attribute11
+          ,oola.attribute12                          attribute12
+          ,oola.attribute13                          attribute13
+          ,oola.attribute14                          attribute14
+          ,oola.attribute15                          attribute15
+          ,oola.attribute16                          attribute16
+          ,oola.attribute17                          attribute17
+          ,oola.attribute18                          attribute18
+          ,oola.attribute19                          attribute19
+          ,oola.attribute20                          attribute20
+          ,oola.global_attribute1                    global_attribute1
+          ,oola.global_attribute2                    global_attribute2
+          ,oola.global_attribute3                    global_attribute3
+          ,oola.global_attribute4                    global_attribute4
+          ,oola.global_attribute5                    global_attribute5
+          ,oola.global_attribute6                    global_attribute6
+          ,oola.global_attribute7                    global_attribute7
+          ,oola.global_attribute8                    global_attribute8
+          ,oola.global_attribute9                    global_attribute9
+          ,oola.global_attribute10                   global_attribute10
+          ,oola.global_attribute11                   global_attribute11
+          ,oola.global_attribute12                   global_attribute12
+          ,oola.global_attribute13                   global_attribute13
+          ,oola.global_attribute14                   global_attribute14
+          ,oola.global_attribute15                   global_attribute15
+          ,oola.global_attribute16                   global_attribute16
+          ,oola.global_attribute17                   global_attribute17
+          ,oola.global_attribute18                   global_attribute18
+          ,oola.global_attribute19                   global_attribute19
+          ,oola.global_attribute20                   global_attribute20
+          ,DECODE(xim.palette_max_step_qty, NULL, 1, 0, 1, xim.palette_max_step_qty)
+                                                     palette_max_step_qty    -- パレット当り最大段数
+          ,DECODE(xim.palette_max_cs_qty, NULL, 1, 0, 1,xim.palette_max_cs_qty)  palette_max_cs_qty     -- パレ配数
+          ,DECODE(xicv.prod_class_code, cv_prod_class_leaf,  gv_weight_class_leaf
+                                      , cv_prod_class_drink, gv_weight_class_drink, NULL)    wc_class   -- 重量容積区分
+          ,DECODE(iim.attribute11, NULL, 1, '0', 1, TO_NUMBER(iim.attribute11))              qty_case   -- 本数/ケース
+          ,DECODE(iim.attribute11, NULL, 1, '0', 1, TO_NUMBER(iim.attribute11))
+             *
+             DECODE(xim.palette_max_cs_qty, NULL, 1, 0, 1, xim.palette_max_cs_qty)           qty_step   -- 本数/段
+          ,DECODE(xim.palette_max_step_qty, NULL, 1, 0, 1, xim.palette_max_step_qty)
+             *
+             DECODE(iim.attribute11, NULL, 1, 0, 1, TO_NUMBER(iim.attribute11))
+             *
+             DECODE(xim.palette_max_cs_qty, NULL, 1, 0, 1, xim.palette_max_cs_qty)           qty_palette   -- 本数/パレット
+          ,xim.palette_max_cs_qty                    original_palette_max_cs_qty                -- パレ配数
+          ,xim.palette_max_step_qty                  original_palette_max_step_qty              -- パレ段数
+          ,oola.schedule_ship_date                   original_schedule_ship_date                -- 予定出荷日
+          ,oola.request_date                         original_request_date                      -- 要求日
+          ,oola.subinventory                         subinventory                               -- 保管場所
+          ,oola.unit_selling_price                   unit_selling_price                         -- 販売単価
+          ,oola.orig_sys_line_ref                    orig_sys_line_ref                          -- 明細番号
+          ,NULL                                      base_code               -- 拠点(納品拠点 or 予約売上拠点)  A-17で設定
+          ,NULL                                      sum_pallet_weight       -- 合計パレット重量  A-5で設定
+          ,NULL                                      base_quantity           -- 換算後数量        A-6で設定
+          ,NULL                                      add_base_quantity       -- 基本数量          A-6で設定(合算値)
+          ,NULL                                      add_sum_weight          -- 合計重量          A-6で設定(合算値)
+          ,NULL                                      add_sum_capacity        -- 合計容積          A-6で設定(合算値)
+          ,NULL                                      add_sum_pallet_weight   -- 合計パレット重量  A-6で設定(合算値)
+          ,NULL                                      weight                  -- 重量容積          A-6で設定
+          ,0                                         checked_quantity        -- チェック済数量    A-15で設定
+          ,NULL                                      delivery_unit           -- 出荷依頼単位
+          ,NULL                                      order_source            -- 出荷依頼No        A-15で設定
+          ,NULL                                      efficiency_over_flag    -- 積載効率オーバフラグ  A-15で設定
+          ,NULL                                      max_ship_methods        -- 出荷方法
+          ,NULL                                      line_key                -- 出荷依頼明細単位  A-5で設定
+          ,0                                         conv_palette            -- パレット換算数
+          ,0                                         conv_step               -- 段数
+          ,0                                         conv_case               -- ケース
+          ,0                                         total_conv_palette      -- パレット
+          ,0                                         total_conv_step         -- 段
+          ,0                                         total_conv_case         -- ケース
+          ,xca.sale_base_code                        sale_base_code          -- 売上拠点コード
+          ,oola.unit_list_price                      unit_list_price         -- 単価
+    FROM   oe_order_headers_all                   ooha             -- 受注ヘッダ
+          ,oe_order_lines_all                     oola             -- 受注明細
+          ,hz_cust_accounts                       hca              -- 顧客マスタ
+          ,mtl_system_items_b                     msib             -- 品目マスタ
+          ,oe_transaction_types_tl                ottah            -- 受注取引タイプ（受注ヘッダ用）
+          ,oe_transaction_types_tl                ottal            -- 受注取引タイプ（受注明細用）
+          ,mtl_secondary_inventories              msi              -- 保管場所マスタ
+          ,xxcmn_item_categories5_v               xicv             -- 商品区分View
+          ,xxcmm_cust_accounts                    xca              -- 顧客追加情報
+          ,fnd_lookup_values                      flv_tran         -- LookUp参照テーブル(明細.受注タイプ)
+          ,ic_item_mst_b                          iim              --OPM品目マスタ
+          ,xxcmn_item_mst_b                       xim              --OPM品目アドオンマスタ
+    WHERE ooha.header_id                          = oola.header_id                            -- ヘッダーID
+    AND   ooha.booked_flag                        = cv_booked_flag_end                        -- ステータス
+    AND   (
+            ooha.global_attribute3 IS NULL
+          OR
+            ooha.global_attribute3 = cv_target_order_01
+          )
+    AND   oola.flow_status_code                   NOT IN (cv_flow_status_cancelled
+                                                         ,cv_flow_status_closed)              -- ステータス(明細)
+    AND   ooha.sold_to_org_id                     = xca.customer_id                           -- 顧客ID
+    AND   ooha.order_type_id                      = ottah.transaction_type_id                 -- 取引タイプID
+    AND   ottah.language                          = cv_lang
+    AND   ottah.name                              = flv_tran.attribute1                       -- 取引名称
+    AND   oola.line_type_id                       = ottal.transaction_type_id
+    AND   ottal.language                          = cv_lang
+    AND   ottal.name                              = flv_tran.attribute2                       -- 取引名称
+    AND   oola.subinventory                       = msi.secondary_inventory_name              -- 保管場所
+    AND   msi.attribute13                         = gv_hokan_direct_class                     -- 保管場所区分
+    AND   xca.delivery_base_code                  = iv_base_code                              -- 納品拠点コード
+    AND   ooha.order_number                       = iv_order_number                           -- 受注ヘッダ番号
+    AND   ( 
+            ( --新規
+                  ( iv_send_flg               = cv_new_send )
+              AND ( oola.packing_instructions IS NULL       )
+            )
+            OR
+            ( --再送
+                  ( iv_send_flg               = cv_re_send  )
+              AND ( oola.packing_instructions IS NOT NULL   )
+              AND NOT EXISTS (
+                              SELECT xoha.request_no
+                                FROM xxwsh_order_headers_all xoha                    -- 受注ヘッダアドオン
+                               WHERE xoha.request_no    = oola.packing_instructions  -- 依頼No = 受注明細.出荷依頼No(梱包指示)
+                             )
+            )
+          )
+    AND   xca.customer_id                         = hca.cust_account_id                       -- 顧客ID
+    AND   oola.org_id                             = gt_org_id                                 -- 営業単位
+    AND   NVL(oola.attribute6, oola.ordered_item) = msib.segment1                             -- 品目コード
+    AND   xicv.item_no                            = msib.segment1                             -- 品目コード
+    AND   msib.organization_id                    = oola.ship_from_org_id                     -- 組織ID
+    AND   hca.customer_class_code                 = cn_customer_div_cust                      -- 顧客区分(顧客)
+    AND   hca.account_number                      IS NOT NULL                                 -- 顧客番号
+    AND   NVL(oola.attribute6,oola.ordered_item) 
+              NOT IN ( SELECT flv_non_inv.lookup_code
+                       FROM   fnd_lookup_values             flv_non_inv
+                       WHERE  flv_non_inv.lookup_type       = cv_non_inv_item_mst_t
+                       AND    flv_non_inv.language          = cv_lang
+                       AND    flv_non_inv.enabled_flag      = cv_enabled_flag)
+    AND   flv_tran.lookup_type                        = cv_tran_type_mst_t
+    AND   flv_tran.lookup_code                     LIKE cv_tran_type_mst_c
+    AND   flv_tran.language                           = cv_lang
+    AND   flv_tran.enabled_flag                       = cv_enabled_flag
+    AND   msi.organization_id                         = gn_organization_id
+    AND   msib.organization_id                        = gn_organization_id
+    AND   iim.item_no                                 = msib.segment1
+    AND   iim.item_id                                 = xim.item_id
+    AND   xim.start_date_active                      <= oola.request_date
+    AND   NVL(xim.end_date_active,oola.request_date) >= oola.request_date
+    AND   iim.inactive_ind                           <> cn_inactive_ind_on
+    AND   xim.obsolete_class                         <> cv_obsolete_class_on
+    AND   ooha.request_date                          >= gd_get_data_from_date
+    AND   ooha.flow_status_code                       = cv_flow_status_code
+    AND   ooha.org_id                                 = gt_org_id                             -- 営業単位
+    FOR UPDATE OF  oola.line_id
+                  ,ooha.header_id
+    NOWAIT
+    ;
+-- 2013/10/04 Ver.1.25 Add End
   -- ===============================
   -- ユーザー定義グローバル
   -- ===============================
@@ -1193,8 +1450,13 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
-    
-    gn_order_past_day := TO_NUMBER(lv_order_past_day);
+-- 2013/10/04 Ver.1.25 Mod Start
+--    gn_order_past_day := TO_NUMBER(lv_order_past_day);
+    --納品日・受注日の取得開始日設定
+    gd_get_data_from_date := gd_business_date - TO_NUMBER(lv_order_past_day);
+    --受注日の取得終了日設定(終了日の23:59:59まで対象とする為、+1日する)
+    gd_get_data_to_date   := gd_business_date + TO_NUMBER(lv_order_past_day) + 1;
+-- 2013/10/04 Ver.1.25 Mod End
   --
 /* 2011/02/18 Ver.1.22 Add End */
   EXCEPTION
@@ -1310,25 +1572,51 @@ AS
 --###########################  固定部 END   ############################
 --
     BEGIN
-      -- カーソルオープン
-      OPEN order_data_cur(
+-- 2013/10/04 Ver.1.25 Add Start
+      --受注番号指定なし
+      IF ( iv_order_number IS NULL ) THEN
+-- 2013/10/04 Ver.1.25 Add End
+        -- カーソルオープン
+        OPEN order_data_cur(
 --****************************** 2009/05/26 1.7 T.Kitajima MOD START ******************************--
---         iv_base_code     => iv_base_code      -- 拠点コード
---        ,iv_order_number  => iv_order_number   -- 受注番号
-         iv_send_flg      => iv_send_flg       -- 新規/再送区分
-        ,iv_base_code     => iv_base_code      -- 拠点コード
-        ,iv_order_number  => iv_order_number   -- 受注番号
+--           iv_base_code     => iv_base_code      -- 拠点コード
+--          ,iv_order_number  => iv_order_number   -- 受注番号
+           iv_send_flg      => iv_send_flg       -- 新規/再送区分
+          ,iv_base_code     => iv_base_code      -- 拠点コード
+-- 2013/10/04 Ver.1.25 Del Start
+--          ,iv_order_number  => iv_order_number   -- 受注番号
+-- 2013/10/04 Ver.1.25 Del End
 --****************************** 2009/05/26 1.7 T.Kitajima MOD  END  ******************************--
-      );
-      --
-      -- レコード読込み
-      FETCH order_data_cur BULK COLLECT INTO gt_order_extra_tbl;
-      --
-      -- 抽出件数設定
-      gn_target_cnt := gt_order_extra_tbl.COUNT;
-      --
-      -- カーソル・クローズ
-      CLOSE order_data_cur;
+        );
+        --
+        -- レコード読込み
+        FETCH order_data_cur BULK COLLECT INTO gt_order_extra_tbl;
+        --
+        -- 抽出件数設定
+        gn_target_cnt := gt_order_extra_tbl.COUNT;
+        --
+        -- カーソル・クローズ
+        CLOSE order_data_cur;
+-- 2013/10/04 Ver.1.25 Add Start
+      --受注番号の指定あり
+      ELSE
+        -- カーソルオープン
+        OPEN order_data_order_cur(
+           iv_send_flg      => iv_send_flg       -- 新規/再送区分
+          ,iv_base_code     => iv_base_code      -- 拠点コード
+          ,iv_order_number  => iv_order_number   -- 受注番号
+        );
+        --
+        -- レコード読込み
+        FETCH order_data_order_cur BULK COLLECT INTO gt_order_extra_tbl;
+        --
+        -- 抽出件数設定
+        gn_target_cnt := gt_order_extra_tbl.COUNT;
+        --
+        -- カーソル・クローズ
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
     EXCEPTION
       -- ロックエラー
       WHEN record_lock_expt THEN
@@ -1350,6 +1638,11 @@ AS
       IF ( order_data_cur%ISOPEN ) THEN
         CLOSE order_data_cur;
       END IF;
+-- 2013/10/04 Ver.1.25 Add Start
+      IF ( order_data_order_cur%ISOPEN ) THEN
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
       -- メッセージ文字列取得
       lv_table_name := xxccp_common_pkg.get_msg(
         iv_application  => cv_xxcos_short_name
@@ -1372,6 +1665,11 @@ AS
       IF ( order_data_cur%ISOPEN ) THEN
         CLOSE order_data_cur;
       END IF;
+-- 2013/10/04 Ver.1.25 Add Start
+      IF ( order_data_order_cur%ISOPEN ) THEN
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
       -- メッセージ文字列取得
       lv_table_name := xxccp_common_pkg.get_msg(
         iv_application  => cv_xxcos_short_name
@@ -1396,6 +1694,11 @@ AS
       IF ( order_data_cur%ISOPEN ) THEN
         CLOSE order_data_cur;
       END IF;
+-- 2013/10/04 Ver.1.25 Add Start
+      IF ( order_data_order_cur%ISOPEN ) THEN
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
       -- メッセージ作成
       lv_errmsg := xxccp_common_pkg.get_msg(
         iv_application  => cv_xxcos_short_name
@@ -1413,6 +1716,11 @@ AS
       IF ( order_data_cur%ISOPEN ) THEN
         CLOSE order_data_cur;
       END IF;
+-- 2013/10/04 Ver.1.25 Add Start
+      IF ( order_data_order_cur%ISOPEN ) THEN
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -1421,6 +1729,11 @@ AS
       IF ( order_data_cur%ISOPEN ) THEN
         CLOSE order_data_cur;
       END IF;
+-- 2013/10/04 Ver.1.25 Add Start
+      IF ( order_data_order_cur%ISOPEN ) THEN
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
@@ -1428,6 +1741,11 @@ AS
       IF ( order_data_cur%ISOPEN ) THEN
         CLOSE order_data_cur;
       END IF;
+-- 2013/10/04 Ver.1.25 Add Start
+      IF ( order_data_order_cur%ISOPEN ) THEN
+        CLOSE order_data_order_cur;
+      END IF;
+-- 2013/10/04 Ver.1.25 Add End
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
