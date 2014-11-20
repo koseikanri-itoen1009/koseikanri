@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/10/20    1.9   Oracle福田直樹   統合テスト障害#394(1)対応
  *  2008/10/20    1.9   Oracle福田直樹   統合テスト障害#394(2)対応
  *  2008/10/31    1.10  Oracle福田直樹   統合指摘#462対応
+ *  2008/11/17    1.11  Oracle福田直樹   統合指摘#651対応(課題T_S_486再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -116,6 +117,7 @@ AS
   gc_eos_type_rpt_move_o  CONSTANT VARCHAR2(3)  := '220' ;  -- 移動出庫確定報告
   gc_eos_type_rpt_move_i  CONSTANT VARCHAR2(3)  := '230' ;  -- 移動入庫確定報告
   -- YesNo区分
+  gc_yn_div_y             CONSTANT VARCHAR2(1)  := 'Y' ;    -- YES    2008/11/17 統合指摘#651 Add
   gc_yn_div_n             CONSTANT VARCHAR2(1)  := 'N' ;    -- NO
   -- 出荷支給区分
   gc_sp_class_move        CONSTANT VARCHAR2(1)  := '3' ;    -- 移動（プログラム内限定）
@@ -236,6 +238,11 @@ AS
      ,freight_charge_code   VARCHAR(1)  -- 運賃区分
      ,complusion_output_kbn VARCHAR(1)  -- 強制出力区分
 -- 2008/07/09 A.Shiina v1.5 Update Start
+-- 2008/11/17 統合指摘#651 Add Start -----------------------------------------------
+     ,no_instr_actual  VARCHAR(1)        -- 指示なし実績：'Y' 指示あり実績:'N'
+     ,lot_inst_cnt     NUMBER            -- 指示ロットの件数
+     ,row_num          NUMBER            -- 依頼No・品目ごとにロットID昇順で1から採番
+-- 2008/11/17 統合指摘#651 Add End -------------------------------------------------
     ) ;
 --    
 -- 中間テーブル格納用
@@ -1381,8 +1388,18 @@ AS
 --                      WHEN (xmld.record_type_code = gc_rec_type_stck) THEN xmld.actual_quantity
 --                      ELSE 0
 --                    END )                                    -- 出庫数
+              --***************************************************************************
+              --*  指示ロット（依頼数）
+              --***************************************************************************
               ,SUM( CASE
-                      WHEN (xmld.record_type_code = gc_rec_type_inst) THEN  -- 指示の場合
+                      --WHEN (xmld.record_type_code = gc_rec_type_inst) THEN  -- 指示の場合  2008/11/17 統合指摘#651 Del
+                      -- 2008/11/17 統合指摘#651 Add Start ------------------------------
+                     --********************************
+                     --*  指示なし実績
+                     --********************************
+                      WHEN (xmld.record_type_code = gc_rec_type_inst)
+                        AND (ir_get_data.no_instr_actual = gc_yn_div_y) THEN
+                      -- 2008/11/17 統合指摘#651 Add End --------------------------------
                         CASE 
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
@@ -1424,8 +1441,61 @@ AS
 --
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
                         END
+-- 2008/11/17 統合指摘#651 Add Start -----------------------------------------------------------------------------------
+                     --****************************************
+                     --*  指示あり実績の場合(指示ロットあり)
+                     --****************************************
+                     WHEN (xmld.record_type_code = gc_rec_type_inst)
+                       AND (ir_get_data.no_instr_actual = gc_yn_div_n)
+                     THEN
+                        CASE 
+                         -- 品目区分が製品、かつ
+                         -- 入出庫換算単位がNULLでない、かつ
+                         -- 商品区分がドリンク、かつ
+                         -- ケース入数が1以上の場合
+                         WHEN ((xicv.item_class_code = '5')
+                          AND (ir_get_data.conv_unit IS NOT NULL)
+                          AND (ir_get_data.prod_class_code = '2')
+                          AND (ir_get_data.num_of_cases > 0))THEN
+                              -- 換算する
+                           ROUND(xmld.actual_quantity / ir_get_data.num_of_cases, 3)
+--
+                        ELSE
+                              -- 換算しない
+                           xmld.actual_quantity
+                        END
+--
+                     --****************************************
+                     --*  指示あり実績の場合(指示ロットなし)
+                     --****************************************
+                     WHEN (ir_get_data.no_instr_actual = gc_yn_div_n)   -- 指示あり実績
+                       AND (ir_get_data.lot_inst_cnt = 0)               -- 指示ロットが０件
+                       AND (ir_get_data.row_num = 1)                    -- ロット割れの場合は最初のロットにのみ出力する
+                     THEN
+                        CASE
+                         -- 品目区分が製品、かつ
+                         -- 入出庫換算単位がNULLでない、かつ
+                         -- 商品区分がドリンク、かつ
+                         -- ケース入数が1以上の場合
+                         WHEN ((xicv.item_class_code = '5')
+                          AND (ir_get_data.conv_unit IS NOT NULL)
+                          AND (ir_get_data.prod_class_code = '2')
+                          AND (ir_get_data.num_of_cases > 0))THEN
+                              -- 換算する
+                           ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)
+--
+                        ELSE
+                              -- 換算しない
+                           ir_get_data.quant_r
+                        END
+-- 2008/11/17 統合指摘#651 Add End --------------------------------------------------------------------------------------
+--
                       ELSE 0
-                    END )                                    -- 依頼数
+                    END )
+--
+              --*********************************************
+              --*  入庫実績ロット（入庫数）
+              --**********************************************
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_dlvr) THEN   -- 入庫実績
                         CASE
@@ -1455,7 +1525,11 @@ AS
                               (xmld.actual_quantity/1)
                         END
                       ELSE 0
-                    END )                                    -- 入庫数
+                    END )
+--
+              --*********************************************
+              --*  出庫実績ロット（出庫数）
+              --**********************************************
               ,SUM( CASE
                       WHEN (xmld.record_type_code = gc_rec_type_stck) THEN  -- 出庫実績
                         CASE
@@ -1485,7 +1559,7 @@ AS
                               (xmld.actual_quantity/1)
                         END
                       ELSE 0
-                    END )                                    -- 出庫数
+                    END )
 -- mod end ver1.1
         INTO   or_temp_tab.lot_no                            -- ロット番号
               ,or_temp_tab.product_date                      -- 製造日
@@ -1537,6 +1611,7 @@ AS
                 ,ilm.attribute3
                 ,xlv.meaning
         ;
+--
 -- 2008/07/28 A.Shiina v1.6 ADD Start
       -- 移動ロット詳細アドオンに存在しない場合
       ELSE
@@ -1546,6 +1621,9 @@ AS
         or_temp_tab.original_char := NULL ;   -- 固有記号
         or_temp_tab.lot_status    := NULL ;   -- 品質
 --
+        --***************************
+        --*  依頼数
+        --***************************
         -- 入出庫換算単位がNULLでない、かつ
         -- 商品区分がドリンク、かつ
         -- ケース入数が1以上の場合
@@ -1557,7 +1635,14 @@ AS
           or_temp_tab.quant_r := ir_get_data.quant_r ;
         END IF;                                         -- 依頼数
 --
+        --***************************
+        --*  入庫数
+        --***************************
         or_temp_tab.quant_i := ir_get_data.quant_i ;    -- 入庫数
+--
+        --***************************
+        --*  出庫数
+        --***************************
         or_temp_tab.quant_o := ir_get_data.quant_o ;    -- 出庫数
 --
       END IF;
@@ -1933,6 +2018,21 @@ AS
             ,xmrih.freight_charge_class   AS freight_charge_code   -- 運賃区分
             --,xcv.complusion_output_code   AS complusion_output_kbn -- 強制出力区分       -- 2008/10/31 統合指摘#462 Del
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分  -- 2008/10/31 統合指摘#462 Add
+-- 2008/11/17 統合指摘#651 Add Start ------------------------------------------------------
+            ,DECODE(NVL(xmrih.no_instr_actual_class,gc_yn_div_n)
+                          ,gc_yn_div_y,gc_yn_div_y,gc_yn_div_n) AS no_instr_actual  -- 指示なし実績:'Y' 指示あり実績:'N'
+            ,(
+                SELECT COUNT(*)
+                FROM xxinv_mov_lot_details  xmld2
+                WHERE xmld2.document_type_code = gc_doc_type_move
+                AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
+                AND xmld2.lot_id = xmld.lot_id
+                AND xmld2.mov_line_id = xmld.mov_line_id
+             ) AS lot_inst_cnt    -- 指示ロットの件数
+            ,ROW_NUMBER() OVER (PARTITION BY xmrih.mov_num
+                                            ,ximv.item_no
+                                ORDER BY     xmld.lot_id) AS row_num  -- 依頼No・品目ごとにロットID昇順で1から採番
+-- 2008/11/17 統合指摘#651 Add End --------------------------------------------------------
 -- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
@@ -2103,6 +2203,21 @@ AS
             ,xmrih.freight_charge_class    AS freight_charge_code   -- 運賃区分
             --,xcv.complusion_output_code    AS complusion_output_kbn -- 強制出力区分      -- 2008/10/31 統合指摘#462 Del
             ,NVL(xcv.complusion_output_code,'0') AS complusion_output_kbn -- 強制出力区分  -- 2008/10/31 統合指摘#462 Add
+-- 2008/11/17 統合指摘#651 Add Start ------------------------------------------------------
+            ,DECODE(NVL(xmrih.no_instr_actual_class,gc_yn_div_n)
+                          ,gc_yn_div_y,gc_yn_div_y,gc_yn_div_n) AS no_instr_actual  -- 指示なし実績:'Y' 指示あり実績:'N'
+            ,(
+                SELECT COUNT(*)
+                FROM xxinv_mov_lot_details  xmld2
+                WHERE xmld2.document_type_code = gc_doc_type_move
+                AND xmld2.record_type_code = gc_rec_type_inst  -- 指示ロット
+                AND xmld2.lot_id = xmld.lot_id
+                AND xmld2.mov_line_id = xmld.mov_line_id
+             ) AS lot_inst_cnt    -- 指示ロットの件数
+            ,ROW_NUMBER() OVER (PARTITION BY xmrih.mov_num
+                                            ,ximv.item_no
+                                ORDER BY     xmld.lot_id) AS row_num  -- 依頼No・品目ごとにロットID昇順で1から採番
+-- 2008/11/17 統合指摘#651 Add End --------------------------------------------------------
 -- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
@@ -2222,8 +2337,8 @@ AS
 --
       -- 2008/10/31 統合指摘#462 Add Start -------------------------------------
       AND   NVL(xmrih.career_id,gn_nvl_null_num) =   xcv.party_id(+)
-      AND   xmrih.schedule_arrival_date     >=   xcv.start_date_active(+)
-      AND   xmrih.schedule_arrival_date     <=   xcv.end_date_active(+)
+      AND   xmrih.actual_ship_date     >=   xcv.start_date_active(+)
+      AND   xmrih.actual_ship_date     <=   xcv.end_date_active(+)
       -- 2008/10/31 統合指摘#462 Add End ---------------------------------------
 --
     ;
@@ -2441,6 +2556,11 @@ AS
 -- add start ver1.3
         lr_get_data.prod_class_code  := re_main.prod_class_code ;   -- 商品区分
 -- add end ver1.3
+-- 2008/11/17 統合指摘#651 Add Start ---------------------------------------
+        lr_get_data.no_instr_actual  := re_main.no_instr_actual ;
+        lr_get_data.lot_inst_cnt     := re_main.lot_inst_cnt ;
+        lr_get_data.row_num          := re_main.row_num ;
+-- 2008/11/17 統合指摘#651 Add End -----------------------------------------
 --
         --------------------------------------------------
         -- 中間テーブル登録データ設定
